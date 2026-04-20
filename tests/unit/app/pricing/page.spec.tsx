@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   pricingGridMock: vi.fn(),
   pricingMissingStripeNoticeMock: vi.fn(),
   manageSubscriptionButtonMock: vi.fn(),
+  deriveBillingSubscriptionSnapshotMock: vi.fn(),
   loggerMock: {
     error: vi.fn(),
     warn: vi.fn(),
@@ -24,6 +25,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/api/auth', () => ({
   withServerComponentContext: mocks.withServerComponentContextMock,
+}));
+
+vi.mock('@/features/billing/account-snapshot', () => ({
+  deriveBillingSubscriptionSnapshot:
+    mocks.deriveBillingSubscriptionSnapshotMock,
 }));
 
 vi.mock('@/app/pricing/components/stripe-pricing', () => ({
@@ -90,9 +96,29 @@ async function renderPricingPage(): Promise<void> {
   render(await PricingPage());
 }
 
+function subscriptionSnapshotFromUser(user: PricingPageUser) {
+  return {
+    tier: user.subscriptionTier,
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionPeriodEnd: user.subscriptionPeriodEnd,
+    cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    canOpenBillingPortal: Boolean(
+      user.stripeCustomerId && user.subscriptionStatus
+    ),
+  };
+}
+
 function mockAuthenticatedUser(user: PricingPageUser): void {
   mocks.withServerComponentContextMock.mockImplementation(async (resolver) =>
     resolver(user)
+  );
+  mocks.deriveBillingSubscriptionSnapshotMock.mockImplementation(
+    (input: PricingPageUser) => {
+      expect(input).toBe(user);
+      return subscriptionSnapshotFromUser(user);
+    }
   );
 }
 
@@ -112,6 +138,7 @@ function mockStripeTierData(
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.deriveBillingSubscriptionSnapshotMock.mockReset();
   });
   afterEach(() => {
     vi.resetModules();
@@ -131,6 +158,9 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(mocks.withServerComponentContextMock).toHaveBeenCalledTimes(1);
+    expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
+      user
+    );
     expect(mocks.fetchStripeTierDataMock).toHaveBeenCalledTimes(2);
     expect(mocks.fetchStripeTierDataMock).toHaveBeenNthCalledWith(1, {
       proId: 'price_pro_monthly',
@@ -208,7 +238,23 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(mocks.withServerComponentContextMock).toHaveBeenCalledTimes(1);
+    expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
+      user
+    );
     expect(mocks.fetchStripeTierDataMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
+      'data-can-open-billing-portal',
+      'false'
+    );
+  });
+
+  it('does not call deriveBillingSubscriptionSnapshot when the user is anonymous', async () => {
+    mocks.withServerComponentContextMock.mockResolvedValue(null);
+    mockStripeTierData();
+
+    await renderPricingPage();
+
+    expect(mocks.deriveBillingSubscriptionSnapshotMock).not.toHaveBeenCalled();
     expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
       'data-can-open-billing-portal',
       'false'

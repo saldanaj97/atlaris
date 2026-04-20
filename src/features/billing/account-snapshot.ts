@@ -1,28 +1,31 @@
 import { eq } from 'drizzle-orm';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import {
-  getUsageSummary,
+  getUsageSummaryForTier,
   type UsageSummary,
 } from '@/features/billing/usage-metrics';
 import { getCorrelationId } from '@/lib/api/context';
+import { AppError } from '@/lib/api/errors';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
-import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-class BillingSnapshotNotFoundError extends Error {
+export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {
-    super(
-      correlationId
-        ? `Billing account snapshot not found for user ${userId} (correlationId=${correlationId})`
-        : `Billing account snapshot not found for user ${userId}`
-    );
-    this.name = 'BillingSnapshotNotFoundError';
+    super('Billing account snapshot not found', {
+      status: 500,
+      code: 'BILLING_SNAPSHOT_NOT_FOUND',
+      details: { userId },
+      logMeta: correlationId ? { userId, correlationId } : { userId },
+    });
   }
 }
 
-interface BillingAccountSnapshot {
+export type BillingAccountProjection = 'full' | 'subscription';
+
+export type BillingSubscriptionSnapshot = {
   tier: SubscriptionTier;
   subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing' | null;
   subscriptionPeriodEnd: Date | null;
@@ -30,18 +33,91 @@ interface BillingAccountSnapshot {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   canOpenBillingPortal: boolean;
+};
+
+export type BillingAccountSnapshot = BillingSubscriptionSnapshot & {
   usage: UsageSummary;
+};
+
+type BillingRowSelect = {
+  tier: SubscriptionTier;
+  subscriptionStatus: BillingSubscriptionSnapshot['subscriptionStatus'];
+  subscriptionPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+function toSubscriptionSnapshot(
+  billingRow: BillingRowSelect
+): BillingSubscriptionSnapshot {
+  return {
+    tier: billingRow.tier,
+    subscriptionStatus: billingRow.subscriptionStatus,
+    subscriptionPeriodEnd: billingRow.subscriptionPeriodEnd,
+    cancelAtPeriodEnd: billingRow.cancelAtPeriodEnd,
+    stripeCustomerId: billingRow.stripeCustomerId,
+    stripeSubscriptionId: billingRow.stripeSubscriptionId,
+    canOpenBillingPortal: canOpenBillingPortalForUser(billingRow),
+  };
 }
 
 /**
- * Canonical billing-account read for authenticated surfaces that need both
- * subscription state and usage state in one contract.
+ * Subset of the `users` row required to derive a `BillingSubscriptionSnapshot`.
+ * Kept in sync with `BillingRowSelect` so callers holding a full `DbUser`
+ * (e.g. server components with an authed user) can avoid a second SELECT.
  */
+type BillingSubscriptionInput = Pick<
+  DbUser,
+  | 'subscriptionTier'
+  | 'subscriptionStatus'
+  | 'subscriptionPeriodEnd'
+  | 'cancelAtPeriodEnd'
+  | 'stripeCustomerId'
+  | 'stripeSubscriptionId'
+>;
+
+/**
+ * Synchronous projection: derive a `BillingSubscriptionSnapshot` from an
+ * in-memory `users` row. Use this when an authed user object is already loaded
+ * (e.g. `withServerComponentContext`) to avoid re-reading the row via
+ * `getBillingAccountSnapshot({ projection: 'subscription' })`.
+ */
+export function deriveBillingSubscriptionSnapshot(
+  user: BillingSubscriptionInput
+): BillingSubscriptionSnapshot {
+  return toSubscriptionSnapshot({
+    tier: user.subscriptionTier,
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionPeriodEnd: user.subscriptionPeriodEnd,
+    cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+  });
+}
+
+type SnapshotArgsBase = {
+  userId: string;
+  dbClient?: DbClient;
+  correlationId?: string;
+};
+
 export async function getBillingAccountSnapshot(
-  userId: string,
-  dbClient: DbClient = getDb(),
-  correlationId = getCorrelationId()
-): Promise<BillingAccountSnapshot> {
+  args: SnapshotArgsBase & { projection?: 'full' }
+): Promise<BillingAccountSnapshot>;
+export async function getBillingAccountSnapshot(
+  args: SnapshotArgsBase & { projection: 'subscription' }
+): Promise<BillingSubscriptionSnapshot>;
+export async function getBillingAccountSnapshot(
+  args: SnapshotArgsBase & { projection?: BillingAccountProjection }
+): Promise<BillingAccountSnapshot | BillingSubscriptionSnapshot> {
+  const {
+    userId,
+    dbClient = getDb(),
+    correlationId = getCorrelationId(),
+    projection = 'full',
+  } = args;
+
   const [billingRow] = await dbClient
     .select({
       tier: users.subscriptionTier,
@@ -56,27 +132,23 @@ export async function getBillingAccountSnapshot(
     .limit(1);
 
   if (!billingRow) {
-    logger.error(
-      {
-        userId,
-        correlationId,
-        query: 'getBillingAccountSnapshot.users.selectById',
-      },
-      'Billing snapshot lookup failed because user was not found'
-    );
     throw new BillingSnapshotNotFoundError(userId, correlationId);
   }
 
-  const usage = await getUsageSummary(userId, dbClient);
+  const subscription = toSubscriptionSnapshot(billingRow);
+
+  if (projection === 'subscription') {
+    return subscription;
+  }
+
+  const usage = await getUsageSummaryForTier({
+    userId,
+    tier: billingRow.tier,
+    dbClient,
+  });
 
   return {
-    tier: billingRow.tier,
-    subscriptionStatus: billingRow.subscriptionStatus,
-    subscriptionPeriodEnd: billingRow.subscriptionPeriodEnd,
-    cancelAtPeriodEnd: billingRow.cancelAtPeriodEnd,
-    stripeCustomerId: billingRow.stripeCustomerId,
-    stripeSubscriptionId: billingRow.stripeSubscriptionId,
-    canOpenBillingPortal: canOpenBillingPortalForUser(billingRow),
+    ...subscription,
     usage,
   };
 }

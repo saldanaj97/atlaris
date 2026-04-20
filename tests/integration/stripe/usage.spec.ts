@@ -1,8 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ensureUser } from '@/../tests/helpers/db';
+import * as tierModule from '@/features/billing/tier';
 import {
   getUsageSummary,
+  getUsageSummaryForTier,
   incrementUsage,
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/lifecycle/plan-operations';
@@ -295,6 +297,27 @@ describe('Usage Tracking', () => {
   });
 
   describe('getUsageSummary', () => {
+    it('does not call resolveUserTier when getUsageSummaryForTier is used directly', async () => {
+      const userId = await ensureUser({
+        authUserId: 'user_summary_tier_short_circuit',
+        email: 'summary.tier.short@example.com',
+      });
+
+      const spy = vi.spyOn(tierModule, 'resolveUserTier');
+
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'pro',
+        dbClient: db,
+      });
+
+      expect(spy).not.toHaveBeenCalled();
+      expect(summary.tier).toBe('pro');
+      expect(summary.activePlans.limit).toBe(Infinity);
+
+      spy.mockRestore();
+    });
+
     it('excludes non-eligible plans and counts only eligible ones', async () => {
       const userId = await ensureUser({
         authUserId: 'user_summary_eligibility_filter',

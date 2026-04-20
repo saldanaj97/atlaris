@@ -104,23 +104,24 @@ export async function incrementUsage(
 }
 
 /**
- * Reset monthly usage counters (to be called by a cron job)
- * This is intentionally a no-op as we use monthly partitions
- * New months automatically start with zero counts via getOrCreateUsageMetrics
+ * Get usage summary for a user whose tier has already been resolved.
+ *
+ * Caller contract: `tier` MUST come from the same `users` row as this request
+ * (e.g. read alongside the billing projection in `getBillingAccountSnapshot`).
+ * Passing a stale or unrelated tier will silently yield the wrong limits.
+ *
+ * Prefer `getUsageSummary` for callers that do not already have a resolved tier.
  */
-/**
- * Get usage summary for a user
- */
-export async function getUsageSummary(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<UsageSummary> {
-  const tier = await resolveUserTier(userId, dbClient);
+export async function getUsageSummaryForTier(args: {
+  userId: string;
+  tier: SubscriptionTier;
+  dbClient?: DbClient;
+}): Promise<UsageSummary> {
+  const { userId, tier, dbClient = getDb() } = args;
   const limits = TIER_LIMITS[tier];
   const month = getCurrentMonth();
   const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
-  // Count active plans
   const [planCount] = await dbClient
     .select({ count: sql`count(*)::int` })
     .from(learningPlans)
@@ -146,6 +147,17 @@ export async function getUsageSummary(
       limit: limits.monthlyExports,
     },
   };
+}
+
+/**
+ * Get usage summary for a user; auto-resolves tier from the `users` row.
+ */
+export async function getUsageSummary(
+  userId: string,
+  dbClient: DbClient = getDb()
+): Promise<UsageSummary> {
+  const tier = await resolveUserTier(userId, dbClient);
+  return getUsageSummaryForTier({ userId, tier, dbClient });
 }
 
 export async function ensureUsageMetricsExist(

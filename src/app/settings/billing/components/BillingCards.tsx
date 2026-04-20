@@ -16,7 +16,10 @@ import { getDb } from '@/lib/db/runtime';
 export async function BillingCards(): Promise<JSX.Element> {
   const result = await withServerComponentContext(async (user) => ({
     user,
-    snapshot: await getBillingAccountSnapshot(user.id, getDb()),
+    snapshot: await getBillingAccountSnapshot({
+      userId: user.id,
+      dbClient: getDb(),
+    }),
   }));
 
   if (!result) redirect('/auth/sign-in');

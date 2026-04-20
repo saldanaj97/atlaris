@@ -16,7 +16,7 @@ import { getDb } from '@/lib/db/runtime';
  */
 export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
   const snapshot = await withServerComponentContext(async (user) =>
-    getBillingAccountSnapshot(user.id, getDb())
+    getBillingAccountSnapshot({ userId: user.id, dbClient: getDb() })
   );
 
   if (!snapshot) return null;
@@ -42,7 +42,7 @@ export async function PlansContent(): Promise<JSX.Element> {
     const db = getDb();
     const [summaries, snapshot] = await Promise.all([
       listPlansPageSummaries({ userId: user.id, dbClient: db }),
-      getBillingAccountSnapshot(user.id, db),
+      getBillingAccountSnapshot({ userId: user.id, dbClient: db }),
     ]);
     return { summaries, snapshot };
   });

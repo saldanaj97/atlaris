@@ -12,7 +12,7 @@ import { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import { deriveBillingSubscriptionSnapshot } from '@/features/billing/account-snapshot';
 import { withServerComponentContext } from '@/lib/api/auth';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -81,8 +81,10 @@ async function loadStripeTierData(
 }
 
 export default async function PricingPage(): Promise<ReactElement> {
-  const user = await withServerComponentContext((currentUser) => currentUser);
-  const canOpenBillingPortal = canOpenBillingPortalForUser(user);
+  const canOpenBillingPortal =
+    (await withServerComponentContext(
+      (user) => deriveBillingSubscriptionSnapshot(user).canOpenBillingPortal
+    )) ?? false;
   const monthlyPriceIds = getPaidTierPriceIds(MONTHLY_TIER_CONFIGS);
   const yearlyPriceIds = getPaidTierPriceIds(YEARLY_TIER_CONFIGS);
   const [monthlyStripeData, yearlyStripeData] = await Promise.all([

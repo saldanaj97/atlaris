@@ -8,7 +8,10 @@ import { logger } from '@/lib/logging/logger';
 export const GET: PlainHandler = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ user }) => {
     try {
-      const snapshot = await getBillingAccountSnapshot(user.id, getDb());
+      const snapshot = await getBillingAccountSnapshot({
+        userId: user.id,
+        dbClient: getDb(),
+      });
 
       logger.info(
         { userId: user.id, tier: snapshot.tier },
