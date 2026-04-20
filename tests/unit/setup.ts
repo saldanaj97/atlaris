@@ -13,19 +13,22 @@ if (!process.env.NODE_ENV) {
 vi.mock('@/lib/db/service-role', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/service-role')>();
 
+  const crud = {
+    select: vi.fn(),
+    insert: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    execute: vi.fn(),
+  };
+
   return {
     ...actual,
     client: { end: vi.fn() },
     db: {
-      select: vi.fn(),
-      insert: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      transaction: vi.fn(
-        (fn: (tx: { execute: ReturnType<typeof vi.fn> }) => Promise<unknown>) =>
-          fn({ execute: vi.fn() })
+      ...crud,
+      transaction: vi.fn((fn: (tx: typeof crud) => Promise<unknown>) =>
+        fn({ ...crud })
       ),
-      execute: vi.fn(),
       query: {
         learningPlans: {
           findFirst: vi.fn(),

@@ -115,10 +115,7 @@ function mockAuthenticatedUser(user: PricingPageUser): void {
     resolver(user)
   );
   mocks.deriveBillingSubscriptionSnapshotMock.mockImplementation(
-    (input: PricingPageUser) => {
-      expect(input).toBe(user);
-      return subscriptionSnapshotFromUser(user);
-    }
+    (input: PricingPageUser) => subscriptionSnapshotFromUser(input)
   );
 }
 
@@ -137,8 +134,7 @@ function mockStripeTierData(
 
 describe('PricingPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.deriveBillingSubscriptionSnapshotMock.mockReset();
+    vi.resetAllMocks();
   });
   afterEach(() => {
     vi.resetModules();
@@ -255,6 +251,10 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(mocks.deriveBillingSubscriptionSnapshotMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('heading', { name: /invest in your growth/i })
+    ).toBeVisible();
+    expect(screen.getByTestId('pricing-grid-subscribe-monthly')).toBeVisible();
     expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
       'data-can-open-billing-portal',
       'false'

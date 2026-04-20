@@ -59,6 +59,10 @@ function assertSafeToTruncate() {
  * deadlock window that individual per-table TRUNCATEs leave open when another
  * pooled service-role connection (e.g. a lingering one from a prior test file)
  * still holds locks on overlapping tables.
+ *
+ * Contributors: when you add tables or foreign keys, append imports and extend
+ * `TRUNCATE_TABLES` in dependency-safe order. A stale list fails fast (FK errors)
+ * or can re-open cross-connection deadlocks—do not rely on CASCADE here.
  */
 const TRUNCATE_TABLES = [
   taskResources,
@@ -121,8 +125,17 @@ async function runTruncate(tableList: SQL): Promise<void> {
 }
 
 function isRetryableLockError(error: unknown): boolean {
-  const code = (error as { code?: unknown } | null)?.code;
-  return code === DEADLOCK_SQLSTATE || code === LOCK_NOT_AVAILABLE_SQLSTATE;
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false;
+  }
+  const code = (error as { code: unknown }).code;
+  if (typeof code !== 'string' && typeof code !== 'number') {
+    return false;
+  }
+  const codeStr = String(code);
+  return (
+    codeStr === DEADLOCK_SQLSTATE || codeStr === LOCK_NOT_AVAILABLE_SQLSTATE
+  );
 }
 
 function wait(ms: number): Promise<void> {

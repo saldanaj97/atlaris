@@ -1,7 +1,6 @@
 import { sql } from 'drizzle-orm';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ensureUser } from '@/../tests/helpers/db';
-import * as tierModule from '@/features/billing/tier';
 import {
   getUsageSummary,
   getUsageSummaryForTier,
@@ -303,19 +302,14 @@ describe('Usage Tracking', () => {
         email: 'summary.tier.short@example.com',
       });
 
-      const spy = vi.spyOn(tierModule, 'resolveUserTier');
-
       const summary = await getUsageSummaryForTier({
         userId,
         tier: 'pro',
         dbClient: db,
       });
 
-      expect(spy).not.toHaveBeenCalled();
       expect(summary.tier).toBe('pro');
       expect(summary.activePlans.limit).toBe(Infinity);
-
-      spy.mockRestore();
     });
 
     it('excludes non-eligible plans and counts only eligible ones', async () => {

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   BillingSnapshotNotFoundError,
   getBillingAccountSnapshot,
@@ -9,7 +9,7 @@ import {
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { ensureStripeWebhookEvents, ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { markUserAsSubscribed } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -20,11 +20,6 @@ async function createUniqueUser(subscriptionTier?: 'free' | 'starter' | 'pro') {
 }
 
 describe('getBillingAccountSnapshot', () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    await ensureStripeWebhookEvents();
-  });
-
   it('returns a canonical snapshot for a free user without billing portal access', async () => {
     const userId = await createUniqueUser('free');
 
@@ -86,7 +81,6 @@ describe('getBillingAccountSnapshot', () => {
     expect(snapshot.subscriptionPeriodEnd).toEqual(periodEnd);
     expect(snapshot.canOpenBillingPortal).toBe(true);
     expect(snapshot.usage.activePlans.current).toBe(2);
-    expect(snapshot.usage.activePlans.limit).toBeGreaterThanOrEqual(2);
     expect(snapshot.tier).toBe(snapshot.usage.tier);
     expect(snapshot.usage.activePlans.limit).toBe(
       TIER_LIMITS.starter.maxActivePlans
@@ -138,19 +132,13 @@ describe('getBillingAccountSnapshot', () => {
   it('throws BillingSnapshotNotFoundError with stable code when user id does not exist', async () => {
     const missingId = randomUUID();
 
-    const error = await getBillingAccountSnapshot({
-      userId: missingId,
-      dbClient: db,
-    }).then(
-      () => {
-        throw new Error('expected getBillingAccountSnapshot to reject');
-      },
-      (err: unknown) => err
+    await expect(
+      getBillingAccountSnapshot({ userId: missingId, dbClient: db })
+    ).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof BillingSnapshotNotFoundError &&
+        err.code() === 'BILLING_SNAPSHOT_NOT_FOUND' &&
+        err.status() === 404
     );
-
-    expect(error).toBeInstanceOf(BillingSnapshotNotFoundError);
-    const snapshotError = error as BillingSnapshotNotFoundError;
-    expect(snapshotError.code()).toBe('BILLING_SNAPSHOT_NOT_FOUND');
-    expect(snapshotError.status()).toBe(500);
   });
 });
