@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { type SQL, sql } from 'drizzle-orm';
 
 import {
   aiUsageEvents,
@@ -6,6 +6,8 @@ import {
   jobQueue,
   learningPlans,
   modules,
+  oauthStateTokens,
+  planSchedules,
   resources,
   stripeWebhookEvents,
   taskProgress,
@@ -51,38 +53,78 @@ function assertSafeToTruncate() {
 }
 
 /**
+ * Every table the truncate helper touches. Listing each FK-related table explicitly
+ * (instead of relying on CASCADE) keeps the lock set deterministic so the single
+ * TRUNCATE statement grabs every AccessExclusiveLock atomically. That closes the
+ * deadlock window that individual per-table TRUNCATEs leave open when another
+ * pooled service-role connection (e.g. a lingering one from a prior test file)
+ * still holds locks on overlapping tables.
+ */
+const TRUNCATE_TABLES = [
+  taskResources,
+  taskProgress,
+  aiUsageEvents,
+  generationAttempts,
+  jobQueue,
+  planSchedules,
+  tasks,
+  modules,
+  resources,
+  learningPlans,
+  usageMetrics,
+  stripeWebhookEvents,
+  oauthStateTokens,
+  users,
+] as const;
+
+const DEADLOCK_SQLSTATE = '40P01';
+const LOCK_NOT_AVAILABLE_SQLSTATE = '55P03';
+const MAX_RETRIES = 3;
+const RETRY_BACKOFF_MS = 50;
+
+/**
  * Truncate core tables between tests to guarantee isolation.
- * Tables are truncated in dependency order to avoid deadlocks.
+ *
+ * Runs inside a transaction with a short `lock_timeout` so any lingering locks
+ * from another pooled connection surface quickly as a retryable error rather than
+ * a 90s test hang. A single multi-table TRUNCATE acquires every AccessExclusiveLock
+ * atomically, eliminating the inter-statement deadlock window the previous
+ * children-first loop left open.
  */
 export async function truncateAll() {
   assertSafeToTruncate();
 
-  // Truncate tables individually in dependency order (children before parents)
-  // This avoids deadlocks that can occur when truncating multiple tables at once
-  await db.execute(
-    sql`TRUNCATE TABLE ${generationAttempts} RESTART IDENTITY CASCADE`
+  const tableList = sql.join(
+    TRUNCATE_TABLES.map((table) => sql`${table}`),
+    sql.raw(', ')
   );
-  await db.execute(sql`TRUNCATE TABLE ${jobQueue} RESTART IDENTITY CASCADE`);
-  await db.execute(
-    sql`TRUNCATE TABLE ${taskResources} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${taskProgress} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${aiUsageEvents} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(sql`TRUNCATE TABLE ${tasks} RESTART IDENTITY CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE ${modules} RESTART IDENTITY CASCADE`);
-  await db.execute(
-    sql`TRUNCATE TABLE ${learningPlans} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${stripeWebhookEvents} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(
-    sql`TRUNCATE TABLE ${usageMetrics} RESTART IDENTITY CASCADE`
-  );
-  await db.execute(sql`TRUNCATE TABLE ${users} RESTART IDENTITY CASCADE`);
-  await db.execute(sql`TRUNCATE TABLE ${resources} RESTART IDENTITY CASCADE`);
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await runTruncate(tableList);
+      return;
+    } catch (error) {
+      if (attempt < MAX_RETRIES && isRetryableLockError(error)) {
+        await wait(RETRY_BACKOFF_MS * attempt);
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+async function runTruncate(tableList: SQL): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
+    await tx.execute(sql`TRUNCATE TABLE ${tableList} RESTART IDENTITY`);
+  });
+}
+
+function isRetryableLockError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === DEADLOCK_SQLSTATE || code === LOCK_NOT_AVAILABLE_SQLSTATE;
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

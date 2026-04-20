@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import { learningPlans, modules, tasks, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
@@ -62,12 +62,6 @@ describe('getPlanSchedule API', () => {
         estimatedMinutes: 60,
       },
     ]);
-  });
-
-  afterEach(async () => {
-    // Cleanup (cascading deletes handle child records)
-    await db.delete(learningPlans).where(eq(learningPlans.id, testPlanId));
-    await db.delete(users).where(eq(users.id, testUserId));
   });
 
   it('should generate and cache schedule on first call', async () => {

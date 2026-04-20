@@ -2,10 +2,7 @@ import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
-import {
-  ensureUser,
-  resetDbForIntegrationTestFile,
-} from '@/../tests/helpers/db';
+import { ensureUser } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
@@ -25,7 +22,6 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    await resetDbForIntegrationTestFile();
     vi.stubEnv(
       'STRIPE_STARTER_MONTHLY_PRICE_ID',
       approvedStarterMonthlyPriceId

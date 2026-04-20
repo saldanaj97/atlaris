@@ -1,15 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 
 describe('User Queries', () => {
-  beforeEach(async () => {
-    // Clean up users table
-    await db.delete(users);
-  });
-
   describe('createUser', () => {
     it('should create a new user with all fields', async () => {
       const userData = {

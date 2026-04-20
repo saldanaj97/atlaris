@@ -1,5 +1,4 @@
-import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import {
   learningPlans,
@@ -117,11 +116,6 @@ describe('End-to-End Schedule Flow', () => {
       { taskId: task3.id, resourceId: res2.id, order: 1 },
       { taskId: task4.id, resourceId: res2.id, order: 1 },
     ]);
-  });
-
-  afterEach(async () => {
-    await db.delete(learningPlans).where(eq(learningPlans.id, testPlanId));
-    await db.delete(users).where(eq(users.id, testUserId));
   });
 
   it('should generate complete schedule with correct structure', async () => {
