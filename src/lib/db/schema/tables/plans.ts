@@ -12,7 +12,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import type { PdfContext } from '@/shared/types/pdf-context.types';
 import {
   type GenerationAttemptStatus,
   generationStatus,
@@ -44,8 +43,6 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'),
     origin: planOrigin('origin').notNull().default('ai'),
-    // extracted_context stores sanitized PDF context payloads when present.
-    extractedContext: jsonb('extracted_context').$type<PdfContext | null>(),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),
@@ -55,19 +52,6 @@ export const learningPlans = pgTable(
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
-    check(
-      'extracted_context_pdf_shape',
-      sql`(
-        ${table.extractedContext} IS NULL
-        OR (
-          jsonb_typeof(${table.extractedContext}) = 'object'
-          AND (${table.extractedContext} ? 'mainTopic')
-          AND (${table.extractedContext} ? 'sections')
-          AND jsonb_typeof(${table.extractedContext}->'sections') = 'array'
-          AND jsonb_typeof(${table.extractedContext}->'mainTopic') = 'string'
-        )
-      )`
-    ),
     index('idx_learning_plans_user_id').on(table.userId),
     index('idx_learning_plans_user_generation_status').on(
       table.userId,

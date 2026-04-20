@@ -1,4 +1,4 @@
-import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import type { StreamingEvent } from '@/features/plans/session/session-events';
 import { logger } from '@/lib/logging/logger';
 
 const encoder = new TextEncoder();

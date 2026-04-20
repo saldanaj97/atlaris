@@ -55,3 +55,19 @@
 **Rule:** When adding or editing Vitest specs, keep imports organized up front or run the formatter before the final baseline so the new files do not create avoidable lint churn.
 
 **Impact:** This avoids a second validation pass for trivial import-order fixes and keeps the final check focused on real regressions.
+
+## 2026-04-20: Shared schema refactors must preserve call-site transforms
+
+**Context:** While consolidating learning-plan schemas after PDF removal, a refactor briefly replaced the onboarding `notes` field with the raw string schema and broke downstream tests that relied on the existing optional-nullable normalization.
+
+**Rule:** When extracting or re-exporting shared Zod fragments, verify whether existing call sites depend on wrapper behavior like `.optional()`, `.nullable()`, or `.transform()`. Keep a dedicated exported schema for normalized consumer-facing fields instead of swapping in the raw base fragment.
+
+**Impact:** This prevents "cleanup" refactors from silently changing form payload semantics and turning a local type simplification into a cross-surface regression.
+
+## 2026-04-20: Concurrent Vitest runs need isolated Testcontainers state
+
+**Context:** Integration failures across `user-preferences`, billing subscriptions, and DB query specs were ultimately caused by two overlapping `pnpm vitest run` processes sharing one fixed `.testcontainers-env.json` path. One run could overwrite the other run's container metadata, so workers started pointing at the wrong ephemeral Postgres instance and tests saw missing rows, FK violations, fallback models, and truncate deadlocks.
+
+**Rule:** When Testcontainers-backed test runs can overlap, never store runtime DB metadata in a single shared file path. Scope the runtime-state file per Vitest process and have worker setup read the per-run path from env.
+
+**Impact:** This preserves worker-to-database isolation across concurrent local runs and prevents infra races from masquerading as fixture or application regressions.

@@ -72,7 +72,6 @@ const BASE_BODY: CreateLearningPlanInput = {
 interface FakeLifecycleHandle {
   service: PlanLifecycleService;
   createPlan: ReturnType<typeof vi.fn>;
-  createPdfPlan: ReturnType<typeof vi.fn>;
   processGenerationAttempt: ReturnType<typeof vi.fn>;
 }
 
@@ -84,16 +83,14 @@ function buildFakeLifecycle({
   process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>;
 }): FakeLifecycleHandle {
   const createPlan = vi.fn().mockResolvedValue(createResult);
-  const createPdfPlan = vi.fn().mockResolvedValue(createResult);
   const processGenerationAttempt = vi.fn(process);
 
   const service = {
     createPlan,
-    createPdfPlan,
     processGenerationAttempt,
   } as unknown as PlanLifecycleService;
 
-  return { service, createPlan, createPdfPlan, processGenerationAttempt };
+  return { service, createPlan, processGenerationAttempt };
 }
 
 function buildCreateRequest(

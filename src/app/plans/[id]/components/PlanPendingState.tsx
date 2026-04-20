@@ -17,6 +17,17 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
 // Maximum retry attempts (shared constant used by both client and server)
 const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
+const ORIGIN_LABELS: Record<'ai' | 'manual' | 'template', string> = {
+  ai: 'AI',
+  manual: 'Manual',
+  template: 'Template',
+};
+
+function formatOrigin(origin: ClientPlanDetail['origin']): string {
+  if (!origin) return 'AI';
+  return ORIGIN_LABELS[origin];
+}
+
 function getStatusBadgeVariant(
   failed: boolean,
   processing: boolean,
@@ -272,7 +283,8 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
                 {plan.learningStyle}
               </div>
               <div>
-                <span className="font-medium">Origin:</span> {plan.origin}
+                <span className="font-medium">Origin:</span>{' '}
+                {formatOrigin(plan.origin)}
               </div>
             </div>
           </div>

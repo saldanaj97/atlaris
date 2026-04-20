@@ -17,7 +17,6 @@ Prefer the exported grouped configs instead of raw keys:
 - `neonAuthEnv` - Neon Auth base URL and cookie secret
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
-- `avScannerEnv` - PDF upload malware scanning configuration (includes `mockScenario` when `AV_PROVIDER=mock`)
 - `stripeEnv` - Stripe keys and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
@@ -58,39 +57,8 @@ Key auth-related server variables include:
 | `LOCAL_PRODUCT_TESTING`     | Master flag for the seeded-user + mocks workflow (forbidden in production) |
 | `STRIPE_LOCAL_MODE`         | Use local billing catalog + in-process Stripe mock (forbidden in production) |
 | `MOCK_AI_SCENARIO`          | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
-| `AV_PROVIDER` / `AV_MOCK_SCENARIO` | Set `AV_PROVIDER=mock` (non-production) and `AV_MOCK_SCENARIO` for scan outcomes |
 
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
-
-### AV Scanner Variables
-
-| Variable                   | Purpose                                        | Required                                           |
-| -------------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| `AV_PROVIDER`              | AV backend selector (`metadefender`, `mock`, or `none`) | Yes                                         |
-| `AV_METADEFENDER_API_KEY`  | API key for MetaDefender Cloud                 | Required when `AV_PROVIDER=metadefender`           |
-| `AV_METADEFENDER_BASE_URL` | MetaDefender API base URL                      | No (defaults to `https://api.metadefender.com/v4`) |
-| `AV_SCAN_TIMEOUT_MS`       | End-to-end scan timeout in milliseconds        | No (defaults to `30000`)                           |
-
-Production guidance:
-
-- Do not run with `AV_PROVIDER=none` in production.
-- Keep fail-closed behavior enabled on scan timeout/error.
-- Rotate `AV_METADEFENDER_API_KEY` as part of normal secret hygiene.
-
-### Vercel AV Rollout Runbook
-
-Use this sequence to safely enable AV in Vercel environments:
-
-1. Add `AV_METADEFENDER_API_KEY` in Vercel Project Settings for Preview and Production.
-2. Set `AV_PROVIDER=metadefender` in Preview only.
-3. Optionally set `AV_SCAN_TIMEOUT_MS` (start with `30000`).
-4. Deploy to Preview and verify PDF upload behavior:
-   - clean PDF succeeds
-   - mocked infected sample returns `MALWARE_DETECTED`
-   - scan failure returns `SCAN_FAILED` (fail-closed)
-5. Monitor server logs for `provider`, `latencyMs`, and verdict fields.
-6. Promote same env settings to Production after Preview checks pass.
-7. Keep rollback ready: switch `AV_PROVIDER=none` only for emergency mitigation windows.
 
 ## Logging
 

@@ -47,7 +47,6 @@ const BASE_PLAN_SNAPSHOT: RetryPlanGenerationPlanSnapshot = {
   startDate: '2030-01-01',
   deadlineDate: '2030-06-01',
   origin: 'ai',
-  pdfContext: null,
 };
 
 interface FakeLifecycleHandle {
@@ -62,7 +61,6 @@ function buildFakeLifecycle(
 
   const service = {
     createPlan: vi.fn(),
-    createPdfPlan: vi.fn(),
     processGenerationAttempt,
   } as unknown as PlanLifecycleService;
 
@@ -322,50 +320,6 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(response.headers.get('Content-Type')).toBe('text/event-stream');
 
     await response.body?.cancel();
-  });
-
-  it('forwards the persisted PDF context into the generation input for PDF-origin retries', async () => {
-    const captured: ProcessGenerationInput[] = [];
-    const fake = buildFakeLifecycle(async (input) => {
-      captured.push(input);
-      return SUCCESS_ATTEMPT_RESULT;
-    });
-    const boundary = createPlanGenerationSessionBoundary({
-      createLifecycleService: () => fake.service,
-    });
-
-    const { authUserId, internalUserId } =
-      await setupUser('boundary-retry-pdf');
-
-    const pdfPlan: RetryPlanGenerationPlanSnapshot = {
-      ...BASE_PLAN_SNAPSHOT,
-      origin: 'pdf',
-      pdfContext: {
-        mainTopic: 'PDF Retry Topic',
-        sections: [
-          {
-            title: 'Intro',
-            content: 'Boundary retry section content',
-            level: 1,
-          },
-        ],
-      },
-    };
-
-    const response = await boundary.respondRetryStream(
-      buildArgs({
-        req: buildRetryRequest('plan_retry_pdf'),
-        authUserId,
-        internalUserId,
-        planId: 'plan_retry_pdf',
-        plan: pdfPlan,
-      })
-    );
-
-    await readStreamingResponse(response);
-
-    expect(captured).toHaveLength(1);
-    expect(captured[0]?.input.pdfContext).toEqual(pdfPlan.pdfContext);
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {

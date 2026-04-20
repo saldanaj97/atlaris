@@ -30,16 +30,6 @@ const TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
 const SAMPLE_INPUT: GenerationInput = {
   topic: 'TypeScript Fundamentals',
   notes: 'Focus on type safety',
-  pdfContext: {
-    mainTopic: 'TypeScript Handbook',
-    sections: [
-      {
-        title: 'Generics',
-        content: 'Type parameters and constraints',
-        level: 1,
-      },
-    ],
-  },
   skillLevel: 'beginner',
   weeklyHours: 8,
   learningStyle: 'mixed',
@@ -382,7 +372,7 @@ describe('OpenRouterProvider', () => {
       expect(userMessage.content).toContain('beginner');
     });
 
-    it('includes notes and PDF context in user prompt', async () => {
+    it('includes notes in user prompt', async () => {
       const { client, send } = createMockClient();
       send.mockResolvedValueOnce({
         choices: [
@@ -403,11 +393,6 @@ describe('OpenRouterProvider', () => {
       );
 
       expect(userMessage.content).toContain('Notes: Focus on type safety');
-      expect(userMessage.content).toContain('---BEGIN PDF CONTEXT---');
-      expect(userMessage.content).toContain(
-        'PDF main topic: TypeScript Handbook'
-      );
-      expect(userMessage.content).toContain('Section 1 title: Generics');
     });
 
     describe('AsyncIterable streaming path', () => {

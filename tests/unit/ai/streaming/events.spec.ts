@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { createEventStream, formatEvent } from '@/features/ai/streaming/events';
-import type { PlanStartEvent } from '@/features/ai/types/streaming.types';
+import { StreamingEventSchema } from '@/features/ai/streaming/schema';
+import type {
+  PlanGenerationSessionEvent,
+  PlanStartEvent,
+} from '@/features/plans/session/session-events';
 
 const decoder = new TextDecoder();
 
@@ -23,6 +27,25 @@ describe('streaming events', () => {
 
     const chunk = formatEvent(event);
     expect(decoder.decode(chunk)).toBe(`data: ${JSON.stringify(event)}\n\n`);
+  });
+
+  it('keeps the streaming schema aligned with session events', () => {
+    const parsed = StreamingEventSchema.parse({
+      type: 'plan_start',
+      data: {
+        planId: 'plan-123',
+        attemptNumber: 1,
+        topic: 'TypeScript',
+        skillLevel: 'beginner',
+        learningStyle: 'mixed',
+        weeklyHours: 5,
+        startDate: null,
+        deadlineDate: null,
+      },
+    });
+
+    const event: PlanGenerationSessionEvent = parsed;
+    expect(event.type).toBe('plan_start');
   });
 
   it('streams events through createEventStream', async () => {

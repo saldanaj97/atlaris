@@ -46,11 +46,9 @@ describe('GET /api/v1/plans pagination', () => {
         weeklyHours: 5,
         learningStyle: 'mixed',
         visibility: 'private',
-        origin: index === 24 ? 'pdf' : 'ai',
+        origin: 'ai',
         generationStatus: 'ready',
         isQuotaEligible: true,
-        extractedContext:
-          index === 24 ? { mainTopic: 'Uploaded PDF', sections: [] } : null,
         createdAt: new Date(
           `2026-01-01T00:${String(index).padStart(2, '0')}:00Z`
         ),

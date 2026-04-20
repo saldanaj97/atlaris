@@ -20,7 +20,6 @@ export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv } from '@/lib/config/env/observability';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
-export { avScannerEnv } from '@/lib/config/env/security';
 export {
   createServerEnvAccess,
   EnvValidationError,

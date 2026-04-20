@@ -41,11 +41,6 @@ export interface AttemptReservation {
     };
   };
   promptHash: string;
-  pdfProvenance?: {
-    extractionHash: string;
-    proofVersion: 1;
-    contextDigest: string;
-  } | null;
 }
 
 export interface AttemptRejection {
@@ -95,14 +90,6 @@ export interface NormalizedModulesResult {
   normalizationFlags: EffortNormalizationFlags;
 }
 
-// ----- PDF provenance -----
-
-export interface PdfProvenanceData {
-  extractionHash: string;
-  proofVersion: 1;
-  contextDigest: string;
-}
-
 // ----- Attempt metadata (stored in DB) -----
 
 interface AttemptMetadataFailure {
@@ -131,11 +118,6 @@ export interface AttemptMetadata {
     duration_ms: number;
     extended_timeout: boolean;
   };
-  pdf: {
-    extraction_hash: string;
-    proof_version: 1;
-    context_digest: string;
-  } | null;
   provider: ProviderMetadata | null;
   failure: AttemptMetadataFailure | null;
 }
@@ -148,7 +130,6 @@ export interface MetadataParams {
   startedAt: Date;
   finishedAt: Date;
   extendedTimeout: boolean;
-  pdfProvenance?: PdfProvenanceData | null;
   failure?: AttemptMetadataFailure;
 }
 

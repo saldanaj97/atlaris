@@ -22,8 +22,5 @@ export const NOTES_PROMPT_MAX_CHARS = 1_500;
 /** Max chars for topic in user prompt sanitization. */
 export const TOPIC_PROMPT_MAX_CHARS = 500;
 
-/** Max chars for PDF section title in prompt sanitization. */
-export const PDF_SECTION_TITLE_MAX_CHARS = 200;
-
 /** Default failure classification when error type is unrecognized. */
 export const DEFAULT_CLASSIFICATION = 'provider_error' as const;

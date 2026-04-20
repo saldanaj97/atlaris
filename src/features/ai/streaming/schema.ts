@@ -9,7 +9,7 @@ const planStartDataSchema = z.object({
   weeklyHours: z.number(),
   startDate: z.string().nullable(),
   deadlineDate: z.string().nullable(),
-  origin: z.enum(['ai', 'manual', 'template', 'pdf']).optional(),
+  origin: z.enum(['ai', 'manual', 'template']).optional(),
 });
 
 const moduleSummaryDataSchema = z.object({

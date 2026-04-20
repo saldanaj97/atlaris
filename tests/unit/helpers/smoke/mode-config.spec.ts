@@ -47,8 +47,6 @@ describe('smoke mode-config', () => {
     expect(layer.AI_PROVIDER).toBe('');
     expect(layer.AI_USE_MOCK).toBe('true');
     expect(layer.MOCK_AI_SCENARIO).toBe('success');
-    expect(layer.AV_PROVIDER).toBe('mock');
-    expect(layer.AV_MOCK_SCENARIO).toBe('clean');
     expect(layer.PORT).toBe(String(SMOKE_AUTH_PORT));
     expect(layer.APP_URL).toBe(smokeAuthAppUrl());
   });
@@ -81,7 +79,6 @@ describe('smoke mode-config', () => {
     const base: NodeJS.ProcessEnv = {
       AI_PROVIDER: 'openrouter',
       AI_USE_MOCK: 'true',
-      AV_PROVIDER: 'mock',
       DEV_AUTH_USER_ID: 'should-not-survive',
       ENABLE_SENTRY: 'true',
       MOCK_AI_SCENARIO: 'timeout',
@@ -99,7 +96,6 @@ describe('smoke mode-config', () => {
     expect(merged.AI_PROVIDER).toBe('');
     expect(merged.AI_USE_MOCK).toBe('false');
     expect(merged.MOCK_AI_SCENARIO).toBe('success');
-    expect(merged.AV_PROVIDER).toBe('none');
   });
 
   it('parseSmokeAppMode accepts anon', () => {

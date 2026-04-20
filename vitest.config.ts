@@ -1,6 +1,6 @@
+import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
 // In CI, rely on env vars injected by the workflow.
@@ -73,7 +73,7 @@ export default defineConfig({
           globals: true,
           environment: 'jsdom',
           isolate: true,
-          sequence: { concurrent: false },
+          sequence: { concurrent: false, groupOrder: 1 },
           // Vitest 4 defaults to multi-process `forks` with per-file isolation; we set this
           // explicitly so the integration project intent does not silently change if defaults
           // shift in a future minor. See tests/setup/test-env.ts for per-worker DB provisioning.
@@ -99,7 +99,7 @@ export default defineConfig({
           globals: true,
           environment: 'jsdom',
           isolate: true,
-          sequence: { concurrent: false },
+          sequence: { concurrent: false, groupOrder: 3 },
           pool: 'threads',
           maxWorkers: 1,
           testTimeout: 90_000,
@@ -120,7 +120,7 @@ export default defineConfig({
           globals: true,
           environment: 'jsdom',
           isolate: true,
-          sequence: { concurrent: false },
+          sequence: { concurrent: false, groupOrder: 2 },
           pool: 'threads',
           maxWorkers: 1,
           testTimeout: 90_000,
@@ -137,7 +137,7 @@ export default defineConfig({
           globals: true,
           environment: 'jsdom',
           isolate: true,
-          sequence: { concurrent: true },
+          sequence: { concurrent: true, groupOrder: 0 },
           pool: 'threads',
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],

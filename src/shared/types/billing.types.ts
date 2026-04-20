@@ -4,9 +4,6 @@ export type TierLimitConfig = {
   maxActivePlans: number;
   monthlyRegenerations: number;
   monthlyExports: number;
-  monthlyPdfPlans: number;
-  maxPdfSizeMb: number;
-  maxPdfPages: number;
   maxWeeks: number | null;
   maxHours: number | null;
 };

@@ -16,6 +16,7 @@
 import { execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
@@ -36,11 +37,22 @@ import {
   ensureTemplateDatabase,
   getBaseDbName,
   getTemplateDbName,
-  TESTCONTAINERS_ENV_FILE,
 } from './db-provisioning';
 
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();
+const testcontainersEnvFile =
+  process.env.TESTCONTAINERS_ENV_FILE?.trim() ||
+  join(
+    __dirname,
+    '..',
+    `.testcontainers-env.${process.pid}.${randomUUID()}.json`
+  );
+
+// Each Vitest process needs its own runtime-state file. A fixed shared path lets
+// concurrent `pnpm vitest run` sessions overwrite each other's container metadata,
+// so workers can start pointing at the wrong ephemeral Postgres instance.
+process.env.TESTCONTAINERS_ENV_FILE = testcontainersEnvFile;
 
 /**
  * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
@@ -115,7 +127,7 @@ export async function setup(): Promise<void> {
 
   // setupFiles (test-env.ts) read this metadata and derive worker-specific URLs.
   const runtimeState = buildTestDbRuntimeState(containerUrl);
-  writeFileSync(TESTCONTAINERS_ENV_FILE, JSON.stringify(runtimeState));
+  writeFileSync(testcontainersEnvFile, JSON.stringify(runtimeState));
 
   console.log('[Testcontainers] Ready ✓');
 }
@@ -123,10 +135,12 @@ export async function setup(): Promise<void> {
 export async function teardown(): Promise<void> {
   // Clean up the temp env file
   try {
-    unlinkSync(TESTCONTAINERS_ENV_FILE);
+    unlinkSync(testcontainersEnvFile);
   } catch {
     // File may not exist if setup was skipped
   }
+
+  Reflect.deleteProperty(process.env, 'TESTCONTAINERS_ENV_FILE');
 
   if (container) {
     console.log('[Testcontainers] Stopping container…');

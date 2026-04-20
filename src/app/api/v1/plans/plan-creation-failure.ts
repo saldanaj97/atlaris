@@ -22,7 +22,7 @@ const classificationMap: Record<
 const defaultMapping = { status: 500, code: 'PLAN_CREATION_FAILED' } as const;
 
 /**
- * Maps PDF/topic plan creation permanent or retryable failures to HTTP errors.
+ * Maps topic plan creation permanent or retryable failures to HTTP errors.
  */
 export function throwPlanCreationFailureError(
   createResult: PermanentFailure | RetryableFailure

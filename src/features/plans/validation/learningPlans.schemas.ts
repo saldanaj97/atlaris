@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  createLearningPlanObject,
+  createLearningPlanNotesSchema,
   topicSchema,
 } from '@/shared/schemas/learning-plans.schemas';
 import {
@@ -71,7 +71,7 @@ export const onboardingFormObject = z.object({
     z.string().trim().min(1, 'Please select your weekly availability.'),
   ]),
   learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
-  notes: createLearningPlanObject.shape.notes,
+  notes: createLearningPlanNotesSchema,
   startDate: z
     .string()
     .trim()

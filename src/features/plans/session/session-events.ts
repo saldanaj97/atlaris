@@ -9,7 +9,7 @@ export type PlanStartEvent = {
     weeklyHours: number;
     startDate: string | null;
     deadlineDate: string | null;
-    origin?: 'ai' | 'manual' | 'template' | 'pdf';
+    origin?: 'ai' | 'manual' | 'template';
   };
 };
 
@@ -75,3 +75,5 @@ export type PlanGenerationSessionEvent =
   | CompleteEvent
   | ErrorEvent
   | CancelledEvent;
+
+export type StreamingEvent = PlanGenerationSessionEvent;

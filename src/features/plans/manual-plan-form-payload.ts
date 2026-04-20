@@ -47,7 +47,7 @@ function convertPlanFormToOnboardingValues(
     skillLevel: data.skillLevel,
     weeklyHours: data.weeklyHours,
     learningStyle: data.learningStyle,
-    notes: undefined,
+    notes: '',
     startDate: formatDateToYmd(new Date()),
     deadlineDate: deadlineWeeksToDate(data.deadlineWeeks),
   };

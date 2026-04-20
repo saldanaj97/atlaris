@@ -2,6 +2,8 @@
 
 Quick reference for all common development commands.
 
+See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migration deploys.
+
 ## Development Server
 
 > **Note**: Do not auto-run these commands; listed for reference only.
@@ -98,4 +100,4 @@ pnpm exec knip --debug
 - Prefer testing authenticated flows through the application UI so Neon Auth session cookies are established naturally.
 - For targeted backend verification, prefer unit or integration tests over ad-hoc curl scripts.
 - If you use local auth overrides such as `DEV_AUTH_USER_ID`, make sure the referenced user already exists in the database before invoking authenticated routes.
-- With `LOCAL_PRODUCT_TESTING=true`, you can seed the canonical user via `pnpm db:dev:bootstrap` and exercise local-safe billing, AI, and PDF upload flows without using hosted providers. See [environment.md](./environment.md) and [local-database.md](./local-database.md).
+- With `LOCAL_PRODUCT_TESTING=true`, you can seed the canonical user via `pnpm db:dev:bootstrap` and exercise local-safe billing and AI flows without using hosted providers. See [environment.md](./environment.md) and [local-database.md](./local-database.md).

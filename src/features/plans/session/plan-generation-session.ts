@@ -3,10 +3,8 @@ import {
   streamHeaders,
 } from '@/features/ai/streaming/events';
 import { resolveUserTier } from '@/features/billing/tier';
-import type { PdfContext } from '@/features/pdf/context.types';
 import type { PlansDbClient } from '@/features/plans/api/route-context';
 import {
-  type CreatePdfPlanInput,
   type CreatePlanResult,
   createPlanLifecycleService,
   type GenerationAttemptResult,
@@ -65,8 +63,7 @@ export interface RetryPlanGenerationPlanSnapshot {
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   startDate: string | null;
   deadlineDate: string | null;
-  origin: 'ai' | 'manual' | 'pdf' | 'template' | null;
-  pdfContext: PdfContext | null;
+  origin: 'ai' | 'manual' | 'template' | null;
 }
 
 /** Args for boundary `respondCreateStream` — supplied after HTTP preflight. */
@@ -110,12 +107,12 @@ export interface PlanGenerationSessionBoundary {
 }
 
 /** Lifecycle factory injected at the boundary; defaults to the production wiring. */
-export type CreateLifecycleService = (
+type CreateLifecycleService = (
   dbClient: AttemptsDbClient
 ) => PlanLifecycleService;
 
 /** Optional dependency overrides for {@link createPlanGenerationSessionBoundary}. */
-export interface CreateSessionBoundaryDeps {
+interface CreateSessionBoundaryDeps {
   createLifecycleService?: CreateLifecycleService;
 }
 
@@ -205,24 +202,15 @@ async function prepareCreate(
   const { req, authUserId, internalUserId, body, savedPreferredAiModel } =
     command;
 
-  const createResult =
-    body.origin === 'pdf'
-      ? await lifecycleService.createPdfPlan(
-          buildCreatePdfPlanInput({
-            body: requirePdfCreateBody(body),
-            userId: internalUserId,
-            authUserId,
-          })
-        )
-      : await lifecycleService.createPlan({
-          userId: internalUserId,
-          topic: body.topic,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-          startDate: body.startDate,
-          deadlineDate: body.deadlineDate,
-        });
+  const createResult = await lifecycleService.createPlan({
+    userId: internalUserId,
+    topic: body.topic,
+    skillLevel: body.skillLevel,
+    weeklyHours: body.weeklyHours,
+    learningStyle: body.learningStyle,
+    startDate: body.startDate,
+    deadlineDate: body.deadlineDate,
+  });
 
   if (createResult.status !== 'success') {
     throwCreatePlanResultError(createResult);
@@ -331,7 +319,6 @@ async function prepareRetry(
       tier,
       input: {
         topic: plan.topic,
-        pdfContext: plan.origin === 'pdf' ? plan.pdfContext : null,
         skillLevel: plan.skillLevel,
         weeklyHours: plan.weeklyHours,
         learningStyle: plan.learningStyle,
@@ -448,67 +435,6 @@ async function openStreamSession(authUserId: string): Promise<{
   };
 }
 
-type PdfCreateLearningPlanInput = CreateLearningPlanInput & {
-  origin: 'pdf';
-  extractedContent: NonNullable<CreateLearningPlanInput['extractedContent']>;
-  pdfProofToken: NonNullable<CreateLearningPlanInput['pdfProofToken']>;
-  pdfExtractionHash: NonNullable<CreateLearningPlanInput['pdfExtractionHash']>;
-  pdfProofVersion: NonNullable<CreateLearningPlanInput['pdfProofVersion']>;
-};
-
-function requirePdfCreateBody(
-  body: CreateLearningPlanInput
-): PdfCreateLearningPlanInput {
-  if (
-    body.origin !== 'pdf' ||
-    !body.extractedContent ||
-    !body.pdfProofToken ||
-    !body.pdfExtractionHash ||
-    body.pdfProofVersion !== 1
-  ) {
-    throw new AppError('Invalid PDF-origin plan payload.', {
-      status: 400,
-      code: 'VALIDATION_ERROR',
-      classification: 'validation',
-    });
-  }
-
-  return {
-    ...body,
-    origin: 'pdf',
-    extractedContent: body.extractedContent,
-    pdfProofToken: body.pdfProofToken,
-    pdfExtractionHash: body.pdfExtractionHash,
-    pdfProofVersion: body.pdfProofVersion,
-  };
-}
-
-function buildCreatePdfPlanInput({
-  body,
-  userId,
-  authUserId,
-}: {
-  body: PdfCreateLearningPlanInput;
-  userId: string;
-  authUserId: string;
-}): CreatePdfPlanInput {
-  return {
-    userId,
-    authUserId,
-    body,
-    topic: body.topic,
-    skillLevel: body.skillLevel,
-    weeklyHours: body.weeklyHours,
-    learningStyle: body.learningStyle,
-    startDate: body.startDate,
-    deadlineDate: body.deadlineDate,
-    extractedContent: body.extractedContent,
-    pdfProofToken: body.pdfProofToken,
-    pdfExtractionHash: body.pdfExtractionHash,
-    pdfProofVersion: body.pdfProofVersion,
-  };
-}
-
 function createSafeStreamCleanup(
   authUserId: string,
   cleanup: () => Promise<void>
@@ -554,9 +480,6 @@ function buildCreateGenerationInput({
       learningStyle: body.learningStyle,
       startDate: ni.startDate,
       deadlineDate: ni.deadlineDate,
-      pdfContext: ni.pdfContext,
-      pdfExtractionHash: ni.pdfExtractionHash,
-      pdfProofVersion: ni.pdfProofVersion,
     },
     modelOverride,
   };

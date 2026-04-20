@@ -4,7 +4,7 @@
  * for all entry points with consistent behavior.
  *
  * Covers:
- * - PDF input parity (PDF fields forwarded through the same lifecycle)
+ * - Generation input parity (optional fields forwarded through the same lifecycle)
  * - modelOverride forwarding
  * - One lifecycle record per generation attempt
  * - Failed generations produce consistent state regardless of entry point
@@ -13,7 +13,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PreparePlanInputSuccess } from '@/features/plans/lifecycle/ports';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
@@ -48,18 +47,6 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
         totalWeeks: 2,
       }),
     },
-    pdfOrigin: {
-      preparePlanInput: async (): Promise<PreparePlanInputSuccess> => ({
-        extractedContext: null,
-        topic: 'test',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        pdfUsageReserved: false,
-        pdfProvenance: null,
-      }),
-      rollbackPdfUsage: async () => {},
-    },
     generation: {
       runGeneration: vi.fn().mockResolvedValue({
         status: 'success' as const,
@@ -85,7 +72,6 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
       ...overrides?.planPersistence,
     },
     quota: { ...defaults.quota, ...overrides?.quota },
-    pdfOrigin: { ...defaults.pdfOrigin, ...overrides?.pdfOrigin },
     generation: { ...defaults.generation, ...overrides?.generation },
     usageRecording: {
       ...defaults.usageRecording,
@@ -145,31 +131,6 @@ const REGENERATION_INPUT: ProcessGenerationInput = {
   },
 };
 
-/** Simulates PDF-origin plan generation input. */
-const PDF_INPUT: ProcessGenerationInput = {
-  planId: 'plan-pdf-004',
-  userId: 'user-001',
-  tier: 'free',
-  input: {
-    topic: 'Machine Learning Basics',
-    skillLevel: 'beginner',
-    weeklyHours: 8,
-    learningStyle: 'reading',
-    pdfContext: {
-      mainTopic: 'ML Fundamentals',
-      sections: [
-        {
-          title: 'Introduction',
-          content: 'Overview of machine learning concepts',
-          level: 1,
-        },
-      ],
-    },
-    pdfExtractionHash: 'abc123hash',
-    pdfProofVersion: 1,
-  },
-};
-
 // ─── Tests ───────────────────────────────────────────────────────
 
 describe('Lifecycle Consolidation', () => {
@@ -179,63 +140,6 @@ describe('Lifecycle Consolidation', () => {
   beforeEach(() => {
     ports = createMockPorts();
     service = new PlanLifecycleService(ports);
-  });
-
-  // ─── PDF input parity ───────────────────────────────────────
-
-  describe('PDF flow uses the same lifecycle boundary as non-PDF flows', () => {
-    it('forwards PDF fields (pdfContext, pdfExtractionHash, pdfProofVersion) to generation port', async () => {
-      await service.processGenerationAttempt(PDF_INPUT);
-      const runGeneration = vi.mocked(ports.generation.runGeneration);
-
-      expect(runGeneration).toHaveBeenCalledWith(
-        expect.objectContaining({
-          planId: 'plan-pdf-004',
-          input: expect.objectContaining({
-            pdfContext: {
-              mainTopic: 'ML Fundamentals',
-              sections: [
-                {
-                  title: 'Introduction',
-                  content: 'Overview of machine learning concepts',
-                  level: 1,
-                },
-              ],
-            },
-            pdfExtractionHash: 'abc123hash',
-            pdfProofVersion: 1,
-          }),
-        })
-      );
-    });
-
-    it('handles PDF generation success identically to non-PDF generation', async () => {
-      const nonPdfResult = await service.processGenerationAttempt(STREAM_INPUT);
-      const pdfResult = await service.processGenerationAttempt(PDF_INPUT);
-
-      expect(nonPdfResult.status).toBe('generation_success');
-      expect(pdfResult.status).toBe('generation_success');
-    });
-
-    it('handles PDF generation failure identically to non-PDF generation', async () => {
-      ports = createMockPorts({
-        generation: {
-          runGeneration: vi.fn().mockResolvedValue({
-            status: 'failure',
-            classification: 'provider_error',
-            error: new Error('provider down'),
-            durationMs: 500,
-          }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const nonPdfResult = await service.processGenerationAttempt(RETRY_INPUT);
-      const pdfResult = await service.processGenerationAttempt(PDF_INPUT);
-
-      expect(nonPdfResult.status).toBe('retryable_failure');
-      expect(pdfResult.status).toBe('retryable_failure');
-    });
   });
 
   // ─── Model override forwarding ──────────────────────────────
@@ -492,28 +396,7 @@ describe('Lifecycle Consolidation', () => {
       }
     });
 
-    it('creates PDF-origin plans through the lifecycle service', async () => {
-      const result = await service.createPdfPlan({
-        userId: 'user-001',
-        authUserId: 'auth-001',
-        body: { topic: 'ML', extractedContent: {}, pdfProofVersion: 1 },
-        topic: 'ML',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        extractedContent: {},
-        pdfProofToken: 'proof-token',
-        pdfExtractionHash: 'hash-abc',
-        pdfProofVersion: 1,
-      });
-
-      expect(result.status).toBe('success');
-      if (result.status === 'success') {
-        expect(result.planId).toBe('plan-123');
-      }
-    });
-
-    it('PDF and AI plan creation both check capped plans', async () => {
+    it('AI plan creation checks capped plans', async () => {
       const findCapped = vi.fn().mockResolvedValue('capped-plan-id');
       ports = createMockPorts({
         planPersistence: { findCappedPlanWithoutModules: findCapped },
@@ -528,23 +411,8 @@ describe('Lifecycle Consolidation', () => {
         learningStyle: 'mixed',
       });
 
-      const pdfResult = await service.createPdfPlan({
-        userId: 'user-001',
-        authUserId: 'auth-001',
-        body: { topic: 'ML', extractedContent: {}, pdfProofVersion: 1 },
-        topic: 'ML',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        extractedContent: {},
-        pdfProofToken: 'proof-token',
-        pdfExtractionHash: 'hash-abc',
-        pdfProofVersion: 1,
-      });
-
       expect(aiResult.status).toBe('attempt_cap_exceeded');
-      expect(pdfResult.status).toBe('attempt_cap_exceeded');
-      expect(findCapped).toHaveBeenCalledTimes(2);
+      expect(findCapped).toHaveBeenCalledTimes(1);
     });
   });
 });

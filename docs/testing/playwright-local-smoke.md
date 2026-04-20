@@ -57,7 +57,7 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - seeded local smoke user id
   - `LOCAL_PRODUCT_TESTING=true`
   - `STRIPE_LOCAL_MODE=true`
-  - deterministic AI and AV smoke env
+  - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
 
 Do not start smoke servers manually for normal runs. Let Playwright own them.
@@ -67,7 +67,6 @@ Do not start smoke servers manually for normal runs. Let Playwright own them.
 - protected-route redirect checks
 - core authenticated journeys
 - local billing flow
-- PDF upload/generation sanity
 - settings persistence sanity
 
 ## What Does Not Belong Here

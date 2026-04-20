@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 
 import { StreamingEventSchema } from '@/features/ai/streaming/schema';
-import type { StreamingEvent } from '@/features/ai/types/streaming.types';
+import type { StreamingEvent } from '@/features/plans/session/session-events';
 
 export type ParseSsePlanEventHandlers = {
   onValidationFailed: (ctx: { issues: z.ZodIssue[]; payload: string }) => void;

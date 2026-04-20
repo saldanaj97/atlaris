@@ -7,7 +7,6 @@ import {
 } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
-  getPdfProvenance,
   sanitizeInput,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-input';
@@ -74,7 +73,6 @@ export async function reserveAttemptSlot(
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
-  const pdfProvenance = getPdfProvenance(input);
   const promptHash = hashSha256(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
@@ -197,7 +195,6 @@ export async function reserveAttemptSlot(
       startedAt,
       sanitized,
       promptHash,
-      pdfProvenance,
     } as const;
   });
 }
@@ -240,7 +237,6 @@ export async function finalizeAttemptSuccess({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
-    pdfProvenance: preparation.pdfProvenance ?? null,
   });
 
   const updatedAttempt = await persistSuccessfulAttempt({
@@ -300,7 +296,6 @@ export async function finalizeAttemptFailure({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
-    pdfProvenance: preparation.pdfProvenance ?? null,
     failure: { classification, timedOut },
   });
 

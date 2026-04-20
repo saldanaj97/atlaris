@@ -4,21 +4,18 @@ export { createPlanLifecycleService } from './factory';
 export type {
   GenerationPort,
   JobQueuePort,
-  PdfOriginPort,
   PlanPersistencePort,
   QuotaPort,
   UsageRecordingPort,
 } from './ports';
-// ─── Service ─────────────────────────────────────────────────────
 export type { PlanLifecycleServicePorts } from './service';
+// ─── Service ─────────────────────────────────────────────────────
 export { PlanLifecycleService } from './service';
-// ─── Types ───────────────────────────────────────────────────────
 export type {
   AlreadyFinalized,
   AtomicInsertResult,
   AttemptCapExceeded,
   CreateAiPlanInput,
-  CreatePdfPlanInput,
   CreatePlanResult,
   CreatePlanSuccess,
   DuplicateDetected,
@@ -37,4 +34,5 @@ export type {
   RetryableFailure,
   SubscriptionTier,
 } from './types';
+// ─── Types ───────────────────────────────────────────────────────
 export { isRetryableClassification } from './types';

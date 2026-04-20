@@ -10,7 +10,7 @@ import type {
   SubscriptionTier,
 } from './types';
 
-type CreationLifecycleLabel = 'create' | 'create_pdf';
+type CreationLifecycleLabel = 'create';
 
 export interface CreationGatePorts
   extends Pick<PlanPersistencePort, 'findCappedPlanWithoutModules'>,
@@ -29,7 +29,6 @@ type CreationGateResult =
 
 const CREATE_LOG_BASE: Record<CreationLifecycleLabel, string> = {
   create: 'plan.lifecycle.create',
-  create_pdf: 'plan.lifecycle.create_pdf',
 };
 
 export function getCreateLogBase(

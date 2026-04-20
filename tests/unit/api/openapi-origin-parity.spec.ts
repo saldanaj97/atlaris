@@ -2,15 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { planOrigin } from '@/lib/db/enums';
 
 /**
- * Regression tests for GitHub Issue #283.
- *
- * The OpenAPI response schemas previously excluded 'pdf' from their origin
- * enums while the DB enum and request schemas included it. This was a
- * contract violation: clients could create PDF-origin plans but the response
- * schema declared that origin value impossible.
- *
- * These tests verify that every OpenAPI schema exposing an origin enum stays
- * in sync with the DB planOrigin enum — the single source of truth.
+ * Verifies every OpenAPI schema exposing an origin enum stays in sync with the
+ * DB planOrigin enum — the single source of truth.
  */
 
 type OpenApiSchema = {
@@ -46,8 +39,11 @@ describe('OpenAPI origin enum parity with DB planOrigin', () => {
     schemas = doc.components?.schemas ?? {};
   });
 
-  it('DB planOrigin enum includes pdf', () => {
-    expect(planOrigin.enumValues).toContain('pdf');
+  it('DB planOrigin enum does not include pdf', () => {
+    expect(planOrigin.enumValues).not.toContain('pdf');
+    expect([...planOrigin.enumValues].sort()).toEqual(
+      ['ai', 'manual', 'template'].sort()
+    );
   });
 
   it('LearningPlan response schema origin matches DB enum', () => {

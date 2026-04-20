@@ -11,12 +11,10 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import type {
   AtomicInsertResult,
-  CreatePdfPlanInput,
   DurationCapResult,
   FailureClassification,
   GeneratedModule,
   NormalizedDuration,
-  PdfContext,
   PlanInsertData,
   SubscriptionTier,
 } from './types';
@@ -80,48 +78,6 @@ export interface QuotaPort {
       today?: Date;
     }
   ): NormalizedDuration;
-}
-
-// ─── PdfOriginPort ───────────────────────────────────────────────
-
-export type PreparePlanInputParams = {
-  authUserId: CreatePdfPlanInput['authUserId'];
-  internalUserId: CreatePdfPlanInput['userId'];
-  topic: CreatePdfPlanInput['topic'];
-  skillLevel: CreatePdfPlanInput['skillLevel'];
-  weeklyHours: CreatePdfPlanInput['weeklyHours'];
-  learningStyle: CreatePdfPlanInput['learningStyle'];
-  extractedContent: CreatePdfPlanInput['extractedContent'];
-  pdfProofToken: CreatePdfPlanInput['pdfProofToken'];
-  pdfExtractionHash: CreatePdfPlanInput['pdfExtractionHash'];
-  pdfProofVersion: CreatePdfPlanInput['pdfProofVersion'];
-};
-
-export type PreparePlanInputSuccess = {
-  extractedContext: PdfContext | null;
-  topic: string;
-  skillLevel: CreatePdfPlanInput['skillLevel'];
-  weeklyHours: CreatePdfPlanInput['weeklyHours'];
-  learningStyle: CreatePdfPlanInput['learningStyle'];
-  pdfUsageReserved: boolean;
-  pdfProvenance: { extractionHash: string; proofVersion: 1 } | null;
-};
-
-export interface PdfOriginPort {
-  /** Verify PDF proof token and prepare plan input from extracted PDF context. */
-  preparePlanInput(
-    this: void,
-    params: PreparePlanInputParams
-  ): Promise<PreparePlanInputSuccess>;
-
-  /** Roll back PDF usage reservation on failure. */
-  rollbackPdfUsage(
-    this: void,
-    params: {
-      internalUserId: string;
-      reserved: boolean;
-    }
-  ): Promise<void>;
 }
 
 // ─── GenerationPort ──────────────────────────────────────────────

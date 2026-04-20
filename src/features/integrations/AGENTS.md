@@ -16,8 +16,6 @@ integrations/
 
 - The Google Calendar integration is intentionally not implemented.
 - The settings UI may still show placeholder cards for future integrations.
-- Shared token-state storage for PDF extraction proof lives outside this module's feature scope.
-
 ## Anti-Patterns
 
 - Reintroducing OAuth-specific helpers here without a scoped product requirement

@@ -136,11 +136,11 @@ Query modules that must enforce RLS on every call (e.g. generation attempts, aud
 | Table                 | Purpose                      | Notes                                                                |
 | --------------------- | ---------------------------- | -------------------------------------------------------------------- |
 | `users`               | User accounts                | `auth_user_id` for auth                                              |
-| `learning_plans`      | Plans with generation status | RLS by `user_id`; `extracted_context` has CHECK for PdfContext shape |
+| `learning_plans`      | Plans with generation status | RLS by `user_id`; origin enum is limited to `ai`, `template`, and `manual` |
 | `modules`             | Plan sections                | `order` starts at 1                                                  |
 | `tasks`               | Learning activities          | `order` starts at 1                                                  |
 | `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                       |
-| `oauth_state_tokens`  | Short-lived proof/state rows | Reused for PDF extraction proof and any future single-use state flow |
+| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows     |
 
 ## Commands
 

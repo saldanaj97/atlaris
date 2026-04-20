@@ -5,9 +5,9 @@
  * regeneration HTTP path so route handlers do not have to thread together
  * billing primitives, queue dedupe, and Sentry telemetry.
  *
- * Phase-1 scope is intentionally regeneration-only; PDF, exports, and any
- * other meter continue to flow through their existing wrappers until they
- * are migrated onto the same private metered-reservation core.
+ * Phase-1 scope is intentionally regeneration-only; exports and any other
+ * meter continue to flow through their existing wrappers until they are
+ * migrated onto the same private metered-reservation core.
  */
 
 import type { DbClient } from '@/lib/db/types';
@@ -45,7 +45,7 @@ export type RegenerationQuotaWorkResult<T> =
  * - `ok: true, consumed: true` means the reservation stuck and the route should accept the request.
  * - `ok: true, consumed: false` means the reservation was reverted; route should map to 409 (or its caller-defined conflict). `reconciliationRequired` is true when the compensation step itself failed.
  */
-export type RegenerationQuotaResult<T> =
+type RegenerationQuotaResult<T> =
   | { ok: true; consumed: true; value: T }
   | {
       ok: true;
@@ -55,7 +55,7 @@ export type RegenerationQuotaResult<T> =
     }
   | { ok: false; currentCount: number; limit: number };
 
-export type RegenerationQuotaBoundaryArgs<T> = {
+type RegenerationQuotaBoundaryArgs<T> = {
   userId: string;
   planId: string;
   dbClient: DbClient;

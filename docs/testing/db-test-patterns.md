@@ -327,7 +327,6 @@ export function createTestPlan(
     deadlineDate: null,
     visibility: 'private',
     origin: 'ai',
-    extractedContext: null,
     generationStatus: 'ready',
     isQuotaEligible: false,
     finalizedAt: null,

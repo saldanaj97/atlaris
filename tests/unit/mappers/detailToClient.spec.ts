@@ -122,6 +122,7 @@ describe('mapDetailToClient', () => {
     expect(result?.status).toBe('ready');
     expect(result?.latestAttempt).toBeDefined();
     expect(result?.latestAttempt?.model).toBe('gpt-4');
+    expect(result).not.toHaveProperty('extractedContext');
   });
 
   it('should return undefined for null detail', () => {

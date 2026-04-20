@@ -179,6 +179,5 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Service-role client   | `src/lib/db/service-role.ts`    |
 | Neon Auth config      | `src/lib/auth/server.ts`        |
 | Quota / usage logic   | `src/lib/stripe/usage.ts`       |
-| PDF upload limits     | `src/lib/api/pdf-rate-limit.ts` |
 | RLS policies (schema) | `src/lib/db/schema/tables/*.ts` |
 | Query modules         | `src/lib/db/queries/*.ts`       |

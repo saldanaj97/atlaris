@@ -6,10 +6,7 @@ import type {
   CreateLearningPlanInput,
   OnboardingFormValues,
 } from '@/features/plans/validation/learningPlans.types';
-import {
-  deadlineWeeksToDate,
-  formatDateToYmd,
-} from '@/lib/date/format-local-ymd';
+import { formatDateToYmd } from '@/lib/date/format-local-ymd';
 import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
@@ -85,47 +82,5 @@ export function mapOnboardingToCreateInput(
     deadlineDate: normalized.deadlineDate,
     visibility: 'private',
     origin: 'ai',
-  });
-}
-
-type PdfSettingsToCreateInputParams = {
-  mainTopic: string;
-  sections: Array<{
-    title: string;
-    content: string;
-    level: number;
-    suggestedTopic?: string;
-  }>;
-  skillLevel: string;
-  weeklyHours: string;
-  learningStyle: string;
-  deadlineWeeks: string;
-  pdfProofToken: string;
-  pdfExtractionHash: string;
-  pdfProofVersion?: 1;
-};
-
-/**
- * Maps PDF extraction preview settings to CreateLearningPlanInput for the stream endpoint.
- */
-export function mapPdfSettingsToCreateInput(
-  params: PdfSettingsToCreateInputParams
-): CreateLearningPlanInput {
-  return createLearningPlanSchema.parse({
-    origin: 'pdf',
-    extractedContent: {
-      mainTopic: params.mainTopic,
-      sections: params.sections,
-    },
-    pdfProofToken: params.pdfProofToken,
-    pdfExtractionHash: params.pdfExtractionHash,
-    pdfProofVersion: params.pdfProofVersion,
-    topic: params.mainTopic,
-    skillLevel: asSkillLevel(params.skillLevel),
-    weeklyHours: parseWeeklyHours(params.weeklyHours),
-    learningStyle: asLearningStyle(params.learningStyle),
-    startDate: formatDateToYmd(new Date()),
-    deadlineDate: deadlineWeeksToDate(params.deadlineWeeks),
-    visibility: 'private',
   });
 }

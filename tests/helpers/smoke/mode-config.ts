@@ -15,8 +15,6 @@ export const SMOKE_AUTH_PORT = 3101 as const;
 const SMOKE_CONTROLLED_ENV_KEYS = [
   'ENABLE_SENTRY',
   'APP_URL',
-  'AV_MOCK_SCENARIO',
-  'AV_PROVIDER',
   'DATABASE_URL',
   'DATABASE_URL_NON_POOLING',
   'DATABASE_URL_UNPOOLED',
@@ -49,7 +47,6 @@ function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
     ENABLE_SENTRY: 'false',
     NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     MOCK_AI_SCENARIO: 'success',
-    AV_MOCK_SCENARIO: 'clean',
     NODE_ENV: 'development',
   };
 }
@@ -68,7 +65,6 @@ export function buildAnonModeLayer(
     STRIPE_LOCAL_MODE: 'false',
     AI_PROVIDER: '',
     AI_USE_MOCK: 'false',
-    AV_PROVIDER: 'none',
     PORT: String(SMOKE_ANON_PORT),
     APP_URL: smokeAnonAppUrl(),
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
@@ -76,7 +72,7 @@ export function buildAnonModeLayer(
 }
 
 /**
- * Env layer for auth smoke: seeded local product-testing user + local billing/AI/AV mocks.
+ * Env layer for auth smoke: seeded local product-testing user + local billing/AI mocks.
  */
 export function buildAuthModeLayer(
   state: SmokeStatePayload
@@ -88,7 +84,6 @@ export function buildAuthModeLayer(
     STRIPE_LOCAL_MODE: 'true',
     AI_PROVIDER: '',
     AI_USE_MOCK: 'true',
-    AV_PROVIDER: 'mock',
     PORT: String(SMOKE_AUTH_PORT),
     APP_URL: smokeAuthAppUrl(),
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',

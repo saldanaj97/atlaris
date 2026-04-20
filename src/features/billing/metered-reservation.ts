@@ -7,9 +7,8 @@
  * drift across midnight or month boundaries between the two phases).
  *
  * Public callers should not import this module directly. Use
- * `regeneration-quota-boundary.ts` for the regeneration HTTP path; PDF and
- * other meters continue to flow through the wrappers in `quota.ts` and
- * `usage-metrics.ts` until they are migrated in a later phase.
+ * `regeneration-quota-boundary.ts` for the regeneration HTTP path; other
+ * meters should add their own boundary instead of reaching into this file.
  */
 
 import { and, eq, sql } from 'drizzle-orm';
@@ -22,11 +21,10 @@ import { TIER_LIMITS } from './tier-limits';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
-  incrementPdfUsageInTx,
   incrementUsageInTx,
 } from './usage-metrics';
 
-export type MeterKind = 'regeneration' | 'export' | 'pdf';
+export type MeterKind = 'regeneration' | 'export';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -36,7 +34,7 @@ export type MeterKind = 'regeneration' | 'export' | 'pdf';
  */
 type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
-type MeterColumn = 'regenerationsUsed' | 'exportsUsed' | 'pdfPlansGenerated';
+type MeterColumn = 'regenerationsUsed' | 'exportsUsed';
 
 type MeterConfig = {
   column: MeterColumn;
@@ -66,14 +64,6 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
       incrementUsageInTx(tx, userId, month, 'export'),
     readColumn: (metrics) => metrics.exportsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.exportsUsed} - 1)`,
-  },
-  pdf: {
-    column: 'pdfPlansGenerated',
-    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyPdfPlans,
-    incrementInTx: (tx, userId, month) =>
-      incrementPdfUsageInTx(tx, userId, month),
-    readColumn: (metrics) => metrics.pdfPlansGenerated,
-    decrementSql: () => sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
   },
 };
 
@@ -139,14 +129,14 @@ async function lockUsageMetricsForMonth(
   return metrics;
 }
 
-export type ReserveMeteredUsageOptions = {
+type ReserveMeteredUsageOptions = {
   /** Override the current-month resolver (testing or cross-midnight scenarios). */
   now?: () => Date;
-  /** Optional log hook fired inside the reservation transaction (used by PDF path to preserve historical telemetry). */
+  /** Optional log hook fired inside the reservation transaction. */
   onResult?: (event: ReserveLogEvent) => void;
 };
 
-export type ReserveLogEvent =
+type ReserveLogEvent =
   | {
       kind: 'allowed';
       userId: string;

@@ -1,4 +1,3 @@
-import { parsePersistedPdfContext } from '@/features/pdf/context';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
@@ -98,10 +97,6 @@ export function createRetryHandler(deps?: {
             startDate: plan.startDate,
             deadlineDate: plan.deadlineDate,
             origin: plan.origin,
-            pdfContext:
-              plan.origin === 'pdf'
-                ? parsePersistedPdfContext(plan.extractedContext)
-                : null,
           },
           tierDb: db,
           responseHeaders: generationRateLimitHeaders,

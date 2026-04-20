@@ -17,7 +17,6 @@
 import type { DbClient } from '@/lib/db/types';
 
 import { GenerationAdapter } from './adapters/generation-adapter';
-import { PdfOriginAdapter } from './adapters/pdf-origin-adapter';
 import { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
 import { QuotaAdapter } from './adapters/quota-adapter';
 import { UsageRecordingAdapter } from './adapters/usage-recording-adapter';
@@ -31,7 +30,6 @@ export function createPlanLifecycleService(params: {
   return new PlanLifecycleService({
     planPersistence: new PlanPersistenceAdapter(params.dbClient),
     quota: new QuotaAdapter(params.dbClient),
-    pdfOrigin: new PdfOriginAdapter(params.dbClient),
     generation: new GenerationAdapter(params.dbClient),
     usageRecording: new UsageRecordingAdapter(params.dbClient),
     jobQueue: params.jobQueue,

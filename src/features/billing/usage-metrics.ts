@@ -1,7 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
-import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UsageMetricsLoadError } from './errors';
 import { type DbClient, resolveUserTier } from './tier';
@@ -9,12 +8,6 @@ import { TIER_LIMITS } from './tier-limits';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';
-
-type DecrementUsageColumn = 'pdfPlansGenerated' | 'regenerationsUsed';
-
-type IncrementPdfPlanUsageOptions = {
-  now?: () => Date;
-};
 
 export type UsageSummary = {
   tier: SubscriptionTier;
@@ -111,31 +104,6 @@ export async function incrementUsage(
 }
 
 /**
- * Increment PDF plan usage counter for the current month
- */
-function pdfPlansGeneratedIncrementSet() {
-  return {
-    pdfPlansGenerated: sql`${usageMetrics.pdfPlansGenerated} + 1`,
-    updatedAt: new Date(),
-  };
-}
-
-export async function incrementPdfPlanUsage(
-  userId: string,
-  dbClient: DbClient = getDb(),
-  opts?: IncrementPdfPlanUsageOptions
-): Promise<void> {
-  const month = getCurrentMonth(opts?.now?.());
-
-  await getOrCreateUsageMetrics(userId, month, dbClient);
-
-  await dbClient
-    .update(usageMetrics)
-    .set(pdfPlansGeneratedIncrementSet())
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
-}
-
-/**
  * Reset monthly usage counters (to be called by a cron job)
  * This is intentionally a no-op as we use monthly partitions
  * New months automatically start with zero counts via getOrCreateUsageMetrics
@@ -180,114 +148,6 @@ export async function getUsageSummary(
   };
 }
 
-async function decrementUsageColumn(
-  userId: string,
-  column: DecrementUsageColumn,
-  actionLabel: string,
-  successLogMessage: string,
-  dbClient: DbClient = getDb()
-): Promise<void> {
-  const month = getCurrentMonth();
-
-  if (column === 'pdfPlansGenerated') {
-    const [updated] = await dbClient
-      .update(usageMetrics)
-      .set({
-        pdfPlansGenerated: sql`GREATEST(0, ${usageMetrics.pdfPlansGenerated} - 1)`,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month))
-      )
-      .returning({ pdfPlansGenerated: usageMetrics.pdfPlansGenerated });
-
-    if (!updated) {
-      logger.warn(
-        { userId, month, action: actionLabel },
-        'No usage metrics found to decrement'
-      );
-      return;
-    }
-    logger.info(
-      {
-        userId,
-        month,
-        action: actionLabel,
-        newCount: updated.pdfPlansGenerated,
-      },
-      successLogMessage
-    );
-    return;
-  }
-
-  const [updated] = await dbClient
-    .update(usageMetrics)
-    .set({
-      regenerationsUsed: sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .returning({ regenerationsUsed: usageMetrics.regenerationsUsed });
-
-  if (!updated) {
-    logger.warn(
-      { userId, month, action: actionLabel },
-      'No usage metrics found to decrement'
-    );
-    return;
-  }
-  logger.info(
-    {
-      userId,
-      month,
-      action: actionLabel,
-      newCount: updated.regenerationsUsed,
-    },
-    successLogMessage
-  );
-}
-
-/**
- * Decrement PDF plan usage counter (used when a PDF plan is deleted/rolled back).
- * This operation is performed outside a transaction and may fail silently if metrics don't exist.
- * The counter is clamped at 0 to prevent negative values.
- * Use this when undoing a PDF plan creation to maintain accurate quota accounting.
- *
- * @param userId - The user's UUID
- * @param dbClient - Database client (defaults to runtime DB with RLS)
- * @returns void (logs result but doesn't throw on missing metrics)
- */
-export async function decrementPdfPlanUsage(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<void> {
-  await decrementUsageColumn(
-    userId,
-    'pdfPlansGenerated',
-    'decrementPdfPlanUsage',
-    'PDF plan usage decremented',
-    dbClient
-  );
-}
-
-/**
- * Decrement regeneration usage counter (used to roll back quota when an enqueue
- * request deduplicates against an already active regeneration job).
- * Counter is clamped at 0 to prevent negative values.
- */
-export async function decrementRegenerationUsage(
-  userId: string,
-  dbClient: DbClient = getDb()
-): Promise<void> {
-  await decrementUsageColumn(
-    userId,
-    'regenerationsUsed',
-    'decrementRegenerationUsage',
-    'Regeneration usage decremented',
-    dbClient
-  );
-}
-
 export async function ensureUsageMetricsExist(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
@@ -299,7 +159,6 @@ export async function ensureUsageMetricsExist(
       userId,
       month,
       plansGenerated: 0,
-      pdfPlansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
     })
@@ -325,16 +184,5 @@ export async function incrementUsageInTx(
       ...updateObj,
       updatedAt: new Date(),
     })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
-}
-
-export async function incrementPdfUsageInTx(
-  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
-  userId: string,
-  month: string
-): Promise<void> {
-  await tx
-    .update(usageMetrics)
-    .set(pdfPlansGeneratedIncrementSet())
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }

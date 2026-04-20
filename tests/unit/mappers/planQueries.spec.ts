@@ -38,7 +38,6 @@ function createLearningPlan(
     deadlineDate: '2024-03-01',
     visibility: 'private',
     origin: 'ai',
-    extractedContext: null,
     generationStatus: 'ready',
     isQuotaEligible: false,
     finalizedAt: null,

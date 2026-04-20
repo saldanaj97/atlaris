@@ -1,10 +1,9 @@
 // Plan lifecycle: creation, status transitions, duration caps, and quota enforcement.
 
 import { and, eq, gte, sql } from 'drizzle-orm';
-import { selectUserSubscriptionTierForUpdate } from '@/features/billing/quota';
+import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
 import { resolveUserTier } from '@/features/billing/tier';
 import { TIER_LIMITS } from '@/features/billing/tier-limits';
-import type { PdfContext } from '@/features/pdf/context.types';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
 import { learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
@@ -110,8 +109,7 @@ export async function atomicCheckAndInsertPlan(
     weeklyHours: number;
     learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     visibility: 'private';
-    origin: 'ai' | 'manual' | 'template' | 'pdf';
-    extractedContext?: PdfContext | null;
+    origin: 'ai' | 'manual' | 'template';
     startDate?: string | null;
     deadlineDate?: string | null;
   },

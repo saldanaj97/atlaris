@@ -76,9 +76,4 @@ export const preferredAiModel = pgEnum('preferred_ai_model', [
 
 export type PreferredAiModel = (typeof preferredAiModel.enumValues)[number];
 
-export const planOrigin = pgEnum('plan_origin', [
-  'ai',
-  'template',
-  'manual',
-  'pdf',
-]);
+export const planOrigin = pgEnum('plan_origin', ['ai', 'template', 'manual']);

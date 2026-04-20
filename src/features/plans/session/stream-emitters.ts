@@ -4,8 +4,8 @@ import {
   sanitizeSseError,
 } from '@/features/ai/streaming/error-sanitizer';
 import type { ParsedModule } from '@/features/ai/types/parser.types';
-import type { StreamingEvent } from '@/features/ai/types/streaming.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import type { StreamingEvent } from '@/features/plans/session/session-events';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { getCorrelationId } from '@/lib/api/context';
 import { assertNever } from '@/lib/errors';

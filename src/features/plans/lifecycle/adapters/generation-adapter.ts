@@ -39,9 +39,6 @@ export class GenerationAdapter implements GenerationPort {
       startDate: params.input.startDate,
       deadlineDate: params.input.deadlineDate,
       notes: params.input.notes,
-      pdfContext: params.input.pdfContext ?? undefined,
-      pdfExtractionHash: params.input.pdfExtractionHash,
-      pdfProofVersion: params.input.pdfProofVersion,
     };
 
     const result = await runGenerationAttempt(

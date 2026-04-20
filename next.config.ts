@@ -23,8 +23,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['lucide-react', 'date-fns'],
   },
   serverExternalPackages: [
-    'pdf-parse',
-    'pdfjs-dist',
     'postgres',
     'pino',
     'pino-std-serializers',

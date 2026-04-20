@@ -1,7 +1,4 @@
-import type {
-  PdfOriginPort,
-  PlanPersistencePort,
-} from '@/features/plans/lifecycle/ports';
+import type { PlanPersistencePort } from '@/features/plans/lifecycle/ports';
 
 /**
  * Narrow persistence dependencies shared by all plan-origin strategies.
@@ -12,11 +9,4 @@ export type PlanCreationStrategyPorts = {
     PlanPersistencePort,
     'atomicInsertPlan' | 'findRecentDuplicatePlan'
   >;
-};
-
-/**
- * Additional PDF-specific boundary for proof verification and quota rollback.
- */
-export type PdfPlanCreationStrategyPorts = PlanCreationStrategyPorts & {
-  pdfOrigin: Pick<PdfOriginPort, 'preparePlanInput' | 'rollbackPdfUsage'>;
 };

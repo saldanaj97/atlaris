@@ -183,7 +183,6 @@ export function buildPlan(
     deadlineDate: null,
     visibility: 'private',
     origin: 'ai',
-    extractedContext: null,
     generationStatus: 'generating',
     isQuotaEligible: false,
     finalizedAt: null,

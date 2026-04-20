@@ -5,13 +5,11 @@
  * as well as the discriminated union result types for lifecycle operations.
  */
 
-import type { PdfContext } from '@/features/pdf/context.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/client.types';
 
 // Re-export commonly used types so the service can import from one place
-export type { PdfContext } from '@/features/pdf/context.types';
 export type { SubscriptionTier } from '@/shared/types/billing.types';
 export type { FailureClassification } from '@/shared/types/client.types';
 export { isRetryableClassification } from '@/shared/types/failure-classification';
@@ -27,16 +25,6 @@ export type CreateAiPlanInput = {
   readonly deadlineDate?: string | null;
 };
 
-/** Input for creating a PDF-origin learning plan. */
-export type CreatePdfPlanInput = CreateAiPlanInput & {
-  readonly authUserId: string;
-  readonly body: Record<string, unknown>;
-  readonly extractedContent: unknown;
-  readonly pdfProofToken: string;
-  readonly pdfExtractionHash: string;
-  readonly pdfProofVersion: 1;
-};
-
 /** Data passed to the persistence port for atomic plan insertion. */
 export type PlanInsertData = {
   readonly topic: string;
@@ -44,8 +32,7 @@ export type PlanInsertData = {
   readonly weeklyHours: number;
   readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   readonly visibility: 'private';
-  readonly origin: 'ai' | 'pdf';
-  readonly extractedContext?: PdfContext | null;
+  readonly origin: 'ai';
   readonly startDate?: string | null;
   readonly deadlineDate?: string | null;
 };
@@ -86,9 +73,6 @@ export type CreatePlanSuccess = {
     readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
     readonly startDate: string | null;
     readonly deadlineDate: string | null;
-    readonly pdfContext?: PdfContext | null;
-    readonly pdfExtractionHash?: string;
-    readonly pdfProofVersion?: 1;
   };
 };
 

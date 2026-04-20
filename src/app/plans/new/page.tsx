@@ -1,44 +1,15 @@
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-import type { CreateMethod } from '@/app/plans/new/components/CreateMethodToggle';
 import { CreatePlanPageClient } from '@/app/plans/new/components/CreatePlanPageClient';
 import { MouseGlowContainer } from '@/app/plans/new/components/MouseGlow';
-
-interface CreateNewPlanPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
 
 export const metadata: Metadata = {
   title: 'Create Learning Plan | Atlaris',
   description:
-    'Create a personalized, time-blocked learning plan from your goal or a PDF.',
+    'Create a personalized, time-blocked learning plan from your learning goal.',
 };
 
-function resolveMethod(
-  methodValue: string | string[] | undefined
-): CreateMethod {
-  if (Array.isArray(methodValue)) {
-    return methodValue[0] === 'pdf' ? 'pdf' : 'manual';
-  }
-  return methodValue === 'pdf' ? 'pdf' : 'manual';
-}
-
-function resolveTopic(
-  topicValue: string | string[] | undefined
-): string | null {
-  if (Array.isArray(topicValue)) {
-    return typeof topicValue[0] === 'string' ? topicValue[0] : null;
-  }
-  return typeof topicValue === 'string' ? topicValue : null;
-}
-
-export default async function CreateNewPlanPage({
-  searchParams,
-}: CreateNewPlanPageProps): Promise<JSX.Element> {
-  const resolvedSearchParams = await searchParams;
-  const initialMethod = resolveMethod(resolvedSearchParams.method);
-  const initialTopic = resolveTopic(resolvedSearchParams.topic);
-
+export default async function CreateNewPlanPage(): Promise<JSX.Element> {
   return (
     <MouseGlowContainer className="from-accent/30 via-primary/10 to-accent/20 dark:bg-background fixed inset-0 overflow-hidden bg-linear-to-br dark:from-transparent dark:via-transparent dark:to-transparent">
       <div
@@ -55,10 +26,7 @@ export default async function CreateNewPlanPage({
       />
 
       <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-4 pt-20 pb-6 sm:px-6 sm:pt-24 sm:pb-8">
-        <CreatePlanPageClient
-          initialMethod={initialMethod}
-          initialTopic={initialTopic}
-        />
+        <CreatePlanPageClient />
       </div>
     </MouseGlowContainer>
   );

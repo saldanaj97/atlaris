@@ -7,8 +7,7 @@ const TEST_DB_PREFIX = 'atlaris_test';
 const ADMIN_DB_NAME = 'postgres';
 const PROVISIONING_LOCK_KEY_1 = 418_001;
 const PROVISIONING_LOCK_KEY_2 = 11;
-
-export const TESTCONTAINERS_ENV_FILE = join(
+const DEFAULT_TESTCONTAINERS_ENV_FILE = join(
   __dirname,
   '..',
   '.testcontainers-env.json'
@@ -64,8 +63,15 @@ export function createAdminDatabaseUrl(connectionUrl: string): string {
   return createDatabaseUrl(connectionUrl, ADMIN_DB_NAME);
 }
 
+export function getTestcontainersEnvFile(): string {
+  const configured = process.env.TESTCONTAINERS_ENV_FILE?.trim();
+  return configured && configured.length > 0
+    ? configured
+    : DEFAULT_TESTCONTAINERS_ENV_FILE;
+}
+
 export function readTestDbRuntimeState(): TestDbRuntimeState | null {
-  return readJsonFile<TestDbRuntimeState>(TESTCONTAINERS_ENV_FILE);
+  return readJsonFile<TestDbRuntimeState>(getTestcontainersEnvFile());
 }
 
 export function buildTestDbRuntimeState(

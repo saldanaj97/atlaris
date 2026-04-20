@@ -288,13 +288,6 @@ function assertProdForbiddenFlags(): void {
 
 assertProdForbiddenFlags();
 
-/**
- * Retrieves an environment variable that is required in production but optional in dev/test.
- */
-export function getServerRequiredProdOnly(key: string): string | undefined {
-  return defaultServerEnvAccess.getServerRequiredProdOnly(key);
-}
-
 export function getSmokeStateFileEnv(): string | undefined {
   return getServerOptional('SMOKE_STATE_FILE');
 }

@@ -11,18 +11,15 @@
 import { logger } from '@/lib/logging/logger';
 import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
 import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
-import { createPdfPlanWithStrategy } from './origin-strategies/create-pdf-plan';
 import type {
   GenerationPort,
   JobQueuePort,
-  PdfOriginPort,
   PlanPersistencePort,
   QuotaPort,
   UsageRecordingPort,
 } from './ports';
 import type {
   CreateAiPlanInput,
-  CreatePdfPlanInput,
   CreatePlanResult,
   GenerationAttemptResult,
   ProcessGenerationInput,
@@ -32,7 +29,6 @@ import { isRetryableClassification } from './types';
 export interface PlanLifecycleServicePorts {
   readonly planPersistence: PlanPersistencePort;
   readonly quota: QuotaPort;
-  readonly pdfOrigin: PdfOriginPort;
   readonly generation: GenerationPort;
   readonly usageRecording: UsageRecordingPort;
   readonly jobQueue: JobQueuePort;
@@ -81,36 +77,6 @@ export class PlanLifecycleService {
       input,
       tier: gate.tier,
       duration: gate.duration,
-    });
-  }
-
-  /**
-   * Create a new PDF-origin learning plan.
-   *
-   * Flow: validate → resolve tier → check requested duration cap → normalize duration
-   *       → check normalized duration cap → check attempt cap → prepare PDF input (quota + proof) → atomic insert
-   *
-   * Rollback guarantee: if any step after PDF quota reservation fails,
-   * the reserved quota is automatically rolled back via PdfOriginPort.
-   *
-   * @returns A discriminated union result — never throws for lifecycle outcomes.
-   */
-  async createPdfPlan(input: CreatePdfPlanInput): Promise<CreatePlanResult> {
-    const pdfGate = await checkCreationGate(this.creationGatePorts(), {
-      userId: input.userId,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-      lifecycleLabel: 'create_pdf',
-    });
-    if (pdfGate.blocked) {
-      return pdfGate.result;
-    }
-
-    return createPdfPlanWithStrategy(this.ports, {
-      input,
-      tier: pdfGate.tier,
-      duration: pdfGate.duration,
     });
   }
 

@@ -1,16 +1,11 @@
 import {
   NOTES_PROMPT_MAX_CHARS,
-  PDF_SECTION_TITLE_MAX_CHARS,
   TOPIC_PROMPT_MAX_CHARS,
 } from '@/features/ai/constants';
-import { PDF_SECTION_CONTENT_LIMIT } from '@/features/pdf/constants';
-import { sanitizePdfContextForPrompt } from '@/features/pdf/context';
-import type { PdfContext } from '@/features/pdf/context.types';
 
 export type PromptParams = {
   topic: string;
   notes?: string | null;
-  pdfContext?: PdfContext | null;
   skillLevel: 'beginner' | 'intermediate' | 'advanced';
   learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
   weeklyHours: number;
@@ -63,50 +58,6 @@ function sanitizeUserInput(value: string, maxChars: number): string {
     .replace(/\n{3,}/g, '\n\n')
     .replace(/---+/g, '—');
   return collapsed.slice(0, maxChars).trim();
-}
-
-function appendPdfContextBlock(lines: string[], pdfContext: PdfContext): void {
-  const boundedContext = sanitizePdfContextForPrompt(pdfContext);
-
-  if (boundedContext.sections.length === 0) {
-    return;
-  }
-
-  const safeMainTopic = sanitizeUserInput(
-    boundedContext.mainTopic,
-    TOPIC_PROMPT_MAX_CHARS
-  );
-  lines.push('---BEGIN PDF CONTEXT---');
-  lines.push(`PDF main topic: ${safeMainTopic}`);
-
-  boundedContext.sections.forEach((section, index) => {
-    const sectionIndex = index + 1;
-    const safeTitle = sanitizeUserInput(
-      section.title,
-      PDF_SECTION_TITLE_MAX_CHARS
-    );
-    const safeContent = sanitizeUserInput(
-      section.content,
-      PDF_SECTION_CONTENT_LIMIT
-    );
-
-    lines.push(`Section ${sectionIndex} title: ${safeTitle}`);
-    lines.push(`Section ${sectionIndex} level: ${section.level}`);
-
-    if (section.suggestedTopic) {
-      const safeSuggestedTopic = sanitizeUserInput(
-        section.suggestedTopic,
-        PDF_SECTION_TITLE_MAX_CHARS
-      );
-      lines.push(
-        `Section ${sectionIndex} suggested topic: ${safeSuggestedTopic}`
-      );
-    }
-
-    lines.push(`Section ${sectionIndex} content: ${safeContent}`);
-  });
-
-  lines.push('---END PDF CONTEXT---');
 }
 
 /**
@@ -171,10 +122,6 @@ export function buildUserPrompt(p: PromptParams): string {
 
   if (p.deadlineDate) {
     lines.push(`Deadline: ${p.deadlineDate}`);
-  }
-
-  if (p.pdfContext) {
-    appendPdfContextBlock(lines, p.pdfContext);
   }
 
   lines.push('---END USER INPUT---');

@@ -3,12 +3,17 @@ import {
   createDatabaseUrl,
   getBaseDbName,
   getTemplateDbName,
+  getTestcontainersEnvFile,
   getWorkerDbName,
   normalizeWorkerId,
 } from '@tests/setup/db-provisioning';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('db provisioning helpers', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('uses deterministic database names', () => {
     expect(getBaseDbName()).toBe('atlaris_test_base');
     expect(getTemplateDbName()).toBe('atlaris_test_template');
@@ -29,6 +34,17 @@ describe('db provisioning helpers', () => {
     );
     expect(createAdminDatabaseUrl(containerUrl)).toBe(
       'postgresql://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable'
+    );
+  });
+
+  it('uses a per-run runtime-state file when configured', () => {
+    vi.stubEnv(
+      'TESTCONTAINERS_ENV_FILE',
+      '/tmp/testcontainers-env.integration-run.json'
+    );
+
+    expect(getTestcontainersEnvFile()).toBe(
+      '/tmp/testcontainers-env.integration-run.json'
     );
   });
 });

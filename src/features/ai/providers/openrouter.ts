@@ -85,7 +85,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     const userPrompt = buildUserPrompt({
       topic: input.topic,
       notes: input.notes,
-      pdfContext: input.pdfContext,
       skillLevel: input.skillLevel,
       learningStyle: input.learningStyle,
       weeklyHours: input.weeklyHours,

@@ -16,7 +16,6 @@
  * - **`AI_USE_MOCK` / `AI_PROVIDER`** — AI runtime behavior. `AI_PROVIDER` only
  *   accepts `mock` or `router` (or unset); use `AI_USE_MOCK` for finer control
  *   in test/dev environments.
- * - **`AV_PROVIDER`** — `none` = heuristic-only; mock AV is a separate provider in Phase 2.
  * - **`STRIPE_*` / billing env** — Local billing uses additional flags in Phase 1 billing slice.
  *
  * Prefer reading feature behavior from the grouped configs in `@/lib/config/env` rather than

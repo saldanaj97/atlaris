@@ -26,7 +26,7 @@ Defined in `src/lib/db/enums.ts`:
 | `job_type`             | values sourced from `src/lib/jobs/constants.ts`  |
 | `subscription_tier`    | `free`, `starter`, `pro`                         |
 | `subscription_status`  | `active`, `canceled`, `past_due`, `trialing`     |
-| `plan_origin`          | `ai`, `template`, `manual`, `pdf`                |
+| `plan_origin`          | `ai`, `template`, `manual`                       |
 
 ## Key constraints
 
@@ -35,8 +35,6 @@ Defined in `src/lib/db/enums.ts`:
 - **Email uniqueness:** `users.email` is unique
 - **Ownership integrity:** foreign keys generally cascade on delete
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
-- **Context integrity:** `learning_plans.extracted_context` is validated against the persisted `PdfContext` shape
-- **Proof-token integrity:** `oauth_state_tokens.state_token_hash` is unique and reused by PDF extraction proof flows
 
 ## Row Level Security (RLS)
 
@@ -81,4 +79,3 @@ RLS is enforced through request-scoped Postgres session state:
 - Attempt auditing with success / failure persistence
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting
-- PDF extraction proof token persistence via `oauth_state_tokens`

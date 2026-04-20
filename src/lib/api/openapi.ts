@@ -35,7 +35,7 @@ const learningPlanBaseFields = {
   weeklyHours: z.number().int().nullable().optional(),
   learningStyle: LEARNING_STYLE_ENUM,
   visibility: z.literal('private'),
-  origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
+  origin: z.enum(['ai', 'manual', 'template'] as const),
   createdAt: z.string().datetime().nullable().optional(),
 };
 
@@ -50,7 +50,7 @@ const lightweightPlanSummarySchema = z
     skillLevel: SKILL_LEVEL_ENUM,
     learningStyle: LEARNING_STYLE_ENUM,
     visibility: z.literal('private'),
-    origin: z.enum(['ai', 'manual', 'template', 'pdf'] as const),
+    origin: z.enum(['ai', 'manual', 'template'] as const),
     generationStatus: z.enum([
       'generating',
       'ready',
