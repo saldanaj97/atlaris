@@ -1,8 +1,8 @@
 import { eq, sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
+import { mapStripeSubscriptionStatus } from '@/features/billing/stripe-commerce/subscription-status';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { getStripe } from './client';
@@ -11,10 +11,12 @@ const CUSTOMER_PROVISION_LOCK_KEY = 2;
 const CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS = 10_000;
 const CUSTOMER_PROVISION_WARN_THRESHOLD_MS = 500;
 
-interface SyncSubscriptionToDbOptions {
+type SyncSubscriptionToDbDeps = {
+  dbClient: DbClient;
+  stripe?: Stripe;
   signal?: AbortSignal;
   timeoutMs?: number;
-}
+};
 
 function createAbortError(message: string): Error {
   const error = new Error(message);
@@ -91,21 +93,22 @@ export async function getSubscriptionTier(
 /**
  * Sync subscription data from Stripe to database
  * Called from webhook handlers
- * @param stripe Optional Stripe client (for tests); uses getStripe() when omitted
+ * @param deps.dbClient Database client used for reads/writes (typically service-role in webhooks)
+ * @param deps.stripe Optional Stripe client (for tests); uses getStripe() when omitted
  */
 export async function syncSubscriptionToDb(
   subscription: Stripe.Subscription,
-  stripeInstance?: Stripe,
-  options?: SyncSubscriptionToDbOptions
+  deps: SyncSubscriptionToDbDeps
 ): Promise<void> {
-  const stripe = stripeInstance ?? getStripe();
+  const stripe = deps.stripe ?? getStripe();
+  const { dbClient } = deps;
   const customerId =
     typeof subscription.customer === 'string'
       ? subscription.customer
       : subscription.customer.id;
 
   // Find user by Stripe customer ID
-  const [user] = await db
+  const [user] = await dbClient
     .select({
       id: users.id,
       subscriptionTier: users.subscriptionTier,
@@ -139,7 +142,7 @@ export async function syncSubscriptionToDb(
   let tier: 'free' | 'starter' | 'pro' = existingTier;
 
   if (priceId) {
-    const requestTimeoutMs = options?.timeoutMs ?? 10_000;
+    const requestTimeoutMs = deps.timeoutMs ?? 10_000;
     try {
       const price = await withAbortSignal(
         stripe.prices.retrieve(
@@ -151,7 +154,7 @@ export async function syncSubscriptionToDb(
             timeout: requestTimeoutMs,
           }
         ),
-        options?.signal
+        deps.signal
       );
 
       const product = price.product as Stripe.Product;
@@ -187,21 +190,7 @@ export async function syncSubscriptionToDb(
     }
   }
 
-  const statusMap: Record<
-    Stripe.Subscription.Status,
-    'active' | 'canceled' | 'past_due' | 'trialing' | null
-  > = {
-    active: 'active',
-    canceled: 'canceled',
-    incomplete: null, // Don't update to incomplete
-    incomplete_expired: null,
-    past_due: 'past_due',
-    trialing: 'trialing',
-    unpaid: 'past_due',
-    paused: 'canceled',
-  };
-
-  const status = statusMap[subscription.status];
+  const status = mapStripeSubscriptionStatus(subscription.status);
 
   // current_period_end is present on the wire but missing from Stripe.Subscription
   // typings on this SDK pin; intersect rather than double-cast.
@@ -209,7 +198,7 @@ export async function syncSubscriptionToDb(
     subscription as Stripe.Subscription & { current_period_end?: number }
   ).current_period_end;
 
-  await db
+  await dbClient
     .update(users)
     .set({
       subscriptionTier: tier,

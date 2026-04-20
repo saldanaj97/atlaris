@@ -81,7 +81,12 @@ export async function applySubscriptionSync(
     throw new Error('Stripe client is required for subscription sync.');
   }
 
-  await syncSubscriptionToDb(subscription, deps.stripe, options);
+  await syncSubscriptionToDb(subscription, {
+    dbClient: deps.db,
+    stripe: deps.stripe,
+    signal: options?.signal,
+    timeoutMs: options?.timeoutMs,
+  });
 }
 
 export async function applySubscriptionDeleted(

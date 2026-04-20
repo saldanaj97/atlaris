@@ -1,12 +1,15 @@
-import Stripe from 'stripe';
-import { z } from 'zod';
-import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
+import type Stripe from 'stripe';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
+import {
+  createStripeCommerceBoundary,
+  getStripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv, stripeEnv } from '@/lib/config/env';
-import { users } from '@/lib/db/schema';
 import {
   attachRequestIdHeader,
   createRequestContext,
@@ -15,8 +18,6 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const devWebhookEventSchema = z.object({ type: z.string() });
-
 // Startup validation: STRIPE_WEBHOOK_DEV_MODE must only be enabled in development/test
 if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
   throw new Error(
@@ -24,11 +25,18 @@ if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
   );
 }
 
+export type WebhookHandlerDeps = {
+  boundary?: StripeCommerceBoundary;
+  /** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+  stripe?: Stripe;
+};
+
 /**
- * Factory for the webhook POST handler. Accepts an optional Stripe
- * client for tests (used when syncing subscription events); production uses getStripe() when omitted.
+ * Factory for the webhook POST handler.
  */
-export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
+export function createWebhookHandler(
+  deps: WebhookHandlerDeps = {}
+): PlainHandler {
   return withErrorBoundary(async (req: Request) => {
     const { requestId, logger } = createRequestContext(req, {
       route: 'stripe_webhook',
@@ -52,114 +60,33 @@ export function createWebhookHandler(stripeInstance?: Stripe): PlainHandler {
       throw error;
     }
 
-    // MAX_BYTES is an explicit webhook request payload limit enforced during
-    // content-length preflight and again after `req.text()` parsing below in
-    // this route. It is a deliberate DoS/rate-limiting boundary for Stripe
-    // webhook handling and should not be removed without a security review.
-    const MAX_BYTES = 256 * 1024;
     const contentLengthHeader = req.headers.get('content-length');
-    if (contentLengthHeader !== null) {
-      const contentLength = Number(contentLengthHeader);
-      if (Number.isFinite(contentLength) && contentLength > MAX_BYTES) {
-        logger.warn(
-          {
-            contentLength,
-            maxBytes: MAX_BYTES,
-          },
-          'Stripe webhook payload too large (content-length)'
-        );
-        return respond('payload too large', { status: 413 });
-      }
-    }
+    const contentLengthParsed =
+      contentLengthHeader !== null ? Number(contentLengthHeader) : Number.NaN;
+    const contentLength =
+      Number.isFinite(contentLengthParsed) && contentLengthParsed >= 0
+        ? contentLengthParsed
+        : null;
 
     const rawBody = await req.text();
-    const bodySize = Buffer.byteLength(rawBody, 'utf8');
-    const signature = req.headers.get('stripe-signature');
-    const webhookSecret = stripeEnv.webhookSecret;
-    const isProd = appEnv.isProduction;
-    const isDevOrTest = appEnv.isDevelopment || appEnv.isTest;
-    const allowDevPayloads = isDevOrTest && stripeEnv.webhookDevMode;
 
-    if (bodySize > MAX_BYTES) {
-      logger.warn(
-        { bodySize, maxBytes: MAX_BYTES },
-        'Stripe webhook payload too large'
-      );
-      return respond('payload too large', { status: 413 });
-    }
+    const boundary =
+      deps.boundary ??
+      (deps.stripe
+        ? createStripeCommerceBoundary({
+            gateway: new LiveStripeGateway(deps.stripe),
+          })
+        : getStripeCommerceBoundary());
 
-    let event: Stripe.Event;
-    if (webhookSecret) {
-      if (!signature) {
-        logger.warn('Stripe webhook missing signature');
-        return respond('missing signature', { status: 400 });
-      }
-
-      try {
-        event = Stripe.webhooks.constructEvent(
-          rawBody,
-          signature,
-          webhookSecret,
-          300
-        );
-      } catch (error) {
-        logger.error(
-          {
-            error,
-          },
-          'Stripe webhook signature verification failed'
-        );
-        return respond('signature verification failed', { status: 400 });
-      }
-    } else {
-      // In non-production without secret, accept JSON payloads (dev convenience)
-      if (!allowDevPayloads) {
-        logger.error(
-          'Stripe webhook misconfigured: missing secret outside development'
-        );
-        return respond('webhook misconfigured', { status: 500 });
-      }
-      let devParsed: unknown;
-      try {
-        devParsed = JSON.parse(rawBody);
-      } catch {
-        return respond('bad request', { status: 400 });
-      }
-
-      const devParseResult = devWebhookEventSchema.safeParse(devParsed);
-      if (!devParseResult.success) {
-        return respond('bad request', { status: 400 });
-      }
-
-      logger.info(
-        { type: devParseResult.data.type },
-        'Stripe webhook dev mode event received (noop)'
-      );
-      return respond('ok');
-    }
-
-    // Ignore mode-mismatched events (e.g., test events hitting prod)
-    const expectLive = isProd;
-    if (event.livemode !== expectLive) {
-      logger.warn(
-        {
-          eventId: event.id,
-          eventType: event.type,
-          eventLivemode: event.livemode,
-          expectLive,
-        },
-        'Stripe webhook livemode mismatch'
-      );
-      return respond('ok');
-    }
-
-    await handleStripeWebhookDedupeAndApply(event, {
-      stripe: stripeInstance,
+    const result = await boundary.acceptWebhook({
+      rawBody,
+      signatureHeader: req.headers.get('stripe-signature'),
+      contentLength,
       logger,
-      users,
+      stripe: deps.stripe,
     });
 
-    return respond('ok');
+    return respond(result.body, { status: result.status });
   });
 }
 

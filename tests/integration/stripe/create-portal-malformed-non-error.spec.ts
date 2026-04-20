@@ -57,7 +57,8 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
     });
     setTestUser(authUserId);
 
-    const portalPOST = createCreatePortalHandler(createMockStripe(), {
+    const portalPOST = createCreatePortalHandler({
+      stripe: createMockStripe(),
       parseJsonBody: mockParseJsonBody,
     });
     const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
@@ -107,7 +108,8 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
     });
     setTestUser(authUserId);
 
-    const portalPOST = createCreatePortalHandler(createMockStripe(), {
+    const portalPOST = createCreatePortalHandler({
+      stripe: createMockStripe(),
       parseJsonBody: mockParseJsonBody,
     });
     const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});

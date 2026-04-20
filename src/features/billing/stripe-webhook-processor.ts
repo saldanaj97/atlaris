@@ -5,6 +5,8 @@ import {
   applySubscriptionDeleted,
   applySubscriptionSync,
 } from '@/features/billing/account-transitions';
+import type { CommerceSubscriptionSnapshot } from '@/features/billing/stripe-commerce/dtos';
+import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { stripeWebhookEvents } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import type { createLogger } from '@/lib/logging/logger';
@@ -14,10 +16,35 @@ const STRIPE_SYNC_TIMEOUT_MS = 10_000;
 
 export type StripeWebhookSideEffectDeps = {
   stripe?: Stripe;
+  gateway?: StripeGateway;
   logger: Logger;
   db?: typeof import('@/lib/db/service-role').db;
   users: typeof import('@/lib/db/schema').users;
 };
+
+function snapshotToStripeSubscription(
+  snapshot: CommerceSubscriptionSnapshot
+): Stripe.Subscription {
+  return {
+    id: snapshot.subscriptionId,
+    object: 'subscription',
+    customer: snapshot.customerId,
+    status: snapshot.status,
+    cancel_at_period_end: snapshot.cancelAtPeriodEnd,
+    items: {
+      data: snapshot.primaryPriceId
+        ? [
+            {
+              price: { id: snapshot.primaryPriceId },
+            },
+          ]
+        : [],
+    },
+    current_period_end: snapshot.currentPeriodEnd
+      ? Math.floor(snapshot.currentPeriodEnd.getTime() / 1000)
+      : undefined,
+  } as unknown as Stripe.Subscription;
+}
 
 function withTimeout<T>(
   timeoutMs: number,
@@ -76,8 +103,13 @@ async function applyStripeWebhookEvent(
   event: Stripe.Event,
   deps: StripeWebhookSideEffectDeps
 ): Promise<void> {
-  const { stripe: stripeInstance, logger } = deps;
-  const transitionDeps = { ...deps, db: deps.db ?? serviceRoleDb };
+  const stripeInstance = deps.stripe ?? deps.gateway?.getStripeClient();
+  const { gateway, logger } = deps;
+  const transitionDeps = {
+    ...deps,
+    stripe: stripeInstance,
+    db: deps.db ?? serviceRoleDb,
+  };
 
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -126,16 +158,16 @@ async function applyStripeWebhookEvent(
           ? invoice.subscription
           : invoice.subscription?.id;
 
-      if (!subscriptionId || !stripeInstance) {
+      if (!subscriptionId || !gateway) {
         const message = !subscriptionId
           ? 'invoice.payment_succeeded missing subscription id for resync'
-          : 'invoice.payment_succeeded cannot resync without Stripe client';
+          : 'invoice.payment_succeeded cannot resync without Stripe gateway';
 
         logger.error(
           {
             eventId: event.id,
             subscriptionId: subscriptionId ?? null,
-            hasStripeClient: Boolean(stripeInstance),
+            hasStripeGateway: Boolean(gateway),
           },
           message
         );
@@ -144,16 +176,17 @@ async function applyStripeWebhookEvent(
 
       let subscription: Stripe.Subscription;
       try {
-        subscription = await stripeInstance.subscriptions.retrieve(
+        const snapshot = await gateway.retrieveSubscription({
           subscriptionId,
-          { timeout: STRIPE_SYNC_TIMEOUT_MS }
-        );
+          timeoutMs: STRIPE_SYNC_TIMEOUT_MS,
+        });
+        subscription = snapshotToStripeSubscription(snapshot);
       } catch (error) {
         logger.error(
           {
             eventId: event.id,
             subscriptionId,
-            operation: 'subscriptions.retrieve',
+            operation: 'gateway.retrieveSubscription',
             ...getStripeErrorMeta(error),
           },
           'Failed to retrieve Stripe subscription during invoice.payment_succeeded resync'

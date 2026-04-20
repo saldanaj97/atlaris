@@ -8,16 +8,6 @@ function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/**
- * Minimal Stripe mock for local billing (checkout, portal, price retrieve, cancel).
- */
-export function getLocalStripeMock(baseUrl: string): Stripe {
-  if (!localStripeMock) {
-    localStripeMock = buildLocalStripeMock(baseUrl);
-  }
-  return localStripeMock;
-}
-
 function buildLocalStripeMock(baseUrl: string): Stripe {
   const normalizedBase = baseUrl.replace(/\/$/, '');
 
@@ -115,6 +105,25 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   };
 
   const subscriptions = {
+    retrieve: async (id: string): Promise<Stripe.Subscription> =>
+      ({
+        id,
+        object: 'subscription',
+        customer: `cus_local_${randomSuffix()}`,
+        status: 'active',
+        cancel_at_period_end: false,
+        items: {
+          data: [
+            {
+              price: {
+                id: 'price_local_starter_monthly',
+                object: 'price',
+              },
+            },
+          ],
+        },
+        current_period_end: Math.floor(Date.now() / 1000) + 86400 * 30,
+      }) as unknown as Stripe.Subscription,
     update: async (
       id: string,
       _params: Stripe.SubscriptionUpdateParams
@@ -133,6 +142,16 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
     prices,
     subscriptions,
   } as unknown as Stripe;
+}
+
+/**
+ * Minimal Stripe mock for local billing (checkout, portal, price retrieve, cancel).
+ */
+export function getLocalStripeMock(baseUrl: string): Stripe {
+  if (!localStripeMock) {
+    localStripeMock = buildLocalStripeMock(baseUrl);
+  }
+  return localStripeMock;
 }
 
 /** Used by billing client; avoids importing env before app URL is available. */

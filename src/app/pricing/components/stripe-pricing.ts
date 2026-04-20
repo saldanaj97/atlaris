@@ -1,3 +1,8 @@
+/**
+ * Pricing-page catalog reads use `getStripe()` directly (not `StripeCommerceBoundary`)
+ * so marketing SSR stays decoupled from checkout/portal/webhook orchestration.
+ * See issue #306 — a future narrow catalog-read port could fold this in if needed.
+ */
 import type Stripe from 'stripe';
 import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import { formatAmount } from '@/app/pricing/components/utils';

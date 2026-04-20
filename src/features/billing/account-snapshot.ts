@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import { canOpenBillingPortalForUser } from '@/features/billing/stripe-commerce';
 import {
   getUsageSummaryForTier,
   type UsageSummary,

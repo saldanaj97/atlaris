@@ -1,37 +1,34 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
-  isValidRedirectUrl,
-  resolveRedirectUrl,
-} from '@/app/api/v1/stripe/_shared/redirect';
-import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
-import { getCustomerPortalUrl } from '@/features/billing/subscriptions';
+  createStripeCommerceBoundary,
+  getStripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
-import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
+import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { logger } from '@/lib/logging/logger';
 
-const DEFAULT_BILLING_SETTINGS_PATH = '/settings/billing';
-
 const createPortalBodySchema = z.object({
   returnUrl: z.string().optional(),
 });
 
-type CreatePortalHandlerDeps = {
+export type CreatePortalHandlerDeps = {
+  boundary?: StripeCommerceBoundary;
+  /** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+  stripe?: Stripe;
   parseJsonBody?: typeof parseJsonBody;
 };
 
 /**
- * Factory for the create-portal POST handler. Accepts an optional Stripe
- * client for tests; production uses getStripe() inside getCustomerPortalUrl when omitted.
+ * Factory for the create-portal POST handler.
  */
-export function createCreatePortalHandler(
-  stripeInstance?: Stripe,
-  deps: CreatePortalHandlerDeps = {}
-) {
+export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
   const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
 
   return withErrorBoundary(
@@ -44,12 +41,6 @@ export function createCreatePortalHandler(
         },
         'billing portal attempt'
       );
-
-      if (!canOpenBillingPortalForUser(user)) {
-        throw new ValidationError(
-          'Billing portal is available after your first subscription checkout'
-        );
-      }
 
       const body = await parseJsonBodyImpl(req, {
         mode: 'optional',
@@ -84,54 +75,22 @@ export function createCreatePortalHandler(
 
       const { returnUrl } = parseResult.data;
 
-      if (!isValidRedirectUrl(returnUrl)) {
-        throw new ValidationError(
-          'returnUrl must be a relative path or same-origin URL',
-          undefined,
-          { userId: user.id, returnUrl }
-        );
-      }
+      const boundary =
+        deps.boundary ??
+        (deps.stripe
+          ? createStripeCommerceBoundary({
+              gateway: new LiveStripeGateway(deps.stripe),
+            })
+          : getStripeCommerceBoundary());
 
-      const resolvedReturnUrl = resolveRedirectUrl(
+      const { portalUrl } = await boundary.openPortal({
+        actor: {
+          userId: user.id,
+          stripeCustomerId: user.stripeCustomerId,
+          subscriptionStatus: user.subscriptionStatus,
+        },
         returnUrl,
-        DEFAULT_BILLING_SETTINGS_PATH
-      );
-
-      let portalUrl: string | null = null;
-      try {
-        portalUrl = await getCustomerPortalUrl(
-          user.stripeCustomerId,
-          resolvedReturnUrl,
-          stripeInstance
-        );
-      } catch (error) {
-        const stripeErrorCode = extractErrorCode(error);
-        throw new AppError('Failed to create customer portal session', {
-          status: 500,
-          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
-          cause: error,
-          logMeta: {
-            userId: user.id,
-            stripeCustomerId: user.stripeCustomerId,
-            resolvedReturnUrl,
-            stripeErrorCode,
-            stripeErrorMessage:
-              error instanceof Error ? error.message : String(error),
-          },
-        });
-      }
-
-      if (!portalUrl) {
-        throw new AppError('Failed to create customer portal session', {
-          status: 500,
-          code: 'STRIPE_PORTAL_SESSION_CREATION_FAILED',
-          logMeta: {
-            userId: user.id,
-            stripeCustomerId: user.stripeCustomerId,
-            resolvedReturnUrl,
-          },
-        });
-      }
+      });
 
       return json({ portalUrl });
     })

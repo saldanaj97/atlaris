@@ -7,10 +7,7 @@ import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
-import {
-  createWebhookHandler,
-  POST as webhookPOST,
-} from '@/app/api/v1/stripe/webhook/route';
+import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
 import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
@@ -47,6 +44,10 @@ function makeStripeEvent({
   } as Stripe.Event;
 }
 
+/** Minimal Stripe client so webhook tests never touch real `getStripe()` / env keys. */
+const defaultWebhookStripe = makeStripeMock({});
+const webhookPOST = createWebhookHandler({ stripe: defaultWebhookStripe });
+
 describe('Stripe API Routes', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -73,7 +74,7 @@ describe('Stripe API Routes', () => {
         },
       });
 
-      const portalPOST = createCreatePortalHandler(mockStripe);
+      const portalPOST = createCreatePortalHandler({ stripe: mockStripe });
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -117,7 +118,7 @@ describe('Stripe API Routes', () => {
           },
         },
       });
-      const portalPOST = createCreatePortalHandler(mockStripe);
+      const portalPOST = createCreatePortalHandler({ stripe: mockStripe });
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -156,7 +157,7 @@ describe('Stripe API Routes', () => {
         },
       });
 
-      const portalPOST = createCreatePortalHandler(mockStripe);
+      const portalPOST = createCreatePortalHandler({ stripe: mockStripe });
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -191,7 +192,7 @@ describe('Stripe API Routes', () => {
           },
         },
       });
-      const portalPOST = createCreatePortalHandler(mockStripe);
+      const portalPOST = createCreatePortalHandler({ stripe: mockStripe });
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -235,7 +236,7 @@ describe('Stripe API Routes', () => {
           },
         },
       });
-      const portalPOST = createCreatePortalHandler(mockStripe);
+      const portalPOST = createCreatePortalHandler({ stripe: mockStripe });
 
       const request = new Request(
         'http://localhost/api/v1/stripe/create-portal',
@@ -343,7 +344,7 @@ describe('Stripe API Routes', () => {
         },
       });
 
-      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
+      const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
 
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
@@ -395,7 +396,9 @@ describe('Stripe API Routes', () => {
       });
 
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
-      const webhookPOSTWithMock = createWebhookHandler();
+      const webhookPOSTWithMock = createWebhookHandler({
+        stripe: makeStripeMock({}),
+      });
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
         method: 'POST',
@@ -468,7 +471,7 @@ describe('Stripe API Routes', () => {
         },
       });
 
-      const webhookPOSTWithMock = createWebhookHandler(mockStripe);
+      const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
 
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 

@@ -6,9 +6,14 @@
  */
 
 import { makeDbClient } from '@tests/fixtures/db-mocks';
-import { makeStripeSubscription } from '@tests/fixtures/stripe-mocks';
+import {
+  makeStripeInvoice,
+  makeStripeMock,
+  makeStripeSubscription,
+} from '@tests/fixtures/stripe-mocks';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import {
   handleStripeWebhookDedupeAndApply,
   type StripeWebhookSideEffectDeps,
@@ -207,6 +212,92 @@ describe('handleStripeWebhookDedupeAndApply', () => {
         livemode: true,
         type: 'invoice.payment_failed',
       });
+    });
+
+    it('uses gateway.retrieveSubscription for invoice.payment_succeeded resync', async () => {
+      const insertMock = vi.fn().mockReturnValue({
+        values: vi.fn().mockReturnThis(),
+        onConflictDoNothing: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ eventId: 'evt_invoice_paid' }]),
+      });
+      const selectMock = vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: 'user_1',
+                subscriptionTier: 'free',
+              },
+            ]),
+          }),
+        }),
+      });
+      const updateMock = vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      const db = makeDbClient({
+        insert: insertMock,
+        select: selectMock,
+        update: updateMock,
+        delete: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      const pricesRetrieve = vi.fn().mockResolvedValue({
+        product: { metadata: { tier: 'starter' } },
+      });
+      const gateway: StripeGateway = {
+        getStripeClient: () =>
+          makeStripeMock({
+            prices: {
+              retrieve: pricesRetrieve,
+            },
+          }),
+        createCheckoutSession: vi.fn(async () => ({ url: null })),
+        createBillingPortalSession: vi.fn(async () => ({ url: null })),
+        constructWebhookEvent: vi.fn(() => {
+          throw new Error('not used');
+        }),
+        retrieveSubscription: vi.fn().mockResolvedValue({
+          subscriptionId: 'sub_paid',
+          customerId: 'cus_paid',
+          status: 'active',
+          currentPeriodEnd: new Date('2025-01-01T00:00:00.000Z'),
+          cancelAtPeriodEnd: false,
+          primaryPriceId: 'price_starter',
+        }),
+      };
+      const deps = makeDeps({
+        db,
+        gateway,
+        logger: makeLogger(),
+      });
+      const event = makeEvent({
+        id: 'evt_invoice_paid',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: makeStripeInvoice({
+            customer: 'cus_paid',
+            subscription: 'sub_paid',
+          }),
+        },
+      });
+
+      await expect(
+        handleStripeWebhookDedupeAndApply(event, deps)
+      ).resolves.toBe('inserted');
+
+      expect(gateway.retrieveSubscription).toHaveBeenCalledWith({
+        subscriptionId: 'sub_paid',
+        timeoutMs: 10_000,
+      });
+      expect(pricesRetrieve).toHaveBeenCalledWith(
+        'price_starter',
+        { expand: ['product'] },
+        { timeout: 10_000 }
+      );
     });
   });
 

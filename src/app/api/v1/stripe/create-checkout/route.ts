@@ -1,21 +1,18 @@
-import Stripe from 'stripe';
+import type Stripe from 'stripe';
 import { z } from 'zod';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
-  isValidRedirectUrl,
-  resolveRedirectUrl,
-} from '@/app/api/v1/stripe/_shared/redirect';
-import { getStripe } from '@/features/billing/client';
-import { isLocalPriceId } from '@/features/billing/local-catalog';
-import { isAllowedCheckoutPriceId } from '@/features/billing/price-catalog';
-import { createCustomer } from '@/features/billing/subscriptions';
+  createStripeCommerceBoundary,
+  getStripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
-import { AppError, ValidationError } from '@/lib/api/errors';
+import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
-import { stripeEnv } from '@/lib/config/env';
 
 const createCheckoutBodySchema = z
   .object({
@@ -27,12 +24,17 @@ const createCheckoutBodySchema = z
   })
   .strict();
 
+export type CreateCheckoutHandlerDeps = {
+  boundary?: StripeCommerceBoundary;
+  /** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+  stripe?: Stripe;
+};
+
 /**
- * Factory for the create-checkout POST handler. Accepts an optional Stripe
- * client for tests; production uses getStripe() when omitted.
+ * Factory for the create-checkout POST handler.
  */
 export function createCreateCheckoutHandler(
-  stripeInstance?: Stripe
+  deps: CreateCheckoutHandlerDeps = {}
 ): PlainHandler {
   return withErrorBoundary(
     withAuthAndRateLimit('billing', async ({ req, user }) => {
@@ -51,93 +53,22 @@ export function createCreateCheckoutHandler(
 
       const { priceId, successUrl, cancelUrl } = parseResult.data;
 
-      if (stripeEnv.localMode && !isLocalPriceId(priceId)) {
-        throw new ValidationError(
-          'priceId must be a canonical local catalog id when STRIPE_LOCAL_MODE is enabled'
-        );
-      }
+      const boundary =
+        deps.boundary ??
+        (deps.stripe
+          ? createStripeCommerceBoundary({
+              gateway: new LiveStripeGateway(deps.stripe),
+            })
+          : getStripeCommerceBoundary());
 
-      if (!stripeEnv.localMode && !isAllowedCheckoutPriceId(priceId)) {
-        throw new ValidationError(
-          'priceId must match an approved billing plan'
-        );
-      }
+      const { sessionUrl } = await boundary.beginCheckout({
+        actor: { userId: user.id, email: user.email },
+        priceId,
+        successUrl,
+        cancelUrl,
+      });
 
-      if (!isValidRedirectUrl(successUrl)) {
-        throw new ValidationError(
-          'successUrl must be a relative path or same-origin URL'
-        );
-      }
-
-      if (!isValidRedirectUrl(cancelUrl)) {
-        throw new ValidationError(
-          'cancelUrl must be a relative path or same-origin URL'
-        );
-      }
-
-      const customerId = await createCustomer(
-        user.id,
-        user.email,
-        stripeInstance
-      );
-
-      const stripe = stripeInstance ?? getStripe();
-      let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
-      try {
-        session = await stripe.checkout.sessions.create({
-          customer: customerId,
-          line_items: [
-            {
-              price: priceId,
-              quantity: 1,
-            },
-          ],
-          mode: 'subscription',
-          success_url: resolveRedirectUrl(
-            successUrl,
-            '/settings/billing?session_id={CHECKOUT_SESSION_ID}'
-          ),
-          cancel_url: resolveRedirectUrl(cancelUrl, '/settings/billing'),
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        const stripeType =
-          error instanceof Stripe.errors.StripeError ? error.type : undefined;
-        const stripeCode =
-          error instanceof Stripe.errors.StripeError ? error.code : undefined;
-
-        const isClientError =
-          stripeType === 'StripeInvalidRequestError' ||
-          stripeCode === 'resource_missing';
-
-        throw new AppError(
-          isClientError
-            ? 'Invalid checkout request. Please check the plan and try again.'
-            : 'Unable to start checkout. Please try again later.',
-          {
-            status: isClientError ? 400 : 500,
-            code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
-            cause: error,
-            logMeta: {
-              userId: user.id,
-              priceId,
-              stripeErrorMessage: message,
-              stripeType,
-              stripeCode,
-            },
-          }
-        );
-      }
-
-      if (!session.url) {
-        throw new AppError('Failed to create checkout session', {
-          status: 500,
-          code: 'STRIPE_CHECKOUT_SESSION_CREATION_FAILED',
-          logMeta: { userId: user.id },
-        });
-      }
-
-      return json({ sessionUrl: session.url });
+      return json({ sessionUrl });
     })
   );
 }
