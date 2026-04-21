@@ -7,7 +7,7 @@ import {
 import {
   getBillingStripeClient,
   isLocalStripeCompletionRouteEnabled,
-} from '@/features/billing/stripe-commerce/factory';
+} from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { replayLocalSubscriptionCreated } from '@/features/billing/stripe-commerce/local-checkout-replay';
 import type { PlainHandler } from '@/lib/api/auth';

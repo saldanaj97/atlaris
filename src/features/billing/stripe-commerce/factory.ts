@@ -1,12 +1,12 @@
 import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
   DefaultStripeCommerceBoundary,
   type StripeCommerceBoundaryDeps,
 } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
@@ -22,7 +22,7 @@ export function getBillingStripeClient(): Stripe {
   return getStripe();
 }
 
-export type CreateStripeCommerceBoundaryOptions = Partial<
+type CreateStripeCommerceBoundaryOptions = Partial<
   Omit<StripeCommerceBoundaryDeps, 'gateway'>
 > & {
   gateway?: StripeGateway;

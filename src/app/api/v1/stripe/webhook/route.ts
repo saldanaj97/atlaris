@@ -1,9 +1,9 @@
 import type Stripe from 'stripe';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
   createStripeCommerceBoundary,
   getStripeCommerceBoundary,
-} from '@/features/billing/stripe-commerce/factory';
+  type StripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';

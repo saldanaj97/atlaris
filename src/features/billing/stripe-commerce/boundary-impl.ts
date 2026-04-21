@@ -1,6 +1,13 @@
 import Stripe from 'stripe';
 import { z } from 'zod';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import type {
+  AcceptWebhookInput,
+  BeginCheckoutInput,
+  OpenPortalInput,
+  StripeCommerceBoundary,
+  StripeWebhookResponse,
+} from '@/features/billing/stripe-commerce';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
@@ -8,13 +15,6 @@ import {
   isValidRedirectUrl,
   resolveRedirectUrl,
 } from '@/features/billing/stripe-commerce/redirect';
-import type {
-  AcceptWebhookInput,
-  BeginCheckoutInput,
-  OpenPortalInput,
-  StripeCommerceBoundary,
-  StripeWebhookResponse,
-} from '@/features/billing/stripe-commerce/types';
 import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
 import { createCustomer } from '@/features/billing/subscriptions';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';

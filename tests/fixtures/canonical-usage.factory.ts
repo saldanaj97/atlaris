@@ -2,7 +2,7 @@ import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 /** Catalog model id that resolves via `getModelById` for snapshot assertions. */
-export const CATALOG_MODEL_OPENAI_GPT4O = 'openai/gpt-4o' as const;
+const CATALOG_MODEL_OPENAI_GPT4O = 'openai/gpt-4o' as const;
 
 export function makeCanonicalUsage(
   overrides?: Partial<CanonicalAIUsage>

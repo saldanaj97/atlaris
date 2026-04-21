@@ -27,7 +27,7 @@ interface EmitSanitizedFailureEventParams {
 /**
  * Sanitizes a generation error and emits a client-safe SSE `error` event.
  */
-export function emitSanitizedFailureEvent({
+function emitSanitizedFailureEvent({
   emit,
   error,
   classification,

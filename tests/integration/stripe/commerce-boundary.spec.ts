@@ -1,6 +1,6 @@
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { ValidationError } from '@/lib/api/errors';

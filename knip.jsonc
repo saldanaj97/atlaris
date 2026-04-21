@@ -34,8 +34,13 @@
     // Helpers + schemas exported as part of an internal "public surface" so
     // future tests / consumers don't need to re-introduce inline shapes.
     "scripts/tests/shared/cli.ts": ["types"],
+    "src/features/billing/account-snapshot.ts": ["types"],
     "src/lib/api/pagination.ts": ["types"],
     "src/lib/config/env/ai.ts": ["types"],
+    "src/features/plans/policy/duration.ts": ["types"],
+    "src/features/plans/session/model-resolution.ts": ["types"],
+    "src/features/plans/session/stream-emitters.ts": ["types"],
+    "src/lib/api/request-boundary.ts": ["types"],
     "src/shared/schemas/plan-status.ts": ["types"],
     "tests/fixtures/stripe-mocks.ts": ["exports", "types"],
     "tests/fixtures/db-mocks.ts": ["exports"],

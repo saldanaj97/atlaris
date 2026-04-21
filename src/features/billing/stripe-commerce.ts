@@ -8,6 +8,7 @@ export {
   createStripeCommerceBoundary,
   getBillingStripeClient,
   getStripeCommerceBoundary,
+  isLocalStripeCompletionRouteEnabled,
 } from '@/features/billing/stripe-commerce/factory';
 export type {
   AcceptWebhookInput,

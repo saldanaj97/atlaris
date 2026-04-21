@@ -1,5 +1,5 @@
 import type Stripe from 'stripe';
-import type { SubscriptionStatus } from '@/features/billing/stripe-commerce/types';
+import type { SubscriptionStatus } from '@/features/billing/stripe-commerce';
 
 /**
  * Maps Stripe subscription lifecycle statuses to persisted subscription status

@@ -1,10 +1,10 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
   createStripeCommerceBoundary,
   getStripeCommerceBoundary,
-} from '@/features/billing/stripe-commerce/factory';
+  type StripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
