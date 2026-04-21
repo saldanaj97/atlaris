@@ -20,10 +20,10 @@ import {
   PROGRESS_STATUSES,
   type ProgressStatus,
   setTaskProgressBatch,
-  withServerActionContext,
 } from '@/app/plans/[id]/server/task-progress-action-deps';
 import type { PlanAccessResult } from '@/app/plans/[id]/types';
 import { getPlanDetailForRead } from '@/features/plans/read-service';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { planError, planSuccess } from './helpers';
 
 interface BatchUpdateTaskProgressInput {
@@ -68,16 +68,16 @@ export async function batchUpdateTaskProgressAction({
     }
   }
 
-  const result = await withServerActionContext(async (user, rlsDb) => {
+  const result = await requestBoundary.action(async ({ actor, db }) => {
     try {
-      await setTaskProgressBatch(user.id, updates, rlsDb);
+      await setTaskProgressBatch(actor.id, updates, db);
       revalidatePath(`/plans/${planId}`);
       revalidatePath('/plans');
     } catch (error) {
       logger.error(
         {
           planId,
-          userId: user.id,
+          userId: actor.id,
           updateCount: updates.length,
           taskIds: updates.map((update) => update.taskId),
           err: error,
@@ -105,15 +105,15 @@ export async function batchUpdateTaskProgressAction({
 export async function getPlanForPage(
   planId: string
 ): Promise<PlanAccessResult> {
-  const result = await withServerActionContext(async (user, rlsDb) => {
+  const result = await requestBoundary.action(async ({ actor, db }) => {
     const plan = await getPlanDetailForRead({
       planId,
-      userId: user.id,
-      dbClient: rlsDb,
+      userId: actor.id,
+      dbClient: db,
     });
     if (!plan) {
       logger.debug(
-        { planId, userId: user.id },
+        { planId, userId: actor.id },
         'Plan not found or user does not have access'
       );
       return planError(

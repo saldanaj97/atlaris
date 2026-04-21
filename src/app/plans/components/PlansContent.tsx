@@ -7,16 +7,15 @@ import { PlansList } from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { listPlansPageSummaries } from '@/features/plans/read-service';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getDb } from '@/lib/db/runtime';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
 export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
-  const snapshot = await withServerComponentContext(async (user) =>
-    getBillingAccountSnapshot({ userId: user.id, dbClient: getDb() })
+  const snapshot = await requestBoundary.component(async ({ actor, db }) =>
+    getBillingAccountSnapshot({ userId: actor.id, dbClient: db })
   );
 
   if (!snapshot) return null;
@@ -38,11 +37,10 @@ export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlansContent(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
-    const db = getDb();
+  const result = await requestBoundary.component(async ({ actor, db }) => {
     const [summaries, snapshot] = await Promise.all([
-      listPlansPageSummaries({ userId: user.id, dbClient: db }),
-      getBillingAccountSnapshot({ userId: user.id, dbClient: db }),
+      listPlansPageSummaries({ userId: actor.id, dbClient: db }),
+      getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
     ]);
     return { summaries, snapshot };
   });

@@ -3,7 +3,7 @@ import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
-import { withServerComponentContext } from '@/lib/api/auth';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { getShellAuthUserId } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
@@ -43,8 +43,8 @@ export default async function SiteHeader() {
   let tier: SubscriptionTier | undefined;
   if (authUserId) {
     try {
-      const result = await withServerComponentContext(
-        (user) => user.subscriptionTier
+      const result = await requestBoundary.component(
+        ({ actor }) => actor.subscriptionTier
       );
       tier = result ?? undefined;
     } catch (err) {

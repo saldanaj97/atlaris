@@ -71,3 +71,11 @@
 **Rule:** When Testcontainers-backed test runs can overlap, never store runtime DB metadata in a single shared file path. Scope the runtime-state file per Vitest process and have worker setup read the per-run path from env.
 
 **Impact:** This preserves worker-to-database isolation across concurrent local runs and prevents infra races from masquerading as fixture or application regressions.
+
+## 2026-04-20: Vitest hoisted mocks and boundary return types need to match the actual call shape
+
+**Context:** The request-boundary spec initially used a normal top-level mock handle inside a hoisted `vi.mock()` factory, and the boundary route method was typed too generically for a `PlainHandler`. Both passed local intuition but failed under Vitest hoisting and `tsgo --noEmit`.
+
+**Rule:** In Vitest, create shared mock handles with `vi.hoisted()` before `vi.mock()` factories, and keep route-style boundary APIs constrained to `Response`-returning callbacks so the public handler type stays honest.
+
+**Impact:** This avoids mock-hoist crashes and typecheck failures that only appear once the module graph is loaded the same way Vitest and `tsgo` see it.

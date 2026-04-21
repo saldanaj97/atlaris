@@ -2,21 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const {
   revalidatePathMock,
-  withServerActionContextMock,
-  setTaskProgressMock,
+  requestBoundaryActionMock,
   setTaskProgressBatchMock,
-  getLearningPlanDetailMock,
-  getPlanScheduleMock,
-  getDbMock,
+  getPlanDetailForReadMock,
   loggerMock,
 } = vi.hoisted(() => ({
   revalidatePathMock: vi.fn(),
-  withServerActionContextMock: vi.fn(),
-  setTaskProgressMock: vi.fn(),
+  requestBoundaryActionMock: vi.fn(),
   setTaskProgressBatchMock: vi.fn(),
-  getLearningPlanDetailMock: vi.fn(),
-  getPlanScheduleMock: vi.fn(),
-  getDbMock: vi.fn(),
+  getPlanDetailForReadMock: vi.fn(),
   loggerMock: {
     debug: vi.fn(),
     error: vi.fn(),
@@ -28,33 +22,20 @@ vi.mock('next/cache', () => ({
   revalidatePath: revalidatePathMock,
 }));
 
-vi.mock('@/lib/api/auth', () => ({
-  withServerActionContext: withServerActionContextMock,
-}));
-
-vi.mock('@/features/scheduling/schedule-api', () => ({
-  getPlanSchedule: getPlanScheduleMock,
-  ScheduleFetchError: class ScheduleFetchError extends Error {
-    code?: string;
-  },
-  SCHEDULE_FETCH_ERROR_CODE: {
-    PLAN_NOT_FOUND_OR_ACCESS_DENIED: 'PLAN_NOT_FOUND_OR_ACCESS_DENIED',
-    INVALID_WEEKLY_HOURS: 'INVALID_WEEKLY_HOURS',
-    SCHEDULE_GENERATION_FAILED: 'SCHEDULE_GENERATION_FAILED',
+vi.mock('@/lib/api/request-boundary', () => ({
+  requestBoundary: {
+    action: requestBoundaryActionMock,
   },
 }));
 
-vi.mock('@/lib/db/queries/plans', () => ({
-  getLearningPlanDetail: getLearningPlanDetailMock,
-}));
-
-vi.mock('@/lib/db/queries/tasks', () => ({
-  setTaskProgress: setTaskProgressMock,
+vi.mock('@/app/plans/[id]/server/task-progress-action-deps', () => ({
+  PROGRESS_STATUSES: ['todo', 'in-progress', 'completed'],
+  logger: loggerMock,
   setTaskProgressBatch: setTaskProgressBatchMock,
 }));
 
-vi.mock('@/lib/db/runtime', () => ({
-  getDb: getDbMock,
+vi.mock('@/features/plans/read-service', () => ({
+  getPlanDetailForRead: getPlanDetailForReadMock,
 }));
 
 vi.mock('@/lib/logging/logger', () => ({
@@ -83,9 +64,8 @@ describe('batchUpdateTaskProgressAction', () => {
       'Batch update limit exceeded: received 501 updates, but the maximum allowed is 500.'
     );
 
-    expect(withServerActionContextMock).not.toHaveBeenCalled();
+    expect(requestBoundaryActionMock).not.toHaveBeenCalled();
     expect(setTaskProgressBatchMock).not.toHaveBeenCalled();
-    expect(setTaskProgressMock).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });

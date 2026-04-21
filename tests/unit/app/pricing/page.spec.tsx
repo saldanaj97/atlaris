@@ -8,7 +8,7 @@ type FetchStripeTierDataArgs = Parameters<typeof fetchStripeTierData>[0];
 type PricingPageUser = ReturnType<typeof buildUserFixture>;
 
 const mocks = vi.hoisted(() => ({
-  withServerComponentContextMock: vi.fn(),
+  requestBoundaryComponentMock: vi.fn(),
   fetchStripeTierDataMock: vi.fn(),
   pricingGridMock: vi.fn(),
   pricingMissingStripeNoticeMock: vi.fn(),
@@ -23,8 +23,10 @@ const mocks = vi.hoisted(() => ({
 // This server-component spec intentionally uses module-level `vi.mock` because the
 // component under test resolves framework/server dependencies at import time.
 
-vi.mock('@/lib/api/auth', () => ({
-  withServerComponentContext: mocks.withServerComponentContextMock,
+vi.mock('@/lib/api/request-boundary', () => ({
+  requestBoundary: {
+    component: mocks.requestBoundaryComponentMock,
+  },
 }));
 
 vi.mock('@/features/billing/account-snapshot', () => ({
@@ -111,8 +113,16 @@ function subscriptionSnapshotFromUser(user: PricingPageUser) {
 }
 
 function mockAuthenticatedUser(user: PricingPageUser): void {
-  mocks.withServerComponentContextMock.mockImplementation(async (resolver) =>
-    resolver(user)
+  mocks.requestBoundaryComponentMock.mockImplementation(async (resolver) =>
+    resolver({
+      actor: user,
+      db: {} as never,
+      owned: {
+        userId: user.id,
+        dbClient: {} as never,
+      },
+      correlationId: 'test-correlation-id',
+    })
   );
   mocks.deriveBillingSubscriptionSnapshotMock.mockImplementation(
     (input: PricingPageUser) => subscriptionSnapshotFromUser(input)
@@ -140,7 +150,7 @@ describe('PricingPage', () => {
     vi.resetModules();
     vi.restoreAllMocks();
   });
-  it('uses withServerComponentContext to render an authenticated pricing page', async () => {
+  it('uses requestBoundary.component to render an authenticated pricing page', async () => {
     const user = buildUserFixture({
       stripeCustomerId: 'cus_local_test',
       subscriptionStatus: 'active',
@@ -153,7 +163,7 @@ describe('PricingPage', () => {
 
     await renderPricingPage();
 
-    expect(mocks.withServerComponentContextMock).toHaveBeenCalledTimes(1);
+    expect(mocks.requestBoundaryComponentMock).toHaveBeenCalledTimes(1);
     expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
       user
     );
@@ -233,7 +243,7 @@ describe('PricingPage', () => {
 
     await renderPricingPage();
 
-    expect(mocks.withServerComponentContextMock).toHaveBeenCalledTimes(1);
+    expect(mocks.requestBoundaryComponentMock).toHaveBeenCalledTimes(1);
     expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
       user
     );
@@ -245,7 +255,7 @@ describe('PricingPage', () => {
   });
 
   it('does not call deriveBillingSubscriptionSnapshot when the user is anonymous', async () => {
-    mocks.withServerComponentContextMock.mockResolvedValue(null);
+    mocks.requestBoundaryComponentMock.mockResolvedValue(null);
     mockStripeTierData();
 
     await renderPricingPage();

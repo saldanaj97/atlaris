@@ -9,18 +9,17 @@ import {
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
 import { listDashboardPlanSummaries } from '@/features/plans/read-service';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getDb } from '@/lib/db/runtime';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function DashboardContent(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
+  const result = await requestBoundary.component(async ({ actor, db }) => {
     const summaries = await listDashboardPlanSummaries({
-      userId: user.id,
-      dbClient: getDb(),
+      userId: actor.id,
+      dbClient: db,
     });
     return { summaries };
   });

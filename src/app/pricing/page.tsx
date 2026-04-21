@@ -13,7 +13,7 @@ import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionBut
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deriveBillingSubscriptionSnapshot } from '@/features/billing/account-snapshot';
-import { withServerComponentContext } from '@/lib/api/auth';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -82,8 +82,9 @@ async function loadStripeTierData(
 
 export default async function PricingPage(): Promise<ReactElement> {
   const canOpenBillingPortal =
-    (await withServerComponentContext(
-      (user) => deriveBillingSubscriptionSnapshot(user).canOpenBillingPortal
+    (await requestBoundary.component(
+      ({ actor }) =>
+        deriveBillingSubscriptionSnapshot(actor).canOpenBillingPortal
     )) ?? false;
   const monthlyPriceIds = getPaidTierPriceIds(MONTHLY_TIER_CONFIGS);
   const yearlyPriceIds = getPaidTierPriceIds(YEARLY_TIER_CONFIGS);

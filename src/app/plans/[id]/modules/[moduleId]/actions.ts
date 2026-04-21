@@ -25,8 +25,8 @@ import {
   type ProgressStatus,
   setTaskProgressBatch,
   tasks,
-  withServerActionContext,
 } from '@/app/plans/[id]/server/task-progress-action-deps';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 
 async function ensureBatchModuleTaskOwnership(
@@ -76,11 +76,11 @@ function assertNonEmpty(value: string | undefined, message: string) {
 export async function getModuleForPage(
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  const result = await withServerActionContext(async (user, rlsDb) => {
-    const moduleData = await getModuleDetail(moduleId, user.id, rlsDb);
+  const result = await requestBoundary.action(async ({ actor, db }) => {
+    const moduleData = await getModuleDetail(moduleId, actor.id, db);
     if (!moduleData) {
       logger.debug(
-        { moduleId, userId: user.id },
+        { moduleId, userId: actor.id },
         'Module not found or user does not have access'
       );
       return moduleError(
@@ -140,16 +140,16 @@ export async function batchUpdateModuleTaskProgressAction({
     }
   }
 
-  const result = await withServerActionContext(async (user, rlsDb) => {
+  const result = await requestBoundary.action(async ({ actor, db }) => {
     try {
       await ensureBatchModuleTaskOwnership(
-        rlsDb,
+        db,
         planId,
         moduleId,
         updates.map((u) => u.taskId),
-        user.id
+        actor.id
       );
-      await setTaskProgressBatch(user.id, updates, rlsDb);
+      await setTaskProgressBatch(actor.id, updates, db);
       revalidatePath(`/plans/${planId}/modules/${moduleId}`);
       revalidatePath(`/plans/${planId}`);
       revalidatePath('/plans');
@@ -158,7 +158,7 @@ export async function batchUpdateModuleTaskProgressAction({
         {
           planId,
           moduleId,
-          userId: user.id,
+          userId: actor.id,
           updateCount: updates.length,
           err: error,
         },

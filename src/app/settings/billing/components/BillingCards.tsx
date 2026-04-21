@@ -6,19 +6,18 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getDb } from '@/lib/db/runtime';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function BillingCards(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => ({
-    user,
+  const result = await requestBoundary.component(async ({ actor, db }) => ({
+    user: actor,
     snapshot: await getBillingAccountSnapshot({
-      userId: user.id,
-      dbClient: getDb(),
+      userId: actor.id,
+      dbClient: db,
     }),
   }));
 
