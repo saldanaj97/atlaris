@@ -3,16 +3,14 @@
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
-
-import type { NavItem } from '@/lib/navigation';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
-
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
 
 interface DesktopHeaderProps {

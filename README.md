@@ -32,19 +32,34 @@ pnpm install
 pnpm dev
 ```
 
+If you want to bring up the native local dev database and app together:
+
+```bash
+pnpm dev:full
+```
+
+Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the local PostgreSQL 17 service directly, and `pnpm db:dev:reset` if you want to recreate `atlaris_dev`.
+
 Open `http://localhost:3000` in your browser.
 
 ## Common commands
 
 ```bash
 pnpm dev
+pnpm dev:full
 pnpm build
-pnpm lint
-pnpm type-check
+pnpm check:full
+pnpm check:lint
+pnpm check:type
 pnpm test
 pnpm test:changed
-pnpm test:watch
+pnpm test:unit:changed
+pnpm test:unit:watch
+pnpm test:integration:changed
 pnpm test:integration
+pnpm test:security
+pnpm test:smoke
+pnpm test:all
 pnpm db:generate
 pnpm db:migrate
 pnpm db:push
@@ -79,13 +94,22 @@ src/
 
 ## Testing
 
-The default `pnpm test` command runs the unit suite through `./scripts/test-unit.sh`.
+The default `pnpm test` command runs a lightweight changed-only bundle: unit tests plus integration tests filtered to changed files.
 
-Use targeted integration runs instead of the full suite whenever possible:
+Use the explicit scoped commands for day-to-day work, and prefer targeted integration runs instead of the full suite whenever possible:
 
 ```bash
-./scripts/test-unit.sh path/to/file.spec.ts
-./scripts/test-integration.sh tests/integration/path/to/file.spec.ts
+pnpm test:changed
+pnpm test:unit:changed
+pnpm test:integration:changed
+```
+
+For direct file targeting:
+
+```bash
+pnpm exec tsx scripts/tests/run.ts changed
+pnpm exec tsx scripts/tests/run.ts unit path/to/file.spec.ts
+pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts
 ```
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing database, set `SKIP_TESTCONTAINERS=true` and provide a valid `DATABASE_URL`.

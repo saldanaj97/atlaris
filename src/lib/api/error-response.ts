@@ -1,24 +1,24 @@
-import type { FailureClassification } from '@/lib/types/client';
+import type { FailureClassification } from '@/shared/types/client.types';
 
-export interface ApiErrorResponse {
+type ApiErrorResponse = {
   error: string;
   code: string;
   classification?: FailureClassification;
   details?: unknown;
   retryAfter?: number;
-}
+};
 
-export interface ApiErrorResponseOptions {
+type ApiErrorResponseOptions = {
   status?: number;
   code?: string;
   classification?: FailureClassification;
   details?: unknown;
   retryAfter?: number;
-}
+};
 
-export interface ApiErrorJsonResponseOptions extends ApiErrorResponseOptions {
+type ApiErrorJsonResponseOptions = ApiErrorResponseOptions & {
   headers?: Record<string, string>;
-}
+};
 
 const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
   400: 'BAD_REQUEST',
@@ -35,7 +35,6 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
 
 const FAILURE_CLASSIFICATIONS = [
   'validation',
-  // State/resource-conflict errors (e.g., generation already in progress)
   'conflict',
   'provider_error',
   'rate_limit',
@@ -101,7 +100,7 @@ function asNonEmptyString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-export function isFailureClassification(
+function isFailureClassification(
   value: unknown
 ): value is FailureClassification {
   return (
@@ -129,6 +128,15 @@ function asRetryAfter(value: unknown): number | undefined {
   return undefined;
 }
 
+/**
+ * Normalize a JSON error body into the canonical {@link ApiErrorResponse}.
+ *
+ * The wire contract (documented in `src/lib/api/openapi.ts errorResponseSchema`)
+ * is a flat object: `{ error, code, classification?, details?, retryAfter? }`.
+ * If a third-party proxy ever emits a nested `{ error: { message } }` shape,
+ * the message degrades gracefully to `fallbackMessage` rather than digging
+ * into the nested object.
+ */
 export function normalizeApiErrorResponse(
   body: unknown,
   options: { status: number; fallbackMessage: string }
@@ -136,28 +144,19 @@ export function normalizeApiErrorResponse(
   const { status, fallbackMessage } = options;
 
   const root = asObject(body);
-  const nestedError = asObject(root?.error);
 
   const message =
     asNonEmptyString(root?.error) ??
     asNonEmptyString(root?.message) ??
-    asNonEmptyString(nestedError?.message) ??
     fallbackMessage;
 
-  const code =
-    asNonEmptyString(root?.code) ??
-    asNonEmptyString(nestedError?.code) ??
-    getDefaultErrorCode(status);
+  const code = asNonEmptyString(root?.code) ?? getDefaultErrorCode(status);
 
-  const classification =
-    asFailureClassification(root?.classification) ??
-    asFailureClassification(nestedError?.classification);
+  const classification = asFailureClassification(root?.classification);
 
-  const details =
-    root?.details !== undefined ? root.details : nestedError?.details;
+  const details = root?.details;
 
-  const retryAfter =
-    asRetryAfter(root?.retryAfter) ?? asRetryAfter(nestedError?.retryAfter);
+  const retryAfter = asRetryAfter(root?.retryAfter);
 
   return {
     error: message,

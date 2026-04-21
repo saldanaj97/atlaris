@@ -1,15 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { randomUUID } from 'node:crypto';
 import { desc, eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
-import { jobQueue, usageMetrics } from '@/lib/db/schema';
+import { generationAttempts, jobQueue, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -31,7 +31,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
   beforeEach(async () => {
     clearAllUserRateLimiters();
-    await resetDbForIntegrationTestFile();
   });
 
   it('enqueues regeneration with priority', async () => {
@@ -56,8 +55,8 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
     const body = await res.json();
     expect(body.status).toBe('pending');
-    expect(body.generationId).toBe(plan.id);
     expect(body.planId).toBe(plan.id);
+    expect(body.generationId).toBeUndefined();
 
     // Verify job was enqueued
     const jobs = await db
@@ -73,6 +72,66 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(['pending', 'processing']).toContain(job?.status);
     expect(job?.planId).toBe(plan.id);
     expect(job?.userId).toBe(userId);
+  });
+
+  it('does not create or renumber generation attempts when regeneration is only queued', async () => {
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: authEmail,
+      subscriptionTier: 'pro',
+    });
+
+    const plan = await createPlan(userId, {
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+    });
+
+    await db.insert(generationAttempts).values({
+      planId: plan.id,
+      status: 'failure',
+      classification: 'timeout',
+      durationMs: 1_000,
+      modulesCount: 0,
+      tasksCount: 0,
+      promptHash: `regen-existing-attempt-${randomUUID()}`,
+    });
+
+    const { request, context } = await createRequest(plan.id, {
+      overrides: { topic: 'queue only' },
+    });
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(202);
+
+    const jobs = await db
+      .select()
+      .from(jobQueue)
+      .where(eq(jobQueue.planId, plan.id))
+      .orderBy(desc(jobQueue.createdAt))
+      .limit(1);
+    const job = jobs[0];
+
+    expect(job).toBeDefined();
+    expect(job?.jobType).toBe('plan_regeneration');
+    expect(['pending', 'processing']).toContain(job?.status);
+    expect(job?.planId).toBe(plan.id);
+    expect(job?.userId).toBe(userId);
+
+    const attempts = await db
+      .select({
+        status: generationAttempts.status,
+        classification: generationAttempts.classification,
+      })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, plan.id))
+      .orderBy(desc(generationAttempts.createdAt));
+
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      status: 'failure',
+      classification: 'timeout',
+    });
   });
 
   it('rejects regeneration for non-existent plan', async () => {
@@ -120,6 +179,29 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
     const body = await res.json();
     expect(body.error).toBe('Learning plan not found.');
+  });
+
+  it('returns 400 with invalid JSON message when body is not JSON', async () => {
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: authEmail,
+      subscriptionTier: 'pro',
+    });
+
+    const plan = await createPlan(userId);
+
+    const request = new Request(`${BASE_URL}/${plan.id}/regenerate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{ not json',
+    });
+    const context = { params: Promise.resolve({ planId: plan.id }) };
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('Invalid JSON in request body.');
   });
 
   describe('invalid overrides schema', () => {

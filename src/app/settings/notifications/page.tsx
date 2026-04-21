@@ -1,7 +1,6 @@
+import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
-
-import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card } from '@/components/ui/card';

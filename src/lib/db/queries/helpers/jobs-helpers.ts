@@ -1,5 +1,8 @@
 import { and, eq, or } from 'drizzle-orm';
-
+import type {
+  ErrorHistoryEntry,
+  JobQueueRow,
+} from '@/lib/db/queries/types/jobs.types';
 import { jobQueue } from '@/lib/db/schema';
 import {
   JOB_TYPES,
@@ -7,12 +10,7 @@ import {
   type JobPayload,
   type JobResult,
   type JobType,
-} from '@/lib/jobs/types';
-
-import type {
-  ErrorHistoryEntry,
-  JobQueueRow,
-} from '@/lib/db/queries/types/jobs.types';
+} from '@/shared/types/jobs.types';
 
 const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
   new Set(Object.values(JOB_TYPES) as JobType[])

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-
 import {
-  getLearningPlanDetail,
-  getPlanAttemptsForUser,
-} from '@/lib/db/queries/plans';
+  getPlanDetailForRead,
+  listLightweightPlansForApi,
+} from '@/features/plans/read-service';
+import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { createTestPlan } from '../../fixtures/plans';
 import { createTestUser } from '../../fixtures/users';
@@ -45,23 +45,32 @@ describe('Plan Queries - Tenant Scoping', () => {
     });
   });
 
-  describe('getLearningPlanDetail', () => {
+  describe('getPlanDetailForRead', () => {
     it('returns plan detail for owner', async () => {
-      const detail = await getLearningPlanDetail(ownerPlanId, ownerId);
+      const detail = await getPlanDetailForRead({
+        planId: ownerPlanId,
+        userId: ownerId,
+      });
 
       expect(detail).not.toBeNull();
-      expect(detail?.plan.id).toBe(ownerPlanId);
-      expect(detail?.plan.userId).toBe(ownerId);
+      expect(detail?.id).toBe(ownerPlanId);
+      expect(detail?.topic).toBe(ownerPlanTopic);
     });
 
     it('returns null when accessing plan owned by another user (cross-tenant protection)', async () => {
-      const detail = await getLearningPlanDetail(ownerPlanId, attackerId);
+      const detail = await getPlanDetailForRead({
+        planId: ownerPlanId,
+        userId: attackerId,
+      });
 
       expect(detail).toBeNull();
     });
 
     it('returns null for non-existent plan', async () => {
-      const detail = await getLearningPlanDetail(NON_EXISTENT_PLAN_ID, ownerId);
+      const detail = await getPlanDetailForRead({
+        planId: NON_EXISTENT_PLAN_ID,
+        userId: ownerId,
+      });
 
       expect(detail).toBeNull();
     });
@@ -82,6 +91,18 @@ describe('Plan Queries - Tenant Scoping', () => {
       const result = await getPlanAttemptsForUser(ownerPlanId, attackerId);
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('pagination validation', () => {
+    it('rejects invalid lightweight summary pagination instead of silently clamping', async () => {
+      await expect(
+        listLightweightPlansForApi({ userId: ownerId, options: { limit: 0 } })
+      ).rejects.toThrow('limit must be an integer greater than or equal to 1');
+
+      await expect(
+        listLightweightPlansForApi({ userId: ownerId, options: { offset: -1 } })
+      ).rejects.toThrow('offset must be an integer greater than or equal to 0');
     });
   });
 });

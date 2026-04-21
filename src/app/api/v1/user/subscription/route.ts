@@ -1,88 +1,40 @@
-import type Stripe from 'stripe';
-
-import {
-  type PlainHandler,
-  withAuthAndRateLimit,
-  withErrorBoundary,
-} from '@/lib/api/auth';
+import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { getStripe } from '@/lib/stripe/client';
-import { getUsageSummary } from '@/lib/stripe/usage';
 
-const CANCEL_AT_PERIOD_END_SAFE_DEFAULT = false;
+export const GET: PlainHandler = withErrorBoundary(
+  withAuthAndRateLimit('read', async ({ user }) => {
+    try {
+      const snapshot = await getBillingAccountSnapshot({
+        userId: user.id,
+        dbClient: getDb(),
+      });
 
-async function getCancelAtPeriodEnd(
-  stripeSubscriptionId: string | null,
-  stripeInstance?: Stripe
-): Promise<boolean> {
-  if (!stripeSubscriptionId) {
-    return CANCEL_AT_PERIOD_END_SAFE_DEFAULT;
-  }
-
-  try {
-    const stripe = stripeInstance ?? getStripe();
-    const subscription =
-      await stripe.subscriptions.retrieve(stripeSubscriptionId);
-
-    if (subscription.cancel_at_period_end) {
-      return true;
-    }
-
-    if (typeof subscription.cancel_at === 'number') {
-      return subscription.cancel_at * 1000 > Date.now();
-    }
-
-    return false;
-  } catch (error) {
-    logger.warn(
-      {
-        stripeSubscriptionId,
-        error,
-      },
-      'Failed to resolve cancelAtPeriodEnd from Stripe; using safe default'
-    );
-
-    return CANCEL_AT_PERIOD_END_SAFE_DEFAULT;
-  }
-}
-
-/**
- * Factory for the subscription GET handler. Accepts an optional Stripe
- * client for tests; production uses getStripe() when omitted.
- */
-export function createSubscriptionGetHandler(
-  stripeInstance?: Stripe
-): PlainHandler {
-  return withErrorBoundary(
-    withAuthAndRateLimit('read', async ({ user }) => {
-      const db = getDb();
-      const usagePromise = getUsageSummary(user.id, db);
-      const cancelAtPeriodEndPromise = getCancelAtPeriodEnd(
-        user.stripeSubscriptionId,
-        stripeInstance
+      logger.info(
+        { userId: user.id, tier: snapshot.tier },
+        'Billing account snapshot retrieved'
       );
-      const [usage, cancelAtPeriodEnd] = await Promise.all([
-        usagePromise,
-        cancelAtPeriodEndPromise,
-      ]);
 
-      const response = {
-        tier: user.subscriptionTier,
-        status: user.subscriptionStatus,
-        periodEnd: user.subscriptionPeriodEnd?.toISOString() ?? null,
-        cancelAtPeriodEnd,
+      return json({
+        tier: snapshot.tier,
+        status: snapshot.subscriptionStatus,
+        periodEnd: snapshot.subscriptionPeriodEnd?.toISOString() ?? null,
+        cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
         usage: {
-          activePlans: usage.activePlans,
-          regenerations: usage.regenerations,
-          exports: usage.exports,
+          activePlans: snapshot.usage.activePlans,
+          regenerations: snapshot.usage.regenerations,
+          exports: snapshot.usage.exports,
         },
-      };
-
-      return json(response);
-    })
-  );
-}
-
-export const GET = createSubscriptionGetHandler();
+      });
+    } catch (error) {
+      logger.error(
+        { error, userId: user.id },
+        'Failed to load billing snapshot'
+      );
+      throw error;
+    }
+  })
+);

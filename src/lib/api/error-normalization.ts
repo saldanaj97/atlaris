@@ -3,21 +3,23 @@
  * into a consistent shape (message + optional status fields) for logging and persistence.
  */
 
-export interface AttemptErrorLike {
+import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
+
+type AttemptErrorLike = {
   message?: string;
   status?: number;
   statusCode?: number;
   httpStatus?: number;
-}
+};
 
-export type AttemptErrorResult = {
+type AttemptErrorResult = {
   message: string;
   status?: number;
   statusCode?: number;
   httpStatus?: number;
 };
 
-export function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
+function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
   if (obj === null || typeof obj !== 'object') {
     return false;
   }
@@ -82,47 +84,5 @@ export function toAttemptError(error: unknown): AttemptErrorResult {
     return result;
   }
 
-  return { message: 'Unknown retry generation error' };
-}
-
-export function stringifyThrownValue(value: unknown): string {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (
-    typeof value === 'number' ||
-    typeof value === 'boolean' ||
-    value === null ||
-    value === undefined
-  ) {
-    return String(value);
-  }
-
-  if (
-    typeof value === 'object' &&
-    'message' in value &&
-    typeof (value as { message?: unknown }).message === 'string'
-  ) {
-    return (value as { message: string }).message;
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return 'Unserializable thrown value';
-  }
-}
-
-/**
- * Ensures the value is an Error instance. Wraps non-Error thrown values in an Error.
- */
-export function normalizeThrownError(error: unknown): Error {
-  if (error instanceof Error) {
-    return error;
-  }
-
-  return new Error(
-    `Non-Error thrown during retry generation: ${stringifyThrownValue(error)}`
-  );
+  return { message: coerceUnknownToMessage(error) };
 }

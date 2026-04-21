@@ -1,23 +1,34 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
-import type Stripe from 'stripe';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
-import { db } from '@/lib/db/service-role';
-import { users } from '@/lib/db/schema';
+import { ensureUser } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
 } from '@/app/api/v1/stripe/create-checkout/route';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
 
 describe('POST /api/v1/stripe/create-checkout', () => {
+  const approvedStarterMonthlyPriceId = 'price_starter_monthly_approved';
+  const approvedStarterYearlyPriceId = 'price_starter_yearly_approved';
+  const approvedProMonthlyPriceId = 'price_pro_monthly_approved';
+  const approvedProYearlyPriceId = 'price_pro_yearly_approved';
+
   beforeEach(async () => {
-    await truncateAll();
     vi.clearAllMocks();
+    vi.stubEnv(
+      'STRIPE_STARTER_MONTHLY_PRICE_ID',
+      approvedStarterMonthlyPriceId
+    );
+    vi.stubEnv('STRIPE_PRO_MONTHLY_PRICE_ID', approvedProMonthlyPriceId);
+    vi.stubEnv('STRIPE_STARTER_YEARLY_PRICE_ID', approvedStarterYearlyPriceId);
+    vi.stubEnv('STRIPE_PRO_YEARLY_PRICE_ID', approvedProYearlyPriceId);
   });
 
   it('creates checkout session for new customer', async () => {
@@ -36,7 +47,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_test123',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -45,9 +56,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
-    const POST = createCreateCheckoutHandler(mockStripe);
+    const POST = createCreateCheckoutHandler({ stripe: mockStripe });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -58,7 +69,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
-          priceId: 'price_starter123',
+          priceId: approvedStarterMonthlyPriceId,
           successUrl: 'http://localhost:3000/success',
           cancelUrl: 'http://localhost:3000/cancel',
         }),
@@ -73,25 +84,27 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(body.sessionUrl).toBe('https://checkout.stripe.com/pay/cs_test123');
 
     // Verify customer was created
-    expect(createCustomer).toHaveBeenCalledWith({
-      email: 'new.checkout@example.com',
-      metadata: { userId },
-    });
+    expect(createCustomer).toHaveBeenCalledWith(
+      {
+        email: 'new.checkout@example.com',
+        metadata: { userId },
+      },
+      {
+        timeout: 10_000,
+      }
+    );
 
     // Verify checkout session was created
     expect(createCheckoutSession).toHaveBeenCalledWith({
       customer: 'cus_new123',
-      line_items: [{ price: 'price_starter123', quantity: 1 }],
+      line_items: [{ price: approvedStarterMonthlyPriceId, quantity: 1 }],
       mode: 'subscription',
       success_url: 'http://localhost:3000/success',
       cancel_url: 'http://localhost:3000/cancel',
     });
 
     // Verify customer ID was saved to DB
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(sql`id = ${userId}`);
+    const [user] = await db.select().from(users).where(sql`id = ${userId}`);
     expect(user?.stripeCustomerId).toBe('cus_new123');
   });
 
@@ -115,7 +128,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_test456',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -124,9 +137,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
-    const handlerPOST = createCreateCheckoutHandler(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -137,7 +150,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
-          priceId: 'price_pro123',
+          priceId: approvedProMonthlyPriceId,
         }),
       }
     );
@@ -176,7 +189,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       url: 'https://checkout.stripe.com/pay/cs_default123',
     });
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
@@ -185,9 +198,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           create: createCheckoutSession,
         },
       },
-    } as unknown as Stripe;
+    });
 
-    const handlerPOST = createCreateCheckoutHandler(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -198,7 +211,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           Origin: 'http://localhost:3000',
         },
         body: JSON.stringify({
-          priceId: 'price_test123',
+          priceId: approvedStarterMonthlyPriceId,
         }),
       }
     );
@@ -215,6 +228,59 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         cancel_url: 'http://localhost:3000/settings/billing',
       })
     );
+  });
+
+  it('returns 400 when body is not valid JSON', async () => {
+    await ensureUser({
+      authUserId: 'user_bad_json_checkout',
+      email: 'bad.json.checkout@example.com',
+    });
+
+    setTestUser('user_bad_json_checkout');
+
+    const request = new Request(
+      'http://localhost:3000/api/v1/stripe/create-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: '{ not json',
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid JSON in request body',
+    });
+  });
+
+  it('returns 400 when JSON body is empty but content-type is application/json', async () => {
+    await ensureUser({
+      authUserId: 'user_empty_json_checkout',
+      email: 'empty.json.checkout@example.com',
+    });
+
+    setTestUser('user_empty_json_checkout');
+
+    const request = new Request(
+      'http://localhost:3000/api/v1/stripe/create-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Invalid JSON in request body',
+    });
   });
 
   it('returns 400 when priceId is missing', async () => {
@@ -244,6 +310,52 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(body.error).toContain('priceId is required');
   });
 
+  it('returns 400 when priceId is not in the approved Stripe catalog', async () => {
+    await ensureUser({
+      authUserId: 'user_invalid_catalog_price',
+      email: 'invalid.catalog.price@example.com',
+    });
+
+    setTestUser('user_invalid_catalog_price');
+
+    const createCheckoutSession = vi.fn();
+    const mockStripe = makeStripeMock({
+      customers: {
+        create: vi.fn().mockResolvedValue({
+          id: 'cus_invalid_catalog',
+        }),
+      },
+      checkout: {
+        sessions: {
+          create: createCheckoutSession,
+        },
+      },
+    });
+
+    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+
+    const request = new Request(
+      'http://localhost:3000/api/v1/stripe/create-checkout',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId: 'price_tampered_not_allowed',
+        }),
+      }
+    );
+
+    const response = await handlerPOST(request);
+
+    expect(response.status).toBe(400);
+    expect(createCheckoutSession).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'priceId must match an approved billing plan',
+    });
+  });
+
   it('returns 401 when user not authenticated', async () => {
     setTestUser(''); // No user
 
@@ -255,7 +367,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: 'price_test123',
+          priceId: approvedStarterMonthlyPriceId,
         }),
       }
     );
@@ -283,7 +395,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: 'price_test123',
+          priceId: approvedStarterMonthlyPriceId,
         }),
       }
     );
@@ -305,13 +417,13 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       .fn()
       .mockRejectedValue(new Error('Stripe API error: Invalid request'));
 
-    const mockStripe = {
+    const mockStripe = makeStripeMock({
       customers: {
         create: createCustomer,
       },
-    } as unknown as Stripe;
+    });
 
-    const handlerPOST = createCreateCheckoutHandler(mockStripe);
+    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -321,7 +433,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: 'price_test123',
+          priceId: approvedStarterMonthlyPriceId,
         }),
       }
     );

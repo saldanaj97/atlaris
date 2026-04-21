@@ -7,8 +7,8 @@ import {
   getModelById,
   getModelsForTier,
   isValidModelId,
-} from '@/lib/ai/ai-models';
-import type { SubscriptionTier } from '@/lib/ai/types';
+} from '@/features/ai/ai-models';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 describe('AI Models Configuration', () => {
   describe('AVAILABLE_MODELS', () => {
@@ -180,13 +180,13 @@ describe('AI Models Configuration', () => {
       { tier: 'free', expectedMinCount: 1 },
       { tier: 'starter', expectedMinCount: 1 },
       { tier: 'pro', expectedMinCount: 2 },
-    ])(
-      '$tier tier returns at least $expectedMinCount models',
-      ({ tier, expectedMinCount }) => {
-        const models = getModelsForTier(tier);
-        expect(models.length).toBeGreaterThanOrEqual(expectedMinCount);
-      }
-    );
+    ])('$tier tier returns at least $expectedMinCount models', ({
+      tier,
+      expectedMinCount,
+    }) => {
+      const models = getModelsForTier(tier);
+      expect(models.length).toBeGreaterThanOrEqual(expectedMinCount);
+    });
   });
 
   describe('isValidModelId', () => {

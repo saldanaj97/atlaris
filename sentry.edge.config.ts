@@ -5,11 +5,14 @@
 
 import * as Sentry from '@sentry/nextjs';
 
+import { shouldEnableLogs, tracesSampler } from '@/lib/observability/sampling';
+
 Sentry.init({
   dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',
 
-  // Sample 10% of traces — 100% is wasteful pre-launch. Increase when you have real traffic.
-  tracesSampleRate: 0.1,
+  // Context-aware trace sampling — see src/lib/observability/sampling.ts for
+  // per-route rates and rationale.
+  tracesSampler,
 
   // Vercel AI integration (required for Edge - not enabled by default)
   integrations: (defaultIntegrations) => [
@@ -17,8 +20,9 @@ Sentry.init({
     Sentry.vercelAIIntegration(),
   ],
 
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
+  // SDK log shipping — disabled in production to reduce ingest volume.
+  // Errors are still captured via captureException.
+  enableLogs: shouldEnableLogs(),
 
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii

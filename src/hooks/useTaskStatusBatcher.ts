@@ -1,11 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-
+import { toast } from 'sonner';
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import type { ProgressStatus } from '@/lib/types/db';
-import { toast } from 'sonner';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface Resolver {
   resolve: () => void;

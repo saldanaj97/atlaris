@@ -1,81 +1,94 @@
+---
+description: 
+alwaysApply: false
+---
+
 # Tests Module
 
-**Parent:** [Root AGENTS.md](../../../AGENTS.md)
+**Parent:** [Root AGENTS.md](../AGENTS.md)
 
-## Overview
+## General Principles
 
-Vitest multi-project setup with 5 test types. DB reset between tests. Factories for test data.
+- Make sure to always update the test suite when making changes to the codebase, especially for critical paths like plan generation and billing.
+- Make sure to update the docs when making changes to the test suite, especially if you add new patterns or change existing ones.
+- Always run the relevant tests locally before marking any task as done, and use explicit scoped commands such as `pnpm test:unit:changed` or `pnpm test:integration:changed` to verify you are running the right tests.
+- After running the tests, update the `tests/results/<test-category>/<date>-results.md` file with the results of the tests.
+
+### Docs
+
+ALWAYS refer to these docs for testing standards and patterns when writing, auditing, or editing tests (this is non-negotiable):
+
+- [Test standards & principles](../docs/testing/test-standards.md) — test pyramid, RTL guidelines, PR checklist
+- [DB test patterns](../docs/testing/db-test-patterns.md) — Drizzle mocking, SQL capture, fixtures
+- [Playwright local smoke](../docs/testing/playwright-local-smoke.md) — disposable DB browser smoke architecture and ownership
 
 ## Structure
 
 ```
 tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
-│   ├── ai/
-│   ├── api/
-│   ├── components/
-│   ├── scheduling/
-│   └── setup.ts       # Unit-specific setup
 ├── integration/       # DB + service (sequential, isolated)
-│   ├── api/
-│   ├── db/
-│   ├── stripe/
-│   └── generation/
 ├── e2e/               # User journeys (sequential)
+├── playwright/        # Browser smoke tests (Playwright + disposable DB)
 ├── security/          # RLS policy verification (sequential)
-├── smoke/             # Startup checks (sequential)
-├── fixtures/          # Test data factories
+├── fixtures/          # Test data factories (users, plans, ids)
 ├── helpers/           # DB reset, test utilities
-│   └── db.ts          # truncateAll(), resetDbForIntegrationTestFile()
-├── mocks/
-│   ├── shared/        # Cross-test mocks (google-api)
-│   ├── unit/          # Unit test mocks
-│   └── e2e/           # E2E mocks
-├── setup/
-│   ├── test-env.ts          # Environment defaults
-│   └── testcontainers.ts    # Vitest globalSetup: ephemeral Postgres via Testcontainers
-└── setup.ts                 # Global setup (integration/e2e/security)
+├── mocks/             # shared/, unit/, e2e/
+├── setup/             # test-env.ts, testcontainers.ts
+└── setup.ts           # Global setup (integration/e2e/security)
 ```
+
+## Import paths
+
+Use the same path aliases as the rest of the repo instead of long `../../../../` chains:
+
+- **`@/`** — application code under `src/` (e.g. components under test, shared modules). Matches production import style.
+- **`@tests/`** — anything under `tests/` (fixtures, `helpers/`, `mocks/`, shared test utilities). Example: `@tests/helpers/deferred-promise`, `@tests/mocks/unit/client-logger.unit`, `@tests/fixtures/plans`.
+
+Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases` (`vitest.config.ts`) so unit tests resolve them reliably. When a file must load side-effect mocks **before** other imports, keep that order; if Biome’s `organizeImports` would break it, use a targeted `biome-ignore` (see root `docs/agent-context/learnings.md`).
 
 ## Test Types
 
-| Type        | Config                | Concurrency | DB  | Timeout |
+| Type        | Setup                 | Concurrency | DB  | Timeout |
 | ----------- | --------------------- | ----------- | --- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel    | No  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential  | Yes | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential  | Yes | 90s     |
 | Security    | `tests/setup.ts`      | Sequential  | Yes | 90s     |
-| Smoke       | —                     | Sequential  | No  | 90s     |
+| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s     |
 
 ## Commands
 
 ```bash
-pnpm test                              # Unit tests only
-pnpm test:changed                      # Changed files
-pnpm test:integration                  # Integration tests (full suite)
-RUN_RLS_TESTS=1 pnpm exec vitest run --project security tests/security/  # Security (RLS) tests
-./scripts/test-unit.sh path/to/file    # Single unit test file
+pnpm test                              # Changed unit + integration bundle
+pnpm test:changed                      # Explicit alias for changed unit + integration bundle
+pnpm test:unit                         # Unit tests only
+pnpm test:unit:changed                 # Changed unit tests
+pnpm test:unit:watch                   # Watch unit tests
+pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
+pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
+pnpm test:integration:changed          # Changed integration tests
+pnpm test:integration                  # Full integration suite
+pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
+pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
+pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
+pnpm test:smoke -- --project smoke-auth  # Auth-only smoke iteration
+pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
 ```
 
-### Running a Single Integration Test File
+**Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
+**Prerequisite for smoke tests:** Docker must be running and Playwright Chromium must be installed (`pnpm exec playwright install chromium`).
 
-Testcontainers spins up a Postgres container automatically — no manual Docker required.
+## Browser Smoke Ownership
 
-```bash
-# Via script (recommended)
-./scripts/test-integration.sh tests/integration/db/plans.spec.ts
-
-# Via vitest directly
-NODE_ENV=test pnpm vitest run --project integration tests/integration/db/plans.spec.ts
-
-# Legacy Docker Compose mode (if needed)
-./scripts/test-integration.sh tests/integration/db/plans.spec.ts --docker
-```
-
-The container starts once, runs the targeted file, then tears down. Use this for
-quick iteration instead of running the full integration suite.
-
-**Prerequisite:** Docker must be running (Testcontainers talks to the Docker daemon).
+- `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
+- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
+- Playwright owns both app servers; do not start smoke servers manually for normal runs.
+- `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
+- Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` limited to entrypoints.
+- Do not touch `.env.local` for smoke runs. Mode selection comes from launcher-owned process env only.
+- Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
+- Keep the auth browser lane deterministic. The current local runner stays serial for stability; do not re-enable project-level parallelism casually.
 
 To skip Testcontainers and use an existing database (e.g. CI):
 
@@ -83,119 +96,49 @@ To skip Testcontainers and use an existing database (e.g. CI):
 SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
 ```
 
-## Local Development Testing
-
-**NEVER run integration tests locally unless specifically requested by the user.**
-
-**NEVER run `pnpm test:all` unless absolutely necessary.**
-
 ## DB Lifecycle (Integration/E2E/Security)
 
-```typescript
-// tests/setup.ts
-beforeEach(async () => {
-  await resetDbForIntegrationTestFile(); // Truncates all tables
-  await ensureStripeWebhookEvents(); // Ensures required tables exist
-  // ...
-});
+`tests/setup/db.ts` runs `waitForInlineRegenerationDrains()` then `resetDbForIntegrationTestFile()` in `beforeEach` to avoid leaked regeneration drains racing the next test, then truncates all tables. Guardrails prevent truncating non-test databases.
 
-afterEach(() => {
-  cleanup(); // React Testing Library
-});
-```
+Integration Vitest workers default to **4** (`vitest.config.ts`); override with `INTEGRATION_MAX_WORKERS` (e.g. `2` for a slower, lighter run). `SKIP_TESTCONTAINERS=true` still forces a single worker.
 
-Guardrails prevent truncating non-test databases.
+CI honors the same env var. Both `ci-pr.yml :: integration-light` and `ci-trunk.yml :: integration-tests` resolve `INTEGRATION_MAX_WORKERS` as: `workflow_dispatch` input `integration_workers` ⟶ repo variable `INTEGRATION_MAX_WORKERS` ⟶ default `'4'`. To globally drop CI to a 2-worker fallback without code edits, set the **repo variable** `INTEGRATION_MAX_WORKERS=2` (Settings → Variables → Actions). For a one-off rerun, dispatch the workflow with `integration_workers=2`. The dispatch input `test_db_debug=true` enables `[Test DB] worker N -> atlaris_test_wN` logging via `shouldLogTestDbDebug()` for that run.
 
-## Writing Tests
+Unless set in the environment, `tests/setup/test-env.ts` sets `REGENERATION_INLINE_PROCESSING=false` so specs opt in explicitly when they need inline queue drains.
 
-### Unit Tests
+## Do's and Don'ts
 
-```typescript
-// tests/unit/scheduling/distribute.spec.ts
-import { describe, it, expect } from 'vitest';
-import { distributeTasks } from '@/lib/scheduling/distribute';
+### Do
 
-describe('distributeTasks', () => {
-  it('distributes evenly across available slots', () => {
-    const result = distributeTasks(tasks, slots);
-    expect(result).toHaveLength(slots.length);
-  });
-});
-```
+- **Test behavior, not implementation** — assert outputs, side effects, and user-visible results
+- **Inject dependencies** — pass mock clients/providers as function args (`{ provider: vi.fn() }`)
+- **Use factories** — `buildUserFixture()`, `createTestPlan()`, `createId()` from `tests/fixtures/`
+- **One assertion focus per test** — each test should fail for one clear reason
+- **Use semantic queries for UI** — `getByRole`, `getByLabelText`, `findByRole` (in that priority order)
+- **Use `findBy*` for async UI** — not `waitFor` unless no specific element to wait on
+- **Use `it.each` for many cases** — table-driven tests keep branching logic coverage clean
+- **Make time/randomness injectable** — pass `now`/`clock`/`idGenerator` into functions
+- **Run only what you changed** — `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted script file
+- **Verify after changes** — run the most specific changed-scope command before marking any task done
+- **Use `seedFailedAttemptsForDurableWindow()`** for durable generation-window tests (from `tests/fixtures/attempts.ts`)
 
-No DB, no mocks if possible. Inject dependencies.
+### Don't
 
-### Integration Tests
+- **Don't run `pnpm test:all` or the full integration suite locally** — target specific files
+- **Don't use `vi.mock()` when you can inject** — frequent module mocking signals bad boundaries
+- **Don't hardcode IDs** — always use factories or `createId()`
+- **Don't assert on CSS classes** — no `toHaveClass('flex')`, use roles/labels/attributes instead
+- **Don't use `setTimeout`/sleep for async** — use `waitFor` or `findBy*`
+- **Don't depend on test execution order** — each test must pass in isolation
+- **Don't snapshot dynamic content** — snapshots on large DOM trees or changing data are brittle
+- **Don't over-assert full objects** — assert the contract (status, shape, key fields), not every property
+- **Don't test framework glue** — skip Next.js handler wrappers, router wiring, component library internals
+- **Don't copy-paste mock objects** — extract to factories or shared builders in `tests/fixtures/`
+- **Don't write tests just for coverage numbers** — prioritize branches, error paths, and high-risk modules
 
-```typescript
-// tests/integration/db/plans.spec.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { createTestUser, createTestPlan } from '@/tests/fixtures';
+## Security Tests (RLS)
 
-describe('Plan queries', () => {
-  let userId: string;
-
-  beforeEach(async () => {
-    // DB already reset by setup.ts
-    const user = await createTestUser();
-    userId = user.id;
-  });
-
-  it('creates plan with modules', async () => {
-    const plan = await createTestPlan({ userId });
-    expect(plan.modules).toHaveLength(3);
-  });
-});
-```
-
-## Factories
-
-```typescript
-// tests/fixtures or inline
-export async function createTestUser(overrides = {}) {
-  return db
-    .insert(users)
-    .values({
-      authUserId: `user_${nanoid()}`,
-      email: `test-${nanoid()}@example.com`,
-      ...overrides,
-    })
-    .returning();
-}
-```
-
-Always use factories, never hardcoded IDs.
-
-For durable generation-window tests, use `seedFailedAttemptsForDurableWindow()` and `getDurableWindowSeedCount()` from `tests/fixtures/attempts.ts` instead of hardcoded numeric caps.
-
-## Mocking
-
-Prefer dependency injection over `vi.mock()`:
-
-```typescript
-// Good: DI
-const mockProvider = { generate: vi.fn() };
-await runGenerationAttempt(ctx, { provider: mockProvider });
-
-// Avoid: Module mock
-vi.mock('@/lib/ai/provider-factory');
-```
-
-Shared mocks in `tests/mocks/shared/` (e.g., Google API rate limiter).
-
-## Anti-Patterns
-
-- Running full test suite
-- Depending on test execution order
-- Hardcoding IDs (use factories)
-- Asserting on CSS classes
-- Using `setTimeout` for async (use `waitFor`)
-- Mocking what you can inject
-
-## Security Test Expectations (RLS)
-
-- Verify anonymous cannot read user-facing app data
-- Verify anonymous write attempts fail on user-owned tables
-- Verify authenticated users keep existing own-data behavior
-- Verify `pg_policies` metadata for user-facing tables is `authenticated`-scoped and not `PUBLIC`
+- Anonymous cannot read user-facing data
+- Anonymous write attempts fail on user-owned tables
+- Authenticated users retain own-data access
+- `pg_policies` metadata is `authenticated`-scoped, not `PUBLIC`

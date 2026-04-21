@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-
+import { describe, expect, it } from 'vitest';
+import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
   getFailedJobs,
@@ -7,13 +7,9 @@ import {
 } from '@/lib/db/queries/jobs';
 import { jobQueue } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/lib/jobs/types';
-import { ensureUser, resetDbForIntegrationTestFile } from '../helpers/db';
+import { ensureUser } from '../helpers/db';
 
 describe('Monitoring Queries', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
   describe('getJobStats', () => {
     it('should return correct counts and statistics for jobs', async () => {
       // T060: Monitoring queries test
@@ -31,7 +27,7 @@ describe('Monitoring Queries', () => {
       await db.insert(jobQueue).values([
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'pending',
           payload: { test: 'data1' },
           createdAt: oneHourAgo,
@@ -39,7 +35,7 @@ describe('Monitoring Queries', () => {
         },
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'pending',
           payload: { test: 'data2' },
           createdAt: oneHourAgo,
@@ -50,7 +46,7 @@ describe('Monitoring Queries', () => {
       // 1 processing job
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'data3' },
         startedAt: new Date(now.getTime() - 5 * 1000), // started 5s ago
@@ -62,7 +58,7 @@ describe('Monitoring Queries', () => {
       const completedJobs = [
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'completed' as const,
           payload: { test: 'data4' },
           startedAt: new Date(now.getTime() - 10 * 1000), // 10s duration
@@ -73,7 +69,7 @@ describe('Monitoring Queries', () => {
         },
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'completed' as const,
           payload: { test: 'data5' },
           startedAt: new Date(now.getTime() - 20 * 1000), // 20s duration
@@ -84,7 +80,7 @@ describe('Monitoring Queries', () => {
         },
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'completed' as const,
           payload: { test: 'data6' },
           startedAt: new Date(now.getTime() - 30 * 1000), // 30s duration
@@ -101,7 +97,7 @@ describe('Monitoring Queries', () => {
       const failedJobs = [
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'failed' as const,
           payload: { test: 'data7' },
           error: 'Test error 1',
@@ -112,7 +108,7 @@ describe('Monitoring Queries', () => {
         },
         {
           userId,
-          jobType: JOB_TYPES.PLAN_GENERATION,
+          jobType: JOB_TYPES.PLAN_REGENERATION,
           status: 'failed' as const,
           payload: { test: 'data8' },
           error: 'Test error 2',
@@ -154,7 +150,7 @@ describe('Monitoring Queries', () => {
       // Old job (2 hours ago)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'old' },
         startedAt: twoHoursAgo,
@@ -167,7 +163,7 @@ describe('Monitoring Queries', () => {
       // Recent job (30 min ago)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'recent' },
         startedAt: oneHourAgo,
@@ -205,7 +201,7 @@ describe('Monitoring Queries', () => {
       // Create 5 failed jobs with different timestamps (batched insert)
       const failedJobsRows = timestamps.map((ts, i) => ({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'failed' as const,
         payload: { test: `data${i}` },
         error: `Error message ${i}`,
@@ -241,7 +237,7 @@ describe('Monitoring Queries', () => {
       // Create only successful jobs
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'data' },
         result: { success: true },
@@ -271,7 +267,7 @@ describe('Monitoring Queries', () => {
       // Old completed job (should be deleted)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'old-completed' },
         completedAt: twoWeeksAgo,
@@ -283,7 +279,7 @@ describe('Monitoring Queries', () => {
       // Old failed job (should be deleted)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'failed',
         payload: { test: 'old-failed' },
         error: 'Old error',
@@ -295,7 +291,7 @@ describe('Monitoring Queries', () => {
       // Recent completed job (should remain)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'recent-completed' },
         completedAt: oneDayAgo,
@@ -307,7 +303,7 @@ describe('Monitoring Queries', () => {
       // Pending job (should remain regardless of age)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'pending',
         payload: { test: 'old-pending' },
         createdAt: twoWeeksAgo,
@@ -317,7 +313,7 @@ describe('Monitoring Queries', () => {
       // Processing job (should remain regardless of age)
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'processing',
         payload: { test: 'old-processing' },
         startedAt: twoWeeksAgo,
@@ -360,7 +356,7 @@ describe('Monitoring Queries', () => {
       // Recent completed job
       await db.insert(jobQueue).values({
         userId,
-        jobType: JOB_TYPES.PLAN_GENERATION,
+        jobType: JOB_TYPES.PLAN_REGENERATION,
         status: 'completed',
         payload: { test: 'recent' },
         completedAt: now,

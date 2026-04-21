@@ -1,19 +1,30 @@
-import { usePlanStatus } from '@/hooks/usePlanStatus';
-import { clientLogger } from '@/lib/logging/client';
-import { PLAN_STATUSES } from '@/lib/types/client';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { usePlanStatus } from '@/hooks/usePlanStatus';
+import { clientLogger } from '@/lib/logging/client';
+import { INITIAL_POLL_MS } from '@/shared/constants/polling';
+import { PLAN_STATUSES } from '@/shared/types/client';
 import {
   createMockFetchResponse,
   createPlanStatusResponse,
 } from '../../fixtures/plan-status';
+
+/**
+ * With Math.random() mocked to 0.5, jitter factor is exactly 1.0
+ * so delays are deterministic: computeNextDelay(d) = min(d * 1.5, 10000)
+ */
+const FIRST_BACKOFF = 1500; // computeNextDelay(1000) = 1000 * 1.5
+const SECOND_BACKOFF = 2250; // computeNextDelay(1500) = 1500 * 1.5
+const THIRD_BACKOFF = 3375; // computeNextDelay(2250) = 2250 * 1.5
 
 describe('usePlanStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(clientLogger, 'error').mockImplementation(() => undefined);
     vi.spyOn(clientLogger, 'warn').mockImplementation(() => undefined);
+    // Deterministic jitter: Math.random() = 0.5 → jitter multiplier = 1.0
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
   });
 
   afterEach(() => {
@@ -137,7 +148,7 @@ describe('usePlanStatus', () => {
     });
   });
 
-  it('should poll every 3 seconds when status is pending', async () => {
+  it('should poll with exponential backoff when status is pending', async () => {
     vi.useFakeTimers();
 
     const mockFetch = vi
@@ -152,20 +163,20 @@ describe('usePlanStatus', () => {
     });
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    // First poll after 3 seconds
+    // First poll after FIRST_BACKOFF (1500ms with no jitter)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
-    // Second poll after another 3 seconds
+    // Second poll after SECOND_BACKOFF (2250ms with no jitter)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
-  it('should poll every 3 seconds when status is processing', async () => {
+  it('should poll with exponential backoff when status is processing', async () => {
     vi.useFakeTimers();
 
     const mockFetch = vi
@@ -184,9 +195,9 @@ describe('usePlanStatus', () => {
     });
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    // First poll after 3 seconds
+    // First poll after FIRST_BACKOFF
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
@@ -241,7 +252,7 @@ describe('usePlanStatus', () => {
 
     // Should continue polling despite error — advance to trigger second fetch
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
@@ -281,7 +292,7 @@ describe('usePlanStatus', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
@@ -289,6 +300,39 @@ describe('usePlanStatus', () => {
     expect(result.current.isPolling).toBe(true);
     expect(clientLogger.warn).toHaveBeenCalledTimes(1);
     expect(clientLogger.error).not.toHaveBeenCalled();
+  });
+
+  it('should stop polling after max consecutive retriable failures', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'Service unavailable' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch)
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    expect(result.current.pollingError).toBe('Service unavailable');
+    expect(result.current.isPolling).toBe(false);
+    expect(clientLogger.error).toHaveBeenCalled();
   });
 
   it('should handle network errors without stopping polling', async () => {
@@ -315,7 +359,7 @@ describe('usePlanStatus', () => {
 
     // Should continue polling despite error — advance to trigger second fetch
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(2);
 
@@ -363,7 +407,7 @@ describe('usePlanStatus', () => {
     });
   });
 
-  it('should clean up polling interval on unmount', async () => {
+  it('should clean up polling timeout on unmount', async () => {
     vi.useFakeTimers();
 
     const mockFetch = vi
@@ -420,16 +464,17 @@ describe('usePlanStatus', () => {
     expect(result.current.status).toBe('pending');
     expect(result.current.isPolling).toBe(true);
 
-    // Second fetch - processing
+    // Second fetch - processing (after FIRST_BACKOFF from pending)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(result.current.status).toBe('processing');
     expect(result.current.isPolling).toBe(true);
 
-    // Third fetch - ready (should stop polling)
+    // Status changed: pending → processing, so backoff resets to INITIAL_POLL_MS.
+    // Third fetch after INITIAL_POLL_MS (reset on transition)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(INITIAL_POLL_MS);
     });
     expect(result.current.status).toBe('ready');
     expect(result.current.isPolling).toBe(false);
@@ -439,6 +484,55 @@ describe('usePlanStatus', () => {
       await vi.advanceTimersByTimeAsync(10000);
     });
     expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('should reset backoff delay on status transitions', async () => {
+    vi.useFakeTimers();
+
+    let callCount = 0;
+    const mockFetch = vi.fn().mockImplementation(async () => {
+      callCount++;
+      // Calls 1-3: pending (build up backoff)
+      // Call 4: processing (trigger reset)
+      if (callCount <= 3) {
+        return createMockFetchResponse(createPlanStatusResponse());
+      }
+      return createMockFetchResponse(
+        createPlanStatusResponse({ status: 'processing' })
+      );
+    });
+
+    renderHook(() => usePlanStatus('plan-123', 'pending', mockFetch));
+
+    // Immediate fetch (call 1)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    // After FIRST_BACKOFF=1500 (call 2)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    // After SECOND_BACKOFF=2250 (call 3)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    // Next backoff would be 3375ms, but status changes → resets to INITIAL_POLL_MS
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(THIRD_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+
+    // After transition, backoff resets: next poll should be at INITIAL_POLL_MS (1000ms)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(INITIAL_POLL_MS);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(5);
   });
 });
 

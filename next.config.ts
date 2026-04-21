@@ -12,14 +12,17 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
+const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
+const allowedDevOrigins = ['127.0.0.1', 'localhost'];
+
 const nextConfig: NextConfig = {
+  allowedDevOrigins,
+  distDir: smokeDistDir && smokeDistDir.length > 0 ? smokeDistDir : undefined,
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns'],
   },
   serverExternalPackages: [
-    'pdf-parse',
-    'pdfjs-dist',
     'postgres',
     'pino',
     'pino-std-serializers',
@@ -51,7 +54,7 @@ export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
 
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  // Upload a larger set of source maps for more readable stack traces (increases build time)
   widenClientFileUpload: true,
 
   // Tunnel route disabled — unnecessary pre-launch and keeps server/DB warm for no reason.

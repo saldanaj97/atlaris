@@ -1,50 +1,65 @@
-import { derivePlanStatus } from '@/lib/plans/status';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/generation-policy';
+import { derivePlanReadStatus } from '@/features/plans/status/read-status';
 
-describe('derivePlanStatus', () => {
+describe('derivePlanReadStatus', () => {
   it('returns ready when modules exist even if status is generating', () => {
     expect(
-      derivePlanStatus({ generationStatus: 'generating', hasModules: true })
+      derivePlanReadStatus({ generationStatus: 'generating', hasModules: true })
     ).toBe('ready');
   });
 
   it('returns ready when generation status is ready without modules', () => {
     expect(
-      derivePlanStatus({ generationStatus: 'ready', hasModules: false })
+      derivePlanReadStatus({ generationStatus: 'ready', hasModules: false })
     ).toBe('ready');
   });
 
   it('returns pending when generation status is ready without modules and attempts are below cap', () => {
     expect(
-      derivePlanStatus({
+      derivePlanReadStatus({
         generationStatus: 'ready',
         hasModules: false,
-        attemptsCount: 2,
-        attemptCap: 3,
+        attemptsCount: DEFAULT_ATTEMPT_CAP - 1,
+        attemptCap: DEFAULT_ATTEMPT_CAP,
       })
     ).toBe('pending');
   });
 
   it('returns failed when generation status is ready without modules and attempts reached cap', () => {
     expect(
-      derivePlanStatus({
+      derivePlanReadStatus({
         generationStatus: 'ready',
         hasModules: false,
-        attemptsCount: 3,
-        attemptCap: 3,
+        attemptsCount: DEFAULT_ATTEMPT_CAP,
+        attemptCap: DEFAULT_ATTEMPT_CAP,
       })
     ).toBe('failed');
   });
 
   it('returns failed when generation status is failed', () => {
     expect(
-      derivePlanStatus({ generationStatus: 'failed', hasModules: false })
+      derivePlanReadStatus({ generationStatus: 'failed', hasModules: false })
     ).toBe('failed');
   });
 
   it('returns processing while generation is active and modules are absent', () => {
     expect(
-      derivePlanStatus({ generationStatus: 'generating', hasModules: false })
+      derivePlanReadStatus({
+        generationStatus: 'generating',
+        hasModules: false,
+      })
     ).toBe('processing');
+  });
+
+  it('returns pending when ready plans are still below the retry cap', () => {
+    expect(
+      derivePlanReadStatus({
+        generationStatus: 'ready',
+        hasModules: false,
+        attemptsCount: 1,
+        attemptCap: DEFAULT_ATTEMPT_CAP,
+      })
+    ).toBe('pending');
   });
 });

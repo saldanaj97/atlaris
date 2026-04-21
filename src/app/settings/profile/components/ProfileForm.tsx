@@ -1,18 +1,17 @@
 'use client';
 
+import { Pencil } from 'lucide-react';
 import Link from 'next/link';
 import {
+  type ReactElement,
   useCallback,
   useEffect,
   useReducer,
   useRef,
-  type ReactElement,
 } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-import { Pencil } from 'lucide-react';
-
+import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,8 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-
-import { ProfileFormSkeleton } from '@/app/settings/profile/components/ProfileFormSkeleton';
 
 const profileSchema = z.object({
   id: z.string(),
@@ -378,6 +375,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
         <div className="space-y-4">
           <div>
             <Label
+              id="profile-name-label"
               htmlFor="profile-name"
               className="text-muted-foreground mb-1"
             >
@@ -402,12 +400,16 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               <Button
                 type="button"
                 variant="outline"
+                aria-labelledby="profile-name-label profile-name-value"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
                 onClick={() => {
                   dispatch({ type: 'start-editing' });
                 }}
               >
-                <span className={state.name ? '' : 'text-muted-foreground'}>
+                <span
+                  id="profile-name-value"
+                  className={state.name ? '' : 'text-muted-foreground'}
+                >
                   {state.name || 'No name set'}
                 </span>
                 <Pencil className="text-muted-foreground h-4 w-4 shrink-0" />

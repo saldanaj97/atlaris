@@ -1,6 +1,5 @@
+import { Check, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
-
-import { Check } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,30 +13,64 @@ export interface IntegrationCardProps {
   icon: string;
   status: IntegrationStatus;
   features: string[];
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  loading?: boolean;
 }
 
 function StatusBadge({ status }: { status: IntegrationStatus }) {
   switch (status) {
     case 'available':
-      return <Badge variant="secondary">Available</Badge>;
+      return (
+        <Badge variant="secondary" role="status" aria-label="Available">
+          Available
+        </Badge>
+      );
     case 'coming_soon':
-      return <Badge variant="outline">Coming Soon</Badge>;
+      return (
+        <Badge variant="outline" role="status" aria-label="Coming Soon">
+          Coming Soon
+        </Badge>
+      );
     case 'connected':
       return (
-        <Badge variant="default">
-          <span className="mr-1 inline-block h-2 w-2 rounded-full bg-green-400" />
+        <Badge variant="default" role="status" aria-label="Connected">
+          <span className="bg-success mr-1 inline-block h-2 w-2 rounded-full" />
           Connected
         </Badge>
       );
   }
 }
 
-function ActionButton({ status }: { status: IntegrationStatus }) {
+function ActionButton({
+  status,
+  onConnect,
+  onDisconnect,
+  loading,
+}: {
+  status: IntegrationStatus;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  loading?: boolean;
+}) {
+  const isDisabled =
+    loading ||
+    (status === 'available' && onConnect == null) ||
+    (status === 'connected' && onDisconnect == null);
+
   switch (status) {
     case 'available':
       return (
-        // TODO: Implement OAuth/connection flow
-        <Button variant="default">Connect</Button>
+        <Button variant="default" onClick={onConnect} disabled={isDisabled}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Connecting…
+            </>
+          ) : (
+            'Connect'
+          )}
+        </Button>
       );
     case 'coming_soon':
       return (
@@ -47,8 +80,16 @@ function ActionButton({ status }: { status: IntegrationStatus }) {
       );
     case 'connected':
       return (
-        // TODO: Implement manage/disconnect flow
-        <Button variant="outline">Manage</Button>
+        <Button variant="outline" onClick={onDisconnect} disabled={isDisabled}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Disconnecting…
+            </>
+          ) : (
+            'Disconnect'
+          )}
+        </Button>
       );
   }
 }
@@ -59,9 +100,16 @@ export function IntegrationCard({
   icon,
   status,
   features,
+  onConnect,
+  onDisconnect,
+  loading,
 }: IntegrationCardProps): JSX.Element {
   return (
-    <Card className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10">
+    <Card
+      role="region"
+      aria-label={name}
+      className="dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10"
+    >
       <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
 
       <div className="relative flex flex-col gap-5">
@@ -88,7 +136,7 @@ export function IntegrationCard({
               key={feature}
               className="text-muted-foreground flex items-center gap-2 text-sm"
             >
-              <Check className="h-4 w-4 shrink-0 text-green-500" />
+              <Check className="text-success h-4 w-4 shrink-0" />
               {feature}
             </li>
           ))}
@@ -96,7 +144,12 @@ export function IntegrationCard({
 
         {/* Action */}
         <div className="pt-2">
-          <ActionButton status={status} />
+          <ActionButton
+            status={status}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+            loading={loading}
+          />
         </div>
       </div>
     </Card>

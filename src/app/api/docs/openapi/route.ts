@@ -1,8 +1,8 @@
 import { toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { appEnv } from '@/lib/config/env';
+import { getOpenApiDocument } from '@/lib/api/openapi';
 import { json } from '@/lib/api/response';
-import { getOpenApiDocument } from '@/lib/api/openapi/schema';
+import { appEnv } from '@/lib/config/env';
 
 export const GET = async (request: Request) => {
   if (!appEnv.isDevelopment && !appEnv.isTest) {
@@ -15,7 +15,7 @@ export const GET = async (request: Request) => {
     return toErrorResponse(error);
   }
 
-  const document = getOpenApiDocument();
+  const document = await getOpenApiDocument();
 
   return json(document);
 };

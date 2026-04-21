@@ -1,12 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
-
-import { type PlainHandler, withErrorBoundary } from '@/lib/api/auth';
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
+import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
-import getRequestContext from '@/lib/logging/request-context';
+import { getRequestContext } from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization');

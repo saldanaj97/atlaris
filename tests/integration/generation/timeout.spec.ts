@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
@@ -8,7 +8,6 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -61,8 +60,12 @@ describe('generation integration - timeout classification', () => {
       .where(eq(modules.planId, plan.id));
     expect(modulesCount.length).toBe(0);
 
-    const tasksCount = await db.select({ value: tasks.id }).from(tasks);
-    expect(tasksCount.length).toBe(0);
+    const taskRows = await db
+      .select({ value: tasks.id })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(eq(modules.planId, plan.id));
+    expect(taskRows.length).toBe(0);
 
     const [attempt] = await db
       .select()

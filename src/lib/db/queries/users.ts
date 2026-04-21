@@ -1,14 +1,14 @@
+import { eq } from 'drizzle-orm';
 import { getRequestContext } from '@/lib/api/context';
-import { isValidModelId } from '@/lib/ai/ai-models';
+import type { PreferredAiModel } from '@/lib/db/enums';
 import type {
   CreateUserData,
   DbUser,
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
-import type { PreferredAiModel } from '@/lib/db/enums';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { isValidModelId } from '@/shared/constants/ai-models';
 
 const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
 const SUBSCRIPTION_STATUSES = new Set([

@@ -1,15 +1,13 @@
 'use client';
 
-import type { JSX } from 'react';
-
-import { Accordion } from '@/components/ui/accordion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 import { useMemo } from 'react';
-
 import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
+import { Accordion } from '@/components/ui/accordion';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -136,18 +134,18 @@ export function ModuleLessonsClient({
       </section>
 
       {isModuleComplete && (
-        <section className="rounded-2xl border border-green-200/50 bg-green-50/50 p-6 text-center shadow-lg backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/30">
-          <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-green-500" />
-          <h3 className="mb-2 text-xl font-bold text-green-700 dark:text-green-400">
+        <section className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center shadow-lg backdrop-blur-sm dark:border-success/30 dark:bg-success/10">
+          <CheckCircle2 className="text-success mx-auto mb-3 h-12 w-12" />
+          <h3 className="text-success mb-2 text-xl font-bold">
             Module Completed!
           </h3>
-          <p className="mb-4 text-green-600 dark:text-green-400">
+          <p className="text-success/90 mb-4">
             Great work! You&apos;ve completed all lessons in this module.
           </p>
           {nextModuleId ? (
             <Link
               href={`/plans/${planId}/modules/${nextModuleId}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-medium text-white transition hover:bg-green-700"
+              className="bg-success text-success-foreground hover:bg-success/90 inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium transition"
             >
               Continue to Next Module
               <ArrowRight className="h-4 w-4" />

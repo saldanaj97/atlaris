@@ -1,6 +1,6 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
-import { JOB_TYPE_VALUES } from '@/lib/jobs/constants';
+import { JOB_TYPE_VALUES } from '@/shared/constants/jobs';
 
 export const skillLevel = pgEnum('skill_level', [
   'beginner',
@@ -21,9 +21,10 @@ export const generationStatus = pgEnum('generation_status', [
   'failed',
 ]);
 
-// TODO: Change back to video instead of youtube
+export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
+
 export const resourceType = pgEnum('resource_type', [
-  'youtube',
+  'video',
   'article',
   'course',
   'doc',
@@ -75,13 +76,4 @@ export const preferredAiModel = pgEnum('preferred_ai_model', [
 
 export type PreferredAiModel = (typeof preferredAiModel.enumValues)[number];
 
-export const integrationProviderEnum = pgEnum('integration_provider', [
-  'google_calendar',
-]);
-
-export const planOrigin = pgEnum('plan_origin', [
-  'ai',
-  'template',
-  'manual',
-  'pdf',
-]);
+export const planOrigin = pgEnum('plan_origin', ['ai', 'template', 'manual']);

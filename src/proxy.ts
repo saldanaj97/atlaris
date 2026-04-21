@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth/server';
-import { appEnv, devAuthEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 
 const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
@@ -26,7 +26,14 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const PROTECTED_PREFIXES = ['/dashboard', '/api', '/plans', '/account'];
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/api',
+  '/plans',
+  '/account',
+  '/settings',
+  '/analytics',
+];
 
 function isProtectedRoute(pathname: string): boolean {
   // Auth API routes must NOT be protected (they handle sign-in/sign-up)
@@ -132,13 +139,20 @@ export default async function proxy(
     // API routes. The Neon Auth middleware does not use this override and would
     // redirect with 307 even when the route handler would accept the dev user.
     // Route handlers still run withAuth and use getEffectiveAuthUserId.
+    // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
+    // shell and server components match the seeded local identity.
     const devBypass =
       appEnv.isDevelopment &&
       devAuthEnv.userId !== undefined &&
       pathname.startsWith('/api/');
 
-    if (devBypass) {
-      // eslint-disable-next-line no-console -- Edge runtime; Pino unavailable, dev-only path
+    const localProductTestingPageBypass =
+      appEnv.isDevelopment &&
+      devAuthEnv.userId !== undefined &&
+      localProductTestingEnv.enabled &&
+      !pathname.startsWith('/api/');
+
+    if (devBypass || localProductTestingPageBypass) {
       console.debug('[dev_auth_bypass]', {
         event: 'dev_auth_bypass',
         userId: devAuthEnv.userId,

@@ -7,10 +7,10 @@ import { createLogger } from './logger';
 
 export const REQUEST_ID_HEADER = 'x-correlation-id';
 
-export interface RequestContext {
+type RequestContext = {
   requestId: string;
   logger: Logger;
-}
+};
 
 export function createRequestContext(
   request: Pick<Request, 'headers'>,
@@ -18,7 +18,6 @@ export function createRequestContext(
 ): RequestContext {
   const requestId = ensureCorrelationId(request, REQUEST_ID_HEADER);
 
-  // Set isolation scope so Sentry logs include request_id (snake_case per Sentry docs)
   Sentry.getIsolationScope().setAttributes({ request_id: requestId });
 
   return {
@@ -51,5 +50,3 @@ export function attachRequestIdHeader(
     statusText: response.statusText,
   });
 }
-
-export default getRequestContext;

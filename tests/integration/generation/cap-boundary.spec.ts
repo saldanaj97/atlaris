@@ -1,13 +1,12 @@
+import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { desc, eq } from 'drizzle-orm';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_cap_boundary';
@@ -20,7 +19,6 @@ async function seedFailureAttempts(planId: string, count: number) {
 
 describe('generation integration - attempt cap boundary', () => {
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     setTestUser(authUserId);
   });
 

@@ -12,11 +12,8 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import type { GenerationAttemptStatus } from '@/lib/db/queries/types/plans.types';
-import type { PdfContext } from '@/lib/pdf/context';
-
 import {
+  type GenerationAttemptStatus,
   generationStatus,
   learningStyle,
   planOrigin,
@@ -46,9 +43,6 @@ export const learningPlans = pgTable(
     deadlineDate: date('deadline_date'),
     visibility: text('visibility').notNull().default('private'),
     origin: planOrigin('origin').notNull().default('ai'),
-    // extracted_context: PdfContext | null. DB CHECK enforces shape when non-null;
-    // all writes must go through typed Drizzle client using sanitizePdfContextForPersistence.
-    extractedContext: jsonb('extracted_context').$type<PdfContext | null>(),
     generationStatus: generationStatus('generation_status')
       .notNull()
       .default('generating'),
@@ -58,19 +52,6 @@ export const learningPlans = pgTable(
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
-    check(
-      'extracted_context_pdf_shape',
-      sql`(
-        ${table.extractedContext} IS NULL
-        OR (
-          jsonb_typeof(${table.extractedContext}) = 'object'
-          AND (${table.extractedContext} ? 'mainTopic')
-          AND (${table.extractedContext} ? 'sections')
-          AND jsonb_typeof(${table.extractedContext}->'sections') = 'array'
-          AND jsonb_typeof(${table.extractedContext}->'mainTopic') = 'string'
-        )
-      )`
-    ),
     index('idx_learning_plans_user_id').on(table.userId),
     index('idx_learning_plans_user_generation_status').on(
       table.userId,
@@ -170,66 +151,6 @@ export const planSchedules = pgTable(
 
       // Users can delete schedule cache for their own plans
       pgPolicy('plan_schedules_delete', {
-        for: 'delete',
-        to: 'authenticated',
-        using: planOwnership,
-      }),
-    ];
-  }
-).enableRLS();
-
-export const planGenerations = pgTable(
-  'plan_generations',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    planId: uuid('plan_id')
-      .notNull()
-      .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    model: text('model').notNull(), // e.g., gpt-5
-    prompt: jsonb('prompt').notNull(), // inputs
-    parameters: jsonb('parameters'), // e.g., temperature
-    outputSummary: jsonb('output_summary'), // high-level summary or counts
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => {
-    const planOwnership = planOwnedByCurrentUser({
-      planIdColumn: table.planId,
-      planTable: learningPlans,
-      planIdReferenceColumn: learningPlans.id,
-      planUserIdColumn: learningPlans.userId,
-    });
-
-    return [
-      index('idx_plan_generations_plan_id').on(table.planId),
-
-      // RLS Policies (session-variable-based)
-
-      // Users can read generation records only for their own plans
-      pgPolicy('plan_generations_select', {
-        for: 'select',
-        to: 'authenticated',
-        using: planOwnership,
-      }),
-
-      // Users can create generation records only for their own plans
-      pgPolicy('plan_generations_insert', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: planOwnership,
-      }),
-
-      // Users can update generation records only for their own plans
-      pgPolicy('plan_generations_update', {
-        for: 'update',
-        to: 'authenticated',
-        using: planOwnership,
-        withCheck: planOwnership,
-      }),
-
-      // Users can delete generation records only for their own plans
-      pgPolicy('plan_generations_delete', {
         for: 'delete',
         to: 'authenticated',
         using: planOwnership,

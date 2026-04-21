@@ -1,18 +1,18 @@
+import { describe, expect, it } from 'vitest';
+import {
+  toClientGenerationAttempts,
+  toClientPlanDetail,
+} from '@/features/plans/read-models/detail-dto';
 import type {
   ModuleWithTasks,
   TaskWithRelations,
 } from '@/lib/db/queries/types/modules.types';
-import {
-  mapAttemptsToClient,
-  mapDetailToClient,
-} from '@/lib/mappers/detailToClient';
 import type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlanDetail,
   TaskProgress,
-} from '@/lib/types/db';
-import { describe, expect, it } from 'vitest';
+} from '@/shared/types/db.types';
 import {
   buildGenerationAttempt,
   buildModule,
@@ -107,34 +107,35 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
-    expect(result!.id).toBe('plan-1');
-    expect(result!.topic).toBe('TypeScript');
-    expect(result!.skillLevel).toBe('intermediate');
-    expect(result!.modules).toHaveLength(1);
-    expect(result!.modules[0].title).toBe('Basics');
-    expect(result!.modules[0].tasks).toHaveLength(1);
-    expect(result!.modules[0].tasks[0].title).toBe('Learn basics');
-    expect(result!.modules[0].tasks[0].status).toBe('completed');
-    expect(result!.modules[0].tasks[0].resources).toHaveLength(1);
-    expect(result!.status).toBe('ready');
-    expect(result!.latestAttempt).toBeDefined();
-    expect(result!.latestAttempt!.model).toBe('gpt-4');
+    expect(result?.id).toBe('plan-1');
+    expect(result?.topic).toBe('TypeScript');
+    expect(result?.skillLevel).toBe('intermediate');
+    expect(result?.modules).toHaveLength(1);
+    expect(result?.modules[0].title).toBe('Basics');
+    expect(result?.modules[0].tasks).toHaveLength(1);
+    expect(result?.modules[0].tasks[0].title).toBe('Learn basics');
+    expect(result?.modules[0].tasks[0].status).toBe('completed');
+    expect(result?.modules[0].tasks[0].resources).toHaveLength(1);
+    expect(result?.status).toBe('ready');
+    expect(result?.latestAttempt).toBeDefined();
+    expect(result?.latestAttempt?.model).toBe('gpt-4');
+    expect(result).not.toHaveProperty('extractedContext');
   });
 
   it('should return undefined for null detail', () => {
-    const result = mapDetailToClient(null);
+    const result = toClientPlanDetail(null);
     expect(result).toBeUndefined();
   });
 
   it('should return undefined for undefined detail', () => {
-    const result = mapDetailToClient(undefined);
+    const result = toClientPlanDetail(undefined);
     expect(result).toBeUndefined();
   });
 
-  it('should return undefined if plan is missing', () => {
+  it('should throw if plan is missing', () => {
     // Intentionally pass invalid input to test defensive handling (plan is null at runtime).
     const detailWithNullPlan = {
       plan: null,
@@ -144,8 +145,9 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     } as unknown as LearningPlanDetail;
 
-    const result = mapDetailToClient(detailWithNullPlan);
-    expect(result).toBeUndefined();
+    expect(() => toClientPlanDetail(detailWithNullPlan)).toThrow(
+      'LearningPlanDetail.plan is required.'
+    );
   });
 
   it('should handle null descriptions', () => {
@@ -190,17 +192,17 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
-    expect(result!.modules[0].description).toBeNull();
-    expect(result!.modules[0].estimatedMinutes).toBe(0);
-    expect(result!.modules[0].tasks[0].description).toBeNull();
-    expect(result!.modules[0].tasks[0].estimatedMinutes).toBe(0);
-    expect(result!.modules[0].tasks[0].status).toBe('not_started');
+    expect(result?.modules[0].description).toBeNull();
+    expect(result?.modules[0].estimatedMinutes).toBe(0);
+    expect(result?.modules[0].tasks[0].description).toBeNull();
+    expect(result?.modules[0].tasks[0].estimatedMinutes).toBe(0);
+    expect(result?.modules[0].tasks[0].status).toBe('not_started');
   });
 
-  it('should sort modules and tasks by order', () => {
+  it('should preserve module and task order from the read model', () => {
     const modules: ModuleWithTasks[] = [
       buildModule({
         id: 'module-2',
@@ -263,13 +265,13 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
+    const result = toClientPlanDetail(detail);
 
     expect(result).toBeDefined();
-    expect(result!.modules[0].title).toBe('First');
-    expect(result!.modules[1].title).toBe('Second');
-    expect(result!.modules[0].tasks[0].title).toBe('First Task');
-    expect(result!.modules[0].tasks[1].title).toBe('Second Task');
+    expect(result?.modules[0].title).toBe('Second');
+    expect(result?.modules[1].title).toBe('First');
+    expect(result?.modules[1].tasks[0].title).toBe('Second Task');
+    expect(result?.modules[1].tasks[1].title).toBe('First Task');
   });
 
   it('should derive status as "ready" when modules exist', () => {
@@ -303,8 +305,8 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('ready');
+    const result = toClientPlanDetail(detail);
+    expect(result?.status).toBe('ready');
   });
 
   it('should derive status as "failed" when plan generation status is failed', () => {
@@ -312,8 +314,8 @@ describe('mapDetailToClient', () => {
       plan: buildPlan({ generationStatus: 'failed', modules: [] }),
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('failed');
+    const result = toClientPlanDetail(detail);
+    expect(result?.status).toBe('failed');
   });
 
   it('should derive status as "processing" when generation is in progress with no modules', () => {
@@ -321,11 +323,11 @@ describe('mapDetailToClient', () => {
       plan: buildPlan({ generationStatus: 'generating', modules: [] }),
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('processing');
+    const result = toClientPlanDetail(detail);
+    expect(result?.status).toBe('processing');
   });
 
-  it('should sort resources within tasks by order', () => {
+  it('should preserve resource order from the read model', () => {
     const task = buildTask({
       id: 'task-1',
       moduleId: 'module-1',
@@ -352,9 +354,9 @@ describe('mapDetailToClient', () => {
       }),
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
-      1, 2,
+    const result = toClientPlanDetail(detail);
+    expect(result?.modules[0].tasks[0].resources.map((r) => r.order)).toEqual([
+      2, 1,
     ]);
   });
 
@@ -371,10 +373,10 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.latestAttempt!.status).toBe('success');
-    expect(result!.latestAttempt!.classification).toBeNull();
-    expect(result!.latestAttempt!.model).toBe('gpt-4o-mini');
+    const result = toClientPlanDetail(detail);
+    expect(result?.latestAttempt?.status).toBe('success');
+    expect(result?.latestAttempt?.classification).toBeNull();
+    expect(result?.latestAttempt?.model).toBe('gpt-4o-mini');
   });
 
   it('should derive status as "pending" when generation status is ready without modules and attempts are below cap', () => {
@@ -399,11 +401,11 @@ describe('mapDetailToClient', () => {
       attemptsCount: 1,
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('pending');
+    const result = toClientPlanDetail(detail);
+    expect(result?.status).toBe('pending');
   });
 
-  it('should derive status as "pending" for unknown generation status fallback', () => {
+  it('should throw for unknown generation status values', () => {
     const detail = buildPlanDetail({
       plan: buildPlan({
         generationStatus: 'unexpected_status' as unknown as GenerationStatus,
@@ -411,8 +413,9 @@ describe('mapDetailToClient', () => {
       }),
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.status).toBe('pending');
+    expect(() => toClientPlanDetail(detail)).toThrow(
+      'Unhandled generation status'
+    );
   });
 
   it('should handle null attempt gracefully', () => {
@@ -436,8 +439,8 @@ describe('mapDetailToClient', () => {
       attemptsCount: 0,
     });
 
-    const result = mapDetailToClient(detail);
-    expect(result!.latestAttempt).toBeNull();
+    const result = toClientPlanDetail(detail);
+    expect(result?.latestAttempt).toBeNull();
   });
 });
 
@@ -468,7 +471,7 @@ describe('mapAttemptsToClient', () => {
       }),
     ];
 
-    const result = mapAttemptsToClient(attempts);
+    const result = toClientGenerationAttempts(attempts);
 
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('attempt-1');
@@ -481,7 +484,7 @@ describe('mapAttemptsToClient', () => {
   });
 
   it('should handle empty array', () => {
-    const result = mapAttemptsToClient([]);
+    const result = toClientGenerationAttempts([]);
     expect(result).toHaveLength(0);
   });
 
@@ -502,7 +505,10 @@ describe('mapAttemptsToClient', () => {
       createdAt: new Date('2025-01-02T00:00:00.000Z'),
     });
 
-    const attempts = mapAttemptsToClient([successAttempt, failureAttempt]);
+    const attempts = toClientGenerationAttempts([
+      successAttempt,
+      failureAttempt,
+    ]);
 
     expect(attempts).toHaveLength(2);
     expect(attempts[0]).toMatchObject({
@@ -553,7 +559,7 @@ describe('mapAttemptsToClient', () => {
       }),
     ];
 
-    const result = mapAttemptsToClient(attempts);
+    const result = toClientGenerationAttempts(attempts);
 
     expect(result[0].metadata).toBeNull();
     expect(result[0].model).toBeNull();

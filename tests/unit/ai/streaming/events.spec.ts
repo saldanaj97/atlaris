@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { createEventStream, formatEvent } from '@/lib/ai/streaming/events';
-import type { PlanStartEvent } from '@/lib/ai/streaming/types';
+import { createEventStream, formatEvent } from '@/features/ai/streaming/events';
+import { StreamingEventSchema } from '@/features/ai/streaming/schema';
+import type {
+  PlanGenerationSessionEvent,
+  PlanStartEvent,
+} from '@/features/plans/session/session-events';
 
 const decoder = new TextDecoder();
 
@@ -11,6 +15,7 @@ describe('streaming events', () => {
       type: 'plan_start',
       data: {
         planId: 'plan-123',
+        attemptNumber: 1,
         topic: 'TypeScript',
         skillLevel: 'beginner',
         learningStyle: 'mixed',
@@ -24,6 +29,25 @@ describe('streaming events', () => {
     expect(decoder.decode(chunk)).toBe(`data: ${JSON.stringify(event)}\n\n`);
   });
 
+  it('keeps the streaming schema aligned with session events', () => {
+    const parsed = StreamingEventSchema.parse({
+      type: 'plan_start',
+      data: {
+        planId: 'plan-123',
+        attemptNumber: 1,
+        topic: 'TypeScript',
+        skillLevel: 'beginner',
+        learningStyle: 'mixed',
+        weeklyHours: 5,
+        startDate: null,
+        deadlineDate: null,
+      },
+    });
+
+    const event: PlanGenerationSessionEvent = parsed;
+    expect(event.type).toBe('plan_start');
+  });
+
   it('streams events through createEventStream', async () => {
     const event = {
       type: 'complete',
@@ -31,7 +55,7 @@ describe('streaming events', () => {
         planId: 'plan-123',
         modulesCount: 2,
         tasksCount: 6,
-        durationMs: 1234,
+        totalMinutes: 180,
       },
     } as const;
 

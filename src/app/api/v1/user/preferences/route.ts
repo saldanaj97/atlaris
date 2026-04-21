@@ -1,14 +1,25 @@
-import { getDefaultModelForTier, getModelsForTier } from '@/lib/ai/ai-models';
-import { validateModelForTier } from '@/lib/ai/model-resolver';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
+import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import { validateModelForTier } from '@/features/ai/model-resolver';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
   createRequestContext,
 } from '@/lib/logging/request-context';
-import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
+
+function createPreferencesUpdateFailedError(userId: string | number): AppError {
+  return new AppError('Failed to persist preferences.', {
+    status: 500,
+    code: 'PREFERENCES_UPDATE_FAILED',
+    logMeta: { userId },
+  });
+}
 
 /**
  * GET /api/v1/user/preferences
@@ -23,7 +34,7 @@ export const GET = withErrorBoundary(
     });
 
     const userTier = user.subscriptionTier;
-    const availableModels = getModelsForTier(userTier);
+    const availableModels = getPersistableModelsForTier(userTier);
 
     const fallbackModel = getDefaultModelForTier(userTier);
     let preferredAiModel = fallbackModel;
@@ -73,30 +84,48 @@ export const PATCH = withErrorBoundary(
 
     logger.info('Updating user preferences');
 
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      throw new ValidationError('Invalid JSON in request body');
-    }
+    const body = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: () =>
+        new ValidationError('Invalid JSON in request body'),
+    });
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
-      logger.warn(
-        { errors: parsed.error.flatten() },
-        'Invalid preferences payload'
-      );
-      throw new ValidationError('Invalid preferences', parsed.error.flatten());
+      throw new ValidationError('Invalid preferences', parsed.error.flatten(), {
+        errors: parsed.error.flatten(),
+      });
     }
 
     const userTier = user.subscriptionTier;
+
+    if (parsed.data.preferredAiModel === null) {
+      const updatedUser = await updateUserPreferredAiModel(user.id, null);
+
+      if (!updatedUser) {
+        throw createPreferencesUpdateFailedError(user.id);
+      }
+
+      logger.info(
+        { preferredAiModel: updatedUser.preferredAiModel },
+        'User preferences cleared (tier default applies)'
+      );
+
+      const response = json({
+        message: 'Preferences updated',
+        preferredAiModel: updatedUser.preferredAiModel,
+      });
+
+      return attachRequestIdHeader(response, requestId);
+    }
+
     const modelValidation = validateModelForTier(
       userTier,
       parsed.data.preferredAiModel
     );
 
     // Enumerate every known reason from validateModelForTier (see ModelValidationResult in
-    // @/lib/ai/model-resolver). When adding a new reason there, add a case here and keep
+    // @/features/ai/model-resolver). When adding a new reason there, add a case here and keep
     // the default branch for unexpected values. AppError: @/lib/api/errors.
     if (!modelValidation.valid) {
       const reason = modelValidation.reason;
@@ -123,19 +152,16 @@ export const PATCH = withErrorBoundary(
           );
         default: {
           const _exhaustiveCheck: never = reason;
-          logger.warn(
-            {
-              reason: String(_exhaustiveCheck),
-              preferredAiModel: parsed.data.preferredAiModel,
-            },
-            'Unexpected model validation reason from validateModelForTier'
-          );
           throw new AppError(
             'Model validation failed for an unexpected reason.',
             {
               status: 500,
               code: 'UNKNOWN_MODEL_VALIDATION_REASON',
               details: {
+                reason: String(_exhaustiveCheck),
+                preferredAiModel: parsed.data.preferredAiModel,
+              },
+              logMeta: {
                 reason: String(_exhaustiveCheck),
                 preferredAiModel: parsed.data.preferredAiModel,
               },
@@ -151,20 +177,14 @@ export const PATCH = withErrorBoundary(
     );
 
     if (!updatedUser) {
-      throw new AppError('Failed to persist preferences.', {
-        status: 500,
-        code: 'PREFERENCES_UPDATE_FAILED',
-      });
+      throw createPreferencesUpdateFailedError(user.id);
     }
 
     if (updatedUser.preferredAiModel === null) {
-      logger.error(
-        { userId: user.id },
-        'preferredAiModel unexpectedly null after update'
-      );
       throw new AppError('Failed to persist preference value.', {
         status: 500,
         code: 'PREFERENCES_PERSISTED_NULL',
+        logMeta: { userId: user.id },
       });
     }
 

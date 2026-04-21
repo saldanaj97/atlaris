@@ -18,11 +18,11 @@
  * - getServiceRoleDb() - Returns service-role client (bypasses RLS for setup/cleanup)
  */
 
-import { db } from '@/lib/db/service-role';
 import {
   createAnonymousRlsClient,
   createAuthenticatedRlsClient,
 } from '@/lib/db/rls';
+import { db } from '@/lib/db/service-role';
 
 type DbInstance = typeof db;
 type CleanupCallback = () => Promise<void>;

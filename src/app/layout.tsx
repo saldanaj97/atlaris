@@ -1,12 +1,22 @@
-import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { NeonAuthUIProvider } from '@neondatabase/auth/react';
+import type { Metadata } from 'next';
+import { Work_Sans, Young_Serif } from 'next/font/google';
+import type { ComponentProps } from 'react';
+import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/app/ThemeProvider';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 import { authClient } from '@/lib/auth/client';
-import { NeonAuthUIProvider } from '@neondatabase/auth/react';
-import { type Metadata } from 'next';
-import { Work_Sans, Young_Serif } from 'next/font/google';
-import { Toaster } from 'sonner';
 import './globals.css';
+
+// `@neondatabase/auth` (alpha) bundles types from `better-auth@1.4.6` while we
+// run the patched `~1.4.22` (closes GHSA two-factor cookie-cache bypass). The
+// runtime API is identical inside the 1.4.x line; only the static type for
+// `useActiveMember` shifted from a function to a nanostores atom. Cast at the
+// boundary so the type system doesn't block a security patch we want shipped.
+type NeonAuthUIProviderAuthClient = ComponentProps<
+  typeof NeonAuthUIProvider
+>['authClient'];
 
 const workSans = Work_Sans({
   subsets: ['latin'],
@@ -23,27 +33,6 @@ export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
   description:
     'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
-  // TODO: Add favicon files to public/ folder then uncomment this
-  // icons: [
-  //   {
-  //     rel: 'icon',
-  //     url: '/favicon-16x16.png',
-  //     sizes: '16x16',
-  //     type: 'image/png',
-  //   },
-  //   {
-  //     rel: 'icon',
-  //     url: '/favicon-32x32.png',
-  //     sizes: '32x32',
-  //     type: 'image/png',
-  //   },
-  //   {
-  //     rel: 'apple-touch-icon',
-  //     url: '/apple-touch-icon.png',
-  //     sizes: '180x180',
-  //     type: 'image/png',
-  //   },
-  // ],
   openGraph: {
     title: 'Atlaris - AI-Powered Learning Paths',
     description:
@@ -69,7 +58,7 @@ export const metadata: Metadata = {
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },
-  metadataBase: new URL('https://atlaris.com'), // Replace with production URL
+  metadataBase: new URL('https://atlaris.app'),
 };
 
 export default function RootLayout({
@@ -83,7 +72,7 @@ export default function RootLayout({
         className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
         <NeonAuthUIProvider
-          authClient={authClient}
+          authClient={authClient as unknown as NeonAuthUIProviderAuthClient}
           redirectTo="/dashboard"
           emailOTP
           social={{ providers: ['google'] }}

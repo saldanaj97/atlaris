@@ -1,14 +1,15 @@
-import { eq } from 'drizzle-orm';
-
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { eq, sql } from 'drizzle-orm';
+import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
+import { requireInternalUserByAuthId } from '@/features/plans/api/route-context';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import { requireInternalUserByAuthId } from '@/lib/api/plans/route-context';
+import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { updateUserProfileSchema } from '@/lib/validation/user-profile';
 
 type UserProfileResponse = Pick<
   DbUser,
@@ -44,12 +45,11 @@ export const GET = withErrorBoundary(
 
 export const PUT = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, userId }) => {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
-      throw new ValidationError('Invalid JSON in request body');
-    }
+    const body = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: () =>
+        new ValidationError('Invalid JSON in request body'),
+    });
 
     const parsed = updateUserProfileSchema.safeParse(body);
     if (!parsed.success) {
@@ -60,11 +60,15 @@ export const PUT = withErrorBoundary(
     }
 
     const db = getDb();
+    // updatedAt must use the DB clock (sql`now()`), not `new Date()`, so it shares
+    // the same clock as defaultNow() on insert. Otherwise Node-vs-Postgres clock
+    // skew can let updatedAt land at or before createdAt under concurrent load
+    // and break the strict-monotone assertion in tests/integration/api/user-profile.spec.ts.
     const updatedRows = await db
       .update(users)
       .set({
         name: parsed.data.name,
-        updatedAt: new Date(),
+        updatedAt: sql<Date>`now()`,
       })
       .where(eq(users.authUserId, userId))
       .returning();

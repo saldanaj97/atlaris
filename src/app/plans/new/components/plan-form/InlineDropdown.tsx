@@ -1,17 +1,17 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { ChevronDown } from 'lucide-react';
-import { useId } from 'react';
 import type { JSX } from 'react';
-
+import { useId } from 'react';
 import type { DropdownOption } from '@/app/plans/new/components/plan-form/types';
+import { cn } from '@/lib/utils';
 
 type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
 
 interface InlineDropdownProps<TValue extends string> {
   id?: string;
+  ariaLabel?: string;
   options: readonly DropdownOption<TValue>[];
   value: TValue;
   onChange: (value: TValue) => void;
@@ -65,6 +65,7 @@ const VARIANT_STYLES: Record<
  */
 export function InlineDropdown<TValue extends string>({
   id,
+  ariaLabel,
   options,
   value,
   icon,
@@ -89,6 +90,7 @@ export function InlineDropdown<TValue extends string>({
     >
       <SelectPrimitive.Trigger
         id={componentId}
+        aria-label={ariaLabel}
         className={cn(
           'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm backdrop-blur-sm transition outline-none',
           'focus-visible:ring-ring dark:focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2',

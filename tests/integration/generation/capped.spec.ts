@@ -1,6 +1,6 @@
+import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
@@ -8,9 +8,8 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { desc, eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -63,7 +62,6 @@ async function seedCappedAttempts(planId: string) {
 
 describe('generation integration - capped attempts', () => {
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     setTestUser(authUserId);
   });
 

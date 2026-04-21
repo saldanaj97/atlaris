@@ -1,10 +1,4 @@
-import type { GenerationStatus } from '@/lib/types/db';
-
-/**
- * Valid status values for a generation attempt record.
- * Used by the generation_attempts table status column.
- */
-export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
+import type { GenerationStatus } from '@/shared/types/db.types';
 
 /** Plan metadata returned with generation attempts for display/context. */
 export interface PlanAttemptsPlanMeta {

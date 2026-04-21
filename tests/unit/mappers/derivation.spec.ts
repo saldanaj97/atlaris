@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
+import { getAttemptCap } from '@/features/ai/generation-policy';
+import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
 import {
   buildGenerationAttempt,
   buildModule,
@@ -10,12 +10,15 @@ import {
 } from '../../fixtures/plan-detail';
 
 describe('derived plan status mapping', () => {
+  const cap = getAttemptCap();
+
   it('returns pending when no modules and attempts below cap', () => {
     const detail = buildPlanDetail({
-      attemptsCount: ATTEMPT_CAP - 1,
+      attemptsCount: cap - 1,
       plan: buildPlan({ generationStatus: 'ready', modules: [] }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('pending');
   });
 
@@ -27,7 +30,7 @@ describe('derived plan status mapping', () => {
         isQuotaEligible: true,
         finalizedAt: new Date('2024-01-01T00:00:00.000Z'),
       }),
-      attemptsCount: ATTEMPT_CAP,
+      attemptsCount: cap,
       latestAttempt: buildGenerationAttempt({
         status: 'success',
         classification: null,
@@ -35,7 +38,8 @@ describe('derived plan status mapping', () => {
         tasksCount: 3,
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('ready');
     expect(client?.modules).toHaveLength(1);
     expect(client?.latestAttempt?.classification).toBeNull();
@@ -47,13 +51,14 @@ describe('derived plan status mapping', () => {
         modules: [],
         generationStatus: 'failed',
       }),
-      attemptsCount: ATTEMPT_CAP,
+      attemptsCount: cap,
       latestAttempt: buildGenerationAttempt({
         classification: 'capped',
         status: 'failure',
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('failed');
   });
 
@@ -63,14 +68,15 @@ describe('derived plan status mapping', () => {
         modules: [],
         generationStatus: 'failed',
       }),
-      attemptsCount: ATTEMPT_CAP + 1,
+      attemptsCount: cap + 1,
       latestAttempt: buildGenerationAttempt({
         id: 'attempt-4',
         classification: 'capped',
         status: 'failure',
       }),
     });
-    const client = mapDetailToClient(detail);
+    const client = toClientPlanDetail(detail);
+    expect(client).toBeDefined();
     expect(client?.status).toBe('failed');
   });
 });

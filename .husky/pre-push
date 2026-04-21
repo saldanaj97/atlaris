@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+# Read-only double check before push.
+# This hook must fail on lint/type issues and should never rewrite files.
+# Any auto-fix behavior belongs in pre-commit, not pre-push.
+echo "Running full lint + typecheck before push..."
+pnpm check:full

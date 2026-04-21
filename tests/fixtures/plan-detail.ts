@@ -14,7 +14,7 @@ import type {
   LearningPlanWithModules,
   Module,
   PlanSummary,
-} from '@/lib/types/db';
+} from '@/shared/types/db.types';
 
 import { createId } from './ids';
 
@@ -183,7 +183,6 @@ export function buildPlan(
     deadlineDate: null,
     visibility: 'private',
     origin: 'ai',
-    extractedContext: null,
     generationStatus: 'generating',
     isQuotaEligible: false,
     finalizedAt: null,
@@ -202,6 +201,9 @@ export function buildPlanDetail(
     plan: buildPlan(),
     totalTasks: 0,
     completedTasks: 0,
+    totalMinutes: 0,
+    completedMinutes: 0,
+    completedModules: 0,
     latestAttempt: null,
     attemptsCount: 0,
     ...overrides,

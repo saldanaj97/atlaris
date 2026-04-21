@@ -1,4 +1,6 @@
+// biome-ignore assist/source/organizeImports: sonner mock must load before the component under test
 import '../../mocks/unit/sonner.unit';
+
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
@@ -19,7 +21,7 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should render with default label', () => {
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     expect(
       screen.getByRole('button', { name: /manage subscription/i })
@@ -27,7 +29,12 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should render with custom label', () => {
-    render(<ManageSubscriptionButton label="Billing Settings" />);
+    render(
+      <ManageSubscriptionButton
+        canOpenBillingPortal={true}
+        label="Billing Settings"
+      />
+    );
 
     expect(
       screen.getByRole('button', { name: /billing settings/i })
@@ -35,7 +42,12 @@ describe('ManageSubscriptionButton', () => {
   });
 
   it('should apply custom className', () => {
-    render(<ManageSubscriptionButton className="custom-class" />);
+    render(
+      <ManageSubscriptionButton
+        canOpenBillingPortal={true}
+        className="custom-class"
+      />
+    );
 
     const button = screen.getByRole('button');
     expect(button).toHaveClass('custom-class');
@@ -50,7 +62,7 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -77,7 +89,12 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton returnUrl="/dashboard" />);
+    render(
+      <ManageSubscriptionButton
+        canOpenBillingPortal={true}
+        returnUrl="/dashboard"
+      />
+    );
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -110,7 +127,7 @@ describe('ManageSubscriptionButton', () => {
     );
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -148,7 +165,7 @@ describe('ManageSubscriptionButton', () => {
     );
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
 
@@ -176,7 +193,7 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -198,7 +215,7 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -220,7 +237,7 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -239,7 +256,7 @@ describe('ManageSubscriptionButton', () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -262,7 +279,7 @@ describe('ManageSubscriptionButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -299,7 +316,7 @@ describe('ManageSubscriptionButton', () => {
     );
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
 
@@ -320,7 +337,7 @@ describe('ManageSubscriptionButton', () => {
       .mockRejectedValue({ message: 'Custom error object' });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<ManageSubscriptionButton />);
+    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -333,5 +350,18 @@ describe('ManageSubscriptionButton', () => {
         }
       );
     });
+  });
+
+  it('does not call the portal API when the billing portal is unavailable', () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(<ManageSubscriptionButton canOpenBillingPortal={false} />);
+
+    const button = screen.getByRole('button');
+    expect(button).toBeDisabled();
+
+    fireEvent.click(button);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
-import { sanitizeSseError } from '@/lib/ai/streaming/error-sanitizer';
 import { describe, expect, it } from 'vitest';
+import { sanitizeSseError } from '@/features/ai/streaming/error-sanitizer';
 
 describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
   it('sanitizes timeout errors', () => {
@@ -70,7 +70,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
     expect(result.message).toBe(
       'An unexpected error occurred during plan generation.'
     );
-    expect(result.retryable).toBe(false);
+    expect(result.retryable).toBe(true);
   });
 
   it('sanitizes non-Error objects', () => {

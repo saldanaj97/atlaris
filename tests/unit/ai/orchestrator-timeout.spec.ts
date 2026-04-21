@@ -4,8 +4,8 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
-} from '@/lib/ai/types/provider.types';
-import {
+} from '@/features/ai/types/provider.types';
+import type {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
@@ -16,23 +16,26 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import { createId } from '../../fixtures/ids';
 
-/**
- * Mock client for orchestrator timeout tests. Satisfies isAttemptsDbClient (five
- * Drizzle-like methods) and resolveAttemptOperations overrides. The three
- * attempt methods use the real fn types so signature drift is caught by the compiler.
- */
 type MockAttemptsDbClient = {
   select: () => unknown;
   insert: () => unknown;
   update: () => unknown;
   delete: () => unknown;
   transaction: () => unknown;
+};
+
+function asAttemptsDbClient(dbClient: MockAttemptsDbClient): AttemptsDbClient {
+  // NOTE: keeps a bespoke AttemptsDbClient double instead of tests/fixtures/db-mocks.ts#makeAttemptsDbClient because this test injects a timeout-specific mock shape rather than the full query client.
+  return dbClient as unknown as AttemptsDbClient;
+}
+
+type AttemptOperationsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
   finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
   finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 
 const ORIGINAL_TIMEOUT_ENV = {
   baseMs: process.env.AI_TIMEOUT_BASE_MS,
@@ -201,19 +204,6 @@ describe('runGenerationAttempt timeout wiring', () => {
       update: () => ({}),
       delete: () => ({}),
       transaction: () => ({}),
-      reserveAttemptSlot: vi
-        .fn()
-        .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue(
-          ctx.successAttemptRecord
-        ) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi
-        .fn()
-        .mockResolvedValue(
-          failureAttemptRecord
-        ) as typeof finalizeAttemptFailure,
     };
   });
 
@@ -232,6 +222,21 @@ describe('runGenerationAttempt timeout wiring', () => {
     const provider = createProvider((options) => {
       observedTimeoutMs = options?.timeoutMs;
     });
+    const attemptOperations: AttemptOperationsOverrides = {
+      reserveAttemptSlot: vi
+        .fn()
+        .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
+      finalizeAttemptSuccess: vi
+        .fn()
+        .mockResolvedValue(
+          ctx.successAttemptRecord
+        ) as typeof finalizeAttemptSuccess,
+      finalizeAttemptFailure: vi
+        .fn()
+        .mockResolvedValue(
+          failureAttemptRecord
+        ) as typeof finalizeAttemptFailure,
+    };
 
     const result = await runGenerationAttempt(
       {
@@ -245,7 +250,8 @@ describe('runGenerationAttempt timeout wiring', () => {
         },
       },
       {
-        dbClient: mockDbClient as unknown as AttemptsDbClient,
+        dbClient: asAttemptsDbClient(mockDbClient),
+        attemptOperations,
         provider,
       }
     );
@@ -261,6 +267,21 @@ describe('runGenerationAttempt timeout wiring', () => {
     const provider = createProvider((options) => {
       observedTimeoutMs = options?.timeoutMs;
     });
+    const attemptOperations: AttemptOperationsOverrides = {
+      reserveAttemptSlot: vi
+        .fn()
+        .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
+      finalizeAttemptSuccess: vi
+        .fn()
+        .mockResolvedValue(
+          ctx.successAttemptRecord
+        ) as typeof finalizeAttemptSuccess,
+      finalizeAttemptFailure: vi
+        .fn()
+        .mockResolvedValue(
+          failureAttemptRecord
+        ) as typeof finalizeAttemptFailure,
+    };
 
     const result = await runGenerationAttempt(
       {
@@ -274,7 +295,8 @@ describe('runGenerationAttempt timeout wiring', () => {
         },
       },
       {
-        dbClient: mockDbClient as unknown as AttemptsDbClient,
+        dbClient: asAttemptsDbClient(mockDbClient),
+        attemptOperations,
         provider,
         timeoutConfig: {
           baseMs: 2500,

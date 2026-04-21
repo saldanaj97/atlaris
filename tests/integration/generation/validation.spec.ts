@@ -1,6 +1,6 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
@@ -8,31 +8,14 @@ import {
   tasks,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { eq } from 'drizzle-orm';
 import { setTestUser } from '../../helpers/auth';
-import {
-  ensureStripeWebhookEvents,
-  ensureUser,
-  resetDbForIntegrationTestFile,
-} from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_validation';
 const authEmail = 'generation-validation@example.com';
 
-const describeWithDatabase = process.env.DATABASE_URL
-  ? describe
-  : describe.skip;
-
-describeWithDatabase('generation integration - validation failure', () => {
-  beforeAll(async () => {
-    await ensureStripeWebhookEvents();
-  });
-
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
-
+describe('generation integration - validation failure', () => {
   it('classifies attempt as validation when provider output is empty', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });

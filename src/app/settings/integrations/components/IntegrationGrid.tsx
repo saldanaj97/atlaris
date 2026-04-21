@@ -1,39 +1,31 @@
+'use client';
+
 import type { JSX } from 'react';
 
 import type { IntegrationCardProps } from './IntegrationCard';
-
 import { IntegrationCard } from './IntegrationCard';
 
-const INTEGRATIONS: IntegrationCardProps[] = [
+type IntegrationDef = Omit<IntegrationCardProps, 'onConnect' | 'loading'> & {
+  id: string;
+};
+
+const INTEGRATIONS: IntegrationDef[] = [
   {
+    id: 'google_calendar',
     name: 'Google Calendar',
     icon: '📅',
-    status: 'available',
+    status: 'coming_soon',
     description:
-      'Automatically sync your learning schedule to Google Calendar. Get reminders for upcoming study sessions and keep your learning on track.',
+      'Google Calendar integration is on hold for now. We will bring it back later with a cleaner, more deliberate implementation.',
     features: [
       'Auto-sync study sessions',
       'Smart reminders',
       'Time-block scheduling',
       'Calendar conflict detection',
     ],
-    // TODO: Wire to Google Calendar OAuth flow in src/lib/integrations/
   },
   {
-    name: 'CSV Export',
-    icon: '📊',
-    status: 'available',
-    description:
-      'Download your learning plans and progress data as CSV files for spreadsheet analysis or sharing.',
-    features: [
-      'Plan data export',
-      'Progress history',
-      'Custom date ranges',
-      'Bulk export',
-    ],
-    // TODO: Implement CSV download endpoint
-  },
-  {
+    id: 'slack',
     name: 'Slack',
     icon: '💬',
     status: 'coming_soon',
@@ -47,6 +39,7 @@ const INTEGRATIONS: IntegrationCardProps[] = [
     ],
   },
   {
+    id: 'todoist',
     name: 'Todoist',
     icon: '✅',
     status: 'coming_soon',
@@ -60,6 +53,7 @@ const INTEGRATIONS: IntegrationCardProps[] = [
     ],
   },
   {
+    id: 'zapier',
     name: 'Zapier',
     icon: '⚡',
     status: 'coming_soon',
@@ -77,8 +71,15 @@ const INTEGRATIONS: IntegrationCardProps[] = [
 export function IntegrationGrid(): JSX.Element {
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      {INTEGRATIONS.map((integration) => (
-        <IntegrationCard key={integration.name} {...integration} />
+      {INTEGRATIONS.map((def) => (
+        <IntegrationCard
+          key={def.id}
+          name={def.name}
+          description={def.description}
+          icon={def.icon}
+          features={def.features}
+          status={def.status}
+        />
       ))}
     </div>
   );

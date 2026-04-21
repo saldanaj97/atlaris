@@ -1,4 +1,7 @@
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
+import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -6,22 +9,19 @@ import {
 } from '@/lib/db/queries/attempts';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createFailedAttemptsInDb,
   getDurableWindowSeedCount,
 } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
+  const attemptCap = getAttemptCap();
   let userId: string;
   let planId: string;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
     const authUserId = `auth-${randomUUID()}`;
     userId = await ensureUser({
       authUserId,
@@ -121,7 +121,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     // across throwaway plans so no single plan reaches ATTEMPT_CAP (reserveAttemptSlot
     // should hit durable-window logic only).
     const slotsToFill = getDurableWindowSeedCount(1);
-    const maxPerPlan = Math.max(1, ATTEMPT_CAP - 1);
+    const maxPerPlan = Math.max(1, attemptCap - 1);
     const numPlans = Math.ceil(slotsToFill / maxPerPlan);
     const throwawayPlans = await Promise.all(
       Array.from({ length: numPlans }, () =>
@@ -190,10 +190,10 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   });
 
   it('enforces attempt cap', async () => {
-    // Create ATTEMPT_CAP failed attempts
+    // Create attemptCap failed attempts
     const failedAttempts = await createFailedAttemptsInDb(
       planId,
-      ATTEMPT_CAP,
+      attemptCap,
       (i) => ({
         classification: 'timeout',
         durationMs: 1000,
@@ -201,7 +201,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         metadata: {},
       })
     );
-    expect(failedAttempts).toHaveLength(ATTEMPT_CAP);
+    expect(failedAttempts).toHaveLength(attemptCap);
 
     // Try to reserve another
     const result = await reserveAttemptSlot({
@@ -318,7 +318,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         extendedTimeout: false,
         dbClient: db,
       })
-    ).rejects.toThrow('Failed to finalize generation attempt as success.');
+    ).rejects.toThrow(/Failed to finalize successful generation attempt/);
   });
 
   it('requires matching plan to finalize failure', async () => {

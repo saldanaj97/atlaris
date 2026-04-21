@@ -1,11 +1,12 @@
-import { Skeleton } from '@/components/ui/skeleton';
-import { getCachedModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/data';
+import { redirect } from 'next/navigation';
+import { getModuleForPage } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import {
   getModuleError,
   isModuleSuccess,
 } from '@/app/plans/[id]/modules/[moduleId]/helpers';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-import { redirect } from 'next/navigation';
 
 import { ModuleDetailPageError } from './Error';
 import { ModuleDetail } from './ModuleDetail';
@@ -23,9 +24,8 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await getCachedModuleForPage(moduleId);
+  const moduleResult = await getModuleForPage(moduleId);
 
-  // Handle module access errors with explicit error codes
   if (!isModuleSuccess(moduleResult)) {
     const error = getModuleError(moduleResult);
     const code = error.code;
@@ -37,11 +37,12 @@ export async function ModuleDetailContent({
     );
 
     switch (code) {
-      case 'UNAUTHORIZED':
-        // User needs to authenticate - redirect to sign-in
+      case 'UNAUTHORIZED': {
+        const redirectPath = `/plans/${planId}/modules/${moduleId}`;
         return redirect(
-          `/sign-in?redirect_url=/plans/${planId}/modules/${moduleId}`
+          `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(redirectPath)}`
         );
+      }
 
       case 'NOT_FOUND':
         // Module doesn't exist or user doesn't have access
@@ -60,8 +61,6 @@ export async function ModuleDetailContent({
             planId={planId}
           />
         );
-
-      case 'INTERNAL_ERROR':
       default:
         // Unexpected error - show generic message
         return (
@@ -73,7 +72,6 @@ export async function ModuleDetailContent({
     }
   }
 
-  // TypeScript now knows moduleResult.success is true, so data exists
   return <ModuleDetail moduleData={moduleResult.data} />;
 }
 

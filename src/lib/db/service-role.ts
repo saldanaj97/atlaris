@@ -9,7 +9,7 @@
  * ═══════════════════════════════════════════════════════════════════════
  * ✅ Workers and background jobs (src/workers/...)
  * ✅ Database migrations and schema changes
- * ✅ Test setup and seeding (tests/helpers/db.ts, tests/.../setup.ts)
+ * ✅ Test setup and seeding (tests/helpers/db/, tests/.../setup.ts)
  * ✅ Administrative scripts (scripts/...)
  *
  * ═══════════════════════════════════════════════════════════════════════
@@ -36,9 +36,9 @@
  * If you're seeing an ESLint error, you're using the wrong client!
  */
 
-import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
+import { databaseEnv } from '@/lib/config/env';
 
 import { configureLocalNeon } from './neon-config';
 import * as schema from './schema';
@@ -48,39 +48,14 @@ configureLocalNeon();
 
 type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 
-// ============================================================================
-// SERVICE ROLE CLIENT - RLS BYPASSED
-// ============================================================================
+// SERVICE ROLE CLIENT — BYPASSES RLS.
+// Connects as the DB owner (BYPASSRLS), so policies are not enforced and there is
+// no tenant isolation. Reserved for workers doing cross-tenant work, schema
+// migrations, and test setup that spans multiple users.
+// See @/lib/db/rls.ts for the RLS-enforced client.
 //
-// This client connects as the database owner with BYPASSRLS privilege.
-// It does NOT set session variables and does NOT enforce RLS policies.
-//
-// Architecture notes:
-// - Uses owner role which has rolbypassrls = true
-// - RLS policies are bypassed for this role (BYPASSRLS privilege)
-// - All data is accessible regardless of user_id
-// - No tenant isolation - can read/write ALL users' data
-//
-// This is intentional for:
-// - Workers that need cross-tenant operations
-// - Migrations that modify schema
-// - Test setup that creates data for multiple users
-//
-// See @/lib/db/rls.ts for RLS-enforced client implementation.
-// ============================================================================
-
-// ============================================================================
-// LAZY INITIALIZATION - ONLY CONNECTS WHEN ACCESSED
-// ============================================================================
-//
-// Previously, the postgres client was initialized at module scope (top-level),
-// which required DATABASE_URL to be present at build time. Next.js imports
-// API routes during the build process to analyze them, which would trigger
-// the initialization and fail if DATABASE_URL was missing.
-//
-// This lazy initialization defers the database connection to the first
-// time it's actually accessed, allowing builds to succeed without DATABASE_URL.
-// The connection is then reused for the lifetime of the process.
+// Lazy init: postgres client + drizzle are constructed on first access so Next.js
+// build-time imports of API routes don't require DATABASE_URL to be present.
 
 let _client: Sql | null = null;
 let _db: ServiceRoleDb | null = null;
@@ -118,56 +93,26 @@ function initializeDb(): ServiceRoleDb {
   return _db;
 }
 
-/**
- * Postgres client - lazily initialized on first access.
- *
- * This Proxy wraps the actual client to defer initialization until first use.
- * This allows the module to be imported at build time without requiring
- * DATABASE_URL to be present.
- *
- * ⚠️ DATABASE_URL will be required when the client is first accessed,
- * not when this module is imported.
- */
-
-export const client = new Proxy(
-  {},
-  {
-    get(_target, prop: string | symbol): unknown {
-      const actualClient = initializeClient();
-
-      return (actualClient as unknown as Record<string | symbol, unknown>)[
-        prop
-      ];
-    },
-  }
-) as Sql;
+function getLazyProxyProperty<T extends object>(
+  initialize: () => T,
+  prop: string | symbol
+): unknown {
+  return Reflect.get(initialize(), prop);
+}
 
 /**
- * Service role database client - BYPASSES RLS (lazily initialized)
- *
- * ⚠️ This export is intentionally named to make it obvious it's dangerous.
+ * Service role database client - BYPASSES RLS (lazily initialized).
  * Use getDb() from @/lib/db/runtime in request handlers instead.
- *
- * Initialization is deferred until first access, allowing builds without
- * DATABASE_URL.
  */
-export const serviceRoleDb = new Proxy(
+export const db: ServiceRoleDb = new Proxy(
   {},
   {
     get(_target, prop: string | symbol): unknown {
-      const actualDb = initializeDb();
-
-      return (actualDb as unknown as Record<string | symbol, unknown>)[prop];
+      return getLazyProxyProperty(initializeDb, prop);
     },
   }
   // Cast the proxy to the concrete Drizzle client type
 ) as ServiceRoleDb;
-
-/**
- * Shorter alias for serviceRoleDb.
- * Both names are equally valid - use whichever is clearer in context.
- */
-export const db: ServiceRoleDb = serviceRoleDb;
 
 /**
  * Check if the database client has been initialized.
@@ -177,4 +122,24 @@ export const db: ServiceRoleDb = serviceRoleDb;
  */
 export function isClientInitialized(): boolean {
   return _client !== null;
+}
+
+/**
+ * Test-only escape hatch to clear the cached client after setup swaps DB URLs.
+ * Throws in production to prevent accidental misuse closing the live pool.
+ */
+export async function resetServiceRoleClientForTests(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'resetServiceRoleClientForTests is test-only and must not run in production.'
+    );
+  }
+
+  const clientToClose = _client;
+  _db = null;
+  _client = null;
+
+  if (clientToClose) {
+    await clientToClose.end();
+  }
 }

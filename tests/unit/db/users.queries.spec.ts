@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { buildUserFixture } from '../../fixtures/users';
 import {
   createUser,
   getUserByAuthId,
   updateUserPreferredAiModel,
 } from '@/lib/db/queries/users';
-import { getDb } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
+import { makeDbClient } from '../../fixtures/db-mocks';
+import { buildUserFixture } from '../../fixtures/users';
 
 const mockedGetRequestContext = vi.fn();
 const mockedGetDb = vi.fn();
@@ -44,17 +44,15 @@ describe('users queries optimization', () => {
         authUserId: 'auth-user-2',
       },
     ];
-    const dbClient = {
-      select: () => ({
+    const dbClient = makeDbClient({
+      select: (() => ({
         from: () => ({
           where: () => Promise.resolve(rows),
         }),
-      }),
-    };
+      })) as unknown as DbClient['select'],
+    });
 
-    mockedGetDb.mockReturnValue(
-      dbClient as unknown as ReturnType<typeof getDb>
-    );
+    mockedGetDb.mockReturnValue(dbClient);
 
     const user = await getUserByAuthId('auth-user-2', undefined, {
       getRequestContext: mockedGetRequestContext,
@@ -75,7 +73,9 @@ describe('users queries optimization', () => {
     ]);
     const from = vi.fn().mockReturnValue({ where });
     const select = vi.fn().mockReturnValue({ from });
-    const explicitClient = { select } as unknown as ReturnType<typeof getDb>;
+    const explicitClient = makeDbClient({
+      select: select as unknown as DbClient['select'],
+    });
 
     const user = await getUserByAuthId('auth-user-3', explicitClient, {
       getRequestContext: mockedGetRequestContext,
@@ -100,9 +100,9 @@ describe('users queries optimization', () => {
     const values = vi.fn().mockReturnValue({ returning });
     const insert = vi.fn().mockReturnValue({ values });
 
-    mockedGetDb.mockReturnValue({
-      insert,
-    } as unknown as ReturnType<typeof getDb>);
+    mockedGetDb.mockReturnValue(
+      makeDbClient({ insert: insert as unknown as DbClient['insert'] })
+    );
 
     const user = await createUser(
       {
@@ -131,9 +131,9 @@ describe('users queries optimization', () => {
     const set = vi.fn().mockReturnValue({ where });
     const update = vi.fn().mockReturnValue({ set });
 
-    mockedGetDb.mockReturnValue({
-      update,
-    } as unknown as ReturnType<typeof getDb>);
+    mockedGetDb.mockReturnValue(
+      makeDbClient({ update: update as unknown as DbClient['update'] })
+    );
 
     const user = await updateUserPreferredAiModel(
       'internal-user-5',

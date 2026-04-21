@@ -1,16 +1,20 @@
+import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
+import { describe, expect, it } from 'vitest';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
+import { getAttemptCap } from '@/features/ai/generation-policy';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { beforeEach, describe, expect, it } from 'vitest';
 
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId } from '../../helpers/testIds';
 
 type StatusFixture = {
   generationStatus: 'generating' | 'ready' | 'failed';
   hasModules: boolean;
+  attemptsCount?: number;
+  expectedStatus: 'processing' | 'pending' | 'failed' | 'ready';
 };
 
 async function createPlanFixture(
@@ -45,14 +49,14 @@ async function createPlanFixture(
     });
   }
 
+  if (fixture.attemptsCount && fixture.attemptsCount > 0) {
+    await createFailedAttemptsInDb(plan.id, fixture.attemptsCount);
+  }
+
   return plan.id;
 }
 
 describe('Plan status parity contract', () => {
-  beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-  });
-
   it('returns matching status between detail and status endpoints', async () => {
     const authUserId = buildTestAuthUserId('status_parity');
     setTestUser(authUserId);
@@ -61,13 +65,45 @@ describe('Plan status parity contract', () => {
       email: 'status-parity@example.com',
     });
 
+    const attemptCap = getAttemptCap();
     const fixtures: StatusFixture[] = [
-      { generationStatus: 'generating', hasModules: false },
-      { generationStatus: 'failed', hasModules: false },
-      { generationStatus: 'ready', hasModules: true },
-      { generationStatus: 'generating', hasModules: true },
-      { generationStatus: 'failed', hasModules: true },
-      { generationStatus: 'ready', hasModules: false },
+      {
+        generationStatus: 'generating',
+        hasModules: false,
+        expectedStatus: 'processing',
+      },
+      {
+        generationStatus: 'failed',
+        hasModules: false,
+        expectedStatus: 'failed',
+      },
+      {
+        generationStatus: 'ready',
+        hasModules: true,
+        expectedStatus: 'ready',
+      },
+      {
+        generationStatus: 'generating',
+        hasModules: true,
+        expectedStatus: 'ready',
+      },
+      {
+        generationStatus: 'failed',
+        hasModules: true,
+        expectedStatus: 'ready',
+      },
+      {
+        generationStatus: 'ready',
+        hasModules: false,
+        attemptsCount: attemptCap - 1,
+        expectedStatus: 'pending',
+      },
+      {
+        generationStatus: 'ready',
+        hasModules: false,
+        attemptsCount: attemptCap,
+        expectedStatus: 'failed',
+      },
     ];
 
     for (const fixture of fixtures) {
@@ -95,6 +131,7 @@ describe('Plan status parity contract', () => {
       };
 
       expect(detailBody.status).toBe(statusBody.status);
+      expect(statusBody.status).toBe(fixture.expectedStatus);
     }
   });
 });

@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClientPlanDetail } from '@/lib/types/client';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 // Mock next/navigation useRouter
 const pushMock = vi.fn();
@@ -41,6 +41,12 @@ async function renderPlanDetails(plan: ClientPlanDetail) {
 }
 
 function createMockPlan(): ClientPlanDetail {
+  const totalTasks = 4;
+  const completedTasks = 1;
+  const totalMinutes = 300;
+  const completedMinutes = 60;
+  const completedModules = 0;
+
   return {
     id: 'test-plan-id',
     topic: 'Test Learning Topic',
@@ -50,6 +56,11 @@ function createMockPlan(): ClientPlanDetail {
     visibility: 'private',
     origin: 'ai',
     status: 'ready',
+    totalTasks,
+    completedTasks,
+    totalMinutes,
+    completedMinutes,
+    completedModules,
     modules: [
       {
         id: 'module-1',

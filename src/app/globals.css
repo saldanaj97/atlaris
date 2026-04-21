@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
-@import '@neondatabase/auth/ui/tailwind';
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@neondatabase/auth/ui/tailwind";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -21,6 +21,9 @@
   --accent: oklch(0.95 0.03 233.56);
   --accent-foreground: oklch(0.38 0.14 265.59);
   --destructive: oklch(0.64 0.21 25.39);
+  /* Success (Phase 4): completion / positive UI; use bg-success, text-success, border-success/* */
+  --success: oklch(0.52 0.14 155);
+  --success-foreground: oklch(0.99 0 0);
   --border: oklch(0.93 0.01 261.82);
   --input: oklch(0.93 0.01 261.82);
   --ring: oklch(0.62 0.19 259.76);
@@ -39,11 +42,11 @@
   --sidebar-ring: oklch(0.71 0 0);
 
   --font-sans:
-    'Geist', 'Geist Fallback', ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: 'Source Serif 4', serif;
+    "Geist", "Geist Fallback", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: "Source Serif 4", serif;
   --font-mono: JetBrains Mono, monospace;
 
   --radius: 2rem;
@@ -82,6 +85,8 @@
   --accent: oklch(0.38 0.14 265.59);
   --accent-foreground: oklch(0.88 0.06 254.63);
   --destructive: oklch(0.64 0.21 25.39);
+  --success: oklch(0.62 0.14 155);
+  --success-foreground: oklch(0.12 0.02 155);
   --border: oklch(0.37 0 0);
   --input: oklch(0.37 0 0);
   --ring: oklch(0.62 0.19 259.76);
@@ -131,6 +136,8 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -271,6 +278,17 @@
     text-wrap: balance;
   }
 
+  /* Card titles inside marketing sections (features, steps, problem/solution) */
+  .marketing-card-title {
+    font-family: var(--font-family-heading);
+    font-weight: 600;
+    font-size: 1.25rem; /* 20px — aligns with text-xl */
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--foreground);
+  }
+
   .marketing-subtitle {
     font-family: var(--font-family-base);
     font-weight: var(--font-weight-base);
@@ -293,6 +311,9 @@
     }
     .marketing-h4 {
       font-size: 1.25rem; /* 20px on mobile */
+    }
+    .marketing-card-title {
+      font-size: 1.125rem; /* 18px on mobile */
     }
     .marketing-subtitle {
       font-size: 1rem; /* 16px on mobile */

@@ -1,3 +1,5 @@
+import { Check } from 'lucide-react';
+import type { ReactElement, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -8,10 +10,8 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
-import type { ReactElement, ReactNode } from 'react';
 
-export interface PricingCardProps {
+interface PricingCardProps {
   name: string;
   price: string;
   intervalLabel: string;

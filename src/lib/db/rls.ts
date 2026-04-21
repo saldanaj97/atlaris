@@ -30,21 +30,44 @@
  * Note: In test environments, BYPASSRLS allows tests to access tables directly.
  */
 
-import { databaseEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import type { Sql } from 'postgres';
 import postgres from 'postgres';
+import { databaseEnv } from '@/lib/config/env';
+import type { DbClient } from '@/lib/db/types';
+import { logger } from '@/lib/logging/logger';
 import * as schema from './schema';
+
+function createIdempotentPostgresCleanup(
+  sql: Sql,
+  options: {
+    onConnectionCloseError: (error: unknown) => void;
+  }
+): () => Promise<void> {
+  let isCleanedUp = false;
+  return async () => {
+    if (isCleanedUp) {
+      return;
+    }
+    isCleanedUp = true;
+    try {
+      await sql.end({ timeout: 5 });
+    } catch (error) {
+      options.onConnectionCloseError(error);
+    }
+  };
+}
+
+export type RlsClient = DbClient;
 
 /**
  * Result type for RLS client creation functions.
  * Includes the Drizzle client and a cleanup function to close the connection.
  */
-export interface RlsClientResult {
+type RlsClientResult = {
   db: Awaited<ReturnType<typeof drizzle<typeof schema>>>;
   cleanup: () => Promise<void>;
-}
+};
 
 /**
  * Creates an RLS-enforced database client for authenticated users.
@@ -70,7 +93,8 @@ export interface RlsClientResult {
  * ```
  */
 export async function createAuthenticatedRlsClient(
-  authUserId: string
+  authUserId: string,
+  options?: { idleTimeout?: number }
 ): Promise<RlsClientResult> {
   const jwtClaims = JSON.stringify({ sub: authUserId });
 
@@ -81,7 +105,7 @@ export async function createAuthenticatedRlsClient(
   const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
   const sql: Sql = postgres(connectionUrl, {
     max: 1, // Single connection per client (important for session variable isolation)
-    idle_timeout: 20, // Close idle connections after 20s
+    idle_timeout: options?.idleTimeout ?? 20, // Default 20s; stream routes use longer timeouts
     connect_timeout: 10, // Timeout for connection attempts
   });
 
@@ -98,27 +122,14 @@ export async function createAuthenticatedRlsClient(
   // Using set_config() with template tag parameterization is safer than string interpolation
   await sql`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
 
-  // Track cleanup state to make cleanup idempotent
-  let isCleanedUp = false;
-
-  const cleanup = async () => {
-    // Idempotent cleanup: safe to call multiple times
-    if (isCleanedUp) {
-      return;
-    }
-    isCleanedUp = true;
-
-    try {
-      await sql.end({ timeout: 5 });
-    } catch (error) {
-      // Log but don't throw - connection cleanup errors shouldn't fail the request
-      // The connection will eventually timeout and close on its own
+  const cleanup = createIdempotentPostgresCleanup(sql, {
+    onConnectionCloseError: (error) => {
       logger.warn(
         { error, authUserId },
         'Failed to close RLS database connection'
       );
-    }
-  };
+    },
+  });
 
   return {
     db: drizzle(sql, { schema }),
@@ -150,6 +161,9 @@ export async function createAuthenticatedRlsClient(
  * }
  * ```
  */
+// Anonymous sessions are short-lived (auth redirects, public pages) so
+// idle_timeout is fixed at 20s. Only authenticated stream connections
+// need the configurable timeout (up to 180s for AI generation).
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
   // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
@@ -175,38 +189,17 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Using set_config() with template tag parameterization is safer than string interpolation
   await sql`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
 
-  // Track cleanup state to make cleanup idempotent
-  let isCleanedUp = false;
-
-  const cleanup = async () => {
-    // Idempotent cleanup: safe to call multiple times
-    if (isCleanedUp) {
-      return;
-    }
-    isCleanedUp = true;
-
-    try {
-      await sql.end({ timeout: 5 });
-    } catch (error) {
-      // Log but don't throw - connection cleanup errors shouldn't fail the request
-      // The connection will eventually timeout and close on its own
+  const cleanup = createIdempotentPostgresCleanup(sql, {
+    onConnectionCloseError: (error) => {
       logger.warn(
         { error },
         'Failed to close anonymous RLS database connection'
       );
-    }
-  };
+    },
+  });
 
   return {
     db: drizzle(sql, { schema }),
     cleanup,
   };
 }
-
-/**
- * Type alias for the RLS-enforced database client.
- * This matches the type of the service-role client for compatibility.
- */
-export type RlsClient = Awaited<
-  ReturnType<typeof createAuthenticatedRlsClient>
->['db'];

@@ -4,7 +4,6 @@ import { createDeferredPromise } from '../../helpers/deferred-promise';
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
 
-import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
 import {
   act,
   fireEvent,
@@ -14,6 +13,7 @@ import {
 } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
 
 describe('RegenerateButton', () => {
   beforeEach(() => {

@@ -1,73 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_ATTEMPT_CAP } from '@/lib/ai/constants';
+import { createGetAttemptCap } from '@/features/ai/generation-policy';
+import {
+  DEFAULT_ATTEMPT_CAP,
+  resolveAttemptCap,
+} from '@/shared/constants/generation';
 
-describe('generation policy ATTEMPT_CAP', () => {
-  afterEach(() => {
-    vi.resetModules();
-    vi.doUnmock('@/lib/config/env');
+describe('generation policy attempt-cap wiring', () => {
+  it('delegates getAttemptCap to the injected reader', () => {
+    const readAttemptCap = vi.fn(() => 7);
+    const getAttemptCap = createGetAttemptCap(readAttemptCap);
+
+    expect(getAttemptCap()).toBe(7);
+    expect(readAttemptCap).toHaveBeenCalledTimes(1);
   });
+});
 
-  it('falls back to DEFAULT_ATTEMPT_CAP when attemptsEnv.cap is fractional under 1', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: 0.5 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
-  });
-
-  it('uses floored integer when attemptsEnv.cap is finite and >= 1 after floor', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: 2.9 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(2);
-  });
-
-  it('falls back to DEFAULT_ATTEMPT_CAP when attemptsEnv.cap is NaN', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: Number.NaN },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
-  });
-
-  it('falls back to DEFAULT_ATTEMPT_CAP when attemptsEnv.cap is negative', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: -1 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
-  });
-
-  it('falls back to DEFAULT_ATTEMPT_CAP when attemptsEnv.cap is zero', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: 0 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(DEFAULT_ATTEMPT_CAP);
-  });
-
-  it('uses 1 when attemptsEnv.cap is exactly 1 (boundary)', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: 1 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(1);
-  });
-
-  it('uses integer cap when attemptsEnv.cap is already an integer >= 1', async () => {
-    vi.doMock('@/lib/config/env', () => ({
-      attemptsEnv: { cap: 3 },
-    }));
-
-    const { ATTEMPT_CAP } = await import('@/lib/ai/generation-policy');
-    expect(ATTEMPT_CAP).toBe(3);
+describe('resolveAttemptCap', () => {
+  it.each([
+    { rawCap: 0.5, expected: DEFAULT_ATTEMPT_CAP },
+    { rawCap: 2.9, expected: 2 },
+    { rawCap: Number.NaN, expected: DEFAULT_ATTEMPT_CAP },
+    { rawCap: -1, expected: DEFAULT_ATTEMPT_CAP },
+    { rawCap: 0, expected: DEFAULT_ATTEMPT_CAP },
+    { rawCap: 1, expected: 1 },
+    { rawCap: 3, expected: 3 },
+  ])('normalizes $rawCap to $expected', ({ rawCap, expected }) => {
+    expect(resolveAttemptCap(rawCap)).toBe(expected);
   });
 });

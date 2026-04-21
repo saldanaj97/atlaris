@@ -1,10 +1,11 @@
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getSessionSafe } from '@/lib/auth/server';
+import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
-} from '@/lib/navigation';
-import type { SubscriptionTier } from '@/lib/stripe/tier-limits';
+} from '@/features/navigation';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import { getShellAuthUserId } from '@/lib/auth/local-identity';
+import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
@@ -35,15 +36,15 @@ import MobileHeader from './nav/MobileHeader';
  */
 export default async function SiteHeader() {
   const { session } = await getSessionSafe();
-  const authUserId = session?.user?.id;
+  const authUserId = getShellAuthUserId(session?.user?.id);
   const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
   // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
   if (authUserId) {
     try {
-      const result = await withServerComponentContext(
-        (user) => user.subscriptionTier
+      const result = await requestBoundary.component(
+        ({ actor }) => actor.subscriptionTier
       );
       tier = result ?? undefined;
     } catch (err) {

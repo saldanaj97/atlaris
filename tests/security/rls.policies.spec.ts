@@ -18,17 +18,15 @@
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-
-import { db } from '@/lib/db/service-role';
 import {
   learningPlans,
   modules,
   resources,
-  taskCalendarEvents,
   taskProgress,
   tasks,
   users,
 } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { truncateAll } from '../helpers/db';
 import {
   cleanupTrackedRlsClients,
@@ -37,12 +35,6 @@ import {
   getServiceRoleDb,
 } from '../helpers/rls';
 
-function shouldRunRlsTests(): boolean {
-  return process.env.CI === 'true' || process.env.RUN_RLS_TESTS === '1';
-}
-
-// Run RLS tests only when explicitly enabled (CI or RUN_RLS_TESTS=1)
-const runRls = shouldRunRlsTests();
 const policyRowSchema = z.object({
   tablename: z.string(),
   policyname: z.string(),
@@ -52,8 +44,7 @@ const policyRowSchema = z.object({
 // this file. Do not add metadata-only tables here without functional tests.
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, generation_attempts, task_resources,
-// usage_metrics, ai_usage_events, oauth_state_tokens, integration_tokens,
-// google_calendar_sync_state, job_queue.
+// usage_metrics, ai_usage_events, oauth_state_tokens, job_queue.
 const expectedPolicyTables = [
   'users',
   'learning_plans',
@@ -61,7 +52,6 @@ const expectedPolicyTables = [
   'tasks',
   'resources',
   'task_progress',
-  'task_calendar_events',
 ] as const;
 
 async function expectRlsViolation(operation: () => Promise<unknown>) {
@@ -72,7 +62,7 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
     const err = error as Error;
     const message = err.message;
     const causeMessage = (err.cause as Error)?.message || '';
-    const combinedMessage = message + ' ' + causeMessage;
+    const combinedMessage = `${message} ${causeMessage}`;
 
     if (!/row.*level.*security|permission/i.test(combinedMessage)) {
       throw new Error(
@@ -82,7 +72,7 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
   }
 }
 
-describe.skipIf(!runRls)('RLS Policy Verification', () => {
+describe('RLS Policy Verification', () => {
   beforeEach(async () => {
     await cleanupTrackedRlsClients();
     await truncateAll();
@@ -265,19 +255,20 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         .where(eq(learningPlans.id, plan.id));
       expect(readableRows).toHaveLength(0);
 
-      const updated = await anonDb
-        .update(learningPlans)
-        .set({ topic: 'Should Not Update' })
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
+      await expectRlsViolation(() =>
+        anonDb
+          .update(learningPlans)
+          .set({ topic: 'Should Not Update' })
+          .where(eq(learningPlans.id, plan.id))
+          .returning({ id: learningPlans.id })
+      );
 
-      const deleted = await anonDb
-        .delete(learningPlans)
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
-
-      expect(updated).toHaveLength(0);
-      expect(deleted).toHaveLength(0);
+      await expectRlsViolation(() =>
+        anonDb
+          .delete(learningPlans)
+          .where(eq(learningPlans.id, plan.id))
+          .returning({ id: learningPlans.id })
+      );
 
       const persistedPlan = await db.query.learningPlans.findFirst({
         where: (fields, operators) => operators.eq(fields.id, plan.id),
@@ -371,6 +362,84 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
         .returning({ id: users.id });
 
       expect(crossTenantUpdate).toHaveLength(0);
+    });
+
+    it('authenticated users cannot update billing/system-managed columns on their own row', async () => {
+      // RLS limits authenticated users to their own row, and migration 0018's
+      // column-level UPDATE grants keep billing/system-managed fields writable
+      // only by the service role. This test guards against drift between those
+      // layers by proving rejected updates leave the row unchanged.
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_billing_guard',
+          email: 'billing-guard@test.com',
+          name: 'Billing Guard User',
+        })
+        .returning({
+          id: users.id,
+          cancelAtPeriodEnd: users.cancelAtPeriodEnd,
+          stripeCustomerId: users.stripeCustomerId,
+          subscriptionStatus: users.subscriptionStatus,
+        });
+
+      const userDb = await createRlsDbForUser('user_billing_guard');
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ cancelAtPeriodEnd: true })
+          .where(eq(users.id, user.id))
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ stripeCustomerId: 'cus_fake123' })
+          .where(eq(users.id, user.id))
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ subscriptionStatus: 'active' })
+          .where(eq(users.id, user.id))
+      );
+
+      const [billingAfterViolations] = await userDb
+        .select({
+          cancelAtPeriodEnd: users.cancelAtPeriodEnd,
+          stripeCustomerId: users.stripeCustomerId,
+          subscriptionStatus: users.subscriptionStatus,
+        })
+        .from(users)
+        .where(eq(users.id, user.id));
+
+      expect(billingAfterViolations).toEqual({
+        cancelAtPeriodEnd: user.cancelAtPeriodEnd,
+        stripeCustomerId: user.stripeCustomerId,
+        subscriptionStatus: user.subscriptionStatus,
+      });
+
+      const updatedName = await userDb
+        .update(users)
+        .set({ name: 'Updated Name' })
+        .where(eq(users.id, user.id))
+        .returning({ id: users.id, name: users.name });
+
+      expect(updatedName).toHaveLength(1);
+      expect(updatedName[0]?.name).toBe('Updated Name');
+
+      const updatedPreferred = await userDb
+        .update(users)
+        .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
+        .where(eq(users.id, user.id))
+        .returning({ id: users.id, preferredAiModel: users.preferredAiModel });
+
+      expect(updatedPreferred).toHaveLength(1);
+      expect(updatedPreferred[0]?.preferredAiModel).toBe(
+        'google/gemini-2.0-flash-exp:free'
+      );
     });
 
     it('authenticated users can read their own learning plans', async () => {
@@ -516,98 +585,6 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
           visibility: 'private',
         })
       );
-    });
-
-    it('authenticated users cannot insert calendar events for tasks they do not own', async () => {
-      const [owner] = await db
-        .insert(users)
-        .values({
-          authUserId: 'calendar_owner',
-          email: 'calendar-owner@test.com',
-        })
-        .returning();
-
-      const [attacker] = await db
-        .insert(users)
-        .values({
-          authUserId: 'calendar_attacker',
-          email: 'calendar-attacker@test.com',
-        })
-        .returning();
-
-      const [ownerPlan] = await db
-        .insert(learningPlans)
-        .values({
-          userId: owner.id,
-          topic: 'Owner Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          visibility: 'private',
-        })
-        .returning();
-
-      const [ownerModule] = await db
-        .insert(modules)
-        .values({
-          planId: ownerPlan.id,
-          order: 1,
-          title: 'Owner Module',
-          estimatedMinutes: 60,
-        })
-        .returning();
-
-      const [ownerTask] = await db
-        .insert(tasks)
-        .values({
-          moduleId: ownerModule.id,
-          order: 1,
-          title: 'Owner Task',
-          estimatedMinutes: 30,
-        })
-        .returning();
-
-      const attackerDb = await createRlsDbForUser('calendar_attacker');
-
-      await expectRlsViolation(() =>
-        attackerDb.insert(taskCalendarEvents).values({
-          taskId: ownerTask.id,
-          userId: attacker.id,
-          calendarEventId: `event_${Date.now()}`,
-          calendarId: 'primary',
-        })
-      );
-
-      const [ownerEvent] = await db
-        .insert(taskCalendarEvents)
-        .values({
-          taskId: ownerTask.id,
-          userId: owner.id,
-          calendarEventId: `owner_event_${Date.now()}`,
-          calendarId: 'primary',
-        })
-        .returning({ id: taskCalendarEvents.id });
-
-      const updated = await attackerDb
-        .update(taskCalendarEvents)
-        .set({ calendarId: 'hacked' })
-        .where(eq(taskCalendarEvents.id, ownerEvent.id))
-        .returning({ id: taskCalendarEvents.id });
-
-      const deleted = await attackerDb
-        .delete(taskCalendarEvents)
-        .where(eq(taskCalendarEvents.id, ownerEvent.id))
-        .returning({ id: taskCalendarEvents.id });
-
-      expect(updated).toHaveLength(0);
-      expect(deleted).toHaveLength(0);
-
-      const persistedEvent = await db.query.taskCalendarEvents.findFirst({
-        where: (fields, operators) => operators.eq(fields.id, ownerEvent.id),
-      });
-
-      expect(persistedEvent).toBeDefined();
-      expect(persistedEvent?.calendarId).toBe('primary');
     });
 
     it('authenticated users can update their own plans', async () => {
@@ -1018,7 +995,7 @@ describe.skipIf(!runRls)('RLS Policy Verification', () => {
       // Try to insert a resource (should fail)
       await expectRlsViolation(() =>
         authDb.insert(resources).values({
-          type: 'youtube',
+          type: 'video',
           title: 'Unauthorized Resource',
           url: `https://example.com/video-${Date.now()}`,
         })

@@ -1,9 +1,10 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
-import { setTestUser, clearTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { learningPlans } from '@/lib/db/schema';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db';
 
 // Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
@@ -159,5 +160,24 @@ describe('GET /api/v1/user/subscription', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.tier).toBe('starter');
+  });
+
+  it('should return cancelAtPeriodEnd from the local database state', async () => {
+    await db
+      .update(users)
+      .set({ cancelAtPeriodEnd: true })
+      .where(eq(users.id, userId));
+
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' }
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.cancelAtPeriodEnd).toBe(true);
   });
 });

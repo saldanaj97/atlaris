@@ -1,11 +1,10 @@
 import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { Activity } from 'react';
 import type { JSX } from 'react';
-import { getEventTypeConfig, getRelativeTime } from './activity-utils';
-
-import type { PlanSummary } from '@/lib/types/db';
+import { Activity } from 'react';
+import type { PlanSummary } from '@/shared/types/db.types';
 import type { ScheduledEvent } from '../types';
+import { getActivityRelativeLabel, getEventTypeConfig } from './activity-utils';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
@@ -99,7 +98,7 @@ function UpcomingScheduleCard({
                 {/* Time & Duration */}
                 <div className="mt-1.5 flex items-center gap-3">
                   <span className={`text-xs font-medium ${relativeTimeClass}`}>
-                    {getRelativeTime(event.dateTime)}
+                    {getActivityRelativeLabel(event.dateTime)}
                   </span>
                   {event.duration && (
                     <span

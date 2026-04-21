@@ -1,20 +1,25 @@
+import { randomUUID } from 'node:crypto';
+import { asc, eq } from 'drizzle-orm';
+import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import {
-  getAttemptMetricsSnapshot,
-  resetAttemptMetrics,
-} from '@/lib/metrics/attempts';
-import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
-import type { MockInstance } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+} from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser, resetDbForIntegrationTestFile } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db';
+import {
+  cleanupTrackedRlsClients,
+  createRlsDbForUser,
+} from '../../helpers/rls';
 
 const TEST_INPUT = {
   topic: 'Atomic observability',
@@ -24,16 +29,15 @@ const TEST_INPUT = {
 };
 
 describe('Atomic attempt observability', () => {
+  let authUserId = '';
   let userId = '';
   let planId = '';
   let consoleInfoSpy: MockInstance<(...args: unknown[]) => void> | undefined;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-    resetAttemptMetrics();
     consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
-    const authUserId = `auth-${randomUUID()}`;
+    authUserId = `auth-${randomUUID()}`;
     userId = await ensureUser({
       authUserId,
       email: `${authUserId}@example.com`,
@@ -51,11 +55,45 @@ describe('Atomic attempt observability', () => {
     planId = plan.id;
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    await cleanupTrackedRlsClients();
     consoleInfoSpy?.mockRestore();
   });
 
-  it('records success metrics and emits success log event', async () => {
+  it('rejects a second reservation while the first attempt is still in progress', async () => {
+    const firstReservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      dbClient: db,
+      now: () => new Date('2026-01-01T09:00:00.000Z'),
+    });
+
+    if (!firstReservation.reserved) {
+      throw new Error(`Expected reservation, got ${firstReservation.reason}`);
+    }
+
+    const secondReservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      dbClient: db,
+      now: () => new Date('2026-01-01T09:00:05.000Z'),
+    });
+
+    expect(secondReservation).toEqual({
+      reserved: false,
+      reason: 'in_progress',
+    });
+
+    const plan = await db.query.learningPlans.findFirst({
+      where: eq(learningPlans.id, planId),
+    });
+
+    expect(plan?.generationStatus).toBe('generating');
+  });
+
+  it('emits success log event after attempt finalization', async () => {
     const startedAt = new Date('2026-01-01T10:00:00.000Z');
     const finishedAt = new Date('2026-01-01T10:00:01.250Z');
 
@@ -94,13 +132,6 @@ describe('Atomic attempt observability', () => {
       now: () => finishedAt,
     });
 
-    const snapshot = getAttemptMetricsSnapshot();
-    expect(snapshot.totalAttempts).toBe(1);
-    expect(snapshot.success.count).toBe(1);
-    expect(snapshot.success.duration.last).toBe(1_250);
-    expect(snapshot.success.modules.last).toBe(1);
-    expect(snapshot.success.tasks.last).toBe(1);
-
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] success',
       expect.objectContaining({
@@ -111,7 +142,133 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('records timeout failure metrics, marks plan pending retry, and emits failure log event', async () => {
+  it('replaces prior modules/tasks atomically and succeeds through an RLS client', async () => {
+    const [staleModule] = await db
+      .insert(modules)
+      .values({
+        planId,
+        order: 1,
+        title: 'Stale Module',
+        description: 'Should be replaced',
+        estimatedMinutes: 15,
+      })
+      .returning({ id: modules.id });
+
+    if (!staleModule) {
+      throw new Error('Failed to seed stale module');
+    }
+
+    await db.insert(tasks).values({
+      moduleId: staleModule.id,
+      order: 1,
+      title: 'Stale Task',
+      description: 'Should be replaced',
+      estimatedMinutes: 5,
+    });
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      dbClient: rlsDb,
+      now: () => new Date('2026-01-03T08:00:00.000Z'),
+    });
+
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+
+    const attempt = await finalizeAttemptSuccess({
+      attemptId: reservation.attemptId,
+      planId,
+      preparation: reservation,
+      modules: [
+        {
+          title: 'Fresh Module 1',
+          description: 'Fresh description 1',
+          estimatedMinutes: 60,
+          tasks: [
+            {
+              title: 'Fresh Task 1',
+              description: 'Fresh task description 1',
+              estimatedMinutes: 30,
+            },
+            {
+              title: 'Fresh Task 2',
+              description: 'Fresh task description 2',
+              estimatedMinutes: 30,
+            },
+          ],
+        },
+        {
+          title: 'Fresh Module 2',
+          description: 'Fresh description 2',
+          estimatedMinutes: 45,
+          tasks: [
+            {
+              title: 'Fresh Task 3',
+              description: 'Fresh task description 3',
+              estimatedMinutes: 45,
+            },
+          ],
+        },
+      ],
+      durationMs: 321,
+      extendedTimeout: false,
+      dbClient: rlsDb,
+      now: () => new Date('2026-01-03T08:00:03.000Z'),
+    });
+
+    const persistedAttempt = await db.query.generationAttempts.findFirst({
+      where: eq(generationAttempts.id, attempt.id),
+    });
+    const persistedModules = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.planId, planId))
+      .orderBy(asc(modules.order), asc(modules.id));
+    const persistedTasks = await db
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        moduleId: tasks.moduleId,
+      })
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(eq(modules.planId, planId))
+      .orderBy(asc(modules.order), asc(tasks.order), asc(tasks.id));
+    const plan = await db.query.learningPlans.findFirst({
+      where: eq(learningPlans.id, planId),
+    });
+
+    expect(persistedAttempt).toMatchObject({
+      id: attempt.id,
+      status: 'success',
+      modulesCount: 2,
+      tasksCount: 3,
+    });
+    expect(plan?.generationStatus).toBe('generating');
+    expect(persistedModules).toHaveLength(2);
+    expect(persistedModules.map((module) => module.title)).toEqual([
+      'Fresh Module 1',
+      'Fresh Module 2',
+    ]);
+    expect(
+      persistedModules.some((module) => module.title === 'Stale Module')
+    ).toBe(false);
+    expect(persistedTasks).toHaveLength(3);
+    expect(persistedTasks.map((task) => task.title)).toEqual([
+      'Fresh Task 1',
+      'Fresh Task 2',
+      'Fresh Task 3',
+    ]);
+    expect(persistedTasks.some((task) => task.title === 'Stale Task')).toBe(
+      false
+    );
+  });
+
+  it('does not mutate plan status during retryable attempt finalization and emits failure log event', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -142,12 +299,7 @@ describe('Atomic attempt observability', () => {
       where: eq(learningPlans.id, planId),
     });
 
-    const snapshot = getAttemptMetricsSnapshot();
-    expect(snapshot.totalAttempts).toBe(1);
-    expect(snapshot.failure.count).toBe(1);
-    expect(snapshot.failure.duration.last).toBe(2_000);
-    expect(snapshot.failure.classifications.timeout).toBe(1);
-    expect(plan?.generationStatus).toBe('pending_retry');
+    expect(plan?.generationStatus).toBe('generating');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',
@@ -161,7 +313,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('marks plan failed for terminal validation failures', async () => {
+  it('does not mutate plan status during terminal attempt finalization', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -184,10 +336,16 @@ describe('Atomic attempt observability', () => {
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });
-    const snapshot = getAttemptMetricsSnapshot();
 
-    expect(plan?.generationStatus).toBe('failed');
-    expect(plan?.isQuotaEligible).toBe(false);
-    expect(snapshot.failure.classifications.validation).toBe(1);
+    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.isQuotaEligible).toBe(true);
+    expect(consoleInfoSpy).toHaveBeenCalledWith(
+      '[attempts] failure',
+      expect.objectContaining({
+        planId,
+        classification: 'validation',
+        correlationId: null,
+      })
+    );
   });
 });

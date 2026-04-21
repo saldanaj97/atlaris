@@ -1,3 +1,8 @@
+import { Plus } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import type { JSX } from 'react';
+import { Suspense } from 'react';
 import {
   PlanCountBadgeContent,
   PlansContent,
@@ -5,11 +10,6 @@ import {
 import { PlansContentSkeleton } from '@/app/plans/components/PlansContentSkeleton';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus } from 'lucide-react';
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import type { JSX } from 'react';
-import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Your Plans | Atlaris',

@@ -1,16 +1,9 @@
-import { describe, it, expect } from 'vitest';
-
+import { describe, expect, it } from 'vitest';
+import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
+import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import {
-  generationAttempts,
-  learningPlans,
-  modules as _modules,
-  tasks as _tasks,
-  users as _users,
-} from '@/lib/db/schema';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
-import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
 
 async function createPlanWithAttempt({
   authUserId,

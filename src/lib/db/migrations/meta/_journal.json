@@ -120,6 +120,83 @@
       "when": 1771100000000,
       "tag": "0016_generation_attempts_rls_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1771150000000,
+      "tag": "0017_cancel_at_period_end_drop_plan_generations",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1771200000000,
+      "tag": "0018_harden_users_update_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1771250000000,
+      "tag": "0019_snapshot_realignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1774327554498,
+      "tag": "0020_burly_jackal",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1774328702247,
+      "tag": "0021_majestic_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1774328760514,
+      "tag": "0022_melodic_satana",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1774886264442,
+      "tag": "0023_phase3_ai_usage_provider_cost",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1774906575293,
+      "tag": "0024_massive_scalphunter",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776541532842,
+      "tag": "0025_daily_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776550737387,
+      "tag": "0026_known_aaron_stack",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776704568963,
+      "tag": "0027_windy_agent_zero",
+      "breakpoints": true
     }
   ]
 }

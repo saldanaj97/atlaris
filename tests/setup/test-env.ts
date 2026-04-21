@@ -1,28 +1,17 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
 
-// ---------------------------------------------------------------------------
-// Testcontainers env propagation
-// ---------------------------------------------------------------------------
-// When Testcontainers globalSetup provisions a Postgres container it writes
-// the connection URL to a temp JSON file. Workers read it here so they get
-// the correct DATABASE_URL regardless of pool type (threads / forks).
-const tcEnvFile = join(__dirname, '..', '.testcontainers-env.json');
-if (existsSync(tcEnvFile)) {
-  try {
-    const tcEnv: Record<string, string> = JSON.parse(
-      readFileSync(tcEnvFile, 'utf-8')
-    );
-    for (const [key, value] of Object.entries(tcEnv)) {
-      // Only set if not already provided (allows explicit overrides)
-      if (!process.env[key]) {
-        process.env[key] = value;
-      }
-    }
-  } catch {
-    // If the file is malformed, ignore — tests will fail on missing DATABASE_URL
-  }
-}
+import {
+  createAdminDatabaseUrl,
+  createDatabaseUrl,
+  getWorkerDbName,
+  normalizeWorkerId,
+  readTestDbRuntimeState,
+  recreateWorkerDatabaseFromTemplate,
+  shouldLogTestDbDebug,
+  workerDatabaseExists,
+} from './db-provisioning';
+
+await setupWorkerDatabaseEnv();
 
 // Google OAuth defaults for tests – only used when not set from outside
 if (!process.env.GOOGLE_CLIENT_ID) {
@@ -47,4 +36,54 @@ if (!process.env.NEON_AUTH_BASE_URL) {
 }
 if (!process.env.NEON_AUTH_COOKIE_SECRET) {
   process.env.NEON_AUTH_COOKIE_SECRET = 'test_neon_auth_cookie_secret';
+}
+
+// Avoid fire-and-forget inline regeneration drains racing DB-backed tests unless a spec opts in.
+if (process.env.REGENERATION_INLINE_PROCESSING === undefined) {
+  process.env.REGENERATION_INLINE_PROCESSING = 'false';
+}
+
+async function setupWorkerDatabaseEnv(): Promise<void> {
+  const runtimeState = readTestDbRuntimeState();
+  if (!runtimeState) {
+    return;
+  }
+
+  const workerId = normalizeWorkerId(process.env.VITEST_POOL_ID);
+  const workerDbName = getWorkerDbName(workerId);
+  const adminConnectionUrl = createAdminDatabaseUrl(
+    runtimeState.TEST_DB_CONTAINER_URL
+  );
+  const workerConnectionUrl = createDatabaseUrl(
+    runtimeState.TEST_DB_CONTAINER_URL,
+    workerDbName
+  );
+
+  const workerDbAlreadyExists = await workerDatabaseExists(
+    adminConnectionUrl,
+    workerDbName
+  );
+
+  if (!workerDbAlreadyExists) {
+    await recreateWorkerDatabaseFromTemplate({
+      adminConnectionUrl,
+      templateDbName: runtimeState.TEST_DB_TEMPLATE_DB_NAME,
+      workerDbName,
+    });
+  }
+
+  process.env.ALLOW_DB_TRUNCATE = runtimeState.ALLOW_DB_TRUNCATE;
+  process.env.DATABASE_URL = workerConnectionUrl;
+  process.env.DATABASE_URL_NON_POOLING = workerConnectionUrl;
+  process.env.DATABASE_URL_UNPOOLED = workerConnectionUrl;
+  process.env.TEST_WORKER_DB_NAME = workerDbName;
+  process.env.TEST_WORKER_ID = workerId;
+
+  await resetServiceRoleClientForTests();
+
+  if (shouldLogTestDbDebug()) {
+    console.log(
+      `[Test DB] worker ${workerId} -> ${workerDbName}${workerDbAlreadyExists ? ' (reused)' : ' (created)'}`
+    );
+  }
 }

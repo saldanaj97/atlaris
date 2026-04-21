@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { sql } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 import { ensureUser } from '@/../tests/helpers/db';
 import { usageMetrics, users } from '@/lib/db/schema';
@@ -48,6 +47,7 @@ describe('Stripe DB schema', () => {
       await expect(
         db
           .update(users)
+          // Negative-path coverage: intentionally bypass TS so Postgres rejects the invalid enum value.
           .set({ subscriptionTier: 'gold' as any })
           .where(sql`id = ${userId}`)
       ).rejects.toThrow();
@@ -122,7 +122,6 @@ describe('Stripe DB schema', () => {
         .returning();
 
       expect(row.plansGenerated).toBe(0);
-      expect(row.pdfPlansGenerated).toBe(0);
       expect(row.regenerationsUsed).toBe(0);
       expect(row.exportsUsed).toBe(0);
     });
@@ -158,11 +157,6 @@ describe('Stripe DB schema', () => {
         db
           .insert(usageMetrics)
           .values({ userId, month: '2025-03', exportsUsed: -1 })
-      ).rejects.toThrow();
-      await expect(
-        db
-          .insert(usageMetrics)
-          .values({ userId, month: '2025-03', pdfPlansGenerated: -1 })
       ).rejects.toThrow();
     });
 

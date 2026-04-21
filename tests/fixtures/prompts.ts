@@ -1,4 +1,4 @@
-import type { PromptParams } from '@/lib/ai/prompts';
+import type { PromptParams } from '@/features/ai/prompts';
 
 const DEFAULT_PROMPT_PARAMS: PromptParams = {
   topic: 'TypeScript',

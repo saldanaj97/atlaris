@@ -8,6 +8,7 @@ import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('Module Queries', () => {
   let userId: string;
+  let attackerId: string;
   let planId: string;
 
   beforeEach(async () => {
@@ -15,6 +16,12 @@ describe('Module Queries', () => {
     userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+    });
+
+    const attackerAuthUserId = buildTestAuthUserId('db-modules-attacker');
+    attackerId = await ensureUser({
+      authUserId: attackerAuthUserId,
+      email: buildTestEmail(attackerAuthUserId),
     });
 
     const plan = await createTestPlan({ userId });
@@ -45,7 +52,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 45,
       });
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.id).toBe(module.id);
@@ -59,7 +66,8 @@ describe('Module Queries', () => {
 
     it('should return null for non-existent module', async () => {
       const result = await getModuleDetail(
-        '00000000-0000-0000-0000-000000000000'
+        '00000000-0000-0000-0000-000000000000',
+        userId
       );
 
       expect(result).toBeNull();
@@ -73,7 +81,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 0,
       });
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.title).toBe('Empty Module');
@@ -110,7 +118,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 60,
       });
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.tasks).toHaveLength(3);
@@ -136,7 +144,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 90,
       });
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.tasks).toHaveLength(1);
@@ -181,7 +189,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 30,
       });
 
-      const result = await getModuleDetail(module1.id);
+      const result = await getModuleDetail(module1.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.tasks).toHaveLength(1);
@@ -208,7 +216,7 @@ describe('Module Queries', () => {
         )
       );
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.id).toBe(module.id);
@@ -235,13 +243,24 @@ describe('Module Queries', () => {
         description: 'Task description',
       });
 
-      const result = await getModuleDetail(module.id);
+      const result = await getModuleDetail(module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.order).toBe(5);
       expect(result?.module.estimatedMinutes).toBe(240);
       expect(result?.module.createdAt).toBeInstanceOf(Date);
       expect(result?.module.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('returns null when accessing a module owned by another user', async () => {
+      const module = await createTestModule({
+        planId,
+        title: 'Private Module',
+      });
+
+      const result = await getModuleDetail(module.id, attackerId);
+
+      expect(result).toBeNull();
     });
   });
 });

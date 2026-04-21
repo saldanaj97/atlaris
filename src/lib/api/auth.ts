@@ -1,15 +1,22 @@
-import { auth, getSessionSafe } from '@/lib/auth/server';
-import { appEnv, devAuthEnv } from '@/lib/config/env';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
-import type { RlsClient } from '@/lib/db/rls';
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
+import type {
+  AuthHandler,
+  AuthHandlerContext,
+  PlainHandler,
+  RouteHandlerContext,
+} from '@/lib/api/types/auth.types';
+import { auth, getSessionSafe } from '@/lib/auth/server';
+import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import type { RlsClient } from '@/lib/db/rls';
+import { getDb } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
 import { AuthError } from './errors';
-import {
-  checkUserRateLimit,
-  getUserRateLimitHeaders,
-  type UserRateLimitCategory,
-} from './user-rate-limit';
+import { withRateLimit } from './middleware';
+import type { UserRateLimitCategory } from './user-rate-limit';
+
+export type { PlainHandler } from '@/lib/api/types/auth.types';
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -44,6 +51,8 @@ export async function getEffectiveAuthUserId(options?: {
  * end user rather than a test/development override.
  *
  * Only call from Route Handlers or Server Actions (not Server Components).
+ *
+ * @public Intentional library surface for OAuth and security-sensitive flows (see docs).
  */
 export async function getAuthUserId(): Promise<string | null> {
   const { data: session } = await auth.getSession();
@@ -54,16 +63,25 @@ export async function getAuthUserId(): Promise<string | null> {
  * Resolves the current auth user ID or throws AuthError.
  * Used internally by `withAuth` and `requireCurrentUserRecord`.
  */
-export async function requireUser(): Promise<string> {
+async function requireUser(): Promise<string> {
   const userId = await getEffectiveAuthUserId({ strict: true });
   if (!userId) throw new AuthError();
   return userId;
 }
 
-async function ensureUserRecord(authUserId: string): Promise<DbUser> {
-  const existing = await getUserByAuthId(authUserId);
+async function ensureUserRecord(
+  authUserId: string,
+  dbClient?: UsersDbClient
+): Promise<DbUser> {
+  const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
     return existing;
+  }
+
+  if (localProductTestingEnv.enabled) {
+    throw new AuthError(
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).'
+    );
   }
 
   const { data: session } = await auth.getSession();
@@ -77,11 +95,14 @@ async function ensureUserRecord(authUserId: string): Promise<DbUser> {
     throw new AuthError('Auth user must have an email address.');
   }
 
-  const created = await createUser({
-    authUserId,
-    email,
-    name: session.user.name || undefined,
-  });
+  const created = await createUser(
+    {
+      authUserId,
+      email,
+      name: session.user.name || undefined,
+    },
+    dbClient
+  );
 
   if (!created) {
     throw new AuthError('Failed to provision user record.');
@@ -115,7 +136,7 @@ async function runWithAuthenticatedContext<T>(
 
   try {
     return await withRequestContext(requestContext, async () => {
-      const user = await ensureUserRecord(authUserId);
+      const user = await ensureUserRecord(authUserId, rlsDb);
       requestContext.user = { id: user.id, authUserId: user.authUserId };
       return fn(user, rlsDb);
     });
@@ -124,40 +145,38 @@ async function runWithAuthenticatedContext<T>(
   }
 }
 
-type RouteHandlerParams = Record<string, string | undefined>;
+async function runWithTestContext<T>(
+  authUserId: string,
+  fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
+  req?: Request
+): Promise<T> {
+  const requestDb = getDb();
+  const user = await ensureUserRecord(authUserId, requestDb);
+  const requestContext = createRequestContext(req, {
+    userId: authUserId,
+    user: { id: user.id, authUserId: user.authUserId },
+    db: requestDb,
+    cleanup: async () => {},
+  });
 
-type HandlerCtx = {
-  req: Request;
-  userId: string;
-  user: DbUser;
-  params: RouteHandlerParams;
-};
+  return withRequestContext(requestContext, () => fn(user, requestDb));
+}
 
-type Handler = (ctx: HandlerCtx) => Promise<Response>;
+type RouteHandlerParams = AuthHandlerContext['params'];
 
-export type RouteHandlerContext = {
-  params?: Promise<Record<string, string>>;
-  [key: string]: unknown;
-};
-
-export type PlainHandler = (
-  req: Request,
-  context?: RouteHandlerContext
-) => Promise<Response>;
-
-export function withAuth(handler: Handler): PlainHandler {
+export function withAuth(handler: AuthHandler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};
 
     if (appEnv.isTest) {
-      const user = await requireCurrentUserRecord();
-      const userId = user.authUserId;
-      const requestContext = createRequestContext(req, { userId, user });
+      const authUserId = await requireUser();
 
-      return await withRequestContext(requestContext, () =>
-        handler({ req, userId, user, params })
+      return runWithTestContext(
+        authUserId,
+        (user) => handler({ req, userId: authUserId, user, params }),
+        req
       );
     }
 
@@ -168,17 +187,6 @@ export function withAuth(handler: Handler): PlainHandler {
       (user) => handler({ req, userId: authUserId, user, params }),
       req
     );
-  };
-}
-
-export function withErrorBoundary(fn: PlainHandler): PlainHandler {
-  return async (req, context) => {
-    try {
-      return await fn(req, context);
-    } catch (e) {
-      const { toErrorResponse } = await import('./errors');
-      return toErrorResponse(e);
-    }
   };
 }
 
@@ -195,13 +203,7 @@ export async function withServerComponentContext<T>(
   if (!authUserId) return null;
 
   if (appEnv.isTest) {
-    // In test mode, withServerComponentContext intentionally skips full request
-    // context setup (correlationId, RLS client, cleanup) because Server Components
-    // don't have a Request object and tests calling this path only need the user
-    // record. withAuth and withServerActionContext set up request context because
-    // they operate within a request/action lifecycle.
-    const user = await ensureUserRecord(authUserId);
-    return fn(user);
+    return runWithTestContext(authUserId, (user) => fn(user));
   }
 
   return runWithAuthenticatedContext(authUserId, (user) => fn(user));
@@ -223,36 +225,16 @@ export async function withServerActionContext<T>(
   const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
 
+  if (appEnv.isTest) {
+    return runWithTestContext(authUserId, fn);
+  }
+
   return runWithAuthenticatedContext(authUserId, fn);
-}
-
-export function withRateLimit(
-  category: UserRateLimitCategory
-): (handler: Handler) => Handler {
-  return (handler: Handler) => {
-    return async (ctx: HandlerCtx) => {
-      checkUserRateLimit(ctx.userId, category);
-      const response = await handler(ctx);
-
-      const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
-      const headers = new Headers(response.headers);
-      for (const [name, value] of Object.entries(rateLimitHeaders)) {
-        // Use set() so existing values are replaced case-insensitively.
-        headers.set(name, value);
-      }
-
-      return new Response(response.body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
-    };
-  };
 }
 
 export function withAuthAndRateLimit(
   category: UserRateLimitCategory,
-  handler: Handler
+  handler: AuthHandler
 ): PlainHandler {
   return withAuth(withRateLimit(category)(handler));
 }

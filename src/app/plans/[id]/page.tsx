@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import type { JSX } from 'react';
+import { Suspense } from 'react';
 
 import { PlanDetailPageError } from '@/app/plans/[id]/components/Error';
 import {

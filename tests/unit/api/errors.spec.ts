@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AppError,
   AttemptCapExceededError,
@@ -10,11 +11,11 @@ import {
   toErrorResponse,
   ValidationError,
 } from '@/lib/api/errors';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/logging/logger', () => ({
   logger: {
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -212,7 +213,7 @@ describe('ServiceUnavailableError', () => {
   });
 
   it('returns provided details from details()', () => {
-    const details = { provider: 'google_calendar' };
+    const details = { provider: 'future_oauth_provider' };
     const error = new ServiceUnavailableError(
       'OAuth provider unavailable',
       details

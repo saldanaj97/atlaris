@@ -1,10 +1,12 @@
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import { ConflictError, NotFoundError } from '@/lib/api/errors';
-import { requirePlanIdFromRequest } from '@/lib/api/plans/route-context';
+import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { getPlanDetailForRead } from '@/features/plans/read-service';
+import { removePlanForWrite } from '@/features/plans/write-service';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { NotFoundError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
-import { deletePlan, getLearningPlanDetail } from '@/lib/db/queries/plans';
+import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 
 /**
  * GET /api/v1/plans/:planId
@@ -21,52 +23,37 @@ import { mapDetailToClient } from '@/lib/mappers/detailToClient';
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'last');
+    const dbClient = getDb();
 
     logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
 
-    const detail = await getLearningPlanDetail(planId, user.id);
+    const detail = await getPlanDetailForRead({
+      planId,
+      userId: user.id,
+      dbClient,
+    });
 
     if (!detail) {
-      logger.error({ planId, userId: user.id }, 'Learning plan not found');
-      throw new NotFoundError('Learning plan not found.');
-    }
-
-    const clientDetail = mapDetailToClient(detail);
-    if (!clientDetail) {
-      logger.error(
-        { planId, userId: user.id },
-        'Learning plan detail mapping returned null'
-      );
-      throw new NotFoundError('Learning plan not found.');
+      throw new NotFoundError('Learning plan not found.', undefined, {
+        planId,
+        userId: user.id,
+      });
     }
 
     logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
 
-    return json(clientDetail);
+    return json(detail);
   })
 );
 
 export const DELETE = withErrorBoundary(
   withAuthAndRateLimit('mutation', async ({ req, user }) => {
     const planId = requirePlanIdFromRequest(req, 'last');
+    const dbClient = getDb();
 
     logger.info({ planId, userId: user.id }, 'Deleting learning plan');
 
-    const result = await deletePlan(planId, user.id);
-
-    if (!result.success) {
-      if (result.reason === 'not_found') {
-        throw new NotFoundError('Learning plan not found.');
-      }
-      if (result.reason === 'currently_generating') {
-        throw new ConflictError(
-          'Cannot delete a plan that is currently generating.'
-        );
-      }
-      throw new ConflictError(
-        'Cannot delete learning plan in its current state.'
-      );
-    }
+    await removePlanForWrite({ planId, userId: user.id, dbClient });
 
     logger.info({ planId, userId: user.id }, 'Learning plan deleted');
 

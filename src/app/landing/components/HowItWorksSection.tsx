@@ -79,7 +79,7 @@ function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
         >
           {stepNumber}
         </span>
-        <h3 className="text-foreground text-xl font-semibold">{title}</h3>
+        <h3 className="marketing-card-title">{title}</h3>
       </div>
 
       <p className="text-muted-foreground mb-6 leading-relaxed">

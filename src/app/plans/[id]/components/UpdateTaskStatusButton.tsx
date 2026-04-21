@@ -1,11 +1,10 @@
 'use client';
 
+import { CheckCircle2, CircleDashed } from 'lucide-react';
 import type { JSX } from 'react';
-
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ProgressStatus } from '@/lib/types/db';
-import { CheckCircle2, CircleDashed } from 'lucide-react';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface UpdateTaskStatusButtonProps {
   taskId: string;
@@ -42,7 +41,7 @@ export const UpdateTaskStatusButton = (
       className={cn(
         'flex items-center rounded-xl border px-4 py-2 text-left text-sm font-medium',
         isCompleted
-          ? 'border-green-600 bg-green-600 text-white hover:bg-green-700 dark:border-green-500 dark:bg-green-500 dark:text-green-950 dark:hover:bg-green-400'
+          ? 'border-success bg-success text-success-foreground hover:bg-success/90 dark:border-success dark:bg-success dark:hover:bg-success/90'
           : 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
       )}
     >

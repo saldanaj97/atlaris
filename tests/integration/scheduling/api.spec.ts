@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, users, modules, tasks } from '@/lib/db/schema';
-import { getPlanSchedule } from '@/lib/api/schedule';
 import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { getPlanSchedule } from '@/features/scheduling/schedule-api';
+import { learningPlans, modules, tasks, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('getPlanSchedule API', () => {
   let testUserId: string;
@@ -64,16 +64,11 @@ describe('getPlanSchedule API', () => {
     ]);
   });
 
-  afterEach(async () => {
-    // Cleanup (cascading deletes handle child records)
-    await db.delete(learningPlans).where(eq(learningPlans.id, testPlanId));
-    await db.delete(users).where(eq(users.id, testUserId));
-  });
-
   it('should generate and cache schedule on first call', async () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     expect(schedule).not.toBeNull();
@@ -86,12 +81,14 @@ describe('getPlanSchedule API', () => {
     const schedule1 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Second call - returns cache
     const schedule2 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     expect(schedule2).toEqual(schedule1);
@@ -102,6 +99,7 @@ describe('getPlanSchedule API', () => {
     const schedule1 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     const initialTotalMinutes = schedule1.weeks.reduce(
@@ -136,6 +134,7 @@ describe('getPlanSchedule API', () => {
     const schedule2 = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     const newTotalMinutes = schedule2.weeks.reduce(

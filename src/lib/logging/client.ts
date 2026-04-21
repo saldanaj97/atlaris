@@ -54,5 +54,3 @@ export const clientLogger = {
   info: createSentryLogger('info'),
   debug: createSentryLogger('debug'),
 };
-
-export type ClientLogger = typeof clientLogger;

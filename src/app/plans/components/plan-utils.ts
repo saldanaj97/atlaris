@@ -1,19 +1,10 @@
+import { differenceInDays } from 'date-fns';
 import type { PlanStatus } from '@/app/plans/types';
-import type { PlanSummary } from '@/lib/types/db';
-import {
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  parseISO,
-} from 'date-fns';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
+import type { PlanSummary } from '@/shared/types/db.types';
 
 type DateInput = Date | string | null | undefined;
-
-function toValidDate(value: DateInput): Date | null {
-  if (!value) return null;
-  const parsed = value instanceof Date ? value : parseISO(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
 
 /**
  * Converts a date to a human-readable relative time string.
@@ -33,40 +24,24 @@ function toValidDate(value: DateInput): Date | null {
  *
  * @example
  * ```ts
- * getRelativeTime(new Date()) // "Just now"
- * getRelativeTime(new Date(Date.now() - 5 * 60 * 1000)) // "5m ago"
- * getRelativeTime(new Date(Date.now() - 2 * 60 * 60 * 1000)) // "2 hours ago"
- * getRelativeTime(null) // "Recently"
+ * getPlanLastActivityRelative(new Date()) // "Just now"
+ * getPlanLastActivityRelative(new Date(Date.now() - 5 * 60 * 1000)) // "5m ago"
+ * getPlanLastActivityRelative(new Date(Date.now() - 2 * 60 * 60 * 1000)) // "2 hours ago"
+ * getPlanLastActivityRelative(null) // "Recently"
  * ```
  */
-export function getRelativeTime(
+export function getPlanLastActivityRelative(
   date: DateInput,
   referenceDate: DateInput
 ): string {
-  const targetDate = toValidDate(date);
+  const target = toValidDate(date);
   const reference = toValidDate(referenceDate);
-
-  if (!targetDate || !reference) return 'Recently';
-
-  const rawMinutes = differenceInMinutes(reference, targetDate);
-  const rawHours = differenceInHours(reference, targetDate);
-  const rawDays = differenceInDays(reference, targetDate);
-
-  // Clamp to non-negative so future dates degrade to "Just now"
-  const diffMinutes = Math.max(0, rawMinutes);
-  const diffHours = Math.max(0, rawHours);
-  const diffDays = Math.max(0, rawDays);
-
-  if (diffMinutes < 60) {
-    return diffMinutes <= 1 ? 'Just now' : `${diffMinutes}m ago`;
-  }
-  if (diffHours < 24) {
-    return diffHours === 1 ? '1 hour ago' : `${diffHours}h ago`;
-  }
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
+  if (!target || !reference) return 'Recently';
+  return formatRelativePast(target, {
+    referenceDate: reference,
+    style: 'compact',
+    invalidLabel: 'Recently',
+  });
 }
 
 /**
@@ -110,20 +85,11 @@ export function getPlanStatus(
   summary: PlanSummary,
   referenceDate: DateInput
 ): PlanStatus {
-  // Check generation status first
-  const generationStatus = summary.plan.generationStatus;
-  if (
-    generationStatus === 'generating' ||
-    generationStatus === 'pending_retry'
-  ) {
-    return 'generating';
-  }
-  if (generationStatus === 'failed') {
-    return 'failed';
-  }
+  const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
 
-  const progressPercent = Math.round(summary.completion * 100);
-  if (progressPercent >= 100) return 'completed';
+  if (canonicalStatus !== 'active') {
+    return canonicalStatus;
+  }
 
   // Check if plan is inactive/paused (not updated in 30+ days)
   const updatedAt = toValidDate(summary.plan.updatedAt);
@@ -139,15 +105,14 @@ export function getPlanStatus(
 }
 
 /**
- * Retrieves the name of the next task to work on from a plan summary.
+ * Retrieves a best-effort next-step label from a plan summary.
  *
- * This function finds the first incomplete module in the plan and returns its title.
- * Since task-level data is not available in the summary, it returns the module title
- * as a fallback. In a full implementation, this would fetch task details from the API.
+ * Summary data does not include task-level progress, so this helper only returns a
+ * coarse fallback label based on the first available module title.
  *
  * @param summary - The plan summary object containing modules and their completion status.
- * @returns "Not started" if the plan hasn't been started yet, "Next: [Module Title]" for the first incomplete module,
- *          "Continue learning" if no title is available, or "All tasks completed" if all modules are complete.
+ * @returns "Not started" if the plan hasn't been started yet, "Next: [Module Title]" for an in-progress plan,
+ *          "Continue learning" if no title is available, or "All tasks completed" if the summary is complete.
  *
  * @example
  * ```ts
@@ -179,16 +144,13 @@ export function getPlanStatus(
  * ```
  */
 export function getNextTaskName(summary: PlanSummary): string {
-  // Check if plan hasn't been started yet
   if (summary.completedTasks === 0) {
     return 'Not started';
   }
 
-  // Find the first incomplete module and its first incomplete task
-  for (const planModule of summary.modules) {
-    // Since we don't have task-level data here, return module title with "Next: " prefix
-    // In a full implementation, this would come from the API
-    return planModule.title ? `Next: ${planModule.title}` : 'Continue learning';
+  if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
+    return 'All tasks completed';
   }
-  return 'All tasks completed';
+
+  return 'Continue learning';
 }

@@ -1,27 +1,21 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
-import {
-  modules,
-  resources,
-  taskProgress,
-  taskResources,
-  tasks,
-} from '@/lib/db/schema';
+type DbSchemaModule = typeof import('@/lib/db/schema');
 
 /** Select model for resources table. */
-export type Resource = InferSelectModel<typeof resources>;
+export type Resource = InferSelectModel<DbSchemaModule['resources']>;
 
 /** Select model for modules table. */
-export type Module = InferSelectModel<typeof modules>;
+export type Module = InferSelectModel<DbSchemaModule['modules']>;
 
 /** Select model for tasks table. */
-export type Task = InferSelectModel<typeof tasks>;
+export type Task = InferSelectModel<DbSchemaModule['tasks']>;
 
 /** Select model for taskResources table. */
-export type TaskResource = InferSelectModel<typeof taskResources>;
+export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 
 /** Select model for taskProgress table. */
-export type TaskProgress = InferSelectModel<typeof taskProgress>;
+export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
 
 export interface TaskResourceWithResource extends TaskResource {
   resource: Resource;

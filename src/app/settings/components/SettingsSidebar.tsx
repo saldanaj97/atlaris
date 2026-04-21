@@ -1,16 +1,16 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import {
   Bell,
   Bot,
   CreditCard,
   Link2,
-  User,
   type LucideIcon,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 interface SettingsNavItem {
   label: string;
@@ -33,7 +33,7 @@ export function SettingsSidebar(): React.ReactElement {
     <nav aria-label="Settings" className="flex flex-col gap-1">
       {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive =
-          pathname === item.href || pathname.startsWith(item.href + '/');
+          pathname === item.href || pathname.startsWith(`${item.href}/`);
         const Icon = item.icon;
 
         return (

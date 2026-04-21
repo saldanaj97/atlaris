@@ -2,72 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
 
-import { StreamingEventSchema } from '@/lib/ai/streaming/schema';
-import type { StreamingEvent } from '@/lib/ai/streaming/types';
-import { parseApiErrorResponse } from '@/lib/api/error-response';
+import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 import { clientLogger } from '@/lib/logging/client';
 
-const MAX_PREVIEW_LENGTH = 100;
+const RETRY_COOLDOWN_MS = 5000;
 
-function redactPayload(payload: string): {
-  preview: string;
-  rawLength: number;
-} {
-  return {
-    preview:
-      payload.length > MAX_PREVIEW_LENGTH
-        ? `${payload.slice(0, MAX_PREVIEW_LENGTH)}… [REDACTED]`
-        : payload,
-    rawLength: payload.length,
-  };
-}
-
-const parseEventLine = (line: string): StreamingEvent | null => {
-  const trimmed = line.trim();
-  if (!trimmed) return null;
-  const payload = trimmed.startsWith('data:')
-    ? trimmed.slice('data:'.length).trim()
-    : trimmed;
-  if (!payload) return null;
-  try {
-    const parsed: unknown = JSON.parse(payload);
-    const result = StreamingEventSchema.safeParse(parsed);
-    if (result.success) {
-      return result.data;
-    }
-    clientLogger.warn('Retry generation event validation failed', {
-      issues: result.error.issues,
-      ...redactPayload(payload),
-    });
-    return null;
-  } catch (err) {
-    clientLogger.warn('Failed to parse SSE event data', {
-      error: err instanceof Error ? err.message : String(err),
-      ...redactPayload(payload),
-    });
-    return null;
-  }
-};
-
-/** Runtime shape for SSE error event data (message and/or error key). */
-const errorEventDataSchema = z.looseObject({
-  message: z.string().optional(),
-  error: z.string().optional(),
-});
-
-function getErrorMessage(raw: unknown): string {
-  const parsed = errorEventDataSchema.safeParse(raw);
-  if (parsed.success) {
-    const m = parsed.data.message ?? parsed.data.error;
-    if (m !== undefined) return m;
-  }
-  if (typeof raw === 'string') return raw;
-  return 'Generation failed.';
-}
-
-type RetryStatus = 'idle' | 'retrying' | 'success' | 'error';
+/** Derived retry UI phase; `cancelled` is a resolved retry stream (e.g. user disconnect), not idle. */
+type RetryStatus = 'idle' | 'retrying' | 'success' | 'error' | 'cancelled';
 
 interface UseRetryGenerationReturn {
   status: RetryStatus;
@@ -76,49 +18,49 @@ interface UseRetryGenerationReturn {
   retryGeneration: () => Promise<void>;
 }
 
-// Client-side debounce: minimum seconds between retry attempts
-const RETRY_COOLDOWN_MS = 5000;
-
 /**
- * Hook for retrying failed plan generation.
- *
- * Features:
- * - Client-side debounce (5s cooldown between retries)
- * - Server-side attempt limit check (handled by /api/v1/plans/[planId]/retry)
- * - Streaming response handling
- * - Auto-refresh on success
- *
- * @param planId - The ID of the plan to retry
- * @param maxAttempts - Maximum attempts allowed (for UI display, actual enforcement is server-side)
- * @param currentAttempts - Current number of attempts made
+ * Retry cooldown + stream delegation. Pass the same `session` instance used
+ * elsewhere on the surface (e.g. pending page) to avoid duplicate session hooks.
  */
 export function useRetryGeneration(
   planId: string,
   maxAttempts: number,
-  currentAttempts: number
+  currentAttempts: number,
+  session: UsePlanGenerationSessionResult
 ): UseRetryGenerationReturn {
   const router = useRouter();
-  const [status, setStatus] = useState<RetryStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const { state, startSession, cancel } = session;
   const [cooldownActive, setCooldownActive] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryInFlightRef = useRef(false);
 
-  // Cleanup cooldown timer and abort in-flight requests on unmount
   useEffect(() => {
     return () => {
       if (cooldownTimerRef.current) {
         clearTimeout(cooldownTimerRef.current);
         cooldownTimerRef.current = null;
       }
-      abortRef.current?.abort();
-      abortRef.current = null;
+      cancel();
       retryInFlightRef.current = false;
     };
-  }, []);
+  }, [cancel]);
 
-  // Disable if already at max attempts, currently retrying, or in cooldown
+  const status: RetryStatus = (() => {
+    switch (state.status) {
+      case 'connecting':
+      case 'generating':
+        return 'retrying';
+      case 'complete':
+        return 'success';
+      case 'error':
+        return 'error';
+      case 'cancelled':
+        return 'cancelled';
+      default:
+        return 'idle';
+    }
+  })();
+
   const isDisabled =
     status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
@@ -126,12 +68,8 @@ export function useRetryGeneration(
     if (retryInFlightRef.current || cooldownActive) {
       return;
     }
+
     retryInFlightRef.current = true;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setCooldownActive(true);
 
     if (cooldownTimerRef.current) {
@@ -143,107 +81,25 @@ export function useRetryGeneration(
       cooldownTimerRef.current = null;
     }, RETRY_COOLDOWN_MS);
 
-    setStatus('retrying');
-    setError(null);
-
     try {
-      const response = await fetch(`/api/v1/plans/${planId}/retry`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      if (!response.ok || !response.body) {
-        const parsedError = await parseApiErrorResponse(
-          response,
-          'Failed to retry generation.'
-        );
-        setStatus('error');
-        setError(parsedError.error);
+      const result = await startSession({ kind: 'retry', planId });
+      if (result.status === 'completed') {
+        router.refresh();
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
         return;
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      /** Returns true when the caller should exit (terminal event encountered). */
-      const processEventLines = (rawLines: string[]): boolean => {
-        for (const line of rawLines) {
-          const event = parseEventLine(line);
-          if (!event) continue;
-
-          if (event.type === 'complete') {
-            setStatus('success');
-            router.refresh();
-            return true;
-          }
-
-          if (event.type === 'error') {
-            setStatus('error');
-            setError(getErrorMessage(event.data));
-            return true;
-          }
-
-          if (event.type === 'cancelled') {
-            setStatus('idle');
-            setError(null);
-            return true;
-          }
-        }
-        return false;
-      };
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-
-          if (processEventLines(lines)) return;
-        }
-
-        // Flush any remaining bytes from the decoder
-        buffer += decoder.decode(undefined, { stream: false });
-
-        if (buffer.trim()) {
-          const remainingLines = buffer.split('\n');
-          if (processEventLines(remainingLines)) return;
-        }
-
-        // If we get here without a complete/error event, something went wrong
-        setStatus('error');
-        setError('Generation completed unexpectedly.');
-      } finally {
-        reader.cancel().catch(() => {});
-        controller.abort();
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        setStatus('idle');
-        return;
-      }
-
-      clientLogger.error('Retry generation failed:', err);
-      setStatus('error');
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An unexpected error occurred. Please try again.'
-      );
+      clientLogger.error('Retry generation failed:', error);
     } finally {
       retryInFlightRef.current = false;
     }
-  }, [planId, router, cooldownActive]);
+  }, [cooldownActive, planId, router, startSession]);
 
   return {
     status,
-    error,
+    error: state.error?.message ?? null,
     isDisabled,
     retryGeneration,
   };

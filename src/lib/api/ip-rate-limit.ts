@@ -15,34 +15,29 @@
 
 import { isIP } from 'node:net';
 
-import {
-  createSlidingWindowLimiter,
-  type SlidingWindowLimiter,
-} from '@/lib/api/rate-limit-core';
+import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
+import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import { assertNever } from '@/lib/utils';
 
 /**
  * Configuration for IP rate limiting
  */
-export interface IpRateLimitConfig {
+type IpRateLimitConfig = {
   /** Maximum requests allowed within the window */
   maxRequests: number;
   /** Time window in milliseconds */
   windowMs: number;
   /** Maximum unique IPs to track (LRU eviction) */
   maxTrackedIps?: number;
-}
+};
 
-export type IpTrustMode =
-  | 'leftmost'
-  | 'rightmost-untrusted'
-  | 'trusted-proxies';
+type IpTrustMode = 'leftmost' | 'rightmost-untrusted' | 'trusted-proxies';
 
-export interface IpExtractionConfig {
+type IpExtractionConfig = {
   ipTrustMode?: IpTrustMode;
   trustedProxyList?: readonly string[];
-}
+};
 
 const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
 let lastUnknownIpWarnTimestamp = 0;
@@ -304,7 +299,9 @@ export function getRateLimitHeaders(
  * Clears all rate limiters. Useful for testing.
  */
 export function clearAllRateLimiters(): void {
-  rateLimiters.forEach((limiter) => limiter.clear());
+  for (const limiter of rateLimiters.values()) {
+    limiter.clear();
+  }
   rateLimiters.clear();
   lastUnknownIpWarnTimestamp = 0;
 }

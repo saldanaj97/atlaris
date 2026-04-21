@@ -1,15 +1,14 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import {
   learningPlans,
-  users,
   modules,
-  tasks,
   resources,
   taskResources,
+  tasks,
+  users,
 } from '@/lib/db/schema';
-import { getPlanSchedule } from '@/lib/api/schedule';
-import { eq } from 'drizzle-orm';
+import { db } from '@/lib/db/service-role';
 
 describe('End-to-End Schedule Flow', () => {
   let testUserId: string;
@@ -98,7 +97,7 @@ describe('End-to-End Schedule Flow', () => {
       .insert(resources)
       .values([
         {
-          type: 'youtube',
+          type: 'video',
           title: 'React Tutorial',
           url: `https://example.com/react-${Date.now()}`,
         },
@@ -119,15 +118,11 @@ describe('End-to-End Schedule Flow', () => {
     ]);
   });
 
-  afterEach(async () => {
-    await db.delete(learningPlans).where(eq(learningPlans.id, testPlanId));
-    await db.delete(users).where(eq(users.id, testUserId));
-  });
-
   it('should generate complete schedule with correct structure', async () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Verify schedule structure
@@ -156,6 +151,7 @@ describe('End-to-End Schedule Flow', () => {
     const schedule = await getPlanSchedule({
       planId: testPlanId,
       userId: testUserId,
+      dbClient: db,
     });
 
     // Calculate total scheduled minutes

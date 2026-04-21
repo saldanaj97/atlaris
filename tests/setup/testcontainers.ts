@@ -7,75 +7,60 @@
  *   - Creates a test database with extensions and RLS roles
  *   - Sets DATABASE_URL / DATABASE_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
- *   - Applies the schema via `drizzle-kit push` (same as the old shell script)
+ *   - Applies the schema via `pnpm db:migrate` (migration chain matches production)
  *
  * To skip Testcontainers (e.g. in CI where a sidecar DB already exists)
  * set SKIP_TESTCONTAINERS=true.
  */
 
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
-import { randomUUID } from 'node:crypto';
-import { execSync } from 'node:child_process';
-import { unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import postgres from 'postgres';
+
+import {
+  bootstrapDatabase,
+  grantRlsPermissions,
+} from '@tests/helpers/db/bootstrap';
+import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
+import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
+
+import {
+  buildTestDbRuntimeState,
+  createAdminDatabaseUrl,
+  createDatabaseUrl,
+  ensureDatabaseExists,
+  ensureTemplateDatabase,
+  getBaseDbName,
+  getTemplateDbName,
+} from './db-provisioning';
 
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();
+const testcontainersEnvFile =
+  process.env.TESTCONTAINERS_ENV_FILE?.trim() ||
+  join(
+    __dirname,
+    '..',
+    `.testcontainers-env.${process.pid}.${randomUUID()}.json`
+  );
+
+// Each Vitest process needs its own runtime-state file. A fixed shared path lets
+// concurrent `pnpm vitest run` sessions overwrite each other's container metadata,
+// so workers can start pointing at the wrong ephemeral Postgres instance.
+process.env.TESTCONTAINERS_ENV_FILE = testcontainersEnvFile;
 
 /**
- * Path to the temp file used to pass the container connection URL
- * from globalSetup (main process) to test workers.
- */
-const TC_ENV_FILE = join(__dirname, '..', '.testcontainers-env.json');
-
-/**
- * Bootstrap a freshly-started Postgres instance with the roles, extensions,
- * and functions that the application schema and RLS policies expect.
- */
-async function bootstrapDatabase(connectionUrl: string): Promise<void> {
-  const sql = postgres(connectionUrl, { max: 1 });
-
-  try {
-    // Extensions
-    await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
-
-    // RLS roles (union of CI and local expectations)
-    await sql.unsafe(`
-      DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-    `);
-
-    // Auth schema + JWT helper used by RLS policies
-    await sql`CREATE SCHEMA IF NOT EXISTS auth`;
-    await sql.unsafe(`
-      CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-        LANGUAGE sql
-        AS $fn$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $fn$;
-    `);
-
-    // Grant schema access to RLS roles
-    await sql.unsafe(`
-      GRANT USAGE ON SCHEMA public TO authenticated, anonymous;
-      GRANT USAGE ON SCHEMA auth TO authenticated, anonymous;
-    `);
-  } finally {
-    await sql.end();
-  }
-}
-
-/**
- * Apply the Drizzle schema to the running Postgres instance using `drizzle-kit push`.
- * Uses --force to auto-approve data-loss statements (safe for ephemeral test DB).
+ * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
+ * updates after column renames). `drizzle-kit push` alone can leave policy drift
+ * relative to `pnpm db:migrate` / production.
  */
 function applySchema(connectionUrl: string): void {
-  execSync('pnpm drizzle-kit push --force --config drizzle.config.ts', {
+  execSync('pnpm db:migrate', {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -87,38 +72,6 @@ function applySchema(connectionUrl: string): void {
   });
 }
 
-/**
- * Grant permissions required for RLS roles after schema has been applied
- * (tables now exist).
- */
-async function grantRlsPermissions(connectionUrl: string): Promise<void> {
-  const sql = postgres(connectionUrl, { max: 1 });
-
-  try {
-    // Table permissions for authenticated role
-    await sql.unsafe(`
-      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-      GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
-    `);
-
-    // Default privileges for future tables
-    await sql.unsafe(`
-      ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-      ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT ON TABLES TO anonymous;
-      ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous;
-    `);
-
-    // Ensure the default superuser bypasses RLS
-    await sql.unsafe(`ALTER ROLE postgres BYPASSRLS`);
-  } finally {
-    await sql.end();
-  }
-}
-
 export async function setup(): Promise<void> {
   if (process.env.SKIP_TESTCONTAINERS === 'true') {
     console.log('[Testcontainers] Skipped — SKIP_TESTCONTAINERS=true');
@@ -128,44 +81,53 @@ export async function setup(): Promise<void> {
   console.log('[Testcontainers] Starting PostgreSQL 17 container…');
 
   container = await new PostgreSqlContainer('postgres:17-alpine')
-    .withDatabase('atlaris_test')
+    .withDatabase('atlaris_runtime')
     .withUsername('postgres')
     .withPassword(testDbPassword)
     .withExposedPorts(5432)
     .start();
 
-  const connectionUrl = container.getConnectionUri();
+  const containerUrl = container.getConnectionUri();
+  const adminConnectionUrl = createAdminDatabaseUrl(containerUrl);
+  const baseDbName = getBaseDbName();
+  const templateDbName = getTemplateDbName();
+  const baseConnectionUrl = createDatabaseUrl(containerUrl, baseDbName);
 
   console.log('[Testcontainers] Container started, bootstrapping database…');
 
-  await bootstrapDatabase(connectionUrl);
+  await ensureDatabaseExists(adminConnectionUrl, baseDbName);
 
-  console.log('[Testcontainers] Applying schema via drizzle-kit push…');
+  process.env.DATABASE_URL = baseConnectionUrl;
+  process.env.DATABASE_URL_NON_POOLING = baseConnectionUrl;
+  process.env.DATABASE_URL_UNPOOLED = baseConnectionUrl;
+  process.env.ALLOW_DB_TRUNCATE = 'true';
 
-  applySchema(connectionUrl);
+  await bootstrapDatabase(baseConnectionUrl);
+
+  console.log('[Testcontainers] Applying migrations via pnpm db:migrate…');
+
+  applySchema(baseConnectionUrl);
 
   console.log('[Testcontainers] Granting RLS permissions…');
 
-  await grantRlsPermissions(connectionUrl);
+  await grantRlsPermissions(baseConnectionUrl);
 
-  // Expose connection URL to all test workers via env vars.
-  // Vitest globalSetup env mutations are inherited by worker processes.
-  process.env.DATABASE_URL = connectionUrl;
-  process.env.DATABASE_URL_NON_POOLING = connectionUrl;
-  process.env.DATABASE_URL_UNPOOLED = connectionUrl;
-  process.env.ALLOW_DB_TRUNCATE = 'true';
+  console.log('[Testcontainers] Applying one-time test DB fixups…');
 
-  // Write env to a temp file for cross-process propagation.
-  // setupFiles (test-env.ts) can read this when process.env wasn't inherited.
-  writeFileSync(
-    TC_ENV_FILE,
-    JSON.stringify({
-      DATABASE_URL: connectionUrl,
-      DATABASE_URL_NON_POOLING: connectionUrl,
-      DATABASE_URL_UNPOOLED: connectionUrl,
-      ALLOW_DB_TRUNCATE: 'true',
-    })
-  );
+  await applyRuntimeDatabaseFixups();
+  await resetServiceRoleClientForTests();
+
+  console.log('[Testcontainers] Creating template database…');
+
+  await ensureTemplateDatabase({
+    adminConnectionUrl,
+    baseDbName,
+    templateDbName,
+  });
+
+  // setupFiles (test-env.ts) read this metadata and derive worker-specific URLs.
+  const runtimeState = buildTestDbRuntimeState(containerUrl);
+  writeFileSync(testcontainersEnvFile, JSON.stringify(runtimeState));
 
   console.log('[Testcontainers] Ready ✓');
 }
@@ -173,10 +135,12 @@ export async function setup(): Promise<void> {
 export async function teardown(): Promise<void> {
   // Clean up the temp env file
   try {
-    unlinkSync(TC_ENV_FILE);
+    unlinkSync(testcontainersEnvFile);
   } catch {
     // File may not exist if setup was skipped
   }
+
+  Reflect.deleteProperty(process.env, 'TESTCONTAINERS_ENV_FILE');
 
   if (container) {
     console.log('[Testcontainers] Stopping container…');

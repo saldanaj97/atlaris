@@ -1,13 +1,9 @@
-import pino, {
-  stdTimeFunctions,
-  type Logger as PinoLogger,
-  type LoggerOptions,
-} from 'pino';
+import pino, { type LoggerOptions, stdTimeFunctions } from 'pino';
 import { appEnv, loggingEnv } from '@/lib/config/env';
 
-const level = loggingEnv.level ?? (appEnv.isProduction ? 'info' : 'debug');
+export type Logger = import('pino').Logger;
 
-export type Logger = PinoLogger;
+const level = loggingEnv.level ?? (appEnv.isProduction ? 'info' : 'debug');
 
 const loggerOptions: LoggerOptions = {
   level,

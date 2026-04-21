@@ -37,8 +37,6 @@ export const jobQueue = pgTable(
     payload: jsonb('payload').notNull(),
     result: jsonb('result'),
     error: text('error'),
-    lockedAt: timestamp('locked_at', { withTimezone: true }),
-    lockedBy: text('locked_by'),
     scheduledFor: timestamp('scheduled_for', { withTimezone: true })
       .notNull()
       .defaultNow(),

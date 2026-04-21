@@ -1,330 +1,291 @@
-import {
-  getGenerationProvider,
-  getGenerationProviderWithModel,
-} from '@/lib/ai/provider-factory';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { RouterGenerationProvider } from '@/lib/ai/providers/router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+async function withServerWindowHiddenAsync<T>(
+  run: () => Promise<T>
+): Promise<T> {
+  const originalWindow = globalThis.window;
+  delete (globalThis as Record<string, unknown>).window;
+
+  try {
+    return await run();
+  } finally {
+    (globalThis as Record<string, unknown>).window = originalWindow;
+  }
+}
+
+async function loadProviderFactory() {
+  vi.resetModules();
+  const factory = await import('@/features/ai/providers/factory');
+  return {
+    getGenerationProvider: factory.getGenerationProvider,
+    getGenerationProviderWithModel: factory.getGenerationProviderWithModel,
+  };
+}
 
 describe('AI Provider Factory', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
   beforeEach(() => {
-    originalEnv = { ...process.env };
+    delete process.env.AI_PROVIDER;
+    delete process.env.AI_USE_MOCK;
+    delete process.env.MOCK_GENERATION_SEED;
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('VITEST_WORKER_ID', '1');
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    delete process.env.AI_PROVIDER;
+    delete process.env.AI_USE_MOCK;
+    delete process.env.MOCK_GENERATION_SEED;
+    vi.unstubAllEnvs();
   });
 
   describe('Test environment behavior', () => {
-    it('should return MockGenerationProvider by default in test mode', () => {
-      delete process.env.AI_PROVIDER;
-      delete process.env.AI_USE_MOCK;
-      delete process.env.MOCK_GENERATION_SEED;
-
+    it('returns MockGenerationProvider by default in test mode', async () => {
+      const { getGenerationProvider } = await loadProviderFactory();
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return MockGenerationProvider when AI_PROVIDER is "mock"', () => {
+    it('returns MockGenerationProvider when AI_PROVIDER is "mock"', async () => {
       process.env.AI_PROVIDER = 'mock';
-      delete process.env.MOCK_GENERATION_SEED;
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return MockGenerationProvider with deterministic seed when MOCK_GENERATION_SEED is set', () => {
+    it('returns MockGenerationProvider with deterministic seed when MOCK_GENERATION_SEED is set', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '12345';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-      // Note: We can't directly test the seed value, but we verify it doesn't throw
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should handle invalid MOCK_GENERATION_SEED gracefully', () => {
+    it('handles invalid MOCK_GENERATION_SEED gracefully', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = 'not-a-number';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return RouterGenerationProvider when AI_PROVIDER is not "mock"', () => {
-      process.env.AI_PROVIDER = 'openai';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-
-    it('should return RouterGenerationProvider when AI_USE_MOCK is "false"', () => {
-      delete process.env.AI_PROVIDER;
+    it('returns RouterGenerationProvider when AI_USE_MOCK is "false"', async () => {
       process.env.AI_USE_MOCK = 'false';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
+      expect(provider.constructor.name).toBe('RouterGenerationProvider');
     });
 
-    it('should prioritize AI_PROVIDER over AI_USE_MOCK', () => {
+    it('throws for malformed AI_USE_MOCK values instead of treating them as false', async () => {
+      process.env.AI_USE_MOCK = 'sometimes';
+      const { getGenerationProvider } = await loadProviderFactory();
+
+      try {
+        getGenerationProvider();
+        expect.fail('Expected malformed AI_USE_MOCK to throw');
+      } catch (error) {
+        expect(error).toMatchObject({
+          name: 'EnvValidationError',
+          message: 'AI_USE_MOCK must be one of: true, false, 1, 0',
+        });
+      }
+    });
+
+    it('prioritizes AI_PROVIDER over AI_USE_MOCK', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.AI_USE_MOCK = 'false';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      // AI_PROVIDER=mock should take precedence
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should handle case-insensitive AI_PROVIDER values', () => {
+    it('handles case-insensitive AI_PROVIDER values', async () => {
       process.env.AI_PROVIDER = 'MOCK';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return RouterGenerationProvider for explicit non-mock providers', () => {
-      const providers = ['openai', 'anthropic', 'google', 'OPENAI'];
+    it('returns RouterGenerationProvider for explicit AI_PROVIDER=router', async () => {
+      const providers = ['router', 'ROUTER', '  router  '];
+      const { getGenerationProvider } = await loadProviderFactory();
 
       providers.forEach((providerType) => {
         process.env.AI_PROVIDER = providerType;
 
         const provider = getGenerationProvider();
 
-        expect(provider).toBeInstanceOf(RouterGenerationProvider);
+        expect(provider.constructor.name).toBe('RouterGenerationProvider');
       });
     });
-  });
 
-  describe('Development environment behavior', () => {
-    beforeEach(() => {
-      delete process.env.VITEST_WORKER_ID;
-    });
+    it('throws EnvValidationError for unsupported AI_PROVIDER values', async () => {
+      const { getGenerationProvider } = await loadProviderFactory();
 
-    it('should return MockGenerationProvider by default in development', () => {
-      delete process.env.AI_PROVIDER;
+      for (const providerType of ['openai', 'anthropic', 'google']) {
+        process.env.AI_PROVIDER = providerType;
 
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should return MockGenerationProvider when AI_PROVIDER is "mock" in development', () => {
-      process.env.AI_PROVIDER = 'mock';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should return RouterGenerationProvider when AI_PROVIDER is set to non-mock in development', () => {
-      process.env.AI_PROVIDER = 'openai';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-
-    it('should respect MOCK_GENERATION_SEED in development', () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '99999';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+        expect(() => getGenerationProvider()).toThrow(/AI_PROVIDER must be/);
+      }
     });
   });
 
   describe('Production environment behavior', () => {
     beforeEach(() => {
-      (process.env as any).NODE_ENV = 'production';
-      delete process.env.VITEST_WORKER_ID;
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('VITEST_WORKER_ID', '');
     });
 
-    afterEach(() => {
-      // Restore window if it was hidden
-      if (!globalThis.window) {
-        (globalThis as any).window = undefined;
-      }
+    it('returns RouterGenerationProvider by default in production', async () => {
+      const provider = await withServerWindowHiddenAsync(async () => {
+        const { getGenerationProvider } = await loadProviderFactory();
+        return getGenerationProvider();
+      });
+
+      expect(provider.constructor.name).toBe('RouterGenerationProvider');
     });
 
-    it('should return RouterGenerationProvider by default in production', () => {
-      (process.env as any).NODE_ENV = 'production';
-      delete process.env.AI_PROVIDER;
-
-      // Hide window temporarily for this production test (simulating server env)
-      const originalWindow = globalThis.window;
-      delete (globalThis as any).window;
-
-      const provider = getGenerationProvider();
-
-      (globalThis as any).window = originalWindow;
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-
-    it('should return MockGenerationProvider when explicitly set to "mock" in production', () => {
-      (process.env as any).NODE_ENV = 'production';
+    it('returns MockGenerationProvider when explicitly set to "mock" in production', async () => {
       process.env.AI_PROVIDER = 'mock';
+      const provider = await withServerWindowHiddenAsync(async () => {
+        const { getGenerationProvider } = await loadProviderFactory();
+        return getGenerationProvider();
+      });
 
-      // Hide window temporarily for this production test (simulating server env)
-      const originalWindow = globalThis.window;
-      delete (globalThis as any).window;
-
-      const provider = getGenerationProvider();
-
-      (globalThis as any).window = originalWindow;
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return RouterGenerationProvider for any non-mock provider in production', () => {
-      (process.env as any).NODE_ENV = 'production';
-      process.env.AI_PROVIDER = 'openai';
+    it('returns RouterGenerationProvider when AI_PROVIDER=router in production', async () => {
+      process.env.AI_PROVIDER = 'router';
+      const provider = await withServerWindowHiddenAsync(async () => {
+        const { getGenerationProvider } = await loadProviderFactory();
+        return getGenerationProvider();
+      });
 
-      // Hide window temporarily for this production test (simulating server env)
-      const originalWindow = globalThis.window;
-      delete (globalThis as any).window;
-
-      const provider = getGenerationProvider();
-
-      (globalThis as any).window = originalWindow;
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
-    });
-  });
-
-  describe('VITEST_WORKER_ID detection', () => {
-    beforeEach(() => {
-      process.env.VITEST_WORKER_ID = '1';
-    });
-
-    it('should treat environment as test when VITEST_WORKER_ID is set', () => {
-      delete process.env.AI_PROVIDER;
-      delete process.env.AI_USE_MOCK;
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('should respect AI_USE_MOCK=false even with VITEST_WORKER_ID', () => {
-      delete process.env.AI_PROVIDER;
-      process.env.AI_USE_MOCK = 'false';
-
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
+      expect(provider.constructor.name).toBe('RouterGenerationProvider');
     });
   });
 
   describe('Edge cases', () => {
-    it('should handle empty string AI_PROVIDER', () => {
+    it('handles empty string AI_PROVIDER', async () => {
       process.env.AI_PROVIDER = '';
-      delete process.env.AI_USE_MOCK;
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should handle whitespace in AI_PROVIDER', () => {
+    it('handles whitespace in AI_PROVIDER', async () => {
       process.env.AI_PROVIDER = '  mock  ';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      // Should trim and lowercase, resulting in mock provider
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should handle zero as MOCK_GENERATION_SEED', () => {
+    it('handles zero as MOCK_GENERATION_SEED', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '0';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should handle negative MOCK_GENERATION_SEED', () => {
+    it('handles negative MOCK_GENERATION_SEED', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '-100';
+      const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
   });
 
   describe('getGenerationProviderWithModel', () => {
-    it('should return MockGenerationProvider in test environment by default', () => {
-      delete process.env.AI_PROVIDER;
-      delete process.env.AI_USE_MOCK;
-
+    it('returns MockGenerationProvider in test environment by default', async () => {
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
       const provider = getGenerationProviderWithModel(
         'google/gemini-2.0-flash-exp:free'
       );
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return MockGenerationProvider when AI_PROVIDER is "mock"', () => {
+    it('returns MockGenerationProvider when AI_PROVIDER is "mock"', async () => {
       process.env.AI_PROVIDER = 'mock';
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
         'anthropic/claude-haiku-4.5'
       );
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('should return RouterGenerationProvider when AI_USE_MOCK is "false"', () => {
-      delete process.env.AI_PROVIDER;
+    it('returns RouterGenerationProvider when AI_USE_MOCK is "false"', async () => {
       process.env.AI_USE_MOCK = 'false';
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
         'google/gemini-2.0-flash-exp:free'
       );
 
-      expect(provider).toBeInstanceOf(RouterGenerationProvider);
+      expect(provider.constructor.name).toBe('RouterGenerationProvider');
     });
 
-    it('should accept any model ID string', () => {
-      // In test environment with AI_USE_MOCK=false, still verify different model IDs work
+    it('accepts any model ID string', async () => {
       process.env.AI_USE_MOCK = 'false';
-      delete process.env.AI_PROVIDER;
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
 
-      // Valid model ID
       const provider1 = getGenerationProviderWithModel(
         'google/gemini-2.0-flash-exp:free'
       );
-      expect(provider1).toBeInstanceOf(RouterGenerationProvider);
-
-      // Even invalid model IDs are passed through (validation happens elsewhere)
       const provider2 = getGenerationProviderWithModel('invalid/model-id');
-      expect(provider2).toBeInstanceOf(RouterGenerationProvider);
-
-      // Different valid model
       const provider3 = getGenerationProviderWithModel(
         'anthropic/claude-haiku-4.5'
       );
-      expect(provider3).toBeInstanceOf(RouterGenerationProvider);
+
+      expect(provider1.constructor.name).toBe('RouterGenerationProvider');
+      expect(provider2.constructor.name).toBe('RouterGenerationProvider');
+      expect(provider3.constructor.name).toBe('RouterGenerationProvider');
     });
 
-    it('should respect MOCK_GENERATION_SEED in test environment', () => {
+    it('respects MOCK_GENERATION_SEED in test environment', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = '42';
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
         'google/gemini-2.0-flash-exp:free'
       );
 
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
+      expect(provider.constructor.name).toBe('MockGenerationProvider');
+    });
+
+    it('throws when modelId is empty', async () => {
+      process.env.AI_USE_MOCK = 'false';
+      const { getGenerationProviderWithModel } = await loadProviderFactory();
+
+      expect(() => getGenerationProviderWithModel('')).toThrow(
+        'modelId must be a non-empty string'
+      );
     });
   });
 });

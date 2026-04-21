@@ -1,7 +1,6 @@
-import type { JSX } from 'react';
-
-import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
+import type { JSX } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Skeleton for the plans content (search, filters, list).

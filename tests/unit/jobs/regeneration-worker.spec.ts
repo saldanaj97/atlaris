@@ -1,5 +1,5 @@
-import { drainRegenerationQueue } from '@/lib/jobs/regeneration-worker';
 import { describe, expect, it, vi } from 'vitest';
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 
 describe('drainRegenerationQueue', () => {
   it('does no work when maxJobs is 0 (no-op)', async () => {

@@ -1,35 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { spyOnConsole } from '@tests/helpers/console-spy';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clientLogger } from '@/lib/logging/client';
 
 describe('Client Logger', () => {
-  let consoleErrorSpy: any;
-  let consoleWarnSpy: any;
-  let consoleInfoSpy: any;
-  let consoleDebugSpy: any;
-  let consoleLogSpy: any;
+  let consoleError: ReturnType<typeof spyOnConsole>;
+  let consoleWarn: ReturnType<typeof spyOnConsole>;
+  let consoleInfo: ReturnType<typeof spyOnConsole>;
+  let consoleDebug: ReturnType<typeof spyOnConsole>;
+  let consoleLog: ReturnType<typeof spyOnConsole>;
 
   beforeEach(() => {
-    // Spy on console methods
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-    consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
-    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleError = spyOnConsole('error');
+    consoleWarn = spyOnConsole('warn');
+    consoleInfo = spyOnConsole('info');
+    consoleDebug = spyOnConsole('debug');
+    consoleLog = spyOnConsole('log');
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    consoleError.restore();
+    consoleWarn.restore();
+    consoleInfo.restore();
+    consoleDebug.restore();
+    consoleLog.restore();
   });
 
   describe('error', () => {
     it('should call console.error', () => {
       clientLogger.error('Error message');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error message');
+      expect(consoleError.spy).toHaveBeenCalledWith('Error message');
     });
 
     it('should accept multiple arguments', () => {
       clientLogger.error('Error:', 'Something went wrong', { code: 500 });
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(consoleError.spy).toHaveBeenCalledWith(
         'Error:',
         'Something went wrong',
         { code: 500 }
@@ -39,33 +43,32 @@ describe('Client Logger', () => {
     it('should handle Error objects', () => {
       const error = new Error('Test error');
       clientLogger.error('An error occurred:', error);
-      expect(consoleErrorSpy).toHaveBeenCalledWith('An error occurred:', error);
+      expect(consoleError.spy).toHaveBeenCalledWith(
+        'An error occurred:',
+        error
+      );
     });
 
     it('should fallback to console.log if console.error is missing', () => {
       // Temporarily remove console.error
-      const originalError = console.error;
-      (console as any).error = undefined;
+      Reflect.set(console, 'error', undefined);
 
       clientLogger.error('Error message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Error message');
-
-      // Restore console.error
-      console.error = originalError;
+      expect(consoleLog.spy).toHaveBeenCalledWith('Error message');
     });
   });
 
   describe('warn', () => {
     it('should call console.warn', () => {
       clientLogger.warn('Warning message');
-      expect(consoleWarnSpy).toHaveBeenCalledWith('Warning message');
+      expect(consoleWarn.spy).toHaveBeenCalledWith('Warning message');
     });
 
     it('should accept multiple arguments', () => {
       clientLogger.warn('Warning:', 'Deprecated feature', {
         feature: 'old-api',
       });
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(consoleWarn.spy).toHaveBeenCalledWith(
         'Warning:',
         'Deprecated feature',
         { feature: 'old-api' }
@@ -74,28 +77,24 @@ describe('Client Logger', () => {
 
     it('should fallback to console.log if console.warn is missing', () => {
       // Temporarily remove console.warn
-      const originalWarn = console.warn;
-      (console as any).warn = undefined;
+      Reflect.set(console, 'warn', undefined);
 
       clientLogger.warn('Warning message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Warning message');
-
-      // Restore console.warn
-      console.warn = originalWarn;
+      expect(consoleLog.spy).toHaveBeenCalledWith('Warning message');
     });
   });
 
   describe('info', () => {
     it('should call console.info', () => {
       clientLogger.info('Info message');
-      expect(consoleInfoSpy).toHaveBeenCalledWith('Info message');
+      expect(consoleInfo.spy).toHaveBeenCalledWith('Info message');
     });
 
     it('should accept multiple arguments', () => {
       clientLogger.info('User action:', 'Button clicked', {
         buttonId: 'submit',
       });
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
+      expect(consoleInfo.spy).toHaveBeenCalledWith(
         'User action:',
         'Button clicked',
         { buttonId: 'submit' }
@@ -104,26 +103,22 @@ describe('Client Logger', () => {
 
     it('should fallback to console.log if console.info is missing', () => {
       // Temporarily remove console.info
-      const originalInfo = console.info;
-      (console as any).info = undefined;
+      Reflect.set(console, 'info', undefined);
 
       clientLogger.info('Info message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Info message');
-
-      // Restore console.info
-      console.info = originalInfo;
+      expect(consoleLog.spy).toHaveBeenCalledWith('Info message');
     });
   });
 
   describe('debug', () => {
     it('should call console.debug', () => {
       clientLogger.debug('Debug message');
-      expect(consoleDebugSpy).toHaveBeenCalledWith('Debug message');
+      expect(consoleDebug.spy).toHaveBeenCalledWith('Debug message');
     });
 
     it('should accept multiple arguments', () => {
       clientLogger.debug('Debug:', 'Component rendered', { count: 5 });
-      expect(consoleDebugSpy).toHaveBeenCalledWith(
+      expect(consoleDebug.spy).toHaveBeenCalledWith(
         'Debug:',
         'Component rendered',
         { count: 5 }
@@ -132,14 +127,10 @@ describe('Client Logger', () => {
 
     it('should fallback to console.log if console.debug is missing', () => {
       // Temporarily remove console.debug
-      const originalDebug = console.debug;
-      (console as any).debug = undefined;
+      Reflect.set(console, 'debug', undefined);
 
       clientLogger.debug('Debug message');
-      expect(consoleLogSpy).toHaveBeenCalledWith('Debug message');
-
-      // Restore console.debug
-      console.debug = originalDebug;
+      expect(consoleLog.spy).toHaveBeenCalledWith('Debug message');
     });
   });
 
@@ -155,40 +146,40 @@ describe('Client Logger', () => {
 
     it('should handle undefined arguments', () => {
       clientLogger.error(undefined);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(undefined);
+      expect(consoleError.spy).toHaveBeenCalledWith(undefined);
     });
 
     it('should handle null arguments', () => {
       clientLogger.warn(null);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(null);
+      expect(consoleWarn.spy).toHaveBeenCalledWith(null);
     });
 
     it('should handle objects', () => {
       const obj = { key: 'value', nested: { data: 123 } };
       clientLogger.info(obj);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(obj);
+      expect(consoleInfo.spy).toHaveBeenCalledWith(obj);
     });
 
     it('should handle arrays', () => {
       const arr = [1, 2, 3, 'test'];
       clientLogger.debug(arr);
-      expect(consoleDebugSpy).toHaveBeenCalledWith(arr);
+      expect(consoleDebug.spy).toHaveBeenCalledWith(arr);
     });
 
     it('should handle numbers', () => {
       clientLogger.info(42);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(42);
+      expect(consoleInfo.spy).toHaveBeenCalledWith(42);
     });
 
     it('should handle booleans', () => {
       clientLogger.debug(true);
-      expect(consoleDebugSpy).toHaveBeenCalledWith(true);
+      expect(consoleDebug.spy).toHaveBeenCalledWith(true);
     });
 
     it('should handle symbols', () => {
       const sym = Symbol('test');
       clientLogger.info(sym);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(sym);
+      expect(consoleInfo.spy).toHaveBeenCalledWith(sym);
     });
   });
 
@@ -198,7 +189,7 @@ describe('Client Logger', () => {
         code: 500,
         message: 'Internal error',
       });
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error occurred', {
+      expect(consoleError.spy).toHaveBeenCalledWith('Error occurred', {
         code: 500,
         message: 'Internal error',
       });
@@ -206,7 +197,7 @@ describe('Client Logger', () => {
 
     it('should handle multiple strings', () => {
       clientLogger.warn('Warning:', 'This feature is deprecated');
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect(consoleWarn.spy).toHaveBeenCalledWith(
         'Warning:',
         'This feature is deprecated'
       );
@@ -214,7 +205,7 @@ describe('Client Logger', () => {
 
     it('should handle string, number, and object', () => {
       clientLogger.info('User', 123, { action: 'login' });
-      expect(consoleInfoSpy).toHaveBeenCalledWith('User', 123, {
+      expect(consoleInfo.spy).toHaveBeenCalledWith('User', 123, {
         action: 'login',
       });
     });
@@ -257,32 +248,21 @@ describe('Client Logger', () => {
   describe('console fallback behavior', () => {
     it('should always use console.log as ultimate fallback', () => {
       // Remove all console methods except log
-      const originalError = console.error;
-      const originalWarn = console.warn;
-      const originalInfo = console.info;
-      const originalDebug = console.debug;
-
-      (console as any).error = undefined;
-      (console as any).warn = undefined;
-      (console as any).info = undefined;
-      (console as any).debug = undefined;
+      Reflect.set(console, 'error', undefined);
+      Reflect.set(console, 'warn', undefined);
+      Reflect.set(console, 'info', undefined);
+      Reflect.set(console, 'debug', undefined);
 
       clientLogger.error('error');
       clientLogger.warn('warn');
       clientLogger.info('info');
       clientLogger.debug('debug');
 
-      expect(consoleLogSpy).toHaveBeenCalledTimes(4);
-      expect(consoleLogSpy).toHaveBeenCalledWith('error');
-      expect(consoleLogSpy).toHaveBeenCalledWith('warn');
-      expect(consoleLogSpy).toHaveBeenCalledWith('info');
-      expect(consoleLogSpy).toHaveBeenCalledWith('debug');
-
-      // Restore console methods
-      console.error = originalError;
-      console.warn = originalWarn;
-      console.info = originalInfo;
-      console.debug = originalDebug;
+      expect(consoleLog.spy).toHaveBeenCalledTimes(4);
+      expect(consoleLog.spy).toHaveBeenCalledWith('error');
+      expect(consoleLog.spy).toHaveBeenCalledWith('warn');
+      expect(consoleLog.spy).toHaveBeenCalledWith('info');
+      expect(consoleLog.spy).toHaveBeenCalledWith('debug');
     });
   });
 });

@@ -1,37 +1,32 @@
-import type { JSX } from 'react';
-
-import { Button } from '@/components/ui/button';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
-import { getDb } from '@/lib/db/runtime';
-import { getUsageSummary } from '@/lib/stripe/usage';
 import { Plus, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-
+import type { JSX } from 'react';
 import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
+import { Button } from '@/components/ui/button';
+import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { listPlansPageSummaries } from '@/features/plans/read-service';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
 export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
-  const result = await withServerComponentContext(async (user) => {
-    const db = getDb();
-    const usage = await getUsageSummary(user.id, db);
-    return { usage };
-  });
+  const snapshot = await requestBoundary.component(async ({ actor, db }) =>
+    getBillingAccountSnapshot({ userId: actor.id, dbClient: db })
+  );
 
-  if (!result) return null;
+  if (!snapshot) return null;
 
   return (
     <PlanCountBadge
       usage={{
-        tier: result.usage.tier,
-        activePlans: result.usage.activePlans,
-        regenerations: result.usage.regenerations,
-        exports: result.usage.exports,
+        tier: snapshot.usage.tier,
+        activePlans: snapshot.usage.activePlans,
+        regenerations: snapshot.usage.regenerations,
+        exports: snapshot.usage.exports,
       }}
     />
   );
@@ -42,20 +37,19 @@ export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlansContent(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
-    const db = getDb();
-    const [summaries, usage] = await Promise.all([
-      getPlanSummariesForUser(user.id, db),
-      getUsageSummary(user.id, db),
+  const result = await requestBoundary.component(async ({ actor, db }) => {
+    const [summaries, snapshot] = await Promise.all([
+      listPlansPageSummaries({ userId: actor.id, dbClient: db }),
+      getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
     ]);
-    return { summaries, usage };
+    return { summaries, snapshot };
   });
 
   if (!result) {
     redirect('/auth/sign-in');
   }
 
-  const { summaries, usage } = result;
+  const { summaries, snapshot } = result;
   const referenceTimestamp = new Date().toISOString();
 
   if (!summaries.length) {
@@ -97,12 +91,16 @@ export async function PlansContent(): Promise<JSX.Element> {
     <PlansList
       summaries={summaries}
       referenceTimestamp={referenceTimestamp}
-      usage={{
-        tier: usage.tier,
-        activePlans: usage.activePlans,
-        regenerations: usage.regenerations,
-        exports: usage.exports,
-      }}
+      usage={
+        snapshot
+          ? {
+              tier: snapshot.usage.tier,
+              activePlans: snapshot.usage.activePlans,
+              regenerations: snapshot.usage.regenerations,
+              exports: snapshot.usage.exports,
+            }
+          : undefined
+      }
     />
   );
 }

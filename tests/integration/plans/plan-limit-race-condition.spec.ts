@@ -5,11 +5,11 @@
  * concurrent requests from bypassing the plan limit.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, users } from '@/lib/db/schema';
-import { atomicCheckAndInsertPlan } from '@/lib/stripe/usage';
+import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { learningPlans, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('Plan Limit Race Condition Prevention (T200)', () => {
   let testUserId: string;
@@ -33,14 +33,14 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     const concurrentRequests = 5;
 
     const promises = Array.from({ length: concurrentRequests }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
+      atomicInsertPlanOrThrow(db, testUserId, {
         topic: `Concurrent Topic ${i}`,
         skillLevel: 'beginner',
         weeklyHours: 5,
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: error.message }))
+      }).catch((error) => ({ error: (error as Error).message }))
     );
 
     const results = await Promise.all(promises);
@@ -73,7 +73,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     for (let i = 0; i < 4; i++) {
       try {
-        const plan = await atomicCheckAndInsertPlan(testUserId, {
+        const plan = await atomicInsertPlanOrThrow(db, testUserId, {
           topic: `Sequential Topic ${i}`,
           skillLevel: 'intermediate',
           weeklyHours: 10,
@@ -107,7 +107,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Attempt 10 concurrent plan creations
     const promises = Array.from({ length: 10 }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
+      atomicInsertPlanOrThrow(db, testUserId, {
         topic: `Pro Tier Topic ${i}`,
         skillLevel: 'advanced',
         weeklyHours: 15,
@@ -143,14 +143,14 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Attempt 12 concurrent plan creations
     const promises = Array.from({ length: 12 }, (_, i) =>
-      atomicCheckAndInsertPlan(testUserId, {
+      atomicInsertPlanOrThrow(db, testUserId, {
         topic: `Starter Topic ${i}`,
         skillLevel: 'beginner',
         weeklyHours: 8,
         learningStyle: 'video',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: error.message }))
+      }).catch((error) => ({ error: (error as Error).message }))
     );
 
     const results = await Promise.all(promises);
@@ -177,7 +177,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     // the quota check is also rolled back
 
     // Create 2 plans successfully
-    await atomicCheckAndInsertPlan(testUserId, {
+    await atomicInsertPlanOrThrow(db, testUserId, {
       topic: 'Topic 1',
       skillLevel: 'beginner',
       weeklyHours: 5,
@@ -186,7 +186,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
       origin: 'ai',
     });
 
-    await atomicCheckAndInsertPlan(testUserId, {
+    await atomicInsertPlanOrThrow(db, testUserId, {
       topic: 'Topic 2',
       skillLevel: 'intermediate',
       weeklyHours: 10,
@@ -203,7 +203,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     expect(plans.length).toBe(2);
 
     // Should be able to create one more (limit is 3)
-    const plan3 = await atomicCheckAndInsertPlan(testUserId, {
+    const plan3 = await atomicInsertPlanOrThrow(db, testUserId, {
       topic: 'Topic 3',
       skillLevel: 'advanced',
       weeklyHours: 15,
@@ -223,7 +223,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
 
     // Next attempt should fail with limit reached
     await expect(
-      atomicCheckAndInsertPlan(testUserId, {
+      atomicInsertPlanOrThrow(db, testUserId, {
         topic: 'Topic 4',
         skillLevel: 'beginner',
         weeklyHours: 5,

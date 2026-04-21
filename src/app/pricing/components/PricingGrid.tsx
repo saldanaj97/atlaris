@@ -1,18 +1,17 @@
 import Link from 'next/link';
 import type { JSX } from 'react';
-
-import { Button } from '@/components/ui/button';
 import { PricingCard } from '@/app/pricing/components/PricingCard';
 import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
-import { type TierConfig } from '@/app/pricing/components/pricing-config';
+import type { TierConfig } from '@/app/pricing/components/pricing-config';
 import SubscribeButton from '@/app/pricing/components/SubscribeButton';
-import { type StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import { Button } from '@/components/ui/button';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 interface PricingGridProps {
   configs: TierConfig[];
   intervalLabel: string;
-  stripeData: Map<TierKey, StripeTierData>;
+  stripeData: Map<SubscriptionTier, StripeTierData>;
   subscribeLabel: string;
 }
 

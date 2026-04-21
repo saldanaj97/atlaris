@@ -1,20 +1,21 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger, next/navigation).
-import '../../../../mocks/unit/client-logger.unit';
-import '../../../../mocks/unit/sonner.unit';
+import '@tests/mocks/unit/client-logger.unit';
+import '@tests/mocks/unit/sonner.unit';
 
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
+import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
+  PlanGenerationResult,
   StreamingPlanState,
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
-import { createDeferredPromise } from '../../../../helpers/deferred-promise';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn<(href: string) => void>();
 
@@ -27,7 +28,7 @@ const mockStartGeneration =
     (
       input: CreateLearningPlanInput,
       options?: { onPlanIdReady?: (planId: string) => void }
-    ) => Promise<string>
+    ) => Promise<PlanGenerationResult>
   >();
 const mockCancel = vi.fn<() => void>();
 const mockUseStreamingPlanGeneration =
@@ -96,12 +97,21 @@ describe('ManualCreatePanel', () => {
     await user.click(screen.getByRole('button', { name: /generate my plan/i }));
   }
 
+  describe('defaults', () => {
+    it('defaults the deadline dropdown to 1 month', async () => {
+      render(<ManualCreatePanel />);
+
+      const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
+      expect(deadline).toHaveTextContent('1 month');
+    });
+  });
+
   describe('handleSubmit - successful generation', () => {
     it('starts generation from the real form and redirects when the plan id is ready', async () => {
       const planId = 'plan-123';
       mockStartGeneration.mockImplementation(async (_input, options) => {
         options?.onPlanIdReady?.(planId);
-        return planId;
+        return { status: 'completed', planId, result: planId };
       });
 
       render(<ManualCreatePanel />);
@@ -137,7 +147,11 @@ describe('ManualCreatePanel', () => {
     });
 
     it('uses the real form values instead of a mocked mapper payload', async () => {
-      mockStartGeneration.mockResolvedValue('plan-456');
+      mockStartGeneration.mockResolvedValue({
+        status: 'completed',
+        planId: 'plan-456',
+        result: 'plan-456',
+      });
 
       render(<ManualCreatePanel />);
 
@@ -317,7 +331,7 @@ describe('ManualCreatePanel', () => {
 
   describe('UnifiedPlanInput integration', () => {
     it('shows the real submitting state while generation is in flight', async () => {
-      const deferredGeneration = createDeferredPromise<string>();
+      const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
 
       render(<ManualCreatePanel />);
@@ -331,7 +345,11 @@ describe('ManualCreatePanel', () => {
         ).toBeDisabled();
       });
 
-      deferredGeneration.resolve('plan-999');
+      deferredGeneration.resolve({
+        status: 'completed',
+        planId: 'plan-999',
+        result: 'plan-999',
+      });
 
       await waitFor(() => {
         expect(

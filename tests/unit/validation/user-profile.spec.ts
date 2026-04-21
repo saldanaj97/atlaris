@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   USER_PROFILE_NAME_MAX_LENGTH,
   updateUserProfileSchema,
-} from '@/lib/validation/user-profile';
+} from '@/app/api/v1/user/profile/validation';
 
 describe('updateUserProfileSchema', () => {
   it('accepts a valid name value', () => {

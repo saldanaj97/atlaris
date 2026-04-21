@@ -1,6 +1,5 @@
-import type { JSX, ReactNode } from 'react';
-
 import { CalendarDays, Library, Sparkles } from 'lucide-react';
+import type { JSX, ReactNode } from 'react';
 
 import { Card } from '@/components/ui/card';
 

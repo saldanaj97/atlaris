@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { createTestPlan } from '@tests/fixtures/plans';
+import { createTestUser } from '@tests/fixtures/users';
 
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
@@ -7,10 +9,7 @@ import {
 } from '@/lib/db/queries/schedules';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { db } from '@/lib/db/service-role';
-import type { ScheduleJson } from '@/lib/scheduling/types';
-import { createTestPlan } from '@tests/fixtures/plans';
-import { createTestUser } from '@tests/fixtures/users';
-import { resetDbForIntegrationTestFile } from '@tests/helpers/db';
+import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 function buildScheduleJson(
   overrides: Partial<ScheduleJson> = {}
@@ -64,8 +63,6 @@ describe('Schedule Queries', () => {
   let planId: string;
 
   beforeEach(async () => {
-    await resetDbForIntegrationTestFile();
-
     const owner = await createTestUser();
     const unauthorizedUser = await createTestUser();
 

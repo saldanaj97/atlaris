@@ -1,0 +1,86 @@
+import {
+  createLearningPlanSchema,
+  onboardingFormSchema,
+} from '@/features/plans/validation/learningPlans';
+import type {
+  CreateLearningPlanInput,
+  OnboardingFormValues,
+} from '@/features/plans/validation/learningPlans.types';
+import { formatDateToYmd } from '@/lib/date/format-local-ymd';
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
+
+const WEEKLY_HOURS_RANGE_TO_INT: Record<string, number> = {
+  '1-2': 2,
+  '3-5': 5,
+  '6-10': 10,
+  '11-15': 15,
+  '16-20': 20,
+  '20+': 25,
+};
+
+function asSkillLevel(value: string): SkillLevel {
+  const normalized = value.toLowerCase();
+  if ((SKILL_LEVELS as readonly string[]).includes(normalized)) {
+    return normalized as SkillLevel;
+  }
+  throw new Error(`Unsupported skill level: ${value}`);
+}
+
+function asLearningStyle(value: string): LearningStyle {
+  const normalized = value.toLowerCase().replace(/-/g, '_');
+  if ((LEARNING_STYLES as readonly string[]).includes(normalized)) {
+    return normalized as LearningStyle;
+  }
+  if (normalized === 'hands_on' || normalized === 'hands-on') {
+    return 'practice';
+  }
+  throw new Error(`Unsupported learning style: ${value}`);
+}
+
+function parseWeeklyHours(value: string | number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  const trimmed = (value as string).trim();
+  const mapped = WEEKLY_HOURS_RANGE_TO_INT[trimmed];
+  if (mapped) {
+    return mapped;
+  }
+
+  const numeric = Number(trimmed);
+  if (!Number.isNaN(numeric)) {
+    return Math.max(0, Math.round(numeric));
+  }
+
+  throw new Error(`Unable to parse weekly hours from value: ${value}`);
+}
+
+export function normalizeOnboardingValues(values: OnboardingFormValues) {
+  const parsed = onboardingFormSchema.parse(values);
+  return {
+    ...parsed,
+    skillLevel: asSkillLevel(parsed.skillLevel),
+    learningStyle: asLearningStyle(parsed.learningStyle),
+    weeklyHours: parseWeeklyHours(parsed.weeklyHours),
+  };
+}
+
+export function mapOnboardingToCreateInput(
+  values: OnboardingFormValues
+): CreateLearningPlanInput {
+  const normalized = normalizeOnboardingValues(values);
+  // Default optional startDate to today (YYYY-MM-DD, local time) if the user
+  // omitted it. Using local time matches how the onboarding form displays and
+  // validates dates.
+  const todayStr = formatDateToYmd(new Date());
+  return createLearningPlanSchema.parse({
+    ...normalized,
+    startDate: normalized.startDate ?? todayStr,
+    // deadlineDate is required by onboarding flow; prefer the normalized value.
+    deadlineDate: normalized.deadlineDate,
+    visibility: 'private',
+    origin: 'ai',
+  });
+}

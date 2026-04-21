@@ -1,8 +1,8 @@
 'use client';
 
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Filter } from 'lucide-react';
 import type { ActivityFilter, ActivityFilterTab } from '../types';
 
 interface ActivityFilterTabsProps {
@@ -23,7 +23,7 @@ export function ActivityFilterTabs({
   onFilterChange,
 }: ActivityFilterTabsProps) {
   return (
-    <div className="mb-6 flex items-center gap-2 border-b border-slate-200 pb-4">
+    <div className="mb-6 flex items-center gap-2 border-b border-border pb-4">
       <Tabs
         value={activeFilter}
         onValueChange={(v) => onFilterChange(v as ActivityFilter)}
@@ -39,7 +39,7 @@ export function ActivityFilterTabs({
       <Button
         variant="ghost"
         size="icon-sm"
-        className="ml-auto rounded-lg text-slate-400"
+        className="ml-auto rounded-lg text-muted-foreground"
         aria-label="Filter options"
       >
         <Filter className="h-4 w-4" />

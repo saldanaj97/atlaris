@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { jobQueue, learningPlans, usageMetrics, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
@@ -6,10 +6,6 @@ import { db } from '@/lib/db/service-role';
 import { truncateAll } from '../../helpers/db';
 
 describe('truncateAll', () => {
-  beforeEach(async () => {
-    await truncateAll();
-  });
-
   it('clears critical tables between integration tests', async () => {
     const uniqueTag = Date.now().toString(36);
     const email = `truncate.${uniqueTag}@example.test`;
@@ -41,7 +37,7 @@ describe('truncateAll', () => {
     await db.insert(jobQueue).values({
       planId: plan.id,
       userId: user.id,
-      jobType: 'plan_generation',
+      jobType: 'plan_regeneration',
       payload: { marker: 'truncate' },
       scheduledFor: new Date(),
       priority: 0,

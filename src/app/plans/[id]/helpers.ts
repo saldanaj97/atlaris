@@ -5,18 +5,18 @@
  * to create results, check success status, and safely extract error information.
  */
 
-import { formatSkillLevel } from '@/lib/formatters';
-
-import type { ScheduleJson } from '@/lib/scheduling/types';
-import type { ClientModule, ClientPlanDetail } from '@/lib/types/client';
-import type { LearningPlanDetail, ProgressStatus } from '@/lib/types/db';
+import { formatSkillLevel } from '@/features/plans/formatters';
+import type {
+  ClientModule,
+  ClientPlanDetail,
+} from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 import type {
   PlanAccessError,
   PlanAccessErrorCode,
   PlanAccessResult,
   PlanDetailsCardStats,
   PlanOverviewStats,
-  ScheduleAccessResult,
 } from './types';
 
 /**
@@ -43,41 +43,27 @@ export function computeOverviewStats(
   statuses: Record<string, ProgressStatus>
 ): PlanOverviewStats {
   const modules = plan.modules ?? [];
-  const tasks = modules.flatMap((m) => m.tasks ?? []);
-
-  const totalTasks = tasks.length;
-  // Only count statuses for task IDs that exist in the current task list
-  // This prevents orphaned status entries from inflating the completion count
-  const taskIdSet = new Set(tasks.map((t) => t.id));
-  const completedTasks = Object.entries(statuses).filter(
-    ([id, status]) => taskIdSet.has(id) && status === 'completed'
-  ).length;
-  const totalMinutes = tasks.reduce(
-    (sum, t) => sum + (t.estimatedMinutes ?? 0),
-    0
-  );
-  const estimatedWeeks = plan.weeklyHours
-    ? Math.ceil(totalMinutes / (plan.weeklyHours * 60))
-    : null;
-  const completionPercentage =
-    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const sharedStats = computeSharedPlanStats(plan, statuses);
 
   const completedModules = modules.filter((mod) => {
     const moduleTasks = mod.tasks ?? [];
     if (moduleTasks.length === 0) return false;
-    return moduleTasks.every((task) => statuses[task.id] === 'completed');
+    return moduleTasks.every(
+      (task) => (statuses[task.id] ?? task.status) === 'completed'
+    );
   }).length;
 
-  const estimatedCompletionDate =
-    computeEstimatedCompletionDate(estimatedWeeks);
+  const estimatedCompletionDate = computeEstimatedCompletionDate(
+    sharedStats.estimatedWeeks
+  );
   const tags = computeTags(plan, modules);
 
   return {
-    completedTasks,
-    totalTasks,
-    completionPercentage,
-    totalMinutes,
-    estimatedWeeks,
+    completedTasks: sharedStats.completedTasks,
+    totalTasks: sharedStats.totalTasks,
+    completionPercentage: sharedStats.completionPercentage,
+    totalMinutes: sharedStats.totalMinutes,
+    estimatedWeeks: sharedStats.estimatedWeeks,
     completedModules,
     totalModules: modules.length,
     estimatedCompletionDate,
@@ -93,41 +79,54 @@ export function computeDetailsCardStats(
   plan: ClientPlanDetail,
   statuses: Record<string, ProgressStatus>
 ): PlanDetailsCardStats {
-  const modules = plan.modules ?? [];
+  const sharedStats = computeSharedPlanStats(plan, statuses);
 
-  const completedTasks = Object.values(statuses).filter(
-    (status) => status === 'completed'
-  ).length;
+  return {
+    completedTasks: sharedStats.completedTasks,
+    totalTasks: sharedStats.totalTasks,
+    totalMinutes: sharedStats.totalMinutes,
+    completionPercentage: sharedStats.completionPercentage,
+    estimatedWeeks: sharedStats.estimatedWeeks,
+  };
+}
 
-  const totalTasks = modules.reduce(
-    (count, module) => count + (module.tasks?.length ?? 0),
-    0
+function computeSharedPlanStats(
+  plan: ClientPlanDetail,
+  statuses: Record<string, ProgressStatus>
+) {
+  const completedTasks = (plan.modules ?? []).reduce(
+    (count, module) =>
+      count +
+      (module.tasks ?? []).reduce((taskCount, task) => {
+        const nextStatus = statuses[task.id] ?? task.status;
+
+        if (task.status === nextStatus) {
+          return taskCount;
+        }
+
+        if (task.status === 'completed') {
+          return taskCount - 1;
+        }
+
+        return nextStatus === 'completed' ? taskCount + 1 : taskCount;
+      }, 0),
+    plan.completedTasks ?? 0
   );
-
-  const totalMinutes = modules.reduce(
-    (sum, module) =>
-      sum +
-      (module.tasks ?? []).reduce(
-        (moduleSum, task) => moduleSum + (task.estimatedMinutes ?? 0),
-        0
-      ),
-    0
-  );
-
-  const completionPercentage = totalTasks
-    ? Math.round((completedTasks / totalTasks) * 100)
-    : 0;
-
+  const totalTasks = plan.totalTasks;
+  const totalMinutes = plan.totalMinutes;
   const estimatedWeeks = plan.weeklyHours
     ? Math.ceil(totalMinutes / (plan.weeklyHours * 60))
     : null;
+  const completionPercentage = totalTasks
+    ? Math.round((completedTasks / totalTasks) * 100)
+    : 0;
 
   return {
     completedTasks,
     totalTasks,
     totalMinutes,
-    completionPercentage,
     estimatedWeeks,
+    completionPercentage,
   };
 }
 
@@ -164,7 +163,7 @@ function computeTags(
 /**
  * Helper to create success result
  */
-export function planSuccess(data: LearningPlanDetail): PlanAccessResult {
+export function planSuccess(data: ClientPlanDetail): PlanAccessResult {
   return { success: true, data };
 }
 
@@ -179,37 +178,11 @@ export function planError(
 }
 
 /**
- * Helper to create schedule success result
- */
-export function scheduleSuccess(data: ScheduleJson): ScheduleAccessResult {
-  return { success: true, data };
-}
-
-/**
- * Helper to create schedule error result
- */
-export function scheduleError(
-  code: PlanAccessErrorCode,
-  message: string
-): ScheduleAccessResult {
-  return { success: false, error: { code, message } };
-}
-
-/**
  * Type guard to check if plan access result is successful
  */
 export function isPlanSuccess(
   result: PlanAccessResult
-): result is { success: true; data: LearningPlanDetail } {
-  return result.success === true;
-}
-
-/**
- * Type guard to check if schedule access result is successful
- */
-export function isScheduleSuccess(
-  result: ScheduleAccessResult
-): result is { success: true; data: ScheduleJson } {
+): result is { success: true; data: ClientPlanDetail } {
   return result.success === true;
 }
 
@@ -218,19 +191,6 @@ export function isScheduleSuccess(
  * Only call this after checking !isPlanSuccess(result)
  */
 export function getPlanError(result: PlanAccessResult): PlanAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
-}
-
-/**
- * Helper to safely extract error from schedule access result
- * Only call this after checking !isScheduleSuccess(result)
- */
-export function getScheduleError(
-  result: ScheduleAccessResult
-): PlanAccessError {
   if (result.success === false) {
     return result.error;
   }

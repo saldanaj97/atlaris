@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { clientLogger } from '@/lib/logging/client';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
 import type { JSX } from 'react';
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { clientLogger } from '@/lib/logging/client';
 
 interface ErrorProps {
   error: Error & { digest?: string };

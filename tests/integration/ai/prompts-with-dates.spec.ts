@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PromptParams } from '@/lib/ai/prompts';
-import { buildSystemPrompt, buildUserPrompt } from '@/lib/ai/prompts';
+import type { PromptParams } from '@/features/ai/prompts';
+import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
 
 describe('Prompts with deadline and start date context', () => {
   it('includes start date in user prompt when provided', () => {

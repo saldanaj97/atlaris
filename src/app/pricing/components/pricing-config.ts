@@ -1,8 +1,8 @@
 import { stripeEnv } from '@/lib/config/env';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export interface TierConfig {
-  key: TierKey;
+  key: SubscriptionTier;
   priceId?: string | null;
 }
 

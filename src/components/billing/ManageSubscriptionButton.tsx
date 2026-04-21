@@ -1,14 +1,21 @@
 'use client';
 
-import { useRef, useState, type ReactElement } from 'react';
+import { type ReactElement, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { createPortalResponseSchema } from '@/features/billing/validation/stripe';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { createPortalResponseSchema } from '@/lib/validation/stripe';
 
 const PORTAL_TIMEOUT_MS = 15_000;
+
+type ManageSubscriptionButtonProps = {
+  label?: string;
+  className?: string;
+  returnUrl?: string;
+  canOpenBillingPortal: boolean;
+};
 
 type PortalRequestResult =
   | { kind: 'success'; portalUrl: string }
@@ -41,7 +48,11 @@ function normalizePortalUrl(portalUrl: string): string | null {
     return null;
   }
 
-  if (parsedUrl.protocol !== 'https:') {
+  const isLocalHttp =
+    parsedUrl.protocol === 'http:' &&
+    (parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1');
+
+  if (parsedUrl.protocol !== 'https:' && !isLocalHttp) {
     return null;
   }
 
@@ -186,22 +197,17 @@ async function requestBillingPortal(params: {
   };
 }
 
-interface ManageSubscriptionButtonProps {
-  label?: string;
-  className?: string;
-  returnUrl?: string;
-}
-
 export default function ManageSubscriptionButton({
   label = 'Manage Subscription',
   className,
   returnUrl,
+  canOpenBillingPortal,
 }: ManageSubscriptionButtonProps): ReactElement {
   const [loading, setLoading] = useState(false);
   const pendingRef = useRef(false);
 
   async function handleClick() {
-    if (pendingRef.current) {
+    if (!canOpenBillingPortal || pendingRef.current) {
       return;
     }
 
@@ -256,7 +262,7 @@ export default function ManageSubscriptionButton({
   return (
     <Button
       className={className}
-      disabled={loading}
+      disabled={loading || !canOpenBillingPortal}
       onClick={() => {
         void handleClick();
       }}

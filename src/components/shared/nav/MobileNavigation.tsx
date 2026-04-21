@@ -1,5 +1,9 @@
 'use client';
 
+import { Menu, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -7,12 +11,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
-import type { NavItem } from '@/lib/navigation';
-import { Menu, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 
 import BrandLogo from '../BrandLogo';
 
@@ -82,7 +82,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
               item.href === '/'
                 ? pathname === '/'
                 : pathname === item.href ||
-                  pathname.startsWith(item.href + '/');
+                  pathname.startsWith(`${item.href}/`);
             return (
               <div key={item.href} className="flex flex-col gap-1">
                 <Link

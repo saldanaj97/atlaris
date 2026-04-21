@@ -18,12 +18,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { formatMinutes } from '@/features/plans/formatters';
 import type {
   ModuleNavItem,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
-import { formatMinutes } from '@/lib/formatters';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleHeaderProps {
   module: ModuleWithTasks;
@@ -38,12 +38,13 @@ interface ModuleHeaderProps {
 }
 
 // Gradient presets based on module order for visual variety
+/** Brand-only gradients (primary / accent / primary-dark) for visual variety */
 const MODULE_GRADIENTS = [
-  'from-primary via-accent to-primary',
-  'from-emerald-600 via-teal-500 to-cyan-500',
-  'from-amber-600 via-orange-500 to-red-500',
-  'from-pink-600 via-rose-500 to-red-500',
-  'from-blue-600 via-cyan-500 to-teal-500',
+  'from-primary via-accent to-primary-dark',
+  'from-primary-dark via-primary to-accent',
+  'from-accent via-primary to-primary-dark',
+  'from-primary via-primary-dark to-accent',
+  'from-chart-2 via-primary to-accent',
 ];
 
 /**
@@ -206,7 +207,7 @@ export function ModuleHeader({
                 <Lock className="h-6 w-6 text-white/50 md:h-7 md:w-7" />
               )}
               {completion === 100 && (
-                <CheckCircle2 className="h-6 w-6 text-green-300 md:h-7 md:w-7" />
+                <CheckCircle2 className="h-6 w-6 text-white drop-shadow-md md:h-7 md:w-7" />
               )}
             </h1>
             {module.description && (

@@ -13,8 +13,38 @@ import { db } from '@/lib/db/service-role';
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;
 
+type SubscriptionLifecycleFields = Pick<
+  UserRow,
+  'subscriptionStatus' | 'subscriptionPeriodEnd' | 'cancelAtPeriodEnd'
+>;
+
+const DEFAULT_SUBSCRIPTION_LIFECYCLE: SubscriptionLifecycleFields = {
+  subscriptionStatus: null,
+  subscriptionPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+};
+
+function resolveSubscriptionLifecycle(
+  overrides: Partial<SubscriptionLifecycleFields> = {}
+): SubscriptionLifecycleFields {
+  return {
+    subscriptionStatus:
+      overrides.subscriptionStatus === undefined
+        ? DEFAULT_SUBSCRIPTION_LIFECYCLE.subscriptionStatus
+        : overrides.subscriptionStatus,
+    subscriptionPeriodEnd:
+      overrides.subscriptionPeriodEnd === undefined
+        ? DEFAULT_SUBSCRIPTION_LIFECYCLE.subscriptionPeriodEnd
+        : overrides.subscriptionPeriodEnd,
+    cancelAtPeriodEnd:
+      overrides.cancelAtPeriodEnd ??
+      DEFAULT_SUBSCRIPTION_LIFECYCLE.cancelAtPeriodEnd,
+  };
+}
+
 type CreateTestUserParams = Partial<
-  Pick<UserInsert, 'authUserId' | 'email' | 'name' | 'subscriptionTier'>
+  Pick<UserInsert, 'authUserId' | 'email' | 'name' | 'subscriptionTier'> &
+    SubscriptionLifecycleFields
 >;
 
 /**
@@ -35,6 +65,8 @@ export async function createTestUser(
     .values({
       authUserId: baseAuthUserId,
       email: baseEmail,
+      subscriptionTier: 'free',
+      ...DEFAULT_SUBSCRIPTION_LIFECYCLE,
       ...overrides,
     } as UserInsert)
     .returning();
@@ -52,6 +84,12 @@ export async function createTestUser(
  */
 export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
   const now = new Date();
+  const {
+    subscriptionStatus,
+    subscriptionPeriodEnd,
+    cancelAtPeriodEnd,
+    ...userOverrides
+  } = overrides;
 
   return {
     id: `user_${nanoid(12)}`,
@@ -61,12 +99,15 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
     subscriptionTier: 'free',
     stripeCustomerId: null,
     stripeSubscriptionId: null,
-    subscriptionStatus: null,
-    subscriptionPeriodEnd: null,
+    ...resolveSubscriptionLifecycle({
+      subscriptionStatus,
+      subscriptionPeriodEnd,
+      cancelAtPeriodEnd,
+    }),
     monthlyExportCount: 0,
     preferredAiModel: null,
     createdAt: now,
     updatedAt: now,
-    ...overrides,
+    ...userOverrides,
   };
 }

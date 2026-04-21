@@ -1,13 +1,11 @@
+import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-
+import { getPlanForPage } from '@/app/plans/[id]/actions';
+import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-import { mapDetailToClient } from '@/lib/mappers/detailToClient';
-import { redirect } from 'next/navigation';
-
-import { getCachedPlanForPage } from '@/app/plans/[id]/data';
-import { getPlanError, isPlanSuccess } from '@/app/plans/[id]/helpers';
 
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
@@ -21,7 +19,7 @@ interface PlanDetailContentProps {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
-  const planResult = await getCachedPlanForPage(planId);
+  const planResult = await getPlanForPage(planId);
 
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
@@ -31,10 +29,12 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     logger.warn({ planId, errorCode: code }, `Plan access denied: ${message}`);
 
     switch (code) {
-      case 'UNAUTHORIZED':
+      case 'UNAUTHORIZED': {
+        const redirectPath = `/plans/${planId}`;
         return redirect(
-          `/sign-in?redirect_url=/plans/${encodeURIComponent(planId)}`
+          `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(redirectPath)}`
         );
+      }
 
       case 'NOT_FOUND':
         return (
@@ -45,8 +45,6 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
         return (
           <PlanDetailPageError message="You do not have permission to view this plan." />
         );
-
-      case 'INTERNAL_ERROR':
       default:
         return (
           <PlanDetailPageError message="Something went wrong. Please try again later." />
@@ -54,21 +52,8 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     }
   }
 
-  const planData = planResult.data;
-  const formattedPlanDetails = mapDetailToClient(planData);
-  if (!formattedPlanDetails) {
-    logger.error(
-      {
-        planId,
-        hasPlanData: !!planData,
-        planDataKeys: planData ? Object.keys(planData) : [],
-      },
-      'Failed to map plan details to client format'
-    );
-    return <PlanDetailPageError message="Failed to load plan details." />;
-  }
-
-  return <PlanDetails plan={formattedPlanDetails} />;
+  logger.debug({ planId }, 'Plan detail payload ready for rendering');
+  return <PlanDetails plan={planResult.data} />;
 }
 
 /**

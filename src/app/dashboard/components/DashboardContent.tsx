@@ -1,24 +1,26 @@
-import { Skeleton } from '@/components/ui/skeleton';
-import { withServerComponentContext } from '@/lib/api/auth';
-import { getPlanSummariesForUser } from '@/lib/db/queries/plans';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-
+import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
+import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
 import {
   findActivePlan,
   generateActivities,
 } from '@/app/dashboard/components/activity-utils';
-import { ActivityFeedClient } from '@/app/dashboard/components/ActivityFeedClient';
-import { ActivityStreamSidebar } from '@/app/dashboard/components/ActivityStreamSidebar';
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
+import { Skeleton } from '@/components/ui/skeleton';
+import { listDashboardPlanSummaries } from '@/features/plans/read-service';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function DashboardContent(): Promise<JSX.Element> {
-  const result = await withServerComponentContext(async (user) => {
-    const summaries = await getPlanSummariesForUser(user.id);
+  const result = await requestBoundary.component(async ({ actor, db }) => {
+    const summaries = await listDashboardPlanSummaries({
+      userId: actor.id,
+      dbClient: db,
+    });
     return { summaries };
   });
 
@@ -59,7 +61,7 @@ export function DashboardContentSkeleton(): JSX.Element {
     <>
       {/* ResumeLearningHero skeleton */}
       <section aria-label="Resume learning loading" className="mb-8">
-        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-teal-500/20 via-emerald-500/20 to-cyan-500/20 p-6 shadow-lg">
+        <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary/20 via-accent/20 to-primary-dark/20 p-6 shadow-lg">
           {/* Top row: label (left) and circular progress (right) */}
           <div className="flex items-start justify-between gap-4">
             <Skeleton className="h-4 w-28 bg-white/30" />

@@ -1,9 +1,9 @@
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
+import { eq } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
@@ -12,7 +12,9 @@ describe('AI Router (mock in tests)', () => {
   let email: string;
 
   beforeEach(() => {
-    process.env.AI_PROVIDER = 'router';
+    // Force the mock provider in this integration test rather than relying on
+    // the (now-removed) `AI_PROVIDER=router` magic string.
+    delete process.env.AI_PROVIDER;
     process.env.AI_USE_MOCK = 'true';
 
     authUserId = buildTestAuthUserId('ai-router');

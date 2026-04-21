@@ -1,15 +1,13 @@
-import React from 'react';
 import type { Metadata } from 'next';
-
-import { GradientBlobBackground } from '@/app/landing/components';
-
+import type React from 'react';
 import {
+  CtaSection,
   HeroSection,
   MissionSection,
-  ValuesSection,
   TeamSection,
-  CtaSection,
+  ValuesSection,
 } from '@/app/about/components';
+import { GradientBlobBackground } from '@/app/landing/components';
 
 export const metadata: Metadata = {
   title: 'About | Atlaris',

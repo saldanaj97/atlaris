@@ -1,10 +1,12 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ZodError } from 'zod';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { PLAN_STATUSES, type PlanStatus } from '@/lib/types/client';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { z } from 'zod';
+import { computeNextDelay, INITIAL_POLL_MS } from '@/shared/constants/polling';
+import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
+import type { PlanStatus } from '@/shared/types/client.types';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 
@@ -21,24 +23,6 @@ class RetriableError extends Error {
     this.name = 'RetriableError';
   }
 }
-
-interface StatusResponse {
-  planId: string;
-  status: PlanStatus;
-  attempts: number;
-  latestError: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-const StatusResponseSchema: z.ZodType<StatusResponse> = z.object({
-  planId: z.string(),
-  status: z.enum(PLAN_STATUSES),
-  attempts: z.number(),
-  latestError: z.string().nullable(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-});
 
 interface UsePlanStatusReturn {
   status: PlanStatus;
@@ -60,6 +44,10 @@ export function usePlanStatus(
   const [pollingError, setPollingError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const consecutiveFailuresRef = useRef(0);
+  const previousStatusRef = useRef<PlanStatus>(initialStatus);
+  const delayRef = useRef(INITIAL_POLL_MS);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousPlanIdRef = useRef(planId);
   // Track latest initialStatus without making planId-reset effect depend on it.
   // This prevents a spurious full reset when initialStatus changes on the same plan.
   const initialStatusRef = useRef(initialStatus);
@@ -86,13 +74,14 @@ export function usePlanStatus(
       consecutiveFailuresRef.current = 0;
 
       const raw = (await response.json()) as unknown;
-      const parseResult = StatusResponseSchema.safeParse(raw);
+      const parseResult = PlanStatusResponseSchema.safeParse(raw);
       if (!parseResult.success) {
         throw parseResult.error;
       }
 
       const data = parseResult.data;
 
+      previousStatusRef.current = data.status;
       setStatus(data.status);
       setAttempts(data.attempts);
 
@@ -103,7 +92,7 @@ export function usePlanStatus(
         setIsPolling(false);
       }
     } catch (err) {
-      if (err instanceof z.ZodError) {
+      if (err instanceof ZodError) {
         clientLogger.error('Plan status response validation failed', {
           planId,
           error: err.flatten(),
@@ -155,15 +144,43 @@ export function usePlanStatus(
     }
 
     setIsPolling(true);
-    void fetchStatus();
+    delayRef.current = INITIAL_POLL_MS;
 
-    // Then poll every 3 seconds
-    const pollInterval = setInterval(() => {
-      void fetchStatus();
-    }, 3000);
+    let cancelled = false;
+
+    const schedulePoll = () => {
+      if (cancelled) return;
+      timeoutRef.current = setTimeout(() => {
+        if (cancelled) return;
+        const prevStatus = previousStatusRef.current;
+        void fetchStatus().then(() => {
+          if (cancelled) return;
+          // Reset backoff when a status transition occurs
+          if (previousStatusRef.current !== prevStatus) {
+            delayRef.current = INITIAL_POLL_MS;
+          } else {
+            delayRef.current = computeNextDelay(delayRef.current);
+          }
+          schedulePoll();
+        });
+      }, delayRef.current);
+    };
+
+    // Fire the first poll immediately, then start the backoff loop
+    void (async () => {
+      await fetchStatus();
+      if (!cancelled) {
+        delayRef.current = computeNextDelay(delayRef.current);
+        schedulePoll();
+      }
+    })();
 
     return () => {
-      clearInterval(pollInterval);
+      cancelled = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
       setIsPolling(false);
     };
   }, [shouldPoll, fetchStatus]);
@@ -171,6 +188,11 @@ export function usePlanStatus(
   // When the planId changes, reset all per-plan state so the new plan starts fresh
   // and stale state from the previous plan never leaks into the UI.
   useEffect(() => {
+    if (previousPlanIdRef.current === planId) {
+      return;
+    }
+
+    previousPlanIdRef.current = planId;
     setStatus(initialStatusRef.current);
     setAttempts(0);
     setError(null);

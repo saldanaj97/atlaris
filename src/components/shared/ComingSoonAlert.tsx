@@ -22,8 +22,7 @@ export function ComingSoonAlert({
   className,
 }: ComingSoonAlertProps): JSX.Element {
   return (
-    <div
-      role="region"
+    <section
       aria-label="Coming soon"
       className={cn(
         'relative flex items-start gap-4 overflow-hidden rounded-2xl border border-white/40 bg-white/30 px-5 py-4 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30',
@@ -41,6 +40,6 @@ export function ComingSoonAlert({
           {description}
         </p>
       </div>
-    </div>
+    </section>
   );
 }

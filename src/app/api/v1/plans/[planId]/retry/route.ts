@@ -1,292 +1,117 @@
 import {
-  PLAN_GENERATION_LIMIT,
-  PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/lib/ai/generation-policy';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
-import type { GenerationInput, IsoDateString } from '@/lib/ai/types';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import {
-  normalizeThrownError,
-  toAttemptError,
-} from '@/lib/api/error-normalization';
-import { isFailureClassification } from '@/lib/api/error-response';
-import { AppError, RateLimitError } from '@/lib/api/errors';
-import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+} from '@/features/plans/api/route-context';
+import {
+  createPlanGenerationSessionBoundary,
+  type PlanGenerationSessionBoundary,
+} from '@/features/plans/session/plan-generation-session';
+import type { PlainHandler } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { AppError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import {
-  finalizeAttemptFailure,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
-import { parsePersistedPdfContext } from '@/lib/pdf/context';
-import { resolveUserTier } from '@/lib/stripe/usage';
-import type { FailureClassification } from '@/lib/types/client';
-import {
-  buildPlanStartEvent,
-  executeGenerationStream,
-  safeMarkPlanFailed,
-  withFallbackCleanup,
-} from '@/app/api/v1/plans/stream/helpers';
 
 export const maxDuration = 60;
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const RETRYABLE_STATUSES = new Set(['failed', 'pending_retry']);
 
-const toIsoDateString = (value: string | null): IsoDateString | undefined => {
-  if (!value) {
-    return undefined;
-  }
+const defaultBoundary: PlanGenerationSessionBoundary =
+  createPlanGenerationSessionBoundary();
 
-  return ISO_DATE_PATTERN.test(value) ? (value as IsoDateString) : undefined;
-};
+/**
+ * Creates the retry POST handler with optional dependency overrides.
+ *
+ * Tests inject a fake `boundary` (typically built via
+ * `createPlanGenerationSessionBoundary({ createLifecycleService })`) to swap
+ * the lifecycle service under the boundary; production uses the default
+ * boundary singleton.
+ */
+export function createRetryHandler(deps?: {
+  boundary?: PlanGenerationSessionBoundary;
+}): PlainHandler {
+  const boundary = deps?.boundary ?? defaultBoundary;
 
-const extractFailureClassification = (
-  error: unknown
-): FailureClassification | undefined => {
-  if (typeof error !== 'object' || error === null) {
-    return undefined;
-  }
+  return withErrorBoundary(
+    withAuthAndRateLimit(
+      'aiGeneration',
+      async ({
+        req,
+        userId: authUserId,
+        user: currentUser,
+      }): Promise<Response> => {
+        const planId = requirePlanIdFromRequest(req, 'second-to-last');
+        // `authUserId` is the auth-provider subject used for RLS session setup;
+        // `internalUserId` is the application user row used for ownership checks.
+        const internalUserId = currentUser.id;
 
-  const classification = (error as { classification?: unknown }).classification;
-  if (
-    typeof classification === 'string' &&
-    isFailureClassification(classification)
-  ) {
-    return classification;
-  }
+        const db = getDb();
+        const rateLimit = await checkPlanGenerationRateLimit(
+          internalUserId,
+          db
+        );
+        const generationRateLimitHeaders =
+          getPlanGenerationRateLimitHeaders(rateLimit);
 
-  return undefined;
-};
+        const plan = await requireOwnedPlanById({
+          planId,
+          ownerUserId: internalUserId,
+          dbClient: db,
+        });
+        const attemptsSnapshot = await getPlanAttemptsForUser(
+          plan.id,
+          internalUserId,
+          db
+        );
+        const attemptNumber = (attemptsSnapshot?.attempts.length ?? 0) + 1;
+
+        // Pre-flight: reject non-retryable plan statuses with a clear HTTP error
+        if (!RETRYABLE_STATUSES.has(plan.generationStatus ?? '')) {
+          throw new AppError(
+            "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
+            {
+              status: 400,
+              code: 'VALIDATION_ERROR',
+              classification: 'validation',
+              headers: generationRateLimitHeaders,
+            }
+          );
+        }
+
+        return await boundary.respondRetryStream({
+          req,
+          authUserId,
+          internalUserId,
+          planId,
+          attemptNumber,
+          plan: {
+            topic: plan.topic,
+            skillLevel: plan.skillLevel,
+            weeklyHours: plan.weeklyHours,
+            learningStyle: plan.learningStyle,
+            startDate: plan.startDate,
+            deadlineDate: plan.deadlineDate,
+            origin: plan.origin,
+          },
+          tierDb: db,
+          responseHeaders: generationRateLimitHeaders,
+        });
+      }
+    )
+  );
+}
 
 /**
  * POST /api/v1/plans/:planId/retry
  *
  * Retries generation for a failed plan. Returns a streaming response.
- * Attempt cap, failed-state requirement, and in-progress checks are enforced
- * atomically inside reserveAttemptSlot before streaming starts.
+ * Delegates to PlanLifecycleService for attempt management, generation,
+ * failure marking, and usage recording. The route is a thin adapter that
+ * handles HTTP-level validation (ownership, plan status) and SSE streaming.
  */
-export const POST = withErrorBoundary(
-  withAuthAndRateLimit(
-    'aiGeneration',
-    async ({ req, user }): Promise<Response> => {
-      const planId = requirePlanIdFromRequest(req, 'second-to-last');
-
-      const db = getDb();
-      const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
-      const generationRateLimitHeaders =
-        getPlanGenerationRateLimitHeaders(rateLimit);
-
-      const plan = await requireOwnedPlanById({
-        planId,
-        ownerUserId: user.id,
-        dbClient: db,
-      });
-
-      // Tier-gated provider resolution (retries use default model for the tier)
-      const userTier = await resolveUserTier(user.id, db);
-      const { provider } = resolveModelForTier(userTier);
-
-      // Build generation input from existing plan data
-      const generationInput = {
-        topic: plan.topic,
-        // Notes are not stored on the plan currently
-        notes: undefined,
-        pdfContext:
-          plan.origin === 'pdf'
-            ? parsePersistedPdfContext(plan.extractedContext)
-            : null,
-        skillLevel: plan.skillLevel,
-        weeklyHours: plan.weeklyHours,
-        learningStyle: plan.learningStyle,
-        startDate: toIsoDateString(plan.startDate),
-        deadlineDate: toIsoDateString(plan.deadlineDate),
-      } satisfies GenerationInput;
-
-      // Atomically reserve an attempt slot before starting the stream so we can
-      // return proper HTTP error codes for rejected attempts.
-      const reservation = await reserveAttemptSlot({
-        planId,
-        userId: user.id,
-        input: generationInput,
-        dbClient: db,
-        allowedGenerationStatuses: ['failed', 'pending_retry'],
-      });
-
-      if (!reservation.reserved) {
-        switch (reservation.reason) {
-          case 'capped':
-            throw new AppError(
-              'Maximum retry attempts reached for this plan. Please create a new plan.',
-              {
-                status: 429,
-                code: 'ATTEMPTS_CAPPED',
-                classification: 'capped',
-                headers: generationRateLimitHeaders,
-              }
-            );
-          case 'rate_limited':
-            throw new RateLimitError(
-              `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
-              { retryAfter: reservation.retryAfter, remaining: 0 },
-              { headers: generationRateLimitHeaders }
-            );
-          case 'invalid_status':
-            throw new AppError(
-              "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
-              {
-                status: 400,
-                code: 'VALIDATION_ERROR',
-                classification: 'validation',
-                headers: generationRateLimitHeaders,
-              }
-            );
-          case 'in_progress':
-            throw new AppError(
-              'A generation is already in progress for this plan.',
-              {
-                status: 409,
-                code: 'CONFLICT',
-                classification: 'conflict',
-                headers: generationRateLimitHeaders,
-              }
-            );
-          default: {
-            const unknownReason: never = reservation.reason;
-            throw new AppError('Unexpected reservation failure reason.', {
-              status: 500,
-              code: 'UNKNOWN_RESERVATION_REASON',
-              details: { reason: String(unknownReason) },
-              headers: generationRateLimitHeaders,
-            });
-          }
-        }
-      }
-
-      let stream: ReadableStream<Uint8Array>;
-      try {
-        stream = createEventStream(async (emit, _controller, streamContext) => {
-          emit(
-            buildPlanStartEvent({
-              planId,
-              input: {
-                topic: generationInput.topic,
-                skillLevel: generationInput.skillLevel,
-                weeklyHours: generationInput.weeklyHours,
-                learningStyle: generationInput.learningStyle,
-                notes: generationInput.notes,
-                startDate: generationInput.startDate ?? undefined,
-                deadlineDate: generationInput.deadlineDate ?? undefined,
-                visibility: 'private',
-                origin: plan.origin ?? 'ai',
-              },
-            })
-          );
-
-          await executeGenerationStream({
-            reqSignal: req.signal,
-            streamSignal: streamContext.signal,
-            planId: plan.id,
-            userId: user.id,
-            dbClient: db,
-            emit,
-            runGeneration: () =>
-              runGenerationAttempt(
-                {
-                  planId: plan.id,
-                  userId: user.id,
-                  input: generationInput,
-                },
-                {
-                  provider,
-                  dbClient: db,
-                  reservation,
-                }
-              ),
-            onUnhandledError: async (attemptError, startedAt) => {
-              const normalizedAttemptError = normalizeThrownError(attemptError);
-
-              await withFallbackCleanup(
-                async () => {
-                  const classification =
-                    extractFailureClassification(attemptError) ??
-                    'provider_error';
-
-                  await finalizeAttemptFailure({
-                    attemptId: reservation.attemptId,
-                    planId: plan.id,
-                    preparation: reservation,
-                    classification,
-                    durationMs: Math.max(0, Date.now() - startedAt),
-                    error: toAttemptError(normalizedAttemptError),
-                    dbClient: db,
-                  });
-                },
-                () => safeMarkPlanFailed(plan.id, user.id, db),
-                {
-                  planId: plan.id,
-                  attemptId: reservation.attemptId,
-                  originalError: normalizedAttemptError,
-                  messageFinalize:
-                    'Failed to finalize attempt on retry error; falling back to plan-level cleanup',
-                  messageBoth:
-                    'Plan-level cleanup (safeMarkPlanFailed) failed after finalize error',
-                }
-              );
-
-              logger.error(
-                {
-                  planId: plan.id,
-                  userId: user.id,
-                  error: normalizedAttemptError,
-                  stack: normalizedAttemptError.stack,
-                },
-                'Plan retry generation failed'
-              );
-            },
-            mapUnhandledErrorToClientError: toAttemptError,
-            fallbackClassification: 'provider_error',
-          });
-        });
-      } catch (setupError) {
-        await finalizeAttemptFailure({
-          attemptId: reservation.attemptId,
-          planId: plan.id,
-          preparation: reservation,
-          classification: 'provider_error',
-          durationMs: 0,
-          error: toAttemptError(setupError),
-          dbClient: db,
-        }).catch(async (finalizeErr) => {
-          logger.error(
-            {
-              planId: plan.id,
-              attemptId: reservation.attemptId,
-              finalizeErr,
-              setupError,
-            },
-            'Failed to finalize attempt after stream setup error'
-          );
-          await safeMarkPlanFailed(plan.id, user.id, db);
-        });
-        throw setupError;
-      }
-
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          ...streamHeaders,
-          ...generationRateLimitHeaders,
-        },
-      });
-    }
-  )
-);
+export const POST = createRetryHandler();

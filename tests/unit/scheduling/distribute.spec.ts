@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { distributeTasksToSessions } from '@/lib/scheduling/distribute';
-import type { ScheduleInputs } from '@/lib/scheduling/types';
+import { distributeTasksToSessions } from '@/features/scheduling/distribute';
+import type { ScheduleInputs } from '@/shared/types/scheduling.types';
 
 describe('distributeTasksToSessions', () => {
   it('should distribute tasks evenly across default 3 sessions per week', () => {
@@ -95,6 +95,32 @@ describe('distributeTasksToSessions', () => {
 
     expect(firstSession.taskId).toBe('task-1');
     expect(firstSession.taskTitle).toBe('First Task');
+  });
+
+  it('should use provided module titles in generated session labels', () => {
+    const inputs: ScheduleInputs = {
+      planId: 'plan-123',
+      tasks: [
+        {
+          id: 'task-1',
+          title: 'Task 1',
+          estimatedMinutes: 60,
+          order: 1,
+          moduleId: 'mod-1',
+          moduleTitle: 'Foundations',
+        },
+      ],
+      startDate: '2025-02-03',
+      deadline: null,
+      weeklyHours: 10,
+      timezone: 'UTC',
+    };
+
+    const schedule = distributeTasksToSessions(inputs);
+
+    expect(schedule.weeks[0].days[0].sessions[0]?.moduleName).toBe(
+      'Foundations'
+    );
   });
 
   it('should use Mon/Wed/Fri as default session days from start anchor', () => {

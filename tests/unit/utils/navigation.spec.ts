@@ -1,8 +1,8 @@
+import { describe, expect, it } from 'vitest';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
-} from '@/lib/navigation';
-import { describe, expect, it } from 'vitest';
+} from '@/features/navigation';
 
 describe('Navigation', () => {
   describe('authenticatedNavItems', () => {

@@ -1,6 +1,5 @@
-import type { JSX, ReactNode } from 'react';
-
 import { Eye, Globe, Target } from 'lucide-react';
+import type { JSX, ReactNode } from 'react';
 
 import { Card } from '@/components/ui/card';
 

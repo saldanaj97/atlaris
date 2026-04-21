@@ -16,9 +16,9 @@ vi.mock('@/lib/logging/logger', () => {
 });
 
 import {
-  REQUEST_ID_HEADER,
   attachRequestIdHeader,
   createRequestContext,
+  REQUEST_ID_HEADER,
 } from '@/lib/logging/request-context';
 
 describe('createRequestContext', () => {

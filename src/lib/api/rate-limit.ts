@@ -1,21 +1,21 @@
-import {
-  getPlanGenerationWindowStart,
-  PLAN_GENERATION_LIMIT,
-  PLAN_GENERATION_WINDOW_MINUTES,
-} from '@/lib/ai/generation-policy';
 import { RateLimitError } from '@/lib/api/errors';
-import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-helpers';
+import { selectUserGenerationAttemptWindowStats } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import type {
   AttemptsReadClient,
   UserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
+import {
+  getPlanGenerationWindowStart,
+  PLAN_GENERATION_LIMIT,
+  PLAN_GENERATION_WINDOW_MINUTES,
+} from '@/shared/constants/generation';
 
-export interface PlanGenerationRateLimitResult {
+type PlanGenerationRateLimitResult = {
   remaining: number;
   limit: number;
   reset: number;
-}
+};
 
 /** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(

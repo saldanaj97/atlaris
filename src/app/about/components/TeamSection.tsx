@@ -1,6 +1,5 @@
-import type { JSX } from 'react';
-
 import { User } from 'lucide-react';
+import type { JSX } from 'react';
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';

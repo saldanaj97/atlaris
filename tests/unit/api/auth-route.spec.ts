@@ -1,13 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import * as AuthRoute from '@/app/api/auth/[...path]/route';
 import {
   AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS,
   createAuthRequest,
   createRouteContext,
 } from '../../fixtures/api';
 import { mockRateLimitExceeded } from '../../mocks/shared/ip-rate-limit';
-
-import * as AuthRoute from '@/app/api/auth/[...path]/route';
 
 const mocks = vi.hoisted(() => ({
   mockGetHandler: vi.fn(),

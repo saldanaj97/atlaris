@@ -1,0 +1,33 @@
+# Dependencies & Lockfiles (LLMs do not need to read 20,000 lines of lockfiles)
+/node_modules
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+/.pnp
+.pnp.*
+.yarn/*
+
+# Build & Next.js
+/.next/
+/out/
+/build
+/test-dist/next-smoke-*/
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing & Reports
+/coverage
+/tests/test-results/*
+/tests/results/
+jscpd-report/
+
+# Logs & Misc Noise
+*.log*
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store
+/.cocoindex_code/
+
+# Environment files
+.env*

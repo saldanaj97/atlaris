@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { onboardingFormSchema } from '@/lib/validation/learningPlans';
+import { onboardingFormSchema } from '@/features/plans/validation/learningPlans';
 
 const FIXED_NOW = new Date('2026-03-09T12:00:00.000Z');
 

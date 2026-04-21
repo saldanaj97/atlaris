@@ -1,13 +1,15 @@
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import type { InferSelectModel } from 'drizzle-orm';
 
-import type { ParsedModule } from '@/lib/ai/parser';
+import type { DbClient } from '@/lib/db/types';
+import type { EffortNormalizationFlags } from '@/shared/constants/effort';
+import type { ParsedModule } from '@/shared/types/ai-parser.types';
 import type {
   GenerationInput,
   ProviderMetadata,
-} from '@/lib/ai/types/provider.types';
-import type { FailureClassification } from '@/lib/types/client';
-import type { EffortNormalizationFlags } from '@/lib/utils/effort';
+} from '@/shared/types/ai-provider.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+type DbSchemaModule = typeof import('@/lib/db/schema');
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
@@ -15,12 +17,10 @@ import type { EffortNormalizationFlags } from '@/lib/utils/effort';
  * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
  * it by calling its `cleanup()` method. Do this in a `finally` block.
  */
-export type AttemptsDbClient = ReturnType<
-  typeof import('@/lib/db/runtime').getDb
->;
+export type AttemptsDbClient = DbClient;
 
 export type GenerationAttemptRecord = InferSelectModel<
-  typeof generationAttempts
+  DbSchemaModule['generationAttempts']
 >;
 
 export interface AttemptReservation {
@@ -41,17 +41,14 @@ export interface AttemptReservation {
     };
   };
   promptHash: string;
-  pdfProvenance?: {
-    extractionHash: string;
-    proofVersion: 1;
-    contextDigest: string;
-  } | null;
 }
 
 export interface AttemptRejection {
   reserved: false;
   reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
-  currentStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  currentStatus?: InferSelectModel<
+    DbSchemaModule['learningPlans']
+  >['generationStatus'];
   retryAfter?: number;
 }
 
@@ -93,14 +90,6 @@ export interface NormalizedModulesResult {
   normalizationFlags: EffortNormalizationFlags;
 }
 
-// ----- PDF provenance -----
-
-export interface PdfProvenanceData {
-  extractionHash: string;
-  proofVersion: 1;
-  contextDigest: string;
-}
-
 // ----- Attempt metadata (stored in DB) -----
 
 interface AttemptMetadataFailure {
@@ -129,11 +118,6 @@ export interface AttemptMetadata {
     duration_ms: number;
     extended_timeout: boolean;
   };
-  pdf: {
-    extraction_hash: string;
-    proof_version: 1;
-    context_digest: string;
-  } | null;
   provider: ProviderMetadata | null;
   failure: AttemptMetadataFailure | null;
 }
@@ -146,7 +130,6 @@ export interface MetadataParams {
   startedAt: Date;
   finishedAt: Date;
   extendedTimeout: boolean;
-  pdfProvenance?: PdfProvenanceData | null;
   failure?: AttemptMetadataFailure;
 }
 
@@ -159,10 +142,12 @@ export interface ReserveAttemptSlotParams {
   dbClient: AttemptsDbClient;
   /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
   allowedGenerationStatuses?: ReadonlyArray<
-    (typeof learningPlans.$inferSelect)['generationStatus']
+    InferSelectModel<DbSchemaModule['learningPlans']>['generationStatus']
   >;
   /** If set (and allowedGenerationStatuses not set), plan must have this exact status. */
-  requiredGenerationStatus?: (typeof learningPlans.$inferSelect)['generationStatus'];
+  requiredGenerationStatus?: InferSelectModel<
+    DbSchemaModule['learningPlans']
+  >['generationStatus'];
   now?: () => Date;
 }
 

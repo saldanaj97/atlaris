@@ -1,5 +1,7 @@
 'use client';
 
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import {
   type ReactElement,
   useCallback,
@@ -9,7 +11,6 @@ import {
   useRef,
   useTransition,
 } from 'react';
-
 import { batchUpdateTaskProgressAction } from '@/app/plans/[id]/actions';
 import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/plans/[id]/components/PlanOverviewHeader';
@@ -24,11 +25,9 @@ import { Button } from '@/components/ui/button';
 import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import Link from 'next/link';
 
-import type { ClientPlanDetail } from '@/lib/types/client';
-import type { ProgressStatus } from '@/lib/types/db';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -96,7 +95,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         }
       });
     },
-    [addOptimisticStatus, batcher, startTransition]
+    [addOptimisticStatus, batcher]
   );
 
   const isPendingOrProcessing =

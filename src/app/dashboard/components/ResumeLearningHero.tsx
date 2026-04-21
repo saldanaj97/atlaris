@@ -1,7 +1,8 @@
 import { Play } from 'lucide-react';
 import Link from 'next/link';
 
-import type { PlanSummary } from '@/lib/types/db';
+import { Button } from '@/components/ui/button';
+import type { PlanSummary } from '@/shared/types/db.types';
 
 interface ResumeLearningHeroProps {
   plan: PlanSummary;
@@ -68,7 +69,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const strokeDashoffset = circumference * (1 - progressPercent / 100);
 
   return (
-    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-teal-500 via-emerald-500 to-cyan-500 p-6 shadow-lg">
+    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg">
       {/* Top row: label (left) and circular progress (right) */}
       <div className="flex items-start justify-between gap-4">
         <p className="text-xs font-medium tracking-wider text-white/70 uppercase">
@@ -158,13 +159,15 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           <p className="text-sm text-white/90">
             <span className="font-medium">Up Next:</span> {nextModuleTitle}
           </p>
-          <Link
-            href={`/plans/${plan.plan.id}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-teal-700 shadow-sm transition-colors hover:bg-white/90"
+          <Button
+            asChild
+            className="gap-2 bg-white px-5 py-2.5 text-sm font-medium text-primary shadow-sm hover:bg-white/90"
           >
-            <Play className="h-4 w-4" />
-            Continue Learning
-          </Link>
+            <Link href={`/plans/${plan.plan.id}`}>
+              <Play className="h-4 w-4" />
+              Continue Learning
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

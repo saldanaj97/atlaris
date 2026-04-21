@@ -10,6 +10,17 @@ on:
       - '**/*.txt'
       - '**/*.csv'
       - '**/*.log'
+  workflow_dispatch:
+    inputs:
+      integration_workers:
+        description: 'Workers for integration tests (4 default, 2 fallback)'
+        type: choice
+        options: ['4', '2']
+        default: '4'
+      test_db_debug:
+        description: 'Log per-worker DB mapping during integration tests'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,7 +53,7 @@ jobs:
               - 'drizzle.config.ts'
 
   lint-and-type-check:
-    name: Lint & Type Check
+    name: Lint & type check
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -79,10 +90,8 @@ jobs:
             git status --short src/lib/db/migrations/
             exit 1
           fi
-      - name: Run ESLint
-        run: pnpm lint
-      - name: Run TypeScript type check
-        run: pnpm type-check
+      - name: Run full lint and type check
+        run: pnpm check:full
 
   vulnerability-scan:
     name: Security Audit
@@ -187,8 +196,18 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         env:
-            NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
-            NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
+          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
+          NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
+          # `next build` runs with NODE_ENV=production and prerenders /pricing,
+          # which evaluates `stripeEnv.pricing.*` in `src/lib/config/env/billing.ts`.
+          # The localMode escape hatch is refused under NODE_ENV=production, so the
+          # build needs the real (test-mode) Stripe secrets. Vercel handles the
+          # actual production deploy; CI only validates compilation.
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
+          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
+          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
+          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
         run: pnpm build
       - name: Save Next.js cache
         if: always()
@@ -363,20 +382,11 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
     timeout-minutes: 20
-    services:
-      postgres:
-        image: postgres:17
-        ports:
-          - '5432:5432'
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        options: >-
-          --health-cmd="pg_isready -U postgres -d postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
+    env:
+      # Default 4 workers; override via repo variable INTEGRATION_MAX_WORKERS or
+      # the workflow_dispatch input integration_workers ('4' or '2').
+      INTEGRATION_MAX_WORKERS: ${{ github.event.inputs.integration_workers || vars.INTEGRATION_MAX_WORKERS || '4' }}
+      TEST_DB_DEBUG: ${{ github.event.inputs.test_db_debug || 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -401,67 +411,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Prepare ephemeral database
-        env:
-          PGPASSWORD: postgres
-        run: |
-          # Wait for database readiness
-          for i in {1..30}; do
-            if pg_isready -h localhost -p 5432 -U postgres -d postgres; then break; fi
-            sleep 1
-          done
-
-          DB_NAME="ci_${GITHUB_RUN_ID}_int_light_${GITHUB_JOB}"
-          echo "DB_NAME=${DB_NAME}" >> $GITHUB_ENV
-          psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_NAME}\";"
-
-          # Defensive bootstrap (idempotent)
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          CREATE SCHEMA IF NOT EXISTS auth;
-          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
-          LANGUAGE sql
-          AS $$ SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb, '{}'::jsonb) $$;
-
-          -- Grant schema access to RLS roles
-          GRANT USAGE ON SCHEMA public TO authenticated, anonymous;
-          GRANT USAGE ON SCHEMA auth TO authenticated, anonymous;
-          SQL
-
-          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DB_NAME}" >> $GITHUB_ENV
-      - name: Apply schema with Drizzle
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
-        run: pnpm db:push
-      - name: Grant RLS bypass and role permissions
-        env:
-          PGPASSWORD: postgres
-          DB_NAME: ${{ env.DB_NAME }}
-        run: |
-          # Grant BYPASSRLS to postgres user to allow direct test access
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 -c "ALTER ROLE postgres BYPASSRLS;"
-
-          # Grant table permissions to authenticated role for RLS testing
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO authenticated;
-          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
-          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO authenticated;
-          SQL
-
-          # Grant read-only permissions to anonymous role
-          psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO anonymous;
-          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
-          SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4
         id: restore-vitest-cache
@@ -475,10 +424,9 @@ jobs:
       - name: Run fast integration tests
         env:
           NODE_ENV: 'test'
-          ALLOW_DB_TRUNCATE: 'true'
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-          DATABASE_URL_NON_POOLING: ${{ env.DATABASE_URL }}
           BASE_REF: ${{ github.base_ref }}
+          # No DATABASE_URL: tests/setup/testcontainers.ts spins up Postgres and
+          # tests/setup/test-env.ts derives per-worker DBs from VITEST_POOL_ID.
         shell: bash
         run: |
           echo "Base ref: ${BASE_REF}"
@@ -600,19 +548,81 @@ jobs:
             node_modules/.vite
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
-      - name: Cleanup ephemeral database
-        if: always()
+
+  security-tests:
+    name: Security (RLS)
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Restore Vitest cache
+        uses: actions/cache/restore@v4
+        id: restore-vitest-cache
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Run RLS security tests
         env:
-          PGPASSWORD: postgres
+          NODE_ENV: 'test'
+          ALLOW_DB_TRUNCATE: 'true'
         run: |
-          if [ -n "${{ env.DB_NAME }}" ]; then
-            echo "Dropping ephemeral database: ${{ env.DB_NAME }}"
-            psql -h localhost -p 5432 -U postgres -d postgres -c "DROP DATABASE IF EXISTS \"${{ env.DB_NAME }}\";" || true
+          pnpm vitest run --project security tests/security/ \
+            --reporter=default \
+            --reporter=json \
+            --outputFile=test-results-security.json
+      - name: Generate test summary
+        if: always()
+        run: |
+          if [ -f test-results-security.json ]; then
+            echo "## Security (RLS) tests" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            TOTAL=$(jq -r '.numTotalTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            PASSED=$(jq -r '.numPassedTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            FAILED=$(jq -r '.numFailedTests // 0' test-results-security.json 2>/dev/null || echo "0")
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Save Vitest cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules/.vite
+            node_modules/.vitest
+          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light]
+    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light, security-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -626,10 +636,11 @@ jobs:
             [build]="${{ needs.build.result }}"
             [unit-tests]="${{ needs['unit-tests'].result }}"
             [integration-light]="${{ needs['integration-light'].result }}"
+            [security-tests]="${{ needs['security-tests'].result }}"
           )
 
           failed=0
-          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light; do
+          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)

@@ -1,23 +1,30 @@
-import { isRetryableClassification } from '@/lib/ai/failures';
+import { and, count, eq, sql } from 'drizzle-orm';
+import { getAttemptCap } from '@/lib/config/env';
+import { hashSha256 } from '@/lib/crypto/hash';
 import {
-  ATTEMPT_CAP,
-  getPlanGenerationWindowStart,
-  PLAN_GENERATION_LIMIT,
-} from '@/lib/ai/generation-policy';
-import {
-  assertAttemptIdMatchesReservation,
-  buildMetadata,
-  computeRetryAfterSeconds,
-  getPdfProvenance,
   isProviderErrorRetryable,
   logAttemptEvent,
+} from '@/lib/db/queries/helpers/attempts-helpers';
+import {
+  buildMetadata,
+  sanitizeInput,
+  toPromptHashPayload,
+} from '@/lib/db/queries/helpers/attempts-input';
+import {
+  assertAttemptIdMatchesReservation,
   normalizeParsedModules,
   persistSuccessfulAttempt,
-  sanitizeInput,
+} from '@/lib/db/queries/helpers/attempts-persistence';
+import {
+  computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
-  toPromptHashPayload,
-} from '@/lib/db/queries/helpers/attempts-helpers';
+} from '@/lib/db/queries/helpers/attempts-rate-limit';
+import { setLearningPlanGenerating } from '@/lib/db/queries/helpers/plan-generation-status';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  prepareRlsTransactionContext,
+  reapplyJwtClaimsInTransaction,
+} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
   FinalizeFailureParams,
   FinalizeSuccessParams,
@@ -25,15 +32,13 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { generationAttempts } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
-  recordAttemptFailure,
-  recordAttemptSuccess,
-} from '@/lib/metrics/attempts';
-import { hashSha256 } from '@/lib/utils/hash';
-import { and, count, eq, sql } from 'drizzle-orm';
+  getPlanGenerationWindowStart,
+  PLAN_GENERATION_LIMIT,
+} from '@/shared/constants/generation';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -68,34 +73,15 @@ export async function reserveAttemptSlot(
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
-  const pdfProvenance = getPdfProvenance(input);
   const promptHash = hashSha256(
     JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
   );
 
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
-  let requestJwtClaims: string | null = null;
-
-  if (shouldNormalizeRlsContext) {
-    // Capture existing claims from the current RLS session and re-apply them
-    // inside the transaction. This avoids an extra users-table read here while
-    // still defending against tx-scoped claim drift in some environments.
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
-    );
-    const rawClaims = claimsRows[0]?.claims;
-    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
-      requestJwtClaims = rawClaims;
-    }
-  }
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(
-        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-      );
-    }
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     // Acquire per-user advisory lock to serialize concurrent reservations.
     // Uses the two-int4 overload so namespace 1 is separated from the
@@ -171,7 +157,7 @@ export async function reserveAttemptSlot(
     const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
     const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
-    if (existingAttempts >= ATTEMPT_CAP) {
+    if (existingAttempts >= getAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
 
@@ -200,13 +186,7 @@ export async function reserveAttemptSlot(
       throw new Error('Failed to reserve generation attempt slot.');
     }
 
-    await tx
-      .update(learningPlans)
-      .set({
-        generationStatus: 'generating',
-        updatedAt: startedAt,
-      })
-      .where(eq(learningPlans.id, planId));
+    await setLearningPlanGenerating(tx, { planId, updatedAt: startedAt });
 
     return {
       reserved: true,
@@ -215,15 +195,13 @@ export async function reserveAttemptSlot(
       startedAt,
       sanitized,
       promptHash,
-      pdfProvenance,
     } as const;
   });
 }
 
 /**
  * Finalizes a previously reserved attempt as successful.
- * Updates the in-progress attempt row, replaces plan modules/tasks,
- * and records metrics — all within a single transaction.
+ * Updates the in-progress attempt row and replaces plan modules/tasks.
  */
 export async function finalizeAttemptSuccess({
   attemptId,
@@ -259,7 +237,6 @@ export async function finalizeAttemptSuccess({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
-    pdfProvenance: preparation.pdfProvenance ?? null,
   });
 
   const updatedAttempt = await persistSuccessfulAttempt({
@@ -276,8 +253,6 @@ export async function finalizeAttemptSuccess({
     dbClient,
   });
 
-  recordAttemptSuccess(updatedAttempt);
-
   logAttemptEvent('success', {
     planId,
     attemptId: updatedAttempt.id,
@@ -291,7 +266,9 @@ export async function finalizeAttemptSuccess({
 
 /**
  * Finalizes a previously reserved attempt as failed.
- * Updates the in-progress attempt row and plan status in one transaction, then records metrics.
+ * Updates only the in-progress attempt row.
+ * Plan-level failure transitions are handled separately by lifecycle helpers
+ * such as markPlanGenerationFailure() in features/plans/lifecycle/adapters/plan-persistence-store.ts.
  */
 export async function finalizeAttemptFailure({
   attemptId,
@@ -319,29 +296,13 @@ export async function finalizeAttemptFailure({
     startedAt: preparation.startedAt,
     finishedAt,
     extendedTimeout,
-    pdfProvenance: preparation.pdfProvenance ?? null,
     failure: { classification, timedOut },
   });
 
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
-  let requestJwtClaims: string | null = null;
-
-  if (shouldNormalizeRlsContext) {
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
-    );
-    const rawClaims = claimsRows[0]?.claims;
-    if (typeof rawClaims === 'string' && rawClaims.length > 0) {
-      requestJwtClaims = rawClaims;
-    }
-  }
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   const attempt = await dbClient.transaction(async (tx) => {
-    if (shouldNormalizeRlsContext && requestJwtClaims !== null) {
-      await tx.execute(
-        sql`SELECT set_config('request.jwt.claims', ${requestJwtClaims}, true)`
-      );
-    }
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     const [updatedAttempt] = await tx
       .update(generationAttempts)
@@ -367,36 +328,14 @@ export async function finalizeAttemptFailure({
       throw new Error('Failed to finalize generation attempt as failure.');
     }
 
-    const effectiveRetryable =
-      classification === 'provider_error'
-        ? isProviderErrorRetryable(error)
-        : isRetryableClassification(classification);
-    const isTerminal =
-      !effectiveRetryable || preparation.attemptNumber >= ATTEMPT_CAP;
-
-    if (isTerminal) {
-      await tx
-        .update(learningPlans)
-        .set({
-          generationStatus: 'failed',
-          isQuotaEligible: false,
-          updatedAt: finishedAt,
-        })
-        .where(eq(learningPlans.id, planId));
-    } else {
-      await tx
-        .update(learningPlans)
-        .set({
-          generationStatus: 'pending_retry',
-          updatedAt: finishedAt,
-        })
-        .where(eq(learningPlans.id, planId));
-    }
+    void (classification === 'provider_error'
+      ? isProviderErrorRetryable(error)
+      : isRetryableClassification(classification));
+    void preparation.attemptNumber;
+    void finishedAt;
 
     return updatedAttempt;
   });
-
-  recordAttemptFailure(attempt);
 
   logAttemptEvent('failure', {
     planId,

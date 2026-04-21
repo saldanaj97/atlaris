@@ -1,15 +1,24 @@
 import { ZodError } from 'zod';
-
+import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
+import { resolveUserTier } from '@/features/billing/tier';
+import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
+import { enqueueJobWithResult } from '@/features/jobs/queue';
 import {
-  withAuthAndRateLimit,
-  withErrorBoundary,
-  type PlainHandler,
-} from '@/lib/api/auth';
-import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
+  drainRegenerationQueue,
+  registerInlineDrain,
+  tryAcquireInlineDrainLock,
+} from '@/features/jobs/regeneration-worker';
+import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import {
   requireOwnedPlanById,
   requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+} from '@/features/plans/api/route-context';
+import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
+import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
+import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import { AppError, RateLimitError, ValidationError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -18,25 +27,7 @@ import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { getDb } from '@/lib/db/runtime';
-import { enqueueJobWithResult } from '@/lib/jobs/queue';
-import {
-  drainRegenerationQueue,
-  releaseInlineDrainLock,
-  tryAcquireInlineDrainLock,
-} from '@/lib/jobs/regeneration-worker';
-import { JOB_TYPES, type PlanRegenerationJobData } from '@/lib/jobs/types';
 import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/metrics/ops';
-import { computeJobPriority, isPriorityTopic } from '@/lib/queue/priority';
-import {
-  atomicCheckAndIncrementUsage,
-  decrementRegenerationUsage,
-  resolveUserTier,
-} from '@/lib/stripe/usage';
-import {
-  planRegenerationRequestSchema,
-  type PlanRegenerationOverridesInput,
-} from '@/lib/validation/learningPlans';
 
 /**
  * POST /api/v1/plans/:planId/regenerate
@@ -64,12 +55,11 @@ export const POST: PlainHandler = withErrorBoundary(
         dbClient: db,
       });
 
-      let body: unknown;
-      try {
-        body = await req.json();
-      } catch {
-        throw new ValidationError('Invalid JSON in request body.');
-      }
+      const body = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () =>
+          new ValidationError('Invalid JSON in request body.'),
+      });
 
       let overrides: PlanRegenerationOverridesInput | undefined;
       try {
@@ -107,24 +97,6 @@ export const POST: PlainHandler = withErrorBoundary(
 
       const rateLimit = await checkPlanGenerationRateLimit(user.id, db);
 
-      const usageResult = await atomicCheckAndIncrementUsage(
-        user.id,
-        'regeneration',
-        db
-      );
-      if (!usageResult.allowed) {
-        throw new RateLimitError(
-          'Regeneration quota exceeded for your subscription tier.',
-          {
-            remaining: Math.max(
-              0,
-              usageResult.limit - usageResult.currentCount
-            ),
-            limit: usageResult.limit,
-          }
-        );
-      }
-
       const tier = await resolveUserTier(user.id, db);
       const priority = computeJobPriority({
         tier,
@@ -132,56 +104,73 @@ export const POST: PlainHandler = withErrorBoundary(
       });
 
       const payload: PlanRegenerationJobData = { planId, overrides };
-      const enqueueResult = await enqueueJobWithResult(
-        JOB_TYPES.PLAN_REGENERATION,
+      const boundaryResult = await runRegenerationQuotaReserved<{
+        jobId: string;
+        deduplicated: boolean;
+      }>({
+        userId: user.id,
         planId,
-        user.id,
-        payload,
-        priority
-      );
-
-      if (enqueueResult.deduplicated) {
-        let rollbackFailed = false;
-        try {
-          await decrementRegenerationUsage(user.id, db);
-        } catch (rollbackError) {
-          rollbackFailed = true;
-          recordBillingReconciliationRequired(
-            {
-              planId,
-              userId: user.id,
-              jobId: enqueueResult.id,
-            },
-            rollbackError
+        dbClient: db,
+        work: async () => {
+          const enqueueResult = await enqueueJobWithResult(
+            JOB_TYPES.PLAN_REGENERATION,
+            planId,
+            user.id,
+            payload,
+            priority
           );
-          logger.error(
-            {
-              planId,
-              userId: user.id,
-              jobId: enqueueResult.id,
-              rollbackError,
-            },
-            'Failed to rollback regeneration usage after deduplicated enqueue'
-          );
-        }
 
+          if (enqueueResult.deduplicated) {
+            return {
+              disposition: 'revert',
+              reason: 'enqueue_deduplicated',
+              jobId: enqueueResult.id,
+              value: { jobId: enqueueResult.id, deduplicated: true },
+            };
+          }
+
+          return {
+            disposition: 'consumed',
+            value: { jobId: enqueueResult.id, deduplicated: false },
+          };
+        },
+      });
+
+      if (!boundaryResult.ok) {
+        throw new RateLimitError(
+          'Regeneration quota exceeded for your subscription tier.',
+          {
+            remaining: Math.max(
+              0,
+              boundaryResult.limit - boundaryResult.currentCount
+            ),
+            limit: boundaryResult.limit,
+          }
+        );
+      }
+
+      if (!boundaryResult.consumed) {
         throw new AppError(
           'A regeneration job is already queued for this plan.',
           {
             status: 409,
             code: 'REGENERATION_ALREADY_QUEUED',
             details: {
-              jobId: enqueueResult.id,
-              ...(rollbackFailed && { reconciliationRequired: true }),
+              jobId: boundaryResult.value.jobId,
+              ...(boundaryResult.reconciliationRequired && {
+                reconciliationRequired: true,
+              }),
             },
           }
         );
       }
 
+      const acceptedJobId = boundaryResult.value.jobId;
+
       if (regenerationQueueEnv.inlineProcessingEnabled) {
         if (tryAcquireInlineDrainLock()) {
-          void drainRegenerationQueue({ maxJobs: 1 })
-            .catch((error: unknown) => {
+          const drainPromise = drainRegenerationQueue({ maxJobs: 1 }).catch(
+            (error: unknown) => {
               logger.error(
                 {
                   planId,
@@ -193,17 +182,16 @@ export const POST: PlainHandler = withErrorBoundary(
                 },
                 'Inline regeneration queue drain failed'
               );
-            })
-            .finally(releaseInlineDrainLock);
+            }
+          );
+          registerInlineDrain(drainPromise);
         }
       }
 
-      // generationId is an alias for planId kept for backwards compatibility with existing clients.
       return json(
         {
-          generationId: planId,
           planId,
-          jobId: enqueueResult.id,
+          jobId: acceptedJobId,
           status: 'pending',
         },
         { status: 202, headers: getPlanGenerationRateLimitHeaders(rateLimit) }

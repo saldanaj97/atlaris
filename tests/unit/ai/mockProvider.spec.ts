@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { ProviderError, ProviderRateLimitError } from '@/lib/ai/provider';
-import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
+import {
+  ProviderError,
+  ProviderRateLimitError,
+} from '@/features/ai/providers/errors';
+import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import { createGenerationInput } from '../../fixtures/generation-input';
 import { createMockProvider } from '../../helpers/mockProvider';
 

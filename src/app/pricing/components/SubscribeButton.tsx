@@ -1,13 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import type { ReactElement } from 'react';
 import { useRef, useState } from 'react';
-
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { createCheckoutResponseSchema } from '@/lib/validation/stripe';
-import { toast } from 'sonner';
 
 type CheckoutRequestResult =
   | { kind: 'success'; sessionUrl: string }

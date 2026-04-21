@@ -1,7 +1,29 @@
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/lib/ai/ai-models';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import { updatePreferencesSchema } from '@/lib/validation/user-preferences';
 import { describe, expect, it, vi } from 'vitest';
+import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
+import {
+  AI_DEFAULT_MODEL,
+  AVAILABLE_MODELS,
+  isValidModelId,
+} from '@/features/ai/ai-models';
+import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+
+const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
+const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;
+const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier('pro').find(
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+)?.id;
+const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
+  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL
+)?.id;
+
+if (
+  !FREE_PERSISTABLE_MODEL ||
+  !PRO_PERSISTABLE_MODEL ||
+  !FREE_QUERY_OVERRIDE_MODEL
+) {
+  throw new Error('Expected model fixtures for validation tests');
+}
 
 const stubProviderGetter = vi.fn((_modelId: string) => ({
   generate: vi.fn(async () => {
@@ -17,23 +39,14 @@ const stubLogger = {
   error: vi.fn(),
 };
 
-/**
- * Unit tests for model validation logic used in API routes.
- * These tests verify the behavior of model ID validation and parsing
- * without requiring database or authentication.
- *
- * The schema is imported from the shared validation module to ensure
- * tests stay in sync with production validation.
- */
-
-describe('Model Validation (API Layer)', () => {
+describe('Model validation helpers (preferences + tier gating)', () => {
   describe('Model override query param parsing', () => {
     it('extracts model ID from query param', () => {
       const url = new URL(
-        'http://localhost/api/v1/plans/stream?model=openai/gpt-oss-20b:free'
+        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe('openai/gpt-oss-20b:free');
+      expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('returns null when model param is not present', () => {
@@ -44,29 +57,29 @@ describe('Model Validation (API Layer)', () => {
 
     it('handles URL-encoded model IDs', () => {
       const url = new URL(
-        'http://localhost/api/v1/plans/stream?model=openai%2Fgpt-oss-20b%3Afree'
+        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe('openai/gpt-oss-20b:free');
+      expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('handles model param with other query params', () => {
       const url = new URL(
-        'http://localhost/api/v1/plans/stream?topic=test&model=anthropic/claude-haiku-4.5&hours=10'
+        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(FREE_PERSISTABLE_MODEL)}&hours=10`
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe('anthropic/claude-haiku-4.5');
+      expect(modelOverride).toBe(FREE_PERSISTABLE_MODEL);
     });
   });
 
   describe('Model override validation logic (without tier-gating)', () => {
     it('uses override when valid model ID is provided', () => {
-      const modelOverride = 'openai/gpt-oss-20b:free';
+      const modelOverride = FREE_QUERY_OVERRIDE_MODEL;
       const model =
         modelOverride && isValidModelId(modelOverride)
           ? modelOverride
           : AI_DEFAULT_MODEL;
-      expect(model).toBe('openai/gpt-oss-20b:free');
+      expect(model).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('falls back to DEFAULT_MODEL when invalid model ID is provided', () => {
@@ -101,38 +114,37 @@ describe('Model Validation (API Layer)', () => {
     it('allows free-tier model for free user', () => {
       const resolution = resolveModelForTier(
         'free',
-        'openai/gpt-oss-20b:free',
+        FREE_QUERY_OVERRIDE_MODEL,
         stubProviderGetter,
         stubLogger
       );
-      expect(resolution.modelId).toBe('openai/gpt-oss-20b:free');
+      expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('allows free-tier model for pro user', () => {
       const resolution = resolveModelForTier(
         'pro',
-        'openai/gpt-oss-20b:free',
+        FREE_QUERY_OVERRIDE_MODEL,
         stubProviderGetter,
         stubLogger
       );
-      expect(resolution.modelId).toBe('openai/gpt-oss-20b:free');
+      expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('allows pro-tier model for pro user', () => {
       const resolution = resolveModelForTier(
         'pro',
-        'anthropic/claude-sonnet-4.5',
+        PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
         stubLogger
       );
-      expect(resolution.modelId).toBe('anthropic/claude-sonnet-4.5');
+      expect(resolution.modelId).toBe(PRO_PERSISTABLE_MODEL);
     });
 
     it('BLOCKS pro-tier model for free user - falls back to default', () => {
-      // This is the critical security test: free users cannot use expensive models
       const resolution = resolveModelForTier(
         'free',
-        'anthropic/claude-sonnet-4.5',
+        PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
         stubLogger
       );
@@ -142,7 +154,7 @@ describe('Model Validation (API Layer)', () => {
     it('BLOCKS pro-tier model for starter user - falls back to default', () => {
       const resolution = resolveModelForTier(
         'starter',
-        'openai/gpt-5.2',
+        PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
         stubLogger
       );
@@ -181,24 +193,19 @@ describe('Model Validation (API Layer)', () => {
   });
 
   describe('Preferences schema validation', () => {
-    // Keep this legacy Gemini ID here on purpose: persisted preference values still
-    // come from the DB enum, which currently includes it even though override tests
-    // use the current free-tier model ID.
     it('validates valid model ID', () => {
       const result = updatePreferencesSchema.safeParse({
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        preferredAiModel: FREE_PERSISTABLE_MODEL,
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.preferredAiModel).toBe(
-          'google/gemini-2.0-flash-exp:free'
-        );
+        expect(result.data.preferredAiModel).toBe(FREE_PERSISTABLE_MODEL);
       }
     });
 
     it('validates another valid model ID', () => {
       const result = updatePreferencesSchema.safeParse({
-        preferredAiModel: 'anthropic/claude-haiku-4.5',
+        preferredAiModel: PRO_PERSISTABLE_MODEL,
       });
       expect(result.success).toBe(true);
     });
@@ -209,8 +216,8 @@ describe('Model Validation (API Layer)', () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toContain(
-          'Invalid model ID'
+        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
+          expect.arrayContaining(['Invalid model ID'])
         );
       }
     });
@@ -227,6 +234,18 @@ describe('Model Validation (API Layer)', () => {
       expect(result.success).toBe(false);
     });
 
+    it('rejects undefined preferredAiModel', () => {
+      const result = updatePreferencesSchema.safeParse({
+        preferredAiModel: undefined,
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
+          expect.arrayContaining(['Invalid model ID'])
+        );
+      }
+    });
+
     it('rejects non-string preferredAiModel', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: 123,
@@ -234,26 +253,34 @@ describe('Model Validation (API Layer)', () => {
       expect(result.success).toBe(false);
     });
 
-    it('rejects null preferredAiModel', () => {
+    it('accepts null preferredAiModel to clear saved preference', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: null,
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBeNull();
+      }
     });
 
-    it('allows extra fields (Zod default behavior)', () => {
+    it('rejects unknown keys (strict schema)', () => {
       const result = updatePreferencesSchema.safeParse({
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
-        extraField: 'ignored',
+        preferredAiModel: FREE_PERSISTABLE_MODEL,
+        extraField: 'rejected',
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.flatten().formErrors.join(' ')).toContain(
+          'Unrecognized key'
+        );
+      }
     });
   });
 
   describe('isValidModelId integration', () => {
     it('is imported and works correctly', () => {
       expect(typeof isValidModelId).toBe('function');
-      expect(isValidModelId('openai/gpt-oss-20b:free')).toBe(true);
+      expect(isValidModelId(FREE_QUERY_OVERRIDE_MODEL)).toBe(true);
       expect(isValidModelId('fake-model')).toBe(false);
     });
 

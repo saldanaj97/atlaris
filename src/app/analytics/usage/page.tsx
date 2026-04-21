@@ -1,7 +1,6 @@
+import { BarChart3, Clock, Flame, Lock, Target } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-
-import { BarChart3, Clock, Flame, Lock, Target } from 'lucide-react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card, CardContent } from '@/components/ui/card';

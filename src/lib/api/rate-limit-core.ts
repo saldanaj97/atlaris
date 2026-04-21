@@ -9,12 +9,13 @@
 import { LRUCache } from 'lru-cache';
 
 import { RateLimitError } from '@/lib/api/errors';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 interface WindowEntry {
   timestamps: number[];
 }
 
-export interface SlidingWindowConfig {
+type SlidingWindowConfig = {
   /** Maximum requests allowed within the window */
   maxRequests: number;
   /** Time window in milliseconds */
@@ -23,15 +24,7 @@ export interface SlidingWindowConfig {
   maxTrackedKeys?: number;
   /** Builds the human-readable error message on limit breach. */
   formatErrorMessage?: (maxRequests: number, windowMs: number) => string;
-}
-
-export interface SlidingWindowLimiter {
-  check: (key: string) => void;
-  getRemainingRequests: (key: string) => number;
-  getResetTime: (key: string) => number;
-  reset: (key: string) => void;
-  clear: () => void;
-}
+};
 
 function defaultFormatError(maxRequests: number, windowMs: number): string {
   return `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${Math.round(windowMs / 1000)} seconds.`;

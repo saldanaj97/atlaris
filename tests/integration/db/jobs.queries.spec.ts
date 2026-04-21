@@ -1,6 +1,6 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
+import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
   getActiveRegenerationJob,
@@ -10,7 +10,6 @@ import {
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { JOB_TYPES } from '@/lib/jobs/types';
 import { createTestUser } from '../../fixtures/users';
 
 type JobInsert = InferInsertModel<typeof jobQueue>;
@@ -19,11 +18,22 @@ describe('Job Queries', () => {
   let userId: string;
   let planId: string;
 
+  function expectPresent<T>(
+    value: T | null | undefined,
+    message: string
+  ): NonNullable<T> {
+    expect(value).toBeDefined();
+    if (value == null) {
+      throw new Error(message);
+    }
+    return value;
+  }
+
   async function createJob(
     overrides: Partial<JobInsert> = {}
   ): Promise<InferSelectModel<typeof jobQueue>> {
     const defaults: Partial<JobInsert> = {
-      jobType: 'plan_generation',
+      jobType: 'plan_regeneration',
       planId,
       userId,
       priority: 0,
@@ -59,7 +69,7 @@ describe('Job Queries', () => {
       })
       .returning();
 
-    planId = plan.id;
+    planId = expectPresent(plan, 'Failed to create plan fixture').id;
   });
 
   describe('getFailedJobs', () => {
@@ -80,8 +90,12 @@ describe('Job Queries', () => {
       const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBe(1);
-      expect(failedJobs[0].status).toBe('failed');
-      expect(failedJobs[0].error).toBe('Generation failed');
+      const failedJob = expectPresent(
+        failedJobs[0],
+        'Expected failed job to be returned'
+      );
+      expect(failedJob.status).toBe('failed');
+      expect(failedJob.error).toBe('Generation failed');
     });
 
     it('should respect limit parameter', async () => {
@@ -119,7 +133,41 @@ describe('Job Queries', () => {
       const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBeGreaterThanOrEqual(2);
-      expect(failedJobs[0].error).toBe('Recent error');
+      const mostRecentFailedJob = expectPresent(
+        failedJobs[0],
+        'Expected most recent failed job'
+      );
+      expect(mostRecentFailedJob.error).toBe('Recent error');
+    });
+
+    it('uses createdAt and id as deterministic failed-job tie breakers', async () => {
+      const completedAt = new Date('2026-01-01T00:00:00.000Z');
+      const olderCreatedAt = new Date('2025-12-31T23:59:00.000Z');
+      const newerCreatedAt = new Date('2025-12-31T23:59:30.000Z');
+
+      const olderJob = await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Older tie',
+        createdAt: olderCreatedAt,
+        completedAt,
+      });
+      const newerJob = await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Newer tie',
+        createdAt: newerCreatedAt,
+        completedAt,
+      });
+
+      const failedJobs = await getFailedJobs(10, db);
+
+      expect(failedJobs.slice(0, 2).map((job) => job.id)).toEqual([
+        newerJob.id,
+        olderJob.id,
+      ]);
     });
 
     it('should not return non-failed jobs', async () => {
@@ -138,6 +186,42 @@ describe('Job Queries', () => {
       const failedJobs = await getFailedJobs(10, db);
 
       expect(failedJobs.length).toBe(0);
+    });
+
+    it('does not mutate failed rows when monitoring queries read them', async () => {
+      const completedAt = new Date('2026-01-01T12:00:00.000Z');
+      const failed = await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Stable failure',
+        completedAt,
+      });
+
+      const beforeRead = await db.query.jobQueue.findFirst({
+        where: (fields, operators) => operators.eq(fields.id, failed.id),
+      });
+
+      const failedJobs = await getFailedJobs(10, db);
+
+      const afterRead = await db.query.jobQueue.findFirst({
+        where: (fields, operators) => operators.eq(fields.id, failed.id),
+      });
+
+      expect(failedJobs.map((job) => job.id)).toContain(failed.id);
+      const persistedBeforeRead = expectPresent(
+        beforeRead,
+        'Expected failed row before monitoring read'
+      );
+      const persistedAfterRead = expectPresent(
+        afterRead,
+        'Expected failed row after monitoring read'
+      );
+      expect(persistedAfterRead.updatedAt).toEqual(
+        persistedBeforeRead.updatedAt
+      );
+      expect(persistedAfterRead.attempts).toBe(persistedBeforeRead.attempts);
+      expect(persistedAfterRead.error).toBe('Stable failure');
     });
   });
 
@@ -346,6 +430,36 @@ describe('Job Queries', () => {
 
       expect(deletedCount).toBe(20);
     });
+
+    it('should keep jobs completed exactly at the retention threshold', async () => {
+      const threshold = new Date('2026-01-10T00:00:00.000Z');
+      const olderThanThreshold = new Date(threshold.getTime() - 1);
+
+      const oldJob = await createJob({
+        status: 'completed',
+        attempts: 1,
+        scheduledFor: olderThanThreshold,
+        completedAt: olderThanThreshold,
+      });
+      const thresholdJob = await createJob({
+        status: 'failed',
+        attempts: 3,
+        maxAttempts: 3,
+        error: 'Boundary failure',
+        scheduledFor: threshold,
+        completedAt: threshold,
+      });
+
+      const deletedCount = await cleanupOldJobs(threshold, db);
+
+      expect(deletedCount).toBe(1);
+
+      const remainingJobs = await db.select().from(jobQueue);
+      expect(remainingJobs.some((job) => job.id === oldJob.id)).toBe(false);
+      expect(remainingJobs.some((job) => job.id === thresholdJob.id)).toBe(
+        true
+      );
+    });
   });
 
   describe('insertJobRecord deduplication', () => {
@@ -433,8 +547,16 @@ describe('Job Queries', () => {
         db
       );
 
-      expect(activeForFirstUser?.id).toBe(firstInsert.id);
-      expect(activeForSecondUser?.id).toBe(secondUserInsert.id);
+      const secondUserActiveJob = expectPresent(
+        activeForSecondUser,
+        'Expected active job for second user'
+      );
+      const firstUserActiveJob = expectPresent(
+        activeForFirstUser,
+        'Expected active job for first user'
+      );
+      expect(firstUserActiveJob.id).toBe(firstInsert.id);
+      expect(secondUserActiveJob.id).toBe(secondUserInsert.id);
     });
   });
 });

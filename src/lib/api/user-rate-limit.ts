@@ -17,22 +17,20 @@
  * - All limits are per-user, not per-IP (authenticated context required).
  */
 
-import {
-  createSlidingWindowLimiter,
-  type SlidingWindowLimiter,
-} from '@/lib/api/rate-limit-core';
+import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 /**
  * Configuration for user-based rate limiting
  */
-export interface UserRateLimitConfig {
+type UserRateLimitConfig = {
   /** Maximum requests allowed within the window */
   maxRequests: number;
   /** Time window in milliseconds */
   windowMs: number;
   /** Maximum unique users to track (LRU eviction) */
   maxTrackedUsers?: number;
-}
+};
 
 /**
  * Endpoint cost categories for rate limiting.
@@ -101,9 +99,6 @@ export const USER_RATE_LIMIT_CONFIGS = {
   },
 } as const;
 
-/**
- * Type for rate limit category keys
- */
 export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
 
 /**
@@ -198,7 +193,9 @@ export function getUserRateLimitHeaders(
  * Clears all user rate limiters. Useful for testing.
  */
 export function clearAllUserRateLimiters(): void {
-  rateLimiters.forEach((limiter) => limiter.clear());
+  for (const limiter of rateLimiters.values()) {
+    limiter.clear();
+  }
   rateLimiters.clear();
 }
 
@@ -207,5 +204,7 @@ export function clearAllUserRateLimiters(): void {
  * Useful for testing and admin operations.
  */
 export function resetUserRateLimits(userId: string): void {
-  rateLimiters.forEach((limiter) => limiter.reset(userId));
+  for (const limiter of rateLimiters.values()) {
+    limiter.reset(userId);
+  }
 }

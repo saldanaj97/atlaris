@@ -1,21 +1,5 @@
 'use client';
 
-import type { JSX } from 'react';
-import { useState } from 'react';
-
-import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
-import {
-  getNextTaskName,
-  getPlanStatus,
-  getRelativeTime,
-} from '@/app/plans/components/plan-utils';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   ArrowRight,
   CheckCircle2,
@@ -25,9 +9,23 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-
+import type { JSX } from 'react';
+import { useState } from 'react';
+import { DeletePlanDialog } from '@/app/plans/components/DeletePlanDialog';
+import {
+  getNextTaskName,
+  getPlanLastActivityRelative,
+  getPlanStatus,
+} from '@/app/plans/components/plan-utils';
 import type { PlanStatus } from '@/app/plans/types';
-import type { PlanSummary } from '@/lib/types/db';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { PlanSummary } from '@/shared/types/db.types';
 
 const STATUS_COLORS: Record<PlanStatus, string> = {
   active: 'bg-emerald-500',
@@ -54,7 +52,7 @@ export function PlanRow({
   const progressPercent = Math.round(summary.completion * 100);
   const status = getPlanStatus(summary, referenceTimestamp);
   const nextTask = getNextTaskName(summary);
-  const lastActivity = getRelativeTime(
+  const lastActivity = getPlanLastActivityRelative(
     plan.updatedAt ?? plan.createdAt,
     referenceTimestamp
   );

@@ -1,21 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { ensureUser, truncateAll } from '@/../tests/helpers/db';
-import { db } from '@/lib/db/service-role';
-import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { describe, expect, it } from 'vitest';
+import { ensureUser } from '@/../tests/helpers/db';
 import {
-  checkPlanLimit,
-  checkRegenerationLimit,
-  checkExportLimit,
-  incrementUsage,
   getUsageSummary,
-} from '@/lib/stripe/usage';
+  getUsageSummaryForTier,
+  incrementUsage,
+} from '@/features/billing/usage-metrics';
+import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
+import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 
 describe('Usage Tracking', () => {
-  beforeEach(async () => {
-    await truncateAll();
-  });
-
   describe('checkPlanLimit', () => {
     it('allows free tier user with 0 plans to create up to 3 plans', async () => {
       const userId = await ensureUser({
@@ -24,7 +19,7 @@ describe('Usage Tracking', () => {
       });
 
       // No plans yet
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
 
       // Create 3 plans
       const finalizedAt = new Date();
@@ -62,7 +57,7 @@ describe('Usage Tracking', () => {
       ]);
 
       // At limit
-      expect(await checkPlanLimit(userId)).toBe(false);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
     });
 
     it('allows starter tier user up to 10 plans', async () => {
@@ -92,7 +87,7 @@ describe('Usage Tracking', () => {
       await db.insert(learningPlans).values(plans);
 
       // At limit
-      expect(await checkPlanLimit(userId)).toBe(false);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
 
       // Below limit - delete one plan
       const planToDelete = await db
@@ -103,7 +98,7 @@ describe('Usage Tracking', () => {
       if (planToDelete[0]) {
         await db.delete(learningPlans).where(sql`id = ${planToDelete[0].id}`);
       }
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
     });
 
     it('allows pro tier user unlimited plans', async () => {
@@ -133,7 +128,7 @@ describe('Usage Tracking', () => {
       await db.insert(learningPlans).values(plans);
 
       // Still allowed
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
     });
 
     it('ignores non-eligible plans when enforcing limits', async () => {
@@ -176,7 +171,7 @@ describe('Usage Tracking', () => {
         },
       ]);
 
-      expect(await checkPlanLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(true);
 
       await db.insert(learningPlans).values({
         userId,
@@ -189,171 +184,7 @@ describe('Usage Tracking', () => {
         finalizedAt,
       });
 
-      expect(await checkPlanLimit(userId)).toBe(false);
-    });
-  });
-
-  describe('checkRegenerationLimit', () => {
-    it('allows free tier user 5 regenerations per month', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_free_regen',
-        email: 'free.regen@example.com',
-      });
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // No usage yet
-      expect(await checkRegenerationLimit(userId)).toBe(true);
-
-      // Use 5 regenerations - update the row that was created by the check above
-      await db
-        .update(usageMetrics)
-        .set({ regenerationsUsed: 5 })
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-
-      // At limit
-      expect(await checkRegenerationLimit(userId)).toBe(false);
-    });
-
-    it('allows starter tier user 10 regenerations per month', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_starter_regen',
-        email: 'starter.regen@example.com',
-      });
-
-      // Upgrade to starter
-      await db
-        .update(users)
-        .set({ subscriptionTier: 'starter' })
-        .where(sql`id = ${userId}`);
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // Use 9 regenerations
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        regenerationsUsed: 9,
-      });
-
-      // Below limit
-      expect(await checkRegenerationLimit(userId)).toBe(true);
-
-      // Use 1 more
-      await db
-        .update(usageMetrics)
-        .set({ regenerationsUsed: 10 })
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-
-      // At limit
-      expect(await checkRegenerationLimit(userId)).toBe(false);
-    });
-
-    it('allows pro tier user 50 regenerations per month', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_pro_regen',
-        email: 'pro.regen@example.com',
-      });
-
-      // Upgrade to pro
-      await db
-        .update(users)
-        .set({ subscriptionTier: 'pro' })
-        .where(sql`id = ${userId}`);
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // Use 49 regenerations
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        regenerationsUsed: 49,
-      });
-
-      // Below limit
-      expect(await checkRegenerationLimit(userId)).toBe(true);
-
-      // Use 1 more
-      await db
-        .update(usageMetrics)
-        .set({ regenerationsUsed: 50 })
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-
-      // At limit
-      expect(await checkRegenerationLimit(userId)).toBe(false);
-    });
-  });
-
-  describe('checkExportLimit', () => {
-    it('allows free tier user 10 exports per month', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_free_export',
-        email: 'free.export@example.com',
-      });
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // No usage yet
-      expect(await checkExportLimit(userId)).toBe(true);
-
-      // Use 10 exports - update the row that was created by the check above
-      await db
-        .update(usageMetrics)
-        .set({ exportsUsed: 10 })
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-
-      // At limit
-      expect(await checkExportLimit(userId)).toBe(false);
-    });
-
-    it('allows starter tier user 50 exports per month', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_starter_export',
-        email: 'starter.export@example.com',
-      });
-
-      // Upgrade to starter
-      await db
-        .update(users)
-        .set({ subscriptionTier: 'starter' })
-        .where(sql`id = ${userId}`);
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // Use 50 exports
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        exportsUsed: 50,
-      });
-
-      // At limit
-      expect(await checkExportLimit(userId)).toBe(false);
-    });
-
-    it('allows pro tier user unlimited exports', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_pro_export',
-        email: 'pro.export@example.com',
-      });
-
-      // Upgrade to pro
-      await db
-        .update(users)
-        .set({ subscriptionTier: 'pro' })
-        .where(sql`id = ${userId}`);
-
-      const month = new Date().toISOString().slice(0, 7);
-
-      // Use 1000 exports (way more than starter)
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        exportsUsed: 1000,
-      });
-
-      // Still allowed
-      expect(await checkExportLimit(userId)).toBe(true);
+      expect(await checkPlanLimit(userId, db)).toBe(false);
     });
   });
 
@@ -465,6 +296,22 @@ describe('Usage Tracking', () => {
   });
 
   describe('getUsageSummary', () => {
+    it('does not call resolveUserTier when getUsageSummaryForTier is used directly', async () => {
+      const userId = await ensureUser({
+        authUserId: 'user_summary_tier_short_circuit',
+        email: 'summary.tier.short@example.com',
+      });
+
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'pro',
+        dbClient: db,
+      });
+
+      expect(summary.tier).toBe('pro');
+      expect(summary.activePlans.limit).toBe(Infinity);
+    });
+
     it('excludes non-eligible plans and counts only eligible ones', async () => {
       const userId = await ensureUser({
         authUserId: 'user_summary_eligibility_filter',

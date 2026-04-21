@@ -1,18 +1,24 @@
+/**
+ * Pricing-page catalog reads use `getStripe()` directly (not `StripeCommerceBoundary`)
+ * so marketing SSR stays decoupled from checkout/portal/webhook orchestration.
+ * See issue #306 — a future narrow catalog-read port could fold this in if needed.
+ */
 import type Stripe from 'stripe';
-
+import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
 import { formatAmount } from '@/app/pricing/components/utils';
-import { logger } from '@/lib/logging/logger';
-import { getStripe } from '@/lib/stripe/client';
-import {
-  stripePriceFieldsSchema,
-  stripeProductFieldsSchema,
-} from '@/lib/validation/stripe';
+import { getStripe } from '@/features/billing/client';
+import { localDisplayAmountForTier } from '@/features/billing/local-catalog';
 import type {
   StripePriceFields,
   StripeProductFields,
-} from '@/lib/validation/stripe';
-import { PRICING_TIERS } from '@/app/pricing/components/PricingTiers';
-import type { TierKey } from '@/app/pricing/components/PricingTiers';
+} from '@/features/billing/validation/stripe';
+import {
+  stripePriceFieldsSchema,
+  stripeProductFieldsSchema,
+} from '@/features/billing/validation/stripe';
+import { stripeEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 export interface StripeTierData {
   name: string;
   amount: string;
@@ -111,7 +117,22 @@ export async function fetchStripeTierData({
 }: {
   starterId: string;
   proId: string;
-}): Promise<Map<TierKey, StripeTierData>> {
+}): Promise<Map<SubscriptionTier, StripeTierData>> {
+  if (stripeEnv.localMode) {
+    const map = new Map<SubscriptionTier, StripeTierData>();
+    const starterInterval = starterId.includes('yearly') ? 'yearly' : 'monthly';
+    const proInterval = proId.includes('yearly') ? 'yearly' : 'monthly';
+    map.set('starter', {
+      name: PRICING_TIERS.starter.name,
+      amount: localDisplayAmountForTier('starter', starterInterval),
+    });
+    map.set('pro', {
+      name: PRICING_TIERS.pro.name,
+      amount: localDisplayAmountForTier('pro', proInterval),
+    });
+    return map;
+  }
+
   const stripe = getStripe();
   const [rawStarterPrice, rawProPrice] = await retrieveStripePrices(
     stripe,
@@ -131,7 +152,7 @@ export async function fetchStripeTierData({
     stripeProductFieldsSchema.safeParse(rawStarterProduct);
   const proProductResult = stripeProductFieldsSchema.safeParse(rawProProduct);
 
-  const stripeData = new Map<TierKey, StripeTierData>();
+  const stripeData = new Map<SubscriptionTier, StripeTierData>();
 
   if (!starterPriceResult.success || !starterProductResult.success) {
     logger.warn(

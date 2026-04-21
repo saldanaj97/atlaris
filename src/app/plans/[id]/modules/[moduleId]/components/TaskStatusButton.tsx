@@ -1,10 +1,9 @@
 'use client';
 
-import type { JSX } from 'react';
-
-import { Button } from '@/components/ui/button';
-import type { ProgressStatus } from '@/lib/types/db';
 import { CheckCircle2, Circle } from 'lucide-react';
+import type { JSX } from 'react';
+import { Button } from '@/components/ui/button';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface TaskStatusButtonProps {
   taskId: string;
@@ -42,8 +41,8 @@ export function TaskStatusButton({
       }
       className={`flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-all ${
         isCompleted
-          ? 'bg-green-500 text-white hover:bg-green-600'
-          : 'hover:bg-primary bg-white/50 text-stone-700 hover:text-white dark:bg-stone-800/50 dark:text-stone-300'
+          ? 'bg-success text-success-foreground hover:bg-success/90'
+          : 'bg-white/50 text-foreground hover:bg-primary hover:text-primary-foreground dark:bg-card/50 dark:text-muted-foreground dark:hover:bg-primary dark:hover:text-primary-foreground'
       }`}
     >
       <div className="flex items-center gap-2">

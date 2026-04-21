@@ -1,4 +1,4 @@
-import type { GenerationInput } from '@/lib/ai/types/provider.types';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
 
 /**
  * Builds GenerationInput with stable defaults for tests.

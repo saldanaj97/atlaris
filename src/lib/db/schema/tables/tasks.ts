@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   check,
   index,
@@ -10,7 +11,6 @@ import {
   timestamp,
   unique,
   uuid,
-  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 import { progressStatus, resourceType } from '../../enums';
@@ -25,6 +25,14 @@ import { users } from './users';
 
 // Modules, tasks, and supporting tables
 
+/** Shared column bundle for `modules` and `tasks` (order, titles, estimates). */
+const moduleContentColumns = {
+  order: integer('order').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  estimatedMinutes: integer('estimated_minutes').notNull(),
+};
+
 export const modules = pgTable(
   'modules',
   {
@@ -32,10 +40,7 @@ export const modules = pgTable(
     planId: uuid('plan_id')
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
-    order: integer('order').notNull(),
-    title: text('title').notNull(),
-    description: text('description'),
-    estimatedMinutes: integer('estimated_minutes').notNull(),
+    ...moduleContentColumns,
     ...timestampFields,
   },
   (table) => {
@@ -49,6 +54,7 @@ export const modules = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check('module_title_length', sql`char_length(${table.title}) <= 500`),
       unique('modules_plan_id_order_unique').on(table.planId, table.order),
       index('idx_modules_plan_id').on(table.planId),
       index('idx_modules_plan_id_order').on(table.planId, table.order),
@@ -94,10 +100,7 @@ export const tasks = pgTable(
     moduleId: uuid('module_id')
       .notNull()
       .references(() => modules.id, { onDelete: 'cascade' }),
-    order: integer('order').notNull(),
-    title: text('title').notNull(),
-    description: text('description'),
-    estimatedMinutes: integer('estimated_minutes').notNull(),
+    ...moduleContentColumns,
     hasMicroExplanation: boolean('has_micro_explanation')
       .notNull()
       .default(false),
@@ -122,6 +125,7 @@ export const tasks = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check('task_title_length', sql`char_length(${table.title}) <= 500`),
       unique('tasks_module_id_order_unique').on(table.moduleId, table.order),
       index('idx_tasks_module_id').on(table.moduleId),
       index('idx_tasks_module_id_order').on(table.moduleId, table.order),
@@ -176,9 +180,6 @@ export const resources = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     type: resourceType('type').notNull(),
-    // TODO: [RESOURCE-HARDENING] In a future migration, add DB-level title length
-    // constraint (e.g., char_length(title) <= MAX_RESOURCE_TITLE_LENGTH from
-    // @/lib/db/schema/constants) and add updatedAt for staleness tracking.
     title: text('title').notNull(),
     url: text('url').notNull().unique(),
     domain: text('domain'),
@@ -194,6 +195,7 @@ export const resources = pgTable(
   (table) => [
     check('duration_minutes_check', sql`${table.durationMinutes} >= 0`),
     check('cost_cents_check', sql`${table.costCents} >= 0`),
+    check('resource_title_length', sql`char_length(${table.title}) <= 500`),
     index('idx_resources_type').on(table.type),
 
     // RLS Policies
@@ -269,16 +271,21 @@ export const taskResources = pgTable(
   }
 ).enableRLS();
 
+/** id + taskId + userId for per-user rows scoped to a task (see integration sync tables). */
+export const taskUserScopedIds = {
+  id: uuid('id').primaryKey().defaultRandom(),
+  taskId: uuid('task_id')
+    .notNull()
+    .references(() => tasks.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+};
+
 export const taskProgress = pgTable(
   'task_progress',
   {
-    id: uuid('id').primaryKey().defaultRandom(),
-    taskId: uuid('task_id')
-      .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    ...taskUserScopedIds,
     status: progressStatus('status').notNull().default('not_started'),
     completedAt: timestamp('completed_at', { withTimezone: true }),
     updatedAt: timestamp('updated_at', { withTimezone: true })

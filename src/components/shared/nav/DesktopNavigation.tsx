@@ -1,4 +1,8 @@
 'use client';
+import { ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -6,12 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { NavItem } from '@/lib/navigation';
+import type { NavItem } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { ChevronDown } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 
 interface DesktopNavigationProps {
   navItems: NavItem[];
@@ -92,7 +92,7 @@ export default function DesktopNavigation({
     const isActive =
       item.href === '/'
         ? pathname === '/'
-        : pathname === item.href || pathname.startsWith(item.href + '/');
+        : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
     if (item.dropdown) {
       return (

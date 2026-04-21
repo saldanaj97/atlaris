@@ -1,5 +1,7 @@
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+
+import { marketingPrimaryCtaClassName } from './marketing-cta';
 
 interface FinalCtaSectionProps {
   onCtaClick?: () => void;
@@ -26,7 +28,11 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
             Join thousands of learners who&apos;ve found their focus with
             Atlaris. Start your journey today—for free.
           </p>
-          <Button asChild className="h-auto px-8 py-4 font-semibold">
+          <Button
+            asChild
+            variant="default"
+            className={marketingPrimaryCtaClassName}
+          >
             <Link href="/plans/new" onClick={onCtaClick}>
               Start Free Trial
             </Link>

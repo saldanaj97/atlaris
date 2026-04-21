@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { parseGenerationStream } from '@/lib/ai/parser';
-import { getGenerationProvider } from '@/lib/ai/provider-factory';
-import { MockGenerationProvider } from '@/lib/ai/providers/mock';
-import { readableStreamToAsyncIterable } from '@/lib/ai/utils';
+import { parseGenerationStream } from '@/features/ai/parser';
+import { getGenerationProvider } from '@/features/ai/providers/factory';
+import { MockGenerationProvider } from '@/features/ai/providers/mock';
+import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import { createGenerationInput } from '../../../fixtures/generation-input';
 
 const SAMPLE_INPUT = createGenerationInput({
@@ -36,6 +36,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = originalEnv;
   });
 
@@ -48,8 +49,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
-      // Cast to any to allow setting NODE_ENV in test environment; TS types mark it as readonly
-      (process.env as any).NODE_ENV = 'development';
+      vi.stubEnv('NODE_ENV', 'development');
       delete process.env.AI_PROVIDER;
 
       const provider = getGenerationProvider();
@@ -57,12 +57,11 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       expect(provider).toBeInstanceOf(MockGenerationProvider);
     });
 
-    it('returns OpenAI provider when AI_PROVIDER=openai', () => {
-      process.env.AI_PROVIDER = 'openai';
+    it('returns Router provider when AI_PROVIDER=router', () => {
+      process.env.AI_PROVIDER = 'router';
       const provider = getGenerationProvider();
 
-      // OpenAIGenerationProvider is the default, but we can't import it without circular deps
-      // So we just check it's not MockGenerationProvider
+      // RouterGenerationProvider is the only non-mock implementation today.
       expect(provider).not.toBeInstanceOf(MockGenerationProvider);
     });
 
@@ -146,60 +145,6 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       // Each chunk should be reasonably sized (mock uses chunkSize=80)
       expect(chunks[0].length).toBeLessThanOrEqual(100);
     });
-  });
-
-  // Skip timing tests in CI/fast unit test runs - these test delay simulation
-  // behavior which isn't critical for unit test validation and adds ~20+ seconds
-  describe.skip('T022: Delay simulation test', () => {
-    it('completes within expected time range with configured delay', async () => {
-      const delayMs = 2000; // 2 seconds
-      const provider = new MockGenerationProvider({ delayMs, failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream); // Consume stream
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Should be at least the base delay (with variance it can be -2s to +2s)
-      // So minimum is delayMs - 2000 but we make sure it's at least 1000ms
-      expect(elapsed).toBeGreaterThanOrEqual(Math.max(1000, delayMs - 2500));
-    }, 10000); // 10 second timeout
-
-    it('respects MOCK_GENERATION_DELAY_MS environment variable', async () => {
-      process.env.MOCK_GENERATION_DELAY_MS = '1500';
-      const provider = new MockGenerationProvider({ failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream);
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Should take at least 500ms (with variance)
-      expect(elapsed).toBeGreaterThanOrEqual(500);
-    }, 10000); // 10 second timeout
-
-    it('uses default delay when env var not set', async () => {
-      delete process.env.MOCK_GENERATION_DELAY_MS;
-      // Explicitly force failureRate=0 to avoid random flakes from env defaults
-      // The previous implementation relied on process.env which may introduce
-      // probabilistic failures (observed in CI). Passing failureRate:0 makes
-      // this timing test deterministic.
-      const provider = new MockGenerationProvider({ failureRate: 0 });
-
-      const startTime = Date.now();
-      const result = await provider.generate(SAMPLE_INPUT);
-      await collectStream(result.stream);
-      const endTime = Date.now();
-
-      const elapsed = endTime - startTime;
-
-      // Default is 7000ms, with variance should be at least 3000ms
-      expect(elapsed).toBeGreaterThanOrEqual(3000);
-    }, 15000);
   });
 
   describe('T023: Failure rate toggle test', () => {

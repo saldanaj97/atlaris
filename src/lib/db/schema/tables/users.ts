@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   integer,
   pgPolicy,
   pgTable,
@@ -34,6 +35,7 @@ export const users = pgTable(
     subscriptionPeriodEnd: timestamp('subscription_period_end', {
       withTimezone: true,
     }),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
     preferredAiModel: preferredAiModelEnum('preferred_ai_model'),
     ...timestampFields,
@@ -61,9 +63,10 @@ export const users = pgTable(
       withCheck: sql`${table.authUserId} = ${currentUserId}`,
     }),
 
-    // Users can update only their own profile fields
-    // Note: Application-level validation should restrict which fields
-    // users can modify (e.g., name is OK, stripe fields are not)
+    // Users can update only their own profile fields.
+    // Column-level privileges (migration 0018; see
+    // privileges/users-authenticated-update-columns.ts) restrict the authenticated
+    // role. Billing and system columns are only writable by the service-role (BYPASSRLS).
     pgPolicy('users_update_own', {
       for: 'update',
       to: 'authenticated',

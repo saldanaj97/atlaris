@@ -1,20 +1,20 @@
 'use client';
 
+import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
+import type { JSX } from 'react';
+import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
+import { assertNever } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { assertNever } from '@/lib/utils';
-import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
-import type { JSX } from 'react';
-import { InlineDropdown } from './InlineDropdown';
 import {
   DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from './constants';
+import { InlineDropdown } from './InlineDropdown';
 
 import type { PlanFormData } from './types';
 
@@ -219,6 +219,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">I&apos;m a</span>
           <InlineDropdown
             id={`${baseId}-skill-level`}
+            ariaLabel="Skill level"
             options={SKILL_LEVEL_OPTIONS}
             value={state.skillLevel}
             onChange={(value) => dispatch({ type: 'set-skill-level', value })}
@@ -227,6 +228,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">with</span>
           <InlineDropdown
             id={`${baseId}-weekly-hours`}
+            ariaLabel="Weekly hours"
             options={WEEKLY_HOURS_OPTIONS}
             value={state.weeklyHours}
             onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
@@ -241,6 +243,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">I prefer</span>
           <InlineDropdown
             id={`${baseId}-learning-style`}
+            ariaLabel="Learning style"
             options={LEARNING_STYLE_OPTIONS}
             value={state.learningStyle}
             onChange={(value) =>
@@ -251,6 +254,7 @@ export function UnifiedPlanInput({
           <span className="text-sm">and want to finish in</span>
           <InlineDropdown
             id={`${baseId}-deadline`}
+            ariaLabel="Deadline"
             options={DEADLINE_OPTIONS}
             value={state.deadlineWeeks}
             onChange={(value) =>

@@ -1,18 +1,13 @@
-import { desc, eq } from 'drizzle-orm';
-
-import { classificationToUserMessage } from '@/lib/ai/failure-presentation';
-import { ATTEMPT_CAP } from '@/lib/ai/generation-policy';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
-import {
-  requireOwnedPlanById,
-  requirePlanIdFromRequest,
-} from '@/lib/api/plans/route-context';
+import { classificationToUserMessage } from '@/features/ai/failure-presentation';
+import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-service';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { NotFoundError } from '@/lib/api/errors';
+import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { getDb } from '@/lib/db/runtime';
-import { generationAttempts, modules } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import { derivePlanStatus } from '@/lib/plans/status';
-import type { FailureClassification } from '@/lib/types/client';
+import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
 /**
  * GET /api/v1/plans/:planId/status
@@ -25,91 +20,59 @@ import type { FailureClassification } from '@/lib/types/client';
 export const GET = withErrorBoundary(
   withAuthAndRateLimit('read', async ({ req, user }): Promise<Response> => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
-    const ownerUserId = user.id;
+    const dbClient = getDb();
+
+    logger.debug({ planId, userId: user.id }, 'Plan status request received');
+
+    const statusSnapshot = await getPlanGenerationStatusSnapshot({
+      planId,
+      userId: user.id,
+      dbClient,
+    });
+
+    if (!statusSnapshot) {
+      throw new NotFoundError('Learning plan not found.');
+    }
 
     logger.debug(
-      { planId, userId: ownerUserId },
-      'Plan status request received'
+      {
+        planId,
+        userId: user.id,
+        status: statusSnapshot.status,
+        attempts: statusSnapshot.attempts,
+      },
+      'Plan status response'
     );
 
-    const db = getDb();
-    const plan = await requireOwnedPlanById({
-      planId,
-      ownerUserId,
-      dbClient: db,
-    });
-
-    // Check if plan has modules (indicates successful generation)
-    const planModules = await db
-      .select({ id: modules.id })
-      .from(modules)
-      .where(eq(modules.planId, planId))
-      .limit(1);
-
-    const hasModules = planModules.length > 0;
-
-    // Fetch bounded recent attempts (max retries is ATTEMPT_CAP), derive count + latest in memory.
-    const recentAttempts = await db
-      .select({
-        classification: generationAttempts.classification,
-        createdAt: generationAttempts.createdAt,
-      })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId))
-      .orderBy(desc(generationAttempts.createdAt))
-      .limit(ATTEMPT_CAP);
-
-    const attempts = recentAttempts.length;
-    const latestAttempt = recentAttempts[0];
-
-    const status = derivePlanStatus({
-      generationStatus: plan.generationStatus,
-      hasModules,
-      attemptsCount: attempts,
-      attemptCap: ATTEMPT_CAP,
-    });
-
     let latestError: string | null = null;
-    if (status === 'failed') {
-      const planClassification = latestAttemptToClassification(
-        latestAttempt?.classification
+    if (statusSnapshot.status === 'failed') {
+      latestError = classificationToUserMessage(
+        statusSnapshot.latestClassification ?? 'unknown'
       );
-      latestError = classificationToUserMessage(planClassification);
       logger.warn(
         {
           planId,
-          userId: ownerUserId,
-          status,
-          attempts,
-          classification: latestAttempt?.classification ?? null,
+          userId: user.id,
+          status: statusSnapshot.status,
+          attempts: statusSnapshot.attempts,
+          classification: statusSnapshot.latestClassification,
           latestError,
         },
         'Plan generation failed'
       );
     }
 
-    return json({
-      planId: plan.id,
-      status,
-      attempts,
+    const body = PlanStatusResponseSchema.parse({
+      planId: statusSnapshot.planId,
+      status: statusSnapshot.status,
+      attempts: statusSnapshot.attempts,
       latestError,
-      createdAt: plan.createdAt?.toISOString(),
-      updatedAt: plan.updatedAt?.toISOString(),
+      createdAt: statusSnapshot.createdAt,
+      updatedAt: statusSnapshot.updatedAt,
+    });
+
+    return json(body, {
+      headers: { 'Cache-Control': 'max-age=1, stale-while-revalidate=2' },
     });
   })
 );
-
-function latestAttemptToClassification(
-  classification: string | null | undefined
-): FailureClassification | 'unknown' {
-  switch (classification) {
-    case 'timeout':
-    case 'rate_limit':
-    case 'provider_error':
-    case 'validation':
-    case 'capped':
-      return classification;
-    default:
-      return 'unknown';
-  }
-}

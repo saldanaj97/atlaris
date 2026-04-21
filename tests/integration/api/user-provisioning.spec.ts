@@ -1,23 +1,40 @@
 import { eq } from 'drizzle-orm';
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
+import { POST } from '@/app/api/v1/plans/stream/route';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { truncateAll } from '../../helpers/db';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
 
-describe('POST /api/v1/plans user provisioning', () => {
+beforeAll(() => {
+  // Use the mock AI provider so the default session boundary completes without
+  // real network calls; the lifecycle DTOs stay encapsulated under the boundary.
+  vi.stubEnv('AI_PROVIDER', 'mock');
+  vi.stubEnv('MOCK_GENERATION_DELAY_MS', '5');
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+
+describe('POST /api/v1/plans/stream user provisioning', () => {
   const authUserId = 'auth_provisioning_flow';
   const authEmail = 'provisioning@example.com';
 
   beforeEach(async () => {
-    await truncateAll();
-
     const { auth } = await import('@/lib/auth/server');
 
     vi.mocked(auth.getSession).mockResolvedValue({
@@ -44,11 +61,12 @@ describe('POST /api/v1/plans user provisioning', () => {
       weeklyHours: 5,
       learningStyle: 'reading',
       deadlineDate: new Date(Date.now() + 86400000).toISOString(),
+      visibility: 'private',
+      origin: 'ai',
     };
 
-    const { POST } = await import('@/app/api/v1/plans/route');
     const response = await POST(
-      new NextRequest('http://localhost/api/v1/plans', {
+      new Request('http://localhost/api/v1/plans/stream', {
         method: 'POST',
         body: JSON.stringify(planPayload),
         headers: {
@@ -57,7 +75,9 @@ describe('POST /api/v1/plans user provisioning', () => {
       })
     );
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
+    // Drain the SSE body so the request fully settles before reading the user row.
+    await response.body?.cancel();
 
     const [provisionedUser] = await db
       .select()

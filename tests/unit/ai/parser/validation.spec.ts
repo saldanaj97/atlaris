@@ -4,9 +4,8 @@ import {
   MAX_MODULE_COUNT,
   MAX_RAW_RESPONSE_CHARS,
   MAX_TASKS_PER_MODULE,
-  parseGenerationStream,
-  ParserError,
-} from '@/lib/ai/parser';
+} from '@/features/ai/constants';
+import { ParserError, parseGenerationStream } from '@/features/ai/parser';
 
 async function* streamFromString(value: string) {
   yield value;

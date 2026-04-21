@@ -1,279 +1,135 @@
+import * as Sentry from '@sentry/nextjs';
+import { ZodError } from 'zod';
 import {
-  buildPlanStartEvent,
-  executeGenerationStream,
-  safeMarkPlanFailed,
-} from '@/app/api/v1/plans/stream/helpers';
-import { AVAILABLE_MODELS } from '@/lib/ai/ai-models';
-import { resolveModelForTier } from '@/lib/ai/model-resolver';
-import type {
-  GenerationAttemptContext,
-  GenerationResult,
-  RunGenerationOptions,
-} from '@/lib/ai/orchestrator';
-import { runGenerationAttempt } from '@/lib/ai/orchestrator';
-import { createEventStream, streamHeaders } from '@/lib/ai/streaming/events';
+  createPlanGenerationSessionBoundary,
+  type PlanGenerationSessionBoundary,
+} from '@/features/plans/session/plan-generation-session';
+import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuthAndRateLimit, withErrorBoundary } from '@/lib/api/auth';
+import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import {
-  insertPlanWithRollback,
-  preparePlanCreationPreflight,
-} from '@/lib/api/plans/preflight';
+import { withErrorBoundary } from '@/lib/api/middleware';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { appEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
-import { logger } from '@/lib/logging/logger';
-import type { CreateLearningPlanInput } from '@/lib/validation/learningPlans';
-import { createLearningPlanSchema } from '@/lib/validation/learningPlans';
-import { ZodError } from 'zod';
+import { type Logger, logger } from '@/lib/logging/logger';
 
-/** Classification used when an unstructured exception occurs in the generation catch block. */
-export const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
+type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
 
-export interface StreamOrchestrator {
-  runGenerationAttempt(
-    context: GenerationAttemptContext,
-    options: RunGenerationOptions
-  ): Promise<GenerationResult>;
-}
-
-const defaultOrchestrator: StreamOrchestrator = {
-  runGenerationAttempt,
-};
-
-const ALLOWED_MODELS = new Set(AVAILABLE_MODELS.map((model) => model.id));
+const defaultBoundary: PlanGenerationSessionBoundary =
+  createPlanGenerationSessionBoundary();
 
 /**
- * Creates the stream POST handler with an injectable orchestrator.
- * Used by integration tests to supply mocks; production uses the default orchestrator.
+ * Creates the stream POST handler with optional dependency overrides.
+ *
+ * Tests inject a fake `boundary` (typically built via
+ * `createPlanGenerationSessionBoundary({ createLifecycleService })`) to swap
+ * the lifecycle service under the boundary; production uses the default
+ * boundary singleton.
  */
 export function createStreamHandler(deps?: {
-  orchestrator?: StreamOrchestrator;
+  boundary?: PlanGenerationSessionBoundary;
+  logger?: StreamRouteLogger;
 }): PlainHandler {
-  const orchestrator = deps?.orchestrator ?? defaultOrchestrator;
-  const runGen = orchestrator.runGenerationAttempt.bind(orchestrator);
+  const routeLogger = deps?.logger ?? logger;
+  const boundary = deps?.boundary ?? defaultBoundary;
 
   return withErrorBoundary(
     withAuthAndRateLimit(
       'aiGeneration',
       async ({ req, userId, user: currentUser }) => {
-        logger.info({ authUserId: userId }, 'Plan stream handler entered');
+        routeLogger.info({ authUserId: userId }, 'Plan stream handler entered');
 
-        let body: CreateLearningPlanInput;
+        const parsedBody = await parseJsonBody(req, {
+          mode: 'required',
+          onMalformedJson: (error) =>
+            new ValidationError(
+              'Invalid request body.',
+              { reason: 'Malformed or invalid JSON payload.' },
+              { authUserId: userId, error: serializeError(error) }
+            ),
+        });
+
+        let payloadLog: Record<string, unknown> | null = null;
         try {
-          const parsedBody: unknown = await req.json();
-          logger.info(
-            {
-              authUserId: userId,
-              payload: toPayloadLog(parsedBody),
-            },
-            'Plan stream request payload received'
-          );
-          body = createLearningPlanSchema.parse(parsedBody);
+          payloadLog = toPayloadLog(parsedBody);
         } catch (error) {
-          if (error instanceof ZodError) {
-            logger.warn(
-              {
-                authUserId: userId,
-                validation: error.flatten(),
-              },
-              'Plan stream request failed schema validation'
-            );
-            throw new ValidationError('Invalid request body.', error.flatten());
-          }
-          logger.error(
+          const payload = toBestEffortPayloadLog(parsedBody);
+          routeLogger.warn(
             {
               authUserId: userId,
               error: serializeError(error),
+              payload,
             },
-            'Plan stream request body parsing failed'
+            'Plan stream payload log failed'
           );
-          throw new ValidationError('Invalid request body.', {
-            reason: 'Malformed or invalid JSON payload.',
-          });
+          Sentry.captureException(
+            error instanceof Error ? error : new Error(String(error)),
+            {
+              level: 'warning',
+              tags: {
+                route: 'plans-stream',
+                source: 'payload-log',
+              },
+              extra: {
+                authUserId: userId,
+                payload,
+              },
+            }
+          );
+        }
+        if (payloadLog) {
+          routeLogger.info(
+            { authUserId: userId, payload: payloadLog },
+            'Plan stream request payload received'
+          );
+        }
+
+        let body: CreateLearningPlanInput;
+        try {
+          body = createLearningPlanSchema.parse(parsedBody);
+        } catch (error) {
+          if (error instanceof ZodError) {
+            throw new ValidationError(
+              'Invalid request body.',
+              error.flatten(),
+              { authUserId: userId, validation: error.flatten() }
+            );
+          }
+          throw new ValidationError(
+            'Invalid request body.',
+            { reason: 'Malformed or invalid JSON payload.' },
+            { authUserId: userId, error: serializeError(error) }
+          );
         }
 
         const db = getDb();
+        const internalUserId = currentUser.id;
 
-        logger.info({ authUserId: userId }, 'Running plan creation preflight');
-        const preflight = await preparePlanCreationPreflight({
-          body,
-          authUserId: userId,
-          user: currentUser,
-          dbClient: db,
-        });
-
-        const {
-          user: dbUser,
-          userTier,
-          startDate,
-          deadlineDate,
-          preparedInput: { extractedContext, topic, pdfProvenance },
-        } = preflight;
-
-        const rateLimit = await checkPlanGenerationRateLimit(dbUser.id, db);
+        // ─── Rate limiting (generation-specific, checked BEFORE plan creation) ──
+        const rateLimit = await checkPlanGenerationRateLimit(
+          internalUserId,
+          db
+        );
         const generationRateLimitHeaders =
           getPlanGenerationRateLimitHeaders(rateLimit);
 
-        const generationInput = {
-          topic,
-          notes: body.notes ?? undefined,
-          pdfContext: extractedContext,
-          pdfExtractionHash: pdfProvenance?.extractionHash,
-          pdfProofVersion: pdfProvenance?.proofVersion,
-          skillLevel: body.skillLevel,
-          weeklyHours: body.weeklyHours,
-          learningStyle: body.learningStyle,
-          startDate: startDate ?? undefined,
-          deadlineDate: deadlineDate ?? undefined,
-        };
-
-        logger.info(
-          {
-            authUserId: userId,
-            userId: dbUser.id,
-          },
-          'Inserting plan before streaming generation'
-        );
-        const plan = await insertPlanWithRollback({
-          preflight,
-          dbClient: db,
-        });
-        logger.info(
-          {
-            planId: plan.id,
-            userId: dbUser.id,
-            authUserId: userId,
-          },
-          'Plan insert succeeded for streaming generation'
+        routeLogger.info(
+          { authUserId: userId },
+          'Delegating plan stream request to generation session'
         );
 
-        // Tier-gated model selection via unified resolver.
-        // Pass undefined when param is absent or invalid so resolver treats it as not_specified.
-        const url = new URL(req.url);
-        let modelOverride: string | undefined;
-        if (url.searchParams.has('model')) {
-          const suppliedModel = url.searchParams.get('model') ?? '';
-          const isAllowedModel = ALLOWED_MODELS.has(suppliedModel);
-
-          if (isAllowedModel) {
-            logger.info(
-              {
-                authUserId: userId,
-                userId: dbUser.id,
-                modelOverride: suppliedModel,
-              },
-              'Model override provided for stream generation'
-            );
-            modelOverride = suppliedModel;
-          } else {
-            // Do not log raw user-supplied value (logging hygiene / injection risk).
-            logger.warn(
-              {
-                authUserId: userId,
-                userId: dbUser.id,
-              },
-              'Ignoring invalid model override for stream generation'
-            );
-            modelOverride = undefined;
-          }
-        }
-        const { provider } = resolveModelForTier(userTier, modelOverride);
-        const normalizedInput: CreateLearningPlanInput = {
-          ...body,
-          topic: generationInput.topic,
-          startDate: generationInput.startDate,
-          deadlineDate: generationInput.deadlineDate,
-        };
-
-        const stream = createEventStream(
-          async (emit, _controller, streamContext) => {
-            const { dbClient: streamDb, cleanup: cleanupStreamDb } =
-              await createStreamDbClient(userId);
-            let streamDbClosed = false;
-            const closeStreamDb = async (): Promise<void> => {
-              if (streamDbClosed) {
-                return;
-              }
-              streamDbClosed = true;
-              try {
-                await cleanupStreamDb();
-              } catch (error) {
-                logger.error(
-                  {
-                    planId: plan.id,
-                    userId: dbUser.id,
-                    error: serializeError(error),
-                  },
-                  'Failed to close stream DB client'
-                );
-              }
-            };
-
-            // DB cleanup is handled in the finally block below, NOT in
-            // onCancel, so the client stays alive while generation completes
-            // even after the browser navigates away or refreshes.
-
-            try {
-              const planStartEvent = buildPlanStartEvent({
-                planId: plan.id,
-                input: normalizedInput,
-              });
-              emit(planStartEvent);
-
-              await executeGenerationStream({
-                reqSignal: req.signal,
-                streamSignal: streamContext.signal,
-                planId: plan.id,
-                userId: dbUser.id,
-                dbClient: streamDb,
-                emit,
-                runGeneration: async () => {
-                  const result = await runGen(
-                    {
-                      planId: plan.id,
-                      userId: dbUser.id,
-                      input: generationInput,
-                    },
-                    { provider, dbClient: streamDb }
-                  );
-                  return result;
-                },
-                onUnhandledError: async (error, startedAt) => {
-                  logger.error(
-                    {
-                      planId: plan.id,
-                      userId: dbUser.id,
-                      classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-                      durationMs: Math.max(0, Date.now() - startedAt),
-                      error: serializeError(error),
-                    },
-                    'Unhandled exception during stream generation; marking plan failed'
-                  );
-
-                  await safeMarkPlanFailed(plan.id, dbUser.id, streamDb);
-                },
-                fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-              });
-              logger.info(
-                { planId: plan.id, userId: dbUser.id },
-                'executeGenerationStream completed'
-              );
-            } finally {
-              await closeStreamDb();
-            }
-          }
-        );
-
-        return new Response(stream, {
-          status: 200,
-          headers: {
-            ...streamHeaders,
-            ...generationRateLimitHeaders,
-          },
+        return await boundary.respondCreateStream({
+          req,
+          authUserId: userId,
+          internalUserId,
+          body,
+          savedPreferredAiModel: currentUser.preferredAiModel ?? null,
+          responseHeaders: generationRateLimitHeaders,
         });
       }
     )
@@ -281,25 +137,6 @@ export function createStreamHandler(deps?: {
 }
 
 export const POST = createStreamHandler();
-
-async function createStreamDbClient(authUserId: string): Promise<{
-  dbClient: ReturnType<typeof getDb>;
-  cleanup: () => Promise<void>;
-}> {
-  if (appEnv.isTest) {
-    return {
-      dbClient: getDb(),
-      cleanup: async () => {},
-    };
-  }
-
-  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-  const { db, cleanup } = await createAuthenticatedRlsClient(authUserId);
-  return {
-    dbClient: db,
-    cleanup,
-  };
-}
 
 function toPayloadLog(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== 'object') {
@@ -336,6 +173,12 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
     hasExtractedContent:
       typeof maybePayload.extractedContent === 'object' &&
       maybePayload.extractedContent !== null,
+  };
+}
+
+function toBestEffortPayloadLog(payload: unknown): Record<string, unknown> {
+  return {
+    payloadType: typeof payload,
   };
 }
 

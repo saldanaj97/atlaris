@@ -1,9 +1,10 @@
+import { ArrowRight, PlayCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, PlayCircle } from 'lucide-react';
+
+import { marketingPrimaryCtaClassName } from './marketing-cta';
 
 interface HeroSectionProps {
   onCtaClick?: () => void;
@@ -40,7 +41,7 @@ export function HeroSection({ onCtaClick }: HeroSectionProps): JSX.Element {
           <Button
             asChild
             variant="default"
-            className="group h-auto rounded-2xl px-8 py-4 font-semibold shadow-lg transition hover:shadow-xl"
+            className={marketingPrimaryCtaClassName}
           >
             <Link href="/plans/new" onClick={onCtaClick}>
               Start Free Trial
