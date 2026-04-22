@@ -1,110 +1,154 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
-  "vcs": {
-    "enabled": true,
-    "clientKind": "git",
-    "useIgnoreFile": true,
-    "defaultBranch": "main"
-  },
-  "files": {
-    "ignoreUnknown": false,
-    "includes": [
-      "src/**/*.ts",
-      "src/**/*.tsx",
-      "tests/**/*.ts",
-      "tests/**/*.tsx",
-      "!src/components/ui"
-    ]
-  },
-  "formatter": {
-    "enabled": true,
-    "formatWithErrors": false,
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 80
-  },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "jsxQuoteStyle": "double",
-      "semicolons": "always",
-      "arrowParentheses": "always",
-      "trailingCommas": "es5"
-    }
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true,
-      "correctness": {
-        "noNextAsyncClientComponent": "warn"
-      },
-      "nursery": {
-        "noBeforeInteractiveScriptOutsideDocument": "warn",
-        "noSyncScripts": "warn",
-        "useInlineScriptId": "error",
-        "noFloatingPromises": "error"
-      },
-      "performance": {
-        "noImgElement": "warn",
-        "noUnwantedPolyfillio": "warn",
-        "useGoogleFontPreconnect": "warn"
-      },
-      "suspicious": {
-        "noDocumentImportInPage": "error",
-        "noHeadImportInDocument": "error",
-        "useGoogleFontDisplay": "warn"
-      }
-    }
-  },
-  "overrides": [
-    {
-      "includes": [
-        "src/middleware.ts",
-        "src/**/middleware.ts",
-        "src/app/**/route.ts",
-        "src/app/**/route.tsx"
-      ],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "useAwait": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": [
-        "src/lib/logging/client.ts",
-        "src/lib/db/*-cli.ts",
-        "src/scripts/**/*.ts"
-      ],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noConsole": "off"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["tests/**/*.{ts,tsx}"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noExplicitAny": "off",
-            "useAwait": "off"
-          }
-        }
-      }
-    }
-  ],
-  "assist": {
-    "enabled": true,
-    "actions": {
-      "source": {
-        "organizeImports": "on"
-      }
-    }
-  }
+	"$schema": "https://biomejs.dev/schemas/2.4.8/schema.json",
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"src/**/*.ts",
+			"src/**/*.tsx",
+			"tests/**/*.ts",
+			"tests/**/*.tsx",
+			"!src/components/ui"
+		]
+	},
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true,
+		"defaultBranch": "main"
+	},
+	"linter": {
+		"enabled": true,
+		"domains": {
+			"drizzle": "all",
+			"playwright": "all",
+			"next": "recommended",
+			"react": "all",
+			"types": "all",
+			"test": "all"
+		},
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"recommended": true
+			},
+			"style": {
+				"recommended": true
+			},
+			"complexity": {
+				"recommended": true
+			},
+			"security": {
+				"recommended": true
+			},
+			"correctness": {
+				"recommended": true
+			},
+			"nursery": {
+				"recommended": true
+			},
+			"performance": {
+				"recommended": true
+			},
+			"suspicious": {
+				"recommended": true
+			}
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"recommended": true,
+				"noDuplicateClasses": "on"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": true
+	},
+	"javascript": {
+		"formatter": {
+			"jsxQuoteStyle": "double",
+			"quoteStyle": "single"
+		}
+	},
+	"json": {
+		"parser": {
+			"allowComments": true
+		},
+		"formatter": {
+			"enabled": true
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"overrides": [
+		{
+			"includes": [
+				"src/middleware.ts",
+				"src/**/middleware.ts",
+				"src/app/**/route.ts",
+				"src/app/**/route.tsx"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"useAwait": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/lib/logging/client.ts",
+				"src/lib/db/*-cli.ts",
+				"src/scripts/**/*.ts"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsole": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"src/app/**/page.ts",
+				"src/app/**/page.tsx",
+				"src/app/**/layout.ts",
+				"src/app/**/layout.tsx",
+				"src/app/**/error.ts",
+				"src/app/**/error.tsx",
+				"src/app/**/loading.ts",
+				"src/app/**/loading.tsx",
+				"src/app/**/not-found.ts",
+				"src/app/**/not-found.tsx",
+				"src/app/**/route.ts",
+				"src/app/**/route.tsx",
+				"src/app/**/template.ts",
+				"src/app/**/template.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"useComponentExportOnlyModules": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["tests/**/*.{ts,tsx}"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off",
+						"useAwait": "off"
+					}
+				}
+			}
+		}
+	]
 }
