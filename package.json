@@ -15,7 +15,7 @@
     "check:knip": "knip --no-progress",
     "check:circular": "madge --circular --extensions ts,tsx --ts-config ./tsconfig.json src/",
     "check:dead-columns": "tsx scripts/audit-drizzle-columns.ts",
-    "check:type": "tsgo --noEmit",
+    "check:type": "tsgo --noEmit --checkers 4",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --config drizzle.config.ts",
