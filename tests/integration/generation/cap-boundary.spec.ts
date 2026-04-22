@@ -13,100 +13,100 @@ const authUserId = 'auth_generation_cap_boundary';
 const authEmail = 'generation-cap-boundary@example.com';
 
 async function seedFailureAttempts(planId: string, count: number) {
-  const attempts = createFailedAttempts(planId, count);
-  await db.insert(generationAttempts).values(attempts);
+	const attempts = createFailedAttempts(planId, count);
+	await db.insert(generationAttempts).values(attempts);
 }
 
 describe('generation integration - attempt cap boundary', () => {
-  beforeEach(async () => {
-    setTestUser(authUserId);
-  });
+	beforeEach(async () => {
+		setTestUser(authUserId);
+	});
 
-  it('allows the third attempt and caps the fourth', async () => {
-    const userId = await ensureUser({ authUserId, email: authEmail });
+	it('allows the third attempt and caps the fourth', async () => {
+		const userId = await ensureUser({ authUserId, email: authEmail });
 
-    const plan = await createTestPlan({
-      userId,
-      topic: 'Cap Boundary Topic',
-      skillLevel: 'intermediate',
-      weeklyHours: 4,
-    });
+		const plan = await createTestPlan({
+			userId,
+			topic: 'Cap Boundary Topic',
+			skillLevel: 'intermediate',
+			weeklyHours: 4,
+		});
 
-    await seedFailureAttempts(plan.id, 2);
+		await seedFailureAttempts(plan.id, 2);
 
-    const mock = createMockProvider({ scenario: 'success' });
+		const mock = createMockProvider({ scenario: 'success' });
 
-    const thirdAttempt = await runGenerationAttempt(
-      {
-        planId: plan.id,
-        userId,
-        input: {
-          topic: 'Cap Boundary Topic',
-          notes: 'Third attempt should still invoke provider',
-          skillLevel: 'intermediate',
-          weeklyHours: 4,
-          learningStyle: 'mixed',
-        },
-      },
-      { provider: mock.provider, dbClient: db }
-    );
+		const thirdAttempt = await runGenerationAttempt(
+			{
+				planId: plan.id,
+				userId,
+				input: {
+					topic: 'Cap Boundary Topic',
+					notes: 'Third attempt should still invoke provider',
+					skillLevel: 'intermediate',
+					weeklyHours: 4,
+					learningStyle: 'mixed',
+				},
+			},
+			{ provider: mock.provider, dbClient: db },
+		);
 
-    expect(thirdAttempt.status).toBe('success');
-    expect(thirdAttempt.classification).toBeNull();
-    expect(mock.invocationCount).toBe(1);
+		expect(thirdAttempt.status).toBe('success');
+		expect(thirdAttempt.classification).toBeNull();
+		expect(mock.invocationCount).toBe(1);
 
-    const attemptRows = await db
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, plan.id))
-      .orderBy(desc(generationAttempts.createdAt));
+		const attemptRows = await db
+			.select()
+			.from(generationAttempts)
+			.where(eq(generationAttempts.planId, plan.id))
+			.orderBy(desc(generationAttempts.createdAt));
 
-    expect(attemptRows).toHaveLength(3);
-    expect(attemptRows[0]?.status).toBe('success');
+		expect(attemptRows).toHaveLength(3);
+		expect(attemptRows[0]?.status).toBe('success');
 
-    const moduleRows = await db
-      .select({ value: modules.id })
-      .from(modules)
-      .where(eq(modules.planId, plan.id));
-    expect(moduleRows.length).toBeGreaterThan(0);
+		const moduleRows = await db
+			.select({ value: modules.id })
+			.from(modules)
+			.where(eq(modules.planId, plan.id));
+		expect(moduleRows.length).toBeGreaterThan(0);
 
-    const taskRows = await db
-      .select({ value: tasks.id })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(eq(modules.planId, plan.id));
-    expect(taskRows.length).toBeGreaterThan(0);
+		const taskRows = await db
+			.select({ value: tasks.id })
+			.from(tasks)
+			.innerJoin(modules, eq(tasks.moduleId, modules.id))
+			.where(eq(modules.planId, plan.id));
+		expect(taskRows.length).toBeGreaterThan(0);
 
-    const fourthAttempt = await runGenerationAttempt(
-      {
-        planId: plan.id,
-        userId,
-        input: {
-          topic: 'Cap Boundary Topic',
-          notes: 'Fourth attempt should be capped',
-          skillLevel: 'intermediate',
-          weeklyHours: 4,
-          learningStyle: 'mixed',
-        },
-      },
-      { provider: mock.provider, dbClient: db }
-    );
+		const fourthAttempt = await runGenerationAttempt(
+			{
+				planId: plan.id,
+				userId,
+				input: {
+					topic: 'Cap Boundary Topic',
+					notes: 'Fourth attempt should be capped',
+					skillLevel: 'intermediate',
+					weeklyHours: 4,
+					learningStyle: 'mixed',
+				},
+			},
+			{ provider: mock.provider, dbClient: db },
+		);
 
-    expect(fourthAttempt.status).toBe('failure');
-    expect(fourthAttempt.classification).toBe('capped');
-    expect(mock.invocationCount).toBe(1);
+		expect(fourthAttempt.status).toBe('failure');
+		expect(fourthAttempt.classification).toBe('capped');
+		expect(mock.invocationCount).toBe(1);
 
-    const cappedAttempts = await db
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, plan.id))
-      .orderBy(desc(generationAttempts.createdAt));
+		const cappedAttempts = await db
+			.select()
+			.from(generationAttempts)
+			.where(eq(generationAttempts.planId, plan.id))
+			.orderBy(desc(generationAttempts.createdAt));
 
-    // Cap rejection is synthetic; no fourth attempt row is persisted.
-    expect(cappedAttempts).toHaveLength(3);
-    expect(
-      cappedAttempts.some((attempt) => attempt.classification === 'capped')
-    ).toBe(false);
-    expect(fourthAttempt.attempt.id).toBeNull();
-  });
+		// Cap rejection is synthetic; no fourth attempt row is persisted.
+		expect(cappedAttempts).toHaveLength(3);
+		expect(
+			cappedAttempts.some((attempt) => attempt.classification === 'capped'),
+		).toBe(false);
+		expect(fourthAttempt.attempt.id).toBeNull();
+	});
 });

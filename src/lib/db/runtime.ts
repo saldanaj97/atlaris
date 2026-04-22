@@ -3,12 +3,12 @@ import { appEnv } from '@/lib/config/env';
 import { db as serviceDb } from '@/lib/db/service-role';
 
 export class MissingRequestDbContextError extends Error {
-  constructor() {
-    super(
-      'Missing request-scoped database context. Request handlers must run inside withAuth/withRequestContext. Use service-role db explicitly in workers/background jobs.'
-    );
-    this.name = 'MissingRequestDbContextError';
-  }
+	constructor() {
+		super(
+			'Missing request-scoped database context. Request handlers must run inside withAuth/withRequestContext. Use service-role db explicitly in workers/background jobs.',
+		);
+		this.name = 'MissingRequestDbContextError';
+	}
 }
 
 /**
@@ -22,17 +22,17 @@ export class MissingRequestDbContextError extends Error {
  * @returns Drizzle database client (RLS-enforced in production requests, service-role elsewhere)
  */
 export function getDb(): typeof serviceDb {
-  // In test mode, always bypass RLS to allow integration tests to work
-  // Integration tests create data via service-role DB and expect routes to see that data
-  if (appEnv.isTest) {
-    return serviceDb;
-  }
+	// In test mode, always bypass RLS to allow integration tests to work
+	// Integration tests create data via service-role DB and expect routes to see that data
+	if (appEnv.isTest) {
+		return serviceDb;
+	}
 
-  const ctx = getRequestContext();
-  const requestDb: typeof serviceDb | undefined = ctx?.db;
-  if (requestDb) {
-    return requestDb;
-  }
+	const ctx = getRequestContext();
+	const requestDb: typeof serviceDb | undefined = ctx?.db;
+	if (requestDb) {
+		return requestDb;
+	}
 
-  throw new MissingRequestDbContextError();
+	throw new MissingRequestDbContextError();
 }

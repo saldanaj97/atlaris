@@ -6,75 +6,75 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
 async function createPlanWithAttempt({
-  authUserId,
-  email,
-  topic = 'RLS Plan',
+	authUserId,
+	email,
+	topic = 'RLS Plan',
 }: {
-  authUserId: string;
-  email: string;
-  topic?: string;
+	authUserId: string;
+	email: string;
+	topic?: string;
 }) {
-  setTestUser(authUserId);
-  const userId = await ensureUser({ authUserId, email });
-  const [plan] = await db
-    .insert(learningPlans)
-    .values({
-      userId,
-      topic,
-      skillLevel: 'beginner',
-      weeklyHours: 4,
-      learningStyle: 'reading',
-      visibility: 'private',
-      origin: 'ai',
-    })
-    .returning();
+	setTestUser(authUserId);
+	const userId = await ensureUser({ authUserId, email });
+	const [plan] = await db
+		.insert(learningPlans)
+		.values({
+			userId,
+			topic,
+			skillLevel: 'beginner',
+			weeklyHours: 4,
+			learningStyle: 'reading',
+			visibility: 'private',
+			origin: 'ai',
+		})
+		.returning();
 
-  // Insert one dummy attempt
-  await db.insert(generationAttempts).values({
-    planId: plan.id,
-    status: 'failure',
-    classification: 'timeout',
-    durationMs: 1000,
-    modulesCount: 0,
-    tasksCount: 0,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash: null,
-    metadata: null,
-  });
+	// Insert one dummy attempt
+	await db.insert(generationAttempts).values({
+		planId: plan.id,
+		status: 'failure',
+		classification: 'timeout',
+		durationMs: 1000,
+		modulesCount: 0,
+		tasksCount: 0,
+		truncatedTopic: false,
+		truncatedNotes: false,
+		normalizedEffort: false,
+		promptHash: null,
+		metadata: null,
+	});
 
-  return { planId: plan.id, userId, authUserId };
+	return { planId: plan.id, userId, authUserId };
 }
 
 describe('RLS attempt visibility', () => {
-  it('allows owner to list attempts and denies other user', async () => {
-    const owner = await createPlanWithAttempt({
-      authUserId: 'rls_owner',
-      email: 'rls_owner@example.com',
-    });
+	it('allows owner to list attempts and denies other user', async () => {
+		const owner = await createPlanWithAttempt({
+			authUserId: 'rls_owner',
+			email: 'rls_owner@example.com',
+		});
 
-    // Owner fetch
-    setTestUser(owner.authUserId);
-    const ownerResp = await GET_ATTEMPTS(
-      new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`)
-    );
-    expect(ownerResp.status).toBe(200);
-    const ownerPayload = await ownerResp.json();
-    expect(Array.isArray(ownerPayload)).toBe(true);
-    expect(ownerPayload.length).toBe(1);
+		// Owner fetch
+		setTestUser(owner.authUserId);
+		const ownerResp = await GET_ATTEMPTS(
+			new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`),
+		);
+		expect(ownerResp.status).toBe(200);
+		const ownerPayload = await ownerResp.json();
+		expect(Array.isArray(ownerPayload)).toBe(true);
+		expect(ownerPayload.length).toBe(1);
 
-    // Another user should not be able to see attempts for private plan
-    setTestUser('rls_other');
-    await ensureUser({
-      authUserId: 'rls_other',
-      email: 'rls_other@example.com',
-    });
+		// Another user should not be able to see attempts for private plan
+		setTestUser('rls_other');
+		await ensureUser({
+			authUserId: 'rls_other',
+			email: 'rls_other@example.com',
+		});
 
-    const otherResp = await GET_ATTEMPTS(
-      new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`)
-    );
-    // RLS should cause 404 (plan not found in authorized scope)
-    expect(otherResp.status).toBe(404);
-  });
+		const otherResp = await GET_ATTEMPTS(
+			new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`),
+		);
+		// RLS should cause 404 (plan not found in authorized scope)
+		expect(otherResp.status).toBe(404);
+	});
 });

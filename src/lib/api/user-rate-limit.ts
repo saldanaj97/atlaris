@@ -24,12 +24,12 @@ import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types
  * Configuration for user-based rate limiting
  */
 type UserRateLimitConfig = {
-  /** Maximum requests allowed within the window */
-  maxRequests: number;
-  /** Time window in milliseconds */
-  windowMs: number;
-  /** Maximum unique users to track (LRU eviction) */
-  maxTrackedUsers?: number;
+	/** Maximum requests allowed within the window */
+	maxRequests: number;
+	/** Time window in milliseconds */
+	windowMs: number;
+	/** Maximum unique users to track (LRU eviction) */
+	maxTrackedUsers?: number;
 };
 
 /**
@@ -42,61 +42,61 @@ type UserRateLimitConfig = {
  * 4. Potential for abuse
  */
 export const USER_RATE_LIMIT_CONFIGS = {
-  /**
-   * HIGH COST - AI generation, regeneration, content enhancement
-   * These endpoints call external AI providers and can be expensive.
-   * Strict limits to prevent runaway costs and abuse.
-   */
-  aiGeneration: {
-    maxRequests: 10,
-    windowMs: 60 * 60 * 1000, // 10 requests per hour
-  },
+	/**
+	 * HIGH COST - AI generation, regeneration, content enhancement
+	 * These endpoints call external AI providers and can be expensive.
+	 * Strict limits to prevent runaway costs and abuse.
+	 */
+	aiGeneration: {
+		maxRequests: 10,
+		windowMs: 60 * 60 * 1000, // 10 requests per hour
+	},
 
-  /**
-   * MEDIUM-HIGH COST - Third-party integrations (Google Calendar)
-   * External API calls with rate limits on the provider side.
-   * Balance between usability and preventing provider rate limits.
-   */
-  integration: {
-    maxRequests: 30,
-    windowMs: 60 * 60 * 1000, // 30 requests per hour
-  },
+	/**
+	 * MEDIUM-HIGH COST - Third-party integrations (Google Calendar)
+	 * External API calls with rate limits on the provider side.
+	 * Balance between usability and preventing provider rate limits.
+	 */
+	integration: {
+		maxRequests: 30,
+		windowMs: 60 * 60 * 1000, // 30 requests per hour
+	},
 
-  /**
-   * MEDIUM COST - Plan CRUD, task updates, mutations
-   * Database writes that could be abused to create excessive data.
-   */
-  mutation: {
-    maxRequests: 60,
-    windowMs: 60 * 1000, // 60 requests per minute
-  },
+	/**
+	 * MEDIUM COST - Plan CRUD, task updates, mutations
+	 * Database writes that could be abused to create excessive data.
+	 */
+	mutation: {
+		maxRequests: 60,
+		windowMs: 60 * 1000, // 60 requests per minute
+	},
 
-  /**
-   * LOW COST - Status checks, profile reads, preferences
-   * Read-heavy endpoints with minimal server load.
-   */
-  read: {
-    maxRequests: 120,
-    windowMs: 60 * 1000, // 120 requests per minute
-  },
+	/**
+	 * LOW COST - Status checks, profile reads, preferences
+	 * Read-heavy endpoints with minimal server load.
+	 */
+	read: {
+		maxRequests: 120,
+		windowMs: 60 * 1000, // 120 requests per minute
+	},
 
-  /**
-   * SPECIAL - Stripe operations (checkout, portal)
-   * These create real financial transactions.
-   */
-  billing: {
-    maxRequests: 10,
-    windowMs: 60 * 1000, // 10 requests per minute
-  },
+	/**
+	 * SPECIAL - Stripe operations (checkout, portal)
+	 * These create real financial transactions.
+	 */
+	billing: {
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 requests per minute
+	},
 
-  /**
-   * SPECIAL - OAuth flows
-   * Auth endpoints need protection from brute force but allow normal flows.
-   */
-  oauth: {
-    maxRequests: 20,
-    windowMs: 60 * 60 * 1000, // 20 requests per hour
-  },
+	/**
+	 * SPECIAL - OAuth flows
+	 * Auth endpoints need protection from brute force but allow normal flows.
+	 */
+	oauth: {
+		maxRequests: 20,
+		windowMs: 60 * 60 * 1000, // 20 requests per hour
+	},
 } as const;
 
 export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
@@ -108,31 +108,31 @@ export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
  * @returns A rate limiter object with check, remaining, reset, and clear methods
  */
 export function createUserRateLimiter(
-  config: UserRateLimitConfig
+	config: UserRateLimitConfig,
 ): SlidingWindowLimiter {
-  return createSlidingWindowLimiter({
-    maxRequests: config.maxRequests,
-    windowMs: config.windowMs,
-    maxTrackedKeys: config.maxTrackedUsers ?? 50_000,
-    formatErrorMessage: (maxRequests, windowMs) =>
-      `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${formatWindow(windowMs)}.`,
-  });
+	return createSlidingWindowLimiter({
+		maxRequests: config.maxRequests,
+		windowMs: config.windowMs,
+		maxTrackedKeys: config.maxTrackedUsers ?? 50_000,
+		formatErrorMessage: (maxRequests, windowMs) =>
+			`Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${formatWindow(windowMs)}.`,
+	});
 }
 
 /**
  * Formats a window duration in milliseconds to a human-readable string.
  */
 function formatWindow(windowMs: number): string {
-  const seconds = windowMs / 1000;
-  if (seconds < 60) {
-    return seconds === 1 ? '1 second' : `${seconds} seconds`;
-  }
-  const minutes = seconds / 60;
-  if (minutes < 60) {
-    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
-  }
-  const hours = minutes / 60;
-  return hours === 1 ? '1 hour' : `${hours} hours`;
+	const seconds = windowMs / 1000;
+	if (seconds < 60) {
+		return seconds === 1 ? '1 second' : `${seconds} seconds`;
+	}
+	const minutes = seconds / 60;
+	if (minutes < 60) {
+		return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+	}
+	const hours = minutes / 60;
+	return hours === 1 ? '1 hour' : `${hours} hours`;
 }
 
 // Pre-configured rate limiters for each category
@@ -142,13 +142,13 @@ const rateLimiters = new Map<UserRateLimitCategory, SlidingWindowLimiter>();
  * Gets or creates a rate limiter for a specific category.
  */
 function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
-  const existing = rateLimiters.get(category);
-  if (existing) {
-    return existing;
-  }
-  const limiter = createUserRateLimiter(USER_RATE_LIMIT_CONFIGS[category]);
-  rateLimiters.set(category, limiter);
-  return limiter;
+	const existing = rateLimiters.get(category);
+	if (existing) {
+		return existing;
+	}
+	const limiter = createUserRateLimiter(USER_RATE_LIMIT_CONFIGS[category]);
+	rateLimiters.set(category, limiter);
+	return limiter;
 }
 
 /**
@@ -159,11 +159,11 @@ function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
  * @throws RateLimitError if rate limit exceeded
  */
 export function checkUserRateLimit(
-  userId: string,
-  category: UserRateLimitCategory
+	userId: string,
+	category: UserRateLimitCategory,
 ): void {
-  const limiter = getRateLimiter(category);
-  limiter.check(userId);
+	const limiter = getRateLimiter(category);
+	limiter.check(userId);
 }
 
 /**
@@ -174,29 +174,29 @@ export function checkUserRateLimit(
  * @returns Headers object with rate limit information
  */
 export function getUserRateLimitHeaders(
-  userId: string,
-  category: UserRateLimitCategory
+	userId: string,
+	category: UserRateLimitCategory,
 ): Record<string, string> {
-  const limiter = getRateLimiter(category);
-  const config = USER_RATE_LIMIT_CONFIGS[category];
-  const remaining = limiter.getRemainingRequests(userId);
-  const resetTime = limiter.getResetTime(userId);
+	const limiter = getRateLimiter(category);
+	const config = USER_RATE_LIMIT_CONFIGS[category];
+	const remaining = limiter.getRemainingRequests(userId);
+	const resetTime = limiter.getResetTime(userId);
 
-  return {
-    'X-RateLimit-Limit': String(config.maxRequests),
-    'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset': String(resetTime),
-  };
+	return {
+		'X-RateLimit-Limit': String(config.maxRequests),
+		'X-RateLimit-Remaining': String(remaining),
+		'X-RateLimit-Reset': String(resetTime),
+	};
 }
 
 /**
  * Clears all user rate limiters. Useful for testing.
  */
 export function clearAllUserRateLimiters(): void {
-  for (const limiter of rateLimiters.values()) {
-    limiter.clear();
-  }
-  rateLimiters.clear();
+	for (const limiter of rateLimiters.values()) {
+		limiter.clear();
+	}
+	rateLimiters.clear();
 }
 
 /**
@@ -204,7 +204,7 @@ export function clearAllUserRateLimiters(): void {
  * Useful for testing and admin operations.
  */
 export function resetUserRateLimits(userId: string): void {
-  for (const limiter of rateLimiters.values()) {
-    limiter.reset(userId);
-  }
+	for (const limiter of rateLimiters.values()) {
+		limiter.reset(userId);
+	}
 }

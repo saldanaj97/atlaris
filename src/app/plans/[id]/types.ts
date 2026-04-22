@@ -13,21 +13,21 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
  * Each code maps to a specific HTTP status and user-facing behavior.
  */
 export type PlanAccessErrorCode =
-  /** User is not authenticated (401) - redirect to sign-in */
-  | 'UNAUTHORIZED'
-  /** Plan does not exist (404) - show not found message */
-  | 'NOT_FOUND'
-  /** User cannot access this plan (403) - show access denied message */
-  | 'FORBIDDEN'
-  /** Unexpected error during fetch (500) - show generic error */
-  | 'INTERNAL_ERROR';
+	/** User is not authenticated (401) - redirect to sign-in */
+	| 'UNAUTHORIZED'
+	/** Plan does not exist (404) - show not found message */
+	| 'NOT_FOUND'
+	/** User cannot access this plan (403) - show access denied message */
+	| 'FORBIDDEN'
+	/** Unexpected error during fetch (500) - show generic error */
+	| 'INTERNAL_ERROR';
 
 /**
  * Structured error for plan access failures.
  */
 export type PlanAccessError = {
-  code: PlanAccessErrorCode;
-  message: string;
+	code: PlanAccessErrorCode;
+	message: string;
 };
 
 /**
@@ -35,31 +35,31 @@ export type PlanAccessError = {
  * Uses discriminated union for exhaustive error handling.
  */
 export type PlanAccessResult =
-  | { success: true; data: ClientPlanDetail }
-  | { success: false; error: PlanAccessError };
+	| { success: true; data: ClientPlanDetail }
+	| { success: false; error: PlanAccessError };
 
 /**
  * Stats computed for PlanOverviewHeader
  */
 export type PlanOverviewStats = {
-  completedTasks: number;
-  totalTasks: number;
-  completionPercentage: number;
-  totalMinutes: number;
-  estimatedWeeks: number | null;
-  completedModules: number;
-  totalModules: number;
-  estimatedCompletionDate: string | null;
-  tags: string[];
+	completedTasks: number;
+	totalTasks: number;
+	completionPercentage: number;
+	totalMinutes: number;
+	estimatedWeeks: number | null;
+	completedModules: number;
+	totalModules: number;
+	estimatedCompletionDate: string | null;
+	tags: string[];
 };
 
 /**
  * Stats computed for PlanDetailsCard
  */
 export type PlanDetailsCardStats = {
-  completedTasks: number;
-  totalTasks: number;
-  totalMinutes: number;
-  completionPercentage: number;
-  estimatedWeeks: number | null;
+	completedTasks: number;
+	totalTasks: number;
+	totalMinutes: number;
+	completionPercentage: number;
+	estimatedWeeks: number | null;
 };

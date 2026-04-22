@@ -14,12 +14,12 @@ import type { DbClient } from '@/lib/db/types';
  * Accepts a DB handle or transaction for atomic check-and-insert.
  */
 export async function countPlansContributingToCap(
-  dbOrTx: Pick<DbClient, 'select'>,
-  userId: string
+	dbOrTx: Pick<DbClient, 'select'>,
+	userId: string,
 ): Promise<number> {
-  const [result] = await dbOrTx
-    .select({
-      count: sql`
+	const [result] = await dbOrTx
+		.select({
+			count: sql`
         (
           count(*) FILTER (WHERE ${learningPlans.isQuotaEligible} = true)
           +
@@ -29,31 +29,31 @@ export async function countPlansContributingToCap(
           )
         )::int
       `,
-    })
-    .from(learningPlans)
-    .where(eq(learningPlans.userId, userId));
+		})
+		.from(learningPlans)
+		.where(eq(learningPlans.userId, userId));
 
-  const raw = result?.count;
-  if (raw == null) return 0;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : 0;
+	const raw = result?.count;
+	if (raw == null) return 0;
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export async function checkPlanLimit(
-  userId: string,
-  dbClient: DbClient
+	userId: string,
+	dbClient: DbClient,
 ): Promise<boolean> {
-  const tier = await resolveUserTier(userId, dbClient);
-  const tierConfig = TIER_LIMITS[tier];
-  if (!tierConfig) {
-    throw new Error(`Unknown subscription tier: ${tier}`);
-  }
-  const limit = tierConfig.maxActivePlans;
+	const tier = await resolveUserTier(userId, dbClient);
+	const tierConfig = TIER_LIMITS[tier];
+	if (!tierConfig) {
+		throw new Error(`Unknown subscription tier: ${tier}`);
+	}
+	const limit = tierConfig.maxActivePlans;
 
-  if (limit === Infinity) {
-    return true;
-  }
+	if (limit === Infinity) {
+		return true;
+	}
 
-  const currentCount = await countPlansContributingToCap(dbClient, userId);
-  return currentCount < limit;
+	const currentCount = await countPlansContributingToCap(dbClient, userId);
+	return currentCount < limit;
 }

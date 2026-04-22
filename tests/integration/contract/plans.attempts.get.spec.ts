@@ -8,84 +8,84 @@ import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function buildRequest(planId: string) {
-  return new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
-    method: 'GET',
-  });
+	return new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
+		method: 'GET',
+	});
 }
 
 describe('GET /api/v1/plans/:planId/attempts', () => {
-  const authId = buildTestAuthUserId('contract-attempts-owner');
-  const email = buildTestEmail(authId);
+	const authId = buildTestAuthUserId('contract-attempts-owner');
+	const email = buildTestEmail(authId);
 
-  it('returns attempt history for owning user', async () => {
-    setTestUser(authId);
-    const userId = await ensureUser({ authUserId: authId, email });
+	it('returns attempt history for owning user', async () => {
+		setTestUser(authId);
+		const userId = await ensureUser({ authUserId: authId, email });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Attempts Plan',
-        skillLevel: 'beginner',
-        weeklyHours: 3,
-        learningStyle: 'reading',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+		const [plan] = await db
+			.insert(learningPlans)
+			.values({
+				userId,
+				topic: 'Attempts Plan',
+				skillLevel: 'beginner',
+				weeklyHours: 3,
+				learningStyle: 'reading',
+				visibility: 'private',
+				origin: 'ai',
+			})
+			.returning();
 
-    await db.insert(generationAttempts).values([
-      {
-        planId: plan.id,
-        status: 'failure',
-        classification: 'timeout',
-        durationMs: 10_000,
-        modulesCount: 0,
-        tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
-        promptHash: null,
-        metadata: null,
-      },
-      {
-        planId: plan.id,
-        status: 'success',
-        classification: null,
-        durationMs: 4_200,
-        modulesCount: 4,
-        tasksCount: 18,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: true,
-        promptHash: 'hash',
-        metadata: {
-          input: { topic: { truncated: false, original_length: 20 } },
-        },
-      },
-    ]);
+		await db.insert(generationAttempts).values([
+			{
+				planId: plan.id,
+				status: 'failure',
+				classification: 'timeout',
+				durationMs: 10_000,
+				modulesCount: 0,
+				tasksCount: 0,
+				truncatedTopic: false,
+				truncatedNotes: false,
+				normalizedEffort: false,
+				promptHash: null,
+				metadata: null,
+			},
+			{
+				planId: plan.id,
+				status: 'success',
+				classification: null,
+				durationMs: 4_200,
+				modulesCount: 4,
+				tasksCount: 18,
+				truncatedTopic: false,
+				truncatedNotes: false,
+				normalizedEffort: true,
+				promptHash: 'hash',
+				metadata: {
+					input: { topic: { truncated: false, original_length: 20 } },
+				},
+			},
+		]);
 
-    const response = await GET(buildRequest(plan.id));
-    expect(response.status).toBe(200);
+		const response = await GET(buildRequest(plan.id));
+		expect(response.status).toBe(200);
 
-    const attempts = await response.json();
-    expect(Array.isArray(attempts)).toBe(true);
-    expect(attempts).toHaveLength(2);
-    expect(attempts[0]).toHaveProperty('status');
-    expect(attempts[0]).toHaveProperty('durationMs');
-  });
+		const attempts = await response.json();
+		expect(Array.isArray(attempts)).toBe(true);
+		expect(attempts).toHaveLength(2);
+		expect(attempts[0]).toHaveProperty('status');
+		expect(attempts[0]).toHaveProperty('durationMs');
+	});
 
-  it('returns 404 when plan is not owned', async () => {
-    const otherOwnerAuthId = buildTestAuthUserId('contract-attempts-other');
-    setTestUser(otherOwnerAuthId);
-    await ensureUser({
-      authUserId: otherOwnerAuthId,
-      email: buildTestEmail(otherOwnerAuthId),
-    });
+	it('returns 404 when plan is not owned', async () => {
+		const otherOwnerAuthId = buildTestAuthUserId('contract-attempts-other');
+		setTestUser(otherOwnerAuthId);
+		await ensureUser({
+			authUserId: otherOwnerAuthId,
+			email: buildTestEmail(otherOwnerAuthId),
+		});
 
-    const response = await GET(
-      buildRequest('00000000-0000-0000-0000-000000000000')
-    );
-    expect(response.status).toBe(404);
-  });
+		const response = await GET(
+			buildRequest('00000000-0000-0000-0000-000000000000'),
+		);
+		expect(response.status).toBe(404);
+	});
 });

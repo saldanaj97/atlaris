@@ -42,21 +42,21 @@ const html = `<!doctype html>
 </html>`;
 
 export const GET = async (request: Request) => {
-  if (!appEnv.isDevelopment && !appEnv.isTest) {
-    return new Response('Not Found', { status: 404 });
-  }
+	if (!appEnv.isDevelopment && !appEnv.isTest) {
+		return new Response('Not Found', { status: 404 });
+	}
 
-  // IP-based rate limiting for unauthenticated endpoint
-  try {
-    checkIpRateLimit(request, 'docs');
-  } catch (error) {
-    return toErrorResponse(error);
-  }
+	// IP-based rate limiting for unauthenticated endpoint
+	try {
+		checkIpRateLimit(request, 'docs');
+	} catch (error) {
+		return toErrorResponse(error);
+	}
 
-  return new Response(html, {
-    status: 200,
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-    },
-  });
+	return new Response(html, {
+		status: 200,
+		headers: {
+			'content-type': 'text/html; charset=utf-8',
+		},
+	});
 };

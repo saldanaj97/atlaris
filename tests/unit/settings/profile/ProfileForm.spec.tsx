@@ -20,281 +20,281 @@ import { buildProfile } from '../../../fixtures/profile';
 const MOCK_PROFILE = buildProfile();
 
 function mockFetchSuccess(data: unknown = MOCK_PROFILE): void {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => data,
-    })
-  );
+	vi.stubGlobal(
+		'fetch',
+		vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => data,
+		}),
+	);
 }
 
 function mockFetchFailure(
-  status = 500,
-  body: Record<string, unknown> = {
-    error: 'Server error',
-    code: 'INTERNAL_ERROR',
-  }
+	status = 500,
+	body: Record<string, unknown> = {
+		error: 'Server error',
+		code: 'INTERNAL_ERROR',
+	},
 ): void {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: false,
-      status,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: async () => body,
-      text: async () => JSON.stringify(body),
-    })
-  );
+	vi.stubGlobal(
+		'fetch',
+		vi.fn().mockResolvedValue({
+			ok: false,
+			status,
+			headers: new Headers({ 'content-type': 'application/json' }),
+			json: async () => body,
+			text: async () => JSON.stringify(body),
+		}),
+	);
 }
 
 describe('ProfileForm', () => {
-  let user: ReturnType<typeof userEvent.setup>;
+	let user: ReturnType<typeof userEvent.setup>;
 
-  beforeEach(() => {
-    user = userEvent.setup();
-    vi.mocked(toast.error).mockClear();
-    vi.mocked(toast.success).mockClear();
-  });
+	beforeEach(() => {
+		user = userEvent.setup();
+		vi.mocked(toast.error).mockClear();
+		vi.mocked(toast.success).mockClear();
+	});
 
-  afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
-  });
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+	});
 
-  // ── Loading & Display ──────────────────────────────────────────────
+	// ── Loading & Display ──────────────────────────────────────────────
 
-  it('renders skeleton while loading', () => {
-    // Never-resolving fetch to keep loading state
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+	it('renders skeleton while loading', () => {
+		// Never-resolving fetch to keep loading state
+		vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
 
-    render(<ProfileForm />);
-    // Skeleton has no text content; the real form content should be absent
-    expect(screen.queryByText('Personal Information')).toBeNull();
-  });
+		render(<ProfileForm />);
+		// Skeleton has no text content; the real form content should be absent
+		expect(screen.queryByText('Personal Information')).toBeNull();
+	});
 
-  it('displays profile data after successful fetch', async () => {
-    mockFetchSuccess();
+	it('displays profile data after successful fetch', async () => {
+		mockFetchSuccess();
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText('Personal Information')).toBeInTheDocument();
+		});
 
-    // Name is displayed in a click-to-edit button, not an input
-    expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
-    expect(
-      screen.getByText(MOCK_PROFILE.subscriptionStatus)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-        })
-      )
-    ).toBeInTheDocument();
-  });
+		// Name is displayed in a click-to-edit button, not an input
+		expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+		expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
+		expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
+		expect(
+			screen.getByText(MOCK_PROFILE.subscriptionStatus),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText(
+				new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric',
+				}),
+			),
+		).toBeInTheDocument();
+	});
 
-  it('shows error message when profile fetch fails', async () => {
-    mockFetchFailure(500, {
-      error: 'Something broke',
-      code: 'INTERNAL_ERROR',
-    });
+	it('shows error message when profile fetch fails', async () => {
+		mockFetchFailure(500, {
+			error: 'Something broke',
+			code: 'INTERNAL_ERROR',
+		});
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
-    });
+		await waitFor(() => {
+			expect(toast.error).toHaveBeenCalled();
+		});
 
-    expect(screen.getByText(/Something broke/)).toBeInTheDocument();
-  });
+		expect(screen.getByText(/Something broke/)).toBeInTheDocument();
+	});
 
-  // ── Name Editing ───────────────────────────────────────────────────
+	// ── Name Editing ───────────────────────────────────────────────────
 
-  it('does not show save button when name is unchanged', async () => {
-    mockFetchSuccess();
+	it('does not show save button when name is unchanged', async () => {
+		mockFetchSuccess();
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText('Personal Information')).toBeInTheDocument();
+		});
 
-    // Save button only renders when the name has been changed
-    expect(
-      screen.queryByRole('button', { name: /save changes/i })
-    ).not.toBeInTheDocument();
-  });
+		// Save button only renders when the name has been changed
+		expect(
+			screen.queryByRole('button', { name: /save changes/i }),
+		).not.toBeInTheDocument();
+	});
 
-  it('shows save button when name is edited', async () => {
-    mockFetchSuccess();
+	it('shows save button when name is edited', async () => {
+		mockFetchSuccess();
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+		});
 
-    // Click the name button to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+		// Click the name button to enter edit mode
+		await user.click(screen.getByText(MOCK_PROFILE.name));
 
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'Charles Babbage');
+		const nameInput = screen.getByLabelText('Name');
+		await user.clear(nameInput);
+		await user.type(nameInput, 'Charles Babbage');
 
-    const saveButton = screen.getByRole('button', { name: /save changes/i });
-    expect(saveButton).toBeEnabled();
-  });
+		const saveButton = screen.getByRole('button', { name: /save changes/i });
+		expect(saveButton).toBeEnabled();
+	});
 
-  // ── Save Flow ──────────────────────────────────────────────────────
+	// ── Save Flow ──────────────────────────────────────────────────────
 
-  it('saves updated name and shows success toast', async () => {
-    const updatedProfile = { ...MOCK_PROFILE, name: 'Charles Babbage' };
+	it('saves updated name and shows success toast', async () => {
+		const updatedProfile = { ...MOCK_PROFILE, name: 'Charles Babbage' };
 
-    // First call: GET profile, second call: PUT profile
-    const mockFn = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => MOCK_PROFILE,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => updatedProfile,
-      });
+		// First call: GET profile, second call: PUT profile
+		const mockFn = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => MOCK_PROFILE,
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => updatedProfile,
+			});
 
-    vi.stubGlobal('fetch', mockFn);
+		vi.stubGlobal('fetch', mockFn);
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+		});
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+		// Click to enter edit mode
+		await user.click(screen.getByText(MOCK_PROFILE.name));
 
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'Charles Babbage');
+		const nameInput = screen.getByLabelText('Name');
+		await user.clear(nameInput);
+		await user.type(nameInput, 'Charles Babbage');
 
-    const saveButton = screen.getByRole('button', { name: /save changes/i });
-    await user.click(saveButton);
+		const saveButton = screen.getByRole('button', { name: /save changes/i });
+		await user.click(saveButton);
 
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith('Profile updated');
-    });
+		await waitFor(() => {
+			expect(toast.success).toHaveBeenCalledWith('Profile updated');
+		});
 
-    // Verify PUT was called with correct body
-    expect(mockFn).toHaveBeenCalledTimes(2);
-    const putCall = mockFn.mock.calls[1] as [string, RequestInit];
-    expect(putCall[0]).toBe('/api/v1/user/profile');
-    expect(putCall[1].method).toBe('PUT');
-    expect(JSON.parse(putCall[1].body as string)).toEqual({
-      name: 'Charles Babbage',
-    });
+		// Verify PUT was called with correct body
+		expect(mockFn).toHaveBeenCalledTimes(2);
+		const putCall = mockFn.mock.calls[1] as [string, RequestInit];
+		expect(putCall[0]).toBe('/api/v1/user/profile');
+		expect(putCall[1].method).toBe('PUT');
+		expect(JSON.parse(putCall[1].body as string)).toEqual({
+			name: 'Charles Babbage',
+		});
 
-    // Save button should disappear after successful save (name is no longer dirty)
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('button', { name: /save changes/i })
-      ).not.toBeInTheDocument();
-    });
-  });
+		// Save button should disappear after successful save (name is no longer dirty)
+		await waitFor(() => {
+			expect(
+				screen.queryByRole('button', { name: /save changes/i }),
+			).not.toBeInTheDocument();
+		});
+	});
 
-  it('shows error toast when save fails', async () => {
-    // First call: GET succeeds, second call: PUT fails
-    const mockFn = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => MOCK_PROFILE,
-      })
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 400,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({
-          error: 'Name is required',
-          code: 'BAD_REQUEST',
-        }),
-        text: async () =>
-          JSON.stringify({ error: 'Name is required', code: 'BAD_REQUEST' }),
-      });
+	it('shows error toast when save fails', async () => {
+		// First call: GET succeeds, second call: PUT fails
+		const mockFn = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => MOCK_PROFILE,
+			})
+			.mockResolvedValueOnce({
+				ok: false,
+				status: 400,
+				headers: new Headers({ 'content-type': 'application/json' }),
+				json: async () => ({
+					error: 'Name is required',
+					code: 'BAD_REQUEST',
+				}),
+				text: async () =>
+					JSON.stringify({ error: 'Name is required', code: 'BAD_REQUEST' }),
+			});
 
-    vi.stubGlobal('fetch', mockFn);
+		vi.stubGlobal('fetch', mockFn);
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+		});
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+		// Click to enter edit mode
+		await user.click(screen.getByText(MOCK_PROFILE.name));
 
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'X');
+		const nameInput = screen.getByLabelText('Name');
+		await user.clear(nameInput);
+		await user.type(nameInput, 'X');
 
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+		await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
-    });
-  });
+		await waitFor(() => {
+			expect(toast.error).toHaveBeenCalled();
+		});
+	});
 
-  it('handles network error during save', async () => {
-    const mockFn = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => MOCK_PROFILE,
-      })
-      .mockRejectedValueOnce(new Error('Network failure'));
+	it('handles network error during save', async () => {
+		const mockFn = vi
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => MOCK_PROFILE,
+			})
+			.mockRejectedValueOnce(new Error('Network failure'));
 
-    vi.stubGlobal('fetch', mockFn);
+		vi.stubGlobal('fetch', mockFn);
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+		});
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+		// Click to enter edit mode
+		await user.click(screen.getByText(MOCK_PROFILE.name));
 
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'New Name');
+		const nameInput = screen.getByLabelText('Name');
+		await user.clear(nameInput);
+		await user.type(nameInput, 'New Name');
 
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+		await user.click(screen.getByRole('button', { name: /save changes/i }));
 
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Network failure');
-    });
-  });
+		await waitFor(() => {
+			expect(toast.error).toHaveBeenCalledWith('Network failure');
+		});
+	});
 
-  // ── Account Details ────────────────────────────────────────────────
+	// ── Account Details ────────────────────────────────────────────────
 
-  it('renders billing settings link', async () => {
-    mockFetchSuccess();
+	it('renders billing settings link', async () => {
+		mockFetchSuccess();
 
-    render(<ProfileForm />);
+		render(<ProfileForm />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Account Details')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(screen.getByText('Account Details')).toBeInTheDocument();
+		});
 
-    const billingLink = screen.getByRole('link', {
-      name: /billing settings/i,
-    });
-    expect(billingLink).toHaveAttribute('href', '/settings/billing');
-  });
+		const billingLink = screen.getByRole('link', {
+			name: /billing settings/i,
+		});
+		expect(billingLink).toHaveAttribute('href', '/settings/billing');
+	});
 });

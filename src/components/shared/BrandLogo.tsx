@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
 interface BrandLogoProps {
-  /** Size variant for responsive display */
-  size?: 'sm' | 'md';
-  /** Optional click handler (e.g., to close mobile menu) */
-  onClick?: () => void;
+	/** Size variant for responsive display */
+	size?: 'sm' | 'md';
+	/** Optional click handler (e.g., to close mobile menu) */
+	onClick?: () => void;
 }
 
 /**
@@ -12,22 +12,22 @@ interface BrandLogoProps {
  * Typography-only branding for consistent display.
  */
 export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
-  const isSmall = size === 'sm';
+	const isSmall = size === 'sm';
 
-  return (
-    <Link
-      href="/"
-      onClick={onClick}
-      className="flex items-center"
-      aria-label="Atlaris - Go to homepage"
-    >
-      <span
-        className={`gradient-text font-semibold ${
-          isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'
-        }`}
-      >
-        Atlaris
-      </span>
-    </Link>
-  );
+	return (
+		<Link
+			href="/"
+			onClick={onClick}
+			className="flex items-center"
+			aria-label="Atlaris - Go to homepage"
+		>
+			<span
+				className={`gradient-text font-semibold ${
+					isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'
+				}`}
+			>
+				Atlaris
+			</span>
+		</Link>
+	);
 }

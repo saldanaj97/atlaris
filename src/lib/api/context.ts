@@ -4,36 +4,36 @@ import { randomUUID } from 'node:crypto';
 import type { DbClient } from '@/lib/db/types';
 
 type RequestContext = {
-  correlationId: string;
-  userId?: string;
-  user?: {
-    id: string;
-    authUserId: string;
-  };
-  db?: DbClient;
-  cleanup?: () => Promise<void>;
+	correlationId: string;
+	userId?: string;
+	user?: {
+		id: string;
+		authUserId: string;
+	};
+	db?: DbClient;
+	cleanup?: () => Promise<void>;
 };
 
 const storage = new AsyncLocalStorage<RequestContext>();
 
 export function withRequestContext<T>(
-  context: RequestContext,
-  run: () => T
+	context: RequestContext,
+	run: () => T,
 ): T {
-  return storage.run(context, run);
+	return storage.run(context, run);
 }
 
 export function getRequestContext(): RequestContext | undefined {
-  return storage.getStore();
+	return storage.getStore();
 }
 
 export function getCorrelationId(): string | undefined {
-  return storage.getStore()?.correlationId;
+	return storage.getStore()?.correlationId;
 }
 
 type HeaderSource =
-  | { headers?: Headers }
-  | { get?: (key: string) => string | null };
+	| { headers?: Headers }
+	| { get?: (key: string) => string | null };
 
 /**
  * Reads a single header value from a Request-like or Headers-like source.
@@ -50,18 +50,18 @@ type HeaderSource =
  * @returns The header value as a string, or `undefined` if missing/falsy.
  */
 function readHeader(
-  source: HeaderSource | undefined,
-  key: string
+	source: HeaderSource | undefined,
+	key: string,
 ): string | undefined {
-  if (!source) return undefined;
-  if ('headers' in source && source.headers) {
-    return source.headers.get(key) ?? undefined;
-  }
-  if ('get' in source && typeof source.get === 'function') {
-    const value = source.get(key);
-    return value ?? undefined;
-  }
-  return undefined;
+	if (!source) return undefined;
+	if ('headers' in source && source.headers) {
+		return source.headers.get(key) ?? undefined;
+	}
+	if ('get' in source && typeof source.get === 'function') {
+		const value = source.get(key);
+		return value ?? undefined;
+	}
+	return undefined;
 }
 
 /**
@@ -69,30 +69,30 @@ function readHeader(
  * new UUID. The default header is `x-correlation-id`; callers can override.
  */
 export function ensureCorrelationId(
-  source?: HeaderSource,
-  headerName = 'x-correlation-id'
+	source?: HeaderSource,
+	headerName = 'x-correlation-id',
 ): string {
-  const existing = readHeader(source, headerName);
-  return existing && existing.length > 0 ? existing : randomUUID();
+	const existing = readHeader(source, headerName);
+	return existing && existing.length > 0 ? existing : randomUUID();
 }
 
 type CreateContextOptions = {
-  userId?: string;
-  user?: RequestContext['user'];
-  db?: DbClient;
-  cleanup?: () => Promise<void>;
+	userId?: string;
+	user?: RequestContext['user'];
+	db?: DbClient;
+	cleanup?: () => Promise<void>;
 };
 
 export function createRequestContext(
-  req: Request | undefined,
-  options?: CreateContextOptions
+	req: Request | undefined,
+	options?: CreateContextOptions,
 ): RequestContext {
-  const correlationId = ensureCorrelationId(req?.headers);
-  return {
-    correlationId,
-    userId: options?.userId,
-    user: options?.user,
-    db: options?.db,
-    cleanup: options?.cleanup,
-  };
+	const correlationId = ensureCorrelationId(req?.headers);
+	return {
+		correlationId,
+		userId: options?.userId,
+		user: options?.user,
+		db: options?.db,
+		cleanup: options?.cleanup,
+	};
 }

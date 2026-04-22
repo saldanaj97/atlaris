@@ -1,8 +1,8 @@
 import type {
-  ModuleNavCompletionRaw,
-  ModuleNavItem,
-  ModuleResourceRow,
-  TaskResourceWithResource,
+	ModuleNavCompletionRaw,
+	ModuleNavItem,
+	ModuleResourceRow,
+	TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
 
 /**
@@ -12,30 +12,30 @@ import type {
  * - all tasks are completed.
  */
 export function computeModuleNavItemsFromCounts(
-  allModulesRaw: ModuleNavCompletionRaw[]
+	allModulesRaw: ModuleNavCompletionRaw[],
 ): ModuleNavItem[] {
-  const navItems: ModuleNavItem[] = [];
-  let hasIncompleteTaskInPreviousModules = false;
+	const navItems: ModuleNavItem[] = [];
+	let hasIncompleteTaskInPreviousModules = false;
 
-  for (const moduleRow of allModulesRaw) {
-    navItems.push({
-      id: moduleRow.id,
-      order: moduleRow.order,
-      title: moduleRow.title,
-      isLocked: hasIncompleteTaskInPreviousModules,
-    });
+	for (const moduleRow of allModulesRaw) {
+		navItems.push({
+			id: moduleRow.id,
+			order: moduleRow.order,
+			title: moduleRow.title,
+			isLocked: hasIncompleteTaskInPreviousModules,
+		});
 
-    if (!hasIncompleteTaskInPreviousModules) {
-      const isModuleComplete =
-        moduleRow.totalTaskCount === 0 ||
-        moduleRow.completedTaskCount >= moduleRow.totalTaskCount;
-      if (!isModuleComplete) {
-        hasIncompleteTaskInPreviousModules = true;
-      }
-    }
-  }
+		if (!hasIncompleteTaskInPreviousModules) {
+			const isModuleComplete =
+				moduleRow.totalTaskCount === 0 ||
+				moduleRow.completedTaskCount >= moduleRow.totalTaskCount;
+			if (!isModuleComplete) {
+				hasIncompleteTaskInPreviousModules = true;
+			}
+		}
+	}
 
-  return navItems;
+	return navItems;
 }
 
 /**
@@ -45,21 +45,21 @@ export function computeModuleNavItemsFromCounts(
  * @returns Map of taskId to resource array
  */
 export function buildResourcesByTask(
-  resourceRows: ModuleResourceRow[]
+	resourceRows: ModuleResourceRow[],
 ): Map<string, TaskResourceWithResource[]> {
-  const resourcesByTask = new Map<string, TaskResourceWithResource[]>();
-  for (const row of resourceRows) {
-    const existing = resourcesByTask.get(row.taskId) ?? [];
-    existing.push({
-      id: row.id,
-      taskId: row.taskId,
-      resourceId: row.resourceId,
-      order: row.order,
-      notes: row.notes,
-      createdAt: row.createdAt,
-      resource: row.resource,
-    });
-    resourcesByTask.set(row.taskId, existing);
-  }
-  return resourcesByTask;
+	const resourcesByTask = new Map<string, TaskResourceWithResource[]>();
+	for (const row of resourceRows) {
+		const existing = resourcesByTask.get(row.taskId) ?? [];
+		existing.push({
+			id: row.id,
+			taskId: row.taskId,
+			resourceId: row.resourceId,
+			order: row.order,
+			notes: row.notes,
+			createdAt: row.createdAt,
+			resource: row.resource,
+		});
+		resourcesByTask.set(row.taskId, existing);
+	}
+	return resourcesByTask;
 }

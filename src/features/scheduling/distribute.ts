@@ -1,10 +1,10 @@
 import { addDaysToDate, getWeekBoundaries } from '@/features/scheduling/dates';
 import type {
-  Day,
-  ScheduleInputs,
-  ScheduleJson,
-  SessionAssignment,
-  Week,
+	Day,
+	ScheduleInputs,
+	ScheduleJson,
+	SessionAssignment,
+	Week,
 } from '@/shared/types/scheduling.types';
 
 const DEFAULT_SESSIONS_PER_WEEK = 3;
@@ -20,120 +20,120 @@ const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)
  * @throws Error if any task has a negative `estimatedMinutes`.
  */
 export function distributeTasksToSessions(
-  inputs: ScheduleInputs
+	inputs: ScheduleInputs,
 ): ScheduleJson {
-  if (inputs.weeklyHours <= 0) {
-    throw new Error('weeklyHours must be greater than 0');
-  }
+	if (inputs.weeklyHours <= 0) {
+		throw new Error('weeklyHours must be greater than 0');
+	}
 
-  if (!Array.isArray(inputs.tasks)) {
-    throw new Error('tasks must be an array');
-  }
+	if (!Array.isArray(inputs.tasks)) {
+		throw new Error('tasks must be an array');
+	}
 
-  for (const task of inputs.tasks) {
-    if (task.estimatedMinutes < 0) {
-      throw new Error(
-        `Task "${task.id}" has invalid estimatedMinutes: must be non-negative`
-      );
-    }
-  }
+	for (const task of inputs.tasks) {
+		if (task.estimatedMinutes < 0) {
+			throw new Error(
+				`Task "${task.id}" has invalid estimatedMinutes: must be non-negative`,
+			);
+		}
+	}
 
-  const totalMinutes = inputs.tasks.reduce(
-    (sum, t) => sum + t.estimatedMinutes,
-    0
-  );
+	const totalMinutes = inputs.tasks.reduce(
+		(sum, t) => sum + t.estimatedMinutes,
+		0,
+	);
 
-  if (totalMinutes === 0) {
-    return {
-      weeks: [],
-      totalWeeks: 0,
-      totalSessions: 0,
-    };
-  }
+	if (totalMinutes === 0) {
+		return {
+			weeks: [],
+			totalWeeks: 0,
+			totalSessions: 0,
+		};
+	}
 
-  const minutesPerWeek = inputs.weeklyHours * 60;
-  const totalWeeks = Math.ceil(totalMinutes / minutesPerWeek);
+	const minutesPerWeek = inputs.weeklyHours * 60;
+	const totalWeeks = Math.ceil(totalMinutes / minutesPerWeek);
 
-  // Sort by order for deterministic distribution; drop zero-minute tasks (no session capacity used).
-  const sortedTasks = inputs.tasks
-    .filter((t) => t.estimatedMinutes > 0)
-    .toSorted((a, b) => a.order - b.order);
+	// Sort by order for deterministic distribution; drop zero-minute tasks (no session capacity used).
+	const sortedTasks = inputs.tasks
+		.filter((t) => t.estimatedMinutes > 0)
+		.toSorted((a, b) => a.order - b.order);
 
-  const weeks: Week[] = [];
-  let taskIndex = 0;
-  let remainingTaskMinutes = sortedTasks[0]?.estimatedMinutes || 0;
-  const sessionMinutes = minutesPerWeek / DEFAULT_SESSIONS_PER_WEEK;
+	const weeks: Week[] = [];
+	let taskIndex = 0;
+	let remainingTaskMinutes = sortedTasks[0]?.estimatedMinutes || 0;
+	const sessionMinutes = minutesPerWeek / DEFAULT_SESSIONS_PER_WEEK;
 
-  for (let weekNum = 1; weekNum <= totalWeeks; weekNum++) {
-    const { startDate, endDate } = getWeekBoundaries(inputs.startDate, weekNum);
-    const days: Day[] = [];
+	for (let weekNum = 1; weekNum <= totalWeeks; weekNum++) {
+		const { startDate, endDate } = getWeekBoundaries(inputs.startDate, weekNum);
+		const days: Day[] = [];
 
-    for (
-      let sessionIdx = 0;
-      sessionIdx < DEFAULT_SESSIONS_PER_WEEK;
-      sessionIdx++
-    ) {
-      const dayOffset = SESSION_DAYS_OFFSET[sessionIdx];
-      const date = addDaysToDate(startDate, dayOffset);
-      const sessions: SessionAssignment[] = [];
-      let allocatedMinutes = 0;
+		for (
+			let sessionIdx = 0;
+			sessionIdx < DEFAULT_SESSIONS_PER_WEEK;
+			sessionIdx++
+		) {
+			const dayOffset = SESSION_DAYS_OFFSET[sessionIdx];
+			const date = addDaysToDate(startDate, dayOffset);
+			const sessions: SessionAssignment[] = [];
+			let allocatedMinutes = 0;
 
-      while (
-        allocatedMinutes < sessionMinutes &&
-        taskIndex < sortedTasks.length
-      ) {
-        const currentTask = sortedTasks[taskIndex];
-        const remainingSessionCapacity = sessionMinutes - allocatedMinutes;
-        const minutesToAllocate = Math.min(
-          remainingTaskMinutes,
-          remainingSessionCapacity
-        );
+			while (
+				allocatedMinutes < sessionMinutes &&
+				taskIndex < sortedTasks.length
+			) {
+				const currentTask = sortedTasks[taskIndex];
+				const remainingSessionCapacity = sessionMinutes - allocatedMinutes;
+				const minutesToAllocate = Math.min(
+					remainingTaskMinutes,
+					remainingSessionCapacity,
+				);
 
-        if (minutesToAllocate > 0) {
-          sessions.push({
-            taskId: currentTask.id,
-            taskTitle: currentTask.title,
-            estimatedMinutes: minutesToAllocate,
-            moduleId: currentTask.moduleId,
-            moduleName:
-              // Prefer provided module title if available; fallback to id-based label
-              currentTask.moduleTitle || `Module ${currentTask.moduleId}`,
-          });
+				if (minutesToAllocate > 0) {
+					sessions.push({
+						taskId: currentTask.id,
+						taskTitle: currentTask.title,
+						estimatedMinutes: minutesToAllocate,
+						moduleId: currentTask.moduleId,
+						moduleName:
+							// Prefer provided module title if available; fallback to id-based label
+							currentTask.moduleTitle || `Module ${currentTask.moduleId}`,
+					});
 
-          allocatedMinutes += minutesToAllocate;
-          remainingTaskMinutes -= minutesToAllocate;
+					allocatedMinutes += minutesToAllocate;
+					remainingTaskMinutes -= minutesToAllocate;
 
-          // Move to next task if current is exhausted
-          if (remainingTaskMinutes === 0) {
-            taskIndex++;
-            if (taskIndex < sortedTasks.length) {
-              remainingTaskMinutes = sortedTasks[taskIndex].estimatedMinutes;
-            }
-          }
-        } else {
-          break;
-        }
-      }
+					// Move to next task if current is exhausted
+					if (remainingTaskMinutes === 0) {
+						taskIndex++;
+						if (taskIndex < sortedTasks.length) {
+							remainingTaskMinutes = sortedTasks[taskIndex].estimatedMinutes;
+						}
+					}
+				} else {
+					break;
+				}
+			}
 
-      // Always create day entry, even if no sessions (for consistent structure)
-      days.push({
-        dayNumber: sessionIdx + 1,
-        date,
-        sessions,
-      });
-    }
+			// Always create day entry, even if no sessions (for consistent structure)
+			days.push({
+				dayNumber: sessionIdx + 1,
+				date,
+				sessions,
+			});
+		}
 
-    weeks.push({
-      weekNumber: weekNum,
-      startDate,
-      endDate,
-      days,
-    });
-  }
+		weeks.push({
+			weekNumber: weekNum,
+			startDate,
+			endDate,
+			days,
+		});
+	}
 
-  return {
-    weeks,
-    totalWeeks,
-    totalSessions: weeks.reduce((sum, w) => sum + w.days.length, 0),
-  };
+	return {
+		weeks,
+		totalWeeks,
+		totalSessions: weeks.reduce((sum, w) => sum + w.days.length, 0),
+	};
 }

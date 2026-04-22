@@ -24,14 +24,14 @@ import type { JobQueuePort } from './ports';
 import { PlanLifecycleService } from './service';
 
 export function createPlanLifecycleService(params: {
-  dbClient: DbClient;
-  jobQueue: JobQueuePort;
+	dbClient: DbClient;
+	jobQueue: JobQueuePort;
 }): PlanLifecycleService {
-  return new PlanLifecycleService({
-    planPersistence: new PlanPersistenceAdapter(params.dbClient),
-    quota: new QuotaAdapter(params.dbClient),
-    generation: new GenerationAdapter(params.dbClient),
-    usageRecording: new UsageRecordingAdapter(params.dbClient),
-    jobQueue: params.jobQueue,
-  });
+	return new PlanLifecycleService({
+		planPersistence: new PlanPersistenceAdapter(params.dbClient),
+		quota: new QuotaAdapter(params.dbClient),
+		generation: new GenerationAdapter(params.dbClient),
+		usageRecording: new UsageRecordingAdapter(params.dbClient),
+		jobQueue: params.jobQueue,
+	});
 }

@@ -1,12 +1,12 @@
 import type { PlanStatus } from '@/shared/types/client.types';
 
 interface PlanStatusResponseData {
-  planId: string;
-  status: PlanStatus;
-  attempts: number;
-  latestError: string | null;
-  createdAt?: string;
-  updatedAt?: string;
+	planId: string;
+	status: PlanStatus;
+	attempts: number;
+	latestError: string | null;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 /**
@@ -14,15 +14,15 @@ interface PlanStatusResponseData {
  * Defaults to a minimal pending response for plan-123.
  */
 export function createPlanStatusResponse(
-  overrides?: Partial<PlanStatusResponseData>
+	overrides?: Partial<PlanStatusResponseData>,
 ): PlanStatusResponseData {
-  return {
-    planId: 'plan-123',
-    status: 'pending',
-    attempts: 1,
-    latestError: null,
-    ...overrides,
-  };
+	return {
+		planId: 'plan-123',
+		status: 'pending',
+		attempts: 1,
+		latestError: null,
+		...overrides,
+	};
 }
 
 /**
@@ -30,11 +30,11 @@ export function createPlanStatusResponse(
  * (i.e. { ok: true, json: async () => data }).
  */
 export function createMockFetchResponse(data: PlanStatusResponseData): {
-  ok: true;
-  json: () => Promise<PlanStatusResponseData>;
+	ok: true;
+	json: () => Promise<PlanStatusResponseData>;
 } {
-  return {
-    ok: true,
-    json: async () => data,
-  };
+	return {
+		ok: true,
+		json: async () => data,
+	};
 }

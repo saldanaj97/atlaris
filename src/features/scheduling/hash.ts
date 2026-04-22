@@ -11,27 +11,27 @@ import type { ScheduleInputs } from '@/shared/types/scheduling.types';
  * @returns The SHA-256 hex digest of the canonicalized inputs
  */
 export function computeInputsHash(inputs: ScheduleInputs): string {
-  // Create canonical representation of inputs
-  const canonical = {
-    planId: inputs.planId,
-    // Sort tasks by declared order (then id) for deterministic hashing
-    tasks: inputs.tasks
-      .toSorted((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-      .map((t) => ({
-        id: t.id,
-        title: t.title,
-        estimatedMinutes: t.estimatedMinutes,
-        order: t.order,
-        moduleId: t.moduleId,
-        moduleTitle: t.moduleTitle ?? null,
-      })),
-    startDate: inputs.startDate,
-    deadline: inputs.deadline,
-    weeklyHours: inputs.weeklyHours,
-    timezone: inputs.timezone,
-  };
+	// Create canonical representation of inputs
+	const canonical = {
+		planId: inputs.planId,
+		// Sort tasks by declared order (then id) for deterministic hashing
+		tasks: inputs.tasks
+			.toSorted((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+			.map((t) => ({
+				id: t.id,
+				title: t.title,
+				estimatedMinutes: t.estimatedMinutes,
+				order: t.order,
+				moduleId: t.moduleId,
+				moduleTitle: t.moduleTitle ?? null,
+			})),
+		startDate: inputs.startDate,
+		deadline: inputs.deadline,
+		weeklyHours: inputs.weeklyHours,
+		timezone: inputs.timezone,
+	};
 
-  // Compute SHA-256 hash of JSON representation
-  const jsonString = JSON.stringify(canonical);
-  return hashSha256(jsonString);
+	// Compute SHA-256 hash of JSON representation
+	const jsonString = JSON.stringify(canonical);
+	return hashSha256(jsonString);
 }

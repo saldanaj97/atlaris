@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface PlanDetailPageErrorProps {
-  message?: string;
+	message?: string;
 }
 
 /**
@@ -17,22 +17,22 @@ interface PlanDetailPageErrorProps {
  * @returns The React element representing the error card UI
  */
 export function PlanDetailPageError({
-  message,
+	message,
 }: PlanDetailPageErrorProps): JSX.Element {
-  return (
-    <div className="mx-auto max-w-2xl py-10">
-      <Card>
-        <CardContent className="space-y-5 p-6" role="alert">
-          <h1>Error Loading Plan</h1>
-          <p className="text-muted-foreground">
-            {message ??
-              'There was an error loading the learning plan. Please try again later.'}
-          </p>
-          <Button asChild>
-            <Link href="/plans">Back to Plans</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+	return (
+		<div className="mx-auto max-w-2xl py-10">
+			<Card>
+				<CardContent className="space-y-5 p-6" role="alert">
+					<h1>Error Loading Plan</h1>
+					<p className="text-muted-foreground">
+						{message ??
+							'There was an error loading the learning plan. Please try again later.'}
+					</p>
+					<Button asChild>
+						<Link href="/plans">Back to Plans</Link>
+					</Button>
+				</CardContent>
+			</Card>
+		</div>
+	);
 }

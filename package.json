@@ -10,6 +10,7 @@
     "check:full": "concurrently --kill-others-on-fail --names lint,type --prefix-colors blue,magenta \"pnpm check:lint\" \"pnpm check:type\"",
     "check:format": "biome format --write",
     "check:lint": "biome check --max-diagnostics=1000",
+    "check:lint:ci": "biome ci --max-diagnostics=1000",
     "check:lint:changed": "./scripts/biome-changed.sh check",
     "check:lint:fix": "biome check --write --max-diagnostics=1000",
     "check:knip": "knip --no-progress",
@@ -93,6 +94,7 @@
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "knip": "^6.4.1",
+    "lint-staged": "16.4.0",
     "madge": "^8.0.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
@@ -109,5 +111,8 @@
       "serialize-javascript": "^7.0.3",
       "better-auth": "~1.4.9"
     }
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,cjs,mjs,json,jsonc}": "biome check --write --max-diagnostics=1000 --no-errors-on-unmatched"
   }
 }

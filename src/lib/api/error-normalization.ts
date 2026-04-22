@@ -6,53 +6,53 @@
 import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
 
 type AttemptErrorLike = {
-  message?: string;
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
+	message?: string;
+	status?: number;
+	statusCode?: number;
+	httpStatus?: number;
 };
 
 type AttemptErrorResult = {
-  message: string;
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
+	message: string;
+	status?: number;
+	statusCode?: number;
+	httpStatus?: number;
 };
 
 function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
-  if (obj === null || typeof obj !== 'object') {
-    return false;
-  }
-  const o = obj as AttemptErrorLike;
-  if (o.message !== undefined && typeof o.message !== 'string') {
-    return false;
-  }
-  if (o.status !== undefined && typeof o.status !== 'number') {
-    return false;
-  }
-  if (o.statusCode !== undefined && typeof o.statusCode !== 'number') {
-    return false;
-  }
-  if (o.httpStatus !== undefined && typeof o.httpStatus !== 'number') {
-    return false;
-  }
-  return true;
+	if (obj === null || typeof obj !== 'object') {
+		return false;
+	}
+	const o = obj as AttemptErrorLike;
+	if (o.message !== undefined && typeof o.message !== 'string') {
+		return false;
+	}
+	if (o.status !== undefined && typeof o.status !== 'number') {
+		return false;
+	}
+	if (o.statusCode !== undefined && typeof o.statusCode !== 'number') {
+		return false;
+	}
+	if (o.httpStatus !== undefined && typeof o.httpStatus !== 'number') {
+		return false;
+	}
+	return true;
 }
 
 function extractStatusFields(
-  obj: AttemptErrorLike
+	obj: AttemptErrorLike,
 ): Partial<AttemptErrorResult> {
-  const fields: Partial<AttemptErrorResult> = {};
-  if (typeof obj.status === 'number') {
-    fields.status = obj.status;
-  }
-  if (typeof obj.statusCode === 'number') {
-    fields.statusCode = obj.statusCode;
-  }
-  if (typeof obj.httpStatus === 'number') {
-    fields.httpStatus = obj.httpStatus;
-  }
-  return fields;
+	const fields: Partial<AttemptErrorResult> = {};
+	if (typeof obj.status === 'number') {
+		fields.status = obj.status;
+	}
+	if (typeof obj.statusCode === 'number') {
+		fields.statusCode = obj.statusCode;
+	}
+	if (typeof obj.httpStatus === 'number') {
+		fields.httpStatus = obj.httpStatus;
+	}
+	return fields;
 }
 
 /**
@@ -60,29 +60,29 @@ function extractStatusFields(
  * Safe for persistence and client-facing error payloads.
  */
 export function toAttemptError(error: unknown): AttemptErrorResult {
-  if (typeof error === 'string') {
-    return { message: error };
-  }
+	if (typeof error === 'string') {
+		return { message: error };
+	}
 
-  if (error instanceof Error) {
-    const isAttempt = isAttemptErrorLike(error);
-    const result: AttemptErrorResult = { message: error.message };
-    if (isAttempt) {
-      const errWithStatus = error as Error & AttemptErrorLike;
-      Object.assign(result, extractStatusFields(errWithStatus));
-    }
-    return result;
-  }
+	if (error instanceof Error) {
+		const isAttempt = isAttemptErrorLike(error);
+		const result: AttemptErrorResult = { message: error.message };
+		if (isAttempt) {
+			const errWithStatus = error as Error & AttemptErrorLike;
+			Object.assign(result, extractStatusFields(errWithStatus));
+		}
+		return result;
+	}
 
-  if (isAttemptErrorLike(error)) {
-    const message =
-      typeof error.message === 'string'
-        ? error.message
-        : 'Unknown retry generation error';
-    const result: AttemptErrorResult = { message };
-    Object.assign(result, extractStatusFields(error));
-    return result;
-  }
+	if (isAttemptErrorLike(error)) {
+		const message =
+			typeof error.message === 'string'
+				? error.message
+				: 'Unknown retry generation error';
+		const result: AttemptErrorResult = { message };
+		Object.assign(result, extractStatusFields(error));
+		return result;
+	}
 
-  return { message: coerceUnknownToMessage(error) };
+	return { message: coerceUnknownToMessage(error) };
 }

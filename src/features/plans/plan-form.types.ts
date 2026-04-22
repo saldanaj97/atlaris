@@ -1,7 +1,7 @@
 export type PlanFormData = {
-  topic: string;
-  skillLevel: string;
-  weeklyHours: string;
-  learningStyle: string;
-  deadlineWeeks: string;
+	topic: string;
+	skillLevel: string;
+	weeklyHours: string;
+	learningStyle: string;
+	deadlineWeeks: string;
 };

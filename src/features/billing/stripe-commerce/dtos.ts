@@ -5,13 +5,13 @@ import type Stripe from 'stripe';
  * Keeps Stripe SDK shapes off the gateway seam.
  */
 export type CommerceSubscriptionSnapshot = {
-  subscriptionId: string;
-  customerId: string;
-  status: Stripe.Subscription.Status;
-  currentPeriodEnd: Date | null;
-  cancelAtPeriodEnd: boolean;
-  /** First recurring price id on the subscription, if present. */
-  primaryPriceId: string | null;
+	subscriptionId: string;
+	customerId: string;
+	status: Stripe.Subscription.Status;
+	currentPeriodEnd: Date | null;
+	cancelAtPeriodEnd: boolean;
+	/** First recurring price id on the subscription, if present. */
+	primaryPriceId: string | null;
 };
 
 /**
@@ -19,5 +19,5 @@ export type CommerceSubscriptionSnapshot = {
  * the gateway return type explicit.
  */
 export type CommerceWebhookEvent = {
-  stripeEvent: Stripe.Event;
+	stripeEvent: Stripe.Event;
 };

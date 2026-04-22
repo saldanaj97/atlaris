@@ -4,9 +4,9 @@
  * without dragging in a dependency on each other.
  */
 export type FailureClassification =
-  | 'validation'
-  | 'conflict'
-  | 'provider_error'
-  | 'rate_limit'
-  | 'timeout'
-  | 'capped';
+	| 'validation'
+	| 'conflict'
+	| 'provider_error'
+	| 'rate_limit'
+	| 'timeout'
+	| 'capped';

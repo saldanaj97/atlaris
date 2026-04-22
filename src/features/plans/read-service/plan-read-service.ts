@@ -1,153 +1,153 @@
 import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-aggregate';
 import {
-  toClientGenerationAttempts,
-  toClientPlanDetail,
+	toClientGenerationAttempts,
+	toClientPlanDetail,
 } from '@/features/plans/read-models/detail-dto';
 import {
-  buildPlanDetailStatusSnapshot,
-  type PlanDetailStatusSnapshot,
+	buildPlanDetailStatusSnapshot,
+	type PlanDetailStatusSnapshot,
 } from '@/features/plans/read-models/detail-status';
 import {
-  buildLightweightPlanSummaries,
-  buildPlanSummaries,
+	buildLightweightPlanSummaries,
+	buildPlanSummaries,
 } from '@/features/plans/read-models/summary';
 import {
-  getLearningPlanDetailRows,
-  getLightweightPlanSummaryRowsForUser,
-  getPlanAttemptsForUser,
-  getPlanStatusRowsForUser,
-  getPlanSummaryCount,
-  getPlanSummaryRowsForUser,
+	getLearningPlanDetailRows,
+	getLightweightPlanSummaryRowsForUser,
+	getPlanAttemptsForUser,
+	getPlanStatusRowsForUser,
+	getPlanSummaryCount,
+	getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
-  ClientGenerationAttempt,
-  ClientPlanDetail,
+	ClientGenerationAttempt,
+	ClientPlanDetail,
 } from '@/shared/types/client.types';
 import type {
-  LightweightPlanSummary,
-  PlanSummary,
+	LightweightPlanSummary,
+	PlanSummary,
 } from '@/shared/types/db.types';
 
 export type PlanDbClient = DbClient;
 
 async function listPlanSummaries(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+	userId: string;
+	dbClient?: PlanDbClient;
+	options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
-  const rows = await getPlanSummaryRowsForUser(
-    params.userId,
-    params.dbClient,
-    params.options
-  );
+	const rows = await getPlanSummaryRowsForUser(
+		params.userId,
+		params.dbClient,
+		params.options,
+	);
 
-  return buildPlanSummaries(rows);
+	return buildPlanSummaries(rows);
 }
 
 export async function listDashboardPlanSummaries(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+	userId: string;
+	dbClient?: PlanDbClient;
+	options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
-  return listPlanSummaries(params);
+	return listPlanSummaries(params);
 }
 
 export async function listPlansPageSummaries(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+	userId: string;
+	dbClient?: PlanDbClient;
+	options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
-  return listPlanSummaries(params);
+	return listPlanSummaries(params);
 }
 
 export async function listLightweightPlansForApi(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+	userId: string;
+	dbClient?: PlanDbClient;
+	options?: PaginationOptions;
 }): Promise<LightweightPlanSummary[]> {
-  const rows = await getLightweightPlanSummaryRowsForUser(
-    params.userId,
-    params.dbClient,
-    params.options
-  );
+	const rows = await getLightweightPlanSummaryRowsForUser(
+		params.userId,
+		params.dbClient,
+		params.options,
+	);
 
-  return buildLightweightPlanSummaries(rows);
+	return buildLightweightPlanSummaries(rows);
 }
 
 export async function getPlanListTotalCount(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
+	userId: string;
+	dbClient?: PlanDbClient;
 }): Promise<number> {
-  return getPlanSummaryCount(params.userId, params.dbClient);
+	return getPlanSummaryCount(params.userId, params.dbClient);
 }
 
 export async function getPlanDetailForRead(params: {
-  planId: string;
-  userId: string;
-  dbClient?: PlanDbClient;
+	planId: string;
+	userId: string;
+	dbClient?: PlanDbClient;
 }): Promise<ClientPlanDetail | null> {
-  const rows = await getLearningPlanDetailRows(
-    params.planId,
-    params.userId,
-    params.dbClient
-  );
+	const rows = await getLearningPlanDetailRows(
+		params.planId,
+		params.userId,
+		params.dbClient,
+	);
 
-  if (!rows) {
-    return null;
-  }
+	if (!rows) {
+		return null;
+	}
 
-  const detail = buildLearningPlanDetail(rows);
-  const clientDetail = toClientPlanDetail(detail);
-  if (clientDetail === undefined) {
-    logger.error(
-      {
-        planId: detail.plan.id,
-        attemptsCount: detail.attemptsCount,
-        latestAttemptId: detail.latestAttempt?.id,
-      },
-      'Failed to map learning plan detail to client detail'
-    );
-    return null;
-  }
+	const detail = buildLearningPlanDetail(rows);
+	const clientDetail = toClientPlanDetail(detail);
+	if (clientDetail === undefined) {
+		logger.error(
+			{
+				planId: detail.plan.id,
+				attemptsCount: detail.attemptsCount,
+				latestAttemptId: detail.latestAttempt?.id,
+			},
+			'Failed to map learning plan detail to client detail',
+		);
+		return null;
+	}
 
-  return clientDetail;
+	return clientDetail;
 }
 
 export async function getPlanGenerationStatusSnapshot(params: {
-  planId: string;
-  userId: string;
-  dbClient?: PlanDbClient;
+	planId: string;
+	userId: string;
+	dbClient?: PlanDbClient;
 }): Promise<PlanDetailStatusSnapshot | null> {
-  const rows = await getPlanStatusRowsForUser(
-    params.planId,
-    params.userId,
-    params.dbClient
-  );
+	const rows = await getPlanStatusRowsForUser(
+		params.planId,
+		params.userId,
+		params.dbClient,
+	);
 
-  if (!rows) {
-    return null;
-  }
+	if (!rows) {
+		return null;
+	}
 
-  return buildPlanDetailStatusSnapshot(rows);
+	return buildPlanDetailStatusSnapshot(rows);
 }
 
 export async function getPlanGenerationAttemptsForRead(params: {
-  planId: string;
-  userId: string;
-  dbClient?: PlanDbClient;
+	planId: string;
+	userId: string;
+	dbClient?: PlanDbClient;
 }): Promise<ClientGenerationAttempt[] | null> {
-  const attempts = await getPlanAttemptsForUser(
-    params.planId,
-    params.userId,
-    params.dbClient
-  );
+	const attempts = await getPlanAttemptsForUser(
+		params.planId,
+		params.userId,
+		params.dbClient,
+	);
 
-  if (!attempts) {
-    return null;
-  }
+	if (!attempts) {
+		return null;
+	}
 
-  return toClientGenerationAttempts(attempts.attempts);
+	return toClientGenerationAttempts(attempts.attempts);
 }

@@ -14,19 +14,19 @@ type TaskRow = InferSelectModel<typeof tasks>;
 type TaskInsert = InferInsertModel<typeof tasks>;
 
 type CreateTestModuleParams = {
-  planId: string;
-  order?: number;
-  title?: string;
-  description?: string;
-  estimatedMinutes?: number;
+	planId: string;
+	order?: number;
+	title?: string;
+	description?: string;
+	estimatedMinutes?: number;
 };
 
 type CreateTestTaskParams = {
-  moduleId: string;
-  order?: number;
-  title?: string;
-  description?: string;
-  estimatedMinutes?: number;
+	moduleId: string;
+	order?: number;
+	title?: string;
+	description?: string;
+	estimatedMinutes?: number;
 };
 
 /**
@@ -34,32 +34,32 @@ type CreateTestTaskParams = {
  * Centralizes module creation so schema changes are reflected in one place.
  */
 export async function createTestModule(
-  params: CreateTestModuleParams
+	params: CreateTestModuleParams,
 ): Promise<ModuleRow> {
-  const {
-    planId,
-    order = 1,
-    title = 'Test Module',
-    description = 'Test module description',
-    estimatedMinutes = 120,
-  } = params;
+	const {
+		planId,
+		order = 1,
+		title = 'Test Module',
+		description = 'Test module description',
+		estimatedMinutes = 120,
+	} = params;
 
-  const [row] = await db
-    .insert(modules)
-    .values({
-      planId,
-      order,
-      title,
-      description,
-      estimatedMinutes,
-    } as ModuleInsert)
-    .returning();
+	const [row] = await db
+		.insert(modules)
+		.values({
+			planId,
+			order,
+			title,
+			description,
+			estimatedMinutes,
+		} as ModuleInsert)
+		.returning();
 
-  if (!row) {
-    throw new Error('Failed to create module');
-  }
+	if (!row) {
+		throw new Error('Failed to create module');
+	}
 
-  return row;
+	return row;
 }
 
 /**
@@ -67,30 +67,30 @@ export async function createTestModule(
  * Centralizes task creation so schema changes are reflected in one place.
  */
 export async function createTestTask(
-  params: CreateTestTaskParams
+	params: CreateTestTaskParams,
 ): Promise<TaskRow> {
-  const {
-    moduleId,
-    order = 1,
-    title = 'Test Task',
-    description = 'Task description',
-    estimatedMinutes = 30,
-  } = params;
+	const {
+		moduleId,
+		order = 1,
+		title = 'Test Task',
+		description = 'Task description',
+		estimatedMinutes = 30,
+	} = params;
 
-  const [row] = await db
-    .insert(tasks)
-    .values({
-      moduleId,
-      order,
-      title,
-      description,
-      estimatedMinutes,
-    } as TaskInsert)
-    .returning();
+	const [row] = await db
+		.insert(tasks)
+		.values({
+			moduleId,
+			order,
+			title,
+			description,
+			estimatedMinutes,
+		} as TaskInsert)
+		.returning();
 
-  if (!row) {
-    throw new Error('Failed to create task');
-  }
+	if (!row) {
+		throw new Error('Failed to create task');
+	}
 
-  return row;
+	return row;
 }

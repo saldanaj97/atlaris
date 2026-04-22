@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      source: ${{ steps.filter.outputs.source }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,6 +44,9 @@ jobs:
         id: filter
         with:
           filters: |
+            source:
+              - 'src/**'
+              - 'tests/**'
             code:
               - 'src/**'
               - 'tests/**'
@@ -51,6 +55,11 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
+              - 'biome.json'
+              - '.husky/**'
+              - '.pre-commit-config.yaml'
+              - 'scripts/biome-changed.sh'
+              - '.github/workflows/**'
 
   lint-and-type-check:
     name: Lint & type check
@@ -90,8 +99,15 @@ jobs:
             git status --short src/lib/db/migrations/
             exit 1
           fi
-      - name: Run full lint and type check
-        run: pnpm check:full
+      - name: Run Biome checks
+        run: |
+          if [ "${{ needs.changes.outputs.source }}" = "true" ]; then
+            pnpm check:lint:ci
+          else
+            pnpm check:lint
+          fi
+      - name: Run type check
+        run: pnpm check:type
 
   vulnerability-scan:
     name: Security Audit

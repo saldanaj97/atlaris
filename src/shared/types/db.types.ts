@@ -1,8 +1,8 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
 import type {
-  Module,
-  ModuleWithTasks,
+	Module,
+	ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 
 type DbEnumsModule = typeof import('@/lib/db/enums');
@@ -10,21 +10,21 @@ type DbSchemaModule = typeof import('@/lib/db/schema');
 
 export type SkillLevel = DbEnumsModule['skillLevel']['enumValues'][number];
 export type LearningStyle =
-  DbEnumsModule['learningStyle']['enumValues'][number];
+	DbEnumsModule['learningStyle']['enumValues'][number];
 export type ResourceType = DbEnumsModule['resourceType']['enumValues'][number];
 export type ProgressStatus =
-  DbEnumsModule['progressStatus']['enumValues'][number];
+	DbEnumsModule['progressStatus']['enumValues'][number];
 export type GenerationStatus =
-  DbEnumsModule['generationStatus']['enumValues'][number];
+	DbEnumsModule['generationStatus']['enumValues'][number];
 
 export type LearningPlan = InferSelectModel<DbSchemaModule['learningPlans']>;
 
 // Canonical row shapes live in lib/db/queries/types; re-export here so existing
 // callers that already pull from @/shared/types/db.types keep working.
 export type {
-  Module,
-  Task,
-  TaskProgress,
+	Module,
+	Task,
+	TaskProgress,
 } from '@/lib/db/queries/types/modules.types';
 
 /**
@@ -36,16 +36,16 @@ export type {
 export type GenerationAttempt = GenerationAttemptRecord;
 
 export type LearningPlanWithModules = LearningPlan & {
-  modules: ModuleWithTasks[];
+	modules: ModuleWithTasks[];
 };
 
 export type ProgressMetrics = {
-  completion: number;
-  completedTasks: number;
-  totalTasks: number;
-  totalMinutes: number;
-  completedMinutes: number;
-  completedModules: number;
+	completion: number;
+	completedTasks: number;
+	totalTasks: number;
+	totalMinutes: number;
+	completedMinutes: number;
+	completedModules: number;
 };
 
 /**
@@ -56,9 +56,9 @@ export type ProgressMetrics = {
  * those extra reads to avoid additional query cost.
  */
 export type PlanSummary = ProgressMetrics & {
-  plan: LearningPlan;
-  modules: Module[];
-  attemptsCount?: number;
+	plan: LearningPlan;
+	modules: Module[];
+	attemptsCount?: number;
 };
 
 /**
@@ -66,26 +66,26 @@ export type PlanSummary = ProgressMetrics & {
  * Exported so summary builders use the same shape the API contract assumes.
  */
 export type LightweightPlanListRow = Pick<
-  LearningPlan,
-  | 'id'
-  | 'topic'
-  | 'skillLevel'
-  | 'learningStyle'
-  | 'visibility'
-  | 'origin'
-  | 'generationStatus'
-  | 'createdAt'
-  | 'updatedAt'
+	LearningPlan,
+	| 'id'
+	| 'topic'
+	| 'skillLevel'
+	| 'learningStyle'
+	| 'visibility'
+	| 'origin'
+	| 'generationStatus'
+	| 'createdAt'
+	| 'updatedAt'
 >;
 
 /** Lightweight plan summary for API list views. */
 export type LightweightPlanSummary = LightweightPlanListRow &
-  ProgressMetrics & {
-    moduleCount: number;
-  };
+	ProgressMetrics & {
+		moduleCount: number;
+	};
 
 export type LearningPlanDetail = Omit<ProgressMetrics, 'completion'> & {
-  plan: LearningPlanWithModules;
-  latestAttempt: GenerationAttempt | null;
-  attemptsCount: number;
+	plan: LearningPlanWithModules;
+	latestAttempt: GenerationAttempt | null;
+	attemptsCount: number;
 };

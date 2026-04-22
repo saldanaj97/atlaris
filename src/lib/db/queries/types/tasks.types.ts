@@ -9,5 +9,5 @@ export type TasksDbClient = ReturnType<typeof getDb>;
 
 /** Transaction handle passed to `TasksDbClient.transaction` callbacks. */
 export type TasksTransaction = Parameters<
-  Parameters<TasksDbClient['transaction']>[0]
+	Parameters<TasksDbClient['transaction']>[0]
 >[0];

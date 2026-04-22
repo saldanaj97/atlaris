@@ -2,8 +2,8 @@ import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
-  DefaultStripeCommerceBoundary,
-  type StripeCommerceBoundaryDeps,
+	DefaultStripeCommerceBoundary,
+	type StripeCommerceBoundaryDeps,
 } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
@@ -19,45 +19,45 @@ let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
  * `client.ts` to avoid circular imports with the commerce boundary).
  */
 export function getBillingStripeClient(): Stripe {
-  return getStripe();
+	return getStripe();
 }
 
 type CreateStripeCommerceBoundaryOptions = Partial<
-  Omit<StripeCommerceBoundaryDeps, 'gateway'>
+	Omit<StripeCommerceBoundaryDeps, 'gateway'>
 > & {
-  gateway?: StripeGateway;
+	gateway?: StripeGateway;
 };
 
 /**
  * Builds a commerce boundary with injectable collaborators (used in tests).
  */
 export function createStripeCommerceBoundary(
-  options: CreateStripeCommerceBoundaryOptions = {}
+	options: CreateStripeCommerceBoundaryOptions = {},
 ): StripeCommerceBoundary {
-  const gateway =
-    options.gateway ?? new LiveStripeGateway(getBillingStripeClient());
+	const gateway =
+		options.gateway ?? new LiveStripeGateway(getBillingStripeClient());
 
-  return new DefaultStripeCommerceBoundary({
-    gateway,
-    localMode: options.localMode ?? stripeEnv.localMode,
-    getDb: options.getDb ?? getDb,
-    serviceRoleDb: options.serviceRoleDb ?? serviceRoleDb,
-    users: options.users ?? users,
-    webhookSecret: options.webhookSecret ?? stripeEnv.webhookSecret ?? null,
-    webhookDevMode: options.webhookDevMode ?? stripeEnv.webhookDevMode,
-    isProduction: options.isProduction ?? appEnv.isProduction,
-    isDevOrTest: options.isDevOrTest ?? (appEnv.isDevelopment || appEnv.isTest),
-  });
+	return new DefaultStripeCommerceBoundary({
+		gateway,
+		localMode: options.localMode ?? stripeEnv.localMode,
+		getDb: options.getDb ?? getDb,
+		serviceRoleDb: options.serviceRoleDb ?? serviceRoleDb,
+		users: options.users ?? users,
+		webhookSecret: options.webhookSecret ?? stripeEnv.webhookSecret ?? null,
+		webhookDevMode: options.webhookDevMode ?? stripeEnv.webhookDevMode,
+		isProduction: options.isProduction ?? appEnv.isProduction,
+		isDevOrTest: options.isDevOrTest ?? (appEnv.isDevelopment || appEnv.isTest),
+	});
 }
 
 /**
  * Default app singleton for API routes.
  */
 export function getStripeCommerceBoundary(): StripeCommerceBoundary {
-  if (!commerceBoundarySingleton) {
-    commerceBoundarySingleton = createStripeCommerceBoundary();
-  }
-  return commerceBoundarySingleton;
+	if (!commerceBoundarySingleton) {
+		commerceBoundarySingleton = createStripeCommerceBoundary();
+	}
+	return commerceBoundarySingleton;
 }
 
 /**
@@ -65,5 +65,5 @@ export function getStripeCommerceBoundary(): StripeCommerceBoundary {
  * Centralizes `STRIPE_LOCAL_MODE` + local product testing gating.
  */
 export function isLocalStripeCompletionRouteEnabled(): boolean {
-  return stripeEnv.localMode && localProductTestingEnv.enabled;
+	return stripeEnv.localMode && localProductTestingEnv.enabled;
 }

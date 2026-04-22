@@ -13,16 +13,16 @@ const BUILD_MY_SCHEDULE = 'Build My Schedule';
 const GENERATE_SCHEDULE_NOW = 'Generate My Schedule Now';
 
 function trackCtaClick(location: CtaLocation, label: string): void {
-  trackEvent({
-    event: 'cta_click',
-    label,
-    location,
-  });
+	trackEvent({
+		event: 'cta_click',
+		label,
+		location,
+	});
 }
 
 export function useLandingAnalytics() {
-  return {
-    trackHeroCta: () => trackCtaClick('hero', BUILD_MY_SCHEDULE),
-    trackFooterCta: () => trackCtaClick('footer', GENERATE_SCHEDULE_NOW),
-  };
+	return {
+		trackHeroCta: () => trackCtaClick('hero', BUILD_MY_SCHEDULE),
+		trackFooterCta: () => trackCtaClick('footer', GENERATE_SCHEDULE_NOW),
+	};
 }

@@ -5,8 +5,8 @@ import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 const migration0027Sql = readFileSync(
-  resolve(process.cwd(), 'src/lib/db/migrations/0027_windy_agent_zero.sql'),
-  'utf8'
+	resolve(process.cwd(), 'src/lib/db/migrations/0027_windy_agent_zero.sql'),
+	'utf8',
 );
 
 const restoreLegacyPdfSchemaSql = `
@@ -32,29 +32,29 @@ const restoreLegacyPdfSchemaSql = `
 `;
 
 describe('migration 0027_windy_agent_zero', () => {
-  it('coerces legacy pdf plans to manual and drops PDF-only columns', async () => {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error(
-        'DATABASE_URL is required for migration integration tests.'
-      );
-    }
+	it('coerces legacy pdf plans to manual and drops PDF-only columns', async () => {
+		const databaseUrl = process.env.DATABASE_URL;
+		if (!databaseUrl) {
+			throw new Error(
+				'DATABASE_URL is required for migration integration tests.',
+			);
+		}
 
-    const userId = await ensureUser({
-      authUserId: 'migration-0027-user',
-      email: 'migration-0027@example.com',
-    });
+		const userId = await ensureUser({
+			authUserId: 'migration-0027-user',
+			email: 'migration-0027@example.com',
+		});
 
-    const notices: string[] = [];
-    const sql = postgres(databaseUrl, {
-      max: 1,
-      onnotice: (notice) => notices.push(notice.message),
-    });
+		const notices: string[] = [];
+		const sql = postgres(databaseUrl, {
+			max: 1,
+			onnotice: (notice) => notices.push(notice.message),
+		});
 
-    try {
-      await sql.unsafe(restoreLegacyPdfSchemaSql);
+		try {
+			await sql.unsafe(restoreLegacyPdfSchemaSql);
 
-      const [planRow] = await sql<{ id: string }[]>`
+			const [planRow] = await sql<{ id: string }[]>`
         INSERT INTO "learning_plans" (
           "user_id",
           "topic",
@@ -82,7 +82,7 @@ describe('migration 0027_windy_agent_zero', () => {
         RETURNING "id"
       `;
 
-      await sql`
+			await sql`
         INSERT INTO "usage_metrics" (
           "user_id",
           "month",
@@ -94,18 +94,18 @@ describe('migration 0027_windy_agent_zero', () => {
         VALUES (${userId}, '2026-04', 0, 0, 0, 1)
       `;
 
-      await sql.unsafe(migration0027Sql);
+			await sql.unsafe(migration0027Sql);
 
-      const [migratedPlan] = await sql<{ origin: string }[]>`
+			const [migratedPlan] = await sql<{ origin: string }[]>`
         SELECT "origin"::text AS "origin"
         FROM "learning_plans"
         WHERE "id" = ${planRow.id}
       `;
-      expect(migratedPlan?.origin).toBe('manual');
+			expect(migratedPlan?.origin).toBe('manual');
 
-      const legacyColumns = await sql<
-        { table_name: string; column_name: string }[]
-      >`
+			const legacyColumns = await sql<
+				{ table_name: string; column_name: string }[]
+			>`
         SELECT table_name::text, column_name::text
         FROM information_schema.columns
         WHERE table_schema = 'public'
@@ -114,35 +114,35 @@ describe('migration 0027_windy_agent_zero', () => {
             OR (table_name = 'usage_metrics' AND column_name = 'pdf_plans_generated')
           )
       `;
-      expect(legacyColumns).toHaveLength(0);
+			expect(legacyColumns).toHaveLength(0);
 
-      const enumValues = await sql<{ enumlabel: string }[]>`
+			const enumValues = await sql<{ enumlabel: string }[]>`
         SELECT e.enumlabel::text
         FROM pg_type t
         JOIN pg_enum e ON e.enumtypid = t.oid
         WHERE t.typname = 'plan_origin'
         ORDER BY e.enumlabel
       `;
-      expect(enumValues.map((row) => row.enumlabel)).toEqual([
-        'ai',
-        'manual',
-        'template',
-      ]);
+			expect(enumValues.map((row) => row.enumlabel)).toEqual([
+				'ai',
+				'manual',
+				'template',
+			]);
 
-      const indexes = await sql<{ indexname: string }[]>`
+			const indexes = await sql<{ indexname: string }[]>`
         SELECT indexname::text
         FROM pg_indexes
         WHERE schemaname = 'public'
           AND tablename = 'learning_plans'
           AND indexname = 'idx_learning_plans_user_origin'
       `;
-      expect(indexes).toHaveLength(1);
+			expect(indexes).toHaveLength(1);
 
-      expect(notices).toContain(
-        'migration 0027: coercing 1 pdf-origin plans to manual'
-      );
-    } finally {
-      await sql.end();
-    }
-  });
+			expect(notices).toContain(
+				'migration 0027: coercing 1 pdf-origin plans to manual',
+			);
+		} finally {
+			await sql.end();
+		}
+	});
 });

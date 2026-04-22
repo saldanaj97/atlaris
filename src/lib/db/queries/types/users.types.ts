@@ -11,8 +11,8 @@ export type DbUserInsert = InferInsertModel<typeof users>;
 
 /** Input data for createUser (authUserId, email, optional name). */
 export type CreateUserData = Pick<
-  DbUserInsert,
-  'authUserId' | 'email' | 'name'
+	DbUserInsert,
+	'authUserId' | 'email' | 'name'
 >;
 
 /** RLS-enforced database client for user queries. */

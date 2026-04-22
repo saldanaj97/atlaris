@@ -12,64 +12,64 @@ const authUserId = 'auth_generation_success';
 const authEmail = 'generation-success@example.com';
 
 describe('generation integration - success path', () => {
-  it('persists modules/tasks and logs a successful attempt', async () => {
-    setTestUser(authUserId);
-    const userId = await ensureUser({ authUserId, email: authEmail });
-    const plan = await createTestPlan({
-      userId,
-      topic: 'Deep Learning Foundations',
-      skillLevel: 'intermediate',
-      weeklyHours: 6,
-      learningStyle: 'mixed',
-    });
+	it('persists modules/tasks and logs a successful attempt', async () => {
+		setTestUser(authUserId);
+		const userId = await ensureUser({ authUserId, email: authEmail });
+		const plan = await createTestPlan({
+			userId,
+			topic: 'Deep Learning Foundations',
+			skillLevel: 'intermediate',
+			weeklyHours: 6,
+			learningStyle: 'mixed',
+		});
 
-    const mock = createMockProvider({ scenario: 'success' });
+		const mock = createMockProvider({ scenario: 'success' });
 
-    const result = await runGenerationAttempt(
-      {
-        planId: plan.id,
-        userId,
-        input: {
-          topic: 'Deep Learning Foundations',
-          notes: 'Focus on practical intuitions and projects',
-          skillLevel: 'intermediate',
-          weeklyHours: 6,
-          learningStyle: 'mixed',
-        },
-      },
-      { provider: mock.provider, dbClient: db }
-    );
+		const result = await runGenerationAttempt(
+			{
+				planId: plan.id,
+				userId,
+				input: {
+					topic: 'Deep Learning Foundations',
+					notes: 'Focus on practical intuitions and projects',
+					skillLevel: 'intermediate',
+					weeklyHours: 6,
+					learningStyle: 'mixed',
+				},
+			},
+			{ provider: mock.provider, dbClient: db },
+		);
 
-    expect(result.status).toBe('success');
-    expect(result.classification).toBeNull();
+		expect(result.status).toBe('success');
+		expect(result.classification).toBeNull();
 
-    const moduleRows = await db
-      .select()
-      .from(modules)
-      .where(eq(modules.planId, plan.id))
-      .orderBy(asc(modules.order));
+		const moduleRows = await db
+			.select()
+			.from(modules)
+			.where(eq(modules.planId, plan.id))
+			.orderBy(asc(modules.order));
 
-    expect(moduleRows.length).toBeGreaterThan(0);
+		expect(moduleRows.length).toBeGreaterThan(0);
 
-    const moduleIds = moduleRows.map((module) => module.id);
-    const taskRows = moduleIds.length
-      ? await db
-          .select()
-          .from(tasks)
-          .where(inArray(tasks.moduleId, moduleIds))
-          .orderBy(asc(tasks.order))
-      : [];
+		const moduleIds = moduleRows.map((module) => module.id);
+		const taskRows = moduleIds.length
+			? await db
+					.select()
+					.from(tasks)
+					.where(inArray(tasks.moduleId, moduleIds))
+					.orderBy(asc(tasks.order))
+			: [];
 
-    expect(taskRows.length).toBeGreaterThan(0);
+		expect(taskRows.length).toBeGreaterThan(0);
 
-    const [attempt] = await db
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, plan.id));
+		const [attempt] = await db
+			.select()
+			.from(generationAttempts)
+			.where(eq(generationAttempts.planId, plan.id));
 
-    expect(attempt?.status).toBe('success');
-    expect(attempt?.classification).toBeNull();
-    expect(attempt?.modulesCount).toBe(moduleRows.length);
-    expect(attempt?.tasksCount).toBe(taskRows.length);
-  });
+		expect(attempt?.status).toBe('success');
+		expect(attempt?.classification).toBeNull();
+		expect(attempt?.modulesCount).toBe(moduleRows.length);
+		expect(attempt?.tasksCount).toBe(taskRows.length);
+	});
 });

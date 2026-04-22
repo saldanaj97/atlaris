@@ -6,9 +6,9 @@
  */
 
 import type {
-  ModuleAccessError,
-  ModuleAccessErrorCode,
-  ModuleAccessResult,
+	ModuleAccessError,
+	ModuleAccessErrorCode,
+	ModuleAccessResult,
 } from '@/app/plans/[id]/modules/[moduleId]/types';
 import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
 
@@ -16,26 +16,26 @@ import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
  * Helper to create success result
  */
 export function moduleSuccess(data: ModuleDetail): ModuleAccessResult {
-  return { success: true, data };
+	return { success: true, data };
 }
 
 /**
  * Helper to create error result
  */
 export function moduleError(
-  code: ModuleAccessErrorCode,
-  message: string
+	code: ModuleAccessErrorCode,
+	message: string,
 ): ModuleAccessResult {
-  return { success: false, error: { code, message } };
+	return { success: false, error: { code, message } };
 }
 
 /**
  * Type guard to check if module access result is successful
  */
 export function isModuleSuccess(
-  result: ModuleAccessResult
+	result: ModuleAccessResult,
 ): result is { success: true; data: ModuleDetail } {
-  return result.success === true;
+	return result.success === true;
 }
 
 /**
@@ -43,8 +43,8 @@ export function isModuleSuccess(
  * Only call this after checking !isModuleSuccess(result)
  */
 export function getModuleError(result: ModuleAccessResult): ModuleAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
+	if (result.success === false) {
+		return result.error;
+	}
+	throw new Error('Cannot get error from successful result');
 }

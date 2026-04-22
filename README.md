@@ -50,6 +50,7 @@ pnpm dev:full
 pnpm build
 pnpm check:full
 pnpm check:lint
+pnpm check:lint:ci
 pnpm check:type
 pnpm test
 pnpm test:changed

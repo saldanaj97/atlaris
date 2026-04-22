@@ -18,16 +18,16 @@ export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
 
 export interface TaskResourceWithResource extends TaskResource {
-  resource: Resource;
+	resource: Resource;
 }
 
 export interface TaskWithRelations extends Task {
-  resources: TaskResourceWithResource[];
-  progress?: TaskProgress | null;
+	resources: TaskResourceWithResource[];
+	progress?: TaskProgress | null;
 }
 
 export interface ModuleWithTasks extends Module {
-  tasks: TaskWithRelations[];
+	tasks: TaskWithRelations[];
 }
 
 /**
@@ -35,11 +35,11 @@ export interface ModuleWithTasks extends Module {
  * Includes lock state so UI can disable links to modules that are not yet unlockable.
  */
 export interface ModuleNavItem {
-  id: string;
-  order: number;
-  title: string;
-  /** Whether this module is locked (previous modules not completed) */
-  isLocked: boolean;
+	id: string;
+	order: number;
+	title: string;
+	/** Whether this module is locked (previous modules not completed) */
+	isLocked: boolean;
 }
 
 /**
@@ -47,23 +47,23 @@ export interface ModuleNavItem {
  * plan-level context for breadcrumb navigation and prev/next links.
  */
 export interface ModuleDetail {
-  module: ModuleWithTasks;
-  planId: string;
-  planTopic: string;
-  totalModules: number;
-  previousModuleId: string | null;
-  nextModuleId: string | null;
-  /** Whether all previous modules have been fully completed */
-  previousModulesComplete: boolean;
-  /** All modules in the plan for navigation dropdown */
-  allModules: ModuleNavItem[];
+	module: ModuleWithTasks;
+	planId: string;
+	planTopic: string;
+	totalModules: number;
+	previousModuleId: string | null;
+	nextModuleId: string | null;
+	/** Whether all previous modules have been fully completed */
+	previousModulesComplete: boolean;
+	/** All modules in the plan for navigation dropdown */
+	allModules: ModuleNavItem[];
 }
 
 /** Raw module row from DB select (id, order, title) for nav item computation. */
 export interface ModuleNavRaw {
-  id: string;
-  order: number;
-  title: string;
+	id: string;
+	order: number;
+	title: string;
 }
 
 /**
@@ -71,17 +71,17 @@ export interface ModuleNavRaw {
  * `totalTaskCount` and `completedTaskCount` are numeric SQL aggregates.
  */
 export interface ModuleNavCompletionRaw extends ModuleNavRaw {
-  totalTaskCount: number;
-  completedTaskCount: number;
+	totalTaskCount: number;
+	completedTaskCount: number;
 }
 
 /** Resource row shape from taskResources + resources join. */
 export type ModuleResourceRow = {
-  id: string;
-  taskId: string;
-  resourceId: string;
-  order: number;
-  notes: string | null;
-  createdAt: Date;
-  resource: Resource;
+	id: string;
+	taskId: string;
+	resourceId: string;
+	order: number;
+	notes: string | null;
+	createdAt: Date;
+	resource: Resource;
 };

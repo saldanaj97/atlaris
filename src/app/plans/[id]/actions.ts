@@ -16,10 +16,10 @@
 
 import { revalidatePath } from 'next/cache';
 import {
-  logger,
-  PROGRESS_STATUSES,
-  type ProgressStatus,
-  setTaskProgressBatch,
+	logger,
+	PROGRESS_STATUSES,
+	type ProgressStatus,
+	setTaskProgressBatch,
 } from '@/app/plans/[id]/server/task-progress-action-deps';
 import type { PlanAccessResult } from '@/app/plans/[id]/types';
 import { getPlanDetailForRead } from '@/features/plans/read-service';
@@ -27,16 +27,16 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 import { planError, planSuccess } from './helpers';
 
 interface BatchUpdateTaskProgressInput {
-  planId: string;
-  updates: Array<{ taskId: string; status: ProgressStatus }>;
+	planId: string;
+	updates: Array<{ taskId: string; status: ProgressStatus }>;
 }
 
 const MAX_BATCH_UPDATES = 500;
 
 function assertNonEmpty(value: string | undefined, message: string) {
-  if (!value || value.trim().length === 0) {
-    throw new Error(message);
-  }
+	if (!value || value.trim().length === 0) {
+		throw new Error(message);
+	}
 }
 
 /**
@@ -44,53 +44,53 @@ function assertNonEmpty(value: string | undefined, message: string) {
  * Validates all updates, persists via `setTaskProgressBatch`, and revalidates affected paths.
  */
 export async function batchUpdateTaskProgressAction({
-  planId,
-  updates,
+	planId,
+	updates,
 }: BatchUpdateTaskProgressInput): Promise<void> {
-  assertNonEmpty(planId, 'A plan id is required to update progress.');
-  if (updates.length === 0) return;
-  if (updates.length > MAX_BATCH_UPDATES) {
-    throw new Error(
-      `Batch update limit exceeded: received ${updates.length} updates, but the maximum allowed is ${MAX_BATCH_UPDATES}.`
-    );
-  }
+	assertNonEmpty(planId, 'A plan id is required to update progress.');
+	if (updates.length === 0) return;
+	if (updates.length > MAX_BATCH_UPDATES) {
+		throw new Error(
+			`Batch update limit exceeded: received ${updates.length} updates, but the maximum allowed is ${MAX_BATCH_UPDATES}.`,
+		);
+	}
 
-  for (const [index, update] of updates.entries()) {
-    const taskId = update.taskId?.trim() ?? '';
-    assertNonEmpty(
-      taskId,
-      `A task id is required to update progress for update at index ${index} (taskId="${taskId || '<missing>'}", status="${update.status}").`
-    );
-    if (!PROGRESS_STATUSES.includes(update.status)) {
-      throw new Error(
-        `Invalid progress status for update at index ${index} (taskId="${taskId}", status="${update.status}").`
-      );
-    }
-  }
+	for (const [index, update] of updates.entries()) {
+		const taskId = update.taskId?.trim() ?? '';
+		assertNonEmpty(
+			taskId,
+			`A task id is required to update progress for update at index ${index} (taskId="${taskId || '<missing>'}", status="${update.status}").`,
+		);
+		if (!PROGRESS_STATUSES.includes(update.status)) {
+			throw new Error(
+				`Invalid progress status for update at index ${index} (taskId="${taskId}", status="${update.status}").`,
+			);
+		}
+	}
 
-  const result = await requestBoundary.action(async ({ actor, db }) => {
-    try {
-      await setTaskProgressBatch(actor.id, updates, db);
-      revalidatePath(`/plans/${planId}`);
-      revalidatePath('/plans');
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          userId: actor.id,
-          updateCount: updates.length,
-          taskIds: updates.map((update) => update.taskId),
-          err: error,
-        },
-        'Failed to batch update task progress'
-      );
-      throw new Error('Unable to update task progress right now.');
-    }
-  });
+	const result = await requestBoundary.action(async ({ actor, db }) => {
+		try {
+			await setTaskProgressBatch(actor.id, updates, db);
+			revalidatePath(`/plans/${planId}`);
+			revalidatePath('/plans');
+		} catch (error) {
+			logger.error(
+				{
+					planId,
+					userId: actor.id,
+					updateCount: updates.length,
+					taskIds: updates.map((update) => update.taskId),
+					err: error,
+				},
+				'Failed to batch update task progress',
+			);
+			throw new Error('Unable to update task progress right now.');
+		}
+	});
 
-  if (result === null) {
-    throw new Error('You must be signed in to update progress.');
-  }
+	if (result === null) {
+		throw new Error('You must be signed in to update progress.');
+	}
 }
 
 /**
@@ -103,33 +103,33 @@ export async function batchUpdateTaskProgressAction({
  * - INTERNAL_ERROR: Unexpected error during fetch
  */
 export async function getPlanForPage(
-  planId: string
+	planId: string,
 ): Promise<PlanAccessResult> {
-  const result = await requestBoundary.action(async ({ actor, db }) => {
-    const plan = await getPlanDetailForRead({
-      planId,
-      userId: actor.id,
-      dbClient: db,
-    });
-    if (!plan) {
-      logger.debug(
-        { planId, userId: actor.id },
-        'Plan not found or user does not have access'
-      );
-      return planError(
-        'NOT_FOUND',
-        'This plan does not exist or you do not have access to it.'
-      );
-    }
-    return planSuccess(plan);
-  });
+	const result = await requestBoundary.action(async ({ actor, db }) => {
+		const plan = await getPlanDetailForRead({
+			planId,
+			userId: actor.id,
+			dbClient: db,
+		});
+		if (!plan) {
+			logger.debug(
+				{ planId, userId: actor.id },
+				'Plan not found or user does not have access',
+			);
+			return planError(
+				'NOT_FOUND',
+				'This plan does not exist or you do not have access to it.',
+			);
+		}
+		return planSuccess(plan);
+	});
 
-  if (!result) {
-    logger.debug({ planId }, 'Plan access denied: user not authenticated');
-    return planError(
-      'UNAUTHORIZED',
-      'You must be signed in to view this plan.'
-    );
-  }
-  return result;
+	if (!result) {
+		logger.debug({ planId }, 'Plan access denied: user not authenticated');
+		return planError(
+			'UNAUTHORIZED',
+			'You must be signed in to view this plan.',
+		);
+	}
+	return result;
 }

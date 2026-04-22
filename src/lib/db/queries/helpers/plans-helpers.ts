@@ -8,15 +8,15 @@ export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
 
 interface LockedOwnedPlanRecord {
-  id: string;
-  userId: string;
-  generationStatus: OwnedPlanRecord['generationStatus'];
+	id: string;
+	userId: string;
+	generationStatus: OwnedPlanRecord['generationStatus'];
 }
 
 interface OwnedPlanQueryParams {
-  planId: string;
-  ownerUserId: string;
-  dbClient?: PlanQueryClient;
+	planId: string;
+	ownerUserId: string;
+	dbClient?: PlanQueryClient;
 }
 
 /**
@@ -25,57 +25,57 @@ interface OwnedPlanQueryParams {
  * run on the transaction connection to hold the row lock.
  */
 interface LockedOwnedPlanQueryParams {
-  planId: string;
-  ownerUserId: string;
-  dbClient: PlanQueryClient;
+	planId: string;
+	ownerUserId: string;
+	dbClient: PlanQueryClient;
 }
 
 function ownedPlanWhere(
-  planId: string,
-  ownerUserId: string
+	planId: string,
+	ownerUserId: string,
 ): ReturnType<typeof and> {
-  return and(
-    eq(learningPlans.id, planId),
-    eq(learningPlans.userId, ownerUserId)
-  );
+	return and(
+		eq(learningPlans.id, planId),
+		eq(learningPlans.userId, ownerUserId),
+	);
 }
 
 /**
  * Returns the owned plan row or null when not found/inaccessible.
  */
 export async function selectOwnedPlanById({
-  planId,
-  ownerUserId,
-  dbClient,
+	planId,
+	ownerUserId,
+	dbClient,
 }: OwnedPlanQueryParams): Promise<OwnedPlanRecord | null> {
-  const db = dbClient ?? getDb();
-  const [plan] = await db
-    .select()
-    .from(learningPlans)
-    .where(ownedPlanWhere(planId, ownerUserId))
-    .limit(1);
+	const db = dbClient ?? getDb();
+	const [plan] = await db
+		.select()
+		.from(learningPlans)
+		.where(ownedPlanWhere(planId, ownerUserId))
+		.limit(1);
 
-  return plan ?? null;
+	return plan ?? null;
 }
 
 /**
  * Locks and returns the minimal owned-plan row needed in transactional flows.
  */
 export async function lockOwnedPlanById({
-  planId,
-  ownerUserId,
-  dbClient,
+	planId,
+	ownerUserId,
+	dbClient,
 }: LockedOwnedPlanQueryParams): Promise<LockedOwnedPlanRecord | null> {
-  const [plan] = await dbClient
-    .select({
-      id: learningPlans.id,
-      userId: learningPlans.userId,
-      generationStatus: learningPlans.generationStatus,
-    })
-    .from(learningPlans)
-    .where(ownedPlanWhere(planId, ownerUserId))
-    .limit(1)
-    .for('update');
+	const [plan] = await dbClient
+		.select({
+			id: learningPlans.id,
+			userId: learningPlans.userId,
+			generationStatus: learningPlans.generationStatus,
+		})
+		.from(learningPlans)
+		.where(ownedPlanWhere(planId, ownerUserId))
+		.limit(1)
+		.for('update');
 
-  return plan ?? null;
+	return plan ?? null;
 }

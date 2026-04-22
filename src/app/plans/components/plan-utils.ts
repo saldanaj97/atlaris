@@ -31,17 +31,17 @@ type DateInput = Date | string | null | undefined;
  * ```
  */
 export function getPlanLastActivityRelative(
-  date: DateInput,
-  referenceDate: DateInput
+	date: DateInput,
+	referenceDate: DateInput,
 ): string {
-  const target = toValidDate(date);
-  const reference = toValidDate(referenceDate);
-  if (!target || !reference) return 'Recently';
-  return formatRelativePast(target, {
-    referenceDate: reference,
-    style: 'compact',
-    invalidLabel: 'Recently',
-  });
+	const target = toValidDate(date);
+	const reference = toValidDate(referenceDate);
+	if (!target || !reference) return 'Recently';
+	return formatRelativePast(target, {
+		referenceDate: reference,
+		style: 'compact',
+		invalidLabel: 'Recently',
+	});
 }
 
 /**
@@ -82,26 +82,26 @@ export function getPlanLastActivityRelative(
  * ```
  */
 export function getPlanStatus(
-  summary: PlanSummary,
-  referenceDate: DateInput
+	summary: PlanSummary,
+	referenceDate: DateInput,
 ): PlanStatus {
-  const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
+	const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
 
-  if (canonicalStatus !== 'active') {
-    return canonicalStatus;
-  }
+	if (canonicalStatus !== 'active') {
+		return canonicalStatus;
+	}
 
-  // Check if plan is inactive/paused (not updated in 30+ days)
-  const updatedAt = toValidDate(summary.plan.updatedAt);
-  const reference = toValidDate(referenceDate);
-  if (updatedAt && reference) {
-    const daysSinceUpdate = differenceInDays(reference, updatedAt);
-    if (daysSinceUpdate >= 30) {
-      return 'paused';
-    }
-  }
+	// Check if plan is inactive/paused (not updated in 30+ days)
+	const updatedAt = toValidDate(summary.plan.updatedAt);
+	const reference = toValidDate(referenceDate);
+	if (updatedAt && reference) {
+		const daysSinceUpdate = differenceInDays(reference, updatedAt);
+		if (daysSinceUpdate >= 30) {
+			return 'paused';
+		}
+	}
 
-  return 'active';
+	return 'active';
 }
 
 /**
@@ -144,13 +144,13 @@ export function getPlanStatus(
  * ```
  */
 export function getNextTaskName(summary: PlanSummary): string {
-  if (summary.completedTasks === 0) {
-    return 'Not started';
-  }
+	if (summary.completedTasks === 0) {
+		return 'Not started';
+	}
 
-  if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
-    return 'All tasks completed';
-  }
+	if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
+		return 'All tasks completed';
+	}
 
-  return 'Continue learning';
+	return 'Continue learning';
 }

@@ -12,10 +12,10 @@ const RETRY_COOLDOWN_MS = 5000;
 type RetryStatus = 'idle' | 'retrying' | 'success' | 'error' | 'cancelled';
 
 interface UseRetryGenerationReturn {
-  status: RetryStatus;
-  error: string | null;
-  isDisabled: boolean;
-  retryGeneration: () => Promise<void>;
+	status: RetryStatus;
+	error: string | null;
+	isDisabled: boolean;
+	retryGeneration: () => Promise<void>;
 }
 
 /**
@@ -23,84 +23,84 @@ interface UseRetryGenerationReturn {
  * elsewhere on the surface (e.g. pending page) to avoid duplicate session hooks.
  */
 export function useRetryGeneration(
-  planId: string,
-  maxAttempts: number,
-  currentAttempts: number,
-  session: UsePlanGenerationSessionResult
+	planId: string,
+	maxAttempts: number,
+	currentAttempts: number,
+	session: UsePlanGenerationSessionResult,
 ): UseRetryGenerationReturn {
-  const router = useRouter();
-  const { state, startSession, cancel } = session;
-  const [cooldownActive, setCooldownActive] = useState(false);
-  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const retryInFlightRef = useRef(false);
+	const router = useRouter();
+	const { state, startSession, cancel } = session;
+	const [cooldownActive, setCooldownActive] = useState(false);
+	const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const retryInFlightRef = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-        cooldownTimerRef.current = null;
-      }
-      cancel();
-      retryInFlightRef.current = false;
-    };
-  }, [cancel]);
+	useEffect(() => {
+		return () => {
+			if (cooldownTimerRef.current) {
+				clearTimeout(cooldownTimerRef.current);
+				cooldownTimerRef.current = null;
+			}
+			cancel();
+			retryInFlightRef.current = false;
+		};
+	}, [cancel]);
 
-  const status: RetryStatus = (() => {
-    switch (state.status) {
-      case 'connecting':
-      case 'generating':
-        return 'retrying';
-      case 'complete':
-        return 'success';
-      case 'error':
-        return 'error';
-      case 'cancelled':
-        return 'cancelled';
-      default:
-        return 'idle';
-    }
-  })();
+	const status: RetryStatus = (() => {
+		switch (state.status) {
+			case 'connecting':
+			case 'generating':
+				return 'retrying';
+			case 'complete':
+				return 'success';
+			case 'error':
+				return 'error';
+			case 'cancelled':
+				return 'cancelled';
+			default:
+				return 'idle';
+		}
+	})();
 
-  const isDisabled =
-    status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
+	const isDisabled =
+		status === 'retrying' || currentAttempts >= maxAttempts || cooldownActive;
 
-  const retryGeneration = useCallback(async () => {
-    if (retryInFlightRef.current || cooldownActive) {
-      return;
-    }
+	const retryGeneration = useCallback(async () => {
+		if (retryInFlightRef.current || cooldownActive) {
+			return;
+		}
 
-    retryInFlightRef.current = true;
-    setCooldownActive(true);
+		retryInFlightRef.current = true;
+		setCooldownActive(true);
 
-    if (cooldownTimerRef.current) {
-      clearTimeout(cooldownTimerRef.current);
-    }
+		if (cooldownTimerRef.current) {
+			clearTimeout(cooldownTimerRef.current);
+		}
 
-    cooldownTimerRef.current = setTimeout(() => {
-      setCooldownActive(false);
-      cooldownTimerRef.current = null;
-    }, RETRY_COOLDOWN_MS);
+		cooldownTimerRef.current = setTimeout(() => {
+			setCooldownActive(false);
+			cooldownTimerRef.current = null;
+		}, RETRY_COOLDOWN_MS);
 
-    try {
-      const result = await startSession({ kind: 'retry', planId });
-      if (result.status === 'completed') {
-        router.refresh();
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
+		try {
+			const result = await startSession({ kind: 'retry', planId });
+			if (result.status === 'completed') {
+				router.refresh();
+			}
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				return;
+			}
 
-      clientLogger.error('Retry generation failed:', error);
-    } finally {
-      retryInFlightRef.current = false;
-    }
-  }, [cooldownActive, planId, router, startSession]);
+			clientLogger.error('Retry generation failed:', error);
+		} finally {
+			retryInFlightRef.current = false;
+		}
+	}, [cooldownActive, planId, router, startSession]);
 
-  return {
-    status,
-    error: state.error?.message ?? null,
-    isDisabled,
-    retryGeneration,
-  };
+	return {
+		status,
+		error: state.error?.message ?? null,
+		isDisabled,
+		retryGeneration,
+	};
 }

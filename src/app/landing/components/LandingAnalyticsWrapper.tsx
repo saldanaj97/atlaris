@@ -10,8 +10,8 @@ import { HeroSection } from './HeroSection';
  * tracking hero CTA interactions.
  */
 export function HeroSectionWithAnalytics() {
-  const { trackHeroCta } = useLandingAnalytics();
-  return <HeroSection onCtaClick={trackHeroCta} />;
+	const { trackHeroCta } = useLandingAnalytics();
+	return <HeroSection onCtaClick={trackHeroCta} />;
 }
 
 /**
@@ -20,6 +20,6 @@ export function HeroSectionWithAnalytics() {
  * tracking footer CTA interactions.
  */
 export function FinalCtaSectionWithAnalytics() {
-  const { trackFooterCta } = useLandingAnalytics();
-  return <FinalCtaSection onCtaClick={trackFooterCta} />;
+	const { trackFooterCta } = useLandingAnalytics();
+	return <FinalCtaSection onCtaClick={trackFooterCta} />;
 }

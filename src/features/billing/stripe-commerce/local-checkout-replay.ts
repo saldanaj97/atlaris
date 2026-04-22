@@ -14,50 +14,50 @@ type ServiceRoleDb = typeof serviceRoleDb;
  * dedupe + processor path as production webhooks (local billing only).
  */
 export async function replayLocalSubscriptionCreated(input: {
-  user: { id: string; email: string };
-  priceId: string;
-  gateway: StripeGateway;
-  serviceRoleDb: ServiceRoleDb;
-  users: typeof users;
-  logger: Logger;
+	user: { id: string; email: string };
+	priceId: string;
+	gateway: StripeGateway;
+	serviceRoleDb: ServiceRoleDb;
+	users: typeof users;
+	logger: Logger;
 }): Promise<void> {
-  const stripe = input.gateway.getStripeClient();
-  const customerId = await createCustomer(
-    input.user.id,
-    input.user.email,
-    stripe,
-    input.serviceRoleDb
-  );
+	const stripe = input.gateway.getStripeClient();
+	const customerId = await createCustomer(
+		input.user.id,
+		input.user.email,
+		stripe,
+		input.serviceRoleDb,
+	);
 
-  const subscription = {
-    id: `sub_local_${randomUUID()}`,
-    object: 'subscription',
-    customer: customerId,
-    status: 'active',
-    cancel_at_period_end: false,
-    items: {
-      data: [
-        {
-          price: input.priceId,
-        },
-      ],
-    },
-    current_period_end: Math.floor(Date.now() / 1000) + 86400 * 30,
-  } as unknown as Stripe.Subscription;
+	const subscription = {
+		id: `sub_local_${randomUUID()}`,
+		object: 'subscription',
+		customer: customerId,
+		status: 'active',
+		cancel_at_period_end: false,
+		items: {
+			data: [
+				{
+					price: input.priceId,
+				},
+			],
+		},
+		current_period_end: Math.floor(Date.now() / 1000) + 86400 * 30,
+	} as unknown as Stripe.Subscription;
 
-  const event = {
-    id: `evt_local_${randomUUID()}`,
-    object: 'event',
-    type: 'customer.subscription.created',
-    data: { object: subscription },
-    livemode: false,
-  } as Stripe.Event;
+	const event = {
+		id: `evt_local_${randomUUID()}`,
+		object: 'event',
+		type: 'customer.subscription.created',
+		data: { object: subscription },
+		livemode: false,
+	} as Stripe.Event;
 
-  await handleStripeWebhookDedupeAndApply(event, {
-    stripe,
-    gateway: input.gateway,
-    logger: input.logger,
-    users: input.users,
-    db: input.serviceRoleDb,
-  });
+	await handleStripeWebhookDedupeAndApply(event, {
+		stripe,
+		gateway: input.gateway,
+		logger: input.logger,
+		users: input.users,
+		db: input.serviceRoleDb,
+	});
 }

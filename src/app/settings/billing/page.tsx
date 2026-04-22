@@ -11,20 +11,20 @@ import { BillingCardsSkeleton } from '@/app/settings/billing/components/BillingC
  * The billing cards (Current Plan + Usage) wait for subscription and usage data.
  */
 export default function BillingSettingsPage(): ReactElement {
-  return (
-    <>
-      <header className="mb-6">
-        <h2 className="text-xl font-semibold">Billing</h2>
-        <p className="text-muted-foreground text-sm">
-          Manage your subscription and view usage
-        </p>
-      </header>
+	return (
+		<>
+			<header className="mb-6">
+				<h2 className="text-xl font-semibold">Billing</h2>
+				<p className="text-muted-foreground text-sm">
+					Manage your subscription and view usage
+				</p>
+			</header>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Suspense fallback={<BillingCardsSkeleton />}>
-          <BillingCards />
-        </Suspense>
-      </div>
-    </>
-  );
+			<div className="grid gap-6 md:grid-cols-2">
+				<Suspense fallback={<BillingCardsSkeleton />}>
+					<BillingCards />
+				</Suspense>
+			</div>
+		</>
+	);
 }

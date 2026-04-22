@@ -39,23 +39,23 @@ import { logger } from '@/lib/logging/logger';
 import * as schema from './schema';
 
 function createIdempotentPostgresCleanup(
-  sql: Sql,
-  options: {
-    onConnectionCloseError: (error: unknown) => void;
-  }
+	sql: Sql,
+	options: {
+		onConnectionCloseError: (error: unknown) => void;
+	},
 ): () => Promise<void> {
-  let isCleanedUp = false;
-  return async () => {
-    if (isCleanedUp) {
-      return;
-    }
-    isCleanedUp = true;
-    try {
-      await sql.end({ timeout: 5 });
-    } catch (error) {
-      options.onConnectionCloseError(error);
-    }
-  };
+	let isCleanedUp = false;
+	return async () => {
+		if (isCleanedUp) {
+			return;
+		}
+		isCleanedUp = true;
+		try {
+			await sql.end({ timeout: 5 });
+		} catch (error) {
+			options.onConnectionCloseError(error);
+		}
+	};
 }
 
 export type RlsClient = DbClient;
@@ -65,8 +65,8 @@ export type RlsClient = DbClient;
  * Includes the Drizzle client and a cleanup function to close the connection.
  */
 type RlsClientResult = {
-  db: Awaited<ReturnType<typeof drizzle<typeof schema>>>;
-  cleanup: () => Promise<void>;
+	db: Awaited<ReturnType<typeof drizzle<typeof schema>>>;
+	cleanup: () => Promise<void>;
 };
 
 /**
@@ -93,48 +93,48 @@ type RlsClientResult = {
  * ```
  */
 export async function createAuthenticatedRlsClient(
-  authUserId: string,
-  options?: { idleTimeout?: number }
+	authUserId: string,
+	options?: { idleTimeout?: number },
 ): Promise<RlsClientResult> {
-  const jwtClaims = JSON.stringify({ sub: authUserId });
+	const jwtClaims = JSON.stringify({ sub: authUserId });
 
-  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
-  // We use SET ROLE to switch to authenticated role which lacks BYPASSRLS.
-  // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
-  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
-  const sql: Sql = postgres(connectionUrl, {
-    max: 1, // Single connection per client (important for session variable isolation)
-    idle_timeout: options?.idleTimeout ?? 20, // Default 20s; stream routes use longer timeouts
-    connect_timeout: 10, // Timeout for connection attempts
-  });
+	// Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
+	// IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
+	// We use SET ROLE to switch to authenticated role which lacks BYPASSRLS.
+	// Must use non-pooling connection because poolers may not handle SET ROLE correctly.
+	const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
+	const sql: Sql = postgres(connectionUrl, {
+		max: 1, // Single connection per client (important for session variable isolation)
+		idle_timeout: options?.idleTimeout ?? 20, // Default 20s; stream routes use longer timeouts
+		connect_timeout: 10, // Timeout for connection attempts
+	});
 
-  // Switch to authenticated role (without BYPASSRLS privilege)
-  // CRITICAL: Must await to ensure role is switched before setting session variable
-  await sql.unsafe('SET ROLE authenticated');
+	// Switch to authenticated role (without BYPASSRLS privilege)
+	// CRITICAL: Must await to ensure role is switched before setting session variable
+	await sql.unsafe('SET ROLE authenticated');
 
-  // Set search_path after SET ROLE (role switch may reset it)
-  await sql.unsafe('SET search_path = public');
+	// Set search_path after SET ROLE (role switch may reset it)
+	await sql.unsafe('SET search_path = public');
 
-  // Set session variable with authenticated user ID using set_config for safety
-  // CRITICAL: Must await to ensure session variable is set before queries execute
-  // This persists for the connection lifetime
-  // Using set_config() with template tag parameterization is safer than string interpolation
-  await sql`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
+	// Set session variable with authenticated user ID using set_config for safety
+	// CRITICAL: Must await to ensure session variable is set before queries execute
+	// This persists for the connection lifetime
+	// Using set_config() with template tag parameterization is safer than string interpolation
+	await sql`SELECT set_config('request.jwt.claims', ${jwtClaims}, false)`;
 
-  const cleanup = createIdempotentPostgresCleanup(sql, {
-    onConnectionCloseError: (error) => {
-      logger.warn(
-        { error, authUserId },
-        'Failed to close RLS database connection'
-      );
-    },
-  });
+	const cleanup = createIdempotentPostgresCleanup(sql, {
+		onConnectionCloseError: (error) => {
+			logger.warn(
+				{ error, authUserId },
+				'Failed to close RLS database connection',
+			);
+		},
+	});
 
-  return {
-    db: drizzle(sql, { schema }),
-    cleanup,
-  };
+	return {
+		db: drizzle(sql, { schema }),
+		cleanup,
+	};
 }
 
 /**
@@ -165,41 +165,41 @@ export async function createAuthenticatedRlsClient(
 // idle_timeout is fixed at 20s. Only authenticated stream connections
 // need the configurable timeout (up to 180s for AI generation).
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
-  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
-  // We use SET ROLE to switch to anonymous role which lacks BYPASSRLS.
-  // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
-  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
-  const sql: Sql = postgres(connectionUrl, {
-    max: 1, // Single connection per client
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
+	// Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
+	// IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
+	// We use SET ROLE to switch to anonymous role which lacks BYPASSRLS.
+	// Must use non-pooling connection because poolers may not handle SET ROLE correctly.
+	const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
+	const sql: Sql = postgres(connectionUrl, {
+		max: 1, // Single connection per client
+		idle_timeout: 20,
+		connect_timeout: 10,
+	});
 
-  // Switch to anonymous role (without BYPASSRLS privilege)
-  // CRITICAL: Must await to ensure role is switched before setting session variable
-  await sql.unsafe('SET ROLE anonymous');
+	// Switch to anonymous role (without BYPASSRLS privilege)
+	// CRITICAL: Must await to ensure role is switched before setting session variable
+	await sql.unsafe('SET ROLE anonymous');
 
-  // Set search_path after SET ROLE (role switch may reset it)
-  await sql.unsafe('SET search_path = public');
+	// Set search_path after SET ROLE (role switch may reset it)
+	await sql.unsafe('SET search_path = public');
 
-  // Set session variable to JSON null for RLS policy compatibility
-  // CRITICAL: Must await to ensure session variable is set before queries execute
-  // This allows policies to safely cast and check for null
-  // Using set_config() with template tag parameterization is safer than string interpolation
-  await sql`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
+	// Set session variable to JSON null for RLS policy compatibility
+	// CRITICAL: Must await to ensure session variable is set before queries execute
+	// This allows policies to safely cast and check for null
+	// Using set_config() with template tag parameterization is safer than string interpolation
+	await sql`SELECT set_config('request.jwt.claims', ${'null'}, false)`;
 
-  const cleanup = createIdempotentPostgresCleanup(sql, {
-    onConnectionCloseError: (error) => {
-      logger.warn(
-        { error },
-        'Failed to close anonymous RLS database connection'
-      );
-    },
-  });
+	const cleanup = createIdempotentPostgresCleanup(sql, {
+		onConnectionCloseError: (error) => {
+			logger.warn(
+				{ error },
+				'Failed to close anonymous RLS database connection',
+			);
+		},
+	});
 
-  return {
-    db: drizzle(sql, { schema }),
-    cleanup,
-  };
+	return {
+		db: drizzle(sql, { schema }),
+		cleanup,
+	};
 }

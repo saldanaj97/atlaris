@@ -1,12 +1,12 @@
 import type { infer as ZodInfer } from 'zod';
 import type { createLearningPlanSchema } from '@/shared/schemas/learning-plans.schemas';
 import type {
-  onboardingFormObject,
-  planRegenerationOverridesSchema,
+	onboardingFormObject,
+	planRegenerationOverridesSchema,
 } from './learningPlans.schemas';
 
 export type PlanRegenerationOverridesInput = ZodInfer<
-  typeof planRegenerationOverridesSchema
+	typeof planRegenerationOverridesSchema
 >;
 
 export type CreateLearningPlanInput = ZodInfer<typeof createLearningPlanSchema>;

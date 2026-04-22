@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
 
 import {
-  IntegrationGrid,
-  RequestIntegration,
+	IntegrationGrid,
+	RequestIntegration,
 } from '@/app/settings/integrations/components';
 
 /**
@@ -12,20 +12,20 @@ import {
  * Displays the integration management UI within Settings.
  */
 export default function SettingsIntegrationsPage(): JSX.Element {
-  return (
-    <>
-      <header className="mb-6">
-        <h2 className="text-xl font-semibold">Integrations</h2>
-        <p className="text-muted-foreground text-sm">
-          Connect your favorite tools to supercharge your learning workflow
-        </p>
-      </header>
+	return (
+		<>
+			<header className="mb-6">
+				<h2 className="text-xl font-semibold">Integrations</h2>
+				<p className="text-muted-foreground text-sm">
+					Connect your favorite tools to supercharge your learning workflow
+				</p>
+			</header>
 
-      <IntegrationGrid />
+			<IntegrationGrid />
 
-      <div className="mt-10">
-        <RequestIntegration />
-      </div>
-    </>
-  );
+			<div className="mt-10">
+				<RequestIntegration />
+			</div>
+		</>
+	);
 }

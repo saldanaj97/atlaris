@@ -2,26 +2,26 @@ import type { SQL } from 'drizzle-orm';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import type {
-  DbTask,
-  DbTaskProgress,
-  TasksDbClient,
-  TasksTransaction,
+	DbTask,
+	DbTaskProgress,
+	TasksDbClient,
+	TasksTransaction,
 } from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 function selectOwnedTaskIdsForUser(
-  tx: TasksTransaction,
-  userId: string,
-  taskScope: SQL
+	tx: TasksTransaction,
+	userId: string,
+	taskScope: SQL,
 ) {
-  return tx
-    .select({ id: tasks.id })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), taskScope));
+	return tx
+		.select({ id: tasks.id })
+		.from(tasks)
+		.innerJoin(modules, eq(tasks.moduleId, modules.id))
+		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+		.where(and(eq(learningPlans.userId, userId), taskScope));
 }
 
 /**
@@ -32,19 +32,19 @@ function selectOwnedTaskIdsForUser(
  * @returns A promise that resolves to an array of tasks.
  */
 export async function getAllTasksInPlan(
-  userId: string,
-  planId: string,
-  dbClient?: TasksDbClient
+	userId: string,
+	planId: string,
+	dbClient?: TasksDbClient,
 ): Promise<DbTask[]> {
-  const client = dbClient ?? getDb();
+	const client = dbClient ?? getDb();
 
-  const rows = await client
-    .select({ task: tasks })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId)));
-  return rows.map((row) => row.task);
+	const rows = await client
+		.select({ task: tasks })
+		.from(tasks)
+		.innerJoin(modules, eq(tasks.moduleId, modules.id))
+		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+		.where(and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId)));
+	return rows.map((row) => row.task);
 }
 
 /**
@@ -59,56 +59,56 @@ export async function getAllTasksInPlan(
  * @throws Error if the task is not found or access is denied
  */
 async function setTaskProgress(
-  userId: string,
-  taskId: string,
-  status: ProgressStatus,
-  dbClient?: TasksDbClient
+	userId: string,
+	taskId: string,
+	status: ProgressStatus,
+	dbClient?: TasksDbClient,
 ): Promise<DbTaskProgress> {
-  const client = dbClient ?? getDb();
+	const client = dbClient ?? getDb();
 
-  return await client.transaction(async (tx) => {
-    const [taskRow] = await selectOwnedTaskIdsForUser(
-      tx,
-      userId,
-      eq(tasks.id, taskId)
-    )
-      .limit(1)
-      .for('update');
+	return await client.transaction(async (tx) => {
+		const [taskRow] = await selectOwnedTaskIdsForUser(
+			tx,
+			userId,
+			eq(tasks.id, taskId),
+		)
+			.limit(1)
+			.for('update');
 
-    if (!taskRow) {
-      throw new Error('Task not found or access denied');
-    }
+		if (!taskRow) {
+			throw new Error('Task not found or access denied');
+		}
 
-    const now = new Date();
-    const completedAt = status === 'completed' ? now : null;
+		const now = new Date();
+		const completedAt = status === 'completed' ? now : null;
 
-    const [progress] = await tx
-      .insert(taskProgress)
-      .values({
-        taskId,
-        userId,
-        status,
-        completedAt,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [taskProgress.taskId, taskProgress.userId],
-        set: {
-          status,
-          completedAt,
-          updatedAt: now,
-        },
-      })
-      .returning();
+		const [progress] = await tx
+			.insert(taskProgress)
+			.values({
+				taskId,
+				userId,
+				status,
+				completedAt,
+				updatedAt: now,
+			})
+			.onConflictDoUpdate({
+				target: [taskProgress.taskId, taskProgress.userId],
+				set: {
+					status,
+					completedAt,
+					updatedAt: now,
+				},
+			})
+			.returning();
 
-    if (!progress) {
-      throw new Error(
-        'Failed to update task progress: operation returned no rows'
-      );
-    }
+		if (!progress) {
+			throw new Error(
+				'Failed to update task progress: operation returned no rows',
+			);
+		}
 
-    return progress;
-  });
+		return progress;
+	});
 }
 
 /**
@@ -117,75 +117,75 @@ async function setTaskProgress(
  * Falls back to single-update for single-item batches.
  */
 export async function setTaskProgressBatch(
-  userId: string,
-  updates: Array<{ taskId: string; status: ProgressStatus }>,
-  dbClient?: TasksDbClient
+	userId: string,
+	updates: Array<{ taskId: string; status: ProgressStatus }>,
+	dbClient?: TasksDbClient,
 ): Promise<DbTaskProgress[]> {
-  if (updates.length === 0) return [];
-  if (updates.length === 1) {
-    const result = await setTaskProgress(
-      userId,
-      updates[0].taskId,
-      updates[0].status,
-      dbClient
-    );
-    return [result];
-  }
+	if (updates.length === 0) return [];
+	if (updates.length === 1) {
+		const result = await setTaskProgress(
+			userId,
+			updates[0].taskId,
+			updates[0].status,
+			dbClient,
+		);
+		return [result];
+	}
 
-  const client = dbClient ?? getDb();
-  const taskIds = updates.map((u) => u.taskId);
-  const duplicateIds = Array.from(
-    taskIds.reduce((counts, taskId) => {
-      counts.set(taskId, (counts.get(taskId) ?? 0) + 1);
-      return counts;
-    }, new Map<string, number>())
-  )
-    .filter(([_taskId, count]) => count > 1)
-    .map(([taskId]) => taskId);
+	const client = dbClient ?? getDb();
+	const taskIds = updates.map((u) => u.taskId);
+	const duplicateIds = Array.from(
+		taskIds.reduce((counts, taskId) => {
+			counts.set(taskId, (counts.get(taskId) ?? 0) + 1);
+			return counts;
+		}, new Map<string, number>()),
+	)
+		.filter(([_taskId, count]) => count > 1)
+		.map(([taskId]) => taskId);
 
-  if (duplicateIds.length > 0) {
-    throw new Error(`Duplicate taskIds in updates: ${duplicateIds.join(', ')}`);
-  }
+	if (duplicateIds.length > 0) {
+		throw new Error(`Duplicate taskIds in updates: ${duplicateIds.join(', ')}`);
+	}
 
-  return await client.transaction(async (tx) => {
-    const ownedTasks = await selectOwnedTaskIdsForUser(
-      tx,
-      userId,
-      inArray(tasks.id, taskIds)
-    ).for('update');
+	return await client.transaction(async (tx) => {
+		const ownedTasks = await selectOwnedTaskIdsForUser(
+			tx,
+			userId,
+			inArray(tasks.id, taskIds),
+		).for('update');
 
-    const ownedIds = new Set(ownedTasks.map((t) => t.id));
-    const missingIds = taskIds.filter((id) => !ownedIds.has(id));
-    if (missingIds.length > 0) {
-      throw new Error('One or more tasks not found or access denied');
-    }
+		const ownedIds = new Set(ownedTasks.map((t) => t.id));
+		const missingIds = taskIds.filter((id) => !ownedIds.has(id));
+		if (missingIds.length > 0) {
+			throw new Error('One or more tasks not found or access denied');
+		}
 
-    const now = new Date();
-    const values = updates.map((u) => ({
-      taskId: u.taskId,
-      userId,
-      status: u.status,
-      completedAt: u.status === 'completed' ? now : null,
-      updatedAt: now,
-    }));
+		const now = new Date();
+		const values = updates.map((u) => ({
+			taskId: u.taskId,
+			userId,
+			status: u.status,
+			completedAt: u.status === 'completed' ? now : null,
+			updatedAt: now,
+		}));
 
-    const results = await tx
-      .insert(taskProgress)
-      .values(values)
-      .onConflictDoUpdate({
-        target: [taskProgress.taskId, taskProgress.userId],
-        set: {
-          status: sql`excluded.status`,
-          completedAt: sql`excluded.completed_at`,
-          updatedAt: sql`excluded.updated_at`,
-        },
-      })
-      .returning();
+		const results = await tx
+			.insert(taskProgress)
+			.values(values)
+			.onConflictDoUpdate({
+				target: [taskProgress.taskId, taskProgress.userId],
+				set: {
+					status: sql`excluded.status`,
+					completedAt: sql`excluded.completed_at`,
+					updatedAt: sql`excluded.updated_at`,
+				},
+			})
+			.returning();
 
-    if (results.length !== updates.length) {
-      throw new Error('Batch update returned unexpected number of rows');
-    }
+		if (results.length !== updates.length) {
+			throw new Error('Batch update returned unexpected number of rows');
+		}
 
-    return results;
-  });
+		return results;
+	});
 }

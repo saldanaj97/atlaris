@@ -10,18 +10,18 @@ export type { DbClient };
  * Resolve user's subscription tier from database
  */
 export async function resolveUserTier(
-  userId: string,
-  dbClient: DbClient
+	userId: string,
+	dbClient: DbClient,
 ): Promise<SubscriptionTier> {
-  const [user] = await dbClient
-    .select({ subscriptionTier: users.subscriptionTier })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
+	const [user] = await dbClient
+		.select({ subscriptionTier: users.subscriptionTier })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
 
-  if (!user) {
-    throw new UserNotFoundError(userId);
-  }
+	if (!user) {
+		throw new UserNotFoundError(userId);
+	}
 
-  return user.subscriptionTier;
+	return user.subscriptionTier;
 }

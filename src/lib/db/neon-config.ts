@@ -14,38 +14,38 @@ import ws from 'ws';
  * - Uses standard Neon configuration (remote HTTPS connections)
  */
 export function configureLocalNeon() {
-  if (process.env.USE_LOCAL_NEON !== 'true') {
-    return;
-  }
+	if (process.env.USE_LOCAL_NEON !== 'true') {
+		return;
+	}
 
-  const localHost = 'db.localtest.me';
+	const localHost = 'db.localtest.me';
 
-  // Configure HTTP endpoint for local Neon proxy
-  neonConfig.fetchEndpoint = (host) => {
-    const [protocol, port] =
-      host === localHost ? ['http', 4444] : ['https', 443];
-    return `${protocol}://${host}:${port}/sql`;
-  };
+	// Configure HTTP endpoint for local Neon proxy
+	neonConfig.fetchEndpoint = (host) => {
+		const [protocol, port] =
+			host === localHost ? ['http', 4444] : ['https', 443];
+		return `${protocol}://${host}:${port}/sql`;
+	};
 
-  // Configure WebSocket security based on host
-  try {
-    const connectionStringUrl = new URL(
-      process.env.DATABASE_URL_NON_POOLING ||
-        process.env.DATABASE_URL_UNPOOLED ||
-        process.env.DATABASE_URL ||
-        ''
-    );
-    neonConfig.useSecureWebSocket = connectionStringUrl.hostname !== localHost;
-  } catch {
-    // If URL parsing fails, default to secure WebSocket (production behavior)
-    neonConfig.useSecureWebSocket = true;
-  }
+	// Configure WebSocket security based on host
+	try {
+		const connectionStringUrl = new URL(
+			process.env.DATABASE_URL_NON_POOLING ||
+				process.env.DATABASE_URL_UNPOOLED ||
+				process.env.DATABASE_URL ||
+				'',
+		);
+		neonConfig.useSecureWebSocket = connectionStringUrl.hostname !== localHost;
+	} catch {
+		// If URL parsing fails, default to secure WebSocket (production behavior)
+		neonConfig.useSecureWebSocket = true;
+	}
 
-  // Configure WebSocket proxy
-  neonConfig.wsProxy = (host) =>
-    host === localHost ? `${host}:4444/v2` : `${host}/v2`;
+	// Configure WebSocket proxy
+	neonConfig.wsProxy = (host) =>
+		host === localHost ? `${host}:4444/v2` : `${host}/v2`;
 
-  // Use native WebSocket constructor
+	// Use native WebSocket constructor
 
-  neonConfig.webSocketConstructor = ws;
+	neonConfig.webSocketConstructor = ws;
 }

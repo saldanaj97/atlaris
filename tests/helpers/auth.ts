@@ -1,6 +1,6 @@
 import {
-  clearDevAuthUserIdForTests,
-  setDevAuthUserIdForTests,
+	clearDevAuthUserIdForTests,
+	setDevAuthUserIdForTests,
 } from '@/lib/config/env';
 
 /**
@@ -20,7 +20,7 @@ import {
  * For RLS policy testing, use helpers in tests/helpers/rls.ts instead.
  */
 export function setTestUser(authUserId: string) {
-  setDevAuthUserIdForTests(authUserId);
+	setDevAuthUserIdForTests(authUserId);
 }
 
 /**
@@ -28,5 +28,5 @@ export function setTestUser(authUserId: string) {
  * Use this in tests that need to verify unauthenticated behavior.
  */
 export function clearTestUser() {
-  clearDevAuthUserIdForTests();
+	clearDevAuthUserIdForTests();
 }

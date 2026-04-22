@@ -13,42 +13,42 @@ export const SMOKE_ANON_PORT = 3100 as const;
 export const SMOKE_AUTH_PORT = 3101 as const;
 
 const SMOKE_CONTROLLED_ENV_KEYS = [
-  'ENABLE_SENTRY',
-  'APP_URL',
-  'DATABASE_URL',
-  'DATABASE_URL_NON_POOLING',
-  'DATABASE_URL_UNPOOLED',
-  'DEV_AUTH_USER_ID',
-  'LOCAL_PRODUCT_TESTING',
-  'MOCK_AI_SCENARIO',
-  'MOCK_GENERATION_SEED',
-  'NODE_ENV',
-  'NEXT_PUBLIC_ENABLE_SENTRY',
-  'PORT',
-  'SMOKE_NEXT_DIST_DIR',
-  'STRIPE_LOCAL_MODE',
-  'AI_PROVIDER',
-  'AI_USE_MOCK',
+	'ENABLE_SENTRY',
+	'APP_URL',
+	'DATABASE_URL',
+	'DATABASE_URL_NON_POOLING',
+	'DATABASE_URL_UNPOOLED',
+	'DEV_AUTH_USER_ID',
+	'LOCAL_PRODUCT_TESTING',
+	'MOCK_AI_SCENARIO',
+	'MOCK_GENERATION_SEED',
+	'NODE_ENV',
+	'NEXT_PUBLIC_ENABLE_SENTRY',
+	'PORT',
+	'SMOKE_NEXT_DIST_DIR',
+	'STRIPE_LOCAL_MODE',
+	'AI_PROVIDER',
+	'AI_USE_MOCK',
 ] as const;
 
 export function smokeAnonAppUrl(): string {
-  return `http://127.0.0.1:${SMOKE_ANON_PORT}`;
+	return `http://127.0.0.1:${SMOKE_ANON_PORT}`;
 }
 
 export function smokeAuthAppUrl(): string {
-  return `http://127.0.0.1:${SMOKE_AUTH_PORT}`;
+	return `http://127.0.0.1:${SMOKE_AUTH_PORT}`;
 }
 
 function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
-  return {
-    DATABASE_URL: state.DATABASE_URL,
-    DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
-    DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
-    ENABLE_SENTRY: 'false',
-    NEXT_PUBLIC_ENABLE_SENTRY: 'false',
-    MOCK_AI_SCENARIO: 'success',
-    NODE_ENV: 'development',
-  };
+	return {
+		DATABASE_URL: state.DATABASE_URL,
+		DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
+		DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
+		ENABLE_SENTRY: 'false',
+		NEXT_PUBLIC_ENABLE_SENTRY: 'false',
+		MOCK_AI_SCENARIO: 'success',
+		NODE_ENV: 'development',
+	};
 }
 
 /**
@@ -56,38 +56,38 @@ function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
  * All values are strings suitable for `process.env`.
  */
 export function buildAnonModeLayer(
-  state: SmokeStatePayload
+	state: SmokeStatePayload,
 ): Record<string, string> {
-  return {
-    ...baseSmokeLayer(state),
-    DEV_AUTH_USER_ID: '',
-    LOCAL_PRODUCT_TESTING: 'false',
-    STRIPE_LOCAL_MODE: 'false',
-    AI_PROVIDER: '',
-    AI_USE_MOCK: 'false',
-    PORT: String(SMOKE_ANON_PORT),
-    APP_URL: smokeAnonAppUrl(),
-    SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
-  };
+	return {
+		...baseSmokeLayer(state),
+		DEV_AUTH_USER_ID: '',
+		LOCAL_PRODUCT_TESTING: 'false',
+		STRIPE_LOCAL_MODE: 'false',
+		AI_PROVIDER: '',
+		AI_USE_MOCK: 'false',
+		PORT: String(SMOKE_ANON_PORT),
+		APP_URL: smokeAnonAppUrl(),
+		SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
+	};
 }
 
 /**
  * Env layer for auth smoke: seeded local product-testing user + local billing/AI mocks.
  */
 export function buildAuthModeLayer(
-  state: SmokeStatePayload
+	state: SmokeStatePayload,
 ): Record<string, string> {
-  return {
-    ...baseSmokeLayer(state),
-    DEV_AUTH_USER_ID: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
-    LOCAL_PRODUCT_TESTING: 'true',
-    STRIPE_LOCAL_MODE: 'true',
-    AI_PROVIDER: '',
-    AI_USE_MOCK: 'true',
-    PORT: String(SMOKE_AUTH_PORT),
-    APP_URL: smokeAuthAppUrl(),
-    SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',
-  };
+	return {
+		...baseSmokeLayer(state),
+		DEV_AUTH_USER_ID: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
+		LOCAL_PRODUCT_TESTING: 'true',
+		STRIPE_LOCAL_MODE: 'true',
+		AI_PROVIDER: '',
+		AI_USE_MOCK: 'true',
+		PORT: String(SMOKE_AUTH_PORT),
+		APP_URL: smokeAuthAppUrl(),
+		SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',
+	};
 }
 
 /**
@@ -97,11 +97,11 @@ export function buildAuthModeLayer(
  */
 /** Mutates `env` in place. Caller should pass a copy if original must be preserved. */
 function stripConflictingNoColor(
-  env: Record<string, string | undefined>
+	env: Record<string, string | undefined>,
 ): void {
-  if (env.FORCE_COLOR !== undefined && env.NO_COLOR !== undefined) {
-    delete env.NO_COLOR;
-  }
+	if (env.FORCE_COLOR !== undefined && env.NO_COLOR !== undefined) {
+		delete env.NO_COLOR;
+	}
 }
 
 /**
@@ -109,27 +109,27 @@ function stripConflictingNoColor(
  * so Next `appEnv.isDevelopment` and local bypasses in `src/proxy.ts` stay enabled.
  */
 export function mergeSmokeProcessEnv(
-  base: NodeJS.ProcessEnv,
-  layer: Record<string, string>
+	base: NodeJS.ProcessEnv,
+	layer: Record<string, string>,
 ): NodeJS.ProcessEnv {
-  const merged = { ...base } as Record<string, string | undefined>;
-  for (const key of SMOKE_CONTROLLED_ENV_KEYS) {
-    delete merged[key];
-  }
-  Object.assign(merged, layer);
-  merged.NODE_ENV = 'development';
-  stripConflictingNoColor(merged);
-  return merged as NodeJS.ProcessEnv;
+	const merged = { ...base } as Record<string, string | undefined>;
+	for (const key of SMOKE_CONTROLLED_ENV_KEYS) {
+		delete merged[key];
+	}
+	Object.assign(merged, layer);
+	merged.NODE_ENV = 'development';
+	stripConflictingNoColor(merged);
+	return merged as NodeJS.ProcessEnv;
 }
 
 type SmokeAppMode = 'anon' | 'auth';
 
 export function parseSmokeAppMode(argv: string[]): SmokeAppMode {
-  const raw = argv
-    .find((a) => a.startsWith('--mode='))
-    ?.slice('--mode='.length);
-  if (raw === 'anon' || raw === 'auth') {
-    return raw;
-  }
-  throw new Error('Missing or invalid --mode. Use --mode=anon or --mode=auth.');
+	const raw = argv
+		.find((a) => a.startsWith('--mode='))
+		?.slice('--mode='.length);
+	if (raw === 'anon' || raw === 'auth') {
+		return raw;
+	}
+	throw new Error('Missing or invalid --mode. Use --mode=anon or --mode=auth.');
 }

@@ -1,7 +1,7 @@
 import { getAttemptCap as getConfiguredAttemptCap } from '@/lib/config/env/ai';
 import {
-  DEFAULT_ATTEMPT_CAP,
-  PLAN_GENERATION_LIMIT,
+	DEFAULT_ATTEMPT_CAP,
+	PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 
 /**
@@ -10,9 +10,9 @@ import {
 type AttemptCapReader = () => number;
 
 export function createGetAttemptCap(
-  readAttemptCap: AttemptCapReader = getConfiguredAttemptCap
+	readAttemptCap: AttemptCapReader = getConfiguredAttemptCap,
 ): AttemptCapReader {
-  return (): number => readAttemptCap();
+	return (): number => readAttemptCap();
 }
 
 const generationAttemptCap = createGetAttemptCap();

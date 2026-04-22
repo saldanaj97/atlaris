@@ -5,32 +5,32 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
+	PostgreSqlContainer,
+	type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
 
 const TEST_DB_PASSWORD = randomUUID();
 
 export async function startSmokePostgresContainer(): Promise<StartedPostgreSqlContainer> {
-  console.log('[smoke] Starting PostgreSQL 17 container…');
+	console.log('[smoke] Starting PostgreSQL 17 container…');
 
-  const container = await new PostgreSqlContainer('postgres:17-alpine')
-    .withDatabase('atlaris_test')
-    .withUsername('postgres')
-    .withPassword(TEST_DB_PASSWORD)
-    .withExposedPorts(5432)
-    .start();
+	const container = await new PostgreSqlContainer('postgres:17-alpine')
+		.withDatabase('atlaris_test')
+		.withUsername('postgres')
+		.withPassword(TEST_DB_PASSWORD)
+		.withExposedPorts(5432)
+		.start();
 
-  return container;
+	return container;
 }
 
 export async function stopSmokePostgresContainer(
-  container: StartedPostgreSqlContainer | null
+	container: StartedPostgreSqlContainer | null,
 ): Promise<void> {
-  if (!container) {
-    return;
-  }
-  console.log('[smoke] Stopping PostgreSQL container…');
-  await container.stop();
-  console.log('[smoke] PostgreSQL container stopped ✓');
+	if (!container) {
+		return;
+	}
+	console.log('[smoke] Stopping PostgreSQL container…');
+	await container.stop();
+	console.log('[smoke] PostgreSQL container stopped ✓');
 }

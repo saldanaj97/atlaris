@@ -2,10 +2,10 @@ import { createNeonAuth } from '@neondatabase/auth/next/server';
 import { neonAuthEnv } from '@/lib/config/env';
 
 export const auth = createNeonAuth({
-  baseUrl: neonAuthEnv.baseUrl,
-  cookies: {
-    secret: neonAuthEnv.cookieSecret,
-  },
+	baseUrl: neonAuthEnv.baseUrl,
+	cookies: {
+		secret: neonAuthEnv.cookieSecret,
+	},
 });
 
 /**
@@ -20,15 +20,15 @@ export const auth = createNeonAuth({
  * properly refreshed on the next Route Handler or client-side fetch.
  */
 export async function getSessionSafe(options?: { strict?: boolean }): Promise<{
-  session: { user: { id: string } } | null;
+	session: { user: { id: string } } | null;
 }> {
-  try {
-    const { data } = await auth.getSession();
-    return { session: data };
-  } catch (error) {
-    if (options?.strict) {
-      throw error;
-    }
-    return { session: null };
-  }
+	try {
+		const { data } = await auth.getSession();
+		return { session: data };
+	} catch (error) {
+		if (options?.strict) {
+			throw error;
+		}
+		return { session: null };
+	}
 }

@@ -6,18 +6,18 @@ import type { GenerationInput } from '@/features/ai/types/provider.types';
  */
 /** Defaults used when no overrides are passed. Same shape as GenerationInput (topic, notes, skillLevel, weeklyHours, learningStyle). */
 const DEFAULT_GENERATION_INPUT: GenerationInput = {
-  topic: 'Test Topic',
-  notes: null,
-  skillLevel: 'beginner',
-  weeklyHours: 10,
-  learningStyle: 'mixed',
+	topic: 'Test Topic',
+	notes: null,
+	skillLevel: 'beginner',
+	weeklyHours: 10,
+	learningStyle: 'mixed',
 };
 
 export function createGenerationInput(
-  overrides: Partial<GenerationInput> = {}
+	overrides: Partial<GenerationInput> = {},
 ): GenerationInput {
-  return {
-    ...DEFAULT_GENERATION_INPUT,
-    ...overrides,
-  };
+	return {
+		...DEFAULT_GENERATION_INPUT,
+		...overrides,
+	};
 }

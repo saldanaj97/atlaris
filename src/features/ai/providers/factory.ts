@@ -5,9 +5,9 @@ import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 
 function parseMockSeed(): number | undefined {
-  return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
-    ? aiEnv.mockSeed
-    : undefined;
+	return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
+		? aiEnv.mockSeed
+		: undefined;
 }
 
 /**
@@ -24,14 +24,14 @@ function parseMockSeed(): number | undefined {
  * only see the two legal explicit values here.
  */
 function shouldUseMock(): boolean {
-  const provider = aiEnv.provider;
-  if (provider === 'mock') return true;
-  if (provider === 'router') return false;
-  if (appEnv.isTest) {
-    return aiEnv.useMock ?? true;
-  }
-  if (appEnv.isDevelopment) return true;
-  return false;
+	const provider = aiEnv.provider;
+	if (provider === 'mock') return true;
+	if (provider === 'router') return false;
+	if (appEnv.isTest) {
+		return aiEnv.useMock ?? true;
+	}
+	if (appEnv.isDevelopment) return true;
+	return false;
 }
 
 /**
@@ -43,23 +43,23 @@ function shouldUseMock(): boolean {
  * @returns An instance implementing `AiPlanGenerationProvider`
  */
 export function getGenerationProviderWithModel(
-  modelId: string
+	modelId: string,
 ): AiPlanGenerationProvider {
-  if (!modelId) {
-    throw new Error('modelId must be a non-empty string');
-  }
+	if (!modelId) {
+		throw new Error('modelId must be a non-empty string');
+	}
 
-  if (shouldUseMock()) {
-    logger.debug(
-      { source: 'provider-factory', requestedModel: modelId },
-      'Mock provider active — requested modelId will not be used'
-    );
-    return new MockGenerationProvider({
-      deterministicSeed: parseMockSeed(),
-    });
-  }
+	if (shouldUseMock()) {
+		logger.debug(
+			{ source: 'provider-factory', requestedModel: modelId },
+			'Mock provider active — requested modelId will not be used',
+		);
+		return new MockGenerationProvider({
+			deterministicSeed: parseMockSeed(),
+		});
+	}
 
-  return new RouterGenerationProvider({ model: modelId });
+	return new RouterGenerationProvider({ model: modelId });
 }
 
 /**
@@ -74,14 +74,14 @@ export function getGenerationProviderWithModel(
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`
  */
 export function getGenerationProvider(): AiPlanGenerationProvider {
-  if (shouldUseMock()) {
-    return new MockGenerationProvider({
-      deterministicSeed: parseMockSeed(),
-    });
-  }
+	if (shouldUseMock()) {
+		return new MockGenerationProvider({
+			deterministicSeed: parseMockSeed(),
+		});
+	}
 
-  // Explicit non-mock provider or production — always pass model explicitly
-  return new RouterGenerationProvider({
-    model: aiEnv.defaultModel,
-  });
+	// Explicit non-mock provider or production — always pass model explicitly
+	return new RouterGenerationProvider({
+		model: aiEnv.defaultModel,
+	});
 }

@@ -2,8 +2,8 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface ModuleDetailPageErrorProps {
-  message?: string;
-  planId?: string;
+	message?: string;
+	planId?: string;
 }
 
 /**
@@ -17,40 +17,40 @@ interface ModuleDetailPageErrorProps {
  * @returns The React element representing the error page UI
  */
 export function ModuleDetailPageError({
-  message,
-  planId,
+	message,
+	planId,
 }: ModuleDetailPageErrorProps) {
-  return (
-    <div
-      role="alert"
-      className="flex min-h-[60vh] flex-col items-center justify-center p-4"
-    >
-      <div className="rounded-3xl border border-white/50 bg-white/60 p-8 text-center shadow-xl backdrop-blur-xl dark:border-stone-800 dark:bg-stone-900/60">
-        <h1 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
-          Error Loading Module
-        </h1>
-        <p className="mb-6 max-w-md text-stone-600 dark:text-stone-400">
-          {message ??
-            'There was an error loading the module. Please try again later.'}
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-          {planId && (
-            <Link
-              href={`/plans/${planId}`}
-              className="bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-white transition"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Plan
-            </Link>
-          )}
-          <Link
-            href="/plans"
-            className="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white px-4 py-2 text-stone-700 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
-          >
-            View All Plans
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+	return (
+		<div
+			role="alert"
+			className="flex min-h-[60vh] flex-col items-center justify-center p-4"
+		>
+			<div className="rounded-3xl border border-white/50 bg-white/60 p-8 text-center shadow-xl backdrop-blur-xl dark:border-stone-800 dark:bg-stone-900/60">
+				<h1 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
+					Error Loading Module
+				</h1>
+				<p className="mb-6 max-w-md text-stone-600 dark:text-stone-400">
+					{message ??
+						'There was an error loading the module. Please try again later.'}
+				</p>
+				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+					{planId && (
+						<Link
+							href={`/plans/${planId}`}
+							className="bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-white transition"
+						>
+							<ArrowLeft className="h-4 w-4" />
+							Back to Plan
+						</Link>
+					)}
+					<Link
+						href="/plans"
+						className="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white px-4 py-2 text-stone-700 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+					>
+						View All Plans
+					</Link>
+				</div>
+			</div>
+		</div>
+	);
 }

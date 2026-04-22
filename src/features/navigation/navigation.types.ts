@@ -1,8 +1,8 @@
 export type NavItem = {
-  label: string;
-  href: string;
-  dropdown?: Array<{
-    label: string;
-    href: string;
-  }>;
+	label: string;
+	href: string;
+	dropdown?: Array<{
+		label: string;
+		href: string;
+	}>;
 };

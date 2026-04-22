@@ -15,9 +15,9 @@ export const DEFAULT_ATTEMPT_CAP = 3;
  * Returns floored integer >= 1, or DEFAULT_ATTEMPT_CAP for invalid inputs.
  */
 export function resolveAttemptCap(rawCap: number): number {
-  if (!Number.isFinite(rawCap)) return DEFAULT_ATTEMPT_CAP;
-  const floored = Math.floor(rawCap);
-  return floored >= 1 ? floored : DEFAULT_ATTEMPT_CAP;
+	if (!Number.isFinite(rawCap)) return DEFAULT_ATTEMPT_CAP;
+	const floored = Math.floor(rawCap);
+	return floored >= 1 ? floored : DEFAULT_ATTEMPT_CAP;
 }
 
 /** Maximum durable generation attempts per user within a rolling window. */
@@ -28,9 +28,9 @@ export const PLAN_GENERATION_WINDOW_MINUTES = 60;
 
 /** Rolling window size in milliseconds. */
 export const PLAN_GENERATION_WINDOW_MS =
-  PLAN_GENERATION_WINDOW_MINUTES * 60 * 1000;
+	PLAN_GENERATION_WINDOW_MINUTES * 60 * 1000;
 
 /** Convenience helper for window-start derivation using a fixed "now". */
 export function getPlanGenerationWindowStart(now: Date): Date {
-  return new Date(now.getTime() - PLAN_GENERATION_WINDOW_MS);
+	return new Date(now.getTime() - PLAN_GENERATION_WINDOW_MS);
 }

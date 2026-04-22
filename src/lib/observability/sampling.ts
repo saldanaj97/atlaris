@@ -32,11 +32,11 @@ type Environment = 'production' | 'development' | 'test';
  * load before the full server environment is available.
  */
 export function getEnvironment(): Environment {
-  const env =
-    typeof process !== 'undefined' ? process.env.NODE_ENV : 'development';
-  if (env === 'production') return 'production';
-  if (env === 'test') return 'test';
-  return 'development';
+	const env =
+		typeof process !== 'undefined' ? process.env.NODE_ENV : 'development';
+	if (env === 'production') return 'production';
+	if (env === 'test') return 'test';
+	return 'development';
 }
 
 // ---------------------------------------------------------------------------
@@ -49,14 +49,14 @@ export function getEnvironment(): Environment {
  * Development: 100 % — full visibility for local debugging.
  */
 export function getReplaySessionSampleRate(): number {
-  switch (getEnvironment()) {
-    case 'production':
-      return 0.1;
-    case 'development':
-      return 1.0;
-    case 'test':
-      return 0;
-  }
+	switch (getEnvironment()) {
+		case 'production':
+			return 0.1;
+		case 'development':
+			return 1.0;
+		case 'test':
+			return 0;
+	}
 }
 
 /**
@@ -64,7 +64,7 @@ export function getReplaySessionSampleRate(): number {
  * Always 100 % — every error replay is high-value for root-cause analysis.
  */
 export function getReplayErrorSampleRate(): number {
-  return 1.0;
+	return 1.0;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,17 +73,17 @@ export function getReplayErrorSampleRate(): number {
 
 /** Patterns with zero diagnostic value — always drop in production. */
 const LOW_VALUE_PATTERNS: RegExp[] = [
-  /\/_next\//,
-  /\/favicon\.ico/,
-  /\/api\/health/,
-  /\/robots\.txt/,
-  /\/sitemap/,
-  /\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)(\?|$)/,
+	/\/_next\//,
+	/\/favicon\.ico/,
+	/\/api\/health/,
+	/\/robots\.txt/,
+	/\/sitemap/,
+	/\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)(\?|$)/,
 ];
 
 /** High-value server work — sample more aggressively. */
 const HIGH_VALUE_PATTERNS: RegExp[] = [
-  /\/api\//, // API routes (after low-value filter excludes health)
+	/\/api\//, // API routes (after low-value filter excludes health)
 ];
 
 /**
@@ -98,38 +98,38 @@ const HIGH_VALUE_PATTERNS: RegExp[] = [
  * booting Sentry.
  */
 export function tracesSampler(context: {
-  name?: string;
-  parentSampled?: boolean;
-  _attributes?: Record<string, unknown>;
+	name?: string;
+	parentSampled?: boolean;
+	_attributes?: Record<string, unknown>;
 }): number {
-  const env = getEnvironment();
-  const name = context.name ?? '';
+	const env = getEnvironment();
+	const name = context.name ?? '';
 
-  // Inherit parent sampling decision for distributed traces so child
-  // spans are never orphaned from their parent.
-  if (context.parentSampled !== undefined) {
-    return context.parentSampled ? 1.0 : 0;
-  }
+	// Inherit parent sampling decision for distributed traces so child
+	// spans are never orphaned from their parent.
+	if (context.parentSampled !== undefined) {
+		return context.parentSampled ? 1.0 : 0;
+	}
 
-  // Low-value: health checks, static assets, favicons.
-  if (LOW_VALUE_PATTERNS.some((p) => p.test(name))) {
-    return env === 'production' ? 0 : 0.01;
-  }
+	// Low-value: health checks, static assets, favicons.
+	if (LOW_VALUE_PATTERNS.some((p) => p.test(name))) {
+		return env === 'production' ? 0 : 0.01;
+	}
 
-  // High-value: API routes (the main performance signal).
-  if (HIGH_VALUE_PATTERNS.some((p) => p.test(name))) {
-    return env === 'production' ? 0.2 : 1.0;
-  }
+	// High-value: API routes (the main performance signal).
+	if (HIGH_VALUE_PATTERNS.some((p) => p.test(name))) {
+		return env === 'production' ? 0.2 : 1.0;
+	}
 
-  // Default: page loads, navigations, background work.
-  switch (env) {
-    case 'production':
-      return 0.05;
-    case 'development':
-      return 0.5;
-    case 'test':
-      return 0;
-  }
+	// Default: page loads, navigations, background work.
+	switch (env) {
+		case 'production':
+			return 0.05;
+		case 'development':
+			return 0.5;
+		case 'test':
+			return 0;
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -148,11 +148,11 @@ export function tracesSampler(context: {
  * Development/test: enabled for full observability during debugging.
  */
 export function shouldEnableLogs(): boolean {
-  const override =
-    typeof process !== 'undefined'
-      ? process.env.SENTRY_ENABLE_LOGS?.trim().toLowerCase()
-      : undefined;
-  if (override === 'true' || override === '1') return true;
-  if (override === 'false' || override === '0') return false;
-  return getEnvironment() !== 'production';
+	const override =
+		typeof process !== 'undefined'
+			? process.env.SENTRY_ENABLE_LOGS?.trim().toLowerCase()
+			: undefined;
+	if (override === 'true' || override === '1') return true;
+	if (override === 'false' || override === '0') return false;
+	return getEnvironment() !== 'production';
 }

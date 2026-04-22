@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
 import {
-  getLocalStripeMock,
-  resolveStripeClientBaseUrl,
+	getLocalStripeMock,
+	resolveStripeClientBaseUrl,
 } from '@/features/billing/stripe-commerce/local-gateway';
 import { stripeEnv } from '@/lib/config/env';
 import { EnvValidationError } from '@/lib/config/env/shared';
@@ -16,28 +16,28 @@ let stripeInstance: Stripe | null = null;
  * Get or create the Stripe client instance (live SDK or local in-process mock).
  */
 export function getStripe(): Stripe {
-  if (stripeEnv.localMode) {
-    return getLocalStripeMock(resolveStripeClientBaseUrl());
-  }
+	if (stripeEnv.localMode) {
+		return getLocalStripeMock(resolveStripeClientBaseUrl());
+	}
 
-  if (!stripeInstance) {
-    let secretKey: string;
-    try {
-      secretKey = stripeEnv.secretKey;
-    } catch (err) {
-      if (err instanceof EnvValidationError) {
-        throw new Error(
-          'STRIPE_SECRET_KEY is not set in environment variables'
-        );
-      }
-      throw err;
-    }
+	if (!stripeInstance) {
+		let secretKey: string;
+		try {
+			secretKey = stripeEnv.secretKey;
+		} catch (err) {
+			if (err instanceof EnvValidationError) {
+				throw new Error(
+					'STRIPE_SECRET_KEY is not set in environment variables',
+				);
+			}
+			throw err;
+		}
 
-    stripeInstance = new Stripe(secretKey, {
-      typescript: true,
-      telemetry: false,
-    });
-  }
+		stripeInstance = new Stripe(secretKey, {
+			typescript: true,
+			telemetry: false,
+		});
+	}
 
-  return stripeInstance;
+	return stripeInstance;
 }

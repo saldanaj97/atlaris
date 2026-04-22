@@ -21,42 +21,42 @@ import { logger } from '@/lib/logging/logger';
  */
 
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, user }) => {
-    const planId = requirePlanIdFromRequest(req, 'last');
-    const dbClient = getDb();
+	withAuthAndRateLimit('read', async ({ req, user }) => {
+		const planId = requirePlanIdFromRequest(req, 'last');
+		const dbClient = getDb();
 
-    logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
+		logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
 
-    const detail = await getPlanDetailForRead({
-      planId,
-      userId: user.id,
-      dbClient,
-    });
+		const detail = await getPlanDetailForRead({
+			planId,
+			userId: user.id,
+			dbClient,
+		});
 
-    if (!detail) {
-      throw new NotFoundError('Learning plan not found.', undefined, {
-        planId,
-        userId: user.id,
-      });
-    }
+		if (!detail) {
+			throw new NotFoundError('Learning plan not found.', undefined, {
+				planId,
+				userId: user.id,
+			});
+		}
 
-    logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
+		logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
 
-    return json(detail);
-  })
+		return json(detail);
+	}),
 );
 
 export const DELETE = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async ({ req, user }) => {
-    const planId = requirePlanIdFromRequest(req, 'last');
-    const dbClient = getDb();
+	withAuthAndRateLimit('mutation', async ({ req, user }) => {
+		const planId = requirePlanIdFromRequest(req, 'last');
+		const dbClient = getDb();
 
-    logger.info({ planId, userId: user.id }, 'Deleting learning plan');
+		logger.info({ planId, userId: user.id }, 'Deleting learning plan');
 
-    await removePlanForWrite({ planId, userId: user.id, dbClient });
+		await removePlanForWrite({ planId, userId: user.id, dbClient });
 
-    logger.info({ planId, userId: user.id }, 'Learning plan deleted');
+		logger.info({ planId, userId: user.id }, 'Learning plan deleted');
 
-    return json({ success: true });
-  })
+		return json({ success: true });
+	}),
 );

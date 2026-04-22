@@ -3,57 +3,57 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import AuthControls from '@/components/shared/AuthControls';
 
 vi.mock('@neondatabase/auth/react', () => ({
-  UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
+	UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
 }));
 
 afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
+	cleanup();
+	vi.clearAllMocks();
 });
 
 describe('AuthControls', () => {
-  it('renders sign in and sign up links when unauthenticated', () => {
-    render(<AuthControls isAuthenticated={false} />);
+	it('renders sign in and sign up links when unauthenticated', () => {
+		render(<AuthControls isAuthenticated={false} />);
 
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
-      'href',
-      '/auth/sign-in'
-    );
-    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute(
-      'href',
-      '/auth/sign-up'
-    );
-    expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
-  });
+		expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
+			'href',
+			'/auth/sign-in',
+		);
+		expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute(
+			'href',
+			'/auth/sign-up',
+		);
+		expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
+	});
 
-  it('renders user button and hides sign in/sign up when authenticated', () => {
-    render(<AuthControls isAuthenticated={true} />);
+	it('renders user button and hides sign in/sign up when authenticated', () => {
+		render(<AuthControls isAuthenticated={true} />);
 
-    expect(screen.getByTestId('user-button')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /sign in/i })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /sign up/i })
-    ).not.toBeInTheDocument();
-  });
+		expect(screen.getByTestId('user-button')).toBeInTheDocument();
+		expect(
+			screen.queryByRole('link', { name: /sign in/i }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole('link', { name: /sign up/i }),
+		).not.toBeInTheDocument();
+	});
 
-  describe('tier badge', () => {
-    it('does not render badge for free tier', () => {
-      render(<AuthControls isAuthenticated={true} tier="free" />);
+	describe('tier badge', () => {
+		it('does not render badge for free tier', () => {
+			render(<AuthControls isAuthenticated={true} tier="free" />);
 
-      expect(screen.queryByText('free')).not.toBeInTheDocument();
-      expect(screen.getByTestId('user-button')).toBeInTheDocument();
-    });
+			expect(screen.queryByText('free')).not.toBeInTheDocument();
+			expect(screen.getByTestId('user-button')).toBeInTheDocument();
+		});
 
-    it.each([
-      'starter',
-      'pro',
-    ] as const)('renders %s tier when authenticated and tier is provided', (tier) => {
-      render(<AuthControls isAuthenticated={true} tier={tier} />);
+		it.each([
+			'starter',
+			'pro',
+		] as const)('renders %s tier when authenticated and tier is provided', (tier) => {
+			render(<AuthControls isAuthenticated={true} tier={tier} />);
 
-      expect(screen.getByText(tier)).toBeInTheDocument();
-      expect(screen.getByTestId('user-button')).toBeInTheDocument();
-    });
-  });
+			expect(screen.getByText(tier)).toBeInTheDocument();
+			expect(screen.getByTestId('user-button')).toBeInTheDocument();
+		});
+	});
 });

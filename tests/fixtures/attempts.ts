@@ -10,22 +10,22 @@ import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 type CreateFailedAttemptParams = {
-  planId: string;
-  classification?: string;
-  durationMs?: number;
+	planId: string;
+	classification?: string;
+	durationMs?: number;
 } & Partial<Omit<InferInsertModel<typeof generationAttempts>, 'planId'>>;
 
 type GenerationAttemptRow = InferSelectModel<typeof generationAttempts>;
 
 const FailedAttemptDefaults = {
-  status: 'failure' as const,
-  modulesCount: 0,
-  tasksCount: 0,
-  truncatedTopic: false,
-  truncatedNotes: false,
-  normalizedEffort: false,
-  promptHash: null,
-  metadata: null,
+	status: 'failure' as const,
+	modulesCount: 0,
+	tasksCount: 0,
+	truncatedTopic: false,
+	truncatedNotes: false,
+	normalizedEffort: false,
+	promptHash: null,
+	metadata: null,
 };
 
 /**
@@ -33,21 +33,21 @@ const FailedAttemptDefaults = {
  * Centralizes defaults so schema changes are reflected in one place.
  */
 function createFailedAttempt(
-  overrides: CreateFailedAttemptParams
+	overrides: CreateFailedAttemptParams,
 ): InferInsertModel<typeof generationAttempts> {
-  const {
-    planId,
-    classification = 'timeout',
-    durationMs = 10_000,
-    ...rest
-  } = overrides;
-  return {
-    ...FailedAttemptDefaults,
-    planId,
-    classification,
-    durationMs,
-    ...rest,
-  };
+	const {
+		planId,
+		classification = 'timeout',
+		durationMs = 10_000,
+		...rest
+	} = overrides;
+	return {
+		...FailedAttemptDefaults,
+		planId,
+		classification,
+		durationMs,
+		...rest,
+	};
 }
 
 /**
@@ -55,19 +55,19 @@ function createFailedAttempt(
  * Each attempt gets overrides via the builder; defaults are applied per record.
  */
 export function createFailedAttempts(
-  planId: string,
-  count: number,
-  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>
+	planId: string,
+	count: number,
+	overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>,
 ): InferInsertModel<typeof generationAttempts>[] {
-  return Array.from({ length: count }, (_, index) => {
-    const base: CreateFailedAttemptParams = {
-      planId,
-      classification: index % 2 === 0 ? 'timeout' : 'validation',
-      durationMs: 1_000 + index * 100,
-    };
-    const perIndex = overridesPerIndex?.(index) ?? {};
-    return createFailedAttempt({ ...base, ...perIndex });
-  });
+	return Array.from({ length: count }, (_, index) => {
+		const base: CreateFailedAttemptParams = {
+			planId,
+			classification: index % 2 === 0 ? 'timeout' : 'validation',
+			durationMs: 1_000 + index * 100,
+		};
+		const perIndex = overridesPerIndex?.(index) ?? {};
+		return createFailedAttempt({ ...base, ...perIndex });
+	});
 }
 
 /**
@@ -75,27 +75,27 @@ export function createFailedAttempts(
  * Use this in integration tests to avoid direct table inserts.
  */
 export async function createFailedAttemptsInDb(
-  planId: string,
-  count: number,
-  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>
+	planId: string,
+	count: number,
+	overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>,
 ): Promise<GenerationAttemptRow[]> {
-  if (count === 0) {
-    return [];
-  }
+	if (count === 0) {
+		return [];
+	}
 
-  const attempts = createFailedAttempts(planId, count, overridesPerIndex);
-  const inserted = await db
-    .insert(generationAttempts)
-    .values(attempts)
-    .returning();
+	const attempts = createFailedAttempts(planId, count, overridesPerIndex);
+	const inserted = await db
+		.insert(generationAttempts)
+		.values(attempts)
+		.returning();
 
-  if (inserted.length !== count) {
-    throw new Error(
-      `Failed to create expected failed attempts: expected ${count}, got ${inserted.length}`
-    );
-  }
+	if (inserted.length !== count) {
+		throw new Error(
+			`Failed to create expected failed attempts: expected ${count}, got ${inserted.length}`,
+		);
+	}
 
-  return inserted;
+	return inserted;
 }
 
 /**
@@ -103,37 +103,37 @@ export async function createFailedAttemptsInDb(
  * leaving the requested number of slots available.
  */
 export function getDurableWindowSeedCount(slotsRemaining = 0): number {
-  const normalizedSlotsRemaining = Math.max(0, Math.floor(slotsRemaining));
-  return Math.max(0, PLAN_GENERATION_LIMIT - normalizedSlotsRemaining);
+	const normalizedSlotsRemaining = Math.max(0, Math.floor(slotsRemaining));
+	return Math.max(0, PLAN_GENERATION_LIMIT - normalizedSlotsRemaining);
 }
 
 type SeedFailedAttemptsForDurableWindowOptions = {
-  slotsRemaining?: number;
-  classification?: string;
-  durationMs?: number;
-  promptHashPrefix?: string;
-  metadata?: CreateFailedAttemptParams['metadata'];
+	slotsRemaining?: number;
+	classification?: string;
+	durationMs?: number;
+	promptHashPrefix?: string;
+	metadata?: CreateFailedAttemptParams['metadata'];
 };
 
 /**
  * Seeds failed attempts for a single plan to simulate durable-window saturation.
  */
 export async function seedFailedAttemptsForDurableWindow(
-  planId: string,
-  options: SeedFailedAttemptsForDurableWindowOptions = {}
+	planId: string,
+	options: SeedFailedAttemptsForDurableWindowOptions = {},
 ): Promise<GenerationAttemptRow[]> {
-  const {
-    slotsRemaining = 0,
-    classification = 'timeout',
-    durationMs = 1_000,
-    promptHashPrefix = 'durable-window-seed',
-    metadata = null,
-  } = options;
-  const count = getDurableWindowSeedCount(slotsRemaining);
-  return createFailedAttemptsInDb(planId, count, (index) => ({
-    classification,
-    durationMs,
-    promptHash: `${promptHashPrefix}-${index}`,
-    metadata,
-  }));
+	const {
+		slotsRemaining = 0,
+		classification = 'timeout',
+		durationMs = 1_000,
+		promptHashPrefix = 'durable-window-seed',
+		metadata = null,
+	} = options;
+	const count = getDurableWindowSeedCount(slotsRemaining);
+	return createFailedAttemptsInDb(planId, count, (index) => ({
+		classification,
+		durationMs,
+		promptHash: `${promptHashPrefix}-${index}`,
+		metadata,
+	}));
 }

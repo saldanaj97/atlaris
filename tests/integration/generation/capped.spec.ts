@@ -2,10 +2,10 @@ import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
+	generationAttempts,
+	learningPlans,
+	modules,
+	tasks,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { setTestUser } from '../../helpers/auth';
@@ -17,121 +17,121 @@ const authUserId = buildTestAuthUserId('generation-capped');
 const authEmail = buildTestEmail(authUserId);
 
 async function seedCappedAttempts(planId: string) {
-  await db.insert(generationAttempts).values([
-    {
-      planId,
-      status: 'failure',
-      classification: 'timeout',
-      durationMs: 10_000,
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: null,
-      metadata: null,
-    },
-    {
-      planId,
-      status: 'failure',
-      classification: 'rate_limit',
-      durationMs: 8_000,
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: null,
-      metadata: null,
-    },
-    {
-      planId,
-      status: 'failure',
-      classification: 'validation',
-      durationMs: 500,
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: null,
-      metadata: null,
-    },
-  ]);
+	await db.insert(generationAttempts).values([
+		{
+			planId,
+			status: 'failure',
+			classification: 'timeout',
+			durationMs: 10_000,
+			modulesCount: 0,
+			tasksCount: 0,
+			truncatedTopic: false,
+			truncatedNotes: false,
+			normalizedEffort: false,
+			promptHash: null,
+			metadata: null,
+		},
+		{
+			planId,
+			status: 'failure',
+			classification: 'rate_limit',
+			durationMs: 8_000,
+			modulesCount: 0,
+			tasksCount: 0,
+			truncatedTopic: false,
+			truncatedNotes: false,
+			normalizedEffort: false,
+			promptHash: null,
+			metadata: null,
+		},
+		{
+			planId,
+			status: 'failure',
+			classification: 'validation',
+			durationMs: 500,
+			modulesCount: 0,
+			tasksCount: 0,
+			truncatedTopic: false,
+			truncatedNotes: false,
+			normalizedEffort: false,
+			promptHash: null,
+			metadata: null,
+		},
+	]);
 }
 
 describe('generation integration - capped attempts', () => {
-  beforeEach(async () => {
-    setTestUser(authUserId);
-  });
+	beforeEach(async () => {
+		setTestUser(authUserId);
+	});
 
-  it('returns capped classification and skips provider invocation after three failures', async () => {
-    const userId = await ensureUser({ authUserId, email: authEmail });
+	it('returns capped classification and skips provider invocation after three failures', async () => {
+		const userId = await ensureUser({ authUserId, email: authEmail });
 
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Capped Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 2,
-        learningStyle: 'reading',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
+		const [plan] = await db
+			.insert(learningPlans)
+			.values({
+				userId,
+				topic: 'Capped Topic',
+				skillLevel: 'beginner',
+				weeklyHours: 2,
+				learningStyle: 'reading',
+				visibility: 'private',
+				origin: 'ai',
+			})
+			.returning();
 
-    await seedCappedAttempts(plan.id);
+		await seedCappedAttempts(plan.id);
 
-    const mock = createMockProvider({ scenario: 'success' });
+		const mock = createMockProvider({ scenario: 'success' });
 
-    const result = await runGenerationAttempt(
-      {
-        planId: plan.id,
-        userId,
-        input: {
-          topic: 'Capped Topic',
-          notes: 'Should not invoke provider because cap reached',
-          skillLevel: 'beginner',
-          weeklyHours: 2,
-          learningStyle: 'reading',
-        },
-      },
-      { provider: mock.provider, dbClient: db }
-    );
+		const result = await runGenerationAttempt(
+			{
+				planId: plan.id,
+				userId,
+				input: {
+					topic: 'Capped Topic',
+					notes: 'Should not invoke provider because cap reached',
+					skillLevel: 'beginner',
+					weeklyHours: 2,
+					learningStyle: 'reading',
+				},
+			},
+			{ provider: mock.provider, dbClient: db },
+		);
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('capped');
-    expect(mock.invocationCount).toBe(0);
+		expect(result.status).toBe('failure');
+		expect(result.classification).toBe('capped');
+		expect(mock.invocationCount).toBe(0);
 
-    const attempts = await db
-      .select()
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, plan.id))
-      .orderBy(desc(generationAttempts.createdAt));
+		const attempts = await db
+			.select()
+			.from(generationAttempts)
+			.where(eq(generationAttempts.planId, plan.id))
+			.orderBy(desc(generationAttempts.createdAt));
 
-    // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
-    expect(attempts).toHaveLength(3);
-    expect(
-      attempts.some((attempt) => attempt.classification === 'capped')
-    ).toBe(false);
-    // Runtime narrowing for discriminated union before accessing result.attempt.
-    if (result.status !== 'failure') {
-      throw new Error('Expected generation to fail when cap is reached');
-    }
-    expect(result.attempt.id).toBeNull();
+		// Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
+		expect(attempts).toHaveLength(3);
+		expect(
+			attempts.some((attempt) => attempt.classification === 'capped'),
+		).toBe(false);
+		// Runtime narrowing for discriminated union before accessing result.attempt.
+		if (result.status !== 'failure') {
+			throw new Error('Expected generation to fail when cap is reached');
+		}
+		expect(result.attempt.id).toBeNull();
 
-    const moduleRows = await db
-      .select({ value: modules.id })
-      .from(modules)
-      .where(eq(modules.planId, plan.id));
-    expect(moduleRows.length).toBe(0);
+		const moduleRows = await db
+			.select({ value: modules.id })
+			.from(modules)
+			.where(eq(modules.planId, plan.id));
+		expect(moduleRows.length).toBe(0);
 
-    const taskRows = await db
-      .select({ value: tasks.id })
-      .from(tasks)
-      .innerJoin(modules, eq(tasks.moduleId, modules.id))
-      .where(eq(modules.planId, plan.id));
-    expect(taskRows.length).toBe(0);
-  });
+		const taskRows = await db
+			.select({ value: tasks.id })
+			.from(tasks)
+			.innerJoin(modules, eq(tasks.moduleId, modules.id))
+			.where(eq(modules.planId, plan.id));
+		expect(taskRows.length).toBe(0);
+	});
 });
