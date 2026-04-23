@@ -7,7 +7,6 @@ import {
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
@@ -15,7 +14,7 @@ import {
 	checkPlanGenerationRateLimit,
 	getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { getDb } from '@/lib/db/runtime';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { type Logger, logger } from '@/lib/logging/logger';
 
 type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
@@ -39,10 +38,13 @@ export function createStreamHandler(deps?: {
 	const boundary = deps?.boundary ?? defaultBoundary;
 
 	return withErrorBoundary(
-		withAuthAndRateLimit(
-			'aiGeneration',
-			async ({ req, userId, user: currentUser }) => {
-				routeLogger.info({ authUserId: userId }, 'Plan stream handler entered');
+		requestBoundary.route(
+			{ rateLimit: 'aiGeneration' },
+			async ({ req, actor, db }) => {
+				const authUserId = actor.authUserId;
+				const currentUser = actor;
+
+				routeLogger.info({ authUserId }, 'Plan stream handler entered');
 
 				const parsedBody = await parseJsonBody(req, {
 					mode: 'required',
@@ -50,7 +52,7 @@ export function createStreamHandler(deps?: {
 						new ValidationError(
 							'Invalid request body.',
 							{ reason: 'Malformed or invalid JSON payload.' },
-							{ authUserId: userId, error: serializeError(error) },
+							{ authUserId, error: serializeError(error) },
 						),
 				});
 
@@ -61,7 +63,7 @@ export function createStreamHandler(deps?: {
 					const payload = toBestEffortPayloadLog(parsedBody);
 					routeLogger.warn(
 						{
-							authUserId: userId,
+							authUserId,
 							error: serializeError(error),
 							payload,
 						},
@@ -76,7 +78,7 @@ export function createStreamHandler(deps?: {
 								source: 'payload-log',
 							},
 							extra: {
-								authUserId: userId,
+								authUserId,
 								payload,
 							},
 						},
@@ -84,7 +86,7 @@ export function createStreamHandler(deps?: {
 				}
 				if (payloadLog) {
 					routeLogger.info(
-						{ authUserId: userId, payload: payloadLog },
+						{ authUserId, payload: payloadLog },
 						'Plan stream request payload received',
 					);
 				}
@@ -97,17 +99,16 @@ export function createStreamHandler(deps?: {
 						throw new ValidationError(
 							'Invalid request body.',
 							error.flatten(),
-							{ authUserId: userId, validation: error.flatten() },
+							{ authUserId, validation: error.flatten() },
 						);
 					}
 					throw new ValidationError(
 						'Invalid request body.',
 						{ reason: 'Malformed or invalid JSON payload.' },
-						{ authUserId: userId, error: serializeError(error) },
+						{ authUserId, error: serializeError(error) },
 					);
 				}
 
-				const db = getDb();
 				const internalUserId = currentUser.id;
 
 				// ─── Rate limiting (generation-specific, checked BEFORE plan creation) ──
@@ -119,13 +120,13 @@ export function createStreamHandler(deps?: {
 					getPlanGenerationRateLimitHeaders(rateLimit);
 
 				routeLogger.info(
-					{ authUserId: userId },
+					{ authUserId },
 					'Delegating plan stream request to generation session',
 				);
 
 				return await boundary.respondCreateStream({
 					req,
-					authUserId: userId,
+					authUserId,
 					internalUserId,
 					body,
 					savedPreferredAiModel: currentUser.preferredAiModel ?? null,

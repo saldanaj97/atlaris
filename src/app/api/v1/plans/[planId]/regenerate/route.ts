@@ -3,7 +3,7 @@ import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
-import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import {
 	AppError,
 	NotFoundError,
@@ -13,6 +13,7 @@ import {
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
 
@@ -21,9 +22,9 @@ import { regenerationQueueEnv } from '@/lib/config/env';
  * Enqueues a regeneration job for an existing plan with optional parameter overrides.
  */
 export const POST: PlainHandler = withErrorBoundary(
-	withAuthAndRateLimit(
-		'aiGeneration',
-		async ({ req, user, params: _params }) => {
+	requestBoundary.route(
+		{ rateLimit: 'aiGeneration' },
+		async ({ req, actor }) => {
 			const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
 			const body = await parseJsonBody(req, {
@@ -51,7 +52,7 @@ export const POST: PlainHandler = withErrorBoundary(
 			}
 
 			const result = await requestPlanRegeneration({
-				userId: user.id,
+				userId: actor.id,
 				planId,
 				overrides,
 				inlineProcessingEnabled: regenerationQueueEnv.inlineProcessingEnabled,

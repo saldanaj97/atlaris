@@ -29,6 +29,28 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
 	};
 }
 
+/**
+ * Merges standard user-rate-limit headers onto a finished response.
+ * Shared by `withRateLimit` and any caller that needs identical header semantics.
+ */
+export function applyUserRateLimitHeaders(
+	response: Response,
+	userId: string,
+	category: UserRateLimitCategory,
+): Response {
+	const rateLimitHeaders = getUserRateLimitHeaders(userId, category);
+	const headers = new Headers(response.headers);
+	for (const [name, value] of Object.entries(rateLimitHeaders)) {
+		headers.set(name, value);
+	}
+
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers,
+	});
+}
+
 export function withRateLimit(
 	category: UserRateLimitCategory,
 ): (handler: AuthHandler) => AuthHandler {
@@ -39,18 +61,7 @@ export function withRateLimit(
 			// `checkUserRateLimit` throws `RateLimitError` when the user exceeds the window.
 			checkUserRateLimit(ctx.userId, category);
 			const response = await handler(ctx);
-
-			const rateLimitHeaders = getUserRateLimitHeaders(ctx.userId, category);
-			const headers = new Headers(response.headers);
-			for (const [name, value] of Object.entries(rateLimitHeaders)) {
-				headers.set(name, value);
-			}
-
-			return new Response(response.body, {
-				status: response.status,
-				statusText: response.statusText,
-				headers,
-			});
+			return applyUserRateLimitHeaders(response, ctx.userId, category);
 		};
 	};
 }

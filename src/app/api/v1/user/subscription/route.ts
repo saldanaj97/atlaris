@@ -1,20 +1,19 @@
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 
-export const GET: PlainHandler = withErrorBoundary(
-	withAuthAndRateLimit('read', async ({ user }) => {
+export const GET = withErrorBoundary(
+	requestBoundary.route({ rateLimit: 'read' }, async ({ actor, db }) => {
 		try {
 			const snapshot = await getBillingAccountSnapshot({
-				userId: user.id,
-				dbClient: getDb(),
+				userId: actor.id,
+				dbClient: db,
 			});
 
 			logger.info(
-				{ userId: user.id, tier: snapshot.tier },
+				{ userId: actor.id, tier: snapshot.tier },
 				'Billing account snapshot retrieved',
 			);
 
@@ -31,7 +30,7 @@ export const GET: PlainHandler = withErrorBoundary(
 			});
 		} catch (error) {
 			logger.error(
-				{ error, userId: user.id },
+				{ error, userId: actor.id },
 				'Failed to load billing snapshot',
 			);
 			throw error;

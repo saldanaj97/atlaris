@@ -6,10 +6,10 @@ import {
 	type StripeCommerceBoundary,
 } from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { logger } from '@/lib/logging/logger';
@@ -32,12 +32,12 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 	const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
 
 	return withErrorBoundary(
-		withAuthAndRateLimit('billing', async ({ req, user }) => {
+		requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
 			logger.info(
 				{
-					userId: user.id,
-					authUserId: user.authUserId,
-					subscriptionTier: user.subscriptionTier,
+					userId: actor.id,
+					authUserId: actor.authUserId,
+					subscriptionTier: actor.subscriptionTier,
 				},
 				'billing portal attempt',
 			);
@@ -47,7 +47,7 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 				fallback: {},
 				onMalformedJson: (err) =>
 					new ValidationError('Malformed JSON body', undefined, {
-						userId: user.id,
+						userId: actor.id,
 						parseError: err instanceof Error ? err.message : String(err),
 					}),
 			});
@@ -66,7 +66,7 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 					firstMessage ?? 'Invalid request body',
 					undefined,
 					{
-						userId: user.id,
+						userId: actor.id,
 						returnUrl: rawReturnUrl,
 						validationMessage: firstMessage,
 					},
@@ -85,9 +85,9 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 
 			const { portalUrl } = await boundary.openPortal({
 				actor: {
-					userId: user.id,
-					stripeCustomerId: user.stripeCustomerId,
-					subscriptionStatus: user.subscriptionStatus,
+					userId: actor.id,
+					stripeCustomerId: actor.stripeCustomerId,
+					subscriptionStatus: actor.subscriptionStatus,
 				},
 				returnUrl,
 			});

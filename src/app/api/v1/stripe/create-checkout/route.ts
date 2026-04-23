@@ -7,10 +7,10 @@ import {
 } from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 
@@ -37,7 +37,7 @@ export function createCreateCheckoutHandler(
 	deps: CreateCheckoutHandlerDeps = {},
 ): PlainHandler {
 	return withErrorBoundary(
-		withAuthAndRateLimit('billing', async ({ req, user }) => {
+		requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
 			const body = await parseJsonBody(req, {
 				mode: 'required',
 				onMalformedJson: () =>
@@ -62,7 +62,7 @@ export function createCreateCheckoutHandler(
 					: getStripeCommerceBoundary());
 
 			const { sessionUrl } = await boundary.beginCheckout({
-				actor: { userId: user.id, email: user.email },
+				actor: { userId: actor.id, email: actor.email },
 				priceId,
 				successUrl,
 				cancelUrl,

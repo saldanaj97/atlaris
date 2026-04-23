@@ -2,10 +2,10 @@ import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validatio
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {
@@ -27,30 +27,30 @@ function createPreferencesUpdateFailedError(userId: string | number): AppError {
  * Retrieves the authenticated user's AI model preferences and available models.
  */
 export const GET = withErrorBoundary(
-	withAuthAndRateLimit('read', async ({ req, user }) => {
+	requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor }) => {
 		const { requestId, logger } = createRequestContext(req, {
 			route: 'GET /api/v1/user/preferences',
-			userId: user.id,
+			userId: actor.id,
 		});
 
-		const userTier = user.subscriptionTier;
+		const userTier = actor.subscriptionTier;
 		const availableModels = getPersistableModelsForTier(userTier);
 
 		const fallbackModel = getDefaultModelForTier(userTier);
 		let preferredAiModel = fallbackModel;
 
-		if (user.preferredAiModel) {
+		if (actor.preferredAiModel) {
 			const modelValidation = validateModelForTier(
 				userTier,
-				user.preferredAiModel,
+				actor.preferredAiModel,
 			);
 
 			if (modelValidation.valid) {
-				preferredAiModel = user.preferredAiModel;
+				preferredAiModel = actor.preferredAiModel;
 			} else {
 				logger.warn(
 					{
-						storedPreferredAiModel: user.preferredAiModel,
+						storedPreferredAiModel: actor.preferredAiModel,
 						tier: userTier,
 						reason: modelValidation.reason,
 						fallbackModel,
@@ -76,10 +76,10 @@ export const GET = withErrorBoundary(
  * Validates the model ID and enforces tier-gating.
  */
 export const PATCH = withErrorBoundary(
-	withAuthAndRateLimit('mutation', async ({ req, user }) => {
+	requestBoundary.route({ rateLimit: 'mutation' }, async ({ req, actor }) => {
 		const { requestId, logger } = createRequestContext(req, {
 			route: 'PATCH /api/v1/user/preferences',
-			userId: user.id,
+			userId: actor.id,
 		});
 
 		logger.info('Updating user preferences');
@@ -97,13 +97,13 @@ export const PATCH = withErrorBoundary(
 			});
 		}
 
-		const userTier = user.subscriptionTier;
+		const userTier = actor.subscriptionTier;
 
 		if (parsed.data.preferredAiModel === null) {
-			const updatedUser = await updateUserPreferredAiModel(user.id, null);
+			const updatedUser = await updateUserPreferredAiModel(actor.id, null);
 
 			if (!updatedUser) {
-				throw createPreferencesUpdateFailedError(user.id);
+				throw createPreferencesUpdateFailedError(actor.id);
 			}
 
 			logger.info(
@@ -172,19 +172,19 @@ export const PATCH = withErrorBoundary(
 		}
 
 		const updatedUser = await updateUserPreferredAiModel(
-			user.id,
+			actor.id,
 			parsed.data.preferredAiModel,
 		);
 
 		if (!updatedUser) {
-			throw createPreferencesUpdateFailedError(user.id);
+			throw createPreferencesUpdateFailedError(actor.id);
 		}
 
 		if (updatedUser.preferredAiModel === null) {
 			throw new AppError('Failed to persist preference value.', {
 				status: 500,
 				code: 'PREFERENCES_PERSISTED_NULL',
-				logMeta: { userId: user.id },
+				logMeta: { userId: actor.id },
 			});
 		}
 

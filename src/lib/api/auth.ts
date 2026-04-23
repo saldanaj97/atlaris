@@ -13,8 +13,6 @@ import type { RlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
 import { AuthError } from './errors';
-import { withRateLimit } from './middleware';
-import type { UserRateLimitCategory } from './user-rate-limit';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
 
@@ -230,11 +228,4 @@ export async function withServerActionContext<T>(
 	}
 
 	return runWithAuthenticatedContext(authUserId, fn);
-}
-
-export function withAuthAndRateLimit(
-	category: UserRateLimitCategory,
-	handler: AuthHandler,
-): PlainHandler {
-	return withAuth(withRateLimit(category)(handler));
 }

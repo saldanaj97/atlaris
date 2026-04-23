@@ -1,11 +1,10 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { getPlanDetailForRead } from '@/features/plans/read-projection';
 import { removePlanForWrite } from '@/features/plans/write-service';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -21,42 +20,43 @@ import { logger } from '@/lib/logging/logger';
  */
 
 export const GET = withErrorBoundary(
-	withAuthAndRateLimit('read', async ({ req, user }) => {
+	requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
 		const planId = requirePlanIdFromRequest(req, 'last');
-		const dbClient = getDb();
 
-		logger.info({ planId, userId: user.id }, 'Fetching learning plan detail');
+		logger.info({ planId, userId: actor.id }, 'Fetching learning plan detail');
 
 		const detail = await getPlanDetailForRead({
 			planId,
-			userId: user.id,
-			dbClient,
+			userId: actor.id,
+			dbClient: db,
 		});
 
 		if (!detail) {
 			throw new NotFoundError('Learning plan not found.', undefined, {
 				planId,
-				userId: user.id,
+				userId: actor.id,
 			});
 		}
 
-		logger.debug({ planId, userId: user.id }, 'Fetched learning plan detail');
+		logger.debug({ planId, userId: actor.id }, 'Fetched learning plan detail');
 
 		return json(detail);
 	}),
 );
 
 export const DELETE = withErrorBoundary(
-	withAuthAndRateLimit('mutation', async ({ req, user }) => {
-		const planId = requirePlanIdFromRequest(req, 'last');
-		const dbClient = getDb();
+	requestBoundary.route(
+		{ rateLimit: 'mutation' },
+		async ({ req, actor, db }) => {
+			const planId = requirePlanIdFromRequest(req, 'last');
 
-		logger.info({ planId, userId: user.id }, 'Deleting learning plan');
+			logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
 
-		await removePlanForWrite({ planId, userId: user.id, dbClient });
+			await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
 
-		logger.info({ planId, userId: user.id }, 'Learning plan deleted');
+			logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
 
-		return json({ success: true });
-	}),
+			return json({ success: true });
+		},
+	),
 );

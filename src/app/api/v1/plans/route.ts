@@ -2,11 +2,11 @@ import {
 	getPlanListTotalCount,
 	listLightweightPlansForApi,
 } from '@/features/plans/read-projection';
-import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
+import type { PlainHandler } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseListPaginationParams } from '@/lib/api/pagination';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import {
 	getPaginationDefault,
@@ -14,8 +14,7 @@ import {
 } from '@/shared/constants/pagination';
 
 export const GET: PlainHandler = withErrorBoundary(
-	withAuthAndRateLimit('read', async ({ req, user }) => {
-		const db = getDb();
+	requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
 		const url = new URL(req.url);
 
 		const { limit, offset } = parseListPaginationParams(url.searchParams, {
@@ -27,7 +26,7 @@ export const GET: PlainHandler = withErrorBoundary(
 			{
 				source: 'plans-route',
 				event: 'list_plans_started',
-				userId: user.id,
+				userId: actor.id,
 				limit,
 				offset,
 			},
@@ -36,18 +35,18 @@ export const GET: PlainHandler = withErrorBoundary(
 
 		const [summaries, totalCount] = await Promise.all([
 			listLightweightPlansForApi({
-				userId: user.id,
+				userId: actor.id,
 				dbClient: db,
 				options: { limit, offset },
 			}),
-			getPlanListTotalCount({ userId: user.id, dbClient: db }),
+			getPlanListTotalCount({ userId: actor.id, dbClient: db }),
 		]);
 
 		logger.info(
 			{
 				source: 'plans-route',
 				event: 'list_plans_succeeded',
-				userId: user.id,
+				userId: actor.id,
 				limit,
 				offset,
 				totalCount,
