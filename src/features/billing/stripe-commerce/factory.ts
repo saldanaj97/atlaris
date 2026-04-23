@@ -7,10 +7,22 @@ import {
 } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
+import { replaySyntheticSubscriptionCreated } from '@/features/billing/stripe-commerce/reconciliation';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
+import type { createLogger } from '@/lib/logging/logger';
+import { logger } from '@/lib/logging/logger';
+
+type AppLogger = ReturnType<typeof createLogger>;
+
+export type ExecuteLocalSubscriptionReplayOverrides = Partial<{
+	gateway: StripeGateway;
+	serviceRoleDb: typeof serviceRoleDb;
+	users: typeof users;
+	logger: AppLogger;
+}>;
 
 let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
 
@@ -66,4 +78,25 @@ export function getStripeCommerceBoundary(): StripeCommerceBoundary {
  */
 export function isLocalStripeCompletionRouteEnabled(): boolean {
 	return stripeEnv.localMode && localProductTestingEnv.enabled;
+}
+
+/**
+ * App-composed local checkout replay (issue #311): route stays transport-only;
+ * gateway / service-role DB / schema / logger wiring lives here.
+ */
+export async function executeLocalSubscriptionReplay(
+	input: { user: { id: string; email: string }; priceId: string },
+	overrides?: ExecuteLocalSubscriptionReplayOverrides,
+): Promise<void> {
+	const gateway =
+		overrides?.gateway ?? new LiveStripeGateway(getBillingStripeClient());
+
+	await replaySyntheticSubscriptionCreated({
+		user: input.user,
+		priceId: input.priceId,
+		gateway,
+		serviceRoleDb: overrides?.serviceRoleDb ?? serviceRoleDb,
+		users: overrides?.users ?? users,
+		logger: overrides?.logger ?? logger,
+	});
 }

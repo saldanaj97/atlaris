@@ -4,8 +4,10 @@
  */
 
 export { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+export type { ExecuteLocalSubscriptionReplayOverrides } from '@/features/billing/stripe-commerce/factory';
 export {
 	createStripeCommerceBoundary,
+	executeLocalSubscriptionReplay,
 	getBillingStripeClient,
 	getStripeCommerceBoundary,
 	isLocalStripeCompletionRouteEnabled,

@@ -11,11 +11,11 @@ import type {
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
+import { applyVerifiedEvent } from '@/features/billing/stripe-commerce/reconciliation';
 import {
 	isValidRedirectUrl,
 	resolveRedirectUrl,
 } from '@/features/billing/stripe-commerce/redirect';
-import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
 import { createCustomer } from '@/features/billing/subscriptions';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import type { users } from '@/lib/db/schema';
@@ -308,7 +308,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
 			: this.deps.gateway;
 		const stripe = gateway.getStripeClient();
 
-		const dedupeResult = await handleStripeWebhookDedupeAndApply(event, {
+		const dedupeResult = await applyVerifiedEvent(event, {
 			stripe,
 			gateway,
 			logger,
