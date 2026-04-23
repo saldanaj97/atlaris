@@ -53,6 +53,8 @@ export async function grantRlsPermissions(
 		await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anonymous;
     `);
 
 		const updateColumnGrants = await sql<{ column_name: string }[]>`
@@ -72,6 +74,26 @@ export async function grantRlsPermissions(
 		) {
 			throw new Error(
 				`Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with src/lib/db/migrations/0018_harden_users_update_columns.sql and src/lib/db/privileges/users-authenticated-update-columns.ts.`,
+			);
+		}
+
+		const jobQueueWriteGrants = await sql<
+			{ grantee: string; privilege_type: string }[]
+		>`
+      select grantee::text, privilege_type::text
+      from information_schema.table_privileges
+      where table_schema = 'public'
+        and table_name = 'job_queue'
+        and grantee in ('authenticated', 'anonymous')
+        and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+      order by grantee, privilege_type
+    `;
+		if (jobQueueWriteGrants.length > 0) {
+			const got = jobQueueWriteGrants
+				.map((r) => `${r.grantee}:${r.privilege_type}`)
+				.join(', ');
+			throw new Error(
+				`Bootstrap: job_queue write grants for authenticated/anonymous expected [], got [${got}]. Sync grantRlsPermissions with src/lib/db/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
 			);
 		}
 

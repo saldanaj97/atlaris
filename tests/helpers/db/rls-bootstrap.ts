@@ -53,9 +53,12 @@ export async function ensureRlsRolesAndPermissions() {
 
 	// Restrict authenticated role to user-editable columns on users table.
 	// Matches migration 0018 and @/lib/db/privileges/users-authenticated-update-columns.
+	// Harden `job_queue` to match 0028: no role writes from clients (service role for workers only).
 	await db.execute(sql`
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anonymous;
   `);
 
 	// Grant read-only permissions to anonymous role

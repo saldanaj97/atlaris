@@ -170,6 +170,7 @@ jobs:
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
           REVOKE UPDATE ON "users" FROM authenticated;
           GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
+          REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
           SQL
 
           # Grant read-only permissions to anonymous role

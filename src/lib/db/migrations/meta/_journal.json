@@ -197,6 +197,20 @@
       "when": 1776704568963,
       "tag": "0027_windy_agent_zero",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1776902637501,
+      "tag": "0028_harden_job_queue_service_role_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1777100000000,
+      "tag": "0029_harden_job_queue_anonymous",
+      "breakpoints": true
     }
   ]
 }
