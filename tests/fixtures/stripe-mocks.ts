@@ -96,8 +96,10 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
 
 /**
  * Build a partial Stripe.Subscription object that satisfies the type plus the
- * `current_period_end` field that lives on the wire but is missing from the
- * SDK's pinned typings (see src/features/billing/account-transitions.ts).
+ * `current_period_end` field. The project pins SDK typings for compatibility,
+ * so tests keep this wire field explicit until the pinned type includes it.
+ *
+ * @see {@link ../../src/features/billing/stripe-commerce/reconciliation}
  */
 export function makeStripeSubscription(
 	partial: DeepPartial<Stripe.Subscription> & {

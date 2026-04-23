@@ -1,11 +1,14 @@
+import { createId } from '@tests/fixtures/ids';
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
+import { eq } from 'drizzle-orm';
+import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { ValidationError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { stripeWebhookEvents, users } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import { logger } from '@/lib/logging/logger';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
@@ -66,6 +69,107 @@ describe('StripeCommerceBoundary', () => {
 		).rejects.toBeInstanceOf(ValidationError);
 
 		expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+
+	it('acceptWebhook applies verified events and reports duplicate on replay', async () => {
+		const eventId = createId('evt');
+		const event = {
+			id: eventId,
+			object: 'event',
+			type: 'checkout.session.completed',
+			livemode: false,
+			data: { object: {} as Stripe.Checkout.Session },
+		} as Stripe.Event;
+
+		const constructWebhookEvent = vi.fn().mockReturnValue({
+			stripeEvent: event,
+		});
+
+		const gateway: StripeGateway = {
+			getStripeClient: () => makeStripeMock({}),
+			createCheckoutSession: vi.fn(),
+			createBillingPortalSession: vi.fn(),
+			constructWebhookEvent,
+			retrieveSubscription: vi.fn(),
+		};
+
+		const boundary = createStripeCommerceBoundary({
+			gateway,
+			webhookSecret: 'whsec_test',
+			webhookDevMode: false,
+			isProduction: false,
+			isDevOrTest: true,
+			getDb,
+			serviceRoleDb,
+			users,
+		});
+
+		const input = {
+			rawBody: JSON.stringify(event),
+			signatureHeader: 'sig_test',
+			contentLength: 100,
+			logger,
+		};
+
+		const first = await boundary.acceptWebhook(input);
+		expect(first.status).toBe(200);
+		expect(first.duplicate).toBe(false);
+
+		const second = await boundary.acceptWebhook(input);
+		expect(second.status).toBe(200);
+		expect(second.duplicate).toBe(true);
+
+		expect(constructWebhookEvent).toHaveBeenCalledTimes(2);
+	});
+
+	it('acceptWebhook skips persistence when livemode mismatches production expectation', async () => {
+		const eventId = createId('evt');
+		const event = {
+			id: eventId,
+			object: 'event',
+			type: 'checkout.session.completed',
+			livemode: true,
+			data: { object: {} },
+		} as Stripe.Event;
+
+		const constructWebhookEvent = vi.fn().mockReturnValue({
+			stripeEvent: event,
+		});
+
+		const gateway: StripeGateway = {
+			getStripeClient: () => makeStripeMock({}),
+			createCheckoutSession: vi.fn(),
+			createBillingPortalSession: vi.fn(),
+			constructWebhookEvent,
+			retrieveSubscription: vi.fn(),
+		};
+
+		const boundary = createStripeCommerceBoundary({
+			gateway,
+			webhookSecret: 'whsec_test',
+			webhookDevMode: false,
+			isProduction: false,
+			isDevOrTest: true,
+			getDb,
+			serviceRoleDb,
+			users,
+		});
+
+		const res = await boundary.acceptWebhook({
+			rawBody: JSON.stringify(event),
+			signatureHeader: 'sig_test',
+			contentLength: 100,
+			logger,
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.body).toBe('ok');
+
+		const rows = await serviceRoleDb
+			.select()
+			.from(stripeWebhookEvents)
+			.where(eq(stripeWebhookEvents.eventId, eventId));
+		expect(rows).toHaveLength(0);
 	});
 
 	it('acceptWebhook returns 400 when signature is missing and secret is configured', async () => {

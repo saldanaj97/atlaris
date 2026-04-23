@@ -1,11 +1,11 @@
 /**
- * Unit tests for handleStripeWebhookDedupeAndApply.
+ * Unit tests for write-side billing reconciliation (`applyVerifiedEvent`).
  *
- * Focus: verifies that the function uses deps.db (injected) for both the
- * idempotency insert and the rollback delete — not a module-level global.
+ * Focus: idempotency insert + rollback uses deps.db (injected), not module-global.
  */
 
 import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { createId } from '@tests/fixtures/ids';
 import {
 	makeStripeInvoice,
 	makeStripeMock,
@@ -15,26 +15,15 @@ import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import {
-	handleStripeWebhookDedupeAndApply,
-	type StripeWebhookSideEffectDeps,
-} from '@/features/billing/stripe-webhook-processor';
+	applyVerifiedEvent,
+	type StripeReconciliationDeps,
+} from '@/features/billing/stripe-commerce/reconciliation';
 import { users } from '@/lib/db/schema';
 import { createLogger } from '@/lib/logging/logger';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function makeSubscription(fields: {
-	id: string;
-	customer: string;
-}): Stripe.Subscription {
-	return makeStripeSubscription(fields);
-}
-
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
 	return {
-		id: 'evt_test_001',
+		id: createId('evt'),
 		object: 'event',
 		type: 'checkout.session.completed',
 		livemode: false,
@@ -43,20 +32,17 @@ function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
 	} as Stripe.Event;
 }
 
-/**
- * Builds a minimal chainable Drizzle mock. All query builders return `this`
- * so chains like `.insert().values().onConflictDoNothing().returning()` work.
- */
 function buildMockDb(
 	opts: {
 		insertReturns?: unknown[];
 		updateReturns?: unknown[];
 		updateThrows?: Error;
 		deleteThrows?: Error;
+		selectReturns?: unknown[];
 	} = {},
 ) {
-	const insertReturns = opts.insertReturns ?? [{ eventId: 'evt_test_001' }];
-	const updateReturns = opts.updateReturns ?? [{ userId: 'user_1' }];
+	const insertReturns = opts.insertReturns ?? [{ eventId: createId('evt') }];
+	const updateReturns = opts.updateReturns ?? [{ userId: createId('user') }];
 
 	const whereDeleteMock = vi.fn().mockResolvedValue(undefined);
 	if (opts.deleteThrows) {
@@ -77,6 +63,20 @@ function buildMockDb(
 		where: vi.fn().mockReturnValue({ returning: returningUpdateMock }),
 	});
 
+	const selectReturns = opts.selectReturns ?? [
+		{
+			id: createId('user'),
+			subscriptionTier: 'free',
+		},
+	];
+	const selectMock = vi.fn().mockReturnValue({
+		from: vi.fn().mockReturnValue({
+			where: vi.fn().mockReturnValue({
+				limit: vi.fn().mockResolvedValue(selectReturns),
+			}),
+		}),
+	});
+
 	const insertMock = vi.fn().mockReturnValue({
 		values: vi.fn().mockReturnThis(),
 		onConflictDoNothing: vi.fn().mockReturnThis(),
@@ -85,26 +85,24 @@ function buildMockDb(
 
 	return Object.assign(makeDbClient(), {
 		insert: insertMock,
+		select: selectMock,
 		update: updateMock,
 		delete: deleteMock,
 	});
 }
 
 function makeLogger() {
-	return Object.assign(
-		createLogger({ test: 'stripe-webhook-processor.spec' }),
-		{
-			info: vi.fn(),
-			warn: vi.fn(),
-			error: vi.fn(),
-			debug: vi.fn(),
-		},
-	);
+	return Object.assign(createLogger({ test: 'stripe-reconciliation.spec' }), {
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	});
 }
 
 function makeDeps(
-	overrides: Partial<StripeWebhookSideEffectDeps> = {},
-): StripeWebhookSideEffectDeps {
+	overrides: Partial<StripeReconciliationDeps> = {},
+): StripeReconciliationDeps {
 	return {
 		db: buildMockDb(),
 		logger: makeLogger(),
@@ -113,18 +111,11 @@ function makeDeps(
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe('handleStripeWebhookDedupeAndApply', () => {
+describe('applyVerifiedEvent', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	// -------------------------------------------------------------------------
-	// Deduplication
-	// -------------------------------------------------------------------------
 	describe('deduplication', () => {
 		it('returns "duplicate" when insert returns no rows (conflict)', async () => {
 			const db = buildMockDb({ insertReturns: [] });
@@ -134,7 +125,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				logger,
 			});
 
-			const result = await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
+			const result = await applyVerifiedEvent(makeEvent(), deps);
 
 			expect(result).toBe('duplicate');
 		});
@@ -151,7 +142,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				type: 'invoice.payment_failed',
 			});
 
-			await handleStripeWebhookDedupeAndApply(event, deps);
+			await applyVerifiedEvent(event, deps);
 
 			expect(logger.info).toHaveBeenCalledWith(
 				{ type: 'invoice.payment_failed', eventId: 'evt_dup_xyz' },
@@ -166,15 +157,12 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				logger: makeLogger(),
 			});
 
-			await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
+			await applyVerifiedEvent(makeEvent(), deps);
 
 			expect(db.delete).not.toHaveBeenCalled();
 		});
 	});
 
-	// -------------------------------------------------------------------------
-	// Successful insertion — uses injected deps.db
-	// -------------------------------------------------------------------------
 	describe('successful insertion', () => {
 		it('returns "inserted" when no duplicate', async () => {
 			const db = buildMockDb();
@@ -183,7 +171,7 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				logger: makeLogger(),
 			});
 
-			const result = await handleStripeWebhookDedupeAndApply(makeEvent(), deps);
+			const result = await applyVerifiedEvent(makeEvent(), deps);
 
 			expect(result).toBe('inserted');
 		});
@@ -200,10 +188,9 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				livemode: true,
 			});
 
-			await handleStripeWebhookDedupeAndApply(event, deps);
+			await applyVerifiedEvent(event, deps);
 
 			expect(db.insert).toHaveBeenCalledTimes(1);
-			// Verify the values() call received the correct shape
 			const chain = db.insert.mock.results[0]?.value as ReturnType<
 				typeof db.insert
 			>;
@@ -214,36 +201,161 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 			});
 		});
 
-		it('uses gateway.retrieveSubscription for invoice.payment_succeeded resync', async () => {
-			const insertMock = vi.fn().mockReturnValue({
-				values: vi.fn().mockReturnThis(),
-				onConflictDoNothing: vi.fn().mockReturnThis(),
-				returning: vi.fn().mockResolvedValue([{ eventId: 'evt_invoice_paid' }]),
+		it('logs and throws when invoice.payment_succeeded has no subscription id', async () => {
+			const eventId = createId('evt');
+			const customerId = createId('cus');
+			const db = buildMockDb({
+				insertReturns: [{ eventId }],
 			});
-			const selectMock = vi.fn().mockReturnValue({
-				from: vi.fn().mockReturnValue({
-					where: vi.fn().mockReturnValue({
-						limit: vi.fn().mockResolvedValue([
-							{
-								id: 'user_1',
-								subscriptionTier: 'free',
-							},
-						]),
+			const gateway: StripeGateway = {
+				getStripeClient: () => makeStripeMock({}),
+				createCheckoutSession: vi.fn(async () => ({ url: null })),
+				createBillingPortalSession: vi.fn(async () => ({ url: null })),
+				constructWebhookEvent: vi.fn(() => {
+					throw new Error('not used');
+				}),
+				retrieveSubscription: vi.fn(),
+			};
+			const logger = makeLogger();
+			const deps = makeDeps({
+				db,
+				gateway,
+				logger,
+			});
+			const event = makeEvent({
+				id: eventId,
+				type: 'invoice.payment_succeeded',
+				data: {
+					object: makeStripeInvoice({
+						customer: customerId,
+						subscription: null,
 					}),
-				}),
+				},
 			});
-			const updateMock = vi.fn().mockReturnValue({
-				set: vi.fn().mockReturnValue({
-					where: vi.fn().mockResolvedValue(undefined),
-				}),
+
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				/missing subscription id/,
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				{
+					eventId,
+					subscriptionId: null,
+					hasStripeGateway: true,
+				},
+				'invoice.payment_succeeded missing subscription id for resync',
+			);
+			expect(db.delete).toHaveBeenCalledTimes(1);
+			expect(gateway.retrieveSubscription).not.toHaveBeenCalled();
+		});
+
+		it('logs and throws when invoice.payment_succeeded has no gateway', async () => {
+			const eventId = createId('evt');
+			const subscriptionId = createId('sub');
+			const customerId = createId('cus');
+			const db = buildMockDb({
+				insertReturns: [{ eventId }],
 			});
-			const db = makeDbClient({
-				insert: insertMock,
-				select: selectMock,
-				update: updateMock,
-				delete: vi.fn().mockReturnValue({
-					where: vi.fn().mockResolvedValue(undefined),
+			const logger = makeLogger();
+			const deps = makeDeps({
+				db,
+				gateway: undefined,
+				logger,
+				stripe: makeStripeMock({}),
+			});
+			const event = makeEvent({
+				id: eventId,
+				type: 'invoice.payment_succeeded',
+				data: {
+					object: makeStripeInvoice({
+						customer: customerId,
+						subscription: subscriptionId,
+					}),
+				},
+			});
+
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				/cannot resync without Stripe gateway/,
+			);
+
+			expect(logger.error).toHaveBeenCalledWith(
+				{
+					eventId,
+					subscriptionId,
+					hasStripeGateway: false,
+				},
+				'invoice.payment_succeeded cannot resync without Stripe gateway',
+			);
+			expect(db.delete).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs Stripe errors from gateway.retrieveSubscription during payment_succeeded resync', async () => {
+			const eventId = createId('evt');
+			const subscriptionId = createId('sub');
+			const customerId = createId('cus');
+			const retrieveErr = new Error('stripe retrieve failed');
+			const db = buildMockDb({
+				insertReturns: [{ eventId }],
+			});
+			const gateway: StripeGateway = {
+				getStripeClient: () =>
+					makeStripeMock({
+						prices: {
+							retrieve: vi.fn(),
+						},
+					}),
+				createCheckoutSession: vi.fn(async () => ({ url: null })),
+				createBillingPortalSession: vi.fn(async () => ({ url: null })),
+				constructWebhookEvent: vi.fn(() => {
+					throw new Error('not used');
 				}),
+				retrieveSubscription: vi.fn().mockRejectedValue(retrieveErr),
+			};
+			const deps = makeDeps({
+				db,
+				gateway,
+				logger: makeLogger(),
+			});
+			const event = makeEvent({
+				id: eventId,
+				type: 'invoice.payment_succeeded',
+				data: {
+					object: makeStripeInvoice({
+						customer: customerId,
+						subscription: subscriptionId,
+					}),
+				},
+			});
+
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				'stripe retrieve failed',
+			);
+
+			expect(deps.logger.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					eventId,
+					subscriptionId,
+					operation: 'gateway.retrieveSubscription',
+					errorMessage: 'stripe retrieve failed',
+				}),
+				'Failed to retrieve Stripe subscription during invoice.payment_succeeded resync',
+			);
+			expect(db.delete).toHaveBeenCalledTimes(1);
+		});
+
+		it('uses gateway.retrieveSubscription for invoice.payment_succeeded resync', async () => {
+			const eventId = createId('evt');
+			const subscriptionId = createId('sub');
+			const customerId = createId('cus');
+			const priceId = createId('price');
+			const db = buildMockDb({
+				insertReturns: [{ eventId }],
+				selectReturns: [
+					{
+						id: createId('user'),
+						subscriptionTier: 'free',
+					},
+				],
 			});
 			const pricesRetrieve = vi.fn().mockResolvedValue({
 				product: { metadata: { tier: 'starter' } },
@@ -261,12 +373,12 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 					throw new Error('not used');
 				}),
 				retrieveSubscription: vi.fn().mockResolvedValue({
-					subscriptionId: 'sub_paid',
-					customerId: 'cus_paid',
+					subscriptionId,
+					customerId,
 					status: 'active',
 					currentPeriodEnd: new Date('2025-01-01T00:00:00.000Z'),
 					cancelAtPeriodEnd: false,
-					primaryPriceId: 'price_starter',
+					primaryPriceId: priceId,
 				}),
 			};
 			const deps = makeDeps({
@@ -275,39 +387,32 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				logger: makeLogger(),
 			});
 			const event = makeEvent({
-				id: 'evt_invoice_paid',
+				id: eventId,
 				type: 'invoice.payment_succeeded',
 				data: {
 					object: makeStripeInvoice({
-						customer: 'cus_paid',
-						subscription: 'sub_paid',
+						customer: customerId,
+						subscription: subscriptionId,
 					}),
 				},
 			});
 
-			await expect(
-				handleStripeWebhookDedupeAndApply(event, deps),
-			).resolves.toBe('inserted');
+			await expect(applyVerifiedEvent(event, deps)).resolves.toBe('inserted');
 
 			expect(gateway.retrieveSubscription).toHaveBeenCalledWith({
-				subscriptionId: 'sub_paid',
+				subscriptionId,
 				timeoutMs: 10_000,
 			});
 			expect(pricesRetrieve).toHaveBeenCalledWith(
-				'price_starter',
+				priceId,
 				{ expand: ['product'] },
 				{ timeout: 10_000 },
 			);
 		});
 	});
 
-	// -------------------------------------------------------------------------
-	// Rollback on apply failure — verifies deps.db.delete is called
-	// -------------------------------------------------------------------------
 	describe('rollback on apply failure', () => {
-		it('calls deps.db.delete when applyStripeWebhookEvent throws', async () => {
-			// customer.subscription.deleted calls deps.db.update; we make it throw
-			// to exercise the rollback path inside handleStripeWebhookDedupeAndApply.
+		it('calls deps.db.delete when dispatch throws', async () => {
 			const applyError = new Error('db update failed');
 			const db = buildMockDb({
 				insertReturns: [{ eventId: 'evt_rollback' }],
@@ -323,15 +428,17 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				id: 'evt_rollback',
 				type: 'customer.subscription.deleted',
 				data: {
-					object: makeSubscription({ id: 'sub_123', customer: 'cus_abc' }),
+					object: makeStripeSubscription({
+						id: createId('sub'),
+						customer: createId('cus'),
+					}),
 				},
 			});
 
-			await expect(
-				handleStripeWebhookDedupeAndApply(event, deps),
-			).rejects.toThrow('db update failed');
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				'db update failed',
+			);
 
-			// Rollback delete must use deps.db, not a module-global
 			expect(db.delete).toHaveBeenCalledTimes(1);
 		});
 
@@ -351,13 +458,16 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				id: 'evt_rollback2',
 				type: 'customer.subscription.deleted',
 				data: {
-					object: makeSubscription({ id: 'sub_x', customer: 'cus_x' }),
+					object: makeStripeSubscription({
+						id: createId('sub'),
+						customer: createId('cus'),
+					}),
 				},
 			});
 
-			await expect(
-				handleStripeWebhookDedupeAndApply(event, deps),
-			).rejects.toThrow('apply failed');
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				'apply failed',
+			);
 
 			expect(logger.error).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -386,13 +496,16 @@ describe('handleStripeWebhookDedupeAndApply', () => {
 				id: 'evt_double_fail',
 				type: 'customer.subscription.deleted',
 				data: {
-					object: makeSubscription({ id: 'sub_y', customer: 'cus_y' }),
+					object: makeStripeSubscription({
+						id: createId('sub'),
+						customer: createId('cus'),
+					}),
 				},
 			});
 
-			await expect(
-				handleStripeWebhookDedupeAndApply(event, deps),
-			).rejects.toThrow('apply failed');
+			await expect(applyVerifiedEvent(event, deps)).rejects.toThrow(
+				'apply failed',
+			);
 
 			expect(logger.error).toHaveBeenCalledWith(
 				expect.objectContaining({ cleanupError }),

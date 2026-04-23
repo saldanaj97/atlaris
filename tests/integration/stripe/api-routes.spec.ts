@@ -7,11 +7,13 @@ import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
+import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
 import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
 import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
+import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { setTestUser } from '../../helpers/auth';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import {
 	buildStripeCustomerId,
@@ -574,6 +576,68 @@ describe('Stripe API Routes', () => {
 			const response = await subscriptionGET(request);
 
 			expect(response.status).toBe(401);
+		});
+	});
+
+	describe('GET /api/v1/stripe/local/complete-checkout', () => {
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it('returns 401 when not authenticated', async () => {
+			vi.stubEnv('STRIPE_LOCAL_MODE', 'true');
+			vi.stubEnv('LOCAL_PRODUCT_TESTING', 'true');
+			clearTestUser();
+
+			const url = new URL(
+				'http://localhost/api/v1/stripe/local/complete-checkout',
+			);
+			url.searchParams.set('price_id', LOCAL_PRICE_IDS.starterMonthly);
+			url.searchParams.set('next', '/settings/billing');
+
+			const response = await localCompleteCheckoutGET(
+				new Request(url.toString()),
+			);
+
+			expect(response.status).toBe(401);
+		});
+
+		it('returns 404 when local completion route is disabled', async () => {
+			vi.stubEnv('STRIPE_LOCAL_MODE', 'false');
+			vi.stubEnv('LOCAL_PRODUCT_TESTING', 'false');
+
+			await createAuthTestUser();
+
+			const url = new URL(
+				'http://localhost/api/v1/stripe/local/complete-checkout',
+			);
+			url.searchParams.set('price_id', LOCAL_PRICE_IDS.starterMonthly);
+			url.searchParams.set('next', '/settings/billing');
+
+			const response = await localCompleteCheckoutGET(
+				new Request(url.toString()),
+			);
+
+			expect(response.status).toBe(404);
+		});
+
+		it('returns 400 when price_id is not a local catalog id', async () => {
+			vi.stubEnv('STRIPE_LOCAL_MODE', 'true');
+			vi.stubEnv('LOCAL_PRODUCT_TESTING', 'true');
+
+			await createAuthTestUser();
+
+			const url = new URL(
+				'http://localhost/api/v1/stripe/local/complete-checkout',
+			);
+			url.searchParams.set('price_id', 'price_unknown_not_local');
+			url.searchParams.set('next', '/settings/billing');
+
+			const response = await localCompleteCheckoutGET(
+				new Request(url.toString()),
+			);
+
+			expect(response.status).toBe(400);
 		});
 	});
 });

@@ -11,13 +11,8 @@ import {
 	applySubscriptionDeleted,
 	applySubscriptionSync,
 	type TransitionDeps,
-} from '@/features/billing/account-transitions';
-import {
-	cancelSubscription,
-	createCustomer,
-	getCustomerPortalUrl,
-	getSubscriptionTier,
-} from '@/features/billing/subscriptions';
+} from '@/features/billing/stripe-commerce/reconciliation';
+import { createCustomer } from '@/features/billing/subscriptions';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { createLogger } from '@/lib/logging/logger';
@@ -119,36 +114,6 @@ describe('Subscription Management', () => {
 
 			expect(customerId).toBe(existingCustomerId);
 			expect(createStripeCustomer).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('getSubscriptionTier', () => {
-		it('returns subscription info for user', async () => {
-			const userId = await createUniqueUser();
-			// Set subscription data
-			const periodEnd = new Date('2025-12-31');
-			const { stripeCustomerId, stripeSubscriptionId } =
-				await markUserAsSubscribed(userId, {
-					subscriptionTier: 'pro',
-					subscriptionStatus: 'active',
-					subscriptionPeriodEnd: periodEnd,
-				});
-
-			const tier = await getSubscriptionTier(userId);
-
-			expect(tier).toEqual({
-				subscriptionTier: 'pro',
-				subscriptionStatus: 'active',
-				subscriptionPeriodEnd: periodEnd,
-				stripeCustomerId,
-				stripeSubscriptionId,
-			});
-		});
-
-		it('throws error if user not found', async () => {
-			await expect(
-				getSubscriptionTier('00000000-0000-0000-0000-000000000000'),
-			).rejects.toThrow('User not found');
 		});
 	});
 
@@ -562,70 +527,6 @@ describe('Subscription Management', () => {
 			await expect(
 				applyPaymentFailed(invoice, makeTransitionDeps()),
 			).resolves.toBeUndefined();
-		});
-	});
-
-	describe('cancelSubscription', () => {
-		it('cancels subscription at period end', async () => {
-			const userId = await createUniqueUser();
-			const { stripeSubscriptionId } = await markUserAsSubscribed(userId, {
-				subscriptionTier: 'starter',
-				subscriptionStatus: 'active',
-			});
-
-			const updateSubscription = vi.fn().mockResolvedValue({
-				id: stripeSubscriptionId,
-				cancel_at_period_end: true,
-			});
-
-			const mockStripe = makeStripeMock({
-				subscriptions: {
-					update: updateSubscription,
-				},
-			});
-
-			await cancelSubscription(userId, mockStripe);
-
-			expect(updateSubscription).toHaveBeenCalledWith(stripeSubscriptionId, {
-				cancel_at_period_end: true,
-			});
-		});
-
-		it('throws error if no active subscription', async () => {
-			const userId = await createUniqueUser();
-
-			await expect(cancelSubscription(userId)).rejects.toThrow(
-				'No active subscription found',
-			);
-		});
-	});
-
-	describe('getCustomerPortalUrl', () => {
-		it('creates portal session and returns URL', async () => {
-			const createPortalSession = vi.fn().mockResolvedValue({
-				url: 'https://billing.stripe.com/session_abc123',
-			});
-
-			const mockStripe = makeStripeMock({
-				billingPortal: {
-					sessions: {
-						create: createPortalSession,
-					},
-				},
-			});
-
-			const testCustomerId = buildStripeCustomerId('portal-customer', 'portal');
-			const url = await getCustomerPortalUrl(
-				testCustomerId,
-				'https://example.com/settings',
-				mockStripe,
-			);
-
-			expect(url).toBe('https://billing.stripe.com/session_abc123');
-			expect(createPortalSession).toHaveBeenCalledWith({
-				customer: testCustomerId,
-				return_url: 'https://example.com/settings',
-			});
 		});
 	});
 });
