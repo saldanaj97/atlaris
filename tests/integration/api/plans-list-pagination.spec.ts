@@ -9,8 +9,9 @@ import { buildTestPlanInsert } from '../../fixtures/plans';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Keep the module mock here because withAuthAndRateLimit closes over auth.getSession()
-// inside the Next.js route wrapper, so dependency injection would be more invasive.
+// Keep this auth-server mock local. Removing it cleanly would require routing
+// requestBoundary.route -> withAuth through injectable auth/session providers in
+// the middleware stack and every route-handler construction site.
 vi.mock('@/lib/auth/server', () => ({
 	auth: { getSession: vi.fn() },
 }));

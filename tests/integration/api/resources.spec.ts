@@ -132,6 +132,21 @@ describe('GET /api/v1/resources', () => {
 		expect(body[0]?.title).toBe('Video Resource');
 	});
 
+	it('rejects invalid type query with validation error', async () => {
+		const { GET } = await import('@/app/api/v1/resources/route');
+		const request = new NextRequest(
+			'http://localhost:3000/api/v1/resources?type=not-a-valid-enum',
+			{ method: 'GET' },
+		);
+
+		const response = await GET(request);
+
+		expect(response.status).toBe(400);
+		const body = await response.json();
+		expect(body).toMatchObject({ code: 'VALIDATION_ERROR' });
+		expect(body.error).toEqual(expect.any(String));
+	});
+
 	it('supports limit and offset pagination', async () => {
 		const { GET } = await import('@/app/api/v1/resources/route');
 		const request = new NextRequest(
