@@ -14,7 +14,9 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
 
 export type PlanStatus = 'pending' | 'processing' | 'ready' | 'failed';
 
-export type AttemptStatus = 'success' | 'failure' | 'in_progress';
+export const ATTEMPT_STATUSES = ['success', 'failure', 'in_progress'] as const;
+
+export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
 
 export type ClientGenerationAttempt = {
 	id: string;

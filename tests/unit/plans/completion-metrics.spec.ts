@@ -6,8 +6,8 @@ import {
 	computeCompletionMetricsFromNestedModules,
 	computeTaskRowCompletionMetrics,
 	countCompletedModulesFromFlatTasks,
-} from '@/features/plans/read-models/completion-metrics';
-import { buildPlanSummaries } from '@/features/plans/read-models/summary';
+} from '@/features/plans/read-projection/completion-metrics';
+import { buildPlanSummaries } from '@/features/plans/read-projection/summary-projection';
 
 type SummaryTaskRow = {
 	id: string;

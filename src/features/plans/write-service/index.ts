@@ -1,4 +1,4 @@
-import type { PlanDbClient } from '@/features/plans/read-service';
+import type { PlanDbClient } from '@/features/plans/read-projection';
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { deletePlan } from '@/lib/db/queries/plans';
 

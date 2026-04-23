@@ -8,7 +8,7 @@ import {
 } from '@/app/dashboard/components/activity-utils';
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
-import { listDashboardPlanSummaries } from '@/features/plans/read-service';
+import { listDashboardPlanSummaries } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**

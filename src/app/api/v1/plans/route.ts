@@ -1,7 +1,7 @@
 import {
 	getPlanListTotalCount,
 	listLightweightPlansForApi,
-} from '@/features/plans/read-service';
+} from '@/features/plans/read-projection';
 import { type PlainHandler, withAuthAndRateLimit } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseListPaginationParams } from '@/lib/api/pagination';

@@ -1,30 +1,27 @@
-import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-models/detail-status';
+import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-projection/detail-status';
 import { logger } from '@/lib/logging/logger';
-import type {
-	AttemptStatus,
-	ClientGenerationAttempt,
-	ClientPlanDetail,
-	FailureClassification,
+import {
+	ATTEMPT_STATUSES,
+	type AttemptStatus,
+	type ClientGenerationAttempt,
+	type ClientPlanDetail,
 } from '@/shared/types/client.types';
 import type {
 	GenerationAttempt,
 	LearningPlanDetail,
 } from '@/shared/types/db.types';
+import {
+	FAILURE_CLASSIFICATIONS,
+	type FailureClassification,
+} from '@/shared/types/failure-classification.types';
 
-const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set([
-	'success',
-	'failure',
-	'in_progress',
-]);
+const VALID_ATTEMPT_STATUSES: ReadonlySet<AttemptStatus> = new Set(
+	ATTEMPT_STATUSES,
+);
 
-const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set([
-	'validation',
-	'conflict',
-	'provider_error',
-	'rate_limit',
-	'timeout',
-	'capped',
-]);
+const VALID_CLASSIFICATIONS: ReadonlySet<FailureClassification> = new Set(
+	FAILURE_CLASSIFICATIONS,
+);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -190,5 +187,5 @@ export function toClientPlanDetail(
 export function toClientGenerationAttempts(
 	attempts: GenerationAttempt[],
 ): ClientGenerationAttempt[] {
-	return attempts.map((attempt) => toClientAttempt(attempt));
+	return attempts.map(toClientAttempt);
 }

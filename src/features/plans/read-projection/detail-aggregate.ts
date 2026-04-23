@@ -1,4 +1,4 @@
-import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-models/completion-metrics';
+import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-projection/completion-metrics';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
 	GenerationAttempt,

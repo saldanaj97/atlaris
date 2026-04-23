@@ -1,5 +1,5 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { getPlanDetailForRead } from '@/features/plans/read-service';
+import { getPlanDetailForRead } from '@/features/plans/read-projection';
 import { removePlanForWrite } from '@/features/plans/write-service';
 import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { NotFoundError } from '@/lib/api/errors';

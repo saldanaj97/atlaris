@@ -1,6 +1,6 @@
 import { CheckCircle2, Clock, FileText, Video, Zap } from 'lucide-react';
 import { formatMinutes } from '@/features/plans/formatters';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection';
 import {
 	formatRelativePast,
 	formatScheduledEventRelative,
@@ -87,10 +87,14 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
 export function findActivePlan(
 	summaries: PlanSummary[],
 ): PlanSummary | undefined {
+	const now = new Date();
 	const rankedSummaries = summaries
 		.map((summary) => ({
 			summary,
-			status: deriveCanonicalPlanSummaryStatus(summary),
+			status: derivePlanSummaryDisplayStatus({
+				summary,
+				referenceDate: now,
+			}),
 		}))
 		.filter(({ status }) => status === 'active' || status === 'generating')
 		.toSorted((a, b) => {

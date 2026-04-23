@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	toClientGenerationAttempts,
 	toClientPlanDetail,
-} from '@/features/plans/read-models/detail-dto';
+} from '@/features/plans/read-projection/detail-dto';
 import type {
 	ModuleWithTasks,
 	TaskWithRelations,

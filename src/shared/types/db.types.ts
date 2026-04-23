@@ -62,7 +62,7 @@ export type PlanSummary = ProgressMetrics & {
 };
 
 /**
- * Field subset shared by lightweight plan list rows (API + read-models).
+ * Field subset shared by lightweight plan list rows (API + read projection).
  * Exported so summary builders use the same shape the API contract assumes.
  */
 export type LightweightPlanListRow = Pick<

@@ -1,5 +1,5 @@
 import { getAttemptCap } from '@/features/ai/generation-policy';
-import { derivePlanReadStatus } from '@/features/plans/status/read-status';
+import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
 import type {
 	PlanStatus as ClientPlanStatus,
 	FailureClassification,

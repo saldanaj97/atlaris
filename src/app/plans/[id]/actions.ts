@@ -22,7 +22,7 @@ import {
 	setTaskProgressBatch,
 } from '@/app/plans/[id]/server/task-progress-action-deps';
 import type { PlanAccessResult } from '@/app/plans/[id]/types';
-import { getPlanDetailForRead } from '@/features/plans/read-service';
+import { getPlanDetailForRead } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { planError, planSuccess } from './helpers';
 

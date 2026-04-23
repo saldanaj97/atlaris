@@ -1,0 +1,64 @@
+import { differenceInDays } from 'date-fns';
+import type { PlanStatus } from '@/app/plans/types';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
+import { toValidDate } from '@/lib/date/relative-time';
+import { logger } from '@/lib/logging/logger';
+import type { PlanSummary } from '@/shared/types/db.types';
+
+/**
+ * UI-facing plan status for list/dashboard: canonical summary status plus
+ * inactivity → `paused` when underlying status is `active`.
+ *
+ * `referenceDate` defaults to `new Date()` so callers only need to pass it when
+ * they want deterministic comparisons (for example, tests).
+ */
+export const PLAN_STALENESS_THRESHOLD_DAYS = 30;
+
+export function derivePlanSummaryDisplayStatus(params: {
+	summary: PlanSummary;
+	referenceDate?: Date | string | null;
+}): PlanStatus {
+	const { summary, referenceDate = new Date() } = params;
+	const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
+
+	if (canonicalStatus !== 'active') {
+		return canonicalStatus;
+	}
+
+	const updatedAt = toValidDate(summary.plan.updatedAt);
+	if (summary.plan.updatedAt !== null && !updatedAt) {
+		logger.warn(
+			{
+				planId: summary.plan.id,
+				updatedAt: summary.plan.updatedAt,
+			},
+			'Invalid plan updatedAt; defaulting display status to active',
+		);
+		return 'active';
+	}
+
+	const reference = toValidDate(referenceDate);
+	if (!reference) {
+		logger.warn(
+			{
+				planId: summary.plan.id,
+				referenceDate,
+			},
+			'Invalid referenceDate; defaulting display status to active',
+		);
+		return 'active';
+	}
+
+	if (updatedAt) {
+		const daysSinceUpdate = differenceInDays(reference, updatedAt);
+		if (daysSinceUpdate >= PLAN_STALENESS_THRESHOLD_DAYS) {
+			return 'paused';
+		}
+	}
+
+	return 'active';
+}
+
+export function isPlanSummaryFullyComplete(summary: PlanSummary): boolean {
+	return deriveCanonicalPlanSummaryStatus(summary) === 'completed';
+}

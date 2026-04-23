@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { getAttemptCap } from '@/features/ai/generation-policy';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
 import {
 	derivePlanReadStatus,
 	derivePlanSummaryStatus,
-} from '@/features/plans/status/read-status';
+} from '@/features/plans/read-projection/read-status';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
 import type { Module } from '@/shared/types/db.types';
 
 describe('plan summary status boundaries', () => {

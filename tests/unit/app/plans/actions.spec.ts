@@ -34,7 +34,7 @@ vi.mock('@/app/plans/[id]/server/task-progress-action-deps', () => ({
 	setTaskProgressBatch: setTaskProgressBatchMock,
 }));
 
-vi.mock('@/features/plans/read-service', () => ({
+vi.mock('@/features/plans/read-projection', () => ({
 	getPlanDetailForRead: getPlanDetailForReadMock,
 }));
 

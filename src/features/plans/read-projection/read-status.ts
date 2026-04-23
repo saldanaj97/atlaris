@@ -18,12 +18,19 @@ export type PlanSummaryReadStatus =
 /**
  * Raw plan lifecycle inputs needed to derive the canonical read status.
  */
-type PlanReadStatusInput = {
-	generationStatus: GenerationStatus;
-	hasModules: boolean;
-	attemptsCount?: number;
-	attemptCap?: number;
-};
+type PlanReadStatusInput =
+	| {
+			generationStatus: GenerationStatus;
+			hasModules: boolean;
+			attemptsCount?: never;
+			attemptCap?: never;
+	  }
+	| {
+			generationStatus: GenerationStatus;
+			hasModules: boolean;
+			attemptsCount: number;
+			attemptCap: number;
+	  };
 
 /**
  * Summary inputs layered on top of the canonical read status.
@@ -37,12 +44,6 @@ export function derivePlanReadStatus(
 	params: PlanReadStatusInput,
 ): PlanReadStatus {
 	const { generationStatus, hasModules, attemptsCount, attemptCap } = params;
-
-	if (typeof attemptsCount === 'number' && typeof attemptCap !== 'number') {
-		throw new Error(
-			'attemptCap is required when attemptsCount is provided to derivePlanReadStatus.',
-		);
-	}
 
 	if (hasModules) {
 		return 'ready';
@@ -60,7 +61,6 @@ export function derivePlanReadStatus(
 			}
 			return 'ready';
 		default: {
-			// Exhaustive by design so new GenerationStatus members require an explicit mapping.
 			const exhaustiveStatus: never = generationStatus;
 			throw new Error(
 				`Unhandled generation status: ${String(exhaustiveStatus)}`,
@@ -74,13 +74,17 @@ export function derivePlanSummaryStatus(
 ): PlanSummaryReadStatus {
 	const { readStatus, completion } = params;
 
-	if (readStatus === 'failed') {
-		return 'failed';
+	switch (readStatus) {
+		case 'failed':
+			return 'failed';
+		case 'pending':
+		case 'processing':
+			return 'generating';
+		case 'ready':
+			return completion >= 1 ? 'completed' : 'active';
+		default: {
+			const exhaustiveStatus: never = readStatus;
+			throw new Error(`Unhandled read status: ${String(exhaustiveStatus)}`);
+		}
 	}
-
-	if (readStatus === 'pending' || readStatus === 'processing') {
-		return 'generating';
-	}
-
-	return completion >= 1 ? 'completed' : 'active';
 }

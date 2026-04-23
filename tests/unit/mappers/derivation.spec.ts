@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { getAttemptCap } from '@/features/ai/generation-policy';
-import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
+import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import {
 	buildGenerationAttempt,
 	buildModule,

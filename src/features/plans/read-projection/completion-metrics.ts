@@ -14,7 +14,7 @@ type NestedModule = {
 };
 
 /**
- * Completion metrics for detail read-models (nested modules + tasks with progress).
+ * Completion metrics for plan read projections (nested modules + tasks with progress).
  */
 export function computeCompletionMetricsFromNestedModules(
 	modules: NestedModule[],

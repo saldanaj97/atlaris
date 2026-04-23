@@ -5,16 +5,15 @@
  * plan access scenarios (success, auth failure, not found, etc.)
  */
 
+import { buildPlanDetail } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
-
 import { planError, planSuccess } from '@/app/plans/[id]/helpers';
 import type {
 	PlanAccessErrorCode,
 	PlanAccessResult,
 } from '@/app/plans/[id]/types';
-import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
+import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
-import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 function buildClientPlanDetail(
 	overrides: Parameters<typeof buildPlanDetail>[0] = {},

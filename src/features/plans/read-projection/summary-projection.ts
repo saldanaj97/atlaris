@@ -3,12 +3,12 @@ import {
 	accumulateLightweightModuleMetricsRowInPlace,
 	computeTaskRowCompletionMetrics,
 	countCompletedModulesFromFlatTasks,
-} from '@/features/plans/read-models/completion-metrics';
+} from '@/features/plans/read-projection/completion-metrics';
 import {
 	derivePlanReadStatus,
 	derivePlanSummaryStatus,
 	type PlanSummaryReadStatus,
-} from '@/features/plans/status/read-status';
+} from '@/features/plans/read-projection/read-status';
 import type {
 	LearningPlan,
 	LightweightPlanListRow,
@@ -130,13 +130,21 @@ export function buildPlanSummaries(params: {
 
 export function deriveCanonicalPlanSummaryStatus(
 	summary: SummaryStatusInput,
+	attemptCap: number = getAttemptCap(),
 ): PlanSummaryReadStatus {
-	const readStatus = derivePlanReadStatus({
-		generationStatus: summary.plan.generationStatus,
-		hasModules: summary.modules.length > 0,
-		attemptsCount: summary.attemptsCount,
-		attemptCap: getAttemptCap(),
-	});
+	const readStatus = derivePlanReadStatus(
+		summary.attemptsCount === undefined
+			? {
+					generationStatus: summary.plan.generationStatus,
+					hasModules: summary.modules.length > 0,
+				}
+			: {
+					generationStatus: summary.plan.generationStatus,
+					hasModules: summary.modules.length > 0,
+					attemptsCount: summary.attemptsCount,
+					attemptCap,
+				},
+	);
 
 	return derivePlanSummaryStatus({
 		readStatus,

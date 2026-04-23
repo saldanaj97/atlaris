@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-aggregate';
+import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
 	buildLightweightPlanSummaries,
 	buildPlanSummaries,
-} from '@/features/plans/read-models/summary';
+} from '@/features/plans/read-projection/summary-projection';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
 	GenerationAttempt,

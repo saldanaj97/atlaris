@@ -6,7 +6,7 @@ import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { listPlansPageSummaries } from '@/features/plans/read-service';
+import { listPlansPageSummaries } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**

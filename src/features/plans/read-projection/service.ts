@@ -1,16 +1,17 @@
-import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-aggregate';
+import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
 	toClientGenerationAttempts,
 	toClientPlanDetail,
-} from '@/features/plans/read-models/detail-dto';
+} from '@/features/plans/read-projection/detail-dto';
 import {
 	buildPlanDetailStatusSnapshot,
 	type PlanDetailStatusSnapshot,
-} from '@/features/plans/read-models/detail-status';
+} from '@/features/plans/read-projection/detail-status';
 import {
 	buildLightweightPlanSummaries,
 	buildPlanSummaries,
-} from '@/features/plans/read-models/summary';
+} from '@/features/plans/read-projection/summary-projection';
+import type { PlanDbClient } from '@/features/plans/read-projection/types';
 import {
 	getLearningPlanDetailRows,
 	getLightweightPlanSummaryRowsForUser,
@@ -19,7 +20,6 @@ import {
 	getPlanSummaryCount,
 	getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
-import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
@@ -31,7 +31,7 @@ import type {
 	PlanSummary,
 } from '@/shared/types/db.types';
 
-export type PlanDbClient = DbClient;
+export type { PlanDbClient } from '@/features/plans/read-projection/types';
 
 async function listPlanSummaries(params: {
 	userId: string;
@@ -47,6 +47,8 @@ async function listPlanSummaries(params: {
 	return buildPlanSummaries(rows);
 }
 
+// Keep page-specific entrypoints explicit even while both consumers share the
+// same summary projection today.
 export async function listDashboardPlanSummaries(params: {
 	userId: string;
 	dbClient?: PlanDbClient;
@@ -105,6 +107,7 @@ export async function getPlanDetailForRead(params: {
 		logger.error(
 			{
 				planId: detail.plan.id,
+				userId: params.userId,
 				attemptsCount: detail.attemptsCount,
 				latestAttemptId: detail.latestAttempt?.id,
 			},

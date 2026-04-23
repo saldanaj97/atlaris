@@ -1,6 +1,8 @@
-import { differenceInDays } from 'date-fns';
 import type { PlanStatus } from '@/app/plans/types';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import {
+	derivePlanSummaryDisplayStatus,
+	isPlanSummaryFullyComplete,
+} from '@/features/plans/read-projection';
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
 
@@ -85,23 +87,7 @@ export function getPlanStatus(
 	summary: PlanSummary,
 	referenceDate: DateInput,
 ): PlanStatus {
-	const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
-
-	if (canonicalStatus !== 'active') {
-		return canonicalStatus;
-	}
-
-	// Check if plan is inactive/paused (not updated in 30+ days)
-	const updatedAt = toValidDate(summary.plan.updatedAt);
-	const reference = toValidDate(referenceDate);
-	if (updatedAt && reference) {
-		const daysSinceUpdate = differenceInDays(reference, updatedAt);
-		if (daysSinceUpdate >= 30) {
-			return 'paused';
-		}
-	}
-
-	return 'active';
+	return derivePlanSummaryDisplayStatus({ summary, referenceDate });
 }
 
 /**
@@ -148,7 +134,7 @@ export function getNextTaskName(summary: PlanSummary): string {
 		return 'Not started';
 	}
 
-	if (deriveCanonicalPlanSummaryStatus(summary) === 'completed') {
+	if (isPlanSummaryFullyComplete(summary)) {
 		return 'All tasks completed';
 	}
 
