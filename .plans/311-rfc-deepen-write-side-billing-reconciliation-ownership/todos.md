@@ -7,13 +7,13 @@ Plan: `./plan.md`
 
 Issue #311 does not contain a formal "Acceptance criteria" block. The criteria below are inferred from the issue's stated goal (single app-owned write-side module contract) and non-expansion constraint (keep read-model snapshot and pricing catalog separate). Closure evidence on issue #311 should describe them as author-inferred, not verbatim issue ACs.
 
-- [x] One write-side owner exists under `src/features/billing/stripe-commerce/` for verified webhook application and local synthetic replay.
-- [x] `src/features/billing/stripe-commerce/boundary-impl.ts` no longer imports a free-standing webhook processor directly.
-- [x] Local checkout replay no longer assembles reconciliation internals itself from multiple legacy helpers/modules.
-- [x] Subscription sync, delete, payment-failed, and `invoice.payment_succeeded` resync semantics remain behaviorally unchanged.
-- [x] Write-side tests move to the owner seam; route tests stay HTTP-focused.
-- [x] Billing read-model/catalog consumers stay out of scope unless implementation evidence proves a required touch.
-- [x] `pnpm test:changed` and `pnpm check:full` pass.
+- One write-side owner exists under `src/features/billing/stripe-commerce/` for verified webhook application and local synthetic replay.
+- `src/features/billing/stripe-commerce/boundary-impl.ts` no longer imports a free-standing webhook processor directly.
+- Local checkout replay no longer assembles reconciliation internals itself from multiple legacy helpers/modules.
+- Subscription sync, delete, payment-failed, and `invoice.payment_succeeded` resync semantics remain behaviorally unchanged.
+- Write-side tests move to the owner seam; route tests stay HTTP-focused.
+- Billing read-model/catalog consumers stay out of scope unless implementation evidence proves a required touch.
+- `pnpm test:changed` and `pnpm check:full` pass.
 
 ## Tasks (aligned with plan.md Steps)
 
@@ -65,14 +65,14 @@ Issue #311 does not contain a formal "Acceptance criteria" block. The criteria b
 
 ### Step 5.0 — Validation
 
-- [x] Targeted: `reconciliation.spec.ts`, `subscriptions.spec.ts` integration; `pnpm test:changed` passed.
-- [x] `pnpm check:type` passed.
-- [x] `pnpm check:full` passed locally.
+- Targeted: `reconciliation.spec.ts`, `subscriptions.spec.ts` integration; `pnpm test:changed` passed.
+- `pnpm check:type` passed.
+- `pnpm check:full` passed locally.
 
 ### Step 6.0 — Issue Verification & Closure
 
-- [x] Evidence table + security checklist updated below.
-- [x] Issue #311 — closure comment posted + issue closed (`state_reason: completed`).
+- Evidence table + security checklist updated below.
+- Issue #311 — closure comment posted + issue closed (`state_reason: completed`).
 
 ## Review
 
@@ -93,24 +93,24 @@ Track these during implementation; each should have explicit evidence in the Rev
 ### Evidence table (Step 6.0)
 
 
-| Acceptance Criterion                                                      | Evidence                                                                   |
-| ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| One write-side owner exists under `src/features/billing/stripe-commerce/` | `reconciliation.ts`, `subscription-db-sync.ts`                             |
-| `boundary-impl.ts` no longer imports a free-standing webhook processor    | imports `applyVerifiedEvent` from `./reconciliation`                       |
-| Local replay no longer assembles reconciliation internals itself          | `executeLocalSubscriptionReplay()` in `factory.ts`; route calls it only      |
-| Subscription sync/delete/payment-failed/resync semantics preserved        | `pnpm test:changed` + targeted integration                                 |
+| Acceptance Criterion                                                      | Evidence                                                                                     |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| One write-side owner exists under `src/features/billing/stripe-commerce/` | `reconciliation.ts`, `subscription-db-sync.ts`                                               |
+| `boundary-impl.ts` no longer imports a free-standing webhook processor    | imports `applyVerifiedEvent` from `./reconciliation`                                         |
+| Local replay no longer assembles reconciliation internals itself          | `executeLocalSubscriptionReplay()` in `factory.ts`; route calls it only                      |
+| Subscription sync/delete/payment-failed/resync semantics preserved        | `pnpm test:changed` + targeted integration                                                   |
 | Tests moved to the owner seam                                             | `reconciliation.spec.ts` + `commerce-boundary.spec.ts` write-side + `api-routes` local route |
-| Read-side billing snapshot/catalog remained out of scope                  | no snapshot/catalog edits                                                  |
-| Validation completed                                                      | `pnpm test:changed` OK; `pnpm check:full` OK                               |
+| Read-side billing snapshot/catalog remained out of scope                  | no snapshot/catalog edits                                                                    |
+| Validation completed                                                      | `pnpm test:changed` OK; `pnpm check:full` OK                                                 |
 
 
 ### Security Review Checklist (plan.md)
 
-- [x] Service-role DB usage stays deliberate and documented at the new owner seam.
-- [x] Webhook idempotency insert/delete rollback behavior is still covered by tests.
-- [x] Missing-user / missing-subscription-id / missing-gateway cases still log and fail with the intended severity (missing-user: `subscriptions.spec.ts` + sync path; missing sub id / gateway / retrieve: `reconciliation.spec.ts`).
-- [x] No new route-level auth bypass or request-context leakage is introduced (`api-routes.spec.ts` local complete-checkout 401 / gated 404 / validation 400).
-- [x] Read-side billing data access stayed out of the write-side refactor.
+- Service-role DB usage stays deliberate and documented at the new owner seam.
+- Webhook idempotency insert/delete rollback behavior is still covered by tests.
+- Missing-user / missing-subscription-id / missing-gateway cases still log and fail with the intended severity (missing-user: `subscriptions.spec.ts` + sync path; missing sub id / gateway / retrieve: `reconciliation.spec.ts`).
+- No new route-level auth bypass or request-context leakage is introduced (`api-routes.spec.ts` local complete-checkout 401 / gated 404 / validation 400).
+- Read-side billing data access stayed out of the write-side refactor.
 
 ### Validation excerpts
 

@@ -13,6 +13,7 @@
 # testing
 /coverage
 .testcontainers-env.json
+/tests/.testcontainers-env.*.json
 /tests/test-results/*
 /tests/results/
 
