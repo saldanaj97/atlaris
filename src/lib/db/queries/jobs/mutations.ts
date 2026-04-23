@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lte } from 'drizzle-orm';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import {
 	activeRegenerationJobWhere,
 	appendErrorHistoryEntry,
@@ -127,7 +127,7 @@ export async function claimNextPendingJob(
 				and(
 					eq(jobQueue.status, 'pending'),
 					inArray(jobQueue.jobType, types),
-					lte(jobQueue.scheduledFor, startTime),
+					lte(jobQueue.scheduledFor, sql<Date>`now()`),
 				),
 			)
 			.orderBy(desc(jobQueue.priority), jobQueue.createdAt)

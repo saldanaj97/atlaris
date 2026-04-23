@@ -1,240 +1,62 @@
-import { eq } from 'drizzle-orm';
-import { z } from 'zod';
-import { resolveUserTier } from '@/features/billing/tier';
-import { completeJob, failJob, getNextJob } from '@/features/jobs/queue';
-import { JOB_TYPES } from '@/features/jobs/types';
-import {
-	createPlanLifecycleService,
-	type GenerationAttemptResult,
-	type JobQueuePort,
-} from '@/features/plans/lifecycle';
-import { shouldRetryJob } from '@/features/plans/retry-policy';
-import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import type { ProcessPlanRegenerationJobResult } from '@/features/plans/regeneration-orchestration';
+import { processNextPlanRegenerationJob } from '@/features/plans/regeneration-orchestration';
 import { assertNever } from '@/lib/errors';
-import { logger } from '@/lib/logging/logger';
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-// No-op JobQueuePort — the worker manages job state directly via completeJob/failJob,
-// and only uses processGenerationAttempt which does not touch the job queue port.
-const noOpJobQueue: JobQueuePort = {
-	enqueueJob: () => Promise.resolve(''),
-	completeJob: () => Promise.resolve(),
-	failJob: () => Promise.resolve(),
-};
-
-const lifecycleService = createPlanLifecycleService({
-	dbClient: db,
-	jobQueue: noOpJobQueue,
-});
-
-const planRegenerationJobPayloadSchema = z
-	.object({
-		planId: z.string().uuid(),
-		overrides: planRegenerationOverridesSchema.optional(),
-	})
-	.strict();
-
-type PlanRegenerationJobPayload = z.infer<
-	typeof planRegenerationJobPayloadSchema
->;
+export {
+	_resetInlineDrainStateForTesting,
+	isInlineDrainFree,
+	registerInlineDrain,
+	tryRegisterInlineDrain,
+	waitForInlineRegenerationDrains,
+} from '@/features/jobs/regeneration-inline-drain';
 
 type ProcessRegenerationJobResult = {
 	processed: boolean;
 	jobId?: string;
 	status?: 'completed' | 'failed';
+	/** True when the plan was already finalized (idempotent success); both map to `status: 'completed'`. */
+	wasAlreadyFinalized?: boolean;
 	reason?: string;
 };
 
-const toIsoDateString = (value: string | null): string | undefined => {
-	if (!value) {
-		return undefined;
-	}
-
-	return ISO_DATE_PATTERN.test(value) ? value : undefined;
-};
-
-const resolveRegenerationNotes = (
-	overrides: PlanRegenerationJobPayload['overrides'],
-) => {
-	if (!overrides || overrides.notes === undefined) {
-		return undefined;
-	}
-
-	return overrides.notes;
-};
-
-function buildGenerationInput(
-	payload: PlanRegenerationJobPayload,
-	plan: typeof learningPlans.$inferSelect,
-) {
-	const overrides = payload.overrides;
-
-	// startDateValue/deadlineDateValue: overrides undefined → use plan; null → explicit clear. Do not use ?? or falsy.
-	const startDateValue =
-		overrides?.startDate === undefined ? plan.startDate : overrides.startDate;
-	const deadlineDateValue =
-		overrides?.deadlineDate === undefined
-			? plan.deadlineDate
-			: overrides.deadlineDate;
-
-	return {
-		topic: overrides?.topic ?? plan.topic,
-		notes: resolveRegenerationNotes(overrides),
-		skillLevel: overrides?.skillLevel ?? plan.skillLevel,
-		weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
-		learningStyle: overrides?.learningStyle ?? plan.learningStyle,
-		startDate: toIsoDateString(startDateValue),
-		deadlineDate: toIsoDateString(deadlineDateValue),
-	};
-}
-
-async function processNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
-	const job = await getNextJob([JOB_TYPES.PLAN_REGENERATION]);
-
-	if (!job) {
-		return { processed: false };
-	}
-
-	try {
-		const payload = planRegenerationJobPayloadSchema.parse(job.data);
-
-		const plan = await db.query.learningPlans.findFirst({
-			where: eq(learningPlans.id, payload.planId),
-		});
-
-		// Combined error is deliberate for security (prevents account/plan enumeration).
-		// Distinguishable errors (missing vs wrong user) were intentionally suppressed;
-		// change only after security review.
-		if (!plan || plan.userId !== job.userId) {
-			await failJob(job.id, 'Plan not found for queued regeneration.', {
-				retryable: false,
-			});
+function mapBoundaryResultToDrain(
+	result: ProcessPlanRegenerationJobResult,
+): ProcessRegenerationJobResult {
+	switch (result.kind) {
+		case 'no-job':
+			return { processed: false };
+		// `completed` and `already-finalized` both end the job successfully; split here only if metrics need to differ.
+		case 'completed':
 			return {
 				processed: true,
-				jobId: job.id,
-				status: 'failed',
-				reason: 'plan_missing',
+				jobId: result.jobId,
+				status: 'completed',
+				wasAlreadyFinalized: false,
 			};
-		}
-
-		const userTier = await resolveUserTier(plan.userId, db);
-		const generationInput = buildGenerationInput(payload, plan);
-
-		const result: GenerationAttemptResult =
-			await lifecycleService.processGenerationAttempt({
-				planId: plan.id,
-				userId: plan.userId,
-				tier: userTier,
-				input: generationInput,
-			});
-
-		switch (result.status) {
-			case 'generation_success': {
-				const modules = result.data.modules;
-				const modulesCount = modules.length;
-				const tasksCount = modules.reduce(
-					(total, m) => total + (m.tasks?.length ?? 0),
-					0,
-				);
-				const durationMs =
-					Number.isFinite(result.data.durationMs) && result.data.durationMs >= 0
-						? result.data.durationMs
-						: 0;
-
-				await completeJob(job.id, {
-					planId: plan.id,
-					modulesCount,
-					tasksCount,
-					durationMs,
-				});
-
-				return {
-					processed: true,
-					jobId: job.id,
-					status: 'completed',
-				};
-			}
-
-			case 'retryable_failure': {
-				const decision = shouldRetryJob({
-					attemptNumber: job.attempts + 1,
-					maxAttempts: job.maxAttempts,
-					retryable: true,
-				});
-				logger.info(
-					{
-						jobId: job.id,
-						classification: result.classification,
-						retryDecision: decision.reason,
-					},
-					'Regeneration job retryable failure — retry decision applied',
-				);
-				await failJob(job.id, result.error.message, { retryable: true });
-				return {
-					processed: true,
-					jobId: job.id,
-					status: 'failed',
-					reason: result.classification,
-				};
-			}
-
-			case 'permanent_failure': {
-				await failJob(job.id, result.error.message, { retryable: false });
-				return {
-					processed: true,
-					jobId: job.id,
-					status: 'failed',
-					reason: result.classification,
-				};
-			}
-
-			case 'already_finalized': {
-				await completeJob(job.id, {
-					planId: plan.id,
-					modulesCount: 0,
-					tasksCount: 0,
-					durationMs: 0,
-				});
-				return {
-					processed: true,
-					jobId: job.id,
-					status: 'completed',
-				};
-			}
-
-			default:
-				assertNever(result);
-		}
-	} catch (error) {
-		const message =
-			error instanceof Error
-				? error.message
-				: 'Unknown regeneration worker error';
-
-		logger.error(
-			{ jobId: job.id, error },
-			'Failed while processing queued plan regeneration job',
-		);
-
-		try {
-			await failJob(job.id, message, { retryable: false });
-		} catch (secondaryError) {
-			logger.error(
-				{ jobId: job.id, error: secondaryError },
-				'Failed to persist failure state for queued plan regeneration job',
-			);
-		}
-
-		return {
-			processed: true,
-			jobId: job.id,
-			status: 'failed',
-			reason: 'worker_exception',
-		};
+		case 'already-finalized':
+			return {
+				processed: true,
+				jobId: result.jobId,
+				status: 'completed',
+				wasAlreadyFinalized: true,
+			};
+		case 'retryable-failure':
+		case 'permanent-failure':
+		case 'plan-not-found-or-unauthorized':
+		case 'invalid-payload':
+			return {
+				processed: true,
+				jobId: result.jobId,
+				status: 'failed',
+			};
+		default:
+			assertNever(result);
 	}
+}
+
+async function defaultProcessNextRegenerationJob(): Promise<ProcessRegenerationJobResult> {
+	const result = await processNextPlanRegenerationJob();
+	return mapBoundaryResultToDrain(result);
 }
 
 type DrainRegenerationQueueResult = {
@@ -248,52 +70,12 @@ type DrainRegenerationQueueOptions = {
 	processNextJob?: () => Promise<ProcessRegenerationJobResult>;
 };
 
-/**
- * In-flight inline drain promises (same-process). Used as the lock: while non-empty, another inline
- * drain must not start. Callers must invoke {@link registerInlineDrain} synchronously after
- * {@link tryAcquireInlineDrainLock} returns true.
- */
-const inlineInFlightDrains = new Set<Promise<unknown>>();
-
-/**
- * Tries to acquire the inline drain lock. Returns true if no drain is in progress, false otherwise.
- * Must be followed synchronously by {@link registerInlineDrain} with the drain promise.
- */
-export function tryAcquireInlineDrainLock(): boolean {
-	return inlineInFlightDrains.size === 0;
-}
-
-/**
- * Registers a drain promise so tests (or shutdown hooks) can await completion via
- * {@link waitForInlineRegenerationDrains}. Removes the promise from the set when it settles.
- */
-export function registerInlineDrain(promise: Promise<unknown>): void {
-	inlineInFlightDrains.add(promise);
-	void promise.finally(() => {
-		inlineInFlightDrains.delete(promise);
-	});
-}
-
-/**
- * Awaits all in-flight inline drains started in this process (e.g. between integration test files).
- */
-export async function waitForInlineRegenerationDrains(): Promise<void> {
-	if (inlineInFlightDrains.size === 0) {
-		return;
-	}
-	const snapshot = [...inlineInFlightDrains];
-	await Promise.allSettled(snapshot);
-	if (inlineInFlightDrains.size > 0) {
-		await waitForInlineRegenerationDrains();
-	}
-}
-
 export async function drainRegenerationQueue(
 	options?: DrainRegenerationQueueOptions,
 ): Promise<DrainRegenerationQueueResult> {
-	// Explicit maxJobs === 0 is a no-op: no jobs are processed.
 	const maxJobs = Math.max(0, options?.maxJobs ?? 1);
-	const processNextJob = options?.processNextJob ?? processNextRegenerationJob;
+	const processNextJob =
+		options?.processNextJob ?? defaultProcessNextRegenerationJob;
 
 	let processedCount = 0;
 	let completedCount = 0;

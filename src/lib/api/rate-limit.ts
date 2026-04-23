@@ -11,9 +11,10 @@ import {
 	PLAN_GENERATION_WINDOW_MINUTES,
 } from '@/shared/constants/generation';
 
-type PlanGenerationRateLimitResult = {
+export type PlanGenerationRateLimitResult = {
 	remaining: number;
 	limit: number;
+	/** Unix timestamp in whole seconds since epoch (UTC), not milliseconds. Matches `X-RateLimit-Reset` from {@link getPlanGenerationRateLimitHeaders}. */
 	reset: number;
 };
 

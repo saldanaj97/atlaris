@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+	_resetInlineDrainStateForTesting,
+	isInlineDrainFree,
 	registerInlineDrain,
-	tryAcquireInlineDrainLock,
+	tryRegisterInlineDrain,
 	waitForInlineRegenerationDrains,
 } from '@/features/jobs/regeneration-worker';
 
@@ -20,17 +22,33 @@ describe('inline regeneration drain tracking', () => {
 		await waitForInlineRegenerationDrains();
 	});
 
-	it('tryAcquireInlineDrainLock is true when no drains are in flight', () => {
-		expect(tryAcquireInlineDrainLock()).toBe(true);
+	it('tryRegisterInlineDrain is false if another drain is already registered', () => {
+		const a = deferred();
+		expect(tryRegisterInlineDrain(() => a.promise)).toBe(true);
+		expect(tryRegisterInlineDrain(() => Promise.resolve())).toBe(false);
+		a.resolve();
 	});
 
-	it('tryAcquireInlineDrainLock is false while a registered drain is pending, then true after wait', async () => {
+	it('isInlineDrainFree is true when no drains are in flight', () => {
+		expect(isInlineDrainFree()).toBe(true);
+	});
+
+	it('_resetInlineDrainStateForTesting clears in-flight set so lock reopens', () => {
+		const d = deferred();
+		registerInlineDrain(d.promise);
+		expect(isInlineDrainFree()).toBe(false);
+		_resetInlineDrainStateForTesting();
+		expect(isInlineDrainFree()).toBe(true);
+		d.resolve();
+	});
+
+	it('isInlineDrainFree is false while a registered drain is pending, then true after wait', async () => {
 		const { promise, resolve } = deferred();
 		registerInlineDrain(promise);
-		expect(tryAcquireInlineDrainLock()).toBe(false);
+		expect(isInlineDrainFree()).toBe(false);
 		resolve();
 		await waitForInlineRegenerationDrains();
-		expect(tryAcquireInlineDrainLock()).toBe(true);
+		expect(isInlineDrainFree()).toBe(true);
 	});
 
 	it('waitForInlineRegenerationDrains resolves only after all registered drains settle', async () => {
@@ -55,21 +73,17 @@ describe('inline regeneration drain tracking', () => {
 		expect(order).toEqual(['after-a', 'wait', 'after-wait']);
 	});
 
-	it('wait completes when the registered promise matches production (reject absorbed by .catch)', async () => {
+	it('wait completes when the registered promise rejects', async () => {
 		const { promise, reject } = deferred();
-		// Mirrors regenerate route: register after .catch so the wait set never holds a bare
-		// rejecting promise (which would be an unhandled rejection in Node/Vitest).
-		const caught = promise.catch(() => undefined);
-		registerInlineDrain(caught);
-		const wait = waitForInlineRegenerationDrains();
+		registerInlineDrain(promise);
 		queueMicrotask(() => {
 			reject(new Error('boom'));
 		});
-		await expect(wait).resolves.toBeUndefined();
-		expect(tryAcquireInlineDrainLock()).toBe(true);
+		await expect(waitForInlineRegenerationDrains()).resolves.toBeUndefined();
+		expect(isInlineDrainFree()).toBe(true);
 	});
 
-	it('drains registered after wait starts are awaited via recursion', async () => {
+	it('drains registered after wait starts are awaited in later loop iterations', async () => {
 		const first = deferred();
 		registerInlineDrain(first.promise);
 
@@ -83,6 +97,19 @@ describe('inline regeneration drain tracking', () => {
 		second.resolve();
 		await waitDone;
 
-		expect(tryAcquireInlineDrainLock()).toBe(true);
+		expect(isInlineDrainFree()).toBe(true);
+	});
+
+	it('waitForInlineRegenerationDrains throws when maxIterations exhausted', async () => {
+		const d = deferred();
+		registerInlineDrain(d.promise);
+		try {
+			await expect(waitForInlineRegenerationDrains(0)).rejects.toThrow(
+				/exhausted/,
+			);
+		} finally {
+			_resetInlineDrainStateForTesting();
+			d.resolve();
+		}
 	});
 });

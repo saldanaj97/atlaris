@@ -1,7 +1,25 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
+import * as regenerationOrchestration from '@/features/plans/regeneration-orchestration';
 
 describe('drainRegenerationQueue', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('defaults processNextJob to processNextPlanRegenerationJob', async () => {
+		const spy = vi
+			.spyOn(regenerationOrchestration, 'processNextPlanRegenerationJob')
+			.mockResolvedValue({ kind: 'no-job' });
+		const result = await drainRegenerationQueue({ maxJobs: 1 });
+		expect(spy).toHaveBeenCalledTimes(1);
+		expect(result).toEqual({
+			processedCount: 0,
+			completedCount: 0,
+			failedCount: 0,
+		});
+	});
+
 	it('does no work when maxJobs is 0 (no-op)', async () => {
 		const processNextJob = vi.fn();
 		const result = await drainRegenerationQueue({ maxJobs: 0, processNextJob });
@@ -56,6 +74,15 @@ describe('drainRegenerationQueue', () => {
 			failedCount: 1,
 		});
 		expect(processNextJob).toHaveBeenCalledTimes(2);
+	});
+
+	it('propagates when processNextJob throws', async () => {
+		const processNextJob = vi
+			.fn()
+			.mockRejectedValue(new Error('processor boom'));
+		await expect(
+			drainRegenerationQueue({ maxJobs: 3, processNextJob }),
+		).rejects.toThrow('processor boom');
 	});
 
 	it('handles mixed outcomes until queue empties', async () => {
