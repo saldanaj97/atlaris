@@ -25,7 +25,10 @@ describe('stream-cleanup safeMarkPlanFailed', () => {
 		).resolves.toBeUndefined();
 
 		expect(persistence.markGenerationFailure).toHaveBeenCalledWith(planId);
-		expect(loggerError).toHaveBeenCalled();
+		expect(loggerError).toHaveBeenCalledWith(
+			expect.objectContaining({ userId }),
+			expect.any(String),
+		);
 	});
 
 	it('rethrows TypeError so wiring bugs surface', async () => {

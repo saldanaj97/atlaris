@@ -1,4 +1,5 @@
 import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
+import { createId } from '@tests/fixtures/ids';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
 	AiPlanGenerationProvider,
@@ -11,7 +12,6 @@ import type {
 	reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
-import { createId } from '../../fixtures/ids';
 
 type AttemptOperationsOverrides = {
 	reserveAttemptSlot: typeof reserveAttemptSlot;

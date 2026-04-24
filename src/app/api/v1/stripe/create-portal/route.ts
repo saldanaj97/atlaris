@@ -19,16 +19,30 @@ const createPortalBodySchema = z.object({
 });
 
 /**
- * Factory deps for `createCreatePortalHandler`. Same story as create-checkout: production uses
- * defaults; tests may inject `boundary` or the deprecated `stripe` shortcut for
- * `LiveStripeGateway` construction.
+ * Factory deps for `createCreatePortalHandler`: the module's default `POST` export uses
+ * default dependencies; callers may pass custom dependencies (e.g., stripe or boundary)
+ * for testing or custom runtime behavior.
  */
 export type CreatePortalHandlerDeps = {
 	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; use only when the harness only has a raw `Stripe` client. */
+	/** @deprecated Prefer `boundary`; fallback for test harnesses with only a raw `Stripe` client. */
 	stripe?: Stripe;
 	parseJsonBody?: typeof parseJsonBody;
 };
+
+function assertRawStripeAllowed(): void {
+	if (
+		process.env.NODE_ENV === 'test' ||
+		process.env.NODE_ENV === 'development' ||
+		process.env.ALLOW_RAW_STRIPE === 'true'
+	) {
+		return;
+	}
+
+	throw new Error(
+		'Deprecated stripe dependency is only allowed in test/dev contexts; pass boundary instead.',
+	);
+}
 
 /**
  * Factory for the create-portal POST handler.
@@ -80,13 +94,14 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 
 			const { returnUrl } = parseResult.data;
 
-			const boundary =
-				deps.boundary ??
-				(deps.stripe
-					? createStripeCommerceBoundary({
-							gateway: new LiveStripeGateway(deps.stripe),
-						})
-					: getStripeCommerceBoundary());
+			let boundary = deps.boundary;
+			if (!boundary && deps.stripe) {
+				assertRawStripeAllowed();
+				boundary = createStripeCommerceBoundary({
+					gateway: new LiveStripeGateway(deps.stripe),
+				});
+			}
+			boundary ??= getStripeCommerceBoundary();
 
 			const { portalUrl } = await boundary.openPortal({
 				actor: {

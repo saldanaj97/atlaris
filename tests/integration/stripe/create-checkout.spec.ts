@@ -7,8 +7,13 @@ import {
 	createCreateCheckoutHandler,
 	POST,
 } from '@/app/api/v1/stripe/create-checkout/route';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+
+const createTestBoundary = (stripe: ReturnType<typeof makeStripeMock>) =>
+	createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) });
 
 vi.mock('@/lib/auth/server', () => ({
 	auth: { getSession: vi.fn() },
@@ -58,7 +63,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 			},
 		});
 
-		const POST = createCreateCheckoutHandler({ stripe: mockStripe });
+		const POST = createCreateCheckoutHandler({
+			boundary: createTestBoundary(mockStripe),
+		});
 
 		const request = new Request(
 			'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -139,7 +146,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 			},
 		});
 
-		const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+		const handlerPOST = createCreateCheckoutHandler({
+			boundary: createTestBoundary(mockStripe),
+		});
 
 		const request = new Request(
 			'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -200,7 +209,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 			},
 		});
 
-		const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+		const handlerPOST = createCreateCheckoutHandler({
+			boundary: createTestBoundary(mockStripe),
+		});
 
 		const request = new Request(
 			'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -332,7 +343,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 			},
 		});
 
-		const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+		const handlerPOST = createCreateCheckoutHandler({
+			boundary: createTestBoundary(mockStripe),
+		});
 
 		const request = new Request(
 			'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -423,7 +436,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
 			},
 		});
 
-		const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+		const handlerPOST = createCreateCheckoutHandler({
+			boundary: createTestBoundary(mockStripe),
+		});
 
 		const request = new Request(
 			'http://localhost:3000/api/v1/stripe/create-checkout',

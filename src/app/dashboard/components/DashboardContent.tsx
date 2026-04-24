@@ -26,7 +26,9 @@ export async function DashboardContent(): Promise<JSX.Element> {
 	});
 
 	if (!result) {
-		redirect(ROUTES.AUTH.SIGN_IN);
+		redirect(
+			`${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.DASHBOARD)}`,
+		);
 	}
 
 	const { summaries } = result;

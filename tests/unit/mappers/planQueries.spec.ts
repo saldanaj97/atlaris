@@ -19,7 +19,7 @@ type SummaryTaskRow = {
 	id: string;
 	moduleId: string;
 	planId: string;
-	estimatedMinutes: number | null;
+	estimatedMinutes: number;
 };
 
 type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
@@ -258,7 +258,7 @@ describe('buildPlanSummaries', () => {
 		expect(result[0].modules).toHaveLength(0);
 	});
 
-	it('should handle null estimated minutes', () => {
+	it('should handle zero estimated minutes', () => {
 		const planId = createId('plan');
 		const userId = createId('user');
 		const moduleId = createId('module');
@@ -272,7 +272,7 @@ describe('buildPlanSummaries', () => {
 				id: taskId,
 				moduleId,
 				planId,
-				estimatedMinutes: null,
+				estimatedMinutes: 0,
 			}),
 		];
 

@@ -41,12 +41,12 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { buildUserFixture } from '@tests/fixtures/users';
 import { batchUpdateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
 import type { RequestScope } from '@/lib/api/request-boundary';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
 
 const actionTestDb = makeDbClient();
-const actionTestActor = { id: 'user-1' } as DbUser;
+const actionTestActor = buildUserFixture({ id: 'user-1' });
 
 function makeActionTestScope(): RequestScope {
 	return {
@@ -56,6 +56,11 @@ function makeActionTestScope(): RequestScope {
 		correlationId: 'test-correlation-id',
 	};
 }
+
+const mockRequestBoundaryAction =
+	(scope: RequestScope) =>
+	async <T>(fn: (scope: RequestScope) => Promise<T>): Promise<T> =>
+		fn(scope);
 
 describe('batchUpdateModuleTaskProgressAction', () => {
 	afterEach(() => {
@@ -83,8 +88,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
 
 	it('rejects oversized batches after auth', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (fn: (scope: RequestScope) => Promise<void>) =>
-				fn(makeActionTestScope()),
+			mockRequestBoundaryAction(makeActionTestScope()),
 		);
 		const updates = Array.from({ length: 501 }, (_, index) => ({
 			taskId: `task-${index}`,
@@ -118,8 +122,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
 
 	it('revalidates module and plan paths on success', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (fn: (scope: RequestScope) => Promise<void>) =>
-				fn(makeActionTestScope()),
+			mockRequestBoundaryAction(makeActionTestScope()),
 		);
 		applyTaskProgressUpdatesMock.mockResolvedValueOnce({
 			progress: [],

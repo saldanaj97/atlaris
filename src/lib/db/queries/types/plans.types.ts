@@ -1,9 +1,10 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
-import type { learningPlans, taskProgress } from '@/lib/db/schema';
+import type { learningPlans, taskProgress, tasks } from '@/lib/db/schema';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type TaskProgressRow = InferSelectModel<typeof taskProgress>;
+type TaskRow = InferSelectModel<typeof tasks>;
 
 /** Plan metadata returned with generation attempts for display/context. */
 export interface PlanAttemptsPlanMeta {
@@ -13,12 +14,10 @@ export interface PlanAttemptsPlanMeta {
 }
 
 /** Task row shape returned by plan summary queries (partial task + plan id). */
-export type PlanSummaryTaskRow = {
-	id: string;
-	moduleId: string;
-	planId: string;
-	estimatedMinutes: number | null;
-};
+export type PlanSummaryTaskRow = Pick<
+	TaskRow,
+	'id' | 'moduleId' | 'estimatedMinutes'
+> & { planId: string };
 
 export type PlanProgressStatusRow = Pick<TaskProgressRow, 'taskId' | 'status'>;
 

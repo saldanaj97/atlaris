@@ -47,7 +47,9 @@ export async function PlansContent(): Promise<JSX.Element> {
 	});
 
 	if (!result) {
-		redirect(ROUTES.AUTH.SIGN_IN);
+		redirect(
+			`${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.PLANS.ROOT)}`,
+		);
 	}
 
 	const { summaries, snapshot } = result;

@@ -22,7 +22,11 @@ export async function BillingCards(): Promise<JSX.Element> {
 		}),
 	}));
 
-	if (!result) redirect(ROUTES.AUTH.SIGN_IN);
+	if (!result) {
+		redirect(
+			`${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.BILLING)}`,
+		);
+	}
 
 	const { snapshot } = result;
 

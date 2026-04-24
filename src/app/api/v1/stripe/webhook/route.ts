@@ -1,10 +1,7 @@
-import type Stripe from 'stripe';
 import {
-	createStripeCommerceBoundary,
 	getStripeCommerceBoundary,
 	type StripeCommerceBoundary,
 } from '@/features/billing/stripe-commerce';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
@@ -27,21 +24,16 @@ if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
 
 /**
  * Factory deps for `createWebhookHandler`. Default `POST` uses `getStripeCommerceBoundary()`;
- * tests pass `boundary` and/or `stripe` so `acceptWebhook` can use `new LiveStripeGateway`
- * and forward `input.stripe` (see `AcceptWebhookInput` in `stripe-commerce/types.ts`).
+ * tests and custom runtimes pass an explicit commerce boundary.
  */
 export type WebhookHandlerDeps = {
-	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary` when the harness can build one. */
-	stripe?: Stripe;
+	boundary: StripeCommerceBoundary;
 };
 
 /**
  * Factory for the webhook POST handler.
  */
-export function createWebhookHandler(
-	deps: WebhookHandlerDeps = {},
-): PlainHandler {
+export function createWebhookHandler(deps: WebhookHandlerDeps): PlainHandler {
 	return withErrorBoundary(async (req: Request) => {
 		const { requestId, logger } = createRequestContext(req, {
 			route: 'stripe_webhook',
@@ -74,25 +66,30 @@ export function createWebhookHandler(
 				: null;
 
 		const rawBody = await req.text();
+		const signatureHeader = req.headers.get('stripe-signature');
 
-		const boundary =
-			deps.boundary ??
-			(deps.stripe
-				? createStripeCommerceBoundary({
-						gateway: new LiveStripeGateway(deps.stripe),
-					})
-				: getStripeCommerceBoundary());
+		if (!signatureHeader) {
+			logger.warn('Stripe webhook missing signature');
+			return respond('missing signature', { status: 400 });
+		}
 
-		const result = await boundary.acceptWebhook({
+		const result = await deps.boundary.acceptWebhook({
 			rawBody,
-			signatureHeader: req.headers.get('stripe-signature'),
+			signatureHeader,
 			contentLength,
 			logger,
-			stripe: deps.stripe,
 		});
 
 		return respond(result.body, { status: result.status });
 	});
 }
 
-export const POST = createWebhookHandler();
+const defaultBoundary: StripeCommerceBoundary = {
+	beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
+	openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
+	acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
+};
+
+export const POST = createWebhookHandler({
+	boundary: defaultBoundary,
+});

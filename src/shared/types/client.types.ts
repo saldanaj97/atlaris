@@ -8,6 +8,7 @@ import type {
 	ProgressStatus,
 } from '@/shared/types/db.types';
 
+/** @deprecated Import `FailureClassification` from `@/shared/types/failure-classification.types`. */
 export type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import type { FailureClassification } from '@/shared/types/failure-classification.types';

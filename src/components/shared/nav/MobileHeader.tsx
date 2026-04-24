@@ -17,7 +17,11 @@ interface MobileHeaderProps {
 	isAuthenticated: boolean;
 }
 
-/** Mobile header; `lg:hidden`. */
+/**
+ * Mobile counterpart to DesktopHeader with logo, nav menu, create action, auth controls,
+ * and theme toggle. Renders only below the `lg` breakpoint via `lg:hidden`; DesktopHeader
+ * owns larger screens.
+ */
 export default function MobileHeader({
 	navItems,
 	tier,

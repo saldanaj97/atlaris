@@ -62,6 +62,7 @@ export type PlanSummary = ProgressMetrics & {
 	attemptsCount?: number;
 };
 
+// Query-layer row contract that backs LightweightPlanSummary.
 export type { LightweightPlanListRow };
 
 /** Lightweight plan summary for API list views. */

@@ -13,7 +13,7 @@ type SummaryTaskRow = {
 	id: string;
 	moduleId: string;
 	planId: string;
-	estimatedMinutes: number | null;
+	estimatedMinutes: number;
 };
 
 function buildTaskRow(
@@ -21,7 +21,7 @@ function buildTaskRow(
 		Pick<SummaryTaskRow, 'id' | 'moduleId' | 'planId'>,
 ): SummaryTaskRow {
 	return {
-		estimatedMinutes: null,
+		estimatedMinutes: 0,
 		...overrides,
 	};
 }

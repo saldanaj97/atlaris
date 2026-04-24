@@ -178,7 +178,7 @@ export function LessonAccordionItem({
 	isLocked = false,
 }: LessonAccordionItemProps): JSX.Element {
 	const isCompleted = status === 'completed';
-	const resources = lesson.resources;
+	const resources = lesson.resources ?? [];
 
 	const placeholderContent = useMemo(
 		() =>

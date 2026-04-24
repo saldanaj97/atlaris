@@ -2,7 +2,6 @@ import Stripe from 'stripe';
 import { z } from 'zod';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
 import { applyVerifiedEvent } from '@/features/billing/stripe-commerce/reconciliation';
 import {
@@ -209,13 +208,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
 	async acceptWebhook(
 		input: AcceptWebhookInput,
 	): Promise<StripeWebhookResponse> {
-		const {
-			rawBody,
-			signatureHeader,
-			contentLength,
-			logger,
-			stripe: stripeOverride,
-		} = input;
+		const { rawBody, signatureHeader, contentLength, logger } = input;
 
 		if (contentLength !== undefined && contentLength !== null) {
 			if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_BYTES) {
@@ -303,9 +296,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
 			return { status: 200, body: 'ok' };
 		}
 
-		const gateway = stripeOverride
-			? new LiveStripeGateway(stripeOverride)
-			: this.deps.gateway;
+		const gateway = this.deps.gateway;
 		const stripe = gateway.getStripeClient();
 
 		const dedupeResult = await applyVerifiedEvent(event, {

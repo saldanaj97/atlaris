@@ -5,6 +5,7 @@ import {
 	cleanupTimeoutLifecycle,
 	resolveTimeoutConfig,
 	setupAbortAndTimeout,
+	type TimeoutLifecycle,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { pacePlan } from '@/features/ai/pacing';
 import { parseGenerationStream } from '@/features/ai/parser';
@@ -78,12 +79,17 @@ export async function runGenerationAttempt(
 
 	const provider = options.provider ?? getGenerationProvider();
 
-	const { timeout, controller, cleanupTimeoutAbort, cleanupExternalAbort } =
-		setupAbortAndTimeout(timeoutConfig, options.signal);
 	let providerMetadata: ProviderMetadata | undefined;
 	let rawText: string | undefined;
+	let timeoutLifecycle: TimeoutLifecycle | undefined;
 
 	try {
+		const { controller, ...lifecycle } = setupAbortAndTimeout(
+			timeoutConfig,
+			options.signal,
+		);
+		timeoutLifecycle = lifecycle;
+		const { timeout } = lifecycle;
 		const providerResult = await generateWithInstrumentation(
 			provider,
 			context.input,
@@ -102,11 +108,7 @@ export async function runGenerationAttempt(
 
 		const modules = pacePlan(parsed.modules, context.input);
 		const durationMs = Math.max(0, clock() - attemptClockStart);
-		cleanupTimeoutLifecycle({
-			timeout,
-			cleanupTimeoutAbort,
-			cleanupExternalAbort,
-		});
+		cleanupTimeoutLifecycle(timeoutLifecycle);
 
 		const metadata = providerMetadata ?? {};
 		const attempt = await attemptOps.finalizeAttemptSuccess({
@@ -142,11 +144,7 @@ export async function runGenerationAttempt(
 			clock,
 			nowFn,
 			dbClient,
-			timeoutLifecycle: {
-				timeout,
-				cleanupTimeoutAbort,
-				cleanupExternalAbort,
-			},
+			timeoutLifecycle,
 			providerMetadata,
 			rawText,
 		});

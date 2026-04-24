@@ -49,7 +49,7 @@ export default async function SiteHeader() {
 			tier = result ?? undefined;
 		} catch (err) {
 			// Non-critical for shell render: tier badge omitted; log for ops visibility.
-			logger.error(
+			logger.warn(
 				{
 					err,
 					authUserId,

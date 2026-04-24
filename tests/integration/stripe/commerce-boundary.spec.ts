@@ -183,7 +183,7 @@ describe('StripeCommerceBoundary', () => {
 
 		const res = await boundary.acceptWebhook({
 			rawBody: '{}',
-			signatureHeader: null,
+			signatureHeader: '',
 			contentLength: 2,
 			logger,
 		});

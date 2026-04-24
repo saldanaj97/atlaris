@@ -189,16 +189,26 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 }
 
 /**
- * @internal Compatibility shim. Prefer `requestBoundary.component()` for new code.
+ * @deprecated Use `requestBoundary.component()` instead. See docs/CHANGELOG.md.
+ * Will be removed in v2.0.
  *
  * Establishes an RLS-enforced DB context for Server Components.
  * This is the Server Component equivalent of `withAuth` for API routes.
  *
  * Returns null if the user is not authenticated.
  */
+let didWarnWithServerComponentContextDeprecation = false;
+
 export async function withServerComponentContext<T>(
 	fn: (user: DbUser) => MaybePromise<T>,
 ): Promise<T | null> {
+	if (!didWarnWithServerComponentContextDeprecation) {
+		didWarnWithServerComponentContextDeprecation = true;
+		console.warn(
+			'withServerComponentContext() is deprecated; use requestBoundary.component() instead. Removal planned for v2.0.',
+		);
+	}
+
 	const authUserId = await getEffectiveAuthUserId();
 	if (!authUserId) return null;
 

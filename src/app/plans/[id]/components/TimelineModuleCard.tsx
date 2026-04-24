@@ -172,7 +172,7 @@ export function TimelineModuleCard({
 								{module.tasks.map((task) => {
 									const taskStatus = statuses[task.id] ?? 'not_started';
 									const isCompleted = taskStatus === 'completed';
-									const resources = task.resources;
+									const resources = task.resources ?? [];
 
 									return (
 										<div

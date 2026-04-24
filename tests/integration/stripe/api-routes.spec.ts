@@ -11,6 +11,11 @@ import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/compl
 import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
 import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
 import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import {
+	createStripeCommerceBoundary,
+	type StripeCommerceBoundary,
+} from '@/features/billing/stripe-commerce';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
@@ -48,7 +53,25 @@ function makeStripeEvent({
 
 /** Minimal Stripe client so webhook tests never touch real `getStripe()` / env keys. */
 const defaultWebhookStripe = makeStripeMock({});
-const webhookPOST = createWebhookHandler({ stripe: defaultWebhookStripe });
+const createTestBoundary = (
+	stripe: ReturnType<typeof makeStripeMock>,
+): StripeCommerceBoundary => ({
+	beginCheckout: (input) =>
+		createStripeCommerceBoundary({
+			gateway: new LiveStripeGateway(stripe),
+		}).beginCheckout(input),
+	openPortal: (input) =>
+		createStripeCommerceBoundary({
+			gateway: new LiveStripeGateway(stripe),
+		}).openPortal(input),
+	acceptWebhook: (input) =>
+		createStripeCommerceBoundary({
+			gateway: new LiveStripeGateway(stripe),
+		}).acceptWebhook(input),
+});
+const webhookPOST = createWebhookHandler({
+	boundary: createTestBoundary(defaultWebhookStripe),
+});
 
 describe('Stripe API Routes', () => {
 	afterEach(() => {
@@ -346,7 +369,9 @@ describe('Stripe API Routes', () => {
 				},
 			});
 
-			const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
+			const webhookPOSTWithMock = createWebhookHandler({
+				boundary: createTestBoundary(mockStripe),
+			});
 
 			vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
@@ -399,7 +424,7 @@ describe('Stripe API Routes', () => {
 
 			vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 			const webhookPOSTWithMock = createWebhookHandler({
-				stripe: makeStripeMock({}),
+				boundary: createTestBoundary(makeStripeMock({})),
 			});
 
 			const request = new Request('http://localhost/api/v1/stripe/webhook', {
@@ -473,7 +498,9 @@ describe('Stripe API Routes', () => {
 				},
 			});
 
-			const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
+			const webhookPOSTWithMock = createWebhookHandler({
+				boundary: createTestBoundary(mockStripe),
+			});
 
 			vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 

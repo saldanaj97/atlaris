@@ -1,11 +1,8 @@
-import type Stripe from 'stripe';
 import { z } from 'zod';
 import {
-	createStripeCommerceBoundary,
 	getStripeCommerceBoundary,
 	type StripeCommerceBoundary,
 } from '@/features/billing/stripe-commerce';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
@@ -25,22 +22,18 @@ const createCheckoutBodySchema = z
 	.strict();
 
 /**
- * Factory deps for `createCreateCheckoutHandler`. The default `POST` export uses none; tests
- * and harnesses set `boundary` or, for narrow compatibility, `stripe` to build a boundary via
- * `createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) })` without wiring
- * a full mock boundary. Prefer `boundary` when you have one.
+ * Factory deps for `createCreateCheckoutHandler`. Callers provide a commerce boundary so
+ * tests and custom runtimes construct their Stripe gateway explicitly.
  */
 export type CreateCheckoutHandlerDeps = {
-	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; use only when the harness only has a raw `Stripe` client. */
-	stripe?: Stripe;
+	boundary: StripeCommerceBoundary;
 };
 
 /**
  * Factory for the create-checkout POST handler.
  */
 export function createCreateCheckoutHandler(
-	deps: CreateCheckoutHandlerDeps = {},
+	deps: CreateCheckoutHandlerDeps,
 ): PlainHandler {
 	return withErrorBoundary(
 		requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
@@ -59,15 +52,7 @@ export function createCreateCheckoutHandler(
 
 			const { priceId, successUrl, cancelUrl } = parseResult.data;
 
-			const boundary =
-				deps.boundary ??
-				(deps.stripe
-					? createStripeCommerceBoundary({
-							gateway: new LiveStripeGateway(deps.stripe),
-						})
-					: getStripeCommerceBoundary());
-
-			const { sessionUrl } = await boundary.beginCheckout({
+			const { sessionUrl } = await deps.boundary.beginCheckout({
 				actor: { userId: actor.id, email: actor.email },
 				priceId,
 				successUrl,
@@ -79,4 +64,12 @@ export function createCreateCheckoutHandler(
 	);
 }
 
-export const POST = createCreateCheckoutHandler();
+const defaultBoundary: StripeCommerceBoundary = {
+	beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
+	openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
+	acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
+};
+
+export const POST = createCreateCheckoutHandler({
+	boundary: defaultBoundary,
+});

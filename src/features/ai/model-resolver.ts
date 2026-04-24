@@ -30,7 +30,11 @@ type ModelValidationResult =
 
 type ProviderGetter = typeof getGenerationProviderWithModel;
 
-type ModelResolverLogger = Pick<Logger, 'error' | 'warn' | 'info'>;
+type ModelResolverLogger = {
+	error: Logger['error'];
+	warn: Logger['warn'];
+	info: Logger['info'];
+};
 
 /**
  * Validates whether a requested model is both known and allowed for a tier.

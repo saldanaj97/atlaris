@@ -25,7 +25,11 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 export async function ModelSelectionCard(): Promise<JSX.Element> {
 	const user = await requestBoundary.component(({ actor }) => actor);
 
-	if (!user) redirect(ROUTES.AUTH.SIGN_IN);
+	if (!user) {
+		redirect(
+			`${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.AI)}`,
+		);
+	}
 
 	const userTier: SubscriptionTier = user.subscriptionTier;
 

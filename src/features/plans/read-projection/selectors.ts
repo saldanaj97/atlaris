@@ -12,7 +12,7 @@ import type { PlanSummary } from '@/shared/types/db.types';
  * `referenceDate` defaults to `new Date()` so callers only need to pass it when
  * they want deterministic comparisons (for example, tests).
  */
-const PLAN_STALENESS_THRESHOLD_DAYS = 30;
+export const PLAN_STALENESS_THRESHOLD_DAYS = 30;
 
 export function derivePlanSummaryDisplayStatus(params: {
 	summary: PlanSummary;

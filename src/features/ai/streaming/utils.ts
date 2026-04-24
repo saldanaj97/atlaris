@@ -18,7 +18,11 @@ export function toStream(obj: unknown): ReadableStream<string> {
 	});
 }
 
-/** Non-string chunks are logged then thrown (parser expects strings only). */
+/**
+ * Converts a ReadableStream into an AsyncIterable of string chunks for stream parsers.
+ * Non-string chunks are logged and thrown, and early exits cancel the reader before
+ * releasing the stream lock.
+ */
 export function readableStreamToAsyncIterable(
 	stream: ReadableStream<string>,
 ): AsyncIterable<string> {
