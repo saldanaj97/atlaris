@@ -45,12 +45,15 @@ That split means the UI and server paths can drift. The goal is to create one fo
 - `src/app/plans/[id]/components/PlanTimeline.tsx` derives module status, active module id, completed module ids, and expanded module behavior locally.
 - `src/app/plans/[id]/modules/[moduleId]/components/ModuleHeader.tsx` derives module completion stats locally.
 - `src/app/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient.tsx` derives lesson locks, first unlocked incomplete lesson, and module-complete CTA locally.
+- `src/app/plans/[id]/components/UpdateTaskStatusButton.tsx` and `src/app/plans/[id]/modules/[moduleId]/components/TaskStatusButton.tsx` are presentational toggles and should stay that way.
+- `src/features/plans/read-projection/completion-metrics.ts` already owns persisted-row completion metrics for plan read projections. The task-progress boundary should reuse or align with those semantics instead of creating another incompatible definition.
 
 ### Existing Tests
 
 - `tests/unit/app/plans/actions.spec.ts` only covers oversized plan-level batches.
 - `tests/unit/hooks/useTaskStatusBatcher.spec.tsx` covers timer/max-wait batching behavior.
 - `tests/unit/app/plans/helpers.spec.ts` covers some plan stat derivation.
+- `tests/unit/app/plans/actions.spec.ts` currently mocks `PROGRESS_STATUSES` with non-canonical values (`todo`, `in-progress`, `completed`); implementation should replace that with canonical status values from `src/shared/types/db.ts` or a test helper.
 - Search did not show focused tests for `setTaskProgressBatch`, module action ownership/revalidation, `PlanTimeline` module-state derivation, or module lesson-lock derivation.
 
 ## Proposed Boundary
@@ -89,6 +92,13 @@ Recommended split:
 
 Do not put this under `src/app/plans/[id]/...`; that would keep the semantics trapped in route/page code. Do not move all DB query helpers into the feature boundary immediately; use a narrow adapter first, then collapse only if implementation proves the old query helper is no longer useful.
 
+Boundary return contract:
+
+- The boundary should return a typed result even if current server actions keep returning `void` to the UI initially.
+- The typed result should include persisted progress rows, revalidation paths, and the minimal visible state the caller needed to compute or verify.
+- If implementation chooses not to return visible state from the server actions to client code, document that as an intentional compatibility adapter in `todos.md` review and keep tests proving the boundary itself returns state.
+- Do not pretend revalidation alone satisfies the issue if callers still need visible state from the boundary.
+
 ## Proposed Approach
 
 ### Step 0.0 — Confirm Scope And Acceptance Criteria
@@ -107,6 +117,8 @@ Acceptance criteria to verify against the live issue:
 ### Step 1.0 — Extract Pure Progress Derivation
 
 Move the derivation logic that is business-state, not rendering, into `src/features/plans/task-progress/visible-state.ts`.
+
+First compare the needed derivations with `src/features/plans/read-projection/completion-metrics.ts`. If a helper already captures persisted-row semantics, reuse it or wrap it. If optimistic client state needs different inputs, keep that difference explicit in names and tests.
 
 Start with pure functions:
 
@@ -132,6 +144,7 @@ Responsibilities:
 - If `moduleId` is provided, confirm every task belongs to that module.
 - Persist the batch through `setTaskProgressBatch` or a moved persistence helper.
 - Reload the minimal post-write state needed for callers.
+- Reuse `getPlanDetailForRead`, `getModuleDetail`, or a narrower query helper deliberately; do not introduce a second full read projection for progress refresh.
 - Return revalidation paths from the same domain decision point.
 
 Important: plan-level updates must not rely only on "task belongs to user". If a caller sends `planId=A` and task ids from `planId=B`, the current plan action can revalidate A while writing B. That is the exact kind of distributed semantic drift this boundary should eliminate.
@@ -145,6 +158,7 @@ Update server actions to become boundary adapters:
 - Delete `ensureBatchModuleTaskOwnership` from the module action once module scoping lives in the boundary.
 - Remove duplicated validation constants from server actions unless they remain exported from the boundary for UI copy/tests.
 - Keep user-facing errors stable unless tests prove a more specific message is already expected.
+- Decide the server-action return shape explicitly. Preserve `Promise<void>` only as a compatibility adapter over a boundary result; otherwise return a small typed payload and update `useTaskStatusBatcher`'s `flushAction` type to accept it without leaking domain details into the hook.
 
 Server actions should not compute ownership rules, module scope rules, duplicate handling, or revalidation path lists.
 
@@ -157,6 +171,7 @@ Move consumers gradually:
 - `PlanTimeline.tsx` should call shared module-state derivation and stop defining `getModuleStatus`, `getActiveModuleIdForStatuses`, and `getCompletedModuleIds` locally.
 - `ModuleHeader.tsx` should use shared module-completion summary.
 - `ModuleLessonsClient.tsx` should use shared lesson-lock derivation.
+- `UpdateTaskStatusButton.tsx` and `TaskStatusButton.tsx` should stay presentational toggles; do not move boundary or batching knowledge into them.
 - `ModuleDetailClient.tsx` and `PlanDetails.tsx` can keep the same `useTaskStatusBatcher` API initially; do not combine plan and module clients unless duplication remains obvious after the boundary exists.
 
 Avoid styling churn. This issue is not about UI appearance.
@@ -175,6 +190,8 @@ Boundary and persistence:
 - Empty updates are no-op with no DB writes and no revalidation paths.
 - Completed tasks get `completedAt`; non-completed statuses clear it.
 - Returned revalidation paths match plan-level and module-level callers.
+- Boundary returns visible state in a testable shape, even if server actions discard it for compatibility.
+- Status validation uses canonical `PROGRESS_STATUSES` values; tests must not rely on fake status strings.
 
 Pure derivation:
 
@@ -217,6 +234,7 @@ Before closing issue `#313`, verify:
 - `rg "setTaskProgressBatch" src/app src/features src/lib` shows app actions no longer call the DB helper directly.
 - `rg "ensureBatchModuleTaskOwnership|getModuleStatus|getActiveModuleIdForStatuses|getCompletedModuleIds|isLessonLocked" src/app src/features` shows business-state helpers moved out of components/actions or intentionally re-exported only.
 - `rg "batchUpdateTaskProgressAction|batchUpdateModuleTaskProgressAction" src/app tests` shows both server actions still exist for form/action compatibility but are thin adapters.
+- `rg "PROGRESS_STATUSES|progressStatus.enumValues" tests/unit/app/plans src/features/plans/task-progress src/app/plans` shows status validation and tests use canonical enum values.
 - Boundary tests prove plan-scope and module-scope rejection.
 - Pure derivation tests prove visible-state behavior without rendering the whole UI.
 - Component tests stay focused on rendering/interactions.
@@ -227,6 +245,7 @@ Close the issue only after implementation merges or the user explicitly asks to 
 
 - Hidden behavior can move during extraction. Derivation tests should lock current semantics before changing components.
 - Plan-level update scope is likely under-validated today because it only passes `userId` and task ids to `setTaskProgressBatch`. The boundary should fix that deliberately, not preserve drift.
+- Completion metrics already exist in read projection. A second progress metrics implementation can create the same drift this issue is trying to remove.
 - Over-centralizing React interaction state would create a god hook. Keep optimistic batching in `useTaskStatusBatcher` unless a real duplication remains after server and derivation boundaries are extracted.
 - Integration tests for DB ownership need Testcontainers or the repo-supported DB fallback.
 - Revalidation path selection must stay explicit; missing `/plans` or module detail revalidation will create stale visible state.
@@ -238,6 +257,7 @@ Close the issue only after implementation merges or the user explicitly asks to 
 - Do not remove `useTaskStatusBatcher` in this pass.
 - Do not move route protection or auth boundary behavior.
 - Do not refactor unrelated plan read projection code.
+- Do not migrate read-only API routes such as `src/app/api/v1/plans/[planId]/tasks/route.ts` unless the write boundary needs a shared read helper.
 - Do not broaden into schedule/calendar task progress unless current code paths require it.
 
 ## Open Questions
