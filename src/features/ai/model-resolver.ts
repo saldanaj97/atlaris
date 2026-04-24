@@ -14,7 +14,7 @@ import {
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
-import { logger } from '@/lib/logging/logger';
+import { type Logger, logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export type ModelResolution = {
@@ -30,11 +30,7 @@ type ModelValidationResult =
 
 type ProviderGetter = typeof getGenerationProviderWithModel;
 
-type ModelResolverLogger = {
-	error(obj: object, msg?: string): void;
-	warn(obj: object, msg?: string): void;
-	info(obj: object, msg?: string): void;
-};
+type ModelResolverLogger = Pick<Logger, 'error' | 'warn' | 'info'>;
 
 /**
  * Validates whether a requested model is both known and allowed for a tier.

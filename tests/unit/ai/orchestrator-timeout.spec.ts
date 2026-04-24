@@ -1,5 +1,5 @@
+import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type {
 	AiPlanGenerationProvider,
 	GenerationInput,
@@ -10,24 +10,8 @@ import type {
 	finalizeAttemptSuccess,
 	reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import type {
-	AttemptReservation,
-	AttemptsDbClient,
-} from '@/lib/db/queries/types/attempts.types';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { createId } from '../../fixtures/ids';
-
-type MockAttemptsDbClient = {
-	select: () => unknown;
-	insert: () => unknown;
-	update: () => unknown;
-	delete: () => unknown;
-	transaction: () => unknown;
-};
-
-function asAttemptsDbClient(dbClient: MockAttemptsDbClient): AttemptsDbClient {
-	// NOTE: keeps a bespoke AttemptsDbClient double instead of tests/fixtures/db-mocks.ts#makeAttemptsDbClient because this test injects a timeout-specific mock shape rather than the full query client.
-	return dbClient as unknown as AttemptsDbClient;
-}
 
 type AttemptOperationsOverrides = {
 	reserveAttemptSlot: typeof reserveAttemptSlot;
@@ -186,7 +170,7 @@ function createProvider(
 
 describe('runGenerationAttempt timeout wiring', () => {
 	let ctx: ReturnType<typeof createTimeoutTestContext>;
-	let mockDbClient: MockAttemptsDbClient;
+	let mockDbClient: ReturnType<typeof makeAttemptsDbClient>;
 	let failureAttemptRecord: FailureAttemptRecord;
 
 	beforeEach(() => {
@@ -198,13 +182,8 @@ describe('runGenerationAttempt timeout wiring', () => {
 			modulesCount: 0,
 			tasksCount: 0,
 		};
-		mockDbClient = {
-			select: () => ({}),
-			insert: () => ({}),
-			update: () => ({}),
-			delete: () => ({}),
-			transaction: () => ({}),
-		};
+		// Real attempt ops are mocked; db client is only passed through / unused on this path.
+		mockDbClient = makeAttemptsDbClient();
 	});
 
 	afterEach(() => {
@@ -250,7 +229,7 @@ describe('runGenerationAttempt timeout wiring', () => {
 				},
 			},
 			{
-				dbClient: asAttemptsDbClient(mockDbClient),
+				dbClient: mockDbClient,
 				attemptOperations,
 				provider,
 			},
@@ -295,7 +274,7 @@ describe('runGenerationAttempt timeout wiring', () => {
 				},
 			},
 			{
-				dbClient: asAttemptsDbClient(mockDbClient),
+				dbClient: mockDbClient,
 				attemptOperations,
 				provider,
 				timeoutConfig: {

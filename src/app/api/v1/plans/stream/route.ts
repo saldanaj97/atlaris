@@ -22,6 +22,74 @@ type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
 const defaultBoundary: PlanGenerationSessionBoundary =
 	createPlanGenerationSessionBoundary();
 
+function tryBuildPayloadLog(
+	payload: unknown,
+):
+	| { ok: true; payloadLog: Record<string, unknown> }
+	| { ok: false; error: unknown; fallback: Record<string, unknown> } {
+	try {
+		return { ok: true, payloadLog: toPayloadLog(payload) };
+	} catch (error) {
+		return {
+			ok: false,
+			error,
+			fallback: { payloadType: typeof payload },
+		};
+	}
+}
+
+function toPayloadLog(payload: unknown): Record<string, unknown> {
+	if (!payload || typeof payload !== 'object') {
+		return { payloadType: typeof payload };
+	}
+
+	const maybePayload = payload as Partial<CreateLearningPlanInput> & {
+		notes?: unknown;
+		extractedContent?: unknown;
+	};
+
+	return {
+		topic: typeof maybePayload.topic === 'string' ? maybePayload.topic : null,
+		skillLevel:
+			typeof maybePayload.skillLevel === 'string'
+				? maybePayload.skillLevel
+				: null,
+		weeklyHours:
+			typeof maybePayload.weeklyHours === 'number'
+				? maybePayload.weeklyHours
+				: null,
+		learningStyle:
+			typeof maybePayload.learningStyle === 'string'
+				? maybePayload.learningStyle
+				: null,
+		visibility:
+			typeof maybePayload.visibility === 'string'
+				? maybePayload.visibility
+				: null,
+		origin:
+			typeof maybePayload.origin === 'string' ? maybePayload.origin : null,
+		hasNotes:
+			typeof maybePayload.notes === 'string' && maybePayload.notes.length > 0,
+		hasExtractedContent:
+			typeof maybePayload.extractedContent === 'object' &&
+			maybePayload.extractedContent !== null,
+	};
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+	if (error instanceof Error) {
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+		};
+	}
+
+	return {
+		value: String(error),
+	};
+}
+
 /**
  * Creates the stream POST handler with optional dependency overrides.
  *
@@ -56,16 +124,19 @@ export function createStreamHandler(deps?: {
 						),
 				});
 
-				let payloadLog: Record<string, unknown> | null = null;
-				try {
-					payloadLog = toPayloadLog(parsedBody);
-				} catch (error) {
-					const payload = toBestEffortPayloadLog(parsedBody);
+				const payloadLogResult = tryBuildPayloadLog(parsedBody);
+				if (payloadLogResult.ok) {
+					routeLogger.info(
+						{ authUserId, payload: payloadLogResult.payloadLog },
+						'Plan stream request payload received',
+					);
+				} else {
+					const { error, fallback } = payloadLogResult;
 					routeLogger.warn(
 						{
 							authUserId,
 							error: serializeError(error),
-							payload,
+							payload: fallback,
 						},
 						'Plan stream payload log failed',
 					);
@@ -79,15 +150,9 @@ export function createStreamHandler(deps?: {
 							},
 							extra: {
 								authUserId,
-								payload,
+								payload: fallback,
 							},
 						},
-					);
-				}
-				if (payloadLog) {
-					routeLogger.info(
-						{ authUserId, payload: payloadLog },
-						'Plan stream request payload received',
 					);
 				}
 
@@ -138,61 +203,3 @@ export function createStreamHandler(deps?: {
 }
 
 export const POST = createStreamHandler();
-
-function toPayloadLog(payload: unknown): Record<string, unknown> {
-	if (!payload || typeof payload !== 'object') {
-		return { payloadType: typeof payload };
-	}
-
-	const maybePayload = payload as Partial<CreateLearningPlanInput> & {
-		notes?: unknown;
-		extractedContent?: unknown;
-	};
-
-	return {
-		topic: typeof maybePayload.topic === 'string' ? maybePayload.topic : null,
-		skillLevel:
-			typeof maybePayload.skillLevel === 'string'
-				? maybePayload.skillLevel
-				: null,
-		weeklyHours:
-			typeof maybePayload.weeklyHours === 'number'
-				? maybePayload.weeklyHours
-				: null,
-		learningStyle:
-			typeof maybePayload.learningStyle === 'string'
-				? maybePayload.learningStyle
-				: null,
-		visibility:
-			typeof maybePayload.visibility === 'string'
-				? maybePayload.visibility
-				: null,
-		origin:
-			typeof maybePayload.origin === 'string' ? maybePayload.origin : null,
-		hasNotes:
-			typeof maybePayload.notes === 'string' && maybePayload.notes.length > 0,
-		hasExtractedContent:
-			typeof maybePayload.extractedContent === 'object' &&
-			maybePayload.extractedContent !== null,
-	};
-}
-
-function toBestEffortPayloadLog(payload: unknown): Record<string, unknown> {
-	return {
-		payloadType: typeof payload,
-	};
-}
-
-function serializeError(error: unknown): Record<string, unknown> {
-	if (error instanceof Error) {
-		return {
-			name: error.name,
-			message: error.message,
-			stack: error.stack,
-		};
-	}
-
-	return {
-		value: String(error),
-	};
-}

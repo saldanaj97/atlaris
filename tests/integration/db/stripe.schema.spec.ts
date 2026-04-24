@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { type InferSelectModel, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { ensureUser } from '@/../tests/helpers/db';
@@ -47,8 +47,12 @@ describe('Stripe DB schema', () => {
 			await expect(
 				db
 					.update(users)
-					// Negative-path coverage: intentionally bypass TS so Postgres rejects the invalid enum value.
-					.set({ subscriptionTier: 'gold' as any })
+					// Negative path: string is not a valid enum member; cast satisfies Drizzle, DB still rejects.
+					.set({
+						subscriptionTier: 'gold' as unknown as InferSelectModel<
+							typeof users
+						>['subscriptionTier'],
+					})
 					.where(sql`id = ${userId}`),
 			).rejects.toThrow();
 		});

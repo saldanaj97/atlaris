@@ -33,11 +33,15 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 async function renderPlanDetails(plan: ClientPlanDetail) {
-	(globalThis as any).React = React;
-	const { PlanDetails } = await import(
-		'@/app/plans/[id]/components/PlanDetails'
-	);
-	return render(<PlanDetails plan={plan} />);
+	vi.stubGlobal('React', React);
+	try {
+		const { PlanDetails } = await import(
+			'@/app/plans/[id]/components/PlanDetails'
+		);
+		return render(<PlanDetails plan={plan} />);
+	} finally {
+		vi.unstubAllGlobals();
+	}
 }
 
 function createMockPlan(): ClientPlanDetail {

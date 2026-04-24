@@ -18,7 +18,9 @@ export async function requestPlanRegeneration(
 	const d =
 		deps ??
 		createDefaultRegenerationOrchestrationDeps(getDb(), {
-			inlineDrain: () => drainRegenerationQueue({ maxJobs: 1 }),
+			inlineDrain: async () => {
+				await drainRegenerationQueue({ maxJobs: 1 });
+			},
 		});
 
 	if (!d.queue.enabled()) {
@@ -112,9 +114,10 @@ export async function requestPlanRegeneration(
 	// once with inlineDrainScheduled=true (caller does not await drain).
 	if (inlineProcessingEnabled) {
 		const registered = d.inlineDrain.tryRegister(() => {
-			return Promise.resolve()
-				.then(() => d.inlineDrain.drain())
-				.catch((error: unknown) => {
+			return (async () => {
+				try {
+					await d.inlineDrain.drain();
+				} catch (error: unknown) {
 					d.logger.error(
 						{
 							planId,
@@ -125,7 +128,8 @@ export async function requestPlanRegeneration(
 						},
 						'Inline regeneration queue drain failed',
 					);
-				});
+				}
+			})();
 		});
 		if (registered) {
 			inlineDrainScheduled = true;

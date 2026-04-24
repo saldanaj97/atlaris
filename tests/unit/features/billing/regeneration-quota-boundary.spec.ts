@@ -1,3 +1,4 @@
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { describe, expect, it, vi } from 'vitest';
 import type {
 	MeteredReservationToken,
@@ -8,9 +9,8 @@ import {
 	type RegenerationQuotaWorkResult,
 	runRegenerationQuotaReserved,
 } from '@/features/billing/regeneration-quota-boundary';
-import type { DbClient } from '@/lib/db/types';
 
-const fakeDb = {} as DbClient;
+const fakeDb = makeDbClient();
 
 const baseToken: MeteredReservationToken = {
 	userId: 'user-1',

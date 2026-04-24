@@ -40,7 +40,22 @@ vi.mock('@/lib/logging/logger', () => ({
 	logger: loggerMock,
 }));
 
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { batchUpdateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
+import type { RequestScope } from '@/lib/api/request-boundary';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+
+const actionTestDb = makeDbClient();
+const actionTestActor = { id: 'user-1' } as DbUser;
+
+function makeActionTestScope(): RequestScope {
+	return {
+		actor: actionTestActor,
+		db: actionTestDb,
+		owned: { userId: actionTestActor.id, dbClient: actionTestDb },
+		correlationId: 'test-correlation-id',
+	};
+}
 
 describe('batchUpdateModuleTaskProgressAction', () => {
 	afterEach(() => {
@@ -68,9 +83,8 @@ describe('batchUpdateModuleTaskProgressAction', () => {
 
 	it('rejects oversized batches after auth', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => fn({ actor: { id: 'user-1' }, db: {} }),
+			async (fn: (scope: RequestScope) => Promise<void>) =>
+				fn(makeActionTestScope()),
 		);
 		const updates = Array.from({ length: 501 }, (_, index) => ({
 			taskId: `task-${index}`,
@@ -104,11 +118,8 @@ describe('batchUpdateModuleTaskProgressAction', () => {
 
 	it('revalidates module and plan paths on success', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => {
-				return await fn({ actor: { id: 'user-1' }, db: {} });
-			},
+			async (fn: (scope: RequestScope) => Promise<void>) =>
+				fn(makeActionTestScope()),
 		);
 		applyTaskProgressUpdatesMock.mockResolvedValueOnce({
 			progress: [],
@@ -127,7 +138,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
 			planId: 'p1',
 			moduleId: 'm1',
 			updates: [{ taskId: 't1', status: 'completed' }],
-			dbClient: {},
+			dbClient: actionTestDb,
 		});
 		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1/modules/m1');
 		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1');

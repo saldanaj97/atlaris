@@ -1,5 +1,5 @@
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { describe, expect, it, vi } from 'vitest';
-
 import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
 import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
@@ -7,9 +7,8 @@ import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/reg
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
 import { RateLimitError } from '@/lib/api/errors';
-import type { DbClient } from '@/lib/db/types';
 
-const fakeDb = {} as DbClient;
+const fakeDb = makeDbClient();
 
 const ownedPlan: RegenerationOwnedPlan = {
 	id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -49,7 +48,7 @@ type RequestDepsOverrides = {
 function buildDeps(
 	overrides: RequestDepsOverrides = {},
 ): RegenerationOrchestrationDeps {
-	const tryRegister = vi.fn((getDrainPromise: () => Promise<unknown>) => {
+	const tryRegister = vi.fn((getDrainPromise: () => Promise<void>) => {
 		void getDrainPromise();
 		return true;
 	});
@@ -183,10 +182,10 @@ describe('requestPlanRegeneration', () => {
 
 	it('logs and continues when inline drain throws synchronously', async () => {
 		const drainError = new Error('sync drain boom');
-		let registeredPromise: Promise<unknown> | undefined;
+		let registeredPromise: Promise<void> | undefined;
 		const deps = buildDeps({
 			inlineDrain: {
-				tryRegister: vi.fn((getDrainPromise: () => Promise<unknown>) => {
+				tryRegister: vi.fn((getDrainPromise: () => Promise<void>) => {
 					registeredPromise = getDrainPromise();
 					return true;
 				}),
@@ -224,10 +223,10 @@ describe('requestPlanRegeneration', () => {
 
 	it('registers a promise that tracks async inline drain completion', async () => {
 		const drain = deferred();
-		let registeredPromise: Promise<unknown> | undefined;
+		let registeredPromise: Promise<void> | undefined;
 		const deps = buildDeps({
 			inlineDrain: {
-				tryRegister: vi.fn((getDrainPromise: () => Promise<unknown>) => {
+				tryRegister: vi.fn((getDrainPromise: () => Promise<void>) => {
 					registeredPromise = getDrainPromise();
 					return true;
 				}),
@@ -483,10 +482,10 @@ describe('requestPlanRegeneration', () => {
 	});
 
 	it('registers guarded drain promise that absorbs rejection', async () => {
-		let registeredPromise: Promise<unknown> | undefined;
+		let registeredPromise: Promise<void> | undefined;
 		const deps = buildDeps({
 			inlineDrain: {
-				tryRegister: (fn: () => Promise<unknown>) => {
+				tryRegister: (fn: () => Promise<void>) => {
 					registeredPromise = fn();
 					return true;
 				},

@@ -46,7 +46,22 @@ vi.mock('@/lib/logging/logger', () => ({
 	logger: loggerMock,
 }));
 
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { batchUpdateTaskProgressAction } from '@/app/plans/[id]/actions';
+import type { RequestScope } from '@/lib/api/request-boundary';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+
+const actionTestDb = makeDbClient();
+const actionTestActor = { id: 'user-1' } as DbUser;
+
+function makeActionTestScope(): RequestScope {
+	return {
+		actor: actionTestActor,
+		db: actionTestDb,
+		owned: { userId: actionTestActor.id, dbClient: actionTestDb },
+		correlationId: 'test-correlation-id',
+	};
+}
 
 describe('batchUpdateTaskProgressAction', () => {
 	afterEach(() => {
@@ -74,9 +89,8 @@ describe('batchUpdateTaskProgressAction', () => {
 
 	it('rejects oversized update batches after auth', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => fn({ actor: { id: 'user-1' }, db: {} }),
+			async (fn: (scope: RequestScope) => Promise<void>) =>
+				fn(makeActionTestScope()),
 		);
 		const oversizedUpdates = Array.from({ length: 501 }, (_, index) => ({
 			taskId: `task-${index}`,
@@ -111,11 +125,8 @@ describe('batchUpdateTaskProgressAction', () => {
 
 	it('revalidates paths returned by the boundary on success', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => {
-				return await fn({ actor: { id: 'user-1' }, db: {} });
-			},
+			async (fn: (scope: RequestScope) => Promise<void>) =>
+				fn(makeActionTestScope()),
 		);
 		applyTaskProgressUpdatesMock.mockResolvedValueOnce({
 			progress: [],
@@ -132,7 +143,7 @@ describe('batchUpdateTaskProgressAction', () => {
 			userId: 'user-1',
 			planId: 'plan-123',
 			updates: [{ taskId: 't1', status: 'in_progress' }],
-			dbClient: {},
+			dbClient: actionTestDb,
 		});
 		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/plan-123');
 		expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
@@ -140,11 +151,8 @@ describe('batchUpdateTaskProgressAction', () => {
 
 	it('maps boundary persistence errors to generic user message', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => {
-				return await fn({ actor: { id: 'user-1' }, db: {} });
-			},
+			async (fn: (scope: RequestScope) => Promise<void>) =>
+				fn(makeActionTestScope()),
 		);
 		const persistenceError = new Error('db exploded');
 		applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
