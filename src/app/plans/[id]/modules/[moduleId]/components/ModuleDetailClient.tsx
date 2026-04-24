@@ -37,7 +37,7 @@ export function ModuleDetailClient({
 		allModules,
 	} = moduleData;
 
-	const lessons = module.tasks ?? [];
+	const lessons = module.tasks;
 	const [statuses, addOptimisticStatus] = useOptimistic(
 		initialStatuses,
 		(

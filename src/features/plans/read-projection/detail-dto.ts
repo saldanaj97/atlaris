@@ -125,15 +125,15 @@ export function toClientPlanDetail(
 		throw new Error('LearningPlanDetail.plan is required.');
 	}
 
-	const modules = (detail.plan.modules ?? []).map((planModule) => {
-		const tasks = (planModule.tasks ?? []).map((task) => ({
+	const modules = detail.plan.modules.map((planModule) => {
+		const tasks = planModule.tasks.map((task) => ({
 			id: task.id,
 			order: task.order,
 			title: task.title,
 			description: task.description ?? null,
 			estimatedMinutes: task.estimatedMinutes ?? 0,
 			status: task.progress?.status ?? 'not_started',
-			resources: (task.resources ?? []).map((resource) => ({
+			resources: task.resources.map((resource) => ({
 				id: resource.id,
 				order: resource.order,
 				type: resource.resource.type,

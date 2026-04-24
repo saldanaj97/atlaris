@@ -37,7 +37,7 @@ interface PlanDetailClientProps {
  * Client component that keeps header progress in sync with timeline status changes.
  */
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
-	const modules = plan.modules ?? [];
+	const modules = plan.modules;
 	const initialStatuses = getStatusesFromModules(modules);
 
 	const [statuses, addOptimisticStatus] = useOptimistic(

@@ -15,7 +15,7 @@ interface ModuleDetailProps {
  */
 export function ModuleDetail({ moduleData }: ModuleDetailProps): JSX.Element {
 	const { module } = moduleData;
-	const lessons = module.tasks ?? [];
+	const lessons = module.tasks;
 	const initialStatuses: Record<string, ProgressStatus> = Object.fromEntries(
 		lessons.map((lesson) => [
 			lesson.id,

@@ -39,7 +39,7 @@ export function buildTaskStatusMap(
 ): Record<string, ProgressStatus> {
 	return Object.fromEntries(
 		modules.flatMap((mod) =>
-			(mod.tasks ?? []).map((task) => [task.id, task.status] as const),
+			mod.tasks.map((task) => [task.id, task.status] as const),
 		),
 	);
 }
@@ -48,10 +48,10 @@ function computeSharedPlanStats(
 	plan: ClientPlanDetail,
 	statuses: Record<string, ProgressStatus>,
 ) {
-	const completedTasks = (plan.modules ?? []).reduce(
+	const completedTasks = plan.modules.reduce(
 		(count, module) =>
 			count +
-			(module.tasks ?? []).filter(
+			module.tasks.filter(
 				(task) => getTaskStatus(statuses, task) === 'completed',
 			).length,
 		0,
@@ -102,11 +102,11 @@ export function derivePlanOverviewStats(
 	plan: ClientPlanDetail,
 	statuses: Record<string, ProgressStatus>,
 ): PlanOverviewStats {
-	const modules = plan.modules ?? [];
+	const modules = plan.modules;
 	const sharedStats = computeSharedPlanStats(plan, statuses);
 
 	const completedModules = modules.filter((mod) => {
-		const moduleTasks = mod.tasks ?? [];
+		const moduleTasks = mod.tasks;
 		if (moduleTasks.length === 0) return false;
 		return moduleTasks.every(
 			(task) => getTaskStatus(statuses, task) === 'completed',
@@ -151,7 +151,7 @@ export function deriveModuleProgressState(
 	statuses: Record<string, ProgressStatus>,
 	previousModulesCompleted: boolean,
 ): PlanModuleTimelineStatus {
-	const tasks = mod.tasks ?? [];
+	const tasks = mod.tasks;
 	if (tasks.length === 0) return previousModulesCompleted ? 'active' : 'locked';
 
 	const taskStatuses = tasks.map((task) => getTaskStatus(statuses, task));
@@ -179,7 +179,7 @@ export function deriveActiveModuleId(
 			return mod.id;
 		}
 
-		const tasks = mod.tasks ?? [];
+		const tasks = mod.tasks;
 		previousModulesCompleted = tasks.every(
 			(task) => getTaskStatus(statuses, task) === 'completed',
 		);
@@ -195,7 +195,7 @@ export function deriveCompletedModuleIds(
 	return new Set(
 		modules
 			.filter((module) => {
-				const tasks = module.tasks ?? [];
+				const tasks = module.tasks;
 				return (
 					tasks.length > 0 &&
 					tasks.every((task) => getTaskStatus(statuses, task) === 'completed')
@@ -286,7 +286,7 @@ export function deriveModuleCompletionSummary(
 	module: ModuleWithTasks,
 	statuses: Record<string, ProgressStatus>,
 ): ModuleCompletionSummary {
-	const tasks = module.tasks ?? [];
+	const tasks = module.tasks;
 	const totalTasks = tasks.length;
 	const completedTasks = tasks.filter(
 		(task) => getTaskProgressStatus(statuses, task) === 'completed',

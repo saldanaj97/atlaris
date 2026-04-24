@@ -37,11 +37,11 @@ export function PlanTimeline({
 
 	const timelineModules: TimelineModule[] = useMemo(() => {
 		return modules.map((mod, index) => {
-			const tasks = mod.tasks ?? [];
+			const tasks = mod.tasks;
 			const previousModulesCompleted = modules
 				.slice(0, index)
 				.every((prevMod) => {
-					const prevTasks = prevMod.tasks ?? [];
+					const prevTasks = prevMod.tasks;
 					return prevTasks.every(
 						(task) =>
 							(effectiveStatuses[task.id] ?? task.status) === 'completed',

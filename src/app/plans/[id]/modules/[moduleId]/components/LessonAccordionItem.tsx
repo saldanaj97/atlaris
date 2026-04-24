@@ -192,7 +192,7 @@ export function LessonAccordionItem({
 	isLocked = false,
 }: LessonAccordionItemProps): JSX.Element {
 	const isCompleted = status === 'completed';
-	const resources = lesson.resources ?? [];
+	const resources = lesson.resources;
 
 	// Generate deterministic placeholder content based on lesson ID
 	const placeholderContent = useMemo(
