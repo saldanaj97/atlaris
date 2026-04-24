@@ -6,7 +6,7 @@
  *   the service-role Drizzle client via getDb() unless a request-scoped RLS client
  *   is injected into the request context.
  * - Until an RLS-capable Drizzle client is available and wired, request-layer code
- *   must validate ownership in queries (e.g., batch updates via `setTaskProgressBatch`).
+ *   must validate ownership in queries (e.g. batch updates via `applyTaskProgressUpdates`).
  *
  * Source of truth:
  * - src/lib/db/runtime.ts — getDb() returns the request-scoped DB when present,
@@ -15,15 +15,15 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import {
-	logger,
-	PROGRESS_STATUSES,
-	type ProgressStatus,
-	setTaskProgressBatch,
-} from '@/app/plans/[id]/server/task-progress-action-deps';
 import type { PlanAccessResult } from '@/app/plans/[id]/types';
 import { getPlanDetailForRead } from '@/features/plans/read-projection';
+import {
+	applyTaskProgressUpdates,
+	validateTaskProgressBatchInput,
+} from '@/features/plans/task-progress';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { logger } from '@/lib/logging/logger';
+import type { ProgressStatus } from '@/shared/types/db.types';
 import { planError, planSuccess } from './helpers';
 
 interface BatchUpdateTaskProgressInput {
@@ -31,48 +31,29 @@ interface BatchUpdateTaskProgressInput {
 	updates: Array<{ taskId: string; status: ProgressStatus }>;
 }
 
-const MAX_BATCH_UPDATES = 500;
-
-function assertNonEmpty(value: string | undefined, message: string) {
-	if (!value || value.trim().length === 0) {
-		throw new Error(message);
-	}
-}
-
 /**
  * Server action to batch update multiple task progress records from the plan overview page.
- * Validates all updates, persists via `setTaskProgressBatch`, and revalidates affected paths.
+ * Delegates validation, scope checks, persistence, and path selection to `applyTaskProgressUpdates`.
  */
 export async function batchUpdateTaskProgressAction({
 	planId,
 	updates,
 }: BatchUpdateTaskProgressInput): Promise<void> {
-	assertNonEmpty(planId, 'A plan id is required to update progress.');
 	if (updates.length === 0) return;
-	if (updates.length > MAX_BATCH_UPDATES) {
-		throw new Error(
-			`Batch update limit exceeded: received ${updates.length} updates, but the maximum allowed is ${MAX_BATCH_UPDATES}.`,
-		);
-	}
-
-	for (const [index, update] of updates.entries()) {
-		const taskId = update.taskId?.trim() ?? '';
-		assertNonEmpty(
-			taskId,
-			`A task id is required to update progress for update at index ${index} (taskId="${taskId || '<missing>'}", status="${update.status}").`,
-		);
-		if (!PROGRESS_STATUSES.includes(update.status)) {
-			throw new Error(
-				`Invalid progress status for update at index ${index} (taskId="${taskId}", status="${update.status}").`,
-			);
-		}
-	}
 
 	const result = await requestBoundary.action(async ({ actor, db }) => {
+		validateTaskProgressBatchInput({ planId, updates });
+
 		try {
-			await setTaskProgressBatch(actor.id, updates, db);
-			revalidatePath(`/plans/${planId}`);
-			revalidatePath('/plans');
+			const outcome = await applyTaskProgressUpdates({
+				userId: actor.id,
+				planId,
+				updates,
+				dbClient: db,
+			});
+			for (const path of outcome.revalidatePaths) {
+				revalidatePath(path);
+			}
 		} catch (error) {
 			logger.error(
 				{
@@ -105,7 +86,7 @@ export async function batchUpdateTaskProgressAction({
 export async function getPlanForPage(
 	planId: string,
 ): Promise<PlanAccessResult> {
-	const result = await requestBoundary.action(async ({ actor, db }) => {
+	const boundaryResult = await requestBoundary.action(async ({ actor, db }) => {
 		const plan = await getPlanDetailForRead({
 			planId,
 			userId: actor.id,
@@ -124,12 +105,12 @@ export async function getPlanForPage(
 		return planSuccess(plan);
 	});
 
-	if (!result) {
+	if (!boundaryResult) {
 		logger.debug({ planId }, 'Plan access denied: user not authenticated');
 		return planError(
 			'UNAUTHORIZED',
 			'You must be signed in to view this plan.',
 		);
 	}
-	return result;
+	return boundaryResult;
 }

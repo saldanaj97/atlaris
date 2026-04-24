@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 import { useMemo } from 'react';
 import { LessonAccordionItem } from '@/app/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { Accordion } from '@/components/ui/accordion';
+import { deriveLessonState } from '@/features/plans/task-progress';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
@@ -18,30 +19,6 @@ interface ModuleLessonsClientProps {
 	onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }
 
-function isLessonLocked(
-	lessonIndex: number,
-	statuses: Record<string, ProgressStatus>,
-	lessonIds: string[],
-	previousModulesComplete: boolean,
-): boolean {
-	if (!previousModulesComplete) {
-		return true;
-	}
-
-	if (lessonIndex === 0) {
-		return false;
-	}
-
-	for (let index = 0; index < lessonIndex; index++) {
-		const previousLessonId = lessonIds[index];
-		if (statuses[previousLessonId] !== 'completed') {
-			return true;
-		}
-	}
-
-	return false;
-}
-
 export function ModuleLessonsClient({
 	planId,
 	lessons,
@@ -50,15 +27,11 @@ export function ModuleLessonsClient({
 	statuses,
 	onStatusChange,
 }: ModuleLessonsClientProps): JSX.Element {
-	const lessonIds = useMemo(
-		() => lessons.map((lesson) => lesson.id),
-		[lessons],
-	);
-
 	const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
 		const total = lessons.length;
 		const completed = lessons.filter(
-			(lesson) => statuses[lesson.id] === 'completed',
+			(lesson) =>
+				(statuses[lesson.id] ?? lesson.progress?.status) === 'completed',
 		).length;
 
 		return {
@@ -68,23 +41,10 @@ export function ModuleLessonsClient({
 		};
 	}, [lessons, statuses]);
 
-	const firstUnlockedIncompleteLessonId = useMemo(() => {
-		for (let index = 0; index < lessons.length; index++) {
-			const lesson = lessons[index];
-			const locked = isLessonLocked(
-				index,
-				statuses,
-				lessonIds,
-				previousModulesComplete,
-			);
-
-			if (!locked && statuses[lesson.id] !== 'completed') {
-				return lesson.id;
-			}
-		}
-
-		return undefined;
-	}, [lessonIds, lessons, previousModulesComplete, statuses]);
+	const { locks: lessonLocks, firstUnlockedIncompleteLessonId } = useMemo(
+		() => deriveLessonState(lessons, statuses, previousModulesComplete),
+		[lessons, previousModulesComplete, statuses],
+	);
 
 	return (
 		<>
@@ -112,18 +72,17 @@ export function ModuleLessonsClient({
 						className="space-y-4"
 					>
 						{lessons.map((lesson, index) => {
-							const locked = isLessonLocked(
-								index,
-								statuses,
-								lessonIds,
-								previousModulesComplete,
-							);
+							const locked = lessonLocks[index] ?? true;
 
 							return (
 								<LessonAccordionItem
 									key={lesson.id}
 									lesson={lesson}
-									status={statuses[lesson.id] ?? 'not_started'}
+									status={
+										statuses[lesson.id] ??
+										lesson.progress?.status ??
+										'not_started'
+									}
 									onStatusChange={onStatusChange}
 									isLocked={locked}
 								/>

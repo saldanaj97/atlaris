@@ -19,6 +19,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatMinutes } from '@/features/plans/formatters';
+import { deriveModuleCompletionSummary } from '@/features/plans/task-progress';
 import type {
 	ModuleNavItem,
 	ModuleWithTasks,
@@ -62,19 +63,12 @@ export function ModuleHeader({
 	previousModulesComplete,
 	allModules,
 }: ModuleHeaderProps): JSX.Element {
-	const tasks = module.tasks ?? [];
-
-	// Calculate progress metrics
-	const totalTasks = tasks.length;
-	const completedTasks = tasks.filter(
-		(task) => statuses[task.id] === 'completed',
-	).length;
-	const totalMinutes = tasks.reduce(
-		(sum, task) => sum + (task.estimatedMinutes ?? 0),
-		0,
-	);
-	const completion =
-		totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+	const {
+		totalTasks,
+		completedTasks,
+		totalMinutes,
+		completionPercent: completion,
+	} = deriveModuleCompletionSummary(module, statuses);
 
 	const gradient =
 		MODULE_GRADIENTS[(module.order - 1) % MODULE_GRADIENTS.length];

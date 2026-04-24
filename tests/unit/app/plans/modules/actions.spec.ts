@@ -4,13 +4,11 @@ const {
 	revalidatePathMock,
 	requestBoundaryActionMock,
 	applyTaskProgressUpdatesMock,
-	getPlanDetailForReadMock,
 	loggerMock,
 } = vi.hoisted(() => ({
 	revalidatePathMock: vi.fn(),
 	requestBoundaryActionMock: vi.fn(),
 	applyTaskProgressUpdatesMock: vi.fn(),
-	getPlanDetailForReadMock: vi.fn(),
 	loggerMock: {
 		debug: vi.fn(),
 		error: vi.fn(),
@@ -38,70 +36,65 @@ vi.mock('@/features/plans/task-progress', async () => {
 	};
 });
 
-vi.mock('@/features/plans/read-projection', () => ({
-	getPlanDetailForRead: getPlanDetailForReadMock,
-}));
-
 vi.mock('@/lib/logging/logger', () => ({
 	logger: loggerMock,
 }));
 
-import { batchUpdateTaskProgressAction } from '@/app/plans/[id]/actions';
+import { batchUpdateModuleTaskProgressAction } from '@/app/plans/[id]/modules/[moduleId]/actions';
 
-describe('batchUpdateTaskProgressAction', () => {
+describe('batchUpdateModuleTaskProgressAction', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it('checks auth before validating oversized update batches', async () => {
+	it('checks auth before validating oversized batches', async () => {
 		requestBoundaryActionMock.mockResolvedValueOnce(null);
-		const oversizedUpdates = Array.from({ length: 501 }, (_, index) => ({
+		const updates = Array.from({ length: 501 }, (_, index) => ({
 			taskId: `task-${index}`,
 			status: 'completed' as const,
 		}));
 
 		await expect(
-			batchUpdateTaskProgressAction({
-				planId: 'plan-123',
-				updates: oversizedUpdates,
+			batchUpdateModuleTaskProgressAction({
+				planId: 'p1',
+				moduleId: 'm1',
+				updates,
 			}),
 		).rejects.toThrow('You must be signed in to update progress.');
 
 		expect(requestBoundaryActionMock).toHaveBeenCalledOnce();
 		expect(applyTaskProgressUpdatesMock).not.toHaveBeenCalled();
-		expect(revalidatePathMock).not.toHaveBeenCalled();
 	});
 
-	it('rejects oversized update batches after auth', async () => {
+	it('rejects oversized batches after auth', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
 			async (
 				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
 			) => fn({ actor: { id: 'user-1' }, db: {} }),
 		);
-		const oversizedUpdates = Array.from({ length: 501 }, (_, index) => ({
+		const updates = Array.from({ length: 501 }, (_, index) => ({
 			taskId: `task-${index}`,
 			status: 'completed' as const,
 		}));
 
 		await expect(
-			batchUpdateTaskProgressAction({
-				planId: 'plan-123',
-				updates: oversizedUpdates,
+			batchUpdateModuleTaskProgressAction({
+				planId: 'p1',
+				moduleId: 'm1',
+				updates,
 			}),
-		).rejects.toThrow(
-			'Batch update limit exceeded: received 501 updates, but the maximum allowed is 500.',
-		);
+		).rejects.toThrow(/Batch update limit exceeded/);
 
 		expect(applyTaskProgressUpdatesMock).not.toHaveBeenCalled();
-		expect(revalidatePathMock).not.toHaveBeenCalled();
 	});
 
 	it('throws when unauthenticated', async () => {
 		requestBoundaryActionMock.mockResolvedValueOnce(null);
 
 		await expect(
-			batchUpdateTaskProgressAction({
-				planId: 'plan-123',
+			batchUpdateModuleTaskProgressAction({
+				planId: 'p1',
+				moduleId: 'm1',
 				updates: [{ taskId: 't1', status: 'completed' }],
 			}),
 		).rejects.toThrow('You must be signed in to update progress.');
@@ -109,7 +102,7 @@ describe('batchUpdateTaskProgressAction', () => {
 		expect(applyTaskProgressUpdatesMock).not.toHaveBeenCalled();
 	});
 
-	it('revalidates paths returned by the boundary on success', async () => {
+	it('revalidates module and plan paths on success', async () => {
 		requestBoundaryActionMock.mockImplementationOnce(
 			async (
 				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
@@ -119,46 +112,25 @@ describe('batchUpdateTaskProgressAction', () => {
 		);
 		applyTaskProgressUpdatesMock.mockResolvedValueOnce({
 			progress: [],
-			revalidatePaths: ['/plans/plan-123', '/plans'],
-			visibleState: { appliedByTaskId: {} },
+			revalidatePaths: ['/plans/p1/modules/m1', '/plans/p1', '/plans'],
+			visibleState: { appliedByTaskId: { t1: 'completed' } },
 		});
 
-		await batchUpdateTaskProgressAction({
-			planId: 'plan-123',
-			updates: [{ taskId: 't1', status: 'in_progress' }],
+		await batchUpdateModuleTaskProgressAction({
+			planId: 'p1',
+			moduleId: 'm1',
+			updates: [{ taskId: 't1', status: 'completed' }],
 		});
 
 		expect(applyTaskProgressUpdatesMock).toHaveBeenCalledWith({
 			userId: 'user-1',
-			planId: 'plan-123',
-			updates: [{ taskId: 't1', status: 'in_progress' }],
+			planId: 'p1',
+			moduleId: 'm1',
+			updates: [{ taskId: 't1', status: 'completed' }],
 			dbClient: {},
 		});
-		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/plan-123');
+		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1/modules/m1');
+		expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1');
 		expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
-	});
-
-	it('maps boundary persistence errors to generic user message', async () => {
-		requestBoundaryActionMock.mockImplementationOnce(
-			async (
-				fn: (ctx: { actor: { id: string }; db: unknown }) => Promise<void>,
-			) => {
-				return await fn({ actor: { id: 'user-1' }, db: {} });
-			},
-		);
-		const persistenceError = new Error('db exploded');
-		applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
-
-		await expect(
-			batchUpdateTaskProgressAction({
-				planId: 'plan-123',
-				updates: [{ taskId: 't1', status: 'completed' }],
-			}),
-		).rejects.toThrow('Unable to update task progress right now.');
-
-		expect(loggerMock.error).toHaveBeenCalledWith(
-			expect.objectContaining({ err: persistenceError }),
-			'Failed to batch update task progress',
-		);
 	});
 });

@@ -2,15 +2,17 @@
 
 import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
-import type {
-	ModuleStatus,
-	TimelineModule,
-} from '@/app/plans/[id]/components/TimelineModuleCard';
+import type { TimelineModule } from '@/app/plans/[id]/components/TimelineModuleCard';
 import { TimelineModuleCard } from '@/app/plans/[id]/components/TimelineModuleCard';
 import { getStatusesFromModules } from '@/app/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatMinutes } from '@/features/plans/formatters';
+import {
+	deriveActiveModuleId,
+	deriveCompletedModuleIds,
+	deriveModuleProgressState,
+} from '@/features/plans/task-progress';
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -20,69 +22,6 @@ interface ModuleTimelineProps {
 	modules: ClientModule[];
 	statuses?: Record<string, ProgressStatus>;
 	onStatusChange: (taskId: string, newStatus: ProgressStatus) => void;
-}
-
-function getModuleStatus(
-	mod: ClientModule,
-	statuses: Record<string, ProgressStatus>,
-	previousModulesCompleted: boolean,
-): ModuleStatus {
-	const tasks = mod.tasks ?? [];
-	if (tasks.length === 0) return previousModulesCompleted ? 'active' : 'locked';
-
-	const taskStatuses = tasks.map((task) => statuses[task.id] ?? 'not_started');
-	const allCompleted = taskStatuses.every((status) => status === 'completed');
-	const hasInProgress = taskStatuses.some((status) => status === 'in_progress');
-	const hasAnyStarted = taskStatuses.some(
-		(status) => status === 'in_progress' || status === 'completed',
-	);
-
-	if (allCompleted) return 'completed';
-	if (hasInProgress || (previousModulesCompleted && hasAnyStarted)) {
-		return 'active';
-	}
-	if (previousModulesCompleted) return 'active';
-	return 'locked';
-}
-
-function getActiveModuleIdForStatuses(
-	modules: ClientModule[],
-	statuses: Record<string, ProgressStatus>,
-): string | null {
-	let previousModulesCompleted = true;
-
-	for (const mod of modules) {
-		const status = getModuleStatus(mod, statuses, previousModulesCompleted);
-		if (status === 'active') {
-			return mod.id;
-		}
-
-		const tasks = mod.tasks ?? [];
-		previousModulesCompleted = tasks.every(
-			(task) => (statuses[task.id] ?? 'not_started') === 'completed',
-		);
-	}
-
-	return null;
-}
-
-function getCompletedModuleIds(
-	modules: ClientModule[],
-	statuses: Record<string, ProgressStatus>,
-): Set<string> {
-	return new Set(
-		modules
-			.filter((module) => {
-				const tasks = module.tasks ?? [];
-				return (
-					tasks.length > 0 &&
-					tasks.every(
-						(task) => (statuses[task.id] ?? 'not_started') === 'completed',
-					)
-				);
-			})
-			.map((module) => module.id),
-	);
 }
 
 export function PlanTimeline({
@@ -104,13 +43,14 @@ export function PlanTimeline({
 				.every((prevMod) => {
 					const prevTasks = prevMod.tasks ?? [];
 					return prevTasks.every(
-						(task) => effectiveStatuses[task.id] === 'completed',
+						(task) =>
+							(effectiveStatuses[task.id] ?? task.status) === 'completed',
 					);
 				});
 			const completedCount = tasks.filter(
-				(task) => effectiveStatuses[task.id] === 'completed',
+				(task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
 			).length;
-			const status = getModuleStatus(
+			const status = deriveModuleProgressState(
 				mod,
 				effectiveStatuses,
 				previousModulesCompleted,
@@ -129,9 +69,9 @@ export function PlanTimeline({
 		});
 	}, [modules, effectiveStatuses]);
 
-	const activeModuleId = getActiveModuleIdForStatuses(
-		modules,
-		effectiveStatuses,
+	const activeModuleId = useMemo(
+		() => deriveActiveModuleId(modules, effectiveStatuses),
+		[modules, effectiveStatuses],
 	);
 
 	const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
@@ -162,11 +102,8 @@ export function PlanTimeline({
 						...effectiveStatuses,
 						[taskId]: nextStatus,
 					};
-		const completedModuleIds = getCompletedModuleIds(modules, nextStatuses);
-		const nextActiveModuleId = getActiveModuleIdForStatuses(
-			modules,
-			nextStatuses,
-		);
+		const completedModuleIds = deriveCompletedModuleIds(modules, nextStatuses);
+		const nextActiveModuleId = deriveActiveModuleId(modules, nextStatuses);
 
 		setExpandedModuleIds((prev) => {
 			const prevWithoutCompleted = prev.filter(

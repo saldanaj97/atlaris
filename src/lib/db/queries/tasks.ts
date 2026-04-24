@@ -11,6 +11,15 @@ import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
+interface TaskProgressBatchScope {
+	planId?: string;
+	moduleId?: string;
+}
+
+// TODO(#313): Wire these explicit plan/module scope assertions into the next
+// module-task-specific write path so scope validation stays centralized instead
+// of lingering here as dead helpers.
+
 function selectOwnedTaskIdsForUser(
 	tx: TasksTransaction,
 	userId: string,
@@ -25,12 +34,71 @@ function selectOwnedTaskIdsForUser(
 }
 
 /**
- * Retrieves all tasks in a specific learning plan for a user.
- * @param userId - The ID of the user.
- * @param planId - The ID of the learning plan.
- * @param dbClient - Optional TasksDbClient used for transactions/internal testing.
- * @returns A promise that resolves to an array of tasks.
+ * Ensures every task id belongs to the given plan and user (same ownership join as writes).
+ * Throws `Error('One or more tasks not found.')` when any id is missing or out of scope.
  */
+export async function assertTaskIdsInPlanScopeForUser(
+	userId: string,
+	planId: string,
+	taskIds: string[],
+	dbClient?: TasksDbClient,
+): Promise<void> {
+	const unique = [...new Set(taskIds)];
+	if (unique.length === 0) return;
+
+	const client = dbClient ?? getDb();
+	const rows = await client
+		.select({ id: tasks.id })
+		.from(tasks)
+		.innerJoin(modules, eq(tasks.moduleId, modules.id))
+		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+		.where(
+			and(
+				eq(learningPlans.userId, userId),
+				eq(learningPlans.id, planId),
+				inArray(tasks.id, unique),
+			),
+		);
+
+	if (rows.length !== unique.length) {
+		throw new Error('One or more tasks not found.');
+	}
+}
+
+/**
+ * Ensures every task id belongs to the given plan, module, and user.
+ * Throws `Error('One or more tasks not found.')` when any id is missing or out of scope.
+ */
+export async function assertTaskIdsInModuleScopeForUser(
+	userId: string,
+	planId: string,
+	moduleId: string,
+	taskIds: string[],
+	dbClient?: TasksDbClient,
+): Promise<void> {
+	const unique = [...new Set(taskIds)];
+	if (unique.length === 0) return;
+
+	const client = dbClient ?? getDb();
+	const rows = await client
+		.select({ id: tasks.id })
+		.from(tasks)
+		.innerJoin(modules, eq(tasks.moduleId, modules.id))
+		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+		.where(
+			and(
+				eq(learningPlans.userId, userId),
+				eq(learningPlans.id, planId),
+				eq(modules.id, moduleId),
+				inArray(tasks.id, unique),
+			),
+		);
+
+	if (rows.length !== unique.length) {
+		throw new Error('One or more tasks not found.');
+	}
+}
+
 export async function getAllTasksInPlan(
 	userId: string,
 	planId: string,
@@ -114,15 +182,20 @@ async function setTaskProgress(
 /**
  * Batch updates task progress for multiple tasks in a single transaction.
  * Validates ownership for all tasks via a single query, then bulk upserts.
- * Falls back to single-update for single-item batches.
+ * Falls back to the single-update path only when no explicit plan/module scope is required.
  */
 export async function setTaskProgressBatch(
 	userId: string,
 	updates: Array<{ taskId: string; status: ProgressStatus }>,
 	dbClient?: TasksDbClient,
+	scope: TaskProgressBatchScope = {},
 ): Promise<DbTaskProgress[]> {
 	if (updates.length === 0) return [];
-	if (updates.length === 1) {
+	if (
+		updates.length === 1 &&
+		scope.planId === undefined &&
+		scope.moduleId === undefined
+	) {
 		const result = await setTaskProgress(
 			userId,
 			updates[0].taskId,
@@ -134,6 +207,13 @@ export async function setTaskProgressBatch(
 
 	const client = dbClient ?? getDb();
 	const taskIds = updates.map((u) => u.taskId);
+	const scopeConditions: SQL[] = [inArray(tasks.id, taskIds)];
+	if (scope.planId !== undefined) {
+		scopeConditions.push(eq(learningPlans.id, scope.planId));
+	}
+	if (scope.moduleId !== undefined) {
+		scopeConditions.push(eq(modules.id, scope.moduleId));
+	}
 	const duplicateIds = Array.from(
 		taskIds.reduce((counts, taskId) => {
 			counts.set(taskId, (counts.get(taskId) ?? 0) + 1);
@@ -151,13 +231,13 @@ export async function setTaskProgressBatch(
 		const ownedTasks = await selectOwnedTaskIdsForUser(
 			tx,
 			userId,
-			inArray(tasks.id, taskIds),
+			and(...scopeConditions) ?? inArray(tasks.id, taskIds),
 		).for('update');
 
 		const ownedIds = new Set(ownedTasks.map((t) => t.id));
 		const missingIds = taskIds.filter((id) => !ownedIds.has(id));
 		if (missingIds.length > 0) {
-			throw new Error('One or more tasks not found or access denied');
+			throw new Error('One or more tasks not found.');
 		}
 
 		const now = new Date();
