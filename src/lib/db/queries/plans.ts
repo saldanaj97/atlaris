@@ -10,7 +10,13 @@ import {
 	fetchTaskResourceRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
-import type { PlanAttemptsPlanMeta } from '@/lib/db/queries/types/plans.types';
+import type {
+	LightweightModuleMetricsRow,
+	LightweightPlanListRow,
+	PlanAttemptsPlanMeta,
+	PlanProgressStatusRow,
+	PlanSummaryTaskRow,
+} from '@/lib/db/queries/types/plans.types';
 import { getDb } from '@/lib/db/runtime';
 import {
 	generationAttempts,
@@ -33,36 +39,6 @@ import type {
 } from '@/shared/types/db.types';
 
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
-
-type PlanSummaryTaskRow = {
-	id: string;
-	moduleId: string;
-	planId: string;
-	estimatedMinutes: number | null;
-};
-
-type PlanProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
-
-type LightweightPlanListRow = Pick<
-	LearningPlan,
-	| 'id'
-	| 'topic'
-	| 'skillLevel'
-	| 'learningStyle'
-	| 'visibility'
-	| 'origin'
-	| 'generationStatus'
-	| 'createdAt'
-	| 'updatedAt'
->;
-
-type LightweightModuleMetricsRow = {
-	planId: string;
-	totalTasks: number;
-	completedTasks: number;
-	totalMinutes: number;
-	completedMinutes: number;
-};
 
 type PlanSummaryRows = {
 	planRows: LearningPlan[];

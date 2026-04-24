@@ -19,7 +19,8 @@ import type { CreateLearningPlanInput } from '@/features/plans/validation/learni
 import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import { resolveStreamModelResolution } from './model-resolution';
 import { safeMarkPlanFailed } from './stream-cleanup';
 import { createStreamDbClient } from './stream-db';
@@ -57,13 +58,8 @@ const noopJobQueue: JobQueuePort = {
  * Routes hydrate this from the persisted plan row before delegating to
  * {@link PlanGenerationSessionBoundary.respondRetryStream}.
  */
-export interface RetryPlanGenerationPlanSnapshot {
-	topic: string;
-	skillLevel: 'beginner' | 'intermediate' | 'advanced';
-	weeklyHours: number;
-	learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-	startDate: string | null;
-	deadlineDate: string | null;
+export interface RetryPlanGenerationPlanSnapshot
+	extends PlanGenerationCoreFieldsNormalized {
 	origin: 'ai' | 'manual' | 'template' | null;
 }
 

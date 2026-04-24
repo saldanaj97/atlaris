@@ -10,30 +10,17 @@ import {
 	type PlanSummaryReadStatus,
 } from '@/features/plans/read-projection/read-status';
 import type {
-	LearningPlan,
+	LightweightModuleMetricsRow,
 	LightweightPlanListRow,
+	PlanProgressStatusRow,
+	PlanSummaryTaskRow,
+} from '@/lib/db/queries/types/plans.types';
+import type {
+	LearningPlan,
 	LightweightPlanSummary,
 	Module,
 	PlanSummary,
-	TaskProgress,
 } from '@/shared/types/db.types';
-
-type SummaryTaskRow = {
-	id: string;
-	moduleId: string;
-	planId: string;
-	estimatedMinutes: number | null;
-};
-
-type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
-
-type LightweightModuleMetricsRow = {
-	planId: string;
-	totalTasks: number;
-	completedTasks: number;
-	totalMinutes: number;
-	completedMinutes: number;
-};
 
 type SummaryStatusInput = {
 	plan: Pick<LearningPlan, 'generationStatus'>;
@@ -64,8 +51,8 @@ const DEFAULT_LIGHTWEIGHT_PLAN_METRICS: LightweightPlanMetrics = {
 export function buildPlanSummaries(params: {
 	planRows: LearningPlan[];
 	moduleRows: Module[];
-	taskRows: SummaryTaskRow[];
-	progressRows: ProgressStatusRow[];
+	taskRows: PlanSummaryTaskRow[];
+	progressRows: PlanProgressStatusRow[];
 	attemptCountsByPlanId?: ReadonlyMap<string, number>;
 }): PlanSummary[] {
 	const {
@@ -76,8 +63,8 @@ export function buildPlanSummaries(params: {
 		attemptCountsByPlanId,
 	} = params;
 
-	const tasksByPlan = new Map<string, SummaryTaskRow[]>();
-	const tasksByModule = new Map<string, SummaryTaskRow[]>();
+	const tasksByPlan = new Map<string, PlanSummaryTaskRow[]>();
+	const tasksByModule = new Map<string, PlanSummaryTaskRow[]>();
 
 	for (const task of taskRows) {
 		const planTasks = tasksByPlan.get(task.planId) ?? [];

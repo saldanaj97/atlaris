@@ -17,7 +17,7 @@ import type {
 	FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 const SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS = {
 	id: null,

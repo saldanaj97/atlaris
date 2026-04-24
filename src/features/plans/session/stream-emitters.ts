@@ -10,7 +10,7 @@ import type { CreateLearningPlanInput } from '@/features/plans/validation/learni
 import { getCorrelationId } from '@/lib/api/context';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import { toFallbackErrorLike } from './stream-cleanup';
 
 export type SessionEmitFn = (event: StreamingEvent) => void;

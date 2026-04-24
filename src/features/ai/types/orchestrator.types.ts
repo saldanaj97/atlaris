@@ -7,7 +7,7 @@ import type {
 	ReserveAttemptResult,
 	ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { ParsedModule } from './parser.types';
 import type {
 	AiPlanGenerationProvider,

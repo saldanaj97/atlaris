@@ -17,6 +17,7 @@ import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-g
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
@@ -25,15 +26,9 @@ type PlanWriteClient = Pick<DbClient, 'update'>;
 
 export async function atomicCheckAndInsertPlan(
 	userId: string,
-	planData: {
-		topic: string;
-		skillLevel: 'beginner' | 'intermediate' | 'advanced';
-		weeklyHours: number;
-		learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+	planData: Readonly<PlanGenerationCoreFields> & {
 		visibility: 'private';
 		origin: 'ai' | 'manual' | 'template';
-		startDate?: string | null;
-		deadlineDate?: string | null;
 	},
 	dbClient: DbClient,
 ): Promise<{ id: string }> {

@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
+import {
+	LEARNING_STYLE_ENUM,
+	SKILL_LEVEL_ENUM,
+} from '@/shared/schemas/plan-validation.schemas';
+
 const planStartDataSchema = z.object({
 	planId: z.string(),
 	attemptNumber: z.number(),
 	topic: z.string(),
-	skillLevel: z.enum(['beginner', 'intermediate', 'advanced']),
-	learningStyle: z.enum(['reading', 'video', 'practice', 'mixed']),
+	skillLevel: SKILL_LEVEL_ENUM,
+	learningStyle: LEARNING_STYLE_ENUM,
 	weeklyHours: z.number(),
 	startDate: z.string().nullable(),
 	deadlineDate: z.string().nullable(),

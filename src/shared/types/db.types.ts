@@ -4,6 +4,7 @@ import type {
 	Module,
 	ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
+import type { LightweightPlanListRow } from '@/lib/db/queries/types/plans.types';
 
 type DbEnumsModule = typeof import('@/lib/db/enums');
 type DbSchemaModule = typeof import('@/lib/db/schema');
@@ -61,22 +62,7 @@ export type PlanSummary = ProgressMetrics & {
 	attemptsCount?: number;
 };
 
-/**
- * Field subset shared by lightweight plan list rows (API + read projection).
- * Exported so summary builders use the same shape the API contract assumes.
- */
-export type LightweightPlanListRow = Pick<
-	LearningPlan,
-	| 'id'
-	| 'topic'
-	| 'skillLevel'
-	| 'learningStyle'
-	| 'visibility'
-	| 'origin'
-	| 'generationStatus'
-	| 'createdAt'
-	| 'updatedAt'
->;
+export type { LightweightPlanListRow };
 
 /** Lightweight plan summary for API list views. */
 export type LightweightPlanSummary = LightweightPlanListRow &

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { PromptParams } from '@/features/ai/prompts';
 import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 describe('Prompts with deadline and start date context', () => {
 	it('includes start date in user prompt when provided', () => {
-		const input: PromptParams = {
+		const input: GenerationInput = {
 			topic: 'React Hooks',
 			skillLevel: 'intermediate',
 			learningStyle: 'mixed',
@@ -21,7 +21,7 @@ describe('Prompts with deadline and start date context', () => {
 	});
 
 	it('omits start date line when not provided', () => {
-		const input: PromptParams = {
+		const input: GenerationInput = {
 			topic: 'React Hooks',
 			skillLevel: 'intermediate',
 			learningStyle: 'mixed',
@@ -37,7 +37,7 @@ describe('Prompts with deadline and start date context', () => {
 	});
 
 	it('omits deadline line when not provided', () => {
-		const input: PromptParams = {
+		const input: GenerationInput = {
 			topic: 'React Hooks',
 			skillLevel: 'intermediate',
 			learningStyle: 'mixed',
@@ -69,7 +69,7 @@ describe('Prompts with deadline and start date context', () => {
 	});
 
 	it('includes all core fields in user prompt', () => {
-		const input: PromptParams = {
+		const input: GenerationInput = {
 			topic: 'Machine Learning Basics',
 			skillLevel: 'beginner',
 			learningStyle: 'video',

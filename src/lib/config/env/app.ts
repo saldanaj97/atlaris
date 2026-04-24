@@ -5,13 +5,12 @@ import {
 	EnvValidationError,
 	getProcessEnvSource,
 	isProdRuntimeEnv,
+	type NodeEnv,
 	optionalEnvFrom,
 	parseNodeEnv,
 	type ServerEnvAccess,
 	toBoolean,
 } from '@/lib/config/env/shared';
-
-type NodeEnv = 'development' | 'production' | 'test';
 
 const APP_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';

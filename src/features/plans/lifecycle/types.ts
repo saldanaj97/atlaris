@@ -5,36 +5,28 @@
  * as well as the discriminated union result types for lifecycle operations.
  */
 
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type {
+	GenerationInput,
+	PlanGenerationCoreFields,
+	PlanGenerationCoreFieldsNormalized,
+} from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 // Re-export commonly used types so the service can import from one place
 export type { SubscriptionTier } from '@/shared/types/billing.types';
-export type { FailureClassification } from '@/shared/types/client.types';
 export { isRetryableClassification } from '@/shared/types/failure-classification';
+export type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 /** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {
 	readonly userId: string;
-	readonly topic: string;
-	readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
-	readonly weeklyHours: number;
-	readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-	readonly startDate?: string | null;
-	readonly deadlineDate?: string | null;
-};
+} & Readonly<PlanGenerationCoreFields>;
 
 /** Data passed to the persistence port for atomic plan insertion. */
-export type PlanInsertData = {
-	readonly topic: string;
-	readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
-	readonly weeklyHours: number;
-	readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+export type PlanInsertData = Readonly<PlanGenerationCoreFields> & {
 	readonly visibility: 'private';
 	readonly origin: 'ai';
-	readonly startDate?: string | null;
-	readonly deadlineDate?: string | null;
 };
 
 // ─── Port result types ───────────────────────────────────────────
@@ -66,14 +58,7 @@ export type CreatePlanSuccess = {
 	readonly planId: string;
 	readonly tier: SubscriptionTier;
 	/** Normalized values produced during creation — used by the route for generation input. */
-	readonly normalizedInput: {
-		readonly topic: string;
-		readonly skillLevel: 'beginner' | 'intermediate' | 'advanced';
-		readonly weeklyHours: number;
-		readonly learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-		readonly startDate: string | null;
-		readonly deadlineDate: string | null;
-	};
+	readonly normalizedInput: Readonly<PlanGenerationCoreFieldsNormalized>;
 };
 
 /** A retryable failure occurred (e.g. provider error, timeout). */

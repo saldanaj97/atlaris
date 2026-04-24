@@ -8,7 +8,7 @@ import type {
 } from '@/features/ai/types/orchestrator.types';
 import type { AttemptRejection } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 const RESERVATION_REJECTION_DETAILS: Record<
 	AttemptRejection['reason'],
