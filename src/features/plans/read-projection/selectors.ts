@@ -1,6 +1,6 @@
 import { differenceInDays } from 'date-fns';
-import type { PlanStatus } from '@/app/plans/types';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
+import type { PlanStatus } from '@/features/plans/read-projection/types';
 import { toValidDate } from '@/lib/date/relative-time';
 import { logger } from '@/lib/logging/logger';
 import type { PlanSummary } from '@/shared/types/db.types';

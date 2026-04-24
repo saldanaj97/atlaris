@@ -1,7 +1,4 @@
-export type PlanStatus =
-	| 'active'
-	| 'paused'
-	| 'completed'
-	| 'generating'
-	| 'failed';
-export type FilterStatus = 'all' | PlanStatus | 'inactive';
+export type {
+	FilterStatus,
+	PlanStatus,
+} from '@/features/plans/read-projection/types';
