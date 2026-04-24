@@ -1,8 +1,3 @@
-/**
- * Shared fixtures for LearningPlanDetail, GenerationAttempt, and related types.
- * Used by mapper tests (detailToClient, derivation) and plan access tests.
- */
-
 import type {
 	ModuleWithTasks,
 	TaskResourceWithResource,
@@ -20,7 +15,6 @@ import { createId } from './ids';
 
 const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
 
-/** Builds a GenerationAttempt with failure defaults (for status-derivation tests). */
 export function buildGenerationAttempt(
 	overrides: Partial<GenerationAttempt> = {},
 ): GenerationAttempt {
@@ -43,7 +37,6 @@ export function buildGenerationAttempt(
 	} satisfies GenerationAttempt;
 }
 
-/** Builds a GenerationAttempt with success defaults (for mapAttemptsToClient etc). */
 export function buildSuccessAttempt(
 	overrides: Partial<GenerationAttempt> = {},
 ): GenerationAttempt {
@@ -70,7 +63,6 @@ export function buildSuccessAttempt(
 	} satisfies GenerationAttempt;
 }
 
-/** Builds a TaskResourceWithResource for task fixtures. */
 export function buildTaskResource(
 	overrides: Partial<TaskResourceWithResource> = {},
 ): TaskResourceWithResource {
@@ -103,7 +95,6 @@ export function buildTaskResource(
 	} satisfies TaskResourceWithResource;
 }
 
-/** Builds a TaskWithRelations for module fixtures. */
 export function buildTask(
 	overrides: Partial<TaskWithRelations> = {},
 ): TaskWithRelations {
@@ -126,7 +117,6 @@ export function buildTask(
 	} satisfies TaskWithRelations;
 }
 
-/** Builds a ModuleWithTasks. Use tasks: [] for minimal status-derivation tests. */
 export function buildModule(
 	overrides: Partial<ModuleWithTasks> = {},
 ): ModuleWithTasks {
@@ -146,13 +136,11 @@ export function buildModule(
 	} satisfies ModuleWithTasks;
 }
 
-/** Builds a Module (plan row only, no tasks). Use for PlanSummary.modules. */
 function buildModuleRow(overrides: Partial<Module> = {}): Module {
 	const { tasks: _tasks, ...row } = buildModule();
 	return { ...row, ...overrides } satisfies Module;
 }
 
-/** Builds N module rows for a plan. Use for PlanSummary.modules. */
 export function buildModuleRows(
 	planId: string,
 	count: number,
@@ -168,7 +156,6 @@ export function buildModuleRows(
 	);
 }
 
-/** Builds a LearningPlanWithModules. */
 export function buildPlan(
 	overrides: Partial<LearningPlanWithModules> = {},
 ): LearningPlanWithModules {
@@ -193,7 +180,6 @@ export function buildPlan(
 	} satisfies LearningPlanWithModules;
 }
 
-/** Builds a LearningPlanDetail with optional overrides for all fields. */
 export function buildPlanDetail(
 	overrides: Partial<LearningPlanDetail> = {},
 ): LearningPlanDetail {
@@ -210,7 +196,6 @@ export function buildPlanDetail(
 	} satisfies LearningPlanDetail;
 }
 
-/** Builds a PlanSummary with optional overrides. Centralizes schema so type changes stay in one place. */
 export function buildPlanSummary(
 	overrides: Partial<PlanSummary> = {},
 ): PlanSummary {

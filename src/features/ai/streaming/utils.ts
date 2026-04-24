@@ -1,9 +1,5 @@
 import { logger } from '@/lib/logging/logger';
 
-/**
- * Converts an object to a single-chunk ReadableStream<string>.
- * This keeps provider contracts aligned on native web streams.
- */
 export function toStream(obj: unknown): ReadableStream<string> {
 	const data =
 		typeof obj === 'string'
@@ -22,10 +18,7 @@ export function toStream(obj: unknown): ReadableStream<string> {
 	});
 }
 
-/**
- * Converts a ReadableStream<string> to AsyncIterable<string> for parser compatibility.
- * Logs and throws on invalid non-string chunks instead of silently dropping.
- */
+/** Non-string chunks are logged then thrown (parser expects strings only). */
 export function readableStreamToAsyncIterable(
 	stream: ReadableStream<string>,
 ): AsyncIterable<string> {
@@ -62,9 +55,6 @@ export function readableStreamToAsyncIterable(
 	};
 }
 
-/**
- * Converts async text chunks into a native ReadableStream<string>.
- */
 export function asyncIterableToReadableStream(
 	iterable: AsyncIterable<string>,
 ): ReadableStream<string> {

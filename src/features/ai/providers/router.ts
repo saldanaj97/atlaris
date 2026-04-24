@@ -98,7 +98,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 	private readonly providers: (() => AiPlanGenerationProvider)[];
 
 	constructor(cfg: RouterConfig = {}) {
-		// Explicit config flag takes precedence over environment
 		if (cfg.useMock === true) {
 			this.providers = [() => new MockGenerationProvider()];
 			return;
@@ -110,7 +109,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 			return;
 		}
 
-		// Fall back to environment-based mock behavior (only in non-production)
 		const useMock = aiEnv.useMock && !appEnv.isProduction;
 
 		if (useMock) {
@@ -118,12 +116,8 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 			return;
 		}
 
-		// OpenRouter is now the only provider (Google AI deprecated)
 		const model = cfg.model ?? aiEnv.defaultModel;
 		this.providers = [() => new OpenRouterProvider({ model })];
-
-		// TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
-		// For now, we rely on OpenRouter's internal model routing and fallbacks.
 	}
 
 	async generate(
@@ -136,7 +130,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 			const provider = factory();
 			const providerName = provider.constructor?.name ?? 'unknown-provider';
 			if (!appEnv.isProduction) {
-				// Lightweight debug signal to help trace provider order and failures locally
 				logger.debug(
 					{
 						source: 'ai-router',
@@ -147,7 +140,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 				);
 			}
 			try {
-				// Retry only transient provider failures.
 				const result = await pRetry(() => provider.generate(input, options), {
 					retries: MAX_PROVIDER_RETRIES,
 					minTimeout: PROVIDER_RETRY_MIN_MS,
@@ -164,7 +156,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 			} catch (err) {
 				lastError = err;
 				const message = err instanceof Error ? err.message : 'unknown error';
-				// Always log provider failures in production for visibility
 				logger.warn(
 					{
 						source: 'ai-router',
@@ -180,7 +171,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 			}
 		}
 
-		// Ensure we throw an Error object
 		if (lastError instanceof Error) {
 			throw lastError;
 		}

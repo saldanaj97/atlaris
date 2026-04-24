@@ -12,13 +12,6 @@ interface ThemeToggleProps {
 	className?: string;
 }
 
-/**
- * Theme toggle button that switches between light and dark modes.
- *
- * - Shows sun icon in dark mode (click to switch to light)
- * - Shows moon icon in light mode (click to switch to dark)
- * - Handles hydration mismatch by mounting check
- */
 export function ThemeToggle({ size = 'icon', className }: ThemeToggleProps) {
 	const { theme, setTheme, resolvedTheme } = useTheme();
 	const [mounted, setMounted] = useState(false);

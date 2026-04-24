@@ -101,9 +101,6 @@ function createPlaceholderContentEntries(params: {
 	});
 }
 
-/**
- * Renders a content block with appropriate styling.
- */
 function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 	switch (block.type) {
 		case 'heading1':
@@ -131,18 +128,13 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
 				</p>
 			);
 		default: {
-			// Exhaustive check - TypeScript will error at compile time if a new ContentBlockType is added
-			// but this switch statement isn't updated. The _exhaustiveCheck ensures we handle all cases.
+			// Compile-time exhaustiveness when ContentBlockType grows.
 			const _exhaustiveCheck: never = block.type;
 			return _exhaustiveCheck;
 		}
 	}
 }
 
-/**
- * Locked content overlay component.
- * Shows a blur effect with underlying text as fallback (cannot be bypassed by removing elements).
- */
 function LockedContentOverlay() {
 	return (
 		<div className="relative min-h-[300px] overflow-hidden rounded-xl border border-stone-200/50 dark:border-stone-700/50">
@@ -160,7 +152,6 @@ function LockedContentOverlay() {
 				</div>
 			</div>
 
-			{/* Blur overlay layer */}
 			<div className="absolute inset-0 flex items-center justify-center backdrop-blur-md">
 				<div className="rounded-2xl border border-stone-200/50 bg-white/80 p-8 text-center shadow-lg dark:border-stone-700/50 dark:bg-stone-900/80">
 					<div className="mb-4 flex justify-center">
@@ -180,11 +171,6 @@ function LockedContentOverlay() {
 	);
 }
 
-/**
- * Accordion item for a lesson with expandable content.
- * Displays lesson info, status toggle, resources, and placeholder learning content.
- * Supports locked state for enforcing lesson progression.
- */
 export function LessonAccordionItem({
 	lesson,
 	status,
@@ -194,7 +180,6 @@ export function LessonAccordionItem({
 	const isCompleted = status === 'completed';
 	const resources = lesson.resources;
 
-	// Generate deterministic placeholder content based on lesson ID
 	const placeholderContent = useMemo(
 		() =>
 			createPlaceholderContentEntries({
@@ -204,7 +189,6 @@ export function LessonAccordionItem({
 		[lesson.id, lesson.title],
 	);
 
-	// Determine card styling based on state
 	const getCardClassName = () => {
 		if (isLocked) {
 			return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
@@ -228,7 +212,6 @@ export function LessonAccordionItem({
 				}`}
 			>
 				<div className="flex-1 text-left">
-					{/* Lesson Header */}
 					<div className="mb-2 flex items-center gap-3">
 						<div
 							className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
@@ -265,7 +248,6 @@ export function LessonAccordionItem({
 						)}
 					</div>
 
-					{/* Lesson Description */}
 					{lesson.description && (
 						<p
 							className={`mb-3 ml-11 text-sm leading-relaxed ${
@@ -278,7 +260,6 @@ export function LessonAccordionItem({
 						</p>
 					)}
 
-					{/* Lesson Meta */}
 					{resources.length > 0 && (
 						<div
 							className={`mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm ${
@@ -296,7 +277,6 @@ export function LessonAccordionItem({
 					)}
 				</div>
 
-				{/* Estimated Time */}
 				<span
 					className={`flex shrink-0 items-center text-sm ${
 						isLocked
@@ -314,11 +294,9 @@ export function LessonAccordionItem({
 			<AccordionContent className="px-6 pb-6">
 				<div className="border-t border-stone-200/50 pt-6 dark:border-stone-700/50">
 					{isLocked ? (
-						/* Locked content overlay */
 						<LockedContentOverlay />
 					) : (
 						<>
-							{/* Learning Resources Section */}
 							{resources.length > 0 && (
 								<div className="mb-6">
 									<h4 className="mb-3 text-sm font-medium text-stone-700 dark:text-stone-300">
@@ -375,7 +353,6 @@ export function LessonAccordionItem({
 								</div>
 							)}
 
-							{/* Placeholder Learning Content */}
 							<div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
 								<div className="prose prose-stone dark:prose-invert max-w-none">
 									{placeholderContent.map(({ key, block }) => (
@@ -383,14 +360,12 @@ export function LessonAccordionItem({
 									))}
 								</div>
 
-								{/* Placeholder notice */}
 								<div className="mt-6 rounded-lg bg-amber-50/50 p-3 text-center text-xs text-amber-700 dark:bg-amber-950/20 dark:text-amber-400">
 									This content is placeholder text. AI-generated learning
 									material will appear here.
 								</div>
 							</div>
 
-							{/* Status Button - At the bottom of the lesson */}
 							<div className="mt-6 flex justify-end">
 								<TaskStatusButton
 									taskId={lesson.id}

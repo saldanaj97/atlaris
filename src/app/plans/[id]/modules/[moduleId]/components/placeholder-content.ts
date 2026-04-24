@@ -18,13 +18,6 @@ type PlaceholderContentOptions = {
 	maxParagraphsPerSection?: number;
 };
 
-/**
- * Placeholder content generator for lesson content.
- * Generates formatted lorem ipsum text with headings and paragraphs
- * to simulate AI-generated learning material.
- */
-
-// Lorem ipsum word pool for generating random text
 const LOREM_WORDS = [
 	'lorem',
 	'ipsum',
@@ -152,7 +145,6 @@ const LOREM_WORDS = [
 	'assumenda',
 ];
 
-// Heading templates for different sections
 const HEADING_TEMPLATES = {
 	h1: [
 		'Introduction to {topic}',
@@ -181,10 +173,6 @@ const HEADING_TEMPLATES = {
 	],
 };
 
-/**
- * Seeded random number generator for deterministic output.
- * Uses a simple linear congruential generator (LCG).
- */
 function createSeededRandom(seed: number) {
 	let state = seed;
 	return () => {
@@ -193,30 +181,18 @@ function createSeededRandom(seed: number) {
 	};
 }
 
-/**
- * Generates a random integer between min and max (inclusive).
- */
 function randomInt(random: () => number, min: number, max: number): number {
 	return Math.floor(random() * (max - min + 1)) + min;
 }
 
-/**
- * Picks a random element from an array.
- */
 function pickRandom<T>(random: () => number, arr: T[]): T {
 	return arr[Math.floor(random() * arr.length)];
 }
 
-/**
- * Capitalizes the first letter of a string.
- */
 function capitalize(str: string): string {
 	return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/**
- * Generates a sentence with random words.
- */
 function generateSentence(
 	random: () => number,
 	minWords: number = 8,
@@ -232,9 +208,6 @@ function generateSentence(
 	return `${capitalize(words.join(' '))}.`;
 }
 
-/**
- * Generates a paragraph with multiple sentences.
- */
 function generateParagraph(
 	random: () => number,
 	minSentences: number = 3,
@@ -250,9 +223,6 @@ function generateParagraph(
 	return sentences.join(' ');
 }
 
-/**
- * Generates a simple numeric hash from a string.
- */
 export function hashString(str: string): number {
 	let hash = 0;
 	for (let i = 0; i < str.length; i++) {
@@ -263,10 +233,6 @@ export function hashString(str: string): number {
 	return Math.abs(hash);
 }
 
-/**
- * Generates structured placeholder content with headings and paragraphs.
- * Output is deterministic when given the same seed.
- */
 export function generatePlaceholderContent(
 	options: PlaceholderContentOptions = {},
 ): ContentBlock[] {
@@ -282,25 +248,21 @@ export function generatePlaceholderContent(
 	const random = createSeededRandom(seed);
 	const blocks: ContentBlock[] = [];
 
-	// Generate main heading (H1)
 	const h1Template = pickRandom(random, HEADING_TEMPLATES.h1);
 	blocks.push({
 		type: 'heading1',
 		content: h1Template.replace('{topic}', topic),
 	});
 
-	// Add intro paragraph
 	blocks.push({
 		type: 'paragraph',
 		content: generateParagraph(random, 3, 5),
 	});
 
-	// Generate sections
 	const sectionCount = randomInt(random, minSections, maxSections);
 	const usedH2Headings = new Set<string>();
 
 	for (let i = 0; i < sectionCount; i++) {
-		// H2 heading for section
 		let h2Heading: string;
 		do {
 			h2Heading = pickRandom(random, HEADING_TEMPLATES.h2);
@@ -315,7 +277,6 @@ export function generatePlaceholderContent(
 			content: h2Heading,
 		});
 
-		// Paragraphs for this section
 		const paragraphCount = randomInt(
 			random,
 			minParagraphsPerSection,
@@ -328,7 +289,6 @@ export function generatePlaceholderContent(
 			});
 		}
 
-		// Optionally add H3 subsection
 		if (random() > 0.5) {
 			blocks.push({
 				type: 'heading3',

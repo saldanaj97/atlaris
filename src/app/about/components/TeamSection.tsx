@@ -5,10 +5,6 @@ import { useId } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 
-/**
- * Team section with placeholder member cards.
- * TODO(#228): Replace with real team data
- */
 export function TeamSection(): JSX.Element {
 	const headingId = useId();
 

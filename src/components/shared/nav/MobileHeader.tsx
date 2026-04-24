@@ -17,11 +17,7 @@ interface MobileHeaderProps {
 	isAuthenticated: boolean;
 }
 
-/**
- * Mobile header bar component (visible on mobile/tablet, hidden on desktop).
- *
- * Layout: hamburger (left) | title (center) | auth controls (right)
- */
+/** Mobile header; `lg:hidden`. */
 export default function MobileHeader({
 	navItems,
 	tier,
@@ -29,22 +25,18 @@ export default function MobileHeader({
 }: MobileHeaderProps): JSX.Element {
 	return (
 		<div className="dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
-			{/* Left: hamburger */}
 			<div className="flex shrink-0">
 				<MobileNavigation navItems={navItems} />
 			</div>
 
-			{/* Center: placeholder to maintain grid structure */}
 			<div className="flex min-w-0 items-center justify-center overflow-hidden" />
 
-			{/* Brand logo - absolutely positioned for true centering */}
 			<div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center">
 				<div className="pointer-events-auto">
 					<BrandLogo size="sm" />
 				</div>
 			</div>
 
-			{/* Right: new plan + theme toggle + user/auth */}
 			<div className="flex min-w-0 shrink-0 items-center gap-1">
 				<Button
 					asChild
