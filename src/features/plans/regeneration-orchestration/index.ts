@@ -12,7 +12,6 @@ export {
 } from './process';
 export { requestPlanRegeneration } from './request';
 export type {
-	Job,
 	PlanGenerationRateLimitSnapshot,
 	PlanRegenerationOverrides,
 	ProcessPlanRegenerationJobResult,

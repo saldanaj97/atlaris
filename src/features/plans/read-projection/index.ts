@@ -3,7 +3,6 @@
  * status/attempt orchestration, pure projections, and shared display-status
  * selection. Raw queries stay in `src/lib/db/queries/plans.ts`.
  */
-export type { PlanDetailStatusSnapshot } from '@/features/plans/read-projection/detail-status';
 export {
 	derivePlanSummaryDisplayStatus,
 	isPlanSummaryFullyComplete,

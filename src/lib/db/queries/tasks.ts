@@ -16,10 +16,6 @@ interface TaskProgressBatchScope {
 	moduleId?: string;
 }
 
-// TODO(#313): Wire these explicit plan/module scope assertions into the next
-// module-task-specific write path so scope validation stays centralized instead
-// of lingering here as dead helpers.
-
 function selectOwnedTaskIdsForUser(
 	tx: TasksTransaction,
 	userId: string,
@@ -31,72 +27,6 @@ function selectOwnedTaskIdsForUser(
 		.innerJoin(modules, eq(tasks.moduleId, modules.id))
 		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
 		.where(and(eq(learningPlans.userId, userId), taskScope));
-}
-
-/**
- * Ensures every task id belongs to the given plan and user (same ownership join as writes).
- * Throws `Error('One or more tasks not found.')` when any id is missing or out of scope.
- */
-export async function assertTaskIdsInPlanScopeForUser(
-	userId: string,
-	planId: string,
-	taskIds: string[],
-	dbClient?: TasksDbClient,
-): Promise<void> {
-	const unique = [...new Set(taskIds)];
-	if (unique.length === 0) return;
-
-	const client = dbClient ?? getDb();
-	const rows = await client
-		.select({ id: tasks.id })
-		.from(tasks)
-		.innerJoin(modules, eq(tasks.moduleId, modules.id))
-		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-		.where(
-			and(
-				eq(learningPlans.userId, userId),
-				eq(learningPlans.id, planId),
-				inArray(tasks.id, unique),
-			),
-		);
-
-	if (rows.length !== unique.length) {
-		throw new Error('One or more tasks not found.');
-	}
-}
-
-/**
- * Ensures every task id belongs to the given plan, module, and user.
- * Throws `Error('One or more tasks not found.')` when any id is missing or out of scope.
- */
-export async function assertTaskIdsInModuleScopeForUser(
-	userId: string,
-	planId: string,
-	moduleId: string,
-	taskIds: string[],
-	dbClient?: TasksDbClient,
-): Promise<void> {
-	const unique = [...new Set(taskIds)];
-	if (unique.length === 0) return;
-
-	const client = dbClient ?? getDb();
-	const rows = await client
-		.select({ id: tasks.id })
-		.from(tasks)
-		.innerJoin(modules, eq(tasks.moduleId, modules.id))
-		.innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-		.where(
-			and(
-				eq(learningPlans.userId, userId),
-				eq(learningPlans.id, planId),
-				eq(modules.id, moduleId),
-				inArray(tasks.id, unique),
-			),
-		);
-
-	if (rows.length !== unique.length) {
-		throw new Error('One or more tasks not found.');
-	}
 }
 
 export async function getAllTasksInPlan(

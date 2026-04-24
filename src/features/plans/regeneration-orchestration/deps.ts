@@ -94,7 +94,7 @@ export interface RegenerationOrchestrationDeps {
 	logger: Pick<typeof logger, 'info' | 'error' | 'warn'>;
 }
 
-export type DefaultRegenerationOrchestrationDepsOptions = {
+type DefaultRegenerationOrchestrationDepsOptions = {
 	/**
 	 * Runs after successful enqueue when inline processing registers.
 	 * App boundary (e.g. `request.ts`) must pass real drain; `process.ts` uses no-op default.

@@ -33,7 +33,7 @@ export function withErrorBoundary(fn: PlainHandler): PlainHandler {
  * Merges standard user-rate-limit headers onto a finished response.
  * Shared by `withRateLimit` and any caller that needs identical header semantics.
  */
-export function applyUserRateLimitHeaders(
+function applyUserRateLimitHeaders(
 	response: Response,
 	userId: string,
 	category: UserRateLimitCategory,

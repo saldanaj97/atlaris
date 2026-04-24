@@ -1,8 +1,6 @@
-import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
+import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import type { OwnedPlanRecord } from '@/lib/db/queries/helpers/plans-helpers';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
 
@@ -40,20 +38,6 @@ export function requirePlanIdFromRequest(
 		throw new ValidationError('Invalid plan id format.');
 	}
 	return planId;
-}
-
-export async function requireInternalUserByAuthId(
-	authUserId: string,
-	dbClient?: PlansDbClient,
-): Promise<DbUser> {
-	const user = await getUserByAuthId(authUserId, dbClient);
-	if (!user) {
-		throw new AppError(
-			'Authenticated user record missing despite provisioning.',
-			{ status: 500, code: 'INTERNAL_ERROR' },
-		);
-	}
-	return user;
 }
 
 export async function requireOwnedPlanById(params: {

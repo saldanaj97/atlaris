@@ -3,16 +3,7 @@ export {
 	TASK_PROGRESS_MAX_BATCH,
 	validateTaskProgressBatchInput,
 } from './boundary';
-export type {
-	ApplyTaskProgressUpdatesInput,
-	ModuleCompletionSummary,
-	PlanDetailsCardStats,
-	PlanModuleTimelineStatus,
-	PlanOverviewStats,
-	TaskProgressUpdate,
-	TaskProgressUpdateResult,
-	TaskProgressVisibleState,
-} from './types';
+export type { PlanDetailsCardStats, PlanOverviewStats } from './types';
 export {
 	buildTaskStatusMap,
 	deriveActiveModuleId,

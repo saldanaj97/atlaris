@@ -3,7 +3,7 @@
  *
  * **Callers (only):**
  * - `DefaultStripeCommerceBoundary.acceptWebhook()` after signature/livemode preflight
- * - `replaySyntheticSubscriptionCreated` (re-exported as `replayLocalSubscriptionCreated` from `local-checkout-replay.ts`)
+ * - `replaySyntheticSubscriptionCreated` (local completion route via `executeLocalSubscriptionReplay` in `factory.ts`)
  *
  * **Owns:**
  * - Stripe webhook idempotency row insert, duplicate short-circuit, rollback delete on apply failure

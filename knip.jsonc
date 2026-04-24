@@ -42,9 +42,15 @@
     "src/features/plans/session/stream-emitters.ts": ["types"],
     "src/lib/api/request-boundary.ts": ["types"],
     "src/shared/schemas/plan-status.ts": ["types"],
+    "src/features/billing/stripe-commerce.ts": [
+      "types"
+    ],
+    "src/features/plans/regeneration-orchestration/index.ts": [
+      "exports",
+      "types"
+    ],
     "tests/fixtures/stripe-mocks.ts": ["exports", "types"],
-    "tests/fixtures/db-mocks.ts": ["exports"],
-    "tests/helpers/console-spy.ts": ["files"]
+    "tests/fixtures/db-mocks.ts": ["exports"]
   },
   "rules": {
     "files": "warn"

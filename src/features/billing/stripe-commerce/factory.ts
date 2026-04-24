@@ -17,7 +17,7 @@ import { logger } from '@/lib/logging/logger';
 
 type AppLogger = ReturnType<typeof createLogger>;
 
-export type ExecuteLocalSubscriptionReplayOverrides = Partial<{
+type ExecuteLocalSubscriptionReplayOverrides = Partial<{
 	gateway: StripeGateway;
 	serviceRoleDb: typeof serviceRoleDb;
 	users: typeof users;
@@ -30,7 +30,7 @@ let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
  * Shared Stripe client for billing features (delegates to `getStripe()` in
  * `client.ts` to avoid circular imports with the commerce boundary).
  */
-export function getBillingStripeClient(): Stripe {
+function getBillingStripeClient(): Stripe {
 	return getStripe();
 }
 

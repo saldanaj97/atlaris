@@ -72,5 +72,3 @@ export type ProcessPlanRegenerationJobResult =
 	 */
 	| { kind: 'plan-not-found-or-unauthorized'; jobId: string; planId: string }
 	| { kind: 'invalid-payload'; jobId: string };
-
-export type { Job } from '@/features/jobs/types';

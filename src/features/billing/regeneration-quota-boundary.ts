@@ -45,7 +45,7 @@ export type RegenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
  * - `ok: true, consumed: true` means the reservation stuck and the route should accept the request.
  * - `ok: true, consumed: false` means the reservation was reverted; route should map to 409 (or its caller-defined conflict). `reconciliationRequired` is true when the compensation step itself failed.
  */
-export type RegenerationQuotaResult<TConsumed, TReverted = TConsumed> =
+type RegenerationQuotaResult<TConsumed, TReverted = TConsumed> =
 	| { ok: true; consumed: true; value: TConsumed }
 	| {
 			ok: true;
