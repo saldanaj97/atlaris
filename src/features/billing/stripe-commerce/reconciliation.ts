@@ -41,6 +41,12 @@ type ServiceRoleDb = typeof serviceRoleDb;
 
 const STRIPE_SYNC_TIMEOUT_MS = 10_000;
 
+/**
+ * Verified-event and replay plumbing. `stripe` / `gateway` are optional in the type, but
+ * some paths (e.g. `applySubscriptionSync`) require a Stripe client at runtime; call sites
+ * use `getStripe()` or a gateway, and tests inject `stripe` mocks. Treat as production +
+ * test compatibility seam; migrating all Stripe usage under `StripeGateway` only is future work.
+ */
 export type StripeReconciliationDeps = {
 	stripe?: Stripe;
 	gateway?: StripeGateway;
@@ -49,6 +55,11 @@ export type StripeReconciliationDeps = {
 	users: typeof users;
 };
 
+/**
+ * Narrow transition helpers (`applyPaymentFailed`, `applySubscriptionSync`, …) share this bag.
+ * `stripe` is optional in the type; `applySubscriptionSync` still requires it when that path
+ * runs. Integration tests pass `makeStripeMock()` and similar; not test-only in general.
+ */
 export type TransitionDeps = {
 	stripe?: Stripe;
 	logger: Logger;

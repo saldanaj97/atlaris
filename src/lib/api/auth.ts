@@ -189,6 +189,8 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 }
 
 /**
+ * @internal Compatibility shim. Prefer `requestBoundary.component()` for new code.
+ *
  * Establishes an RLS-enforced DB context for Server Components.
  * This is the Server Component equivalent of `withAuth` for API routes.
  *
@@ -208,6 +210,8 @@ export async function withServerComponentContext<T>(
 }
 
 /**
+ * @internal Compatibility shim. Prefer `requestBoundary.action()` for new code.
+ *
  * Wrapper for Server Actions that sets up authenticated RLS context.
  * Equivalent to withServerComponentContext but designed for 'use server' functions.
  * Handles auth, RLS client creation, user lookup, and cleanup.

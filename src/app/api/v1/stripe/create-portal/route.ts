@@ -18,9 +18,14 @@ const createPortalBodySchema = z.object({
 	returnUrl: z.string().optional(),
 });
 
+/**
+ * Factory deps for `createCreatePortalHandler`. Same story as create-checkout: production uses
+ * defaults; tests may inject `boundary` or the deprecated `stripe` shortcut for
+ * `LiveStripeGateway` construction.
+ */
 export type CreatePortalHandlerDeps = {
 	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+	/** @deprecated Prefer `boundary`; use only when the harness only has a raw `Stripe` client. */
 	stripe?: Stripe;
 	parseJsonBody?: typeof parseJsonBody;
 };

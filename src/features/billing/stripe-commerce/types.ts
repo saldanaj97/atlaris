@@ -31,12 +31,19 @@ export type OpenPortalInput = {
 	returnUrl?: string;
 };
 
+/**
+ * Webhook HTTP boundary input. Optional `stripe` is production-compatible: the handler may
+ * pass a client so verified-event application can use `new LiveStripeGateway(stripe)` instead
+ * of the boundary’s default `deps.gateway` (see `DefaultStripeCommerceBoundary.acceptWebhook`);
+ * test harnesses inject mocks the same way. That route-level `Stripe` optional is a narrow
+ * compatibility seam — consolidating injection behind `StripeGateway` only is a possible
+ * future follow-up, not this cleanup step.
+ */
 export type AcceptWebhookInput = {
 	rawBody: string;
 	signatureHeader: string | null;
 	contentLength?: number | null;
 	logger: import('@/lib/logging/logger').Logger;
-	/** Optional Stripe client for subscription resync paths (tests inject mocks). */
 	stripe?: import('stripe').default;
 };
 

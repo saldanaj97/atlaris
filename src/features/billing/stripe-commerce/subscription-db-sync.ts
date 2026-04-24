@@ -7,6 +7,12 @@ import type { DbClient } from '@/lib/db/types';
 import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
+/**
+ * Subscription sync call-site dependencies. `stripe` is optional: when omitted, production
+ * code uses `getStripe()`; integration tests and other call sites may inject a `Stripe` mock
+ * (same seam as `TransitionDeps` / acceptance testing). A future design could require only
+ * `StripeGateway` — not part of this documentation-only pass.
+ */
 type SyncSubscriptionToDbDeps = {
 	dbClient: DbClient;
 	stripe?: Stripe;

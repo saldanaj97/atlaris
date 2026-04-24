@@ -119,16 +119,13 @@ Plan: `./plan.md`
 
 ### Step 8.0 — Deprecated / Legacy
 
-- [ ] Update docs to present `requestBoundary.component()` / `requestBoundary.action()` as default:
-  - [ ] `docs/architecture/auth-and-data-layer.md:24-25,45-65`
-  - [ ] `src/lib/db/AGENTS.md:35-36`
-- [ ] Rewrite "legacy handlers cannot use `withErrorBoundary(...)`" language in `docs/api/error-contract.md:42` to match current runtime.
-- [ ] Plan migration of deprecated `stripe?: Stripe` injection path:
-  - [ ] Route handlers (`src/app/api/v1/stripe/{create-checkout,create-portal,webhook}/route.ts`)
-  - [ ] `src/features/billing/stripe-commerce/types.ts:39-40`
-  - [ ] `src/features/billing/stripe-commerce/{reconciliation,subscription-db-sync}.ts`
-  - [ ] `tests/integration/stripe/subscriptions.spec.ts:33`
-- [ ] Mark auth wrappers (`withServerComponentContext`, `withServerActionContext`) as internal compat shims in docstrings.
+- [x] Update docs to present `requestBoundary.component()` / `requestBoundary.action()` as default:
+  - [x] `docs/architecture/auth-and-data-layer.md:24-25,45-65`
+  - [x] `src/lib/db/AGENTS.md:35-36`
+- [x] Also updated `.github/copilot-instructions.md` (per plan step 9.0).
+- [x] Rewrite "legacy handlers cannot use `withErrorBoundary(...)`" language in `docs/api/error-contract.md:42` to match current runtime.
+- [x] `stripe?: Stripe` injection: kept as compatibility seam; JSDoc above `AcceptWebhookInput`, `SyncSubscriptionToDbDeps`, `StripeReconciliationDeps`, `TransitionDeps`, and Stripe route `*HandlerDeps` types. No gateway-only migration in this pass. `tests/integration/stripe/subscriptions.spec.ts:33` covered by `TransitionDeps` doc (no file edit).
+- [x] Mark auth wrappers (`withServerComponentContext`, `withServerActionContext`) as internal compat shims in docstrings.
 - [ ] Leave intentional items (nested error-envelope fallback, `DATABASE_URL_UNPOOLED` alias, PDF legacy refs, pricing fallback path, `job_queue`).
 
 ### Step 9.0 — AI-Slop / Comment Cleanup (last)

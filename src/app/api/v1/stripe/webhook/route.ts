@@ -25,9 +25,14 @@ if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
 	);
 }
 
+/**
+ * Factory deps for `createWebhookHandler`. Default `POST` uses `getStripeCommerceBoundary()`;
+ * tests pass `boundary` and/or `stripe` so `acceptWebhook` can use `new LiveStripeGateway`
+ * and forward `input.stripe` (see `AcceptWebhookInput` in `stripe-commerce/types.ts`).
+ */
 export type WebhookHandlerDeps = {
 	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+	/** @deprecated Prefer `boundary` when the harness can build one. */
 	stripe?: Stripe;
 };
 

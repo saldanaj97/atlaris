@@ -44,14 +44,14 @@ pnpm db:dev:reset
 ## High-level architecture
 
 - Route protection lives in `src/proxy.ts`, not a root `middleware.ts`.
-- API routes use the auth wrappers in `src/lib/api/auth.ts`.
+- API routes use `withAuth` or `requestBoundary.route` (`src/lib/api/auth.ts`, `src/lib/api/request-boundary.ts`). For server components and server actions, prefer `requestBoundary.component` / `requestBoundary.action` over calling `withServerComponentContext` / `withServerActionContext` directly (those are compat shims).
 - Request handlers must use `getDb()` from `src/lib/db/runtime.ts` for request-scoped RLS access.
 - Service-role DB clients are for tests, workers, migrations, and other system flows only. Do not import them into normal request handlers.
 - Plan generation starts at `POST /api/v1/plans/stream`. The stream route creates the plan record, runs generation, persists attempts/modules/tasks, and emits SSE progress events. Core orchestration lives in `src/lib/ai/orchestrator.ts`, with persistence in `src/lib/db/queries/plans.ts` and `src/lib/db/queries/attempts.ts`.
 
 ## Key conventions
 
-- For authenticated server components, prefer `withServerComponentContext()`. Use `getEffectiveAuthUserId()` only for redirect-only identity checks. Do not introduce new `getCurrentUserRecordSafe()` usage.
+- For authenticated server components and server actions, prefer `requestBoundary.component()` / `requestBoundary.action()`. The older `withServerComponentContext` / `withServerActionContext` are compatibility shims. Use `getEffectiveAuthUserId()` only for redirect-only identity checks (no RLS `getDb()` in that path). Do not introduce new `getCurrentUserRecordSafe()` usage.
 - Do not edit `.env.local` unless the user explicitly asks. Treat it as user-owned machine state; prefer shared docs/examples and launcher-owned env for local smoke or dev-db work.
 - In tests, prefer `@tests/...` aliases for test-only helpers, mocks, and fixtures.
 - `vi.mock()` and `importActual()` must use the exact same module specifier string as the production import. Relative-path equivalents can register as different module IDs and miss the dependency under test.

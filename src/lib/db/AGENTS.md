@@ -25,20 +25,22 @@ import { db } from '@/lib/db/service-role';
 **Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
 Keep service-role imports out of these paths; align with layer rules and Biome checks in `biome.json` (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`).
 
-## Auth Wrappers (How DB Context Gets Established)
+## Request boundary and auth (how `getDb()` is established)
 
-`getDb()` requires an active request context — it doesn't work in isolation. Three wrappers in `@/lib/api/auth` set up that context:
+`getDb()` requires an active request context — it doesn't work in isolation. **Default pattern:** `requestBoundary` from `@/lib/api/request-boundary` — `requestBoundary.route`, `requestBoundary.component`, and `requestBoundary.action` set up the same RLS + request context.
 
-| Consumer          | Wrapper                          | When to use                      |
+| Consumer          | API                              | When to use                      |
 | ----------------- | -------------------------------- | -------------------------------- |
-| API routes        | `withAuth(handler)`              | Route handlers in `src/app/api/` |
-| Server actions    | `withServerActionContext(fn)`    | `'use server'` functions         |
-| Server components | `withServerComponentContext(fn)` | Async server components          |
+| API routes        | `withAuth` or `requestBoundary.route` | `src/app/api/**`            |
+| Server actions    | `requestBoundary.action`         | `'use server'` functions         |
+| Server components | `requestBoundary.component`     | Async server components          |
 
-All three create an RLS client, set up request context, resolve the DB user, and guarantee cleanup.  
-**Never call `getDb()` or query functions outside one of these wrappers** — it will throw `MissingRequestDbContextError`.
+`withServerComponentContext` and `withServerActionContext` in `@/lib/api/auth` are **compatibility shims** (used inside `requestBoundary` and by older call sites). New code should prefer `requestBoundary`.
 
-Full architecture: `@docs/context/architecture/auth-and-data-layer.md`
+All paths create an RLS client, set up request context, resolve the DB user, and guarantee cleanup.  
+**Never call `getDb()` or query functions outside one of these** — it will throw `MissingRequestDbContextError`.
+
+Full architecture: `docs/architecture/auth-and-data-layer.md` (from repo root)
 
 ## Structure
 

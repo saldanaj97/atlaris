@@ -24,9 +24,15 @@ const createCheckoutBodySchema = z
 	})
 	.strict();
 
+/**
+ * Factory deps for `createCreateCheckoutHandler`. The default `POST` export uses none; tests
+ * and harnesses set `boundary` or, for narrow compatibility, `stripe` to build a boundary via
+ * `createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) })` without wiring
+ * a full mock boundary. Prefer `boundary` when you have one.
+ */
 export type CreateCheckoutHandlerDeps = {
 	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; builds a boundary with this Stripe client for tests */
+	/** @deprecated Prefer `boundary`; use only when the harness only has a raw `Stripe` client. */
 	stripe?: Stripe;
 };
 
