@@ -1,10 +1,20 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
 import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
+import { MissingRequestDbContextError } from '@/lib/db/runtime';
 import {
 	safeStringifyUnknown,
 	unknownThrownCore,
 } from '@/lib/errors/normalize-unknown';
 import { logger } from '@/lib/logging/logger';
+
+/** Programming / wiring mistakes: surface instead of masking as persistence noise. */
+function shouldSurfaceMarkFailureError(markErr: unknown): boolean {
+	return (
+		markErr instanceof TypeError ||
+		markErr instanceof ReferenceError ||
+		markErr instanceof MissingRequestDbContextError
+	);
+}
 
 function maybeExtractCause(value: unknown): ErrorLike['cause'] | undefined {
 	if (
@@ -37,9 +47,17 @@ export async function safeMarkPlanFailed(
 	try {
 		await persistence.markGenerationFailure(planId);
 	} catch (markErr) {
+		if (shouldSurfaceMarkFailureError(markErr)) {
+			throw markErr;
+		}
 		errorLogger.error(
-			{ error: markErr, planId, userId },
-			'Failed to mark plan as failed after generation error.',
+			{
+				error: markErr,
+				planId,
+				userId,
+				context: 'markGenerationFailure-after-generation-error',
+			},
+			'Failed to mark plan as failed after generation error (persistence path).',
 		);
 	}
 }

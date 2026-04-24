@@ -5,7 +5,7 @@ import { logger } from '@/lib/logging/logger';
  * drain must not start. Production should use {@link tryRegisterInlineDrain} so the check and
  * registration happen in one synchronous step.
  */
-const inlineInFlightDrains = new Set<Promise<unknown>>();
+const inlineInFlightDrains = new Set<Promise<void>>();
 
 const DEFAULT_MAX_INLINE_DRAIN_WAIT_ITERATIONS = 1000;
 
@@ -24,7 +24,7 @@ export function isInlineDrainFree(): boolean {
  * `getDrainPromise` (so a second `drain()` is not started).
  */
 export function tryRegisterInlineDrain(
-	getDrainPromise: () => Promise<unknown>,
+	getDrainPromise: () => Promise<void>,
 ): boolean {
 	if (inlineInFlightDrains.size !== 0) {
 		return false;
@@ -38,7 +38,7 @@ export function tryRegisterInlineDrain(
  * Registers a drain promise so tests (or shutdown hooks) can await completion via
  * {@link waitForInlineRegenerationDrains}. Removes the promise from the set when it settles.
  */
-export function registerInlineDrain(promise: Promise<unknown>): void {
+export function registerInlineDrain(promise: Promise<void>): void {
 	inlineInFlightDrains.add(promise);
 	const cleanup = () => {
 		inlineInFlightDrains.delete(promise);

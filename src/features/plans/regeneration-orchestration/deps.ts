@@ -79,7 +79,7 @@ export interface RegenerationOrchestrationDeps {
 	};
 	inlineDrain: {
 		tryRegister: typeof tryRegisterInlineDrain;
-		drain: () => Promise<unknown>;
+		drain: () => Promise<void>;
 	};
 	/**
 	 * Invoked after active-job dedupe passes and before quota reserve + enqueue.
@@ -99,7 +99,7 @@ type DefaultRegenerationOrchestrationDepsOptions = {
 	 * Runs after successful enqueue when inline processing registers.
 	 * App boundary (e.g. `request.ts`) must pass real drain; `process.ts` uses no-op default.
 	 */
-	inlineDrain?: () => Promise<unknown>;
+	inlineDrain?: () => Promise<void>;
 };
 
 async function noopInlineDrain(): Promise<void> {}

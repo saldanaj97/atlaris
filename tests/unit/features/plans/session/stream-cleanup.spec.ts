@@ -11,7 +11,7 @@ describe('stream-cleanup safeMarkPlanFailed', () => {
 		vi.clearAllMocks();
 	});
 
-	it('swallows persistence errors and logs', async () => {
+	it('logs and swallows typical persistence failures', async () => {
 		const err = new Error('db down');
 		const persistence = {
 			markGenerationFailure: vi.fn().mockRejectedValue(err),
@@ -26,6 +26,22 @@ describe('stream-cleanup safeMarkPlanFailed', () => {
 
 		expect(persistence.markGenerationFailure).toHaveBeenCalledWith(planId);
 		expect(loggerError).toHaveBeenCalled();
+	});
+
+	it('rethrows TypeError so wiring bugs surface', async () => {
+		const err = new TypeError('read property of undefined');
+		const persistence = {
+			markGenerationFailure: vi.fn().mockRejectedValue(err),
+			markGenerationSuccess: vi.fn(),
+		};
+
+		await expect(
+			safeMarkPlanFailed(planId, userId, persistence, {
+				logger: { error: loggerError },
+			}),
+		).rejects.toBe(err);
+
+		expect(loggerError).not.toHaveBeenCalled();
 	});
 
 	it('does not log on success', async () => {

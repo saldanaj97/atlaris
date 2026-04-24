@@ -216,32 +216,30 @@ export default function ManageSubscriptionButton({
 
 		let isRedirecting = false;
 
-		await requestBillingPortal({ returnUrl })
-			.then((result) => {
-				if (result.kind === 'error') {
-					if (result.reason === 'timeout') {
-						clientLogger.warn('Billing portal request timed out', {
-							returnUrl,
-						});
-					} else {
-						clientLogger.error('Failed to open billing portal', {
-							error: result.error,
-							returnUrl,
-						});
-					}
-
-					toast.error('Unable to open billing portal', {
-						description: result.message,
+		try {
+			const result = await requestBillingPortal({ returnUrl });
+			if (result.kind === 'error') {
+				if (result.reason === 'timeout') {
+					clientLogger.warn('Billing portal request timed out', {
+						returnUrl,
 					});
-					return;
+				} else {
+					clientLogger.error('Failed to open billing portal', {
+						error: result.error,
+						returnUrl,
+					});
 				}
 
+				toast.error('Unable to open billing portal', {
+					description: result.message,
+				});
+				return;
+			}
+
+			try {
 				window.location.href = result.portalUrl;
 				isRedirecting = true;
-			})
-			// Safety net: requestBillingPortal handles its own errors internally,
-			// but .then() above (e.g. window.location assignment) could still throw.
-			.catch((error: unknown) => {
+			} catch (error: unknown) {
 				clientLogger.error('Unexpected billing portal failure', {
 					error,
 					returnUrl,
@@ -249,14 +247,14 @@ export default function ManageSubscriptionButton({
 				toast.error('Unable to open billing portal', {
 					description: getErrorMessage(error, 'Something went wrong'),
 				});
-			})
-			.finally(() => {
-				pendingRef.current = false;
+			}
+		} finally {
+			pendingRef.current = false;
 
-				if (!isRedirecting) {
-					setLoading(false);
-				}
-			});
+			if (!isRedirecting) {
+				setLoading(false);
+			}
+		}
 	}
 
 	return (

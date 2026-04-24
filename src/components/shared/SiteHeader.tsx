@@ -48,10 +48,14 @@ export default async function SiteHeader() {
 			);
 			tier = result ?? undefined;
 		} catch (err) {
-			// Non-critical: tier badge is hidden gracefully on failure
-			logger.warn(
-				{ err },
-				'Failed to fetch subscription tier; tier badge will be hidden',
+			// Non-critical for shell render: tier badge omitted; log for ops visibility.
+			logger.error(
+				{
+					err,
+					authUserId,
+					source: 'SiteHeader.subscriptionTier',
+				},
+				'Subscription tier fetch failed; header renders without tier badge',
 			);
 		}
 	}

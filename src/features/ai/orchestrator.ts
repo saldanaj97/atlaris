@@ -78,24 +78,8 @@ export async function runGenerationAttempt(
 
 	const provider = options.provider ?? getGenerationProvider();
 
-	let setup: ReturnType<typeof setupAbortAndTimeout>;
-	try {
-		setup = setupAbortAndTimeout(timeoutConfig, options.signal);
-	} catch (error) {
-		return finalizeGenerationFailure({
-			error,
-			reservation,
-			attemptOps,
-			context,
-			attemptClockStart,
-			clock,
-			nowFn,
-			dbClient,
-		});
-	}
-
 	const { timeout, controller, cleanupTimeoutAbort, cleanupExternalAbort } =
-		setup;
+		setupAbortAndTimeout(timeoutConfig, options.signal);
 	let providerMetadata: ProviderMetadata | undefined;
 	let rawText: string | undefined;
 
