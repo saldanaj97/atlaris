@@ -1,4 +1,8 @@
-import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
+// SkillLevel / LearningStyle derived from enums here (not from db.types) to avoid
+// circular: db.types → attempts.types → this file.
+type DbEnumsModule = typeof import('@/lib/db/enums');
+type SkillLevel = DbEnumsModule['skillLevel']['enumValues'][number];
+type LearningStyle = DbEnumsModule['learningStyle']['enumValues'][number];
 
 export type GenerationInput = {
 	topic: string;
