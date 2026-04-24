@@ -8,6 +8,7 @@ import {
 } from '@/app/dashboard/components/activity-utils';
 import { ResumeLearningHero } from '@/app/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ROUTES } from '@/features/navigation/routes';
 import { listDashboardPlanSummaries } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
@@ -25,7 +26,7 @@ export async function DashboardContent(): Promise<JSX.Element> {
 	});
 
 	if (!result) {
-		redirect('/auth/sign-in');
+		redirect(ROUTES.AUTH.SIGN_IN);
 	}
 
 	const { summaries } = result;

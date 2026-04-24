@@ -17,6 +17,7 @@ import {
 	PROVIDER_RETRY_MIN_MS,
 } from '@/features/plans/retry-policy';
 import { aiEnv, appEnv } from '@/lib/config/env';
+import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
 export type RouterConfig = {
@@ -67,13 +68,6 @@ function getStatusCode(error: unknown): number | undefined {
 			: undefined;
 
 	return responseStatus;
-}
-
-function isAbortError(error: unknown): boolean {
-	return (
-		(error instanceof DOMException && error.name === 'AbortError') ||
-		(error instanceof Error && error.name === 'AbortError')
-	);
 }
 
 function shouldRetry(error: unknown): boolean {

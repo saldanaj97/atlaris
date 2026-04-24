@@ -13,6 +13,7 @@ import {
 	getPersistableModelsForTier,
 	resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
+import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -24,7 +25,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 export async function ModelSelectionCard(): Promise<JSX.Element> {
 	const user = await requestBoundary.component(({ actor }) => actor);
 
-	if (!user) redirect('/auth/sign-in');
+	if (!user) redirect(ROUTES.AUTH.SIGN_IN);
 
 	const userTier: SubscriptionTier = user.subscriptionTier;
 

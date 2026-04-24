@@ -4,6 +4,7 @@ import { getStripe } from '@/features/billing/client';
 import { mapStripeSubscriptionStatus } from '@/features/billing/stripe-commerce/subscription-status';
 import { users } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
+import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
 type SyncSubscriptionToDbDeps = {
@@ -29,10 +30,6 @@ function createAbortError(message: string): Error {
 	const error = new Error(message);
 	error.name = 'AbortError';
 	return error;
-}
-
-function isAbortError(error: unknown): boolean {
-	return error instanceof Error && error.name === 'AbortError';
 }
 
 async function withAbortSignal<T>(

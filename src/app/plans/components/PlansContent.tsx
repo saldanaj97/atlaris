@@ -6,6 +6,7 @@ import { PlanCountBadge } from '@/app/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { ROUTES } from '@/features/navigation/routes';
 import { listPlansPageSummaries } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
@@ -46,7 +47,7 @@ export async function PlansContent(): Promise<JSX.Element> {
 	});
 
 	if (!result) {
-		redirect('/auth/sign-in');
+		redirect(ROUTES.AUTH.SIGN_IN);
 	}
 
 	const { summaries, snapshot } = result;

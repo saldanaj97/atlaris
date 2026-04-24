@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
 const profileSchema = z.object({
@@ -82,10 +83,6 @@ const INITIAL_PROFILE_FORM_STATE: ProfileFormState = {
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
 	return error instanceof Error ? error.message : fallbackMessage;
-}
-
-function isAbortError(error: unknown): boolean {
-	return error instanceof Error && error.name === 'AbortError';
 }
 
 function profileFormReducer(

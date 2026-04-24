@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 /**
@@ -21,7 +22,7 @@ export async function BillingCards(): Promise<JSX.Element> {
 		}),
 	}));
 
-	if (!result) redirect('/auth/sign-in');
+	if (!result) redirect(ROUTES.AUTH.SIGN_IN);
 
 	const { snapshot } = result;
 

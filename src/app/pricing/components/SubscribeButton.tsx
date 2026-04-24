@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
 type CheckoutRequestResult =
@@ -42,10 +43,6 @@ function getCheckoutResponseErrorMessage(rawIssue: {
 }
 
 const CHECKOUT_TIMEOUT_MS = 15_000;
-
-function isAbortError(error: unknown): boolean {
-	return error instanceof DOMException && error.name === 'AbortError';
-}
 
 async function requestCheckoutSession(params: {
 	priceId: string;
