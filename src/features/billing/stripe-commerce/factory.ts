@@ -1,6 +1,5 @@
 import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
 	DefaultStripeCommerceBoundary,
 	type StripeCommerceBoundaryDeps,
@@ -8,6 +7,7 @@ import {
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { replaySyntheticSubscriptionCreated } from '@/features/billing/stripe-commerce/reconciliation';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
