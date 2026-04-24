@@ -1,3 +1,4 @@
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { getDb } from '@/lib/db/runtime';
 import {
@@ -14,7 +15,11 @@ export async function requestPlanRegeneration(
 	deps?: RegenerationOrchestrationDeps,
 ): Promise<RequestPlanRegenerationResult> {
 	const { userId, planId, overrides, inlineProcessingEnabled } = args;
-	const d = deps ?? createDefaultRegenerationOrchestrationDeps(getDb());
+	const d =
+		deps ??
+		createDefaultRegenerationOrchestrationDeps(getDb(), {
+			inlineDrain: () => drainRegenerationQueue({ maxJobs: 1 }),
+		});
 
 	if (!d.queue.enabled()) {
 		return { kind: 'queue-disabled' };

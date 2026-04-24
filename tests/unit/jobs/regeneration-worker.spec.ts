@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
-import * as regenerationOrchestration from '@/features/plans/regeneration-orchestration';
+import * as regenerationProcess from '@/features/plans/regeneration-orchestration/process';
 
 describe('drainRegenerationQueue', () => {
 	afterEach(() => {
@@ -9,7 +9,7 @@ describe('drainRegenerationQueue', () => {
 
 	it('defaults processNextJob to processNextPlanRegenerationJob', async () => {
 		const spy = vi
-			.spyOn(regenerationOrchestration, 'processNextPlanRegenerationJob')
+			.spyOn(regenerationProcess, 'processNextPlanRegenerationJob')
 			.mockResolvedValue({ kind: 'no-job' });
 		const result = await drainRegenerationQueue({ maxJobs: 1 });
 		expect(spy).toHaveBeenCalledTimes(1);

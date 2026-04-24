@@ -95,15 +95,14 @@ export interface RegenerationOrchestrationDeps {
 }
 
 export type DefaultRegenerationOrchestrationDepsOptions = {
+	/**
+	 * Runs after successful enqueue when inline processing registers.
+	 * App boundary (e.g. `request.ts`) must pass real drain; `process.ts` uses no-op default.
+	 */
 	inlineDrain?: () => Promise<unknown>;
 };
 
-async function drainSingleRegenerationJob(): Promise<unknown> {
-	const { drainRegenerationQueue } = await import(
-		'@/features/jobs/regeneration-worker'
-	);
-	return drainRegenerationQueue({ maxJobs: 1 });
-}
+async function noopInlineDrain(): Promise<void> {}
 
 export function createDefaultRegenerationOrchestrationDeps(
 	dbClient: DbClient,
@@ -141,7 +140,7 @@ export function createDefaultRegenerationOrchestrationDeps(
 		retry: { shouldRetryJob },
 		inlineDrain: {
 			tryRegister: tryRegisterInlineDrain,
-			drain: options.inlineDrain ?? drainSingleRegenerationJob,
+			drain: options.inlineDrain ?? noopInlineDrain,
 		},
 		rateLimit: { check: checkPlanGenerationRateLimit },
 		logger,
