@@ -14,5 +14,8 @@
     "source.fixAll.biome": "always",
     "source.action.noDuplicateClasses.biome": "always",
   },
-  "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview"
+  "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
 }
