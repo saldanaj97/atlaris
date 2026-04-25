@@ -203,3 +203,8 @@ long-lived compatibility barrel ships (enforced by Step 0.0 item 3).
 - v2 candidate — revisit module-detail inclusion when `getModuleDetail`
 needs plan-read status/completion truth or starts mixing with boundary
 projections on the same surface.
+- 2026-04-24 follow-up planning decision: defer. Current `getModuleDetail`
+still lives in `src/lib/db/queries/modules.ts`, is called by the module page
+server action and module query tests, and does not consume
+`@/features/plans/read-projection`. See
+`../313-rfc-consolidate-plan-task-progress-boundary/follow-ups-310-313.md`.

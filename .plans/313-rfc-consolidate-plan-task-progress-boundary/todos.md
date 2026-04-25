@@ -125,7 +125,7 @@ Plan: `./plans.md`
 | Acceptance Criterion | Evidence |
 | --- | --- |
 | AC1 | `src/features/plans/task-progress/boundary.ts` — `applyTaskProgressUpdates`; both actions call it. |
-| AC2 | `assertTaskIdsInPlanScopeForUser` / `assertTaskIdsInModuleScopeForUser` in `src/lib/db/queries/tasks.ts`; integration `apply-updates.spec.ts` cross-plan / cross-module. |
+| AC2 | `setTaskProgressBatch` in `src/lib/db/queries/tasks.ts` receives `{ planId, moduleId }` from the boundary and checks owned task ids with plan/module scope inside the write transaction; integration `apply-updates.spec.ts` covers cross-plan / cross-module rejection. |
 | AC3 | `src/app/plans/[id]/actions.ts`, `src/app/plans/[id]/modules/[moduleId]/actions.ts` — validate → boundary → `revalidatePath` over returned paths only. |
 | AC4 | `PlanTimeline.tsx`, `ModuleHeader.tsx`, `ModuleLessonsClient.tsx` import `derive*` from `@/features/plans/task-progress`. |
 | AC5 | `useTaskStatusBatcher` unchanged; `PlanDetails` / `ModuleDetailClient` still pass same flush actions. |
@@ -179,5 +179,8 @@ src/features/plans/task-progress/boundary.ts — PROGRESS_STATUSES from @/shared
 
 ### Follow-ups
 
-- [ ] Decide during implementation whether `completedAt` / `updatedAt` should move to DB time (`now()`) in the task-progress persistence path.
-- [ ] Implement actual module-task-specific write wiring so explicit plan/module scope helpers are used or deleted instead of lingering as reminders.
+- [ ] Execute the small follow-up plan in `follow-ups-310-313.md`.
+- [ ] Move task-progress `completedAt` / `updatedAt` persistence to DB time (`now()`) in `src/lib/db/queries/tasks.ts`, unless implementation evidence disproves the recommendation.
+- [ ] Extend `tests/integration/features/plans/task-progress/apply-updates.spec.ts` for DB-backed timestamp semantics and `updatedAt` advancement.
+- [ ] Resolve the module-task helper cleanup as documentation/evidence cleanup, not new helper functions, unless duplicated query logic appears during implementation.
+- [ ] After implementation, update this Review section with concrete command output for the targeted integration spec, `pnpm test:changed`, and `pnpm check:full`.

@@ -28,6 +28,7 @@ export type TaskProgressUpdate = { taskId: string; status: ProgressStatus };
  * @property moduleId Optional narrower module scope for module-detail updates.
  * @property updates User-requested progress changes, deduped with last write winning.
  * @property dbClient Request-scoped or transactional DB client.
+ * @property now Optional timestamp override for deterministic tests.
  */
 export interface ApplyTaskProgressUpdatesInput {
 	userId: string;
@@ -35,6 +36,7 @@ export interface ApplyTaskProgressUpdatesInput {
 	moduleId?: string;
 	updates: TaskProgressUpdate[];
 	dbClient: TasksDbClient;
+	now?: Date;
 }
 
 /**

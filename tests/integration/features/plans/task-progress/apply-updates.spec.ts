@@ -8,6 +8,13 @@ import { applyTaskProgressUpdates } from '@/features/plans/task-progress';
 import { taskProgress } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
+function expectDate(value: unknown, label: string): asserts value is Date {
+	expect(value).toBeInstanceOf(Date);
+	if (!(value instanceof Date)) {
+		throw new Error(`${label} must be a Date`);
+	}
+}
+
 describe('applyTaskProgressUpdates (integration)', () => {
 	it('returns empty result without writes when updates array is empty', async () => {
 		const authUserId = buildTestAuthUserId('tp-empty');
@@ -128,15 +135,33 @@ describe('applyTaskProgressUpdates (integration)', () => {
 			planId: plan.id,
 			updates: [{ taskId: task.id, status: 'completed' }],
 			dbClient: db,
+			now: new Date('2026-01-01T00:00:00.000Z'),
 		});
-		expect(first.progress[0]?.completedAt).toBeInstanceOf(Date);
+		const firstProgress = first.progress[0];
+		expect(firstProgress).toBeDefined();
+		if (!firstProgress) {
+			throw new Error('Expected first progress row');
+		}
+		expectDate(firstProgress.completedAt, 'first completedAt');
+		expectDate(firstProgress.updatedAt, 'first updatedAt');
+		const firstUpdatedAt = firstProgress.updatedAt.getTime();
+		expect(firstUpdatedAt).toBeGreaterThan(0);
 
 		const second = await applyTaskProgressUpdates({
 			userId,
 			planId: plan.id,
 			updates: [{ taskId: task.id, status: 'in_progress' }],
 			dbClient: db,
+			// Deterministic clock avoids wall-clock sleeps for update ordering.
+			now: new Date('2026-01-01T00:00:01.000Z'),
 		});
-		expect(second.progress[0]?.completedAt).toBeNull();
+		const secondProgress = second.progress[0];
+		expect(secondProgress).toBeDefined();
+		if (!secondProgress) {
+			throw new Error('Expected second progress row');
+		}
+		expect(secondProgress.completedAt).toBeNull();
+		expectDate(secondProgress.updatedAt, 'second updatedAt');
+		expect(secondProgress.updatedAt.getTime()).toBeGreaterThan(firstUpdatedAt);
 	});
 });

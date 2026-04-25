@@ -14,6 +14,11 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 interface TaskProgressBatchScope {
 	planId?: string;
 	moduleId?: string;
+	now?: Date;
+}
+
+interface TaskProgressWriteOptions {
+	now?: Date;
 }
 
 function selectOwnedTaskIdsForUser(
@@ -61,6 +66,7 @@ async function setTaskProgress(
 	taskId: string,
 	status: ProgressStatus,
 	dbClient?: TasksDbClient,
+	options: TaskProgressWriteOptions = {},
 ): Promise<DbTaskProgress> {
 	const client = dbClient ?? getDb();
 
@@ -77,8 +83,8 @@ async function setTaskProgress(
 			throw new Error('Task not found or access denied');
 		}
 
-		const now = new Date();
-		const completedAt = status === 'completed' ? now : null;
+		const timestamp = options.now ?? sql<Date>`now()`;
+		const completedAt = status === 'completed' ? timestamp : null;
 
 		const [progress] = await tx
 			.insert(taskProgress)
@@ -87,14 +93,14 @@ async function setTaskProgress(
 				userId,
 				status,
 				completedAt,
-				updatedAt: now,
+				updatedAt: timestamp,
 			})
 			.onConflictDoUpdate({
 				target: [taskProgress.taskId, taskProgress.userId],
 				set: {
 					status,
-					completedAt,
-					updatedAt: now,
+					completedAt: sql`excluded.completed_at`,
+					updatedAt: sql`excluded.updated_at`,
 				},
 			})
 			.returning();
@@ -131,6 +137,7 @@ export async function setTaskProgressBatch(
 			updates[0].taskId,
 			updates[0].status,
 			dbClient,
+			{ now: scope.now },
 		);
 		return [result];
 	}
@@ -170,13 +177,13 @@ export async function setTaskProgressBatch(
 			throw new Error('One or more tasks not found.');
 		}
 
-		const now = new Date();
+		const timestamp = scope.now ?? sql<Date>`now()`;
 		const values = updates.map((u) => ({
 			taskId: u.taskId,
 			userId,
 			status: u.status,
-			completedAt: u.status === 'completed' ? now : null,
-			updatedAt: now,
+			completedAt: u.status === 'completed' ? timestamp : null,
+			updatedAt: timestamp,
 		}));
 
 		const results = await tx

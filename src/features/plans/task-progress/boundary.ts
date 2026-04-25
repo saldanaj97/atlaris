@@ -90,7 +90,11 @@ export async function applyTaskProgressUpdates(
 		input.userId,
 		input.updates,
 		input.dbClient,
-		{ planId: input.planId, moduleId: input.moduleId },
+		{
+			planId: input.planId,
+			moduleId: input.moduleId,
+			...(input.now === undefined ? {} : { now: input.now }),
+		},
 	);
 
 	const appliedByTaskId: Record<string, ProgressStatus> = {};
