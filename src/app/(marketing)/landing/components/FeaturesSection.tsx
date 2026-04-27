@@ -44,7 +44,10 @@ export function FeaturesSection() {
 		>
 			<div className="mx-auto max-w-screen-xl px-6">
 				<div className="mb-16 text-center">
-					<Badge className="bg-primary/10 text-primary mb-4 px-4 py-1.5">
+					<Badge
+						variant="glassmorphic"
+						className="bg-primary/10 text-primary mb-4 px-4 py-1.5"
+					>
 						Features
 					</Badge>
 					<h2 id={headingId} className="text-foreground marketing-h2 mb-4">

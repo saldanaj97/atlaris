@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 import { useMemo } from 'react';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { Accordion } from '@/components/ui/accordion';
+import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -59,11 +60,11 @@ export function ModuleLessonsClient({
 				</div>
 
 				{lessons.length === 0 ? (
-					<div className="rounded-2xl border border-white/40 bg-white/30 p-8 text-center shadow-lg backdrop-blur-xl dark:border-stone-800/50 dark:bg-stone-900/30">
+					<Surface variant="default" padding="none" className="p-8 text-center">
 						<p className="text-stone-500 dark:text-stone-400">
 							No lessons available for this module.
 						</p>
-					</div>
+					</Surface>
 				) : (
 					<Accordion
 						type="single"
@@ -93,7 +94,7 @@ export function ModuleLessonsClient({
 			</section>
 
 			{isModuleComplete && (
-				<section className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center shadow-lg backdrop-blur-sm dark:border-success/30 dark:bg-success/10">
+				<section className="border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10 rounded-2xl border p-6 text-center shadow-sm">
 					<CheckCircle2 className="text-success mx-auto mb-3 h-12 w-12" />
 					<h3 className="text-success mb-2 text-xl font-bold">
 						Module Completed!

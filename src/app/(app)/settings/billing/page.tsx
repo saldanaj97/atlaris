@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 
 import { BillingCards } from '@/app/(app)/settings/billing/components/BillingCards';
 import { BillingCardsSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Billing Settings sub-page.
@@ -13,12 +14,11 @@ import { BillingCardsSkeleton } from '@/app/(app)/settings/billing/components/Bi
 export default function BillingSettingsPage(): ReactElement {
 	return (
 		<>
-			<header className="mb-6">
-				<h2 className="text-xl font-semibold">Billing</h2>
-				<p className="text-muted-foreground text-sm">
-					Manage your subscription and view usage
-				</p>
-			</header>
+			<PageHeader
+				title="Billing"
+				titleAs="h2"
+				subtitle="Manage your subscription and view usage"
+			/>
 
 			<div className="grid gap-6 md:grid-cols-2">
 				<Suspense fallback={<BillingCardsSkeleton />}>

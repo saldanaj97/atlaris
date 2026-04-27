@@ -4,6 +4,8 @@ import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { PageShell } from '@/components/ui/page-shell';
 import { Progress } from '@/components/ui/progress';
 
 export const metadata: Metadata = {
@@ -48,13 +50,11 @@ const PREVIEW_CARDS = [
 
 export default function UsageAnalyticsPage(): JSX.Element {
 	return (
-		<div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-			<header className="mb-6">
-				<h1>Usage</h1>
-				<p className="subtitle">
-					Understand how you learn, so you can learn even better
-				</p>
-			</header>
+		<PageShell>
+			<PageHeader
+				title="Usage"
+				subtitle="Understand how you learn, so you can learn even better"
+			/>
 
 			<ComingSoonAlert
 				title="We're building something special"
@@ -94,6 +94,6 @@ export default function UsageAnalyticsPage(): JSX.Element {
 					</Card>
 				))}
 			</div>
-		</div>
+		</PageShell>
 	);
 }

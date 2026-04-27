@@ -14,7 +14,7 @@ interface ActivityStreamSidebarProps {
 
 const EMPTY_UPCOMING_EVENTS: readonly ScheduledEvent[] = [];
 const SIDEBAR_CARD_CLASS =
-	'rounded-2xl border border-sidebar-border bg-sidebar p-5 text-sidebar-foreground shadow-lg backdrop-blur-xl';
+	'rounded-2xl border border-sidebar-border bg-sidebar p-5 text-sidebar-foreground shadow-sm';
 const SIDEBAR_SECONDARY_TEXT_CLASS = 'text-sidebar-foreground/70';
 const SIDEBAR_MUTED_TEXT_CLASS = 'text-sidebar-foreground/60';
 const SIDEBAR_SECONDARY_ACTION_CLASS =

@@ -82,7 +82,7 @@ export async function BillingCards(): Promise<JSX.Element> {
 							Manage your subscription
 						</p>
 					</div>
-					<Badge>{snapshot.tier.toUpperCase()}</Badge>
+					<Badge variant="product">{snapshot.tier.toUpperCase()}</Badge>
 				</div>
 
 				<div className="space-y-2 text-sm">

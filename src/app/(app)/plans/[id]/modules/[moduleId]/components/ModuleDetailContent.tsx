@@ -5,6 +5,7 @@ import {
 	isModuleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 
@@ -161,20 +162,20 @@ export function ModuleDetailContentSkeleton() {
 
 function StatCardSkeleton() {
 	return (
-		<div className="rounded-2xl border border-white/40 bg-white/30 p-4 shadow-lg backdrop-blur-xl dark:border-stone-800/50 dark:bg-stone-900/30">
+		<Surface padding="compact">
 			<div className="mb-3 flex items-center gap-2">
 				<Skeleton className="h-5 w-5" />
 				<Skeleton className="h-3 w-16" />
 			</div>
 			<Skeleton className="mb-1 h-8 w-20" />
 			<Skeleton className="h-3 w-24" />
-		</div>
+		</Surface>
 	);
 }
 
 function LessonAccordionSkeleton() {
 	return (
-		<div className="rounded-2xl border border-white/40 bg-white/30 p-5 shadow-lg backdrop-blur-xl dark:border-stone-800/50 dark:bg-stone-900/30">
+		<Surface>
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-4">
 					{/* Checkbox/status skeleton */}
@@ -190,6 +191,6 @@ function LessonAccordionSkeleton() {
 				{/* Expand icon */}
 				<Skeleton className="h-5 w-5" />
 			</div>
-		</div>
+		</Surface>
 	);
 }

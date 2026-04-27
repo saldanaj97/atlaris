@@ -4,6 +4,8 @@ import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { PageShell } from '@/components/ui/page-shell';
 import { Progress } from '@/components/ui/progress';
 
 export const metadata: Metadata = {
@@ -57,13 +59,11 @@ const ACHIEVEMENTS = [
 
 export default function AchievementsPage(): JSX.Element {
 	return (
-		<div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-			<header className="mb-6">
-				<h1>Achievements</h1>
-				<p className="subtitle">
-					Celebrate every milestone on your learning journey
-				</p>
-			</header>
+		<PageShell>
+			<PageHeader
+				title="Achievements"
+				subtitle="Celebrate every milestone on your learning journey"
+			/>
 
 			<ComingSoonAlert
 				title="Your achievements are being crafted."
@@ -98,6 +98,6 @@ export default function AchievementsPage(): JSX.Element {
 					</Card>
 				))}
 			</div>
-		</div>
+		</PageShell>
 	);
 }

@@ -5,6 +5,7 @@ import type { ReactElement } from 'react';
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { PageHeader } from '@/components/ui/page-header';
 import { Switch } from '@/components/ui/switch';
 
 export const metadata: Metadata = {
@@ -32,13 +33,11 @@ function ToggleRow({
 export default function NotificationsSettingsPage(): ReactElement {
 	return (
 		<>
-			<header className="mb-6">
-				<h2 className="text-xl font-semibold">Notifications</h2>
-				<p className="text-muted-foreground text-sm">
-					Manage how you stay informed about your learning progress and account
-					activity
-				</p>
-			</header>
+			<PageHeader
+				title="Notifications"
+				titleAs="h2"
+				subtitle="Manage how you stay informed about your learning progress and account activity"
+			/>
 
 			<ComingSoonAlert
 				title="Personalized alerts are on the way"

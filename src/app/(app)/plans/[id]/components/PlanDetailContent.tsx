@@ -4,6 +4,7 @@ import { getPlanForPage } from '@/app/(app)/plans/[id]/actions';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 
@@ -109,16 +110,14 @@ export function PlanDetailContentSkeleton(): JSX.Element {
 
 function StatCardSkeleton() {
 	return (
-		<Card className="rounded-2xl shadow-sm">
-			<CardContent className="p-4">
-				<div className="mb-3 flex items-center gap-2">
-					<Skeleton className="h-5 w-5" />
-					<Skeleton className="h-3 w-16" />
-				</div>
-				<Skeleton className="mb-1 h-8 w-20" />
-				<Skeleton className="h-3 w-24" />
-			</CardContent>
-		</Card>
+		<Surface padding="compact">
+			<div className="mb-3 flex items-center gap-2">
+				<Skeleton className="h-5 w-5" />
+				<Skeleton className="h-3 w-16" />
+			</div>
+			<Skeleton className="mb-1 h-8 w-20" />
+			<Skeleton className="h-3 w-24" />
+		</Surface>
 	);
 }
 

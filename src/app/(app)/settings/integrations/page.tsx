@@ -4,6 +4,7 @@ import {
 	IntegrationGrid,
 	RequestIntegration,
 } from '@/app/(app)/settings/integrations/components';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * Settings → Integrations sub-page.
@@ -14,12 +15,11 @@ import {
 export default function SettingsIntegrationsPage(): JSX.Element {
 	return (
 		<>
-			<header className="mb-6">
-				<h2 className="text-xl font-semibold">Integrations</h2>
-				<p className="text-muted-foreground text-sm">
-					Connect your favorite tools to supercharge your learning workflow
-				</p>
-			</header>
+			<PageHeader
+				title="Integrations"
+				titleAs="h2"
+				subtitle="Connect your favorite tools to supercharge your learning workflow"
+			/>
 
 			<IntegrationGrid />
 

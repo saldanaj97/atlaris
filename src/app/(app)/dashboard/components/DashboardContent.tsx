@@ -8,6 +8,7 @@ import {
 } from '@/app/(app)/dashboard/components/activity-utils';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { listDashboardPlanSummaries } from '@/features/plans/read-projection';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -110,9 +111,8 @@ export function DashboardContentSkeleton(): JSX.Element {
 					{/* Activity cards skeleton */}
 					<div className="space-y-4">
 						{[1, 2, 3, 4].map((activitySkeletonId) => (
-							<div
+							<Surface
 								key={`dashboard-activity-skeleton-${activitySkeletonId}`}
-								className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10"
 							>
 								<div className="flex gap-4">
 									{/* Icon skeleton */}
@@ -126,14 +126,14 @@ export function DashboardContentSkeleton(): JSX.Element {
 										<Skeleton className="h-4 w-32" />
 									</div>
 								</div>
-							</div>
+							</Surface>
 						))}
 					</div>
 				</div>
 
 				{/* Sidebar skeleton */}
 				<aside className="flex w-full flex-col gap-4">
-					<div className="dark:bg-card-background rounded-2xl border border-white/40 bg-black/5 p-5 shadow-lg backdrop-blur-xl dark:border-white/10">
+					<Surface>
 						{/* Header */}
 						<div className="mb-4 flex items-center justify-between">
 							<div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export function DashboardContentSkeleton(): JSX.Element {
 							<Skeleton className="h-10 rounded-lg" />
 							<Skeleton className="h-10 rounded-lg" />
 						</div>
-					</div>
+					</Surface>
 				</aside>
 			</div>
 		</>

@@ -49,6 +49,11 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | `border` / `input` / `ring` | Strokes, fields, focus rings |
 | `chart-1` … `chart-5` | Data visualization (brand-aligned progression) |
 | `sidebar-*` | Sidebar-specific styling when used |
+| `panel` / `panel-foreground` / `panel-muted` / `panel-border` | Opaque app panels, metrics, and non-glass surfaces |
+| `warning` / `warning-foreground` | Caution (non-destructive) |
+| `disabled` / `disabled-foreground` | Unavailable or disabled copy/surfaces |
+
+**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
 
 ### Light-mode mapping (reference)
 

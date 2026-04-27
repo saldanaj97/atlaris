@@ -1,6 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+import { Surface } from '@/components/ui/surface';
+
 interface ModuleDetailPageErrorProps {
 	message?: string;
 	planId?: string;
@@ -25,11 +27,14 @@ export function ModuleDetailPageError({
 			role="alert"
 			className="flex min-h-[60vh] flex-col items-center justify-center p-4"
 		>
-			<div className="rounded-3xl border border-white/50 bg-white/60 p-8 text-center shadow-xl backdrop-blur-xl dark:border-stone-800 dark:bg-stone-900/60">
+			<Surface
+				padding="none"
+				className="max-w-lg rounded-3xl p-8 text-center shadow-md"
+			>
 				<h1 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
 					Error Loading Module
 				</h1>
-				<p className="mb-6 max-w-md text-stone-600 dark:text-stone-400">
+				<p className="text-foreground/90 mb-6 max-w-md">
 					{message ??
 						'There was an error loading the module. Please try again later.'}
 				</p>
@@ -45,12 +50,12 @@ export function ModuleDetailPageError({
 					)}
 					<Link
 						href="/plans"
-						className="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white px-4 py-2 text-stone-700 transition hover:bg-stone-50 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+						className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 text-foreground transition hover:bg-muted"
 					>
 						View All Plans
 					</Link>
 				</div>
-			</div>
+			</Surface>
 		</div>
 	);
 }

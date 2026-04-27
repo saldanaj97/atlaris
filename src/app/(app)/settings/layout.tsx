@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 
 import { SettingsSidebar } from '@/app/(app)/settings/components/SettingsSidebar';
+import { PageHeader } from '@/components/ui/page-header';
+import { PageShell } from '@/components/ui/page-shell';
 
 export const metadata: Metadata = {
 	title: 'Settings',
@@ -21,10 +23,8 @@ export default function SettingsLayout({
 	children: ReactNode;
 }): ReactElement {
 	return (
-		<div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-			<header className="mb-8">
-				<h1 className="text-3xl font-bold">Settings</h1>
-			</header>
+		<PageShell>
+			<PageHeader title="Settings" className="mb-8" />
 
 			<div className="flex flex-col gap-8 md:flex-row">
 				{/* Sidebar */}
@@ -35,6 +35,6 @@ export default function SettingsLayout({
 				{/* Content — rendered by the matched sub-route */}
 				<section className="min-w-0 flex-1">{children}</section>
 			</div>
-		</div>
+		</PageShell>
 	);
 }

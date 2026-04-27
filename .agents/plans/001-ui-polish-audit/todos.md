@@ -11,11 +11,11 @@
   - [x] Split route groups into `MarketingLayout`, `AuthLayout`, and `AppLayout`.
   - [x] Move `SiteHeader`/`SiteFooter` out of root layout; keep providers in root.
   - [x] Remove marketing footer from authenticated app routes.
-- [ ] Finding 3: Visual system is too soft and inconsistent.
-  - [ ] Choose resolution option (recommended: Options 2+3 — extend existing tokens + add primitives).
-  - [ ] Extend existing token foundation with product-surface tokens (panel, disabled, warning).
-  - [ ] Add shared `PageShell`, `PageHeader`, `Surface`, `MetricCard` primitives (complement existing `Empty` family).
-  - [ ] Migrate product pages to new primitives.
+- [x] Finding 3: Visual system is too soft and inconsistent.
+  - [x] Choose resolution option (Options 2+3 — extend existing tokens + add primitives). Scope: `src/app/(app)/**` only; no legacy `src/app/dashboard` route tree.
+  - [x] Extend existing token foundation with product-surface tokens (panel, disabled, warning).
+  - [x] Add shared `PageShell`, `PageHeader`, `Surface`, `MetricCard` primitives (complement existing `Empty` family).
+  - [x] Migrate product pages to new primitives (dashboard, analytics, settings index, plans list; high-drift surfaces in plan detail/module; badge product variant + style guide).
 - [ ] Finding 4: Button hierarchy is incoherent.
   - [ ] Choose resolution option (recommended: Option 2 — normalize shared variants).
   - [ ] Audit existing button usage across routes.
@@ -70,3 +70,4 @@
 - 2026-04-27: Initial audit package created from `screenshots/frontend-baseline-2026-04-27/`. No UI implementation performed.
 - 2026-04-27: Codebase verification pass. Corrected evidence/recommendations for F6 (type scales already exist — shifted to enforcement), F8 (desktop already has visible nav — corrected evidence, reduced recommendation scope), F9 (acknowledged third-party NeonAuth constraints), F10 (placeholder grammar is fine — corrected evidence). Updated F3 and F7 to acknowledge existing components (`Empty` family, `ComingSoonAlert`).
 - 2026-04-27: Finding 2 implemented — route groups `(marketing)` / `(auth)` / `(app)` with `(marketing)/layout.tsx` (header + footer), `(auth)` + `(app)` layouts (header, no `SiteFooter`). Root [`src/app/layout.tsx`](src/app/layout.tsx) providers-only. URLs unchanged. Import aliases updated to `@/app/(…)/*`. Validation: `pnpm test:changed`, `pnpm check:full` pass. Local `pnpm check:type` needed `rm -rf .next` once to drop stale `.next/dev/types/validator.ts` paths after the move.
+- 2026-04-27: Finding 3 implemented — `globals.css` panel/warning/disabled tokens; `PageShell`, `PageHeader`, `Surface`, `MetricCard` in `src/components/ui/`; app pages + dashboard/plan module surfaces migrated; `Badge` `product` variant, default `outline` for app drift reduction; `docs/styles/style-guide.md` product-surface section.

@@ -54,7 +54,10 @@ export function UseCasesSection() {
 		>
 			<div className="relative z-10 mx-auto max-w-screen-xl px-6">
 				<div className="mb-16 text-center">
-					<Badge className="bg-accent/10 text-accent-foreground mb-4 px-4 py-1.5">
+					<Badge
+						variant="glassmorphic"
+						className="bg-accent/10 text-accent-foreground mb-4 px-4 py-1.5"
+					>
 						Real Stories
 					</Badge>
 					<h2 id={headingId} className="text-foreground marketing-h2 mb-4">

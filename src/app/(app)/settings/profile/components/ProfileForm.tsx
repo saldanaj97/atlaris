@@ -459,7 +459,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 				<div className="text-muted-foreground space-y-4 text-sm">
 					<div>
 						<span className="mb-1 block">Subscription Tier</span>
-						<Badge>{state.profile.subscriptionTier}</Badge>
+						<Badge variant="product">{state.profile.subscriptionTier}</Badge>
 					</div>
 					<div>
 						<span className="mb-1 block">Status</span>

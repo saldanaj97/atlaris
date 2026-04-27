@@ -35,7 +35,7 @@ export default function MaintenancePage(): JSX.Element {
 
 					{/* Status Badge */}
 					<div className="flex justify-center">
-						<Badge className="gap-2">
+						<Badge variant="default" className="gap-2">
 							<span className="relative flex h-2 w-2">
 								<span className="bg-primary-foreground absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 motion-reduce:animate-none"></span>
 								<span className="bg-primary-foreground relative inline-flex h-2 w-2 rounded-full"></span>

@@ -19,7 +19,10 @@ export function ProblemSolutionSection() {
 		<section className="relative lg:py-32" aria-labelledby={headingId}>
 			<div className="relative z-10 mx-auto max-w-screen-xl px-6">
 				<div className="mb-16 text-center">
-					<Badge className="bg-destructive/10 text-destructive mb-4 px-4 py-1.5">
+					<Badge
+						variant="glassmorphic"
+						className="bg-destructive/10 text-destructive mb-4 px-4 py-1.5"
+					>
 						The Challenge
 					</Badge>
 					<h2 id={headingId} className="text-foreground marketing-h2 mb-4">

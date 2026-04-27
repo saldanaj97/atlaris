@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type React from 'react';
 
+import { cn } from '@/lib/utils';
 import type { ActivityItem } from '../types';
 
 const typeConfig: Record<
@@ -60,7 +61,10 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
 
 	return (
 		<article
-			className={`group relative overflow-hidden rounded-2xl border border-l-4 border-white/40 ${config.borderColor} dark:bg-card-background bg-black/5 p-5 shadow-lg backdrop-blur-xl transition hover:shadow-xl dark:border-white/10`}
+			className={cn(
+				'group border-panel-border bg-panel relative overflow-hidden rounded-2xl border border-l-4 p-5 shadow-sm transition hover:shadow-md',
+				config.borderColor,
+			)}
 		>
 			<div className="flex gap-4">
 				{/* Icon */}

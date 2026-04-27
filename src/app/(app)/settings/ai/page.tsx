@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { ModelSelectionCard } from '@/app/(app)/settings/ai/components/ModelSelectionCard';
 import { ModelSelectionCardSkeleton } from '@/app/(app)/settings/ai/components/ModelSelectionCardSkeleton';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 
 /**
  * AI Settings sub-page.
@@ -13,15 +14,18 @@ import { Card } from '@/components/ui/card';
 export default function AISettingsPage(): ReactElement {
 	return (
 		<>
-			<header className="mb-6">
-				<h2 className="text-xl font-semibold">AI Preferences</h2>
-				<p className="text-muted-foreground text-sm">
-					Save the model Atlaris should use for future plan generations. If you
-					do not save one, your tier default applies. A one-off{' '}
-					<code className="font-mono text-xs">?model=</code> still overrides a
-					single generation request.
-				</p>
-			</header>
+			<PageHeader
+				title="AI Preferences"
+				titleAs="h2"
+				subtitle={
+					<>
+						Save the model Atlaris should use for future plan generations. If
+						you do not save one, your tier default applies. A one-off{' '}
+						<code className="font-mono text-xs">?model=</code> still overrides a
+						single generation request.
+					</>
+				}
+			/>
 
 			<div className="grid gap-6 md:grid-cols-2">
 				{/* Data-dependent card - wrapped in Suspense */}

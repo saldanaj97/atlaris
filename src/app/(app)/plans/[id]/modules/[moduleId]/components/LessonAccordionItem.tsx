@@ -152,8 +152,8 @@ function LockedContentOverlay() {
 				</div>
 			</div>
 
-			<div className="absolute inset-0 flex items-center justify-center backdrop-blur-md">
-				<div className="rounded-2xl border border-stone-200/50 bg-white/80 p-8 text-center shadow-lg dark:border-stone-700/50 dark:bg-stone-900/80">
+			<div className="absolute inset-0 flex items-center justify-center bg-background/90 dark:bg-background/85">
+				<div className="border-panel-border bg-panel text-panel-foreground max-w-sm rounded-2xl border p-8 text-center shadow-sm">
 					<div className="mb-4 flex justify-center">
 						<div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
 							<Lock className="h-8 w-8 text-stone-400 dark:text-stone-500" />
@@ -194,9 +194,9 @@ export function LessonAccordionItem({
 			return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
 		}
 		if (isCompleted) {
-			return 'border-success/30 bg-success/5 backdrop-blur-sm dark:border-success/30 dark:bg-success/10';
+			return 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10';
 		}
-		return 'border-white/40 bg-white/30 shadow-lg backdrop-blur-xl hover:border-primary/30 hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30 dark:hover:border-primary/30';
+		return 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border';
 	};
 
 	return (
@@ -242,7 +242,7 @@ export function LessonAccordionItem({
 							{lesson.title}
 						</h3>
 						{isLocked && (
-							<Badge className="border-transparent bg-stone-200 text-stone-500 dark:bg-stone-700 dark:text-stone-400">
+							<Badge variant="secondary" className="border-transparent">
 								Locked
 							</Badge>
 						)}
@@ -314,7 +314,7 @@ export function LessonAccordionItem({
 													href={resource.url}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="group/resource hover:border-primary/30 dark:hover:border-primary/30 flex items-start gap-3 rounded-xl border border-white/40 bg-white/50 p-4 transition-all hover:bg-white/70 hover:shadow-md dark:border-stone-700/50 dark:bg-stone-800/50 dark:hover:bg-stone-800/70"
+													className="group/resource border-panel-border bg-panel hover:border-primary/30 flex items-start gap-3 rounded-xl border p-4 shadow-sm transition-all hover:shadow-md dark:hover:border-primary/30"
 												>
 													<div
 														className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.badgeClass}`}

@@ -1,5 +1,6 @@
 import { BookOpen, Calendar, Clock, TrendingUp } from 'lucide-react';
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
+import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
@@ -93,25 +94,25 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
 
 			{/* Stats Grid */}
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				<StatCard
+				<MetricCard
 					icon={<BookOpen className="h-5 w-5" />}
 					label="Modules"
 					value={`${completedModules}/${totalModules}`}
 					sublabel="Completed"
 				/>
-				<StatCard
+				<MetricCard
 					icon={<Clock className="h-5 w-5" />}
 					label="Progress"
 					value={`${completion}%`}
 					sublabel={`${completedTasks}/${totalTasks} tasks`}
 				/>
-				<StatCard
+				<MetricCard
 					icon={<TrendingUp className="h-5 w-5" />}
 					label="Total Effort"
 					value={formatMinutes(totalMinutes)}
 					sublabel={plan.weeklyHours ? `${plan.weeklyHours}h/week` : '—'}
 				/>
-				<StatCard
+				<MetricCard
 					icon={<Calendar className="h-5 w-5" />}
 					label="Est. Finish"
 					value={estimatedCompletionDate ?? '—'}
@@ -123,32 +124,5 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
 				/>
 			</div>
 		</article>
-	);
-}
-
-function StatCard({
-	icon,
-	label,
-	value,
-	sublabel,
-}: {
-	icon: React.ReactNode;
-	label: string;
-	value: string;
-	sublabel: string;
-}) {
-	return (
-		<div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
-			<div className="mb-3 flex items-center gap-2 text-stone-400 dark:text-stone-500">
-				{icon}
-				<span className="text-xs font-medium uppercase">{label}</span>
-			</div>
-			<div className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-				{value}
-			</div>
-			<div className="text-xs text-stone-400 dark:text-stone-500">
-				{sublabel}
-			</div>
-		</div>
 	);
 }

@@ -136,7 +136,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
 						].map((label) => (
 							<span
 								key={label}
-								className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm"
+								className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white"
 							>
 								{label}
 							</span>

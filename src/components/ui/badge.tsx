@@ -17,12 +17,15 @@ const badgeVariants = cva(
           "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+        /** Product app: opaque surface, no glass. Prefer for dashboard/settings. */
+        product:
+          "border border-border bg-panel text-panel-foreground [a&]:hover:bg-panel-muted/90",
         glassmorphic:
           "border-white/40 shadow-lg backdrop-blur-xl dark:border-white/10 [a&]:hover:bg-white/40 dark:[a&]:hover:bg-card/60 text-xs lg:text-sm font-medium",
       },
     },
     defaultVariants: {
-      variant: "glassmorphic",
+      variant: "outline",
     },
   }
 )

@@ -32,8 +32,8 @@ export const metadata: Metadata = {
  */
 export default function PlansPage(): JSX.Element {
 	return (
-		<div className="mx-auto min-h-screen max-w-7xl">
-			{/* Static header - renders immediately */}
+		<>
+			{/* Static header - renders immediately (`(app)/plans/layout` provides max-width + padding) */}
 			<header className="mb-8">
 				<div className="mb-6 flex items-center justify-between">
 					<div className="flex items-center gap-4">
@@ -57,6 +57,6 @@ export default function PlansPage(): JSX.Element {
 			<Suspense fallback={<PlansContentSkeleton />}>
 				<PlansContent />
 			</Suspense>
-		</div>
+		</>
 	);
 }

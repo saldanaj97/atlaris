@@ -18,6 +18,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import type {
@@ -100,7 +101,7 @@ export function ModuleHeader({
 							</DropdownMenuTrigger>
 							<DropdownMenuContent
 								align="start"
-								className="max-h-80 w-64 overflow-y-auto border-white/40 bg-white/80 backdrop-blur-xl dark:border-stone-700/50 dark:bg-stone-900/80"
+								className="max-h-80 w-64 overflow-y-auto"
 							>
 								{allModules.map((m) => {
 									const isCurrent = m.id === module.id;
@@ -157,7 +158,7 @@ export function ModuleHeader({
 					{/* Top Row: Module Badge and Navigation */}
 					<div className="flex items-start justify-between">
 						<div className="flex flex-wrap gap-2">
-							<span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+							<span className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white">
 								Module {module.order} of {totalModules}
 							</span>
 						</div>
@@ -167,7 +168,7 @@ export function ModuleHeader({
 							{previousModuleId ? (
 								<Link
 									href={`/plans/${planId}/modules/${previousModuleId}`}
-									className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+									className="rounded-full bg-white/25 p-2 text-white transition hover:bg-white/35"
 									aria-label="Previous module"
 								>
 									<ArrowLeft className="h-4 w-4" />
@@ -180,7 +181,7 @@ export function ModuleHeader({
 							{nextModuleId ? (
 								<Link
 									href={`/plans/${planId}/modules/${nextModuleId}`}
-									className="rounded-full bg-white/20 p-2 text-white backdrop-blur-sm transition hover:bg-white/30"
+									className="rounded-full bg-white/25 p-2 text-white transition hover:bg-white/35"
 									aria-label="Next module"
 								>
 									<ArrowRight className="h-4 w-4" />
@@ -221,21 +222,21 @@ export function ModuleHeader({
 				</div>
 			</div>
 
-			{/* Stats Grid with Glassmorphism */}
+			{/* Stats grid */}
 			<div className="mt-4 grid gap-4 sm:grid-cols-3">
-				<StatCard
+				<MetricCard
 					icon={<ListTodo className="h-5 w-5" />}
 					label="Lessons"
 					value={`${completedTasks}/${totalTasks}`}
 					sublabel="Completed"
 				/>
-				<StatCard
+				<MetricCard
 					icon={<Clock className="h-5 w-5" />}
 					label="Duration"
 					value={formatMinutes(totalMinutes)}
 					sublabel={formatMinutes(module.estimatedMinutes)}
 				/>
-				<StatCard
+				<MetricCard
 					icon={<BookOpen className="h-5 w-5" />}
 					label="Progress"
 					value={`${completion}%`}
@@ -247,32 +248,5 @@ export function ModuleHeader({
 				/>
 			</div>
 		</article>
-	);
-}
-
-function StatCard({
-	icon,
-	label,
-	value,
-	sublabel,
-}: {
-	icon: React.ReactNode;
-	label: string;
-	value: string;
-	sublabel: string;
-}) {
-	return (
-		<div className="rounded-2xl border border-white/40 bg-white/30 p-4 shadow-lg backdrop-blur-xl transition hover:shadow-xl dark:border-stone-800/50 dark:bg-stone-900/30">
-			<div className="mb-3 flex items-center gap-2 text-stone-500 dark:text-stone-400">
-				{icon}
-				<span className="text-xs font-medium uppercase">{label}</span>
-			</div>
-			<div className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-				{value}
-			</div>
-			<div className="text-xs text-stone-500 dark:text-stone-400">
-				{sublabel}
-			</div>
-		</div>
 	);
 }
