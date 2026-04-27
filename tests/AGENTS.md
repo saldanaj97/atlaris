@@ -82,6 +82,7 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 ## Browser Smoke Ownership
 
 - `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
+- **UI audit baselines** (`pnpm ui:capture-baseline`): see [UI baseline capture](../docs/testing/ui-baseline-capture.md) — separate from smoke; disposable DB + dual dev servers or `--anon-base` / `--auth-base`.
 - `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
 - Playwright owns both app servers; do not start smoke servers manually for normal runs.
 - `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.

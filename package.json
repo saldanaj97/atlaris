@@ -32,6 +32,7 @@
     "test:integration": "tsx scripts/tests/run.ts integration",
     "test:security": "tsx scripts/tests/run.ts security",
     "test:smoke": "tsx scripts/tests/run.ts smoke",
+    "ui:capture-baseline": "tsx scripts/ui/capture-baseline.ts",
     "test:all": "tsx scripts/tests/run.ts all",
     "prepare": "husky || true"
   },

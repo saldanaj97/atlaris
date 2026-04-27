@@ -2,10 +2,10 @@
 
 ## Findings
 
-- [ ] Finding 1: Screenshot baseline is not trustworthy.
-  - [ ] Choose resolution option.
-  - [ ] Regenerate real desktop/tablet/mobile screenshots.
-  - [ ] Confirm no capture overlays or duplicate sticky artifacts pollute baseline.
+- [x] Finding 1: Screenshot baseline is not trustworthy.
+  - [x] Choose resolution option (Option 2 — fixed viewports 1440×1000 / 834×1112 / 390×844; `viewport` + `fullPage` variants; `manifest.json` + dimension checks).
+  - [x] Regenerate real desktop/tablet/mobile screenshots — `screenshots/frontend-baseline-2026-04-27/` + `manifest.json` (2026-04-27; `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27`; gitignored).
+  - [x] Confirm no capture overlays or duplicate sticky artifacts pollute baseline (manual review of PNGs).
 - [x] Finding 2: Marketing chrome leaks into product app.
   - [x] Choose resolution option (recommended: Option 3 — route group layout separation).
   - [x] Split route groups into `MarketingLayout`, `AuthLayout`, and `AppLayout`.
@@ -54,16 +54,16 @@
 - [ ] Decide whether app shell uses sidebar-first desktop navigation or visible top navigation (current: visible top nav at lg+; F8 recommends extending to md+).
 - [ ] Decide whether pricing remains marketing-styled or moves closer to product-styled billing.
 - [ ] Decide whether landing/about visual style stays expressive after product shell cleanup.
-- [ ] Decide visual baseline storage and naming convention.
+- [x] Decide visual baseline storage and naming convention — **default** output dir `screenshots/frontend-baseline-<YYYY-MM-DD>/`, filenames `{route}--{anon|auth}--{desktop|tablet|mobile}--{viewport|fullPage}.png`, plus `manifest.json`; repo already gitignores `screenshots/`. Command: [`docs/testing/ui-baseline-capture.md`](../../../docs/testing/ui-baseline-capture.md).
 
 ## Validation
 
 - [ ] Capture fresh screenshots after cleanup.
-- [ ] Verify desktop/tablet/mobile dimensions differ.
+- [x] Verify desktop/tablet/mobile dimensions differ — enforced by `scripts/ui/capture-baseline.ts` (`validateViewportDimensionsDistinct` + viewport PNG size checks).
 - [ ] Review screenshots against each finding.
 - [ ] Run targeted UI/accessibility checks for updated routes.
 - [ ] Run `pnpm test:changed`.
-- [ ] Run `pnpm check:full`.
+- [x] Run `pnpm check:full`.
 
 ## Review Notes
 
@@ -71,3 +71,5 @@
 - 2026-04-27: Codebase verification pass. Corrected evidence/recommendations for F6 (type scales already exist — shifted to enforcement), F8 (desktop already has visible nav — corrected evidence, reduced recommendation scope), F9 (acknowledged third-party NeonAuth constraints), F10 (placeholder grammar is fine — corrected evidence). Updated F3 and F7 to acknowledge existing components (`Empty` family, `ComingSoonAlert`).
 - 2026-04-27: Finding 2 implemented — route groups `(marketing)` / `(auth)` / `(app)` with `(marketing)/layout.tsx` (header + footer), `(auth)` + `(app)` layouts (header, no `SiteFooter`). Root [`src/app/layout.tsx`](src/app/layout.tsx) providers-only. URLs unchanged. Import aliases updated to `@/app/(…)/*`. Validation: `pnpm test:changed`, `pnpm check:full` pass. Local `pnpm check:type` needed `rm -rf .next` once to drop stale `.next/dev/types/validator.ts` paths after the move.
 - 2026-04-27: Finding 3 implemented — `globals.css` panel/warning/disabled tokens; `PageShell`, `PageHeader`, `Surface`, `MetricCard` in `src/components/ui/`; app pages + dashboard/plan module surfaces migrated; `Badge` `product` variant, default `outline` for app drift reduction; `docs/styles/style-guide.md` product-surface section.
+- 2026-04-27: Finding 1 baseline regenerated locally — `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` exit 0; manifest shows viewport widths **1440 / 834 / 390**. Fixes this session: smoke migrations via `node …/drizzle-kit/bin.cjs migrate` (PATH without `pnpm`); `fullPage` width allows ≤24px gutter vs viewport; screenshots use `scale: 'css'`.
+- 2026-04-27: Finding 1 manual screenshot review completed after hiding Next dev indicator in `scripts/ui/capture-baseline.ts` (`nextjs-portal` / `data-nextjs-dev-tools-button` screenshot-only CSS). Re-ran `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` successfully; sampled landing/about long captures and product route captures show no dev overlay and no duplicated sticky/nav/hero artifact.
