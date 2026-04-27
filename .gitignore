@@ -54,11 +54,6 @@ jscpd-report/
 
 # ide rules
 .cursor/*
-.claude/*
 .opencode/*
 
-# local Copilot hook logs
-.github/hooks/logs/
-
-# CocoIndex Code (ccc)
-/.cocoindex_code/
+screenshots/
