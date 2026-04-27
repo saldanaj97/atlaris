@@ -16,11 +16,11 @@ vi.mock('next/navigation', async (orig) => {
 });
 
 // Mock child components to simplify the test
-vi.mock('@/app/plans/[id]/components/ExportButtons', () => ({
+vi.mock('@/app/(app)/plans/[id]/components/ExportButtons', () => ({
 	ExportButtons: () => <div data-testid="export-buttons">Export</div>,
 }));
 
-vi.mock('@/app/plans/[id]/components/PlanPendingState', () => ({
+vi.mock('@/app/(app)/plans/[id]/components/PlanPendingState', () => ({
 	PlanPendingState: () => (
 		<div data-testid="plan-pending-state">Plan is generating...</div>
 	),
@@ -36,7 +36,7 @@ async function renderPlanDetails(plan: ClientPlanDetail) {
 	vi.stubGlobal('React', React);
 	try {
 		const { PlanDetails } = await import(
-			'@/app/plans/[id]/components/PlanDetails'
+			'@/app/(app)/plans/[id]/components/PlanDetails'
 		);
 		return render(<PlanDetails plan={plan} />);
 	} finally {

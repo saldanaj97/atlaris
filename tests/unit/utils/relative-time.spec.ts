@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getActivityRelativeLabel } from '@/app/dashboard/components/activity-utils';
-import { getPlanLastActivityRelative } from '@/app/plans/components/plan-utils';
+import { getActivityRelativeLabel } from '@/app/(app)/dashboard/components/activity-utils';
+import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
 	formatRelativePast,
 	formatScheduledEventRelative,

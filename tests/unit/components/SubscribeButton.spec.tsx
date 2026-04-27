@@ -5,7 +5,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import SubscribeButton from '@/app/pricing/components/SubscribeButton';
+import SubscribeButton from '@/app/(marketing)/pricing/components/SubscribeButton';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 describe('SubscribeButton', () => {

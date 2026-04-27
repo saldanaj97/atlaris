@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { IntegrationCard } from '@/app/settings/integrations/components/IntegrationCard';
+import { IntegrationCard } from '@/app/(app)/settings/integrations/components/IntegrationCard';
 
 const baseProps = {
 	name: 'Google Calendar',

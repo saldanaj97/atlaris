@@ -7,11 +7,11 @@
 
 import { buildPlanDetail } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
-import { planError, planSuccess } from '@/app/plans/[id]/helpers';
+import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
 import type {
 	PlanAccessErrorCode,
 	PlanAccessResult,
-} from '@/app/plans/[id]/types';
+} from '@/app/(app)/plans/[id]/types';
 import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 

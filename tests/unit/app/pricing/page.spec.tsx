@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { createStripeTierMap } from '@tests/fixtures/pricing';
 import { buildUserFixture } from '@tests/fixtures/users';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
+import type { fetchStripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
 
 type FetchStripeTierDataArgs = Parameters<typeof fetchStripeTierData>[0];
 type PricingPageUser = ReturnType<typeof buildUserFixture>;
@@ -34,7 +34,7 @@ vi.mock('@/features/billing/account-snapshot', () => ({
 		mocks.deriveBillingSubscriptionSnapshotMock,
 }));
 
-vi.mock('@/app/pricing/components/stripe-pricing', () => ({
+vi.mock('@/app/(marketing)/pricing/components/stripe-pricing', () => ({
 	fetchStripeTierData: mocks.fetchStripeTierDataMock,
 }));
 
@@ -42,7 +42,7 @@ vi.mock('@/lib/logging/logger', () => ({
 	logger: mocks.loggerMock,
 }));
 
-vi.mock('@/app/pricing/components/pricing-config', () => ({
+vi.mock('@/app/(marketing)/pricing/components/pricing-config', () => ({
 	MONTHLY_TIER_CONFIGS: [
 		{ key: 'free' },
 		{ key: 'starter', priceId: 'price_starter_monthly' },
@@ -55,7 +55,7 @@ vi.mock('@/app/pricing/components/pricing-config', () => ({
 	],
 }));
 
-vi.mock('@/app/pricing/components/PricingGrid', () => ({
+vi.mock('@/app/(marketing)/pricing/components/PricingGrid', () => ({
 	PricingGrid: (props: {
 		subscribeLabel: string;
 		stripeData: ReadonlyMap<string, unknown>;
@@ -71,12 +71,15 @@ vi.mock('@/app/pricing/components/PricingGrid', () => ({
 	},
 }));
 
-vi.mock('@/app/pricing/components/PricingMissingStripeNotice', () => ({
-	PricingMissingStripeNotice: () => {
-		mocks.pricingMissingStripeNoticeMock();
-		return <div>Missing Stripe pricing data</div>;
-	},
-}));
+vi.mock(
+	'@/app/(marketing)/pricing/components/PricingMissingStripeNotice',
+	() => ({
+		PricingMissingStripeNotice: () => {
+			mocks.pricingMissingStripeNoticeMock();
+			return <div>Missing Stripe pricing data</div>;
+		},
+	}),
+);
 
 vi.mock('@/components/billing/ManageSubscriptionButton', () => ({
 	default: (props: { canOpenBillingPortal: boolean }) => {
@@ -91,10 +94,12 @@ vi.mock('@/components/billing/ManageSubscriptionButton', () => ({
 }));
 
 async function renderPricingPage(): Promise<void> {
-	// Reset the module cache before dynamically importing '@/app/pricing/page'
+	// Reset the module cache before dynamically importing '@/app/(marketing)/pricing/page'
 	// so each render picks up the fresh mock graph for this test.
 	vi.resetModules();
-	const { default: PricingPage } = await import('@/app/pricing/page');
+	const { default: PricingPage } = await import(
+		'@/app/(marketing)/pricing/page'
+	);
 	render(await PricingPage());
 }
 

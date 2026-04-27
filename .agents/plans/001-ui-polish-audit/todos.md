@@ -6,11 +6,11 @@
   - [ ] Choose resolution option.
   - [ ] Regenerate real desktop/tablet/mobile screenshots.
   - [ ] Confirm no capture overlays or duplicate sticky artifacts pollute baseline.
-- [ ] Finding 2: Marketing chrome leaks into product app.
-  - [ ] Choose resolution option (recommended: Option 3 — route group layout separation).
-  - [ ] Split route groups into `MarketingLayout`, `AuthLayout`, and `AppLayout`.
-  - [ ] Move `SiteHeader`/`SiteFooter` out of root layout; keep providers in root.
-  - [ ] Remove marketing footer from authenticated app routes.
+- [x] Finding 2: Marketing chrome leaks into product app.
+  - [x] Choose resolution option (recommended: Option 3 — route group layout separation).
+  - [x] Split route groups into `MarketingLayout`, `AuthLayout`, and `AppLayout`.
+  - [x] Move `SiteHeader`/`SiteFooter` out of root layout; keep providers in root.
+  - [x] Remove marketing footer from authenticated app routes.
 - [ ] Finding 3: Visual system is too soft and inconsistent.
   - [ ] Choose resolution option (recommended: Options 2+3 — extend existing tokens + add primitives).
   - [ ] Extend existing token foundation with product-surface tokens (panel, disabled, warning).
@@ -69,3 +69,4 @@
 
 - 2026-04-27: Initial audit package created from `screenshots/frontend-baseline-2026-04-27/`. No UI implementation performed.
 - 2026-04-27: Codebase verification pass. Corrected evidence/recommendations for F6 (type scales already exist — shifted to enforcement), F8 (desktop already has visible nav — corrected evidence, reduced recommendation scope), F9 (acknowledged third-party NeonAuth constraints), F10 (placeholder grammar is fine — corrected evidence). Updated F3 and F7 to acknowledge existing components (`Empty` family, `ComingSoonAlert`).
+- 2026-04-27: Finding 2 implemented — route groups `(marketing)` / `(auth)` / `(app)` with `(marketing)/layout.tsx` (header + footer), `(auth)` + `(app)` layouts (header, no `SiteFooter`). Root [`src/app/layout.tsx`](src/app/layout.tsx) providers-only. URLs unchanged. Import aliases updated to `@/app/(…)/*`. Validation: `pnpm test:changed`, `pnpm check:full` pass. Local `pnpm check:type` needed `rm -rf .next` once to drop stale `.next/dev/types/validator.ts` paths after the move.

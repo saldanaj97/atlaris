@@ -61,7 +61,7 @@ async function selectFirstFreeModel(
 	);
 }
 
-let ModelSelector: typeof import('@/app/settings/ai/components/model-selector').ModelSelector;
+let ModelSelector: typeof import('@/app/(app)/settings/ai/components/model-selector').ModelSelector;
 
 // Mock scrollIntoView which is not available in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
@@ -69,7 +69,7 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 describe('ModelSelector', () => {
 	beforeAll(async () => {
 		({ ModelSelector } = await import(
-			'@/app/settings/ai/components/model-selector'
+			'@/app/(app)/settings/ai/components/model-selector'
 		));
 	});
 

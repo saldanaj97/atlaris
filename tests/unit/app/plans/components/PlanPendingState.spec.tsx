@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { createTestPlanDetail } from '@tests/fixtures/plans';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
+import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 
 const {

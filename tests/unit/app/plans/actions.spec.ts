@@ -47,7 +47,7 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 import { makeDbClient } from '@tests/fixtures/db-mocks';
-import { batchUpdateTaskProgressAction } from '@/app/plans/[id]/actions';
+import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import type { RequestScope } from '@/lib/api/request-boundary';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 

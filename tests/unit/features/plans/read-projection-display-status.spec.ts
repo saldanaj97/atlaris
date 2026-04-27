@@ -1,8 +1,8 @@
 import { createId } from '@tests/fixtures/ids';
 import { buildPlan, buildPlanSummary } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
-import type { PlanStatus } from '@/app/plans/types';
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection';
+import type { PlanStatus } from '@/app/(app)/plans/types';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 type SummaryFixture = Omit<Partial<PlanSummary>, 'plan'> & {

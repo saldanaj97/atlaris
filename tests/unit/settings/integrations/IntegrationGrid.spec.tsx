@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { IntegrationGrid } from '@/app/settings/integrations/components/IntegrationGrid';
+import { IntegrationGrid } from '@/app/(app)/settings/integrations/components/IntegrationGrid';
 
 describe('IntegrationGrid', () => {
 	beforeEach(() => {

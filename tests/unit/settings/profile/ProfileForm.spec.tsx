@@ -13,7 +13,7 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
+import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 
 import { buildProfile } from '../../../fixtures/profile';
 

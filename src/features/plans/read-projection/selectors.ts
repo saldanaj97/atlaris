@@ -1,8 +1,11 @@
 import { differenceInDays } from 'date-fns';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
+import {
+	derivePlanReadStatus,
+	derivePlanSummaryStatus,
+} from '@/features/plans/read-projection/read-status';
 import type { PlanStatus } from '@/features/plans/read-projection/types';
 import { toValidDate } from '@/lib/date/relative-time';
-import { logger } from '@/lib/logging/logger';
+import { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 /**
@@ -14,12 +17,33 @@ import type { PlanSummary } from '@/shared/types/db.types';
  */
 export const PLAN_STALENESS_THRESHOLD_DAYS = 30;
 
+function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanStatus {
+	const readStatus = derivePlanReadStatus(
+		summary.attemptsCount === undefined
+			? {
+					generationStatus: summary.plan.generationStatus,
+					hasModules: summary.modules.length > 0,
+				}
+			: {
+					generationStatus: summary.plan.generationStatus,
+					hasModules: summary.modules.length > 0,
+					attemptsCount: summary.attemptsCount,
+					attemptCap: DEFAULT_ATTEMPT_CAP,
+				},
+	);
+
+	return derivePlanSummaryStatus({
+		readStatus,
+		completion: summary.completion,
+	});
+}
+
 export function derivePlanSummaryDisplayStatus(params: {
 	summary: PlanSummary;
 	referenceDate?: Date | string | null;
 }): PlanStatus {
 	const { summary, referenceDate = new Date() } = params;
-	const canonicalStatus = deriveCanonicalPlanSummaryStatus(summary);
+	const canonicalStatus = deriveClientPlanSummaryStatus(summary);
 
 	if (canonicalStatus !== 'active') {
 		return canonicalStatus;
@@ -27,25 +51,11 @@ export function derivePlanSummaryDisplayStatus(params: {
 
 	const updatedAt = toValidDate(summary.plan.updatedAt);
 	if (summary.plan.updatedAt !== null && !updatedAt) {
-		logger.warn(
-			{
-				planId: summary.plan.id,
-				updatedAt: summary.plan.updatedAt,
-			},
-			'Invalid plan updatedAt; defaulting display status to active',
-		);
 		return 'active';
 	}
 
 	const reference = toValidDate(referenceDate);
 	if (!reference) {
-		logger.warn(
-			{
-				planId: summary.plan.id,
-				referenceDate,
-			},
-			'Invalid referenceDate; defaulting display status to active',
-		);
 		return 'active';
 	}
 
@@ -60,5 +70,5 @@ export function derivePlanSummaryDisplayStatus(params: {
 }
 
 export function isPlanSummaryFullyComplete(summary: PlanSummary): boolean {
-	return deriveCanonicalPlanSummaryStatus(summary) === 'completed';
+	return deriveClientPlanSummaryStatus(summary) === 'completed';
 }

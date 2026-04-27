@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
 	PlanGenerationResult,

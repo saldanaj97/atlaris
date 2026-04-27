@@ -13,7 +13,7 @@ import {
 } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
+import { RegenerateButton } from '@/app/(app)/plans/components/RegenerateButton';
 
 describe('RegenerateButton', () => {
 	beforeEach(() => {

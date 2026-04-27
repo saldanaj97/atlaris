@@ -11,7 +11,7 @@ import {
 	deriveModuleProgressState,
 	derivePlanDetailsCardStats,
 	derivePlanOverviewStats,
-} from '@/features/plans/task-progress';
+} from '@/features/plans/task-progress/client';
 import type { ClientModule } from '@/shared/types/client.types';
 
 const plan = createTestPlanDetail();

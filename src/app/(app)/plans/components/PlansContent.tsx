@@ -1,0 +1,109 @@
+import { Plus, Search, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
+import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
+import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import { Button } from '@/components/ui/button';
+import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import { ROUTES } from '@/features/navigation/routes';
+import { listPlansPageSummaries } from '@/features/plans/read-projection';
+import { requestBoundary } from '@/lib/api/request-boundary';
+
+/**
+ * Async component that fetches usage data and renders the plan count badge.
+ * Wrapped in its own Suspense boundary by the parent page.
+ */
+export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
+	const snapshot = await requestBoundary.component(async ({ actor, db }) =>
+		getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
+	);
+
+	if (!snapshot) return null;
+
+	return (
+		<PlanCountBadge
+			usage={{
+				tier: snapshot.usage.tier,
+				activePlans: snapshot.usage.activePlans,
+				regenerations: snapshot.usage.regenerations,
+				exports: snapshot.usage.exports,
+			}}
+		/>
+	);
+}
+
+/**
+ * Async component that fetches user plans and renders content.
+ * Wrapped in Suspense boundary by the parent page.
+ */
+export async function PlansContent(): Promise<JSX.Element> {
+	const result = await requestBoundary.component(async ({ actor, db }) => {
+		const [summaries, snapshot] = await Promise.all([
+			listPlansPageSummaries({ userId: actor.id, dbClient: db }),
+			getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
+		]);
+		return { summaries, snapshot };
+	});
+
+	if (!result) {
+		redirect(
+			`${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.PLANS.ROOT)}`,
+		);
+	}
+
+	const { summaries, snapshot } = result;
+	const referenceTimestamp = new Date().toISOString();
+
+	if (!summaries.length) {
+		return (
+			<>
+				{/* Disabled search bar for empty state */}
+				<div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 opacity-50">
+					<Search className="text-muted-foreground h-4 w-4" />
+					<span className="text-muted-foreground flex-1 text-sm">
+						Search plans...
+					</span>
+				</div>
+
+				{/* Empty state content */}
+				<section
+					className="flex min-h-[50vh] flex-col items-center justify-center text-center"
+					aria-label="No plans found"
+				>
+					<div className="bg-primary/10 mb-6 flex h-16 w-16 items-center justify-center rounded-full">
+						<Sparkles className="text-primary h-8 w-8" />
+					</div>
+					<h2>No learning plans yet</h2>
+					<p className="text-muted-foreground mt-2 max-w-md">
+						Start by describing what you want to learn and we&apos;ll create a
+						personalized learning plan with resources and milestones.
+					</p>
+					<Button asChild className="mt-6" size="lg">
+						<Link href="/plans/new">
+							<Plus className="h-4 w-4" />
+							Create your first plan
+						</Link>
+					</Button>
+				</section>
+			</>
+		);
+	}
+
+	return (
+		<PlansList
+			summaries={summaries}
+			referenceTimestamp={referenceTimestamp}
+			usage={
+				snapshot
+					? {
+							tier: snapshot.usage.tier,
+							activePlans: snapshot.usage.activePlans,
+							regenerations: snapshot.usage.regenerations,
+							exports: snapshot.usage.exports,
+						}
+					: undefined
+			}
+		/>
+	);
+}

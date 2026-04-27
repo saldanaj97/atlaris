@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	computeDetailsCardStats,
 	computeOverviewStats,
-} from '@/app/plans/[id]/helpers';
+} from '@/app/(app)/plans/[id]/helpers';
 
 const plan = createTestPlanDetail({
 	completedModules: 1,

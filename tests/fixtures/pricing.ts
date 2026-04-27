@@ -1,4 +1,4 @@
-import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 const DEFAULT_STRIPE_TIER_DATA: Record<SubscriptionTier, StripeTierData> = {
