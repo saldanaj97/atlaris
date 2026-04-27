@@ -125,74 +125,81 @@ export default async function PricingPage(): Promise<ReactElement> {
 			: EMPTY_STRIPE_TIER_DATA;
 
 	return (
-		<div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-10 overflow-hidden px-6 py-16">
-			<div className="from-primary/30 to-accent/20 absolute -top-20 -left-32 h-96 w-96 rounded-full bg-linear-to-br opacity-40 blur-3xl dark:opacity-20" />
-			<div className="from-primary/25 to-accent/25 absolute top-40 -right-32 h-80 w-80 rounded-full bg-linear-to-br opacity-40 blur-3xl dark:opacity-15" />
-
-			<div className="relative z-10 mb-5 text-center sm:mb-6">
-				<h1 className="text-foreground marketing-h1 mb-2">
-					Invest in your <span className="gradient-text-symmetric">growth</span>
-				</h1>
-				<p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">
-					Choose the plan that matches your learning ambitions. Start free,
-					upgrade when you&apos;re ready.
-				</p>
+		<div className="relative isolate -mt-16 min-h-[calc(100vh+4rem)] w-full overflow-hidden px-6 pt-40 pb-16">
+			<div className="pointer-events-none absolute inset-0 -z-10">
+				<div className="from-primary/30 to-accent/20 absolute -top-24 -left-40 h-[32rem] w-[32rem] rounded-full bg-linear-to-br opacity-45 blur-3xl dark:opacity-20" />
+				<div className="from-primary/25 to-accent/25 absolute top-36 -right-40 h-[28rem] w-[28rem] rounded-full bg-linear-to-br opacity-45 blur-3xl dark:opacity-15" />
+				<div className="from-accent/15 to-primary/15 absolute right-1/4 bottom-0 h-80 w-80 rounded-full bg-linear-to-br opacity-35 blur-3xl dark:opacity-10" />
 			</div>
 
-			<div className="relative z-10 w-full">
-				{showMissingStripeNotice ? <PricingMissingStripeNotice /> : null}
-				<Tabs defaultValue="monthly">
-					<div className="flex justify-center">
-						<TabsList className="h-11 rounded-lg border border-white/40 bg-white/40 p-1.5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/40">
-							<TabsTrigger
-								value="monthly"
-								className="h-full rounded-md border-none px-6 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white/10 dark:data-[state=active]:shadow-none"
-							>
-								Monthly
-							</TabsTrigger>
-							<TabsTrigger
-								value="yearly"
-								className="h-full rounded-md border-none px-6 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white/10 dark:data-[state=active]:shadow-none"
-							>
-								Yearly
-								<Badge className="ml-1.5 border-transparent bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success dark:bg-success/25 dark:text-success-foreground">
-									Save 20%
-								</Badge>
-							</TabsTrigger>
-						</TabsList>
-					</div>
-					<TabsContent value="monthly">
-						<PricingGrid
-							configs={MONTHLY_TIER_CONFIGS}
-							intervalLabel="/month"
-							stripeData={monthlyGridStripeData}
-							subscribeLabel="Subscribe monthly"
-						/>
-					</TabsContent>
-					<TabsContent value="yearly">
-						<PricingGrid
-							configs={YEARLY_TIER_CONFIGS}
-							intervalLabel="/year"
-							stripeData={yearlyGridStripeData}
-							subscribeLabel="Subscribe yearly"
-						/>
-					</TabsContent>
-				</Tabs>
-			</div>
-
-			<div className="relative z-10 text-center">
-				<p className="text-muted-foreground mb-3 text-sm">
-					Already subscribed?
-				</p>
-				<ManageSubscriptionButton
-					className="rounded-lg"
-					canOpenBillingPortal={canOpenBillingPortal}
-				/>
-				{!canOpenBillingPortal ? (
-					<p className="text-muted-foreground mt-2 text-sm">
-						Billing portal is available after your first subscription checkout.
+			<div className="mx-auto flex max-w-7xl flex-col items-center justify-start gap-y-10">
+				<div className="mb-5 text-center sm:mb-6">
+					<h1 className="text-foreground marketing-h1 mb-2">
+						Invest in your{' '}
+						<span className="gradient-text-symmetric">growth</span>
+					</h1>
+					<p className="text-muted-foreground mx-auto max-w-md text-base sm:max-w-xl sm:text-lg">
+						Choose the plan that matches your learning ambitions. Start free,
+						upgrade when you&apos;re ready.
 					</p>
-				) : null}
+				</div>
+
+				<div className="w-full">
+					{showMissingStripeNotice ? <PricingMissingStripeNotice /> : null}
+					<Tabs defaultValue="monthly">
+						<div className="flex justify-center">
+							<TabsList className="h-11 rounded-lg border border-white/40 bg-white/40 p-1.5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/40">
+								<TabsTrigger
+									value="monthly"
+									className="h-full rounded-md border-none px-6 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white/10 dark:data-[state=active]:shadow-none"
+								>
+									Monthly
+								</TabsTrigger>
+								<TabsTrigger
+									value="yearly"
+									className="h-full rounded-md border-none px-6 text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-md dark:data-[state=active]:bg-white/10 dark:data-[state=active]:shadow-none"
+								>
+									Yearly
+									<Badge className="ml-1.5 border-transparent bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success dark:bg-success/25 dark:text-success-foreground">
+										Save 20%
+									</Badge>
+								</TabsTrigger>
+							</TabsList>
+						</div>
+						<TabsContent value="monthly">
+							<PricingGrid
+								configs={MONTHLY_TIER_CONFIGS}
+								intervalLabel="/month"
+								stripeData={monthlyGridStripeData}
+								subscribeLabel="Subscribe monthly"
+							/>
+						</TabsContent>
+						<TabsContent value="yearly">
+							<PricingGrid
+								configs={YEARLY_TIER_CONFIGS}
+								intervalLabel="/year"
+								stripeData={yearlyGridStripeData}
+								subscribeLabel="Subscribe yearly"
+							/>
+						</TabsContent>
+					</Tabs>
+				</div>
+
+				<div className="text-center">
+					<p className="text-muted-foreground mb-3 text-sm">
+						Already subscribed?
+					</p>
+					<ManageSubscriptionButton
+						className="rounded-lg"
+						canOpenBillingPortal={canOpenBillingPortal}
+					/>
+					{!canOpenBillingPortal ? (
+						<p className="text-muted-foreground mt-2 text-sm">
+							Billing portal is available after your first subscription
+							checkout.
+						</p>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);

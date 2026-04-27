@@ -2,6 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import type { JSX } from 'react';
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
@@ -10,6 +11,7 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { type NavItem, ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
 
 interface MobileHeaderProps {
 	navItems: NavItem[];
@@ -27,8 +29,17 @@ export default function MobileHeader({
 	tier,
 	isAuthenticated,
 }: MobileHeaderProps): JSX.Element {
+	const pathname = usePathname();
+	const isPricingPage = pathname === ROUTES.PRICING;
+
 	return (
-		<div className="dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10">
+		<div
+			className={cn(
+				'dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10',
+				isPricingPage &&
+					'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20',
+			)}
+		>
 			<div className="flex shrink-0">
 				<MobileNavigation navItems={navItems} />
 			</div>

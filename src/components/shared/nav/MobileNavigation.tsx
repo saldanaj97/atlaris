@@ -43,7 +43,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
 			{/* Sheet content sliding from left */}
 			<SheetContent
 				side="left"
-				className="dark:bg-card/90 w-72 border-r border-white/40 bg-white/80 p-0 backdrop-blur-xl dark:border-white/10"
+				className="w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55"
 			>
 				<SheetHeader className="p-6">
 					<BrandLogo size="sm" onClick={() => setOpen(false)} />
