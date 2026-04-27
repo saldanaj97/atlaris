@@ -2,10 +2,10 @@
 
 ## Findings
 
-- [x] Finding 1: Screenshot baseline is not trustworthy.
-  - [x] Choose resolution option.
-  - [x] Regenerate real desktop/tablet/mobile screenshots.
-  - [x] Confirm no capture overlays or duplicate sticky artifacts pollute baseline.
+- [ ] Finding 1: Screenshot baseline is not trustworthy.
+  - [ ] Choose resolution option.
+  - [ ] Regenerate real desktop/tablet/mobile screenshots.
+  - [ ] Confirm no capture overlays or duplicate sticky artifacts pollute baseline.
 - [ ] Finding 2: Marketing chrome leaks into product app.
   - [ ] Choose resolution option (recommended: Option 3 — route group layout separation).
   - [ ] Split route groups into `MarketingLayout`, `AuthLayout`, and `AppLayout`.
@@ -68,5 +68,4 @@
 ## Review Notes
 
 - 2026-04-27: Initial audit package created from `screenshots/frontend-baseline-2026-04-27/`. No UI implementation performed.
-- 2026-04-27: Implemented Option 2 with a Playwright-backed `pnpm capture:ui-baseline` command. The regenerated baseline now captures `1440x1000`, `834x1112`, and `390x844` viewport plus full-page variants through the smoke launcher, and `manifest.json` fails if viewport variants collapse to the same dimensions.
 - 2026-04-27: Codebase verification pass. Corrected evidence/recommendations for F6 (type scales already exist — shifted to enforcement), F8 (desktop already has visible nav — corrected evidence, reduced recommendation scope), F9 (acknowledged third-party NeonAuth constraints), F10 (placeholder grammar is fine — corrected evidence). Updated F3 and F7 to acknowledge existing components (`Empty` family, `ComingSoonAlert`).
