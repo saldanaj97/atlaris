@@ -2,6 +2,7 @@ import { BookOpen, Calendar, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
 import { Activity } from 'react';
+import { Button } from '@/components/ui/button';
 import type { PlanSummary } from '@/shared/types/db.types';
 import type { ScheduledEvent } from '../types';
 import { getActivityRelativeLabel, getEventTypeConfig } from './activity-utils';
@@ -17,10 +18,6 @@ const SIDEBAR_CARD_CLASS =
 	'rounded-2xl border border-sidebar-border bg-sidebar p-5 text-sidebar-foreground shadow-sm';
 const SIDEBAR_SECONDARY_TEXT_CLASS = 'text-sidebar-foreground/70';
 const SIDEBAR_MUTED_TEXT_CLASS = 'text-sidebar-foreground/60';
-const SIDEBAR_SECONDARY_ACTION_CLASS =
-	'flex items-center justify-center rounded-lg border border-sidebar-border bg-sidebar py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground';
-const SIDEBAR_PRIMARY_ACTION_CLASS =
-	'bg-sidebar-primary hover:bg-sidebar-primary/90 flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium text-sidebar-primary-foreground shadow-md transition-all hover:shadow-lg';
 
 function UpcomingScheduleCard({
 	events,
@@ -117,13 +114,15 @@ function UpcomingScheduleCard({
 
 			{/* Action Buttons - Side by side when space allows */}
 			<div className="mt-4 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-				<Link href="/plans" className={SIDEBAR_SECONDARY_ACTION_CLASS}>
-					View All Plans
-				</Link>
-				<Link href="/plans/new" className={SIDEBAR_PRIMARY_ACTION_CLASS}>
-					<Plus className="h-4 w-4" />
-					New Plan
-				</Link>
+				<Button asChild variant="outline" className="bg-sidebar">
+					<Link href="/plans">View All Plans</Link>
+				</Button>
+				<Button asChild>
+					<Link href="/plans/new">
+						<Plus className="h-4 w-4" />
+						New Plan
+					</Link>
+				</Button>
 			</div>
 		</div>
 	);
@@ -142,12 +141,9 @@ function EmptyStateCard() {
 				<p className={`mb-4 text-sm ${SIDEBAR_SECONDARY_TEXT_CLASS}`}>
 					Create a new plan to start your learning journey
 				</p>
-				<Link
-					href="/plans/new"
-					className={`${SIDEBAR_PRIMARY_ACTION_CLASS} px-4`}
-				>
-					Create New Plan
-				</Link>
+				<Button asChild>
+					<Link href="/plans/new">Create New Plan</Link>
+				</Button>
 			</div>
 		</div>
 	);
@@ -166,9 +162,9 @@ function NoUpcomingEventsCard() {
 				<p className={`mb-4 text-sm ${SIDEBAR_SECONDARY_TEXT_CLASS}`}>
 					Add sessions to your active plan to keep learning momentum.
 				</p>
-				<Link href="/plans" className={`${SIDEBAR_PRIMARY_ACTION_CLASS} px-4`}>
-					View Plans
-				</Link>
+				<Button asChild>
+					<Link href="/plans">View Plans</Link>
+				</Button>
 			</div>
 		</div>
 	);

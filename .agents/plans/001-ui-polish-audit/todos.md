@@ -16,10 +16,10 @@
   - [x] Extend existing token foundation with product-surface tokens (panel, disabled, warning).
   - [x] Add shared `PageShell`, `PageHeader`, `Surface`, `MetricCard` primitives (complement existing `Empty` family).
   - [x] Migrate product pages to new primitives (dashboard, analytics, settings index, plans list; high-drift surfaces in plan detail/module; badge product variant + style guide).
-- [ ] Finding 4: Button hierarchy is incoherent.
-  - [ ] Choose resolution option (recommended: Option 2 — normalize shared variants).
-  - [ ] Audit existing button usage across routes.
-  - [ ] Replace route-level inline CTA styling (e.g. `UnifiedPlanInput` submit) with shared variants.
+- [x] Finding 4: Button hierarchy is incoherent.
+  - [x] Choose resolution option (Option 2 — normalize shared variants).
+  - [x] Audit existing button usage across routes.
+  - [x] Replace route-level inline CTA styling (e.g. `UnifiedPlanInput` submit) with shared variants.
 - [ ] Finding 5: App layout wastes space.
   - [ ] Choose resolution option (recommended: Option 2 — define layout grid rules).
   - [ ] Define product page spacing/grid rules (header height, section gap, content max-width).
@@ -73,3 +73,4 @@
 - 2026-04-27: Finding 3 implemented — `globals.css` panel/warning/disabled tokens; `PageShell`, `PageHeader`, `Surface`, `MetricCard` in `src/components/ui/`; app pages + dashboard/plan module surfaces migrated; `Badge` `product` variant, default `outline` for app drift reduction; `docs/styles/style-guide.md` product-surface section.
 - 2026-04-27: Finding 1 baseline regenerated locally — `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` exit 0; manifest shows viewport widths **1440 / 834 / 390**. Fixes this session: smoke migrations via `node …/drizzle-kit/bin.cjs migrate` (PATH without `pnpm`); `fullPage` width allows ≤24px gutter vs viewport; screenshots use `scale: 'css'`.
 - 2026-04-27: Finding 1 manual screenshot review completed after hiding Next dev indicator in `scripts/ui/capture-baseline.ts` (`nextjs-portal` / `data-nextjs-dev-tools-button` screenshot-only CSS). Re-ran `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` successfully; sampled landing/about long captures and product route captures show no dev overlay and no duplicated sticky/nav/hero artifact.
+- 2026-04-27: Finding 4 implemented — `Button` now owns `cta`, `soft-primary`, `success`, and less washed-out disabled opacity; migrated high-signal app CTAs from inline `bg-primary`/`shadow-primary` link styles to shared variants (`UnifiedPlanInput`, dashboard resume/sidebar CTAs, module completion/error actions, timeline "View Full Module"). Validation: `pnpm exec vitest run --project unit tests/unit/app/plans/new/page.spec.tsx`, `pnpm check:lint:changed`, `pnpm check:type` pass. React Doctor via `pnpm dlx react-doctor@latest . --verbose --diff` scored 94/100; reported existing out-of-scope issues in ThemeToggle/model selector/RegenerateButton/MouseGlow/marketing metadata.

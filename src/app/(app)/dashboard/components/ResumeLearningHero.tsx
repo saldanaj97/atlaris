@@ -161,7 +161,8 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
 					</p>
 					<Button
 						asChild
-						className="gap-2 bg-white px-5 py-2.5 text-sm font-medium text-primary shadow-sm hover:bg-white/90"
+						variant="secondary"
+						className="gap-2 px-5 py-2.5 text-sm font-medium shadow-sm"
 					>
 						<Link href={`/plans/${plan.plan.id}`}>
 							<Play className="h-4 w-4" />

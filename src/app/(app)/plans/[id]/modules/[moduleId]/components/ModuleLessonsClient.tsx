@@ -6,6 +6,7 @@ import type { JSX } from 'react';
 import { useMemo } from 'react';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { Accordion } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
@@ -103,21 +104,19 @@ export function ModuleLessonsClient({
 						Great work! You&apos;ve completed all lessons in this module.
 					</p>
 					{nextModuleId ? (
-						<Link
-							href={`/plans/${planId}/modules/${nextModuleId}`}
-							className="bg-success text-success-foreground hover:bg-success/90 inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium transition"
-						>
-							Continue to Next Module
-							<ArrowRight className="h-4 w-4" />
-						</Link>
+						<Button asChild variant="success" className="h-auto px-6 py-3">
+							<Link href={`/plans/${planId}/modules/${nextModuleId}`}>
+								Continue to Next Module
+								<ArrowRight className="h-4 w-4" />
+							</Link>
+						</Button>
 					) : (
-						<Link
-							href={`/plans/${planId}`}
-							className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium text-white transition"
-						>
-							Back to Plan Overview
-							<ArrowRight className="h-4 w-4" />
-						</Link>
+						<Button asChild className="h-auto px-6 py-3">
+							<Link href={`/plans/${planId}`}>
+								Back to Plan Overview
+								<ArrowRight className="h-4 w-4" />
+							</Link>
+						</Button>
 					)}
 				</section>
 			)}

@@ -269,9 +269,10 @@ export function UnifiedPlanInput({
 				<div className="flex justify-end">
 					<Button
 						type="button"
+						variant="cta"
 						onClick={handleSubmit}
 						disabled={isDisabled}
-						className="group bg-primary hover:bg-primary/90 shadow-primary/25 hover:shadow-primary/30 h-auto rounded-2xl px-5 py-2.5 text-white shadow-xl transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-2xl disabled:opacity-50 sm:px-6 sm:py-3"
+						className="h-auto px-5 py-2.5 sm:px-6 sm:py-3"
 					>
 						{isSubmitting ? (
 							<>

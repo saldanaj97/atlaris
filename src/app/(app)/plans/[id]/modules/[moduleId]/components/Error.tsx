@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 
 interface ModuleDetailPageErrorProps {
@@ -40,20 +41,16 @@ export function ModuleDetailPageError({
 				</p>
 				<div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					{planId && (
-						<Link
-							href={`/plans/${planId}`}
-							className="bg-primary hover:bg-primary/90 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-white transition"
-						>
-							<ArrowLeft className="h-4 w-4" />
-							Back to Plan
-						</Link>
+						<Button asChild>
+							<Link href={`/plans/${planId}`}>
+								<ArrowLeft className="h-4 w-4" />
+								Back to Plan
+							</Link>
+						</Button>
 					)}
-					<Link
-						href="/plans"
-						className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-2 text-foreground transition hover:bg-muted"
-					>
-						View All Plans
-					</Link>
+					<Button asChild variant="outline">
+						<Link href="/plans">View All Plans</Link>
+					</Button>
 				</div>
 			</Surface>
 		</div>

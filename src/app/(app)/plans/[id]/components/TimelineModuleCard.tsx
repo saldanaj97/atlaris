@@ -263,9 +263,9 @@ export function TimelineModuleCard({
 						<div className="mt-4 flex justify-end">
 							<Button
 								asChild
-								variant="outline"
+								variant="soft-primary"
 								size="sm"
-								className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 dark:border-primary/50 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 h-auto rounded-xl px-4 py-2"
+								className="h-auto px-4 py-2"
 							>
 								<Link href={`/plans/${planId}/modules/${module.id}`}>
 									View Full Module
