@@ -19,7 +19,7 @@
 
 # next.js
 /.next/
-/test-dist/next-smoke-*/
+.test-dist/*
 /out/
 
 # production
