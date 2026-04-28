@@ -5,10 +5,14 @@ function printHelp(): void {
   console.log('Usage: tsx scripts/tests/run.ts unit [test-path] [OPTIONS]');
   console.log('');
   console.log('Arguments:');
-  console.log('  test-path           Path to test file or directory (default: tests/unit)');
+  console.log(
+    '  test-path           Path to test file or directory (default: tests/unit)',
+  );
   console.log('');
   console.log('Options:');
-  console.log('  --changed, -c       Run only tests related to uncommitted changes');
+  console.log(
+    '  --changed, -c       Run only tests related to uncommitted changes',
+  );
   console.log('  --watch, -w         Run in watch mode');
   console.log('  --help, -h          Show this help message');
   console.log('');

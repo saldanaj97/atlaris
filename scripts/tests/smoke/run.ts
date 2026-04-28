@@ -33,7 +33,7 @@ function signalToExitCode(signal: NodeJS.Signals): number {
 
 async function stopChildProcess(
   child: ChildProcess | null,
-  signal: NodeJS.Signals = 'SIGTERM'
+  signal: NodeJS.Signals = 'SIGTERM',
 ): Promise<void> {
   if (!child || child.exitCode !== null || child.signalCode !== null) {
     return;
@@ -132,7 +132,10 @@ async function main(): Promise<void> {
     await prepareSmokeDatabase(connectionUrl);
     throwIfInterrupted();
 
-    stateFilePath = writeSmokeStateFile(tempDir, buildSmokeStatePayload(connectionUrl));
+    stateFilePath = writeSmokeStateFile(
+      tempDir,
+      buildSmokeStatePayload(connectionUrl),
+    );
     process.env[SMOKE_STATE_FILE_ENV] = stateFilePath;
     throwIfInterrupted();
 
@@ -148,12 +151,19 @@ async function main(): Promise<void> {
 
     activeChild = spawn(
       'pnpm',
-      ['exec', 'playwright', 'test', '--config', 'playwright.config.ts', ...playwrightArgs],
+      [
+        'exec',
+        'playwright',
+        'test',
+        '--config',
+        'playwright.config.ts',
+        ...playwrightArgs,
+      ],
       {
         cwd: process.cwd(),
         env: buildPlaywrightEnv(process.env),
         stdio: 'inherit',
-      }
+      },
     );
 
     const exitCode = await new Promise<number>((resolve, reject) => {

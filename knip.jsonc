@@ -1,24 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
-  "entry": [
-    "scripts/tests/smoke/run.ts",
-    "scripts/tests/smoke/start-app.ts"
-  ],
+  "entry": ["scripts/tests/smoke/run.ts", "scripts/tests/smoke/start-app.ts"],
   "project": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "scripts/**/*.ts",
     "tests/**/*.ts",
-    "tests/**/*.tsx"
+    "tests/**/*.tsx",
   ],
-  "ignoreBinaries": [
-    "brew"
-  ],
+  "ignoreBinaries": ["brew"],
   "ignoreDependencies": [
     "postcss",
     "tailwindcss",
     "tw-animate-css",
-    "@better-auth/passkey"
+    "@better-auth/passkey",
   ],
   "ignoreIssues": {
     "src/components/ui/**": [
@@ -26,11 +21,9 @@
       "types",
       "enumMembers",
       "namespaceMembers",
-      "unlisted"
+      "unlisted",
     ],
-    "src/lib/db/schema/constants.ts": [
-      "duplicates"
-    ],
+    "src/lib/db/schema/constants.ts": ["duplicates"],
     // Helpers + schemas exported as part of an internal "public surface" so
     // future tests / consumers don't need to re-introduce inline shapes.
     "scripts/tests/shared/cli.ts": ["types"],
@@ -42,17 +35,15 @@
     "src/features/plans/session/stream-emitters.ts": ["types"],
     "src/lib/api/request-boundary.ts": ["types"],
     "src/shared/schemas/plan-status.ts": ["types"],
-    "src/features/billing/stripe-commerce.ts": [
-      "types"
-    ],
+    "src/features/billing/stripe-commerce.ts": ["types"],
     "src/features/plans/regeneration-orchestration/index.ts": [
       "exports",
-      "types"
+      "types",
     ],
     "tests/fixtures/stripe-mocks.ts": ["exports", "types"],
-    "tests/fixtures/db-mocks.ts": ["exports"]
+    "tests/fixtures/db-mocks.ts": ["exports"],
   },
   "rules": {
-    "files": "warn"
-  }
+    "files": "warn",
+  },
 }

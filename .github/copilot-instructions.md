@@ -55,7 +55,7 @@ pnpm db:dev:reset
 - Do not edit `.env.local` unless the user explicitly asks. Treat it as user-owned machine state; prefer shared docs/examples and launcher-owned env for local smoke or dev-db work.
 - In tests, prefer `@tests/...` aliases for test-only helpers, mocks, and fixtures.
 - `vi.mock()` and `importActual()` must use the exact same module specifier string as the production import. Relative-path equivalents can register as different module IDs and miss the dependency under test.
-- When a test depends on mock-before-import ordering, preserve that order even if it requires a targeted `biome-ignore` to stop import reordering.
+- When a test depends on mock-before-import ordering, preserve that order. Prettier does not organize imports, so do not add import-sorting tooling casually.
 - If you are changing tests, read `tests/AGENTS.md` for repo-specific test patterns and supported entrypoints.
 - Before applying Fleet, CodeRabbit, or other review-bot findings, verify each item against the current tree and the active plan scope. Skip stale, invalid, or explicitly excluded findings instead of implementing them mechanically.
 - Before staging, committing, or pushing, inspect the working tree and stage only files that belong to the current workstream. Mixed `.plans/`, docs, or unrelated pending changes are common here; exclude them unless the user explicitly includes them.

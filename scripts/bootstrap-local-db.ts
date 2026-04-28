@@ -11,8 +11,8 @@ import dotenv from 'dotenv';
 import postgres from 'postgres';
 
 import {
-    bootstrapDatabase,
-    grantRlsPermissions,
+  bootstrapDatabase,
+  grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 
@@ -35,12 +35,12 @@ function assertLocalhostOnly(connectionUrl: string): void {
     host = new URL(connectionUrl).hostname;
   } catch {
     throw new Error(
-      'Invalid DATABASE_URL: could not parse hostname (expected a postgresql:// URL).'
+      'Invalid DATABASE_URL: could not parse hostname (expected a postgresql:// URL).',
     );
   }
   if (!LOCAL_HOSTNAMES.has(host)) {
     throw new Error(
-      `Refusing to bootstrap non-local database (host: ${host}). This script is for local dev only.`
+      `Refusing to bootstrap non-local database (host: ${host}). This script is for local dev only.`,
     );
   }
 }
@@ -52,7 +52,8 @@ async function assertConnection(connectionUrl: string): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `Could not connect to Postgres at the given DATABASE_URL. Is Postgres running? (${message})`
+      `Could not connect to Postgres at the given DATABASE_URL. Is Postgres running? (${message})`,
+      { cause: err },
     );
   } finally {
     await sql.end();

@@ -23,22 +23,10 @@ import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(SCRIPT_DIR, '..');
-const TABLES_DIR = join(
-  REPO_ROOT,
-  'src',
-  'lib',
-  'db',
-  'schema',
-  'tables'
-);
+const TABLES_DIR = join(REPO_ROOT, 'src', 'lib', 'db', 'schema', 'tables');
 const REPORT_PATH = join(SCRIPT_DIR, 'audit-drizzle-columns.report.json');
 
-const SEARCH_GLOBS = [
-  'src',
-  'scripts',
-  'tests',
-  'docs',
-];
+const SEARCH_GLOBS = ['src', 'scripts', 'tests', 'docs'];
 
 const COLUMN_REGEX =
   /^\s{2,}([a-zA-Z][a-zA-Z0-9]*)\s*:\s*(?:[a-zA-Z]+\([^)]*\)|sql)/gm;
@@ -64,7 +52,9 @@ function listTableFiles(): string[] {
     .map((name) => join(TABLES_DIR, name));
 }
 
-function extractColumns(file: string): Array<{ table: string; column: string }> {
+function extractColumns(
+  file: string,
+): Array<{ table: string; column: string }> {
   const source = readFileSync(file, 'utf8');
   const tableName = inferTableName(source, file);
   const out: Array<{ table: string; column: string }> = [];
@@ -86,10 +76,7 @@ function extractColumns(file: string): Array<{ table: string; column: string }> 
 function inferTableName(source: string, file: string): string {
   const tableMatch = source.match(/pgTable\(\s*['"]([a-z0-9_]+)['"]/);
   if (tableMatch) return tableMatch[1];
-  return file
-    .split('/')
-    .pop()!
-    .replace(/\.ts$/, '');
+  return file.split('/').pop()!.replace(/\.ts$/, '');
 }
 
 const SCHEMA_HELPER_KEYWORDS = new Set([
@@ -146,7 +133,7 @@ function ripgrepCount(query: string): {
   }
   if (result.status !== 0) {
     throw new Error(
-      `ripgrep failed (exit ${result.status}): ${result.stderr.trim()}`
+      `ripgrep failed (exit ${result.status}): ${result.stderr.trim()}`,
     );
   }
   const lines = result.stdout
@@ -194,7 +181,7 @@ function main(): void {
     (a, b) =>
       a.references - b.references ||
       a.table.localeCompare(b.table) ||
-      a.column.localeCompare(b.column)
+      a.column.localeCompare(b.column),
   );
 
   // A column is "schema-only" when both camel and snake forms appear at
@@ -206,9 +193,7 @@ function main(): void {
   const audit: AuditReport = {
     generatedAt: new Date().toISOString(),
     repoRoot: REPO_ROOT,
-    tablesScanned: tableFiles.map((file) =>
-      file.replace(`${REPO_ROOT}/`, '')
-    ),
+    tablesScanned: tableFiles.map((file) => file.replace(`${REPO_ROOT}/`, '')),
     columns: reportsSorted,
     candidates,
   };
@@ -216,14 +201,14 @@ function main(): void {
   writeFileSync(REPORT_PATH, `${JSON.stringify(audit, null, 2)}\n`, 'utf8');
 
   console.log(
-    `Audited ${audit.columns.length} columns across ${audit.tablesScanned.length} tables.`
+    `Audited ${audit.columns.length} columns across ${audit.tablesScanned.length} tables.`,
   );
   console.log(`Removal candidates (references <= 3): ${candidates.length}`);
   if (candidates.length > 0) {
     console.log('Top candidates:');
     for (const candidate of candidates.slice(0, 10)) {
       console.log(
-        `  - ${candidate.table}.${candidate.column}: ${candidate.references} reference(s)`
+        `  - ${candidate.table}.${candidate.column}: ${candidate.references} reference(s)`,
       );
     }
   }

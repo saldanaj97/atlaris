@@ -26,17 +26,18 @@ pnpm start            # Start production server
 ### Linting & Formatting
 
 ```bash
-pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type)
-pnpm check:lint         # Biome: format + lint + import assist (check only)
-pnpm check:lint:ci      # Biome CI mode for GitHub Actions and other read-only runners
-pnpm check:lint:fix     # Biome: apply safe fixes (format + lint + organize imports)
-pnpm check:lint:changed # Biome check only files changed vs base branch (see scripts/biome-changed.sh)
+pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type + format)
+pnpm check:lint         # Oxlint: lint source, script, and test code
+pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
+pnpm check:lint:fix     # Oxlint: apply safe lint fixes
+pnpm check:lint:changed # Oxlint only files changed vs base branch (see scripts/lint-changed.sh)
 pnpm check:knip         # Manual, non-destructive Knip audit (local-only, not part of check:full/CI)
-pnpm check:format       # Biome formatter only (writes files)
+pnpm check:format       # Prettier formatter only (writes files)
+pnpm check:format:check # Prettier read-only format check
 pnpm check:type         # TypeScript type checking only
 ```
 
-Local Git hooks run through Husky in `.husky/`. Pre-commit formats staged Biome-managed files and then runs `ggshield` when it is installed.
+Local Git hooks run through Husky in `.husky/`. Pre-commit runs Oxlint and Prettier on staged files, then runs `ggshield` when it is installed.
 
 ## Database (Drizzle)
 

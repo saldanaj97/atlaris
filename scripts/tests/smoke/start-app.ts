@@ -21,7 +21,7 @@ const FORWARDED_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
 function killChildTree(
   child: ReturnType<typeof spawn>,
-  signal: NodeJS.Signals
+  signal: NodeJS.Signals,
 ): void {
   const childPid = child.pid;
   if (!childPid) {
@@ -47,11 +47,12 @@ function killChildTree(
 function main(): void {
   const mode = parseSmokeAppMode(process.argv);
   const state = readSmokeStateFromEnv();
-  const layer = mode === 'anon' ? buildAnonModeLayer(state) : buildAuthModeLayer(state);
+  const layer =
+    mode === 'anon' ? buildAnonModeLayer(state) : buildAuthModeLayer(state);
   const env = mergeSmokeProcessEnv(process.env, layer);
 
   console.log(
-    `[smoke:start-app] mode=${mode} PORT=${env.PORT} APP_URL=${env.APP_URL}`
+    `[smoke:start-app] mode=${mode} PORT=${env.PORT} APP_URL=${env.APP_URL}`,
   );
 
   const child = spawn('pnpm', NEXT_DEV_COMMAND, {

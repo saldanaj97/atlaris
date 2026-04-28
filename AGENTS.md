@@ -61,7 +61,7 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
    This task list should be detailed enough to guide the planning process without ambiguity, but not so detailed that it is overwhelming.
 
 3. Plan Creation: Create a plan file `.plans/<nextTaskNumber-taskName>/plan.md` outlining the plan using the high level tasks from the `.plans/<nextTaskNumber-taskName>/todos.md` file. This is where we want plenty of detail to reduce ambiguity and room for error by properly guiding the implementation.
-Make sure to use the general format for each step/phase/slice in a plan: 
+   Make sure to use the general format for each step/phase/slice in a plan:
    1. Step X.0 — Fetch issue, confirm/add ACs
    2. Steps X.1–X.N — Implementation
    3. Validation Steps — Type check, lint, tests

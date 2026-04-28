@@ -88,7 +88,7 @@ Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity,
 
 ## Lint enforcement
 
-Do not import `@/lib/db/service-role` from request-layer paths (see `src/lib/db/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Biome plus review until equivalent rules land in `biome.json`.
+Do not import `@/lib/db/service-role` from request-layer paths (see `src/lib/db/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Oxlint plus review until equivalent rules land in `.oxlintrc.json`.
 
 - `src/app/api/**`
 - `src/lib/api/**`

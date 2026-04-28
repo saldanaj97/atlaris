@@ -16,7 +16,7 @@ if (!process.env.CI) {
 const srcRoot = fileURLToPath(new URL('./src', import.meta.url));
 const testsRoot = fileURLToPath(new URL('./tests', import.meta.url));
 const authServerMockPath = fileURLToPath(
-  new URL('./tests/mocks/shared/auth-server.ts', import.meta.url)
+  new URL('./tests/mocks/shared/auth-server.ts', import.meta.url),
 );
 const testAliases = {
   '@/lib/auth/server': authServerMockPath,
@@ -36,7 +36,7 @@ function getIntegrationMaxWorkers(): number {
 
   const configured = Number.parseInt(
     process.env.INTEGRATION_MAX_WORKERS ?? '4',
-    10
+    10,
   );
 
   return Number.isFinite(configured) && configured > 0 ? configured : 4;
@@ -93,9 +93,9 @@ export default defineConfig({
           alias: testAliases,
         },
       },
-       {
-         test: {
-           name: 'e2e',
+      {
+        test: {
+          name: 'e2e',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -105,18 +105,18 @@ export default defineConfig({
           testTimeout: 90_000,
           include: ['tests/e2e/**/*.{test,spec}.{ts,tsx}'],
           globalSetup: ['tests/setup/testcontainers.ts'],
-           setupFiles: [
-             'tests/setup/test-env.ts',
-             'tests/setup.ts',
-             'tests/setup/db.ts',
-           ],
-           maxConcurrency: 1,
-           alias: testAliases,
-         },
+          setupFiles: [
+            'tests/setup/test-env.ts',
+            'tests/setup.ts',
+            'tests/setup/db.ts',
+          ],
+          maxConcurrency: 1,
+          alias: testAliases,
+        },
       },
-       {
-         test: {
-           name: 'security',
+      {
+        test: {
+          name: 'security',
           globals: true,
           environment: 'jsdom',
           isolate: true,
@@ -126,10 +126,10 @@ export default defineConfig({
           testTimeout: 90_000,
           include: ['tests/security/**/*.{test,spec}.{ts,tsx}'],
           globalSetup: ['tests/setup/testcontainers.ts'],
-           setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
-           maxConcurrency: 1,
-           alias: testAliases,
-         },
+          setupFiles: ['tests/setup/test-env.ts', 'tests/setup.ts'],
+          maxConcurrency: 1,
+          alias: testAliases,
+        },
       },
       {
         test: {

@@ -18,11 +18,11 @@ If any layer fails, access is denied. The system is **fail-closed** — missing 
 
 **Preferred:** `requestBoundary` from `@/lib/api/request-boundary` — one object with three entry points:
 
-| Consumer Type     | API                              | Callback receives `RequestScope` or `RouteScope`   | Use when                          |
-| ----------------- | -------------------------------- | -------------------------------------------------- | --------------------------------- |
-| API routes        | `requestBoundary.route(...)`     | `{ req, params, actor, db, ... }`                  | Handlers in `app/api/`            |
-| Server components | `requestBoundary.component(...)` | `{ actor, db, ... }`                               | Async server components           |
-| Server actions    | `requestBoundary.action(...)`    | `{ actor, db, ... }`                               | `'use server'` functions          |
+| Consumer Type     | API                              | Callback receives `RequestScope` or `RouteScope` | Use when                 |
+| ----------------- | -------------------------------- | ------------------------------------------------ | ------------------------ |
+| API routes        | `requestBoundary.route(...)`     | `{ req, params, actor, db, ... }`                | Handlers in `app/api/`   |
+| Server components | `requestBoundary.component(...)` | `{ actor, db, ... }`                             | Async server components  |
+| Server actions    | `requestBoundary.action(...)`    | `{ actor, db, ... }`                             | `'use server'` functions |
 
 `requestBoundary.route` is built on `withAuth` + rate-limit options. `requestBoundary.component` and `requestBoundary.action` call `withServerComponentContext` and `withServerActionContext` internally — those two functions are **compatibility shims** for call sites that have not moved to `requestBoundary` yet; new code should use `requestBoundary.component` / `requestBoundary.action` instead.
 
@@ -58,7 +58,9 @@ export async function getPlanForPage(planId: string) {
 
 // Server component (preferred) — requestBoundary.component
 import { requestBoundary } from '@/lib/api/request-boundary';
-const tier = await requestBoundary.component(async ({ actor }) => actor.subscriptionTier);
+const tier = await requestBoundary.component(
+  async ({ actor }) => actor.subscriptionTier,
+);
 ```
 
 `withServerActionContext` / `withServerComponentContext` are still valid for existing code; prefer `requestBoundary.action` / `requestBoundary.component` in new or refactored files.
@@ -162,32 +164,32 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
 
-4. **Service-role usage is restricted.** Do not import `@/lib/db/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Biome).
+4. **Service-role usage is restricted.** Do not import `@/lib/db/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
 
 ## Anti-Patterns
 
-| Don't                                             | Do Instead                                                                 |
-| ------------------------------------------------- | -------------------------------------------------------------------------- |
-| Call `getDb()` outside an auth wrapper            | Use `withAuth` or `requestBoundary` (or the legacy shims)                  |
-| Pass user ID from request body to query functions | Always use `ctx.user` / `actor` from the boundary callback                 |
-| Import `@/lib/db/service-role` in API routes      | Use `getDb()` which returns the RLS-scoped client                          |
-| Create manual RLS clients in server actions       | Use `requestBoundary.action` or `withServerActionContext` for lifecycle   |
-| Skip `cleanup()` on RLS clients                   | Use the wrappers — they handle cleanup in `finally`                        |
+| Don't                                                        | Do Instead                                                                         |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Call `getDb()` outside an auth wrapper                       | Use `withAuth` or `requestBoundary` (or the legacy shims)                          |
+| Pass user ID from request body to query functions            | Always use `ctx.user` / `actor` from the boundary callback                         |
+| Import `@/lib/db/service-role` in API routes                 | Use `getDb()` which returns the RLS-scoped client                                  |
+| Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
+| Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
 
 ## Code Locations
 
-| Component             | File                            |
-| --------------------- | ------------------------------- |
-| Auth + legacy shims   | `src/lib/api/auth.ts`           |
+| Component             | File                              |
+| --------------------- | --------------------------------- |
+| Auth + legacy shims   | `src/lib/api/auth.ts`             |
 | Request boundary      | `src/lib/api/request-boundary.ts` |
-| Request context       | `src/lib/api/context.ts`        |
-| RLS client factory    | `src/lib/db/rls.ts`             |
-| DB client resolver    | `src/lib/db/runtime.ts`         |
-| Service-role client   | `src/lib/db/service-role.ts`    |
-| Neon Auth config      | `src/lib/auth/server.ts`        |
-| Quota / usage logic   | `src/lib/stripe/usage.ts`       |
-| RLS policies (schema) | `src/lib/db/schema/tables/*.ts` |
-| Query modules         | `src/lib/db/queries/*.ts`       |
+| Request context       | `src/lib/api/context.ts`          |
+| RLS client factory    | `src/lib/db/rls.ts`               |
+| DB client resolver    | `src/lib/db/runtime.ts`           |
+| Service-role client   | `src/lib/db/service-role.ts`      |
+| Neon Auth config      | `src/lib/auth/server.ts`          |
+| Quota / usage logic   | `src/lib/stripe/usage.ts`         |
+| RLS policies (schema) | `src/lib/db/schema/tables/*.ts`   |
+| Query modules         | `src/lib/db/queries/*.ts`         |

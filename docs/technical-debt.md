@@ -6,7 +6,7 @@
 
 This is unrelated to the current CodeRabbit follow-up work and is intentionally deferred for a later pass.
 
-## ~~Reserved `plan_generation` job type~~ *(resolved)*
+## ~~Reserved `plan_generation` job type~~ _(resolved)_
 
 Resolved by removing the `plan_generation` value from the job-type enum, the
 TypeScript constant map, and all associated dead types (`PlanGenerationJobData`,
@@ -23,14 +23,14 @@ imports throughout worker and route code.
 This should only be refactored if a richer queue domain layer emerges. Until
 then, the wrapper stays as a narrow composition boundary.
 
-## ~~Dead `getCurrentUserRecordSafe()` cleanup in `src/lib/api/auth.ts`~~ *(resolved)*
+## ~~Dead `getCurrentUserRecordSafe()` cleanup in `src/lib/api/auth.ts`~~ _(resolved)_
 
 Resolved by removing `getCurrentUserRecordSafe()` from `src/lib/api/auth.ts`,
 deleting its dedicated unit coverage from `tests/unit/api/auth.spec.ts`, and
 updating the auth guidance/docs so `withServerComponentContext()` is the only
 recommended server-component wrapper for authenticated DB work.
 
-## ~~Remaining `generationStatus = 'generating'` write in attempt reservation~~ *(resolved)*
+## ~~Remaining `generationStatus = 'generating'` write in attempt reservation~~ _(resolved)_
 
 Resolved by extracting `setLearningPlanGenerating()` and
 `PLAN_GENERATING_INSERT_DEFAULTS` into
@@ -69,7 +69,7 @@ pass, remove the ceremony (`prepareRlsTransactionContext` /
 "confirmed required on Neon" and close permanently. Blocked on Neon compute
 quota as of 2026-03-24.
 
-## ~~Missing DB-level task title hardening~~ *(resolved)*
+## ~~Missing DB-level task title hardening~~ _(resolved)_
 
 Resolved in migration `0020_burly_jackal.sql`. CHECK constraints
 (`char_length(title) <= 500`) now exist on `modules`, `tasks`, and `resources`
@@ -77,7 +77,7 @@ tables. The AI parser also truncates titles defensively before DB insertion.
 Constants live in `src/lib/db/schema/constants.ts`; drift is caught by
 `tests/unit/db/title-length-constraints.spec.ts`.
 
-## ~~OpenRouter cost accounting on `ai_usage_events`~~ *(shipped, #301)*
+## ~~OpenRouter cost accounting on `ai_usage_events`~~ _(shipped, #301)_
 
 `ai_usage_events` now carries three distinct cost-related fields:
 
@@ -103,7 +103,7 @@ Persistable vs runtime-only models and tier-aware listing remain in
 and plan stream model resolution in
 [`plans/stream/route.ts`](../src/app/api/v1/plans/stream/route.ts).
 
-## ~~Drizzle snapshot metadata drift~~ *(resolved)*
+## ~~Drizzle snapshot metadata drift~~ _(resolved)_
 
 Resolved by fixing the `0010`/`0011` snapshot ID collision, adding a no-op
 `0019_snapshot_realignment.sql` migration that carries a valid current-state
@@ -111,7 +111,7 @@ snapshot, and removing the orphaned `0001_enable_force_rls.sql` file.
 `drizzle-kit generate` now works normally; migration `0020_burly_jackal.sql`
 was the first auto-generated migration since the fix.
 
-## ~~Enum naming mismatch: `youtube` vs `video`~~ *(resolved)*
+## ~~Enum naming mismatch: `youtube` vs `video`~~ _(resolved)_
 
 Resolved: the `resource_type` enum value was renamed from `youtube` to `video`
 via `ALTER TYPE ... RENAME VALUE` migration, and all code references updated.

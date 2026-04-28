@@ -18,7 +18,7 @@ export interface ParseRunnerArgsOptions {
  */
 export function parseRunnerArgs(
   args: string[],
-  { defaultTestPath }: ParseRunnerArgsOptions
+  { defaultTestPath }: ParseRunnerArgsOptions,
 ): ParsedRunnerArgs {
   let testPath = defaultTestPath;
   let remainingArgs = args;

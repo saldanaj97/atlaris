@@ -314,7 +314,7 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
 
 ```typescript
 export function createTestPlan(
-  overrides: Partial<OwnedPlanRecord> = {}
+  overrides: Partial<OwnedPlanRecord> = {},
 ): OwnedPlanRecord {
   return {
     id: createId('plan'),
@@ -365,7 +365,7 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
   if (db == null || typeof db !== 'object') return false;
   const obj = db as Record<string, unknown>;
   return ATTEMPTS_DB_METHODS.every(
-    (method) => typeof obj[method] === 'function'
+    (method) => typeof obj[method] === 'function',
   );
 }
 ```
@@ -374,7 +374,7 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
 
 ```typescript
 export async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams
+  params: FinalizeSuccessPersistenceParams,
 ): Promise<GenerationAttemptRecord> {
   return dbClient.transaction(async (tx) => {
     await tx.delete(modules).where(eq(modules.planId, planId));

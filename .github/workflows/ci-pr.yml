@@ -47,18 +47,22 @@ jobs:
             source:
               - 'src/**'
               - 'tests/**'
+              - 'scripts/**'
             code:
               - 'src/**'
               - 'tests/**'
+              - 'scripts/**'
               - 'vitest.config.ts'
               - 'tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
-              - 'biome.json'
+              - '.oxlintrc.json'
+              - '.prettierignore'
+              - 'prettier.config.mjs'
               - '.husky/**'
               - '.pre-commit-config.yaml'
-              - 'scripts/biome-changed.sh'
+              - 'scripts/lint-changed.sh'
               - '.github/workflows/**'
 
   lint-and-type-check:
@@ -99,13 +103,15 @@ jobs:
             git status --short src/lib/db/migrations/
             exit 1
           fi
-      - name: Run Biome checks
+      - name: Run Oxlint checks
         run: |
           if [ "${{ needs.changes.outputs.source }}" = "true" ]; then
             pnpm check:lint:ci
           else
             pnpm check:lint
           fi
+      - name: Run Prettier check
+        run: pnpm check:format:check
       - name: Run type check
         run: pnpm check:type
 
@@ -638,7 +644,16 @@ jobs:
 
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light, security-tests]
+    needs:
+      [
+        changes,
+        lint-and-type-check,
+        vulnerability-scan,
+        build,
+        unit-tests,
+        integration-light,
+        security-tests,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Running Biome on staged files..."
+echo "Running Oxlint and Prettier on staged files..."
 pnpm exec lint-staged
 
 echo "Running ggshield secret scan..."

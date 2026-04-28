@@ -18,7 +18,7 @@ const databaseUrl =
 
 if (!databaseUrl) {
   throw new Error(
-    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations'
+    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations',
   );
 }
 
