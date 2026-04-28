@@ -40,12 +40,12 @@ export async function DashboardContent(): Promise<JSX.Element> {
 		<>
 			{/* ResumeLearningHero - only shown if there's an active plan */}
 			{activePlan && (
-				<section aria-label="Resume learning" className="mb-8">
+				<section aria-label="Resume learning" className="mb-6">
 					<ResumeLearningHero plan={activePlan} />
 				</section>
 			)}
 
-			<div className="grid gap-8 lg:grid-cols-3">
+			<div className="grid gap-6 lg:grid-cols-3">
 				{/* Client island - only filter logic */}
 				<ActivityFeedClient activities={activities} />
 
@@ -64,7 +64,7 @@ export function DashboardContentSkeleton(): JSX.Element {
 	return (
 		<>
 			{/* ResumeLearningHero skeleton */}
-			<section aria-label="Resume learning loading" className="mb-8">
+			<section aria-label="Resume learning loading" className="mb-6">
 				<div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary/20 via-accent/20 to-primary-dark/20 p-6 shadow-lg">
 					{/* Top row: label (left) and circular progress (right) */}
 					<div className="flex items-start justify-between gap-4">
@@ -98,7 +98,7 @@ export function DashboardContentSkeleton(): JSX.Element {
 				</div>
 			</section>
 
-			<div className="grid gap-8 lg:grid-cols-3">
+			<div className="grid gap-6 lg:grid-cols-3">
 				{/* Activity Feed skeleton - lg:col-span-2 */}
 				<div className="lg:col-span-2">
 					{/* Filter tabs skeleton */}

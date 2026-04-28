@@ -1,12 +1,11 @@
-import { BarChart3, Clock, Flame, Lock, Target } from 'lucide-react';
+import { BarChart3, Clock, Flame, Target } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
-import { Card, CardContent } from '@/components/ui/card';
+import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { PageShell } from '@/components/ui/page-shell';
-import { Progress } from '@/components/ui/progress';
 
 export const metadata: Metadata = {
 	title: 'Usage Analytics | Atlaris',
@@ -59,39 +58,17 @@ export default function UsageAnalyticsPage(): JSX.Element {
 			<ComingSoonAlert
 				title="We're building something special"
 				description="Usage analytics will give you a clear picture of your learning habits and progress. We're putting the finishing touches on it — we'll let you know when it's ready."
-				className="mb-10"
+				className="mb-6"
 			/>
 
-			{/* Preview cards */}
-			<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+			<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
 				{PREVIEW_CARDS.map((card) => (
-					<Card key={card.title} className="group relative rounded-2xl">
-						<CardContent>
-							{/* Lock overlay */}
-							<div className="absolute top-4 right-4">
-								<Lock
-									className="text-muted-foreground/60 h-4 w-4"
-									aria-hidden="true"
-								/>
-							</div>
-
-							<div className="flex flex-col gap-3 opacity-50">
-								<card.icon
-									className="text-primary h-8 w-8"
-									aria-hidden="true"
-								/>
-								<div>
-									<h3 className="font-medium">{card.title}</h3>
-									<p className="text-muted-foreground mt-1 text-sm">
-										{card.description}
-									</p>
-								</div>
-							</div>
-
-							{/* Locked progress bar */}
-							<Progress value={0} className="mt-4 h-1.5" aria-hidden="true" />
-						</CardContent>
-					</Card>
+					<LockedFeatureCard
+						key={card.title}
+						icon={card.icon}
+						title={card.title}
+						description={card.description}
+					/>
 				))}
 			</div>
 		</PageShell>

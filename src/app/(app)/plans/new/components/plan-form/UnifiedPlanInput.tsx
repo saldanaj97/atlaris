@@ -4,10 +4,12 @@ import { ArrowRight, Calendar, Clock, Loader2, Sparkles } from 'lucide-react';
 import type { JSX } from 'react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Surface } from '@/components/ui/surface';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
 import { assertNever } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
+import { cn } from '@/lib/utils';
 import {
 	DEADLINE_OPTIONS,
 	LEARNING_STYLE_OPTIONS,
@@ -89,11 +91,10 @@ function planInputReducer(
 }
 
 /**
- * Modern unified input component for plan generation.
- * Features a text input with inline dropdown selectors that appear
- * as styled pills within a natural language sentence structure.
+ * Unified input for plan generation: textarea + inline dropdown pills
+ * forming a natural-language sentence.
  *
- * Design: Glassmorphism matching the landing page aesthetic.
+ * Frame uses product `Surface` panel; no glassmorphism / mouse glow / gradient orbs.
  */
 export function UnifiedPlanInput({
 	onSubmit,
@@ -139,6 +140,7 @@ export function UnifiedPlanInput({
 	const topic = state.topic;
 
 	const topicInputId = `${baseId}-topic`;
+	const submitHintId = `${baseId}-submit-hint`;
 
 	const handleSubmit = () => {
 		if (!topic.trim() || isSubmitting || disabled) {
@@ -168,6 +170,7 @@ export function UnifiedPlanInput({
 
 	const isFormValid = topic.trim().length > 0;
 	const isDisabled = isSubmitting || disabled || !isFormValid;
+	const showEmptyTopicHint = !isSubmitting && !disabled && !isFormValid;
 
 	const isMac = useMemo(() => {
 		if (typeof navigator === 'undefined') return false;
@@ -180,24 +183,17 @@ export function UnifiedPlanInput({
 
 	return (
 		<div className="w-full max-w-2xl">
-			{/* Main input card with glassmorphism */}
-			<div className="dark:border-border dark:bg-card/60 dark:focus-within:border-ring dark:focus-within:ring-offset-background border-border bg-card/60 focus-within:border-ring focus-within:ring-ring relative rounded-3xl border px-4 py-4 shadow-2xl backdrop-blur-xl transition-all focus-within:ring-2 focus-within:ring-offset-2 sm:px-6 sm:py-5">
-				{/* Decorative gradient glow - clipped to card bounds */}
-				<div
-					className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl"
-					aria-hidden="true"
-				>
-					<div className="dark:from-primary/40 dark:to-accent/30 from-primary/30 to-accent/20 absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br opacity-40 blur-2xl dark:opacity-20" />
-				</div>
-
-				{/* Topic input */}
-				<div className="relative mb-3">
+			<Surface
+				padding="none"
+				className="focus-within:border-ring focus-within:ring-ring/40 px-4 py-4 transition-shadow focus-within:ring-2 sm:px-6 sm:py-5"
+			>
+				<div className="mb-3">
 					<label htmlFor={topicInputId} className="sr-only">
 						What do you want to learn?
 					</label>
 					<div className="flex items-start gap-2.5 sm:gap-3">
-						<div className="from-primary to-accent flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-linear-to-br shadow-lg sm:h-10 sm:w-10">
-							<Sparkles className="h-4 w-4 text-white sm:h-5 sm:w-5" />
+						<div className="border-primary/20 bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border sm:h-10 sm:w-10">
+							<Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
 						</div>
 						<Textarea
 							id={topicInputId}
@@ -207,15 +203,14 @@ export function UnifiedPlanInput({
 							}
 							onKeyDown={handleKeyDown}
 							placeholder="I want to learn TypeScript for React development..."
-							className="dark:text-foreground dark:placeholder-muted-foreground text-foreground placeholder-muted-foreground min-h-[56px] w-full resize-none border-0 bg-transparent px-0 py-0 text-base shadow-none focus-visible:ring-0 sm:min-h-[72px] sm:text-lg md:text-lg"
+							className="text-foreground placeholder:text-muted-foreground min-h-[56px] w-full resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 sm:min-h-[72px] sm:text-lg"
 							rows={2}
 							disabled={isSubmitting || disabled}
 						/>
 					</div>
 				</div>
 
-				{/* Inline sentence with dropdowns - Row 1 */}
-				<div className="dark:text-foreground text-foreground mb-2.5 flex flex-wrap items-center gap-2">
+				<div className="text-foreground mb-2.5 flex flex-wrap items-center gap-2">
 					<span className="text-sm">I&apos;m a</span>
 					<InlineDropdown
 						id={`${baseId}-skill-level`}
@@ -238,8 +233,7 @@ export function UnifiedPlanInput({
 					<span className="text-sm">per week.</span>
 				</div>
 
-				{/* Inline sentence with dropdowns - Row 2 */}
-				<div className="dark:text-foreground text-foreground mb-3 flex flex-wrap items-center gap-2">
+				<div className="text-foreground mb-4 flex flex-wrap items-center gap-2">
 					<span className="text-sm">I prefer</span>
 					<InlineDropdown
 						id={`${baseId}-learning-style`}
@@ -265,35 +259,43 @@ export function UnifiedPlanInput({
 					/>
 				</div>
 
-				{/* Submit button */}
-				<div className="flex justify-end">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<p
+						id={submitHintId}
+						className={cn(
+							'text-muted-foreground text-xs',
+							!showEmptyTopicHint && 'sr-only',
+						)}
+					>
+						Enter a learning goal to continue.
+					</p>
 					<Button
 						type="button"
 						variant="cta"
+						size="lg"
 						onClick={handleSubmit}
 						disabled={isDisabled}
-						className="h-auto px-5 py-2.5 sm:px-6 sm:py-3"
+						aria-describedby={showEmptyTopicHint ? submitHintId : undefined}
 					>
 						{isSubmitting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								<span className="font-medium">Generating...</span>
+								<span>Generating...</span>
 							</>
 						) : (
 							<>
-								<span className="font-medium">Generate My Plan</span>
+								<span>Generate My Plan</span>
 								<ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
 							</>
 						)}
 					</Button>
 				</div>
-			</div>
+			</Surface>
 
-			{/* Subtext with keyboard hint */}
-			<p className="dark:text-muted-foreground text-muted-foreground mt-3 text-center text-xs sm:mt-4 sm:text-sm">
+			<p className="text-muted-foreground mt-3 text-center text-xs sm:mt-4 sm:text-sm">
 				Takes about 60 seconds. Press{' '}
 				<kbd
-					className="dark:bg-muted bg-muted/60 rounded px-1.5 py-0.5 text-xs font-medium"
+					className="bg-muted rounded px-1.5 py-0.5 text-xs font-medium"
 					suppressHydrationWarning
 				>
 					{isMac ? '⌘' : 'Ctrl'}+Enter

@@ -9,6 +9,7 @@ import {
 } from '@/app/(app)/plans/components/PlansContent';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export const metadata: Metadata = {
@@ -33,25 +34,23 @@ export const metadata: Metadata = {
 export default function PlansPage(): JSX.Element {
 	return (
 		<>
-			{/* Static header - renders immediately (`(app)/plans/layout` provides max-width + padding) */}
-			<header className="mb-8">
-				<div className="mb-6 flex items-center justify-between">
-					<div className="flex items-center gap-4">
-						<h1>Your Plans</h1>
-						{/* Plan count badge - data-dependent */}
+			{/* Static header - renders immediately; count waits independently. */}
+			<PageHeader
+				title="Your Plans"
+				actions={
+					<>
 						<Suspense fallback={<Skeleton className="h-6 w-16 rounded-full" />}>
 							<PlanCountBadgeContent />
 						</Suspense>
-					</div>
-
-					<Button asChild>
-						<Link href="/plans/new">
-							<Plus className="h-4 w-4" />
-							New Plan
-						</Link>
-					</Button>
-				</div>
-			</header>
+						<Button asChild>
+							<Link href="/plans/new">
+								<Plus className="h-4 w-4" />
+								New Plan
+							</Link>
+						</Button>
+					</>
+				}
+			/>
 
 			{/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
 			<Suspense fallback={<PlansContentSkeleton />}>

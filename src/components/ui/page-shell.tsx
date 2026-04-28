@@ -3,7 +3,8 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Product app page outer wrapper: max width, horizontal padding, vertical rhythm.
+ * Product app page outer wrapper: 64px header-aware height, max width,
+ * horizontal padding, and product vertical rhythm.
  */
 function PageShell({
 	className,
@@ -18,8 +19,8 @@ function PageShell({
 		<div
 			data-slot="page-shell"
 			className={cn(
-				'mx-auto max-w-7xl px-6 py-8',
-				fullHeight && 'min-h-screen',
+				'mx-auto max-w-7xl px-4 py-6 sm:px-6 md:py-7',
+				fullHeight && 'min-h-[calc(100vh-4rem)]',
 				className,
 			)}
 			{...props}

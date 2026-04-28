@@ -10,13 +10,13 @@ export function PlansContentSkeleton(): JSX.Element {
 	return (
 		<>
 			{/* Search Bar skeleton */}
-			<div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3">
+			<div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-5 flex w-full items-center gap-3 rounded-2xl border px-4 py-3">
 				<Search className="text-muted-foreground h-4 w-4" />
 				<Skeleton className="h-5 w-48" />
 			</div>
 
 			{/* Filters Bar skeleton */}
-			<div className="border-border mb-6 flex items-center gap-4 border-b pb-4">
+			<div className="border-border mb-5 flex flex-wrap items-center gap-3 border-b pb-4">
 				<Skeleton className="h-9 w-24 rounded-lg" />
 				<Skeleton className="h-9 w-24 rounded-lg" />
 				<Skeleton className="h-9 w-28 rounded-lg" />

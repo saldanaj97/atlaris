@@ -1,10 +1,18 @@
-import { Plus, Search, Sparkles } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from '@/components/ui/empty';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
 import { listPlansPageSummaries } from '@/features/plans/read-projection';
@@ -57,36 +65,28 @@ export async function PlansContent(): Promise<JSX.Element> {
 
 	if (!summaries.length) {
 		return (
-			<>
-				{/* Disabled search bar for empty state */}
-				<div className="border-border bg-muted-foreground/5 dark:bg-foreground/5 mb-8 flex w-full items-center gap-3 rounded-2xl border px-4 py-3 opacity-50">
-					<Search className="text-muted-foreground h-4 w-4" />
-					<span className="text-muted-foreground flex-1 text-sm">
-						Search plans...
-					</span>
-				</div>
-
-				{/* Empty state content */}
-				<section
-					className="flex min-h-[50vh] flex-col items-center justify-center text-center"
-					aria-label="No plans found"
-				>
-					<div className="bg-primary/10 mb-6 flex h-16 w-16 items-center justify-center rounded-full">
-						<Sparkles className="text-primary h-8 w-8" />
-					</div>
-					<h2>No learning plans yet</h2>
-					<p className="text-muted-foreground mt-2 max-w-md">
-						Start by describing what you want to learn and we&apos;ll create a
-						personalized learning plan with resources and milestones.
-					</p>
-					<Button asChild className="mt-6" size="lg">
-						<Link href="/plans/new">
-							<Plus className="h-4 w-4" />
-							Create your first plan
-						</Link>
-					</Button>
-				</section>
-			</>
+			<section aria-label="No plans found">
+				<Empty className="min-h-[20rem] border">
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<Sparkles />
+						</EmptyMedia>
+						<EmptyTitle>No learning plans yet</EmptyTitle>
+						<EmptyDescription>
+							Start by describing what you want to learn and we&apos;ll create a
+							personalized learning plan with resources and milestones.
+						</EmptyDescription>
+					</EmptyHeader>
+					<EmptyContent>
+						<Button asChild size="lg">
+							<Link href="/plans/new">
+								<Plus className="h-4 w-4" />
+								Create your first plan
+							</Link>
+						</Button>
+					</EmptyContent>
+				</Empty>
+			</section>
 		);
 	}
 

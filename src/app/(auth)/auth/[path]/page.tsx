@@ -3,6 +3,9 @@ import { authViewPaths } from '@neondatabase/auth/react/ui/server';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
+import { PageShell } from '@/components/ui/page-shell';
+import { Surface } from '@/components/ui/surface';
+
 interface AuthPageProps {
 	params: Promise<{ path: string }>;
 }
@@ -75,8 +78,10 @@ export default async function AuthPage({
 	const safePath = getSafeAuthPath(path);
 
 	return (
-		<main className="container mx-auto flex grow flex-col items-center justify-center gap-3 self-center p-4 md:p-6">
-			<AuthView path={safePath} />
-		</main>
+		<PageShell className="flex flex-col items-center justify-center gap-6">
+			<Surface className="w-full max-w-md" padding="comfortable">
+				<AuthView path={safePath} />
+			</Surface>
+		</PageShell>
 	);
 }

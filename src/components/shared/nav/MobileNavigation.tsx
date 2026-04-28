@@ -11,6 +11,11 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from '@/components/ui/sheet';
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
 
@@ -29,16 +34,20 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
-			{/* Hamburger trigger */}
-			<Button
-				variant="ghost"
-				size="icon"
-				onClick={() => setOpen(true)}
-				className="text-muted-foreground h-9 w-9 rounded-xl bg-white/40 shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
-				aria-label="Open menu"
-			>
-				<Menu className="h-5 w-5" />
-			</Button>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						onClick={() => setOpen(true)}
+						className="text-muted-foreground rounded-xl bg-white/40 shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
+						aria-label="Open menu"
+					>
+						<Menu className="h-5 w-5" />
+					</Button>
+				</TooltipTrigger>
+				<TooltipContent side="bottom">Menu</TooltipContent>
+			</Tooltip>
 
 			{/* Sheet content sliding from left */}
 			<SheetContent

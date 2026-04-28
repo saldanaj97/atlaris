@@ -5,6 +5,11 @@ import Link from 'next/link';
 import type { ReactElement } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
 
 interface AuthControlsProps {
@@ -28,17 +33,22 @@ export default function AuthControls({
 	return (
 		<div className="flex items-center gap-2">
 			{isAuthenticated ? (
-				<div className="relative">
-					<UserButton size="icon" />
-					{tier && tier !== 'free' && (
-						<Badge
-							variant={tierVariants[tier]}
-							className="pointer-events-none absolute -right-1.5 -bottom-1 hidden px-1 py-0 text-[10px] leading-tight capitalize lg:inline-flex"
-						>
-							{tier}
-						</Badge>
-					)}
-				</div>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<div className="relative inline-flex">
+							<UserButton size="icon" />
+							{tier && tier !== 'free' && (
+								<Badge
+									variant={tierVariants[tier]}
+									className="pointer-events-none absolute -right-1.5 -bottom-1 hidden px-1 py-0 text-[10px] leading-tight capitalize md:inline-flex"
+								>
+									{tier}
+								</Badge>
+							)}
+						</div>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Account</TooltipContent>
+				</Tooltip>
 			) : (
 				<>
 					<Button

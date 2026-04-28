@@ -20,38 +20,38 @@
   - [x] Choose resolution option (Option 2 — normalize shared variants).
   - [x] Audit existing button usage across routes.
   - [x] Replace route-level inline CTA styling (e.g. `UnifiedPlanInput` submit) with shared variants.
-- [ ] Finding 5: App layout wastes space.
-  - [ ] Choose resolution option (recommended: Option 2 — define layout grid rules).
-  - [ ] Define product page spacing/grid rules (header height, section gap, content max-width).
-  - [ ] Apply to dashboard, plans, settings, and analytics.
-- [ ] Finding 6: Typography scale is uneven.
-  - [ ] Choose resolution option (recommended: Option 3 primary — shared `PageHeader` enforces existing scales).
-  - [ ] Build shared `PageHeader` to own title/subtitle sizing.
-  - [ ] Review/refine existing type scales in `globals.css` (already defined, minor pass).
-  - [ ] Fix Settings page inline `text-3xl font-bold` override.
-- [ ] Finding 7: Locked and coming-soon states have weak contrast.
-  - [ ] Choose resolution option (recommended: Option 2 — extract locked card + restyle `ComingSoonAlert`).
-  - [ ] Extract duplicated locked card pattern (usage + achievements) into `LockedFeatureCard`.
-  - [ ] Restyle existing `ComingSoonAlert` for product context (strip marketing glass).
-  - [ ] Raise text contrast: replace `opacity-50` with readable alternative.
-- [ ] Finding 8: Navigation is unclear.
-  - [ ] Choose resolution option (recommended: Options 1+2 — fix tablet breakpoint + add labels).
-  - [ ] Extend visible nav links down to `md` breakpoint (768px) to close tablet hamburger gap.
-  - [ ] Add tooltips/labels to icon buttons and normalize sizing.
-  - [ ] Let F2's layout separation handle nav visual style.
-- [ ] Finding 9: Auth screens are clean but generic.
-  - [ ] Choose resolution option (recommended: Option 2 — product-styled auth wrapper).
-  - [ ] Wrap `AuthView` in product-styled container (replace generic centering).
-  - [ ] Check NeonAuth customization APIs for copy/theme hooks.
-- [ ] Finding 10: Create-plan page feels clever but not serious enough.
-  - [ ] Choose resolution option (recommended: Option 2 — cleaner product panel).
-  - [ ] Strip marketing chrome: glassmorphism, gradient glow, `MouseGlow.tsx`.
-  - [ ] Switch submit button to shared `cta` variant (remove inline custom classes).
-  - [ ] Strengthen disabled CTA contrast.
+- [x] Finding 5: App layout wastes space.
+  - [x] Choose resolution option (recommended: Option 2 — define layout grid rules).
+  - [x] Define product page spacing/grid rules (header height, section gap, content max-width).
+  - [x] Apply to dashboard, plans, settings, and analytics.
+- [x] Finding 6: Typography scale is uneven.
+  - [x] Choose resolution option (recommended: Option 3 primary — shared `PageHeader` enforces existing scales).
+  - [x] Build shared `PageHeader` to own title/subtitle sizing.
+  - [x] Review/refine existing type scales in `globals.css` (already defined, minor pass).
+  - [x] Fix Settings page inline `text-3xl font-bold` override.
+- [x] Finding 7: Locked and coming-soon states have weak contrast.
+  - [x] Choose resolution option (recommended: Option 2 — extract locked card + restyle `ComingSoonAlert`).
+  - [x] Extract duplicated locked card pattern (usage + achievements) into `LockedFeatureCard`.
+  - [x] Restyle existing `ComingSoonAlert` for product context (strip marketing glass).
+  - [x] Raise text contrast: replace `opacity-50` with readable alternative.
+- [x] Finding 8: Navigation is unclear.
+  - [x] Choose resolution option (recommended: Options 1+2 — fix tablet breakpoint + add labels).
+  - [x] Extend visible nav links down to `md` breakpoint (768px) to close tablet hamburger gap.
+  - [x] Add tooltips/labels to icon buttons and normalize sizing.
+  - [x] Let F2's layout separation handle nav visual style.
+- [x] Finding 9: Auth screens are clean but generic.
+  - [x] Choose resolution option (recommended: Option 2 — product-styled auth wrapper).
+  - [x] Wrap `AuthView` in product-styled container (replace generic centering).
+  - [x] Check NeonAuth customization APIs for copy/theme hooks (see review note — copy not changed).
+- [x] Finding 10: Create-plan page feels clever but not serious enough.
+  - [x] Choose resolution option (Option 2 — cleaner product panel).
+  - [x] Strip marketing chrome: glassmorphism, gradient glow, `MouseGlow.tsx`.
+  - [x] Switch submit button to shared `cta` variant (remove inline custom classes).
+  - [x] Strengthen disabled CTA contrast.
 
 ## Cross-Cutting Decisions
 
-- [ ] Decide whether app shell uses sidebar-first desktop navigation or visible top navigation (current: visible top nav at lg+; F8 recommends extending to md+).
+- [x] Decide whether app shell uses sidebar-first desktop navigation or visible top navigation (current: visible top nav from `md` up; aligns with F8).
 - [ ] Decide whether pricing remains marketing-styled or moves closer to product-styled billing.
 - [ ] Decide whether landing/about visual style stays expressive after product shell cleanup.
 - [x] Decide visual baseline storage and naming convention — **default** output dir `screenshots/frontend-baseline-<YYYY-MM-DD>/`, filenames `{route}--{anon|auth}--{desktop|tablet|mobile}--{viewport|fullPage}.png`, plus `manifest.json`; repo already gitignores `screenshots/`. Command: [`docs/testing/ui-baseline-capture.md`](../../../docs/testing/ui-baseline-capture.md).
@@ -74,3 +74,9 @@
 - 2026-04-27: Finding 1 baseline regenerated locally — `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` exit 0; manifest shows viewport widths **1440 / 834 / 390**. Fixes this session: smoke migrations via `node …/drizzle-kit/bin.cjs migrate` (PATH without `pnpm`); `fullPage` width allows ≤24px gutter vs viewport; screenshots use `scale: 'css'`.
 - 2026-04-27: Finding 1 manual screenshot review completed after hiding Next dev indicator in `scripts/ui/capture-baseline.ts` (`nextjs-portal` / `data-nextjs-dev-tools-button` screenshot-only CSS). Re-ran `pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27` successfully; sampled landing/about long captures and product route captures show no dev overlay and no duplicated sticky/nav/hero artifact.
 - 2026-04-27: Finding 4 implemented — `Button` now owns `cta`, `soft-primary`, `success`, and less washed-out disabled opacity; migrated high-signal app CTAs from inline `bg-primary`/`shadow-primary` link styles to shared variants (`UnifiedPlanInput`, dashboard resume/sidebar CTAs, module completion/error actions, timeline "View Full Module"). Validation: `pnpm exec vitest run --project unit tests/unit/app/plans/new/page.spec.tsx`, `pnpm check:lint:changed`, `pnpm check:type` pass. React Doctor via `pnpm dlx react-doctor@latest . --verbose --diff` scored 94/100; reported existing out-of-scope issues in ThemeToggle/model selector/RegenerateButton/MouseGlow/marketing metadata.
+- 2026-04-27: Finding 9 — Auth route [`src/app/(auth)/auth/[path]/page.tsx`](src/app/(auth)/auth/[path]/page.tsx) wraps `AuthView` in shared `PageShell` + `Surface` (`max-w-md`, panel tokens); removed duplicate nested `<main>` (layout `(auth)/layout.tsx` already provides `<main>`). **Neon customization:** `@neondatabase/auth@0.2.0-beta.1` re-exports UI types from `@neondatabase/auth-ui`; typings are bundled/minified. Package exports suggest `NeonAuthUIProvider`-level hooks (`AuthLocalization`, `authLocalization`) and `AuthViewClassNames` — full string copy override not confirmed without auth-ui source/docs; no copy/theme changes in app. Root [`NeonAuthUIProvider`](src/app/layout.tsx) unchanged. Validation: `pnpm check:lint:changed` (warning: unused tooltip imports in `AuthControls.tsx` — pre-existing changed file, not this task), `pnpm check:type` pass; `pnpm dlx react-doctor@latest . --verbose --diff` → 94/100, no new auth-page diagnostics.
+- 2026-04-27: Finding 8 implemented — `DesktopHeader` / `MobileHeader` breakpoint aligned at `md` (`md:grid` / `md:hidden`) so tablet sees inline nav; `DesktopNavigation` already `md:flex`. Added `@radix-ui/react-tooltip`, `src/components/ui/tooltip.tsx`, `TooltipProvider` in `ThemeProvider`. Icon-only controls: mobile menu (`MobileNavigation`), new-plan plus (`MobileHeader`), `ThemeToggle` (`withTooltip`), `AuthControls` account (`UserButton`) wrapped with tooltips; tier badge visibility `lg`→`md`; menu trigger normalized to `size="icon-sm"` vs adjacent icons. Validation: `pnpm check:lint:changed`, `pnpm check:type`, `pnpm dlx react-doctor@latest . --verbose --diff`.
+- 2026-04-27: Finding 7 implemented — [`LockedFeatureCard`](../../../src/components/ui/locked-feature-card.tsx) (usage + achievements grids); [`ComingSoonAlert`](../../../src/components/shared/ComingSoonAlert.tsx) restyled with `Surface` `muted` + panel-bordered icon chip (no glass/glow); locked previews use `text-foreground` / `text-muted-foreground`, dashed card edge, lock glyph — removed whole-card `opacity-50`. Notifications page inherits alert styling automatically. Validation: `pnpm check:lint:changed`, `pnpm check:type`, `pnpm dlx react-doctor@latest . --verbose --diff` → **94/100** (same pre-existing diagnostics as F4 note; none in touched files).
+- 2026-04-27: Finding 5 implemented in parent pass — `PageShell`/`PageHeader` spacing and page density tightened across dashboard, plans, settings, analytics. Parent validation: `pnpm exec vitest run --project unit tests/unit/components/ui/page-shell.spec.tsx tests/unit/components/ui/page-header.spec.tsx`, `pnpm check:lint:changed`, `pnpm check:type`, `pnpm dlx react-doctor@latest . --verbose --diff` pass; React Doctor remained 94/100 with existing out-of-scope findings.
+- 2026-04-27: Finding 6 implemented — `PageHeader` now owns product title/subtitle typography via semantic product classes in `globals.css`; settings error boundaries use `PageHeader` instead of inline `text-3xl font-bold`; current search shows no remaining settings `text-3xl font-bold` override. Validation: `pnpm exec vitest run --project unit tests/unit/components/ui/page-header.spec.tsx`, `pnpm check:lint:changed`, `pnpm check:type` pass. React Doctor via `pnpm dlx react-doctor@latest . --verbose --diff` scored 94/100; remaining findings are existing out-of-scope issues in ThemeToggle/model selector/RegenerateButton/MouseGlow/marketing metadata.
+- 2026-04-27: Finding 10 implemented — create-plan page stripped of marketing chrome. [`page.tsx`](../../../src/app/(app)/plans/new/page.tsx) drops `MouseGlowContainer`, fixed-inset gradient orbs, and `bg-linear-to-br` background; layout already supplies `PageShell`. [`UnifiedPlanInput.tsx`](../../../src/app/(app)/plans/new/components/plan-form/UnifiedPlanInput.tsx) now uses `Surface` panel (no `backdrop-blur-xl`, `shadow-2xl`, `rounded-3xl`, decorative gradient glow); Sparkles icon chip uses panel-tinted `bg-primary/10` border instead of `from-primary to-accent` gradient; submit `Button` uses shared `cta` variant + `size="lg"` (no inline `h-auto px-5 py-2.5` overrides); disabled state adds visible "Enter a learning goal to continue." hint wired via `aria-describedby` when topic is empty. [`CreatePlanPageClient.tsx`](../../../src/app/(app)/plans/new/components/CreatePlanPageClient.tsx) drops inline `text-3xl font-bold` + `gradient-text-symmetric` for `product-page-title`/`product-page-subtitle` semantic classes. Removed `MouseGlow.tsx` and `useMouseGlow.ts` (no remaining consumers). Validation: `pnpm exec vitest run --project unit tests/unit/app/plans/new/page.spec.tsx` (10 pass), `pnpm check:lint:changed`, `pnpm check:type` pass.

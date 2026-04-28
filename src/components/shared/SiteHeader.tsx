@@ -17,7 +17,7 @@ import MobileHeader from './nav/MobileHeader';
  * - Resolve whether a user is signed in (server-side)
  * - Select appropriate nav items based on auth state
  * - Fetch user's subscription tier for display
- * - Render MobileHeader (mobile/tablet) and DesktopHeader (desktop)
+ * - Render MobileHeader (viewports below `md`) and DesktopHeader (`md` and up)
  *
  *
  * **Architecture:**
@@ -28,7 +28,7 @@ import MobileHeader from './nav/MobileHeader';
  * distinct purposes:
  *
  * - **Header components** (DesktopHeader, MobileHeader): Layout containers that
- *   position brand, navigation, and auth controls. Handle responsive visibility.
+ *   position brand, navigation, and auth controls. Handle responsive visibility (`md` breakpoint).
  *
  * - **Navigation components** (DesktopNavigation, MobileNavigation): Render the
  *   actual nav links with their specific interaction patterns (dropdowns vs sheets).

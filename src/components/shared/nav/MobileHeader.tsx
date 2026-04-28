@@ -9,6 +9,11 @@ import BrandLogo from '@/components/shared/BrandLogo';
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { type NavItem, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
@@ -20,9 +25,8 @@ interface MobileHeaderProps {
 }
 
 /**
- * Mobile counterpart to DesktopHeader with logo, nav menu, create action, auth controls,
- * and theme toggle. Renders only below the `lg` breakpoint via `lg:hidden`; DesktopHeader
- * owns larger screens.
+ * Compact header + hamburger when viewport below `md`. From `md` up, {@link DesktopHeader}
+ * shows inline nav links instead.
  */
 export default function MobileHeader({
 	navItems,
@@ -35,7 +39,7 @@ export default function MobileHeader({
 	return (
 		<div
 			className={cn(
-				'dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 lg:hidden dark:border-white/10',
+				'dark:bg-card/50 relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-white/40 bg-black/5 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4 sm:py-2.5 md:hidden dark:border-white/10',
 				isPricingPage &&
 					'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20',
 			)}
@@ -53,21 +57,28 @@ export default function MobileHeader({
 			</div>
 
 			<div className="flex min-w-0 shrink-0 items-center gap-1">
-				<Button
-					asChild
-					variant="ghost"
-					size="icon-sm"
-					className="text-muted-foreground hover:text-foreground shrink-0"
-				>
-					<Link
-						href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
-						aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
-					>
-						<Plus className="h-4 w-4" />
-					</Link>
-				</Button>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							asChild
+							variant="ghost"
+							size="icon-sm"
+							className="text-muted-foreground hover:text-foreground shrink-0"
+						>
+							<Link
+								href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
+								aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
+							>
+								<Plus className="h-4 w-4" />
+							</Link>
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">
+						{isAuthenticated ? 'New plan' : 'Sign in'}
+					</TooltipContent>
+				</Tooltip>
 				<div className="shrink-0">
-					<ThemeToggle size="icon-sm" />
+					<ThemeToggle size="icon-sm" withTooltip />
 				</div>
 				<div className="min-w-0 shrink-0">
 					<AuthControls

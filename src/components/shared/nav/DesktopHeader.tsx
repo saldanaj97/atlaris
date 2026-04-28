@@ -22,7 +22,7 @@ interface DesktopHeaderProps {
 }
 
 /**
- * Desktop header component (hidden on mobile/tablet, visible on desktop).
+ * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
  * Layout: brand (left) | navigation (center) | auth controls (right)
  */
@@ -37,7 +37,7 @@ export default function DesktopHeader({
 	return (
 		<div
 			className={cn(
-				'dark:bg-card/50 hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10',
+				'dark:bg-card/50 hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl md:grid dark:border-white/10',
 				isPricingPage &&
 					'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20',
 			)}
@@ -77,7 +77,7 @@ export default function DesktopHeader({
 					</Link>
 				</Button>
 
-				<ThemeToggle />
+				<ThemeToggle withTooltip />
 
 				<Separator orientation="vertical" className="mx-1 h-5" />
 

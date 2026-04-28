@@ -4,6 +4,7 @@ import type { JSX } from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { clientLogger } from '@/lib/logging/client';
 
 interface ErrorProps {
@@ -28,25 +29,24 @@ export default function AISettingsError({
 	}, [error]);
 
 	return (
-		<div className="min-h-screen">
-			<div className="mx-auto max-w-7xl px-6 py-8">
-				<h1 className="mb-2 text-3xl font-bold">AI Preferences</h1>
-				<p className="text-muted-foreground mb-6">
-					Choose your preferred AI model for generating learning plans.
+		<>
+			<PageHeader
+				title="AI Preferences"
+				titleAs="h2"
+				subtitle="Choose your preferred AI model for generating learning plans."
+			/>
+			<Card className="p-6" role="alert">
+				<h3 className="mb-2 text-xl font-semibold text-red-600">
+					Error Loading AI Settings
+				</h3>
+				<p className="text-muted-foreground mb-4">
+					We couldn&apos;t load your AI preferences. This could be a temporary
+					issue.
 				</p>
-				<Card className="p-6" role="alert">
-					<h2 className="mb-2 text-xl font-semibold text-red-600">
-						Error Loading AI Settings
-					</h2>
-					<p className="text-muted-foreground mb-4">
-						We couldn&apos;t load your AI preferences. This could be a temporary
-						issue.
-					</p>
-					<Button onClick={reset} variant="default">
-						Try Again
-					</Button>
-				</Card>
-			</div>
-		</div>
+				<Button onClick={reset} variant="default">
+					Try Again
+				</Button>
+			</Card>
+		</>
 	);
 }
