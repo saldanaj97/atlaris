@@ -23,17 +23,17 @@ import { db } from '@/lib/db/service-role';
 ```
 
 **Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
-Keep service-role imports out of these paths; align with layer rules and Biome checks in `biome.json` (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`).
+Keep service-role imports out of these paths; align with layer rules and Oxlint checks in `.oxlintrc.json` (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`).
 
 ## Request boundary and auth (how `getDb()` is established)
 
 `getDb()` requires an active request context — it doesn't work in isolation. **Default pattern:** `requestBoundary` from `@/lib/api/request-boundary` — `requestBoundary.route`, `requestBoundary.component`, and `requestBoundary.action` set up the same RLS + request context.
 
-| Consumer          | API                              | When to use                      |
-| ----------------- | -------------------------------- | -------------------------------- |
-| API routes        | `withAuth` or `requestBoundary.route` | `src/app/api/**`            |
-| Server actions    | `requestBoundary.action`         | `'use server'` functions         |
-| Server components | `requestBoundary.component`     | Async server components          |
+| Consumer          | API                                   | When to use              |
+| ----------------- | ------------------------------------- | ------------------------ |
+| API routes        | `withAuth` or `requestBoundary.route` | `src/app/api/**`         |
+| Server actions    | `requestBoundary.action`              | `'use server'` functions |
+| Server components | `requestBoundary.component`           | Async server components  |
 
 `withServerComponentContext` and `withServerActionContext` in `@/lib/api/auth` are **compatibility shims** (used inside `requestBoundary` and by older call sites). New code should prefer `requestBoundary`.
 
@@ -117,7 +117,7 @@ Most query functions accept optional `dbClient` parameter for DI (default `getDb
 ```typescript
 export async function getPlanById(
   planId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient = getDb(),
 ): Promise<Plan | null> {
   return dbClient.query.learningPlans.findFirst({
     where: eq(learningPlans.id, planId),
@@ -135,14 +135,14 @@ Query modules that must enforce RLS on every call (e.g. generation attempts, aud
 
 ## Key Tables
 
-| Table                 | Purpose                      | Notes                                                                |
-| --------------------- | ---------------------------- | -------------------------------------------------------------------- |
-| `users`               | User accounts                | `auth_user_id` for auth                                              |
+| Table                 | Purpose                      | Notes                                                                      |
+| --------------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| `users`               | User accounts                | `auth_user_id` for auth                                                    |
 | `learning_plans`      | Plans with generation status | RLS by `user_id`; origin enum is limited to `ai`, `template`, and `manual` |
-| `modules`             | Plan sections                | `order` starts at 1                                                  |
-| `tasks`               | Learning activities          | `order` starts at 1                                                  |
-| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                       |
-| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows     |
+| `modules`             | Plan sections                | `order` starts at 1                                                        |
+| `tasks`               | Learning activities          | `order` starts at 1                                                        |
+| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                             |
+| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows           |
 
 ## Commands
 

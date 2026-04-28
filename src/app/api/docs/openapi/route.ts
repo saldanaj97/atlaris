@@ -5,17 +5,17 @@ import { json } from '@/lib/api/response';
 import { appEnv } from '@/lib/config/env';
 
 export const GET = async (request: Request) => {
-	if (!appEnv.isDevelopment && !appEnv.isTest) {
-		return new Response('Not Found', { status: 404 });
-	}
+  if (!appEnv.isDevelopment && !appEnv.isTest) {
+    return new Response('Not Found', { status: 404 });
+  }
 
-	try {
-		checkIpRateLimit(request, 'docs');
-	} catch (error) {
-		return toErrorResponse(error);
-	}
+  try {
+    checkIpRateLimit(request, 'docs');
+  } catch (error) {
+    return toErrorResponse(error);
+  }
 
-	const document = await getOpenApiDocument();
+  const document = await getOpenApiDocument();
 
-	return json(document);
+  return json(document);
 };

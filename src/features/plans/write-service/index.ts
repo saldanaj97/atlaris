@@ -7,29 +7,29 @@ import { deletePlan } from '@/lib/db/queries/plans';
  * handlers do not reach into the query layer directly.
  */
 export async function removePlanForWrite(params: {
-	planId: string;
-	userId: string;
-	dbClient: PlanDbClient;
+  planId: string;
+  userId: string;
+  dbClient: PlanDbClient;
 }): Promise<void> {
-	const result = await deletePlan(
-		params.planId,
-		params.userId,
-		params.dbClient,
-	);
+  const result = await deletePlan(
+    params.planId,
+    params.userId,
+    params.dbClient,
+  );
 
-	if (result.success) {
-		return;
-	}
+  if (result.success) {
+    return;
+  }
 
-	if (result.reason === 'not_found') {
-		throw new NotFoundError('Learning plan not found.');
-	}
+  if (result.reason === 'not_found') {
+    throw new NotFoundError('Learning plan not found.');
+  }
 
-	if (result.reason === 'currently_generating') {
-		throw new ConflictError(
-			'Cannot delete a plan that is currently generating.',
-		);
-	}
+  if (result.reason === 'currently_generating') {
+    throw new ConflictError(
+      'Cannot delete a plan that is currently generating.',
+    );
+  }
 
-	throw new ConflictError('Cannot delete learning plan in its current state.');
+  throw new ConflictError('Cannot delete learning plan in its current state.');
 }

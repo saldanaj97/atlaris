@@ -1,7 +1,7 @@
 import type { PlanStatus } from '@/app/(app)/plans/types';
 import {
-	derivePlanSummaryDisplayStatus,
-	isPlanSummaryFullyComplete,
+  derivePlanSummaryDisplayStatus,
+  isPlanSummaryFullyComplete,
 } from '@/features/plans/read-projection/client';
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
@@ -33,17 +33,17 @@ type DateInput = Date | string | null | undefined;
  * ```
  */
 export function getPlanLastActivityRelative(
-	date: DateInput,
-	referenceDate: DateInput,
+  date: DateInput,
+  referenceDate: DateInput,
 ): string {
-	const target = toValidDate(date);
-	const reference = toValidDate(referenceDate);
-	if (!target || !reference) return 'Recently';
-	return formatRelativePast(target, {
-		referenceDate: reference,
-		style: 'compact',
-		invalidLabel: 'Recently',
-	});
+  const target = toValidDate(date);
+  const reference = toValidDate(referenceDate);
+  if (!target || !reference) return 'Recently';
+  return formatRelativePast(target, {
+    referenceDate: reference,
+    style: 'compact',
+    invalidLabel: 'Recently',
+  });
 }
 
 /**
@@ -84,10 +84,10 @@ export function getPlanLastActivityRelative(
  * ```
  */
 export function getPlanStatus(
-	summary: PlanSummary,
-	referenceDate: DateInput,
+  summary: PlanSummary,
+  referenceDate: DateInput,
 ): PlanStatus {
-	return derivePlanSummaryDisplayStatus({ summary, referenceDate });
+  return derivePlanSummaryDisplayStatus({ summary, referenceDate });
 }
 
 /**
@@ -130,13 +130,13 @@ export function getPlanStatus(
  * ```
  */
 export function getNextTaskName(summary: PlanSummary): string {
-	if (summary.completedTasks === 0) {
-		return 'Not started';
-	}
+  if (summary.completedTasks === 0) {
+    return 'Not started';
+  }
 
-	if (isPlanSummaryFullyComplete(summary)) {
-		return 'All tasks completed';
-	}
+  if (isPlanSummaryFullyComplete(summary)) {
+    return 'All tasks completed';
+  }
 
-	return 'Continue learning';
+  return 'Continue learning';
 }

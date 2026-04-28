@@ -5,14 +5,14 @@ import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
  * `DEV_AUTH_USER_ID` without a real Neon session. Otherwise uses the session user id.
  */
 export function getShellAuthUserId(
-	sessionUserId: string | undefined,
+  sessionUserId: string | undefined,
 ): string | undefined {
-	if (
-		appEnv.isDevelopment &&
-		localProductTestingEnv.enabled &&
-		devAuthEnv.userId
-	) {
-		return devAuthEnv.userId;
-	}
-	return sessionUserId;
+  if (
+    appEnv.isDevelopment &&
+    localProductTestingEnv.enabled &&
+    devAuthEnv.userId
+  ) {
+    return devAuthEnv.userId;
+  }
+  return sessionUserId;
 }

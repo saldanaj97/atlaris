@@ -26,13 +26,13 @@ export const JITTER_FACTOR = 0.2;
  * 4. Clamp the result to [{@link INITIAL_POLL_MS}, {@link MAX_POLL_MS}].
  */
 export function computeNextDelay(
-	currentDelay: number,
-	randomFn: () => number = Math.random,
+  currentDelay: number,
+  randomFn: () => number = Math.random,
 ): number {
-	if (!Number.isFinite(currentDelay) || currentDelay <= 0) {
-		return INITIAL_POLL_MS;
-	}
-	const base = Math.min(currentDelay * BACKOFF_MULTIPLIER, MAX_POLL_MS);
-	const jitter = 1 + (randomFn() * 2 - 1) * JITTER_FACTOR;
-	return Math.max(INITIAL_POLL_MS, Math.min(base * jitter, MAX_POLL_MS));
+  if (!Number.isFinite(currentDelay) || currentDelay <= 0) {
+    return INITIAL_POLL_MS;
+  }
+  const base = Math.min(currentDelay * BACKOFF_MULTIPLIER, MAX_POLL_MS);
+  const jitter = 1 + (randomFn() * 2 - 1) * JITTER_FACTOR;
+  return Math.max(INITIAL_POLL_MS, Math.min(base * jitter, MAX_POLL_MS));
 }

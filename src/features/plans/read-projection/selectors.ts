@@ -1,7 +1,7 @@
 import { differenceInDays } from 'date-fns';
 import {
-	derivePlanReadStatus,
-	derivePlanSummaryStatus,
+  derivePlanReadStatus,
+  derivePlanSummaryStatus,
 } from '@/features/plans/read-projection/read-status';
 import type { PlanStatus } from '@/features/plans/read-projection/types';
 import { toValidDate } from '@/lib/date/relative-time';
@@ -18,57 +18,57 @@ import type { PlanSummary } from '@/shared/types/db.types';
 export const PLAN_STALENESS_THRESHOLD_DAYS = 30;
 
 function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanStatus {
-	const readStatus = derivePlanReadStatus(
-		summary.attemptsCount === undefined
-			? {
-					generationStatus: summary.plan.generationStatus,
-					hasModules: summary.modules.length > 0,
-				}
-			: {
-					generationStatus: summary.plan.generationStatus,
-					hasModules: summary.modules.length > 0,
-					attemptsCount: summary.attemptsCount,
-					attemptCap: DEFAULT_ATTEMPT_CAP,
-				},
-	);
+  const readStatus = derivePlanReadStatus(
+    summary.attemptsCount === undefined
+      ? {
+          generationStatus: summary.plan.generationStatus,
+          hasModules: summary.modules.length > 0,
+        }
+      : {
+          generationStatus: summary.plan.generationStatus,
+          hasModules: summary.modules.length > 0,
+          attemptsCount: summary.attemptsCount,
+          attemptCap: DEFAULT_ATTEMPT_CAP,
+        },
+  );
 
-	return derivePlanSummaryStatus({
-		readStatus,
-		completion: summary.completion,
-	});
+  return derivePlanSummaryStatus({
+    readStatus,
+    completion: summary.completion,
+  });
 }
 
 export function derivePlanSummaryDisplayStatus(params: {
-	summary: PlanSummary;
-	referenceDate?: Date | string | null;
+  summary: PlanSummary;
+  referenceDate?: Date | string | null;
 }): PlanStatus {
-	const { summary, referenceDate = new Date() } = params;
-	const canonicalStatus = deriveClientPlanSummaryStatus(summary);
+  const { summary, referenceDate = new Date() } = params;
+  const canonicalStatus = deriveClientPlanSummaryStatus(summary);
 
-	if (canonicalStatus !== 'active') {
-		return canonicalStatus;
-	}
+  if (canonicalStatus !== 'active') {
+    return canonicalStatus;
+  }
 
-	const updatedAt = toValidDate(summary.plan.updatedAt);
-	if (summary.plan.updatedAt !== null && !updatedAt) {
-		return 'active';
-	}
+  const updatedAt = toValidDate(summary.plan.updatedAt);
+  if (summary.plan.updatedAt !== null && !updatedAt) {
+    return 'active';
+  }
 
-	const reference = toValidDate(referenceDate);
-	if (!reference) {
-		return 'active';
-	}
+  const reference = toValidDate(referenceDate);
+  if (!reference) {
+    return 'active';
+  }
 
-	if (updatedAt) {
-		const daysSinceUpdate = differenceInDays(reference, updatedAt);
-		if (daysSinceUpdate >= PLAN_STALENESS_THRESHOLD_DAYS) {
-			return 'paused';
-		}
-	}
+  if (updatedAt) {
+    const daysSinceUpdate = differenceInDays(reference, updatedAt);
+    if (daysSinceUpdate >= PLAN_STALENESS_THRESHOLD_DAYS) {
+      return 'paused';
+    }
+  }
 
-	return 'active';
+  return 'active';
 }
 
 export function isPlanSummaryFullyComplete(summary: PlanSummary): boolean {
-	return deriveClientPlanSummaryStatus(summary) === 'completed';
+  return deriveClientPlanSummaryStatus(summary) === 'completed';
 }

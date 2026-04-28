@@ -1,4 +1,4 @@
 export type {
-	FilterStatus,
-	PlanStatus,
+  FilterStatus,
+  PlanStatus,
 } from '@/features/plans/read-projection/types';

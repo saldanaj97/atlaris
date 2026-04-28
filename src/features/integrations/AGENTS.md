@@ -16,6 +16,7 @@ integrations/
 
 - The Google Calendar integration is intentionally not implemented.
 - The settings UI may still show placeholder cards for future integrations.
+
 ## Anti-Patterns
 
 - Reintroducing OAuth-specific helpers here without a scoped product requirement

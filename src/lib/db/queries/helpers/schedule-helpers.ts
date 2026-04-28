@@ -12,15 +12,15 @@ import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
  * @throws {Error} If `scheduleJson` validation fails
  */
 export function mapDbRowToScheduleCacheRow(
-	dbRow: typeof planSchedules.$inferSelect,
+  dbRow: typeof planSchedules.$inferSelect,
 ): ScheduleCacheRow {
-	// Validate scheduleJson at the data boundary
-	const validatedScheduleJson = scheduleJsonSchema.parse(dbRow.scheduleJson);
+  // Validate scheduleJson at the data boundary
+  const validatedScheduleJson = scheduleJsonSchema.parse(dbRow.scheduleJson);
 
-	return {
-		...dbRow,
-		scheduleJson: validatedScheduleJson,
-	};
+  return {
+    ...dbRow,
+    scheduleJson: validatedScheduleJson,
+  };
 }
 
 /**
@@ -34,19 +34,19 @@ export function mapDbRowToScheduleCacheRow(
  * @returns `true` when the error matches known ownership/access write failures.
  */
 export function isPlanOwnershipWriteError(error: unknown): boolean {
-	if (typeof error !== 'object' || error === null) {
-		return false;
-	}
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
 
-	const dbError = error as PgErrorShape;
+  const dbError = error as PgErrorShape;
 
-	if (dbError.code === '42501' || dbError.code === '23503') {
-		return true;
-	}
+  if (dbError.code === '42501' || dbError.code === '23503') {
+    return true;
+  }
 
-	return (
-		typeof dbError.message === 'string' &&
-		(dbError.message.includes('row-level security') ||
-			dbError.message.includes('foreign key constraint'))
-	);
+  return (
+    typeof dbError.message === 'string' &&
+    (dbError.message.includes('row-level security') ||
+      dbError.message.includes('foreign key constraint'))
+  );
 }

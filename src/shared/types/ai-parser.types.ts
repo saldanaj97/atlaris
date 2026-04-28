@@ -1,12 +1,12 @@
 export type ParsedTask = {
-	title: string;
-	description?: string;
-	estimatedMinutes: number;
+  title: string;
+  description?: string;
+  estimatedMinutes: number;
 };
 
 export type ParsedModule = {
-	title: string;
-	description?: string;
-	estimatedMinutes: number;
-	tasks: ParsedTask[];
+  title: string;
+  description?: string;
+  estimatedMinutes: number;
+  tasks: ParsedTask[];
 };

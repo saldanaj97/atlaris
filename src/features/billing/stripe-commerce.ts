@@ -5,16 +5,16 @@
 
 export { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 export {
-	createStripeCommerceBoundary,
-	executeLocalSubscriptionReplay,
-	getStripeCommerceBoundary,
-	isLocalStripeCompletionRouteEnabled,
+  createStripeCommerceBoundary,
+  executeLocalSubscriptionReplay,
+  getStripeCommerceBoundary,
+  isLocalStripeCompletionRouteEnabled,
 } from '@/features/billing/stripe-commerce/factory';
 export type {
-	AcceptWebhookInput,
-	BeginCheckoutInput,
-	OpenPortalInput,
-	StripeCommerceBoundary,
-	StripeWebhookResponse,
-	SubscriptionStatus,
+  AcceptWebhookInput,
+  BeginCheckoutInput,
+  OpenPortalInput,
+  StripeCommerceBoundary,
+  StripeWebhookResponse,
+  SubscriptionStatus,
 } from '@/features/billing/stripe-commerce/types';

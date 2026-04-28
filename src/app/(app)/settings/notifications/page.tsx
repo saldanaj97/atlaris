@@ -9,122 +9,122 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Switch } from '@/components/ui/switch';
 
 export const metadata: Metadata = {
-	title: 'Notifications',
-	description: 'Manage your notification preferences.',
+  title: 'Notifications',
+  description: 'Manage your notification preferences.',
 };
 
 function ToggleRow({
-	label,
-	switchId,
+  label,
+  switchId,
 }: {
-	label: string;
-	switchId: string;
+  label: string;
+  switchId: string;
 }): ReactElement {
-	return (
-		<div className="flex items-center justify-between py-2">
-			<Label htmlFor={switchId} className="text-muted-foreground font-normal">
-				{label}
-			</Label>
-			<Switch id={switchId} disabled checked={false} />
-		</div>
-	);
+  return (
+    <div className="flex items-center justify-between py-2">
+      <Label htmlFor={switchId} className="font-normal text-muted-foreground">
+        {label}
+      </Label>
+      <Switch id={switchId} disabled checked={false} />
+    </div>
+  );
 }
 
 export default function NotificationsSettingsPage(): ReactElement {
-	return (
-		<>
-			<PageHeader
-				title="Notifications"
-				titleAs="h2"
-				subtitle="Manage how you stay informed about your learning progress and account activity"
-			/>
+  return (
+    <>
+      <PageHeader
+        title="Notifications"
+        titleAs="h2"
+        subtitle="Manage how you stay informed about your learning progress and account activity"
+      />
 
-			<ComingSoonAlert
-				title="Personalized alerts are on the way"
-				description="We're fine-tuning your notification experience. Soon you'll be able to customize exactly how and when you receive updates about your learning journey."
-				icon={BellRing}
-				className="mb-6"
-			/>
+      <ComingSoonAlert
+        title="Personalized alerts are on the way"
+        description="We're fine-tuning your notification experience. Soon you'll be able to customize exactly how and when you receive updates about your learning journey."
+        icon={BellRing}
+        className="mb-6"
+      />
 
-			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-				{/* Learning Reminders */}
-				<Card className="p-6">
-					<div className="mb-4 flex items-center gap-3">
-						<Clock className="text-muted-foreground h-5 w-5" />
-						<h3 className="text-xl font-semibold">Learning Reminders</h3>
-					</div>
-					<p className="text-muted-foreground mb-4 text-sm">
-						Stay on track with daily and weekly nudges that keep your learning
-						momentum going.
-					</p>
-					<div className="divide-border divide-y">
-						<ToggleRow
-							label="Daily study reminder"
-							switchId="learning-daily-study-reminder"
-						/>
-						<ToggleRow
-							label="Weekly progress summary"
-							switchId="learning-weekly-progress-summary"
-						/>
-						<ToggleRow
-							label="Streak at risk"
-							switchId="learning-streak-at-risk"
-						/>
-					</div>
-				</Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Learning Reminders */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <Clock className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">Learning Reminders</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Stay on track with daily and weekly nudges that keep your learning
+            momentum going.
+          </p>
+          <div className="divide-y divide-border">
+            <ToggleRow
+              label="Daily study reminder"
+              switchId="learning-daily-study-reminder"
+            />
+            <ToggleRow
+              label="Weekly progress summary"
+              switchId="learning-weekly-progress-summary"
+            />
+            <ToggleRow
+              label="Streak at risk"
+              switchId="learning-streak-at-risk"
+            />
+          </div>
+        </Card>
 
-				{/* Plan Updates */}
-				<Card className="p-6">
-					<div className="mb-4 flex items-center gap-3">
-						<BookOpen className="text-muted-foreground h-5 w-5" />
-						<h3 className="text-xl font-semibold">Plan Updates</h3>
-					</div>
-					<p className="text-muted-foreground mb-4 text-sm">
-						Get notified when your learning plans are ready and when new
-						resources become available.
-					</p>
-					<div className="divide-border divide-y">
-						<ToggleRow
-							label="Plan generation complete"
-							switchId="plan-generation-complete"
-						/>
-						<ToggleRow
-							label="New resources available"
-							switchId="plan-new-resources-available"
-						/>
-						<ToggleRow
-							label="Module milestones"
-							switchId="plan-module-milestones"
-						/>
-					</div>
-				</Card>
+        {/* Plan Updates */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <BookOpen className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">Plan Updates</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Get notified when your learning plans are ready and when new
+            resources become available.
+          </p>
+          <div className="divide-y divide-border">
+            <ToggleRow
+              label="Plan generation complete"
+              switchId="plan-generation-complete"
+            />
+            <ToggleRow
+              label="New resources available"
+              switchId="plan-new-resources-available"
+            />
+            <ToggleRow
+              label="Module milestones"
+              switchId="plan-module-milestones"
+            />
+          </div>
+        </Card>
 
-				{/* Account & Billing */}
-				<Card className="p-6">
-					<div className="mb-4 flex items-center gap-3">
-						<CreditCard className="text-muted-foreground h-5 w-5" />
-						<h3 className="text-xl font-semibold">Account & Billing</h3>
-					</div>
-					<p className="text-muted-foreground mb-4 text-sm">
-						Important notifications about your subscription, usage limits, and
-						account security.
-					</p>
-					<div className="divide-border divide-y">
-						<ToggleRow
-							label="Subscription changes"
-							switchId="account-subscription-changes"
-						/>
-						<ToggleRow
-							label="Usage limit warnings"
-							switchId="account-usage-limit-warnings"
-						/>
-						<ToggleRow
-							label="Security alerts"
-							switchId="account-security-alerts"
-						/>
-					</div>
-				</Card>
-			</div>
-		</>
-	);
+        {/* Account & Billing */}
+        <Card className="p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <CreditCard className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-xl font-semibold">Account & Billing</h3>
+          </div>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Important notifications about your subscription, usage limits, and
+            account security.
+          </p>
+          <div className="divide-y divide-border">
+            <ToggleRow
+              label="Subscription changes"
+              switchId="account-subscription-changes"
+            />
+            <ToggleRow
+              label="Usage limit warnings"
+              switchId="account-usage-limit-warnings"
+            />
+            <ToggleRow
+              label="Security alerts"
+              switchId="account-security-alerts"
+            />
+          </div>
+        </Card>
+      </div>
+    </>
+  );
 }

@@ -21,7 +21,7 @@ export const MAX_JOB_RETRIES = 3;
 
 /** Upper bound on total AI calls a single job can trigger. */
 export const MAX_TOTAL_AI_CALLS_PER_JOB =
-	MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1); // = 6
+  MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1); // = 6
 
 /** Base seconds for exponential backoff on job retries. */
 export const JOB_RETRY_BASE_SECONDS = 2;

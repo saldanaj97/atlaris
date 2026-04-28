@@ -7,12 +7,12 @@ import { z } from 'zod';
 import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 
 export const planRegenerationJobPayloadSchema = z
-	.object({
-		planId: z.string().uuid(),
-		overrides: planRegenerationOverridesSchema.optional(),
-	})
-	.strict();
+  .object({
+    planId: z.string().uuid(),
+    overrides: planRegenerationOverridesSchema.optional(),
+  })
+  .strict();
 
 export type PlanRegenerationJobPayload = z.infer<
-	typeof planRegenerationJobPayloadSchema
+  typeof planRegenerationJobPayloadSchema
 >;

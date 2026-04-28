@@ -7,11 +7,11 @@ import { ROUTES } from '@/features/navigation/routes';
  * until a dedicated overview exists.
  */
 export function runAnalyticsRootRedirect(
-	redirectFn: typeof redirect = redirect,
+  redirectFn: typeof redirect = redirect,
 ): never {
-	redirectFn(ROUTES.ANALYTICS.USAGE);
+  redirectFn(ROUTES.ANALYTICS.USAGE);
 }
 
 export default function AnalyticsRootPage(): never {
-	runAnalyticsRootRedirect();
+  runAnalyticsRootRedirect();
 }

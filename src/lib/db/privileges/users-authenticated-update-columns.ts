@@ -6,11 +6,11 @@
  * `tests/helpers/db/rls-bootstrap.ts` when mirroring production grants in ephemeral DBs.
  */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS = [
-	'name',
-	'preferred_ai_model',
-	'updated_at',
+  'name',
+  'preferred_ai_model',
+  'updated_at',
 ] as const;
 
 /** Comma-separated identifiers for `GRANT UPDATE (...)` embedding. */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL =
-	USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ');
+  USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ');

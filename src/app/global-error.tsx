@@ -6,29 +6,29 @@ import { useEffect } from 'react';
 import { clientLogger } from '@/lib/logging/client';
 
 export default function GlobalError({
-	error,
+  error,
 }: {
-	error: Error & { digest?: string };
+  error: Error & { digest?: string };
 }) {
-	useEffect(() => {
-		clientLogger.error('Global app error:', {
-			context: 'global-error-boundary',
-			errorDigest: error.digest,
-			message: error?.message,
-			stack: error?.stack,
-		});
-		Sentry.captureException(error);
-	}, [error]);
+  useEffect(() => {
+    clientLogger.error('Global app error:', {
+      context: 'global-error-boundary',
+      errorDigest: error.digest,
+      message: error?.message,
+      stack: error?.stack,
+    });
+    Sentry.captureException(error);
+  }, [error]);
 
-	return (
-		<html lang="en">
-			<body>
-				{/* `NextError` is the default Next.js error page component. Its type
+  return (
+    <html lang="en">
+      <body>
+        {/* `NextError` is the default Next.js error page component. Its type
         definition requires a `statusCode` prop. However, since the App Router
         does not expose status codes for errors, we simply pass 0 to render a
         generic error message. */}
-				<NextError statusCode={0} />
-			</body>
-		</html>
-	);
+        <NextError statusCode={0} />
+      </body>
+    </html>
+  );
 }

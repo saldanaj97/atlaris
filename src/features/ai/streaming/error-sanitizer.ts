@@ -15,61 +15,61 @@ import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 export type ErrorLike = {
-	name?: string;
-	message?: string;
-	stack?: string;
-	cause?: Error | string | object | null;
-	status?: number;
-	statusCode?: number;
-	response?: { status?: number } | null;
+  name?: string;
+  message?: string;
+  stack?: string;
+  cause?: Error | string | object | null;
+  status?: number;
+  statusCode?: number;
+  response?: { status?: number } | null;
 };
 
 export type GenerationError = Error | DOMException | string | ErrorLike;
 
 type SanitizedSseError = {
-	code: string;
-	message: string;
-	retryable: boolean;
+  code: string;
+  message: string;
+  retryable: boolean;
 };
 
 type PrimitiveErrorValue = string | number | boolean | null | undefined;
 
 type Serializable =
-	| PrimitiveErrorValue
-	| Serializable[]
-	| { [key: string]: Serializable };
+  | PrimitiveErrorValue
+  | Serializable[]
+  | { [key: string]: Serializable };
 
 type MessageErrorShape = { message: string };
 type ToStringErrorShape = { toString(): string };
 
 type StringifyErrorValue =
-	| PrimitiveErrorValue
-	| MessageErrorShape
-	| ToStringErrorShape
-	| Serializable;
+  | PrimitiveErrorValue
+  | MessageErrorShape
+  | ToStringErrorShape
+  | Serializable;
 
 function stringifyUnknownError(value: StringifyErrorValue): string {
-	if (
-		typeof value === 'object' &&
-		value !== null &&
-		!(
-			'message' in value &&
-			typeof (value as { message?: unknown }).message === 'string'
-		) &&
-		'toString' in value &&
-		value.toString !== Object.prototype.toString
-	) {
-		const toStringResult = (value as { toString(): unknown }).toString();
-		if (
-			typeof toStringResult === 'string' &&
-			toStringResult.length > 0 &&
-			toStringResult !== '[object Object]'
-		) {
-			return toStringResult;
-		}
-	}
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    !(
+      'message' in value &&
+      typeof (value as { message?: unknown }).message === 'string'
+    ) &&
+    'toString' in value &&
+    value.toString !== Object.prototype.toString
+  ) {
+    const toStringResult = (value as { toString(): unknown }).toString();
+    if (
+      typeof toStringResult === 'string' &&
+      toStringResult.length > 0 &&
+      toStringResult !== '[object Object]'
+    ) {
+      return toStringResult;
+    }
+  }
 
-	return coerceUnknownToMessage(value as unknown);
+  return coerceUnknownToMessage(value as unknown);
 }
 
 /**
@@ -82,22 +82,22 @@ function stringifyUnknownError(value: StringifyErrorValue): string {
  * @returns A safe, deterministic error payload for the SSE stream
  */
 export function sanitizeSseError(
-	error: GenerationError,
-	classification: FailureClassification | 'unknown',
-	context?: { planId?: string; userId?: string },
+  error: GenerationError,
+  classification: FailureClassification | 'unknown',
+  context?: { planId?: string; userId?: string },
 ): SanitizedSseError {
-	// Log the full error details server-side
-	logger.error(
-		{
-			error:
-				error instanceof Error
-					? { message: error.message, name: error.name, stack: error.stack }
-					: stringifyUnknownError(error),
-			classification,
-			...(context ? { context } : {}),
-		},
-		'Generation error (sanitized for client)',
-	);
+  // Log the full error details server-side
+  logger.error(
+    {
+      error:
+        error instanceof Error
+          ? { message: error.message, name: error.name, stack: error.stack }
+          : stringifyUnknownError(error),
+      classification,
+      ...(context ? { context } : {}),
+    },
+    'Generation error (sanitized for client)',
+  );
 
-	return getFailurePresentation(classification) as SanitizedSseError;
+  return getFailurePresentation(classification) as SanitizedSseError;
 }

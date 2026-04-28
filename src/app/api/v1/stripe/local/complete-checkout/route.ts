@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { isValidRedirectUrl } from '@/app/api/v1/stripe/_shared/redirect';
 import {
-	isLocalPriceId,
-	tierFromLocalPriceId,
+  isLocalPriceId,
+  tierFromLocalPriceId,
 } from '@/features/billing/local-catalog';
 import {
-	executeLocalSubscriptionReplay,
-	isLocalStripeCompletionRouteEnabled,
+  executeLocalSubscriptionReplay,
+  isLocalStripeCompletionRouteEnabled,
 } from '@/features/billing/stripe-commerce';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuth } from '@/lib/api/auth';
@@ -22,34 +22,34 @@ export const dynamic = 'force-dynamic';
  * event through the same webhook dedupe + processor path as production.
  */
 export const GET: PlainHandler = withErrorBoundary(
-	withAuth(async ({ req, user }) => {
-		if (!isLocalStripeCompletionRouteEnabled()) {
-			return new NextResponse('Not found', { status: 404 });
-		}
+  withAuth(async ({ req, user }) => {
+    if (!isLocalStripeCompletionRouteEnabled()) {
+      return new NextResponse('Not found', { status: 404 });
+    }
 
-		const url = new URL(req.url);
-		const priceId = url.searchParams.get('price_id');
-		const nextPath = url.searchParams.get('next') ?? '/settings/billing';
+    const url = new URL(req.url);
+    const priceId = url.searchParams.get('price_id');
+    const nextPath = url.searchParams.get('next') ?? '/settings/billing';
 
-		if (!priceId || !isLocalPriceId(priceId)) {
-			throw new ValidationError(
-				'Invalid or missing price_id for local checkout',
-			);
-		}
+    if (!priceId || !isLocalPriceId(priceId)) {
+      throw new ValidationError(
+        'Invalid or missing price_id for local checkout',
+      );
+    }
 
-		if (!tierFromLocalPriceId(priceId)) {
-			throw new ValidationError('Unknown local price id');
-		}
+    if (!tierFromLocalPriceId(priceId)) {
+      throw new ValidationError('Unknown local price id');
+    }
 
-		if (!isValidRedirectUrl(nextPath)) {
-			throw new ValidationError('Invalid redirect target');
-		}
+    if (!isValidRedirectUrl(nextPath)) {
+      throw new ValidationError('Invalid redirect target');
+    }
 
-		await executeLocalSubscriptionReplay({
-			user: { id: user.id, email: user.email },
-			priceId,
-		});
+    await executeLocalSubscriptionReplay({
+      user: { id: user.id, email: user.email },
+      priceId,
+    });
 
-		return NextResponse.redirect(new URL(nextPath, appEnv.url));
-	}),
+    return NextResponse.redirect(new URL(nextPath, appEnv.url));
+  }),
 );

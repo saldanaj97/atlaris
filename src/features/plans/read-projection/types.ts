@@ -3,11 +3,11 @@ import type { DbClient } from '@/lib/db/types';
 export type PlanDbClient = DbClient;
 
 export type PlanStatus =
-	| 'active'
-	| 'paused'
-	| 'completed'
-	| 'generating'
-	| 'failed';
+  | 'active'
+  | 'paused'
+  | 'completed'
+  | 'generating'
+  | 'failed';
 
 /**
  * List-filter status used by plan read projections.

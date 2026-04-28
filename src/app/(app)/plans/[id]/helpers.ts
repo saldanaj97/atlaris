@@ -6,21 +6,21 @@
  */
 
 import {
-	buildTaskStatusMap,
-	derivePlanDetailsCardStats,
-	derivePlanOverviewStats,
+  buildTaskStatusMap,
+  derivePlanDetailsCardStats,
+  derivePlanOverviewStats,
 } from '@/features/plans/task-progress/client';
 import type {
-	ClientModule,
-	ClientPlanDetail,
+  ClientModule,
+  ClientPlanDetail,
 } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 import type {
-	PlanAccessError,
-	PlanAccessErrorCode,
-	PlanAccessResult,
-	PlanDetailsCardStats,
-	PlanOverviewStats,
+  PlanAccessError,
+  PlanAccessErrorCode,
+  PlanAccessResult,
+  PlanDetailsCardStats,
+  PlanOverviewStats,
 } from './types';
 
 /**
@@ -29,9 +29,9 @@ import type {
  * @returns A `Record` mapping each task id to its `ProgressStatus`, built from `mod.tasks ?? []`.
  */
 export function getStatusesFromModules(
-	modules: ClientModule[],
+  modules: ClientModule[],
 ): Record<string, ProgressStatus> {
-	return buildTaskStatusMap(modules);
+  return buildTaskStatusMap(modules);
 }
 
 /**
@@ -39,10 +39,10 @@ export function getStatusesFromModules(
  * Pure function - can be called on server or client.
  */
 export function computeOverviewStats(
-	plan: ClientPlanDetail,
-	statuses: Record<string, ProgressStatus>,
+  plan: ClientPlanDetail,
+  statuses: Record<string, ProgressStatus>,
 ): PlanOverviewStats {
-	return derivePlanOverviewStats(plan, statuses);
+  return derivePlanOverviewStats(plan, statuses);
 }
 
 /**
@@ -50,36 +50,36 @@ export function computeOverviewStats(
  * Pure function - can be called on server or client.
  */
 export function computeDetailsCardStats(
-	plan: ClientPlanDetail,
-	statuses: Record<string, ProgressStatus>,
+  plan: ClientPlanDetail,
+  statuses: Record<string, ProgressStatus>,
 ): PlanDetailsCardStats {
-	return derivePlanDetailsCardStats(plan, statuses);
+  return derivePlanDetailsCardStats(plan, statuses);
 }
 
 /**
  * Helper to create success result
  */
 export function planSuccess(data: ClientPlanDetail): PlanAccessResult {
-	return { success: true, data };
+  return { success: true, data };
 }
 
 /**
  * Helper to create error result
  */
 export function planError(
-	code: PlanAccessErrorCode,
-	message: string,
+  code: PlanAccessErrorCode,
+  message: string,
 ): PlanAccessResult {
-	return { success: false, error: { code, message } };
+  return { success: false, error: { code, message } };
 }
 
 /**
  * Type guard to check if plan access result is successful
  */
 export function isPlanSuccess(
-	result: PlanAccessResult,
+  result: PlanAccessResult,
 ): result is { success: true; data: ClientPlanDetail } {
-	return result.success === true;
+  return result.success === true;
 }
 
 /**
@@ -87,8 +87,8 @@ export function isPlanSuccess(
  * Only call this after checking !isPlanSuccess(result)
  */
 export function getPlanError(result: PlanAccessResult): PlanAccessError {
-	if (result.success === false) {
-		return result.error;
-	}
-	throw new Error('Cannot get error from successful result');
+  if (result.success === false) {
+    return result.error;
+  }
+  throw new Error('Cannot get error from successful result');
 }

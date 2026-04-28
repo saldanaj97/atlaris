@@ -14,31 +14,31 @@ const RLS_IDLE_TIMEOUT_SECONDS = 180;
  * released promptly.
  */
 export async function createStreamDbClient(authUserId: string): Promise<{
-	dbClient: AttemptsDbClient;
-	cleanup: () => Promise<void>;
+  dbClient: AttemptsDbClient;
+  cleanup: () => Promise<void>;
 }> {
-	const normalizedAuthUserId = authUserId.trim();
-	if (normalizedAuthUserId.length === 0) {
-		throw new Error('createStreamDbClient requires a non-empty authUserId');
-	}
+  const normalizedAuthUserId = authUserId.trim();
+  if (normalizedAuthUserId.length === 0) {
+    throw new Error('createStreamDbClient requires a non-empty authUserId');
+  }
 
-	if (appEnv.isTest) {
-		return {
-			dbClient: getDb(),
-			cleanup: async () => {},
-		};
-	}
+  if (appEnv.isTest) {
+    return {
+      dbClient: getDb(),
+      cleanup: async () => {},
+    };
+  }
 
-	const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-	const { db, cleanup } = await createAuthenticatedRlsClient(
-		normalizedAuthUserId,
-		{
-			idleTimeout: RLS_IDLE_TIMEOUT_SECONDS,
-		},
-	);
+  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { db, cleanup } = await createAuthenticatedRlsClient(
+    normalizedAuthUserId,
+    {
+      idleTimeout: RLS_IDLE_TIMEOUT_SECONDS,
+    },
+  );
 
-	return {
-		dbClient: db,
-		cleanup,
-	};
+  return {
+    dbClient: db,
+    cleanup,
+  };
 }

@@ -5,8 +5,8 @@ import type { PlanPersistencePort } from '@/features/plans/lifecycle/ports';
  * Keep these ports small so strategy modules cannot reach unrelated lifecycle concerns.
  */
 export type PlanCreationStrategyPorts = {
-	planPersistence: Pick<
-		PlanPersistencePort,
-		'atomicInsertPlan' | 'findRecentDuplicatePlan'
-	>;
+  planPersistence: Pick<
+    PlanPersistencePort,
+    'atomicInsertPlan' | 'findRecentDuplicatePlan'
+  >;
 };

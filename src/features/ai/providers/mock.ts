@@ -1,15 +1,15 @@
 import { createAbortError } from '@/features/ai/abort';
 import {
-	ProviderError,
-	ProviderRateLimitError,
-	ProviderTimeoutError,
+  ProviderError,
+  ProviderRateLimitError,
+  ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type {
-	AiPlanGenerationProvider,
-	GenerationInput,
-	GenerationOptions,
-	ProviderGenerateResult,
+  AiPlanGenerationProvider,
+  GenerationInput,
+  GenerationOptions,
+  ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
 import { aiEnv } from '@/lib/config/env';
 
@@ -22,62 +22,62 @@ const CHUNK_DELAY_MS = 50;
 const VARIANCE_THRESHOLD_MS = 1000;
 
 type MockGenerationConfig = {
-	delayMs?: number;
-	failureRate?: number;
-	deterministicSeed?: number; // If set, makes generation deterministic
-	/** Overrides env MOCK_AI_SCENARIO when set (e.g. tests). */
-	scenario?: string;
+  delayMs?: number;
+  failureRate?: number;
+  deterministicSeed?: number; // If set, makes generation deterministic
+  /** Overrides env MOCK_AI_SCENARIO when set (e.g. tests). */
+  scenario?: string;
 };
 
 const TOPICS_TEMPLATES = {
-	beginner: [
-		'Getting Started',
-		'Fundamentals',
-		'Basic Concepts',
-		'Introduction to Key Topics',
-		'Essential Skills',
-	],
-	intermediate: [
-		'Deep Dive',
-		'Advanced Techniques',
-		'Practical Applications',
-		'Real-World Projects',
-		'Optimization Strategies',
-	],
-	advanced: [
-		'Expert-Level Mastery',
-		'Architectural Patterns',
-		'Performance Optimization',
-		'Production Best Practices',
-		'Cutting-Edge Techniques',
-	],
+  beginner: [
+    'Getting Started',
+    'Fundamentals',
+    'Basic Concepts',
+    'Introduction to Key Topics',
+    'Essential Skills',
+  ],
+  intermediate: [
+    'Deep Dive',
+    'Advanced Techniques',
+    'Practical Applications',
+    'Real-World Projects',
+    'Optimization Strategies',
+  ],
+  advanced: [
+    'Expert-Level Mastery',
+    'Architectural Patterns',
+    'Performance Optimization',
+    'Production Best Practices',
+    'Cutting-Edge Techniques',
+  ],
 };
 
 const TASK_TEMPLATES = {
-	reading: [
-		'Read documentation on',
-		'Study the official guide for',
-		'Review articles about',
-		'Explore case studies on',
-	],
-	video: [
-		'Watch tutorial videos on',
-		'Follow along with video course on',
-		'View demonstrations of',
-		'Complete video workshop on',
-	],
-	practice: [
-		'Build a practice project using',
-		'Implement hands-on exercises for',
-		'Create a demo application with',
-		'Complete coding challenges on',
-	],
-	mixed: [
-		'Complete comprehensive tutorial on',
-		'Work through guided project for',
-		'Study and practice',
-		'Learn by doing with',
-	],
+  reading: [
+    'Read documentation on',
+    'Study the official guide for',
+    'Review articles about',
+    'Explore case studies on',
+  ],
+  video: [
+    'Watch tutorial videos on',
+    'Follow along with video course on',
+    'View demonstrations of',
+    'Complete video workshop on',
+  ],
+  practice: [
+    'Build a practice project using',
+    'Implement hands-on exercises for',
+    'Create a demo application with',
+    'Complete coding challenges on',
+  ],
+  mixed: [
+    'Complete comprehensive tutorial on',
+    'Work through guided project for',
+    'Study and practice',
+    'Learn by doing with',
+  ],
 };
 
 /**
@@ -85,268 +85,268 @@ const TASK_TEMPLATES = {
  * Uses a simple LCG (Linear Congruential Generator)
  */
 class SeededRandom {
-	private seed: number;
+  private seed: number;
 
-	constructor(seed: number) {
-		this.seed = seed;
-	}
+  constructor(seed: number) {
+    this.seed = seed;
+  }
 
-	next(): number {
-		// LCG parameters from Numerical Recipes
-		this.seed = (this.seed * 1664525 + 1013904223) >>> 0;
-		return this.seed / 0x100000000;
-	}
+  next(): number {
+    // LCG parameters from Numerical Recipes
+    this.seed = (this.seed * 1664525 + 1013904223) >>> 0;
+    return this.seed / 0x100000000;
+  }
 
-	nextInt(min: number, max: number): number {
-		return Math.floor(this.next() * (max - min + 1)) + min;
-	}
+  nextInt(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
 }
 
 function getRandomInt(min: number, max: number): number {
-	return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function generateModuleTitle(
-	topic: string,
-	skillLevel: string,
-	moduleIndex: number,
+  topic: string,
+  skillLevel: string,
+  moduleIndex: number,
 ): string {
-	const templates =
-		TOPICS_TEMPLATES[skillLevel as keyof typeof TOPICS_TEMPLATES] ??
-		TOPICS_TEMPLATES.beginner;
-	const template = templates[moduleIndex % templates.length] ?? templates[0];
-	return `${template}: ${topic}`;
+  const templates =
+    TOPICS_TEMPLATES[skillLevel as keyof typeof TOPICS_TEMPLATES] ??
+    TOPICS_TEMPLATES.beginner;
+  const template = templates[moduleIndex % templates.length] ?? templates[0];
+  return `${template}: ${topic}`;
 }
 
 function generateTaskTitle(
-	topic: string,
-	learningStyle: string,
-	taskIndex: number,
+  topic: string,
+  learningStyle: string,
+  taskIndex: number,
 ): string {
-	const templates =
-		TASK_TEMPLATES[learningStyle as keyof typeof TASK_TEMPLATES] ??
-		TASK_TEMPLATES.mixed;
-	const template =
-		templates[taskIndex % templates.length] ??
-		templates[0] ??
-		'Complete task on';
-	return `${template} ${topic}`;
+  const templates =
+    TASK_TEMPLATES[learningStyle as keyof typeof TASK_TEMPLATES] ??
+    TASK_TEMPLATES.mixed;
+  const template =
+    templates[taskIndex % templates.length] ??
+    templates[0] ??
+    'Complete task on';
+  return `${template} ${topic}`;
 }
 
 function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
-	const randomInt = (min: number, max: number) =>
-		rng ? rng.nextInt(min, max) : getRandomInt(min, max);
+  const randomInt = (min: number, max: number) =>
+    rng ? rng.nextInt(min, max) : getRandomInt(min, max);
 
-	const moduleCount = randomInt(3, 5);
-	const modules = [];
+  const moduleCount = randomInt(3, 5);
+  const modules = [];
 
-	for (let i = 0; i < moduleCount; i++) {
-		const taskCount = randomInt(3, 5);
-		const tasks = [];
+  for (let i = 0; i < moduleCount; i++) {
+    const taskCount = randomInt(3, 5);
+    const tasks = [];
 
-		let totalTaskMinutes = 0;
-		for (let j = 0; j < taskCount; j++) {
-			const estimatedMinutes = randomInt(30, 90);
-			totalTaskMinutes += estimatedMinutes;
+    let totalTaskMinutes = 0;
+    for (let j = 0; j < taskCount; j++) {
+      const estimatedMinutes = randomInt(30, 90);
+      totalTaskMinutes += estimatedMinutes;
 
-			tasks.push({
-				title: generateTaskTitle(input.topic, input.learningStyle, j),
-				description: `Learn and practice key concepts related to ${input.topic}. This task will help you build practical skills.`,
-				estimated_minutes: estimatedMinutes,
-			});
-		}
+      tasks.push({
+        title: generateTaskTitle(input.topic, input.learningStyle, j),
+        description: `Learn and practice key concepts related to ${input.topic}. This task will help you build practical skills.`,
+        estimated_minutes: estimatedMinutes,
+      });
+    }
 
-		// Module time should roughly match sum of tasks, add some buffer
-		const moduleMinutes = Math.max(totalTaskMinutes, randomInt(120, 240));
+    // Module time should roughly match sum of tasks, add some buffer
+    const moduleMinutes = Math.max(totalTaskMinutes, randomInt(120, 240));
 
-		modules.push({
-			title: generateModuleTitle(input.topic, input.skillLevel, i),
-			description: `This module covers essential aspects of ${input.topic} tailored for ${input.skillLevel} level learners.`,
-			estimated_minutes: moduleMinutes,
-			tasks,
-		});
-	}
+    modules.push({
+      title: generateModuleTitle(input.topic, input.skillLevel, i),
+      description: `This module covers essential aspects of ${input.topic} tailored for ${input.skillLevel} level learners.`,
+      estimated_minutes: moduleMinutes,
+      tasks,
+    });
+  }
 
-	return { modules };
+  return { modules };
 }
 
 async function* createMockChunks(
-	payload: unknown,
-	delayMs: number,
-	signal?: AbortSignal,
+  payload: unknown,
+  delayMs: number,
+  signal?: AbortSignal,
 ): AsyncIterable<string> {
-	const throwIfAborted = () => {
-		if (signal?.aborted) {
-			throw createAbortError('Mock provider generation aborted');
-		}
-	};
+  const throwIfAborted = () => {
+    if (signal?.aborted) {
+      throw createAbortError('Mock provider generation aborted');
+    }
+  };
 
-	const sleep = async (ms: number): Promise<void> => {
-		if (ms <= 0) {
-			return;
-		}
+  const sleep = async (ms: number): Promise<void> => {
+    if (ms <= 0) {
+      return;
+    }
 
-		if (signal?.aborted) {
-			throw createAbortError('Mock provider generation aborted');
-		}
+    if (signal?.aborted) {
+      throw createAbortError('Mock provider generation aborted');
+    }
 
-		await new Promise<void>((resolve, reject) => {
-			const timeout = setTimeout(() => {
-				cleanup();
-				resolve();
-			}, ms);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
 
-			const onAbort = () => {
-				clearTimeout(timeout);
-				cleanup();
-				reject(createAbortError('Mock provider generation aborted'));
-			};
+      const onAbort = () => {
+        clearTimeout(timeout);
+        cleanup();
+        reject(createAbortError('Mock provider generation aborted'));
+      };
 
-			const cleanup = () => {
-				if (signal) {
-					signal.removeEventListener('abort', onAbort);
-				}
-			};
+      const cleanup = () => {
+        if (signal) {
+          signal.removeEventListener('abort', onAbort);
+        }
+      };
 
-			if (signal) {
-				signal.addEventListener('abort', onAbort, { once: true });
-			}
-		});
-	};
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+    });
+  };
 
-	const serialized = JSON.stringify(payload);
-	const chunkSize = 80;
-	// Skip inter-chunk delays in fast test mode
-	const chunkDelay = delayMs < FAST_TEST_THRESHOLD_MS ? 0 : CHUNK_DELAY_MS;
+  const serialized = JSON.stringify(payload);
+  const chunkSize = 80;
+  // Skip inter-chunk delays in fast test mode
+  const chunkDelay = delayMs < FAST_TEST_THRESHOLD_MS ? 0 : CHUNK_DELAY_MS;
 
-	// Simulate streaming with realistic delay
-	for (let i = 0; i < serialized.length; i += chunkSize) {
-		throwIfAborted();
-		if (i > 0 && chunkDelay > 0) {
-			// Add small delay between chunks to simulate network
-			await sleep(chunkDelay);
-		}
-		throwIfAborted();
-		yield serialized.slice(i, i + chunkSize);
-	}
+  // Simulate streaming with realistic delay
+  for (let i = 0; i < serialized.length; i += chunkSize) {
+    throwIfAborted();
+    if (i > 0 && chunkDelay > 0) {
+      // Add small delay between chunks to simulate network
+      await sleep(chunkDelay);
+    }
+    throwIfAborted();
+    yield serialized.slice(i, i + chunkSize);
+  }
 
-	// Final delay to simulate total generation time
-	if (delayMs > 0) {
-		await sleep(delayMs);
-	}
+  // Final delay to simulate total generation time
+  if (delayMs > 0) {
+    await sleep(delayMs);
+  }
 }
 
 function createMockStream(
-	payload: unknown,
-	delayMs: number,
-	signal?: AbortSignal,
+  payload: unknown,
+  delayMs: number,
+  signal?: AbortSignal,
 ): ReadableStream<string> {
-	return asyncIterableToReadableStream(
-		createMockChunks(payload, delayMs, signal),
-	);
+  return asyncIterableToReadableStream(
+    createMockChunks(payload, delayMs, signal),
+  );
 }
 
 export class MockGenerationProvider implements AiPlanGenerationProvider {
-	private readonly config: Required<
-		Omit<MockGenerationConfig, 'deterministicSeed' | 'scenario'>
-	> & { deterministicSeed?: number; scenario?: string };
+  private readonly config: Required<
+    Omit<MockGenerationConfig, 'deterministicSeed' | 'scenario'>
+  > & { deterministicSeed?: number; scenario?: string };
 
-	constructor(config: MockGenerationConfig = {}) {
-		this.config = {
-			delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
-			failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
-			deterministicSeed: config.deterministicSeed,
-			scenario: config.scenario ?? aiEnv.mockScenario,
-		};
-	}
+  constructor(config: MockGenerationConfig = {}) {
+    this.config = {
+      delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
+      failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
+      deterministicSeed: config.deterministicSeed,
+      scenario: config.scenario ?? aiEnv.mockScenario,
+    };
+  }
 
-	generate(
-		input: GenerationInput,
-		options?: GenerationOptions,
-	): Promise<ProviderGenerateResult> {
-		const scenario = this.config.scenario;
-		if (scenario === 'timeout') {
-			return Promise.reject(
-				new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)'),
-			);
-		}
-		if (scenario === 'provider_error') {
-			return Promise.reject(
-				new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error'),
-			);
-		}
-		if (scenario === 'rate_limit') {
-			return Promise.reject(
-				new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit'),
-			);
-		}
-		if (scenario === 'invalid_response') {
-			return Promise.resolve({
-				stream: new ReadableStream<string>({
-					start(controller) {
-						controller.enqueue('not-valid-json{{{');
-						controller.close();
-					},
-				}),
-				metadata: {
-					provider: 'mock',
-					model: 'mock-invalid',
-					usage: {
-						promptTokens: 0,
-						completionTokens: 0,
-						totalTokens: 0,
-					},
-				},
-			});
-		}
+  generate(
+    input: GenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    const scenario = this.config.scenario;
+    if (scenario === 'timeout') {
+      return Promise.reject(
+        new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)'),
+      );
+    }
+    if (scenario === 'provider_error') {
+      return Promise.reject(
+        new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error'),
+      );
+    }
+    if (scenario === 'rate_limit') {
+      return Promise.reject(
+        new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit'),
+      );
+    }
+    if (scenario === 'invalid_response') {
+      return Promise.resolve({
+        stream: new ReadableStream<string>({
+          start(controller) {
+            controller.enqueue('not-valid-json{{{');
+            controller.close();
+          },
+        }),
+        metadata: {
+          provider: 'mock',
+          model: 'mock-invalid',
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+          },
+        },
+      });
+    }
 
-		// Create seeded RNG if seed is provided
-		const rng =
-			this.config.deterministicSeed !== undefined
-				? new SeededRandom(this.config.deterministicSeed)
-				: undefined;
+    // Create seeded RNG if seed is provided
+    const rng =
+      this.config.deterministicSeed !== undefined
+        ? new SeededRandom(this.config.deterministicSeed)
+        : undefined;
 
-		// Simulate random failures based on configured rate
-		const failureCheck = rng ? rng.next() : Math.random();
-		if (failureCheck < this.config.failureRate) {
-			return Promise.reject(
-				new ProviderError(
-					'provider_error',
-					'Mock provider simulated failure for testing',
-				),
-			);
-		}
+    // Simulate random failures based on configured rate
+    const failureCheck = rng ? rng.next() : Math.random();
+    if (failureCheck < this.config.failureRate) {
+      return Promise.reject(
+        new ProviderError(
+          'provider_error',
+          'Mock provider simulated failure for testing',
+        ),
+      );
+    }
 
-		// Generate realistic modules based on input
-		const payload = generateModules(input, rng);
+    // Generate realistic modules based on input
+    const payload = generateModules(input, rng);
 
-		// Random delay (configurable via env, or deterministic if seeded)
-		const baseDelay = this.config.delayMs;
-		// Only apply variance if delay is large enough
-		// For fast test mode (below threshold), use exact delay with no minimum floor
-		const variance =
-			baseDelay >= VARIANCE_THRESHOLD_MS
-				? rng
-					? rng.nextInt(-2000, 2000)
-					: getRandomInt(-2000, 2000)
-				: 0;
-		const actualDelay =
-			baseDelay >= VARIANCE_THRESHOLD_MS
-				? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
-				: baseDelay;
+    // Random delay (configurable via env, or deterministic if seeded)
+    const baseDelay = this.config.delayMs;
+    // Only apply variance if delay is large enough
+    // For fast test mode (below threshold), use exact delay with no minimum floor
+    const variance =
+      baseDelay >= VARIANCE_THRESHOLD_MS
+        ? rng
+          ? rng.nextInt(-2000, 2000)
+          : getRandomInt(-2000, 2000)
+        : 0;
+    const actualDelay =
+      baseDelay >= VARIANCE_THRESHOLD_MS
+        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
+        : baseDelay;
 
-		// Return an already-settled Promise so tests get deterministic timing and avoid unnecessary microtask deferral.
-		return Promise.resolve({
-			stream: createMockStream(payload, actualDelay, options?.signal),
-			metadata: {
-				provider: 'mock',
-				model: 'mock-generator-v1',
-				usage: {
-					promptTokens: 100,
-					completionTokens: 500,
-					totalTokens: 600,
-				},
-			},
-		});
-	}
+    // Return an already-settled Promise so tests get deterministic timing and avoid unnecessary microtask deferral.
+    return Promise.resolve({
+      stream: createMockStream(payload, actualDelay, options?.signal),
+      metadata: {
+        provider: 'mock',
+        model: 'mock-generator-v1',
+        usage: {
+          promptTokens: 100,
+          completionTokens: 500,
+          totalTokens: 600,
+        },
+      },
+    });
+  }
 }

@@ -6,20 +6,20 @@ import { z } from 'zod';
  * including redaction of sensitive information in logs.
  */
 export class EnvValidationError extends Error {
-	constructor(
-		message: string,
-		public readonly envKey?: string,
-		options?: ErrorOptions,
-	) {
-		super(message, options);
-		this.name = 'EnvValidationError';
-	}
+  constructor(
+    message: string,
+    public readonly envKey?: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = 'EnvValidationError';
+  }
 }
 
 const normalize = (value: string | undefined | null): string | undefined => {
-	if (value === undefined || value === null) return undefined;
-	const trimmed = value.trim();
-	return trimmed === '' ? undefined : trimmed;
+  if (value === undefined || value === null) return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed;
 };
 
 /**
@@ -33,7 +33,7 @@ export type EnvSource = Readonly<Record<string, string | undefined>>;
  * {@link isProdRuntimeEnv} / {@link isNonProductionRuntimeEnv} / parsers.
  */
 export function getProcessEnvSource(): EnvSource {
-	return process.env as EnvSource;
+  return process.env as EnvSource;
 }
 
 export type NodeEnv = 'development' | 'production' | 'test';
@@ -41,21 +41,21 @@ export type NodeEnv = 'development' | 'production' | 'test';
 const NodeEnvSchema = z.enum(['development', 'production', 'test']);
 
 export function optionalEnvFrom(
-	env: EnvSource,
-	key: string,
+  env: EnvSource,
+  key: string,
 ): string | undefined {
-	return normalize(env[key]);
+  return normalize(env[key]);
 }
 
 export function requireEnvFrom(env: EnvSource, key: string): string {
-	const value = optionalEnvFrom(env, key);
-	if (!value) {
-		throw new EnvValidationError(
-			`Missing required environment variable: ${key}`,
-			key,
-		);
-	}
-	return value;
+  const value = optionalEnvFrom(env, key);
+  if (!value) {
+    throw new EnvValidationError(
+      `Missing required environment variable: ${key}`,
+      key,
+    );
+  }
+  return value;
 }
 
 /**
@@ -63,27 +63,27 @@ export function requireEnvFrom(env: EnvSource, key: string): string {
  * Invalid values throw {@link EnvValidationError}.
  */
 export function parseNodeEnv(env: EnvSource): NodeEnv {
-	const raw = optionalEnvFrom(env, 'NODE_ENV');
-	if (raw === undefined) {
-		return 'development';
-	}
-	const parsed = NodeEnvSchema.safeParse(raw);
-	if (!parsed.success) {
-		throw new EnvValidationError(
-			`NODE_ENV must be one of: development, production, test. Received: ${raw}`,
-			'NODE_ENV',
-		);
-	}
-	return parsed.data;
+  const raw = optionalEnvFrom(env, 'NODE_ENV');
+  if (raw === undefined) {
+    return 'development';
+  }
+  const parsed = NodeEnvSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new EnvValidationError(
+      `NODE_ENV must be one of: development, production, test. Received: ${raw}`,
+      'NODE_ENV',
+    );
+  }
+  return parsed.data;
 }
 
 export function isProdRuntimeEnv(env: EnvSource): boolean {
-	return parseNodeEnv(env) === 'production';
+  return parseNodeEnv(env) === 'production';
 }
 
 /** True for development and test runtimes (not production). */
 function isNonProductionRuntimeEnv(env: EnvSource): boolean {
-	return !isProdRuntimeEnv(env);
+  return !isProdRuntimeEnv(env);
 }
 
 /**
@@ -92,15 +92,15 @@ function isNonProductionRuntimeEnv(env: EnvSource): boolean {
  * (callers fall back to optional defaults).
  */
 const parseableNumericEnvString = z.string().transform((s, ctx) => {
-	const n = Number(s);
-	if (!Number.isFinite(n)) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: 'Not a valid finite number',
-		});
-		return z.NEVER;
-	}
-	return n;
+  const n = Number(s);
+  if (!Number.isFinite(n)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Not a valid finite number',
+    });
+    return z.NEVER;
+  }
+  return n;
 });
 
 /**
@@ -109,21 +109,21 @@ const parseableNumericEnvString = z.string().transform((s, ctx) => {
  */
 export function parseEnvNumber(value: string | undefined): number | undefined;
 export function parseEnvNumber(
-	value: string | undefined,
-	fallback: number,
+  value: string | undefined,
+  fallback: number,
 ): number;
 export function parseEnvNumber(
-	value: string | undefined,
-	fallback?: number,
+  value: string | undefined,
+  fallback?: number,
 ): number | undefined {
-	if (value === undefined) {
-		return fallback;
-	}
-	const parsed = parseableNumericEnvString.safeParse(value);
-	if (!parsed.success) {
-		return fallback;
-	}
-	return parsed.data;
+  if (value === undefined) {
+    return fallback;
+  }
+  const parsed = parseableNumericEnvString.safeParse(value);
+  if (!parsed.success) {
+    return fallback;
+  }
+  return parsed.data;
 }
 
 /**
@@ -131,59 +131,59 @@ export function parseEnvNumber(
  * Truthy (case-insensitive, trimmed): 'true' | '1'. All other non-empty values are false.
  */
 export function toBoolean(
-	value: string | undefined,
-	fallback: boolean,
+  value: string | undefined,
+  fallback: boolean,
 ): boolean {
-	if (value === undefined) {
-		return fallback;
-	}
+  if (value === undefined) {
+    return fallback;
+  }
 
-	const normalized = value.trim().toLowerCase();
-	if (normalized === '') {
-		return fallback;
-	}
-	return normalized === 'true' || normalized === '1';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === '') {
+    return fallback;
+  }
+  return normalized === 'true' || normalized === '1';
 }
 
 export function optionalEnv(key: string): string | undefined {
-	return optionalEnvFrom(getProcessEnvSource(), key);
+  return optionalEnvFrom(getProcessEnvSource(), key);
 }
 
 export function requireEnv(key: string): string {
-	return requireEnvFrom(getProcessEnvSource(), key);
+  return requireEnvFrom(getProcessEnvSource(), key);
 }
 
 function ensureServerRuntime(isNonProduction: boolean): void {
-	if (isNonProduction) {
-		return;
-	}
-	if (typeof window !== 'undefined') {
-		throw new EnvValidationError(
-			'Attempted to access a server-only environment variable in the browser bundle.',
-		);
-	}
+  if (isNonProduction) {
+    return;
+  }
+  if (typeof window !== 'undefined') {
+    throw new EnvValidationError(
+      'Attempted to access a server-only environment variable in the browser bundle.',
+    );
+  }
 }
 
 function getCachedServerRequired(
-	cache: Map<string, string>,
-	key: string,
-	loader: () => string,
+  cache: Map<string, string>,
+  key: string,
+  loader: () => string,
 ): string {
-	if (!cache.has(key)) {
-		cache.set(key, loader());
-	}
-	const cached = cache.get(key);
-	if (cached === undefined) {
-		throw new Error(`Invariant: env cache missing key "${key}"`);
-	}
-	return cached;
+  if (!cache.has(key)) {
+    cache.set(key, loader());
+  }
+  const cached = cache.get(key);
+  if (cached === undefined) {
+    throw new Error(`Invariant: env cache missing key "${key}"`);
+  }
+  return cached;
 }
 
 export interface ServerEnvAccess {
-	getServerRequired(key: string): string;
-	getServerOptional(key: string): string | undefined;
-	getServerRequiredProdOnly(key: string): string | undefined;
-	getProductionCached<T>(key: string, loader: () => T): T;
+  getServerRequired(key: string): string;
+  getServerOptional(key: string): string | undefined;
+  getServerRequiredProdOnly(key: string): string | undefined;
+  getProductionCached<T>(key: string, loader: () => T): T;
 }
 
 /**
@@ -191,103 +191,103 @@ export interface ServerEnvAccess {
  * Caches required/optional reads in production only; non-production re-reads each time.
  */
 export function createServerEnvAccess(
-	getEnv: () => EnvSource,
+  getEnv: () => EnvSource,
 ): ServerEnvAccess {
-	const requiredCache = new Map<string, string>();
-	const optionalCache = new Map<string, string | undefined>();
-	const productionCache = new Map<string, unknown>();
+  const requiredCache = new Map<string, string>();
+  const optionalCache = new Map<string, string | undefined>();
+  const productionCache = new Map<string, unknown>();
 
-	const getServerState = (): {
-		env: EnvSource;
-		isNonProduction: boolean;
-	} => {
-		const env = getEnv();
-		const isNonProduction = isNonProductionRuntimeEnv(env);
-		ensureServerRuntime(isNonProduction);
-		return { env, isNonProduction };
-	};
+  const getServerState = (): {
+    env: EnvSource;
+    isNonProduction: boolean;
+  } => {
+    const env = getEnv();
+    const isNonProduction = isNonProductionRuntimeEnv(env);
+    ensureServerRuntime(isNonProduction);
+    return { env, isNonProduction };
+  };
 
-	return {
-		getServerRequired(key: string): string {
-			const { env, isNonProduction } = getServerState();
-			if (isNonProduction) {
-				return requireEnvFrom(env, key);
-			}
-			return getCachedServerRequired(requiredCache, key, () =>
-				requireEnvFrom(env, key),
-			);
-		},
-		getServerOptional(key: string): string | undefined {
-			const { env, isNonProduction } = getServerState();
-			if (isNonProduction) {
-				return optionalEnvFrom(env, key);
-			}
-			if (!optionalCache.has(key)) {
-				optionalCache.set(key, optionalEnvFrom(env, key));
-			}
-			return optionalCache.get(key);
-		},
-		getServerRequiredProdOnly(key: string): string | undefined {
-			const { env, isNonProduction } = getServerState();
-			if (isNonProduction) {
-				return optionalEnvFrom(env, key);
-			}
-			return getCachedServerRequired(requiredCache, key, () =>
-				requireEnvFrom(env, key),
-			);
-		},
-		getProductionCached<T>(key: string, loader: () => T): T {
-			const { isNonProduction } = getServerState();
-			if (isNonProduction) {
-				return loader();
-			}
-			if (!productionCache.has(key)) {
-				productionCache.set(key, loader());
-			}
-			return productionCache.get(key) as T;
-		},
-	};
+  return {
+    getServerRequired(key: string): string {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return requireEnvFrom(env, key);
+      }
+      return getCachedServerRequired(requiredCache, key, () =>
+        requireEnvFrom(env, key),
+      );
+    },
+    getServerOptional(key: string): string | undefined {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return optionalEnvFrom(env, key);
+      }
+      if (!optionalCache.has(key)) {
+        optionalCache.set(key, optionalEnvFrom(env, key));
+      }
+      return optionalCache.get(key);
+    },
+    getServerRequiredProdOnly(key: string): string | undefined {
+      const { env, isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return optionalEnvFrom(env, key);
+      }
+      return getCachedServerRequired(requiredCache, key, () =>
+        requireEnvFrom(env, key),
+      );
+    },
+    getProductionCached<T>(key: string, loader: () => T): T {
+      const { isNonProduction } = getServerState();
+      if (isNonProduction) {
+        return loader();
+      }
+      if (!productionCache.has(key)) {
+        productionCache.set(key, loader());
+      }
+      return productionCache.get(key) as T;
+    },
+  };
 }
 
 const defaultServerEnvAccess = createServerEnvAccess(getProcessEnvSource);
 
 export function getServerRequired(key: string): string {
-	return defaultServerEnvAccess.getServerRequired(key);
+  return defaultServerEnvAccess.getServerRequired(key);
 }
 
 export function getServerOptional(key: string): string | undefined {
-	return defaultServerEnvAccess.getServerOptional(key);
+  return defaultServerEnvAccess.getServerOptional(key);
 }
 
 function assertProdForbiddenFlags(): void {
-	const env = getProcessEnvSource();
-	if (!isProdRuntimeEnv(env)) {
-		return;
-	}
-	const localProductTestingEnvEnabled = toBoolean(
-		optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
-		false,
-	);
-	if (localProductTestingEnvEnabled) {
-		throw new EnvValidationError(
-			'LOCAL_PRODUCT_TESTING cannot be enabled in production',
-			'LOCAL_PRODUCT_TESTING',
-		);
-	}
-	const stripeLocalModeEnabled = toBoolean(
-		optionalEnvFrom(env, 'STRIPE_LOCAL_MODE'),
-		false,
-	);
-	if (stripeLocalModeEnabled) {
-		throw new EnvValidationError(
-			'STRIPE_LOCAL_MODE cannot be enabled in production',
-			'STRIPE_LOCAL_MODE',
-		);
-	}
+  const env = getProcessEnvSource();
+  if (!isProdRuntimeEnv(env)) {
+    return;
+  }
+  const localProductTestingEnvEnabled = toBoolean(
+    optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
+    false,
+  );
+  if (localProductTestingEnvEnabled) {
+    throw new EnvValidationError(
+      'LOCAL_PRODUCT_TESTING cannot be enabled in production',
+      'LOCAL_PRODUCT_TESTING',
+    );
+  }
+  const stripeLocalModeEnabled = toBoolean(
+    optionalEnvFrom(env, 'STRIPE_LOCAL_MODE'),
+    false,
+  );
+  if (stripeLocalModeEnabled) {
+    throw new EnvValidationError(
+      'STRIPE_LOCAL_MODE cannot be enabled in production',
+      'STRIPE_LOCAL_MODE',
+    );
+  }
 }
 
 assertProdForbiddenFlags();
 
 export function getSmokeStateFileEnv(): string | undefined {
-	return getServerOptional('SMOKE_STATE_FILE');
+  return getServerOptional('SMOKE_STATE_FILE');
 }

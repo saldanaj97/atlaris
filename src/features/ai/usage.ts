@@ -15,9 +15,9 @@ import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import {
-	type CanonicalAIUsage,
-	type CanonicalUsageMissingField,
-	IncompleteUsageError,
+  type CanonicalAIUsage,
+  type CanonicalUsageMissingField,
+  IncompleteUsageError,
 } from '@/shared/types/ai-usage.types';
 
 /**
@@ -29,89 +29,89 @@ import {
  * after logging.
  */
 export function normalizeToCanonicalUsage(
-	metadata: ProviderMetadata | undefined,
+  metadata: ProviderMetadata | undefined,
 ): CanonicalAIUsage {
-	const missingFields: CanonicalUsageMissingField[] = [];
+  const missingFields: CanonicalUsageMissingField[] = [];
 
-	const provider = metadata?.provider;
-	const model = metadata?.model;
-	const usage = metadata?.usage;
+  const provider = metadata?.provider;
+  const model = metadata?.model;
+  const usage = metadata?.usage;
 
-	if (!provider) missingFields.push('provider');
-	if (!model) missingFields.push('model');
-	if (usage?.promptTokens == null) missingFields.push('inputTokens');
-	if (usage?.completionTokens == null) missingFields.push('outputTokens');
+  if (!provider) missingFields.push('provider');
+  if (!model) missingFields.push('model');
+  if (usage?.promptTokens == null) missingFields.push('inputTokens');
+  if (usage?.completionTokens == null) missingFields.push('outputTokens');
 
-	const resolvedProvider = provider ?? 'unknown';
-	const resolvedModel = model ?? 'unknown';
-	const resolvedInputTokens = usage?.promptTokens ?? 0;
-	const resolvedOutputTokens = usage?.completionTokens ?? 0;
-	const resolvedTotalTokens =
-		usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
-	// Mock providers and synthetic flows legitimately call this with models
-	// that are not in the pricing registry; record cost as 0 in that case but
-	// log it explicitly so the silent path stops being invisible. Any other
-	// error from computeCostCents (invalid token counts, registry bug) must
-	// propagate.
-	let estimatedCostCents = 0;
-	try {
-		estimatedCostCents = computeCostCents(
-			resolvedModel,
-			resolvedInputTokens,
-			resolvedOutputTokens,
-		);
-	} catch (error) {
-		if (error instanceof UnknownModelError) {
-			logger.warn(
-				{
-					source: 'canonical-usage',
-					event: 'unknown_model_cost_skipped',
-					modelId: resolvedModel,
-					provider: resolvedProvider,
-				},
-				`Unknown model "${resolvedModel}" — recording 0 estimated cost`,
-			);
-		} else {
-			throw error;
-		}
-	}
+  const resolvedProvider = provider ?? 'unknown';
+  const resolvedModel = model ?? 'unknown';
+  const resolvedInputTokens = usage?.promptTokens ?? 0;
+  const resolvedOutputTokens = usage?.completionTokens ?? 0;
+  const resolvedTotalTokens =
+    usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
+  // Mock providers and synthetic flows legitimately call this with models
+  // that are not in the pricing registry; record cost as 0 in that case but
+  // log it explicitly so the silent path stops being invisible. Any other
+  // error from computeCostCents (invalid token counts, registry bug) must
+  // propagate.
+  let estimatedCostCents = 0;
+  try {
+    estimatedCostCents = computeCostCents(
+      resolvedModel,
+      resolvedInputTokens,
+      resolvedOutputTokens,
+    );
+  } catch (error) {
+    if (error instanceof UnknownModelError) {
+      logger.warn(
+        {
+          source: 'canonical-usage',
+          event: 'unknown_model_cost_skipped',
+          modelId: resolvedModel,
+          provider: resolvedProvider,
+        },
+        `Unknown model "${resolvedModel}" — recording 0 estimated cost`,
+      );
+    } else {
+      throw error;
+    }
+  }
 
-	const isPartial = missingFields.length > 0;
+  const isPartial = missingFields.length > 0;
 
-	let providerCostMicrousd: number | null = null;
-	if (!isPartial) {
-		const usd = usage?.providerReportedCostUsd;
-		if (
-			usd != null &&
-			typeof usd === 'number' &&
-			Number.isFinite(usd) &&
-			usd >= 0
-		) {
-			providerCostMicrousd = usdCostToMicrousdInteger(usd);
-		}
-	}
+  let providerCostMicrousd: number | null = null;
+  if (!isPartial) {
+    const usd = usage?.providerReportedCostUsd;
+    if (
+      usd != null &&
+      typeof usd === 'number' &&
+      Number.isFinite(usd) &&
+      usd >= 0
+    ) {
+      providerCostMicrousd = usdCostToMicrousdInteger(usd);
+    }
+  }
 
-	const canonical: CanonicalAIUsage = {
-		inputTokens: resolvedInputTokens,
-		outputTokens: resolvedOutputTokens,
-		totalTokens: resolvedTotalTokens,
-		model: resolvedModel,
-		provider: resolvedProvider,
-		estimatedCostCents,
-		providerCostMicrousd,
-		isPartial,
-		missingFields,
-	};
+  const canonical: CanonicalAIUsage = {
+    inputTokens: resolvedInputTokens,
+    outputTokens: resolvedOutputTokens,
+    totalTokens: resolvedTotalTokens,
+    model: resolvedModel,
+    provider: resolvedProvider,
+    estimatedCostCents,
+    providerCostMicrousd,
+    isPartial,
+    missingFields,
+  };
 
-	if (isPartial) {
-		throw new IncompleteUsageError(
-			`Incomplete AI usage data: missing [${missingFields.join(', ')}] from ${resolvedProvider}/${resolvedModel}`,
-			canonical,
-			missingFields,
-		);
-	}
+  if (isPartial) {
+    throw new IncompleteUsageError(
+      `Incomplete AI usage data: missing [${missingFields.join(', ')}] from ${resolvedProvider}/${resolvedModel}`,
+      canonical,
+      missingFields,
+    );
+  }
 
-	return canonical;
+  return canonical;
 }
 
 /**
@@ -122,31 +122,31 @@ export function normalizeToCanonicalUsage(
  * proceed, but missing fields are surfaced via structured logs and Sentry.
  */
 export function safeNormalizeUsage(
-	metadata: ProviderMetadata | undefined,
+  metadata: ProviderMetadata | undefined,
 ): CanonicalAIUsage {
-	try {
-		return normalizeToCanonicalUsage(metadata);
-	} catch (error) {
-		if (error instanceof IncompleteUsageError) {
-			logger.error(
-				{
-					source: 'canonical-usage',
-					event: 'incomplete_usage_data',
-					missingFields: error.missingFields,
-					partialUsage: error.partialUsage,
-				},
-				error.message,
-			);
-			Sentry.captureException(error, {
-				level: 'warning',
-				tags: { source: 'canonical-usage' },
-				extra: {
-					missingFields: error.missingFields,
-					partialUsage: error.partialUsage,
-				},
-			});
-			return error.partialUsage;
-		}
-		throw error;
-	}
+  try {
+    return normalizeToCanonicalUsage(metadata);
+  } catch (error) {
+    if (error instanceof IncompleteUsageError) {
+      logger.error(
+        {
+          source: 'canonical-usage',
+          event: 'incomplete_usage_data',
+          missingFields: error.missingFields,
+          partialUsage: error.partialUsage,
+        },
+        error.message,
+      );
+      Sentry.captureException(error, {
+        level: 'warning',
+        tags: { source: 'canonical-usage' },
+        extra: {
+          missingFields: error.missingFields,
+          partialUsage: error.partialUsage,
+        },
+      });
+      return error.partialUsage;
+    }
+    throw error;
+  }
 }

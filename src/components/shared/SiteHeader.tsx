@@ -1,7 +1,7 @@
 import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
-	authenticatedNavItems,
-	unauthenticatedNavItems,
+  authenticatedNavItems,
+  unauthenticatedNavItems,
 } from '@/features/navigation';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { getShellAuthUserId } from '@/lib/auth/local-identity';
@@ -35,45 +35,45 @@ import MobileHeader from './nav/MobileHeader';
  *
  */
 export default async function SiteHeader() {
-	const { session } = await getSessionSafe();
-	const authUserId = getShellAuthUserId(session?.user?.id);
-	const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
+  const { session } = await getSessionSafe();
+  const authUserId = getShellAuthUserId(session?.user?.id);
+  const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
-	// Fetch tier only for authenticated users
-	let tier: SubscriptionTier | undefined;
-	if (authUserId) {
-		try {
-			const result = await requestBoundary.component(
-				({ actor }) => actor.subscriptionTier,
-			);
-			tier = result ?? undefined;
-		} catch (err) {
-			// Non-critical for shell render: tier badge omitted; log for ops visibility.
-			logger.warn(
-				{
-					err,
-					authUserId,
-					source: 'SiteHeader.subscriptionTier',
-				},
-				'Subscription tier fetch failed; header renders without tier badge',
-			);
-		}
-	}
+  // Fetch tier only for authenticated users
+  let tier: SubscriptionTier | undefined;
+  if (authUserId) {
+    try {
+      const result = await requestBoundary.component(
+        ({ actor }) => actor.subscriptionTier,
+      );
+      tier = result ?? undefined;
+    } catch (err) {
+      // Non-critical for shell render: tier badge omitted; log for ops visibility.
+      logger.warn(
+        {
+          err,
+          authUserId,
+          source: 'SiteHeader.subscriptionTier',
+        },
+        'Subscription tier fetch failed; header renders without tier badge',
+      );
+    }
+  }
 
-	return (
-		<header className="fixed top-0 left-0 z-50 w-full px-4 pt-3 lg:px-6 lg:pt-4">
-			<div className="mx-auto max-w-7xl">
-				<MobileHeader
-					navItems={navItems}
-					tier={tier}
-					isAuthenticated={Boolean(authUserId)}
-				/>
-				<DesktopHeader
-					navItems={navItems}
-					tier={tier}
-					isAuthenticated={Boolean(authUserId)}
-				/>
-			</div>
-		</header>
-	);
+  return (
+    <header className="fixed top-0 left-0 z-50 w-full px-4 pt-3 lg:px-6 lg:pt-4">
+      <div className="mx-auto max-w-7xl">
+        <MobileHeader
+          navItems={navItems}
+          tier={tier}
+          isAuthenticated={Boolean(authUserId)}
+        />
+        <DesktopHeader
+          navItems={navItems}
+          tier={tier}
+          isAuthenticated={Boolean(authUserId)}
+        />
+      </div>
+    </header>
+  );
 }

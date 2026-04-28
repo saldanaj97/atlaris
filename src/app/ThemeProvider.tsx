@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface ThemeProviderProps {
-	children: ReactNode;
+  children: ReactNode;
 }
 
 /**
@@ -18,14 +18,14 @@ interface ThemeProviderProps {
  * - disableTransitionOnChange: Prevents flash during theme switch
  */
 export function ThemeProvider({ children }: ThemeProviderProps) {
-	return (
-		<NextThemesProvider
-			attribute="class"
-			defaultTheme="system"
-			enableSystem
-			disableTransitionOnChange
-		>
-			<TooltipProvider>{children}</TooltipProvider>
-		</NextThemesProvider>
-	);
+  return (
+    <NextThemesProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <TooltipProvider>{children}</TooltipProvider>
+    </NextThemesProvider>
+  );
 }

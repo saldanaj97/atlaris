@@ -1,9 +1,9 @@
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import type {
-	AuthHandler,
-	AuthHandlerContext,
-	PlainHandler,
-	RouteHandlerContext,
+  AuthHandler,
+  AuthHandlerContext,
+  PlainHandler,
+  RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
@@ -24,22 +24,22 @@ type MaybePromise<T> = T | Promise<T>;
  * (allowing you to bypass real Neon auth provisioning while seeding a deterministic user).
  */
 export async function getEffectiveAuthUserId(options?: {
-	strict?: boolean;
+  strict?: boolean;
 }): Promise<string | null> {
-	if (appEnv.vitestWorkerId) {
-		const devUserId = devAuthEnv.userId;
-		return devUserId || null;
-	}
+  if (appEnv.vitestWorkerId) {
+    const devUserId = devAuthEnv.userId;
+    return devUserId || null;
+  }
 
-	if (appEnv.isDevelopment) {
-		const devUserId = devAuthEnv.userId;
-		if (devUserId !== undefined) {
-			return devUserId || null;
-		}
-	}
+  if (appEnv.isDevelopment) {
+    const devUserId = devAuthEnv.userId;
+    if (devUserId !== undefined) {
+      return devUserId || null;
+    }
+  }
 
-	const { session } = await getSessionSafe({ strict: options?.strict });
-	return session?.user?.id ?? null;
+  const { session } = await getSessionSafe({ strict: options?.strict });
+  return session?.user?.id ?? null;
 }
 
 /**
@@ -53,8 +53,8 @@ export async function getEffectiveAuthUserId(options?: {
  * @public Intentional library surface for OAuth and security-sensitive flows (see docs).
  */
 export async function getAuthUserId(): Promise<string | null> {
-	const { data: session } = await auth.getSession();
-	return session?.user?.id ?? null;
+  const { data: session } = await auth.getSession();
+  return session?.user?.id ?? null;
 }
 
 /**
@@ -62,56 +62,56 @@ export async function getAuthUserId(): Promise<string | null> {
  * Used internally by `withAuth` and `requireCurrentUserRecord`.
  */
 async function requireUser(): Promise<string> {
-	const userId = await getEffectiveAuthUserId({ strict: true });
-	if (!userId) throw new AuthError();
-	return userId;
+  const userId = await getEffectiveAuthUserId({ strict: true });
+  if (!userId) throw new AuthError();
+  return userId;
 }
 
 async function ensureUserRecord(
-	authUserId: string,
-	dbClient?: UsersDbClient,
+  authUserId: string,
+  dbClient?: UsersDbClient,
 ): Promise<DbUser> {
-	const existing = await getUserByAuthId(authUserId, dbClient);
-	if (existing) {
-		return existing;
-	}
+  const existing = await getUserByAuthId(authUserId, dbClient);
+  if (existing) {
+    return existing;
+  }
 
-	if (localProductTestingEnv.enabled) {
-		throw new AuthError(
-			'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
-		);
-	}
+  if (localProductTestingEnv.enabled) {
+    throw new AuthError(
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
+    );
+  }
 
-	const { data: session } = await auth.getSession();
+  const { data: session } = await auth.getSession();
 
-	if (!session?.user) {
-		throw new AuthError('Auth user data unavailable.');
-	}
+  if (!session?.user) {
+    throw new AuthError('Auth user data unavailable.');
+  }
 
-	const email = session.user.email;
-	if (!email) {
-		throw new AuthError('Auth user must have an email address.');
-	}
+  const email = session.user.email;
+  if (!email) {
+    throw new AuthError('Auth user must have an email address.');
+  }
 
-	const created = await createUser(
-		{
-			authUserId,
-			email,
-			name: session.user.name || undefined,
-		},
-		dbClient,
-	);
+  const created = await createUser(
+    {
+      authUserId,
+      email,
+      name: session.user.name || undefined,
+    },
+    dbClient,
+  );
 
-	if (!created) {
-		throw new AuthError('Failed to provision user record.');
-	}
+  if (!created) {
+    throw new AuthError('Failed to provision user record.');
+  }
 
-	return created;
+  return created;
 }
 
 export async function requireCurrentUserRecord(): Promise<DbUser> {
-	const userId = await requireUser();
-	return ensureUserRecord(userId);
+  const userId = await requireUser();
+  return ensureUserRecord(userId);
 }
 
 /**
@@ -119,73 +119,73 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
  * used by withAuth, withServerComponentContext, and withServerActionContext.
  */
 async function runWithAuthenticatedContext<T>(
-	authUserId: string,
-	fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
-	req?: Request,
+  authUserId: string,
+  fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
+  req?: Request,
 ): Promise<T> {
-	const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
-	const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
+  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
 
-	const requestContext = createRequestContext(req, {
-		userId: authUserId,
-		db: rlsDb,
-		cleanup,
-	});
+  const requestContext = createRequestContext(req, {
+    userId: authUserId,
+    db: rlsDb,
+    cleanup,
+  });
 
-	try {
-		return await withRequestContext(requestContext, async () => {
-			const user = await ensureUserRecord(authUserId, rlsDb);
-			requestContext.user = { id: user.id, authUserId: user.authUserId };
-			return fn(user, rlsDb);
-		});
-	} finally {
-		await cleanup();
-	}
+  try {
+    return await withRequestContext(requestContext, async () => {
+      const user = await ensureUserRecord(authUserId, rlsDb);
+      requestContext.user = { id: user.id, authUserId: user.authUserId };
+      return fn(user, rlsDb);
+    });
+  } finally {
+    await cleanup();
+  }
 }
 
 async function runWithTestContext<T>(
-	authUserId: string,
-	fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
-	req?: Request,
+  authUserId: string,
+  fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
+  req?: Request,
 ): Promise<T> {
-	const requestDb = getDb();
-	const user = await ensureUserRecord(authUserId, requestDb);
-	const requestContext = createRequestContext(req, {
-		userId: authUserId,
-		user: { id: user.id, authUserId: user.authUserId },
-		db: requestDb,
-		cleanup: async () => {},
-	});
+  const requestDb = getDb();
+  const user = await ensureUserRecord(authUserId, requestDb);
+  const requestContext = createRequestContext(req, {
+    userId: authUserId,
+    user: { id: user.id, authUserId: user.authUserId },
+    db: requestDb,
+    cleanup: async () => {},
+  });
 
-	return withRequestContext(requestContext, () => fn(user, requestDb));
+  return withRequestContext(requestContext, () => fn(user, requestDb));
 }
 
 type RouteHandlerParams = AuthHandlerContext['params'];
 
 export function withAuth(handler: AuthHandler): PlainHandler {
-	return async (req: Request, routeContext?: RouteHandlerContext) => {
-		const params: RouteHandlerParams = routeContext?.params
-			? await routeContext.params
-			: {};
+  return async (req: Request, routeContext?: RouteHandlerContext) => {
+    const params: RouteHandlerParams = routeContext?.params
+      ? await routeContext.params
+      : {};
 
-		if (appEnv.isTest) {
-			const authUserId = await requireUser();
+    if (appEnv.isTest) {
+      const authUserId = await requireUser();
 
-			return runWithTestContext(
-				authUserId,
-				(user) => handler({ req, userId: authUserId, user, params }),
-				req,
-			);
-		}
+      return runWithTestContext(
+        authUserId,
+        (user) => handler({ req, userId: authUserId, user, params }),
+        req,
+      );
+    }
 
-		const authUserId = await requireUser();
+    const authUserId = await requireUser();
 
-		return runWithAuthenticatedContext(
-			authUserId,
-			(user) => handler({ req, userId: authUserId, user, params }),
-			req,
-		);
-	};
+    return runWithAuthenticatedContext(
+      authUserId,
+      (user) => handler({ req, userId: authUserId, user, params }),
+      req,
+    );
+  };
 }
 
 /**
@@ -200,23 +200,23 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 let didWarnWithServerComponentContextDeprecation = false;
 
 export async function withServerComponentContext<T>(
-	fn: (user: DbUser) => MaybePromise<T>,
+  fn: (user: DbUser) => MaybePromise<T>,
 ): Promise<T | null> {
-	if (!didWarnWithServerComponentContextDeprecation) {
-		didWarnWithServerComponentContextDeprecation = true;
-		console.warn(
-			'withServerComponentContext() is deprecated; use requestBoundary.component() instead. Removal planned for v2.0.',
-		);
-	}
+  if (!didWarnWithServerComponentContextDeprecation) {
+    didWarnWithServerComponentContextDeprecation = true;
+    console.warn(
+      'withServerComponentContext() is deprecated; use requestBoundary.component() instead. Removal planned for v2.0.',
+    );
+  }
 
-	const authUserId = await getEffectiveAuthUserId();
-	if (!authUserId) return null;
+  const authUserId = await getEffectiveAuthUserId();
+  if (!authUserId) return null;
 
-	if (appEnv.isTest) {
-		return runWithTestContext(authUserId, (user) => fn(user));
-	}
+  if (appEnv.isTest) {
+    return runWithTestContext(authUserId, (user) => fn(user));
+  }
 
-	return runWithAuthenticatedContext(authUserId, (user) => fn(user));
+  return runWithAuthenticatedContext(authUserId, (user) => fn(user));
 }
 
 /**
@@ -232,14 +232,14 @@ export async function withServerComponentContext<T>(
  * Returns null if user is not authenticated (caller should handle).
  */
 export async function withServerActionContext<T>(
-	fn: (user: DbUser, db: RlsClient) => MaybePromise<T>,
+  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>,
 ): Promise<T | null> {
-	const authUserId = await getEffectiveAuthUserId({ strict: true });
-	if (!authUserId) return null;
+  const authUserId = await getEffectiveAuthUserId({ strict: true });
+  if (!authUserId) return null;
 
-	if (appEnv.isTest) {
-		return runWithTestContext(authUserId, fn);
-	}
+  if (appEnv.isTest) {
+    return runWithTestContext(authUserId, fn);
+  }
 
-	return runWithAuthenticatedContext(authUserId, fn);
+  return runWithAuthenticatedContext(authUserId, fn);
 }

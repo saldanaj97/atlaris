@@ -6,23 +6,23 @@ import { z } from 'zod';
  */
 
 export const ModelPricingSnapshotV1Schema = z
-	.object({
-		version: z.literal(1),
-		source: z.literal('local_catalog'),
-		requestedModelId: z.string().min(1),
-		pricedModelId: z.string().min(1),
-		inputTokens: z.number().int().nonnegative(),
-		outputTokens: z.number().int().nonnegative(),
-		inputCostUsdPerMillion: z.number().finite().nonnegative(),
-		outputCostUsdPerMillion: z.number().finite().nonnegative(),
-	})
-	.strict();
+  .object({
+    version: z.literal(1),
+    source: z.literal('local_catalog'),
+    requestedModelId: z.string().min(1),
+    pricedModelId: z.string().min(1),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    inputCostUsdPerMillion: z.number().finite().nonnegative(),
+    outputCostUsdPerMillion: z.number().finite().nonnegative(),
+  })
+  .strict();
 
 export const ModelPricingSnapshotSchema = z.discriminatedUnion('version', [
-	ModelPricingSnapshotV1Schema,
+  ModelPricingSnapshotV1Schema,
 ]);
 
 export type ModelPricingSnapshotV1 = z.infer<
-	typeof ModelPricingSnapshotV1Schema
+  typeof ModelPricingSnapshotV1Schema
 >;
 export type ModelPricingSnapshot = z.infer<typeof ModelPricingSnapshotSchema>;

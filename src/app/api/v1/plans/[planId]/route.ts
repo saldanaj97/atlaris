@@ -20,43 +20,43 @@ import { logger } from '@/lib/logging/logger';
  */
 
 export const GET = withErrorBoundary(
-	requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
-		const planId = requirePlanIdFromRequest(req, 'last');
+  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
+    const planId = requirePlanIdFromRequest(req, 'last');
 
-		logger.info({ planId, userId: actor.id }, 'Fetching learning plan detail');
+    logger.info({ planId, userId: actor.id }, 'Fetching learning plan detail');
 
-		const detail = await getPlanDetailForRead({
-			planId,
-			userId: actor.id,
-			dbClient: db,
-		});
+    const detail = await getPlanDetailForRead({
+      planId,
+      userId: actor.id,
+      dbClient: db,
+    });
 
-		if (!detail) {
-			throw new NotFoundError('Learning plan not found.', undefined, {
-				planId,
-				userId: actor.id,
-			});
-		}
+    if (!detail) {
+      throw new NotFoundError('Learning plan not found.', undefined, {
+        planId,
+        userId: actor.id,
+      });
+    }
 
-		logger.debug({ planId, userId: actor.id }, 'Fetched learning plan detail');
+    logger.debug({ planId, userId: actor.id }, 'Fetched learning plan detail');
 
-		return json(detail);
-	}),
+    return json(detail);
+  }),
 );
 
 export const DELETE = withErrorBoundary(
-	requestBoundary.route(
-		{ rateLimit: 'mutation' },
-		async ({ req, actor, db }) => {
-			const planId = requirePlanIdFromRequest(req, 'last');
+  requestBoundary.route(
+    { rateLimit: 'mutation' },
+    async ({ req, actor, db }) => {
+      const planId = requirePlanIdFromRequest(req, 'last');
 
-			logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
+      logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
 
-			await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
+      await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
 
-			logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
+      logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
 
-			return json({ success: true });
-		},
-	),
+      return json({ success: true });
+    },
+  ),
 );

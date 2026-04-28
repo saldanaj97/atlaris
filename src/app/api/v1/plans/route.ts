@@ -1,6 +1,6 @@
 import {
-	getPlanListTotalCount,
-	listLightweightPlansForApi,
+  getPlanListTotalCount,
+  listLightweightPlansForApi,
 } from '@/features/plans/read-projection';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withErrorBoundary } from '@/lib/api/middleware';
@@ -9,54 +9,54 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import {
-	getPaginationDefault,
-	PAGINATION_MAX_LIMIT,
+  getPaginationDefault,
+  PAGINATION_MAX_LIMIT,
 } from '@/shared/constants/pagination';
 
 export const GET: PlainHandler = withErrorBoundary(
-	requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
-		const url = new URL(req.url);
+  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
+    const url = new URL(req.url);
 
-		const { limit, offset } = parseListPaginationParams(url.searchParams, {
-			defaultLimit: getPaginationDefault('limit'),
-			maxLimit: PAGINATION_MAX_LIMIT,
-		});
+    const { limit, offset } = parseListPaginationParams(url.searchParams, {
+      defaultLimit: getPaginationDefault('limit'),
+      maxLimit: PAGINATION_MAX_LIMIT,
+    });
 
-		logger.info(
-			{
-				source: 'plans-route',
-				event: 'list_plans_started',
-				userId: actor.id,
-				limit,
-				offset,
-			},
-			'Listing lightweight plans',
-		);
+    logger.info(
+      {
+        source: 'plans-route',
+        event: 'list_plans_started',
+        userId: actor.id,
+        limit,
+        offset,
+      },
+      'Listing lightweight plans',
+    );
 
-		const [summaries, totalCount] = await Promise.all([
-			listLightweightPlansForApi({
-				userId: actor.id,
-				dbClient: db,
-				options: { limit, offset },
-			}),
-			getPlanListTotalCount({ userId: actor.id, dbClient: db }),
-		]);
+    const [summaries, totalCount] = await Promise.all([
+      listLightweightPlansForApi({
+        userId: actor.id,
+        dbClient: db,
+        options: { limit, offset },
+      }),
+      getPlanListTotalCount({ userId: actor.id, dbClient: db }),
+    ]);
 
-		logger.info(
-			{
-				source: 'plans-route',
-				event: 'list_plans_succeeded',
-				userId: actor.id,
-				limit,
-				offset,
-				totalCount,
-				returnedCount: summaries.length,
-			},
-			'Listed lightweight plans',
-		);
+    logger.info(
+      {
+        source: 'plans-route',
+        event: 'list_plans_succeeded',
+        userId: actor.id,
+        limit,
+        offset,
+        totalCount,
+        returnedCount: summaries.length,
+      },
+      'Listed lightweight plans',
+    );
 
-		return json(summaries, {
-			headers: { 'X-Total-Count': String(totalCount) },
-		});
-	}),
+    return json(summaries, {
+      headers: { 'X-Total-Count': String(totalCount) },
+    });
+  }),
 );

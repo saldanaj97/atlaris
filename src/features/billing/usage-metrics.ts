@@ -12,97 +12,97 @@ import { TIER_LIMITS } from './tier-limits';
 type UsageType = 'plan' | 'regeneration' | 'export';
 
 export type UsageSummary = {
-	tier: SubscriptionTier;
-	activePlans: {
-		current: number;
-		limit: number;
-	};
-	regenerations: {
-		used: number;
-		limit: number;
-	};
-	exports: {
-		used: number;
-		limit: number;
-	};
+  tier: SubscriptionTier;
+  activePlans: {
+    current: number;
+    limit: number;
+  };
+  regenerations: {
+    used: number;
+    limit: number;
+  };
+  exports: {
+    used: number;
+    limit: number;
+  };
 };
 
 /**
  * Get current month in YYYY-MM format
  */
 export function getCurrentMonth(now?: Date): string {
-	const d = now ?? new Date();
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const d = now ?? new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
 /**
  * Get or create usage metrics for current month
  */
 async function getOrCreateUsageMetrics(
-	userId: string,
-	month: string,
-	dbClient: DbClient = getDb(),
+  userId: string,
+  month: string,
+  dbClient: DbClient = getDb(),
 ) {
-	const [created] = await dbClient
-		.insert(usageMetrics)
-		.values({
-			userId,
-			month,
-			plansGenerated: 0,
-			regenerationsUsed: 0,
-			exportsUsed: 0,
-		})
-		.onConflictDoNothing({
-			target: [usageMetrics.userId, usageMetrics.month],
-		})
-		.returning();
+  const [created] = await dbClient
+    .insert(usageMetrics)
+    .values({
+      userId,
+      month,
+      plansGenerated: 0,
+      regenerationsUsed: 0,
+      exportsUsed: 0,
+    })
+    .onConflictDoNothing({
+      target: [usageMetrics.userId, usageMetrics.month],
+    })
+    .returning();
 
-	if (created) {
-		return created;
-	}
+  if (created) {
+    return created;
+  }
 
-	const [existing] = await dbClient
-		.select()
-		.from(usageMetrics)
-		.where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-		.limit(1);
+  const [existing] = await dbClient
+    .select()
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .limit(1);
 
-	if (!existing) {
-		throw new UsageMetricsLoadError(userId, month);
-	}
+  if (!existing) {
+    throw new UsageMetricsLoadError(userId, month);
+  }
 
-	return existing;
+  return existing;
 }
 
 /**
  * Increment usage counter for the current month
  */
 export async function incrementUsage(
-	userId: string,
-	type: UsageType,
-	dbClient: DbClient = getDb(),
+  userId: string,
+  type: UsageType,
+  dbClient: DbClient = getDb(),
 ): Promise<void> {
-	const month = getCurrentMonth();
+  const month = getCurrentMonth();
 
-	// Ensure metrics exist for this month
-	await getOrCreateUsageMetrics(userId, month, dbClient);
+  // Ensure metrics exist for this month
+  await getOrCreateUsageMetrics(userId, month, dbClient);
 
-	// Increment the appropriate counter based on type
-	const updateObj =
-		type === 'plan'
-			? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
-			: type === 'regeneration'
-				? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-				: { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+  // Increment the appropriate counter based on type
+  const updateObj =
+    type === 'plan'
+      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
+      : type === 'regeneration'
+        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
-	// Increment the counter
-	await dbClient
-		.update(usageMetrics)
-		.set({
-			...updateObj,
-			updatedAt: new Date(),
-		})
-		.where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+  // Increment the counter
+  await dbClient
+    .update(usageMetrics)
+    .set({
+      ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
 /**
@@ -115,98 +115,98 @@ export async function incrementUsage(
  * Prefer `getUsageSummary` for callers that do not already have a resolved tier.
  */
 export async function getUsageSummaryForTier(args: {
-	userId: string;
-	tier: SubscriptionTier;
-	dbClient?: DbClient;
+  userId: string;
+  tier: SubscriptionTier;
+  dbClient?: DbClient;
 }): Promise<UsageSummary> {
-	const { userId, tier, dbClient = getDb() } = args;
-	const limits = TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
-	if (limits === undefined) {
-		logger.info(
-			{ userId, tier },
-			'[getUsageSummaryForTier] audit: invalid subscription tier for usage limits',
-		);
-		throw new ValidationError('Invalid subscription tier for usage limits', {
-			userId,
-			tier,
-		});
-	}
-	const month = getCurrentMonth();
-	const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
+  const { userId, tier, dbClient = getDb() } = args;
+  const limits = TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
+  if (limits === undefined) {
+    logger.info(
+      { userId, tier },
+      '[getUsageSummaryForTier] audit: invalid subscription tier for usage limits',
+    );
+    throw new ValidationError('Invalid subscription tier for usage limits', {
+      userId,
+      tier,
+    });
+  }
+  const month = getCurrentMonth();
+  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
 
-	const [planCount] = await dbClient
-		.select({ count: sql`count(*)::int` })
-		.from(learningPlans)
-		.where(
-			and(
-				eq(learningPlans.userId, userId),
-				eq(learningPlans.isQuotaEligible, true),
-			),
-		);
+  const [planCount] = await dbClient
+    .select({ count: sql`count(*)::int` })
+    .from(learningPlans)
+    .where(
+      and(
+        eq(learningPlans.userId, userId),
+        eq(learningPlans.isQuotaEligible, true),
+      ),
+    );
 
-	return {
-		tier,
-		activePlans: {
-			current: (planCount?.count as number) ?? 0,
-			limit: limits.maxActivePlans,
-		},
-		regenerations: {
-			used: metrics.regenerationsUsed,
-			limit: limits.monthlyRegenerations,
-		},
-		exports: {
-			used: metrics.exportsUsed,
-			limit: limits.monthlyExports,
-		},
-	};
+  return {
+    tier,
+    activePlans: {
+      current: (planCount?.count as number) ?? 0,
+      limit: limits.maxActivePlans,
+    },
+    regenerations: {
+      used: metrics.regenerationsUsed,
+      limit: limits.monthlyRegenerations,
+    },
+    exports: {
+      used: metrics.exportsUsed,
+      limit: limits.monthlyExports,
+    },
+  };
 }
 
 /**
  * Get usage summary for a user; auto-resolves tier from the `users` row.
  */
 export async function getUsageSummary(
-	userId: string,
-	dbClient: DbClient = getDb(),
+  userId: string,
+  dbClient: DbClient = getDb(),
 ): Promise<UsageSummary> {
-	const tier = await resolveUserTier(userId, dbClient);
-	return getUsageSummaryForTier({ userId, tier, dbClient });
+  const tier = await resolveUserTier(userId, dbClient);
+  return getUsageSummaryForTier({ userId, tier, dbClient });
 }
 
 export async function ensureUsageMetricsExist(
-	tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
-	userId: string,
-	month: string,
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
 ): Promise<void> {
-	await tx
-		.insert(usageMetrics)
-		.values({
-			userId,
-			month,
-			plansGenerated: 0,
-			regenerationsUsed: 0,
-			exportsUsed: 0,
-		})
-		.onConflictDoNothing({
-			target: [usageMetrics.userId, usageMetrics.month],
-		});
+  await tx
+    .insert(usageMetrics)
+    .values({
+      userId,
+      month,
+      plansGenerated: 0,
+      regenerationsUsed: 0,
+      exportsUsed: 0,
+    })
+    .onConflictDoNothing({
+      target: [usageMetrics.userId, usageMetrics.month],
+    });
 }
 
 export async function incrementUsageInTx(
-	tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
-	userId: string,
-	month: string,
-	type: 'regeneration' | 'export',
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
+  type: 'regeneration' | 'export',
 ): Promise<void> {
-	const updateObj =
-		type === 'regeneration'
-			? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-			: { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+  const updateObj =
+    type === 'regeneration'
+      ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+      : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
-	await tx
-		.update(usageMetrics)
-		.set({
-			...updateObj,
-			updatedAt: new Date(),
-		})
-		.where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+  await tx
+    .update(usageMetrics)
+    .set({
+      ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }

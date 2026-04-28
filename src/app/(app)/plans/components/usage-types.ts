@@ -1,8 +1,8 @@
 export interface UsageData {
-	tier: string;
-	activePlans: { current: number; limit: number };
-	regenerations: { used: number; limit: number };
-	exports: { used: number; limit: number };
+  tier: string;
+  activePlans: { current: number; limit: number };
+  regenerations: { used: number; limit: number };
+  exports: { used: number; limit: number };
 }
 
 /**
@@ -11,9 +11,9 @@ export interface UsageData {
  * predicate so callers don't have to remember to check both.
  */
 export function isUnlimitedNumber(value: number | null | undefined): boolean {
-	return value === null || value === undefined || value === Infinity;
+  return value === null || value === undefined || value === Infinity;
 }
 
 export function formatUsageLimit(value: number): string {
-	return isUnlimitedNumber(value) ? '∞' : String(value);
+  return isUnlimitedNumber(value) ? '∞' : String(value);
 }

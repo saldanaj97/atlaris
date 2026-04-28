@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Used by SubscribeButton to validate the response before redirecting.
  */
 export const createCheckoutResponseSchema = z.object({
-	sessionUrl: z.string().min(1, 'sessionUrl is required'),
+  sessionUrl: z.string().min(1, 'sessionUrl is required'),
 });
 
 /**
@@ -13,13 +13,13 @@ export const createCheckoutResponseSchema = z.object({
  * Used by ManageSubscriptionButton to validate the response before redirecting.
  */
 export const createPortalResponseSchema = z.object({
-	portalUrl: z
-		.string()
-		.url('portalUrl must be a valid URL')
-		.refine((value) => {
-			const protocol = new URL(value).protocol;
-			return protocol === 'http:' || protocol === 'https:';
-		}, 'portalUrl must use http or https'),
+  portalUrl: z
+    .string()
+    .url('portalUrl must be a valid URL')
+    .refine((value) => {
+      const protocol = new URL(value).protocol;
+      return protocol === 'http:' || protocol === 'https:';
+    }, 'portalUrl must use http or https'),
 });
 
 /**
@@ -27,8 +27,8 @@ export const createPortalResponseSchema = z.object({
  * Guards against Stripe API changes or unexpected field types at runtime.
  */
 export const stripePriceFieldsSchema = z.object({
-	unit_amount: z.number().int().nullable(),
-	currency: z.string().min(1),
+  unit_amount: z.number().int().nullable(),
+  currency: z.string().min(1),
 });
 
 /**
@@ -36,9 +36,9 @@ export const stripePriceFieldsSchema = z.object({
  * Handles both active and soft-deleted products.
  */
 export const stripeProductFieldsSchema = z.union([
-	z.object({ deleted: z.literal(true) }),
-	z.object({
-		deleted: z.literal(false).optional(),
-		name: z.string().optional(),
-	}),
+  z.object({ deleted: z.literal(true) }),
+  z.object({
+    deleted: z.literal(false).optional(),
+    name: z.string().optional(),
+  }),
 ]);

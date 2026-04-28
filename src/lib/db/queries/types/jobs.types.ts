@@ -13,17 +13,17 @@ export type JobQueueRow = InferSelectModel<DbSchemaModule['jobQueue']>;
 export type JobsDbClient = DbClient;
 
 export interface JobEnqueueResult {
-	id: string;
-	deduplicated: boolean;
+  id: string;
+  deduplicated: boolean;
 }
 
 export interface JobStats {
-	pendingCount: number;
-	processingCount: number;
-	completedCount: number;
-	failedCount: number;
-	averageProcessingTimeMs: number | null;
-	failureRate: number;
+  pendingCount: number;
+  processingCount: number;
+  completedCount: number;
+  failedCount: number;
+  averageProcessingTimeMs: number | null;
+  failureRate: number;
 }
 
 export type ErrorHistoryEntry = JobErrorHistoryEntry;

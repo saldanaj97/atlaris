@@ -65,39 +65,39 @@ let _db: ServiceRoleDb | null = null;
  * Uses non-pooling connection in tests to avoid pooler issues.
  */
 function initializeClient(): Sql {
-	if (_client === null) {
-		const isTest = process.env.NODE_ENV === 'test';
-		const dbUrl =
-			isTest && databaseEnv.nonPoolingUrl
-				? databaseEnv.nonPoolingUrl
-				: databaseEnv.url;
+  if (_client === null) {
+    const isTest = process.env.NODE_ENV === 'test';
+    const dbUrl =
+      isTest && databaseEnv.nonPoolingUrl
+        ? databaseEnv.nonPoolingUrl
+        : databaseEnv.url;
 
-		_client = postgres(dbUrl, {
-			max: 10, // Connection pool size for service-role client
-			idle_timeout: 20,
-			connect_timeout: 10,
-		});
-	}
+    _client = postgres(dbUrl, {
+      max: 10, // Connection pool size for service-role client
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+  }
 
-	return _client;
+  return _client;
 }
 
 /**
  * Initialize the Drizzle client if not already initialized.
  */
 function initializeDb(): ServiceRoleDb {
-	if (_db === null) {
-		_db = drizzle(initializeClient(), { schema });
-	}
+  if (_db === null) {
+    _db = drizzle(initializeClient(), { schema });
+  }
 
-	return _db;
+  return _db;
 }
 
 function getLazyProxyProperty<T extends object>(
-	initialize: () => T,
-	prop: string | symbol,
+  initialize: () => T,
+  prop: string | symbol,
 ): unknown {
-	return Reflect.get(initialize(), prop);
+  return Reflect.get(initialize(), prop);
 }
 
 /**
@@ -105,13 +105,13 @@ function getLazyProxyProperty<T extends object>(
  * Use getDb() from @/lib/db/runtime in request handlers instead.
  */
 export const db: ServiceRoleDb = new Proxy(
-	{},
-	{
-		get(_target, prop: string | symbol): unknown {
-			return getLazyProxyProperty(initializeDb, prop);
-		},
-	},
-	// Cast the proxy to the concrete Drizzle client type
+  {},
+  {
+    get(_target, prop: string | symbol): unknown {
+      return getLazyProxyProperty(initializeDb, prop);
+    },
+  },
+  // Cast the proxy to the concrete Drizzle client type
 ) as ServiceRoleDb;
 
 /**
@@ -121,7 +121,7 @@ export const db: ServiceRoleDb = new Proxy(
  * @returns true if the client has been initialized, false otherwise
  */
 export function isClientInitialized(): boolean {
-	return _client !== null;
+  return _client !== null;
 }
 
 /**
@@ -129,17 +129,17 @@ export function isClientInitialized(): boolean {
  * Throws in production to prevent accidental misuse closing the live pool.
  */
 export async function resetServiceRoleClientForTests(): Promise<void> {
-	if (process.env.NODE_ENV === 'production') {
-		throw new Error(
-			'resetServiceRoleClientForTests is test-only and must not run in production.',
-		);
-	}
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'resetServiceRoleClientForTests is test-only and must not run in production.',
+    );
+  }
 
-	const clientToClose = _client;
-	_db = null;
-	_client = null;
+  const clientToClose = _client;
+  _db = null;
+  _client = null;
 
-	if (clientToClose) {
-		await clientToClose.end();
-	}
+  if (clientToClose) {
+    await clientToClose.end();
+  }
 }

@@ -12,19 +12,19 @@ import { PageHeader } from '@/components/ui/page-header';
  * The billing cards (Current Plan + Usage) wait for subscription and usage data.
  */
 export default function BillingSettingsPage(): ReactElement {
-	return (
-		<>
-			<PageHeader
-				title="Billing"
-				titleAs="h2"
-				subtitle="Manage your subscription and view usage"
-			/>
+  return (
+    <>
+      <PageHeader
+        title="Billing"
+        titleAs="h2"
+        subtitle="Manage your subscription and view usage"
+      />
 
-			<div className="grid gap-6 md:grid-cols-2">
-				<Suspense fallback={<BillingCardsSkeleton />}>
-					<BillingCards />
-				</Suspense>
-			</div>
-		</>
-	);
+      <div className="grid gap-6 md:grid-cols-2">
+        <Suspense fallback={<BillingCardsSkeleton />}>
+          <BillingCards />
+        </Suspense>
+      </div>
+    </>
+  );
 }

@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
-	isPlanOwnershipWriteError,
-	mapDbRowToScheduleCacheRow,
+  isPlanOwnershipWriteError,
+  mapDbRowToScheduleCacheRow,
 } from '@/lib/db/queries/helpers/schedule-helpers';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
 import { planSchedules } from '@/lib/db/schema';
@@ -19,20 +19,20 @@ import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
  * @throws Error if the plan is not found or the user doesn't own it
  */
 export async function validatePlanOwnership(
-	planId: string,
-	userId: string,
-	dbClient: DbClient,
+  planId: string,
+  userId: string,
+  dbClient: DbClient,
 ): Promise<void> {
-	const plan = await selectOwnedPlanById({
-		planId,
-		ownerUserId: userId,
-		dbClient,
-	});
+  const plan = await selectOwnedPlanById({
+    planId,
+    ownerUserId: userId,
+    dbClient,
+  });
 
-	if (!plan) {
-		logger.warn({ planId, userId }, 'Plan not found or access denied');
-		throw new Error('Plan not found or access denied');
-	}
+  if (!plan) {
+    logger.warn({ planId, userId }, 'Plan not found or access denied');
+    throw new Error('Plan not found or access denied');
+  }
 }
 
 /**
@@ -46,21 +46,21 @@ export async function validatePlanOwnership(
  * @returns The cached schedule row for the given `planId`, or `null` if no cache exists.
  */
 export async function getPlanScheduleCache(
-	planId: string,
-	userId: string,
-	dbClient: DbClient,
+  planId: string,
+  userId: string,
+  dbClient: DbClient,
 ): Promise<ScheduleCacheRow | null> {
-	await validatePlanOwnership(planId, userId, dbClient);
+  await validatePlanOwnership(planId, userId, dbClient);
 
-	const [result] = await dbClient
-		.select()
-		.from(planSchedules)
-		.where(eq(planSchedules.planId, planId))
-		.limit(1);
+  const [result] = await dbClient
+    .select()
+    .from(planSchedules)
+    .where(eq(planSchedules.planId, planId))
+    .limit(1);
 
-	if (!result) return null;
+  if (!result) return null;
 
-	return mapDbRowToScheduleCacheRow(result);
+  return mapDbRowToScheduleCacheRow(result);
 }
 
 /**
@@ -76,47 +76,47 @@ export async function getPlanScheduleCache(
  * @throws Error if the plan is not found or the user doesn't own it
  */
 export async function upsertPlanScheduleCache(
-	planId: string,
-	userId: string,
-	payload: UpsertPlanScheduleCachePayload,
-	dbClient: DbClient,
+  planId: string,
+  userId: string,
+  payload: UpsertPlanScheduleCachePayload,
+  dbClient: DbClient,
 ): Promise<void> {
-	const {
-		scheduleJson,
-		inputsHash,
-		timezone,
-		weeklyHours,
-		startDate,
-		deadline,
-	} = payload;
-	const cacheFields = {
-		scheduleJson,
-		inputsHash,
-		timezone,
-		weeklyHours,
-		startDate,
-		deadline,
-	};
+  const {
+    scheduleJson,
+    inputsHash,
+    timezone,
+    weeklyHours,
+    startDate,
+    deadline,
+  } = payload;
+  const cacheFields = {
+    scheduleJson,
+    inputsHash,
+    timezone,
+    weeklyHours,
+    startDate,
+    deadline,
+  };
 
-	await validatePlanOwnership(planId, userId, dbClient);
+  await validatePlanOwnership(planId, userId, dbClient);
 
-	try {
-		await dbClient
-			.insert(planSchedules)
-			.values({ planId, ...cacheFields })
-			.onConflictDoUpdate({
-				target: planSchedules.planId,
-				set: { ...cacheFields, generatedAt: new Date() },
-			});
-	} catch (error) {
-		if (isPlanOwnershipWriteError(error)) {
-			logger.warn(
-				{ planId, userId },
-				'Plan write failed - not found or access denied',
-			);
-			throw new Error('Plan not found or access denied', { cause: error });
-		}
+  try {
+    await dbClient
+      .insert(planSchedules)
+      .values({ planId, ...cacheFields })
+      .onConflictDoUpdate({
+        target: planSchedules.planId,
+        set: { ...cacheFields, generatedAt: new Date() },
+      });
+  } catch (error) {
+    if (isPlanOwnershipWriteError(error)) {
+      logger.warn(
+        { planId, userId },
+        'Plan write failed - not found or access denied',
+      );
+      throw new Error('Plan not found or access denied', { cause: error });
+    }
 
-		throw error;
-	}
+    throw error;
+  }
 }

@@ -4,16 +4,16 @@
  * selection. Raw queries stay in `src/lib/db/queries/plans.ts`.
  */
 export {
-	derivePlanSummaryDisplayStatus,
-	isPlanSummaryFullyComplete,
+  derivePlanSummaryDisplayStatus,
+  isPlanSummaryFullyComplete,
 } from '@/features/plans/read-projection/selectors';
 export {
-	getPlanDetailForRead,
-	getPlanGenerationAttemptsForRead,
-	getPlanGenerationStatusSnapshot,
-	getPlanListTotalCount,
-	listDashboardPlanSummaries,
-	listLightweightPlansForApi,
-	listPlansPageSummaries,
-	type PlanDbClient,
+  getPlanDetailForRead,
+  getPlanGenerationAttemptsForRead,
+  getPlanGenerationStatusSnapshot,
+  getPlanListTotalCount,
+  listDashboardPlanSummaries,
+  listLightweightPlansForApi,
+  listPlansPageSummaries,
+  type PlanDbClient,
 } from '@/features/plans/read-projection/service';

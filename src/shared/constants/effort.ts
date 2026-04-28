@@ -1,6 +1,6 @@
 export type EffortNormalizationFlags = {
-	modulesClamped: boolean;
-	tasksClamped: boolean;
+  modulesClamped: boolean;
+  tasksClamped: boolean;
 };
 
 export const MODULE_MIN_MINUTES = 15;
@@ -9,44 +9,44 @@ export const TASK_MIN_MINUTES = 5;
 export const TASK_MAX_MINUTES = 120;
 
 type NormalizedEffortResult = {
-	value: number;
-	clamped: boolean;
+  value: number;
+  clamped: boolean;
 };
 
 function normalizeEffort(
-	minutes: number,
-	min: number,
-	max: number,
+  minutes: number,
+  min: number,
+  max: number,
 ): NormalizedEffortResult {
-	if (!Number.isFinite(minutes)) {
-		throw new Error(
-			`Effort value must be a finite number (received: ${typeof minutes})`,
-		);
-	}
+  if (!Number.isFinite(minutes)) {
+    throw new Error(
+      `Effort value must be a finite number (received: ${typeof minutes})`,
+    );
+  }
 
-	const value = Math.min(Math.max(minutes, min), max);
-	return {
-		value,
-		clamped: value !== minutes,
-	};
+  const value = Math.min(Math.max(minutes, min), max);
+  return {
+    value,
+    clamped: value !== minutes,
+  };
 }
 
 export function normalizeModuleMinutes(
-	minutes: number,
+  minutes: number,
 ): NormalizedEffortResult {
-	return normalizeEffort(minutes, MODULE_MIN_MINUTES, MODULE_MAX_MINUTES);
+  return normalizeEffort(minutes, MODULE_MIN_MINUTES, MODULE_MAX_MINUTES);
 }
 
 export function normalizeTaskMinutes(minutes: number): NormalizedEffortResult {
-	return normalizeEffort(minutes, TASK_MIN_MINUTES, TASK_MAX_MINUTES);
+  return normalizeEffort(minutes, TASK_MIN_MINUTES, TASK_MAX_MINUTES);
 }
 
 export function aggregateNormalizationFlags(
-	moduleResults: NormalizedEffortResult[],
-	taskResults: NormalizedEffortResult[],
+  moduleResults: NormalizedEffortResult[],
+  taskResults: NormalizedEffortResult[],
 ): EffortNormalizationFlags {
-	return {
-		modulesClamped: moduleResults.some((result) => result.clamped),
-		tasksClamped: taskResults.some((result) => result.clamped),
-	};
+  return {
+    modulesClamped: moduleResults.some((result) => result.clamped),
+    tasksClamped: taskResults.some((result) => result.clamped),
+  };
 }

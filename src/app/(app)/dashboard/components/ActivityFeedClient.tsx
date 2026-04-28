@@ -7,31 +7,31 @@ import { ActivityFilterTabs } from './ActivityFilterTabs';
 import { EmptyActivityState } from './EmptyActivityState';
 
 interface ActivityFeedClientProps {
-	activities: ActivityItem[];
+  activities: ActivityItem[];
 }
 
 export function ActivityFeedClient({ activities }: ActivityFeedClientProps) {
-	const [filter, setFilter] = useState<ActivityFilter>('all');
+  const [filter, setFilter] = useState<ActivityFilter>('all');
 
-	const filteredActivities = useMemo(() => {
-		if (filter === 'all') return activities;
-		return activities.filter((a) => a.type === filter);
-	}, [activities, filter]);
+  const filteredActivities = useMemo(() => {
+    if (filter === 'all') return activities;
+    return activities.filter((a) => a.type === filter);
+  }, [activities, filter]);
 
-	return (
-		<div className="lg:col-span-2">
-			<ActivityFilterTabs activeFilter={filter} onFilterChange={setFilter} />
+  return (
+    <div className="lg:col-span-2">
+      <ActivityFilterTabs activeFilter={filter} onFilterChange={setFilter} />
 
-			{/* Activity Items */}
-			<div className="space-y-4">
-				{filteredActivities.length === 0 ? (
-					<EmptyActivityState filter={filter} />
-				) : (
-					filteredActivities.map((activity) => (
-						<ActivityCard key={activity.id} activity={activity} />
-					))
-				)}
-			</div>
-		</div>
-	);
+      {/* Activity Items */}
+      <div className="space-y-4">
+        {filteredActivities.length === 0 ? (
+          <EmptyActivityState filter={filter} />
+        ) : (
+          filteredActivities.map((activity) => (
+            <ActivityCard key={activity.id} activity={activity} />
+          ))
+        )}
+      </div>
+    </div>
+  );
 }

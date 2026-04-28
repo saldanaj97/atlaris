@@ -1,13 +1,13 @@
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 
 type BillingPortalUser = Pick<
-	DbUser,
-	'stripeCustomerId' | 'subscriptionStatus'
+  DbUser,
+  'stripeCustomerId' | 'subscriptionStatus'
 >;
 
 type BillingPortalEligibleUser = BillingPortalUser & {
-	stripeCustomerId: string;
-	subscriptionStatus: NonNullable<DbUser['subscriptionStatus']>;
+  stripeCustomerId: string;
+  subscriptionStatus: NonNullable<DbUser['subscriptionStatus']>;
 };
 
 /**
@@ -16,7 +16,7 @@ type BillingPortalEligibleUser = BillingPortalUser & {
  * checkout initialization.
  */
 export function canOpenBillingPortalForUser(
-	user: BillingPortalUser | null | undefined,
+  user: BillingPortalUser | null | undefined,
 ): user is BillingPortalEligibleUser {
-	return Boolean(user?.stripeCustomerId && user.subscriptionStatus);
+  return Boolean(user?.stripeCustomerId && user.subscriptionStatus);
 }

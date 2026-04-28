@@ -3,9 +3,9 @@
  */
 
 export type DropdownOption<TValue extends string = string> = {
-	value: TValue;
-	label: string;
-	description?: string;
+  value: TValue;
+  label: string;
+  description?: string;
 };
 
 export type { PlanFormData } from '@/features/plans/plan-form.types';

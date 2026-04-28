@@ -1,21 +1,21 @@
 import type { Metadata } from 'next';
 
 import {
-	FeaturesSection,
-	GradientBlobBackground,
-	HowItWorksSection,
-	ProblemSolutionSection,
-	UseCasesSection,
+  FeaturesSection,
+  GradientBlobBackground,
+  HowItWorksSection,
+  ProblemSolutionSection,
+  UseCasesSection,
 } from './components';
 import {
-	FinalCtaSectionWithAnalytics,
-	HeroSectionWithAnalytics,
+  FinalCtaSectionWithAnalytics,
+  HeroSectionWithAnalytics,
 } from './components/LandingAnalyticsWrapper';
 import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {
-	title: LANDING_CANONICAL_TITLE,
-	description: LANDING_DESCRIPTION,
+  title: LANDING_CANONICAL_TITLE,
+  description: LANDING_DESCRIPTION,
 };
 
 /**
@@ -31,17 +31,17 @@ export const metadata: Metadata = {
  * FinalCtaSectionWithAnalytics).
  */
 export default function LandingPage() {
-	return (
-		<div className="from-primary/5 via-accent/5 to-background text-foreground relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br pt-16 font-sans">
-			<GradientBlobBackground />
-			<div className="relative z-10">
-				<HeroSectionWithAnalytics />
-				<ProblemSolutionSection />
-				<FeaturesSection />
-				<HowItWorksSection />
-				<UseCasesSection />
-				<FinalCtaSectionWithAnalytics />
-			</div>
-		</div>
-	);
+  return (
+    <div className="relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background pt-16 font-sans text-foreground">
+      <GradientBlobBackground />
+      <div className="relative z-10">
+        <HeroSectionWithAnalytics />
+        <ProblemSolutionSection />
+        <FeaturesSection />
+        <HowItWorksSection />
+        <UseCasesSection />
+        <FinalCtaSectionWithAnalytics />
+      </div>
+    </div>
+  );
 }

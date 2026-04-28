@@ -1,4 +1,4 @@
 export {
-	derivePlanSummaryDisplayStatus,
-	isPlanSummaryFullyComplete,
+  derivePlanSummaryDisplayStatus,
+  isPlanSummaryFullyComplete,
 } from '@/features/plans/read-projection/selectors';

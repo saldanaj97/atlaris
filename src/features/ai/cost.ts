@@ -31,12 +31,12 @@ export const DEFAULT_OUTPUT_TOKEN_CEILING = 32_768;
  * surface as a partial-usage record or hard-fail.
  */
 export class UnknownModelError extends Error {
-	constructor(public readonly modelId: string) {
-		super(
-			`Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`,
-		);
-		this.name = 'UnknownModelError';
-	}
+  constructor(public readonly modelId: string) {
+    super(
+      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`,
+    );
+    this.name = 'UnknownModelError';
+  }
 }
 
 /**
@@ -47,33 +47,33 @@ export class UnknownModelError extends Error {
  * The result is deterministic: identical inputs always produce identical output.
  */
 export function computeCostCents(
-	modelId: string,
-	inputTokens: number,
-	outputTokens: number,
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number,
 ): number {
-	if (
-		!Number.isFinite(inputTokens) ||
-		!Number.isFinite(outputTokens) ||
-		inputTokens < 0 ||
-		outputTokens < 0
-	) {
-		throw new Error(
-			`Invalid token counts: inputTokens=${inputTokens}, outputTokens=${outputTokens}. Values must be finite and >= 0.`,
-		);
-	}
+  if (
+    !Number.isFinite(inputTokens) ||
+    !Number.isFinite(outputTokens) ||
+    inputTokens < 0 ||
+    outputTokens < 0
+  ) {
+    throw new Error(
+      `Invalid token counts: inputTokens=${inputTokens}, outputTokens=${outputTokens}. Values must be finite and >= 0.`,
+    );
+  }
 
-	const model = getModelById(modelId);
-	if (!model) {
-		logger.error({ modelId }, 'Unknown model in computeCostCents');
-		throw new UnknownModelError(modelId);
-	}
-	if (inputTokens === 0 && outputTokens === 0) return 0;
+  const model = getModelById(modelId);
+  if (!model) {
+    logger.error({ modelId }, 'Unknown model in computeCostCents');
+    throw new UnknownModelError(modelId);
+  }
+  if (inputTokens === 0 && outputTokens === 0) return 0;
 
-	const totalUsd =
-		(inputTokens / 1_000_000) * model.inputCostPerMillion +
-		(outputTokens / 1_000_000) * model.outputCostPerMillion;
+  const totalUsd =
+    (inputTokens / 1_000_000) * model.inputCostPerMillion +
+    (outputTokens / 1_000_000) * model.outputCostPerMillion;
 
-	return Math.round(totalUsd * 100);
+  return Math.round(totalUsd * 100);
 }
 
 /**
@@ -83,7 +83,7 @@ export function computeCostCents(
  * pre-computed `estimatedCostCents` field, ensuring auditability.
  */
 export function calculateCostFromUsage(usage: CanonicalAIUsage): number {
-	return computeCostCents(usage.model, usage.inputTokens, usage.outputTokens);
+  return computeCostCents(usage.model, usage.inputTokens, usage.outputTokens);
 }
 
 /**
@@ -98,13 +98,13 @@ export function calculateCostFromUsage(usage: CanonicalAIUsage): number {
  * prevent unbounded output generation.
  */
 export function getOutputTokenCeiling(modelId: string): number {
-	const model = getModelById(modelId);
-	if (!model) {
-		logger.warn(
-			{ modelId },
-			'Unknown model in getOutputTokenCeiling — falling back to DEFAULT_OUTPUT_TOKEN_CEILING',
-		);
-		return DEFAULT_OUTPUT_TOKEN_CEILING;
-	}
-	return model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKEN_CEILING;
+  const model = getModelById(modelId);
+  if (!model) {
+    logger.warn(
+      { modelId },
+      'Unknown model in getOutputTokenCeiling — falling back to DEFAULT_OUTPUT_TOKEN_CEILING',
+    );
+    return DEFAULT_OUTPUT_TOKEN_CEILING;
+  }
+  return model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKEN_CEILING;
 }

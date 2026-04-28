@@ -4,7 +4,7 @@
  * native AbortController behavior work correctly downstream.
  */
 export function createAbortError(message = 'Operation aborted.'): DOMException {
-	return new DOMException(message, 'AbortError');
+  return new DOMException(message, 'AbortError');
 }
 
 /**
@@ -26,52 +26,52 @@ export function createAbortError(message = 'Operation aborted.'): DOMException {
  *   to call multiple times; no-op if the signal was already aborted.
  */
 export function attachAbortListener(
-	signal: AbortSignal,
-	listener: () => void,
+  signal: AbortSignal,
+  listener: () => void,
 ): () => void {
-	if (signal.aborted) {
-		listener();
-		return () => {};
-	}
+  if (signal.aborted) {
+    listener();
+    return () => {};
+  }
 
-	if (
-		'addEventListener' in signal &&
-		typeof signal.addEventListener === 'function'
-	) {
-		const handler: EventListener = () => listener();
-		signal.addEventListener('abort', handler);
-		return () => {
-			try {
-				signal.removeEventListener?.('abort', handler);
-			} catch {
-				// Ignore cleanup failures.
-			}
-		};
-	}
+  if (
+    'addEventListener' in signal &&
+    typeof signal.addEventListener === 'function'
+  ) {
+    const handler: EventListener = () => listener();
+    signal.addEventListener('abort', handler);
+    return () => {
+      try {
+        signal.removeEventListener?.('abort', handler);
+      } catch {
+        // Ignore cleanup failures.
+      }
+    };
+  }
 
-	// Property-based handler (signal.onabort) limitation: if other code sets
-	// signal.onabort after we attach our wrapper, the returned cleanup (which
-	// does signal.onabort = previous ?? null) will overwrite that later setter
-	// and remove their handler. Symbols: previous (saved before we set
-	// signal.onabort), listener (our callback), and the returned cleanup. Do
-	// not "fix" by restoring previous without considering concurrent setters;
-	// prefer addEventListener/removeEventListener where available.
-	if ('onabort' in signal) {
-		const previous = signal.onabort;
-		signal.onabort = function (this: AbortSignal, ev: Event) {
-			try {
-				if (typeof previous === 'function') {
-					previous.call(this, ev);
-				}
-			} finally {
-				listener();
-			}
-		};
+  // Property-based handler (signal.onabort) limitation: if other code sets
+  // signal.onabort after we attach our wrapper, the returned cleanup (which
+  // does signal.onabort = previous ?? null) will overwrite that later setter
+  // and remove their handler. Symbols: previous (saved before we set
+  // signal.onabort), listener (our callback), and the returned cleanup. Do
+  // not "fix" by restoring previous without considering concurrent setters;
+  // prefer addEventListener/removeEventListener where available.
+  if ('onabort' in signal) {
+    const previous = signal.onabort;
+    signal.onabort = function (this: AbortSignal, ev: Event) {
+      try {
+        if (typeof previous === 'function') {
+          previous.call(this, ev);
+        }
+      } finally {
+        listener();
+      }
+    };
 
-		return () => {
-			signal.onabort = previous ?? null;
-		};
-	}
+    return () => {
+      signal.onabort = previous ?? null;
+    };
+  }
 
-	return () => {};
+  return () => {};
 }

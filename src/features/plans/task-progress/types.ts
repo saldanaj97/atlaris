@@ -1,6 +1,6 @@
 import type {
-	DbTaskProgress,
-	TasksDbClient,
+  DbTaskProgress,
+  TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
@@ -31,12 +31,12 @@ export type TaskProgressUpdate = { taskId: string; status: ProgressStatus };
  * @property now Optional timestamp override for deterministic tests.
  */
 export interface ApplyTaskProgressUpdatesInput {
-	userId: string;
-	planId: string;
-	moduleId?: string;
-	updates: TaskProgressUpdate[];
-	dbClient: TasksDbClient;
-	now?: Date;
+  userId: string;
+  planId: string;
+  moduleId?: string;
+  updates: TaskProgressUpdate[];
+  dbClient: TasksDbClient;
+  now?: Date;
 }
 
 /**
@@ -46,7 +46,7 @@ export interface ApplyTaskProgressUpdatesInput {
  * @property appliedByTaskId Applied status keyed by task id for optimistic UI reconciliation.
  */
 export interface TaskProgressVisibleState {
-	appliedByTaskId: Record<string, ProgressStatus>;
+  appliedByTaskId: Record<string, ProgressStatus>;
 }
 
 /**
@@ -58,9 +58,9 @@ export interface TaskProgressVisibleState {
  * @property visibleState Minimal applied-state payload for UI reconciliation.
  */
 export interface TaskProgressUpdateResult {
-	progress: DbTaskProgress[];
-	revalidatePaths: string[];
-	visibleState: TaskProgressVisibleState;
+  progress: DbTaskProgress[];
+  revalidatePaths: string[];
+  visibleState: TaskProgressVisibleState;
 }
 
 /**
@@ -74,11 +74,11 @@ export interface TaskProgressUpdateResult {
  * @property estimatedWeeks Rounded-up duration estimate, or null when weekly hours are unavailable.
  */
 type BaseCompletionStats = {
-	totalTasks: number;
-	completedTasks: number;
-	totalMinutes: number;
-	completionPercentage: number;
-	estimatedWeeks: number | null;
+  totalTasks: number;
+  completedTasks: number;
+  totalMinutes: number;
+  completionPercentage: number;
+  estimatedWeeks: number | null;
 };
 
 /**
@@ -88,10 +88,10 @@ type BaseCompletionStats = {
  * @property completionPercent Rounded percent complete from completedTasks / totalTasks.
  */
 export type ModuleCompletionSummary = Omit<
-	BaseCompletionStats,
-	'completionPercentage' | 'estimatedWeeks'
+  BaseCompletionStats,
+  'completionPercentage' | 'estimatedWeeks'
 > & {
-	completionPercent: number;
+  completionPercent: number;
 };
 
 /**
@@ -105,10 +105,10 @@ export type ModuleCompletionSummary = Omit<
  * @property tags Display chips sourced from plan metadata and module count.
  */
 export type PlanOverviewStats = BaseCompletionStats & {
-	completedModules: number;
-	totalModules: number;
-	estimatedCompletionDate: string | null;
-	tags: string[];
+  completedModules: number;
+  totalModules: number;
+  estimatedCompletionDate: string | null;
+  tags: string[];
 };
 
 /**

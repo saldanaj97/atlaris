@@ -1,9 +1,9 @@
 import type Stripe from 'stripe';
 import { z } from 'zod';
 import {
-	createStripeCommerceBoundary,
-	getStripeCommerceBoundary,
-	type StripeCommerceBoundary,
+  createStripeCommerceBoundary,
+  getStripeCommerceBoundary,
+  type StripeCommerceBoundary,
 } from '@/features/billing/stripe-commerce';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { ValidationError } from '@/lib/api/errors';
@@ -15,7 +15,7 @@ import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { logger } from '@/lib/logging/logger';
 
 const createPortalBodySchema = z.object({
-	returnUrl: z.string().optional(),
+  returnUrl: z.string().optional(),
 });
 
 /**
@@ -24,97 +24,97 @@ const createPortalBodySchema = z.object({
  * for testing or custom runtime behavior.
  */
 export type CreatePortalHandlerDeps = {
-	boundary?: StripeCommerceBoundary;
-	/** @deprecated Prefer `boundary`; fallback for test harnesses with only a raw `Stripe` client. */
-	stripe?: Stripe;
-	parseJsonBody?: typeof parseJsonBody;
+  boundary?: StripeCommerceBoundary;
+  /** @deprecated Prefer `boundary`; fallback for test harnesses with only a raw `Stripe` client. */
+  stripe?: Stripe;
+  parseJsonBody?: typeof parseJsonBody;
 };
 
 function assertRawStripeAllowed(): void {
-	if (
-		process.env.NODE_ENV === 'test' ||
-		process.env.NODE_ENV === 'development' ||
-		process.env.ALLOW_RAW_STRIPE === 'true'
-	) {
-		return;
-	}
+  if (
+    process.env.NODE_ENV === 'test' ||
+    process.env.NODE_ENV === 'development' ||
+    process.env.ALLOW_RAW_STRIPE === 'true'
+  ) {
+    return;
+  }
 
-	throw new Error(
-		'Deprecated stripe dependency is only allowed in test/dev contexts; pass boundary instead.',
-	);
+  throw new Error(
+    'Deprecated stripe dependency is only allowed in test/dev contexts; pass boundary instead.',
+  );
 }
 
 /**
  * Factory for the create-portal POST handler.
  */
 export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
-	const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
+  const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
 
-	return withErrorBoundary(
-		requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
-			logger.info(
-				{
-					userId: actor.id,
-					authUserId: actor.authUserId,
-					subscriptionTier: actor.subscriptionTier,
-				},
-				'billing portal attempt',
-			);
+  return withErrorBoundary(
+    requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
+      logger.info(
+        {
+          userId: actor.id,
+          authUserId: actor.authUserId,
+          subscriptionTier: actor.subscriptionTier,
+        },
+        'billing portal attempt',
+      );
 
-			const body = await parseJsonBodyImpl(req, {
-				mode: 'optional',
-				fallback: {},
-				onMalformedJson: (err) =>
-					new ValidationError('Malformed JSON body', undefined, {
-						userId: actor.id,
-						parseError: err instanceof Error ? err.message : String(err),
-					}),
-			});
+      const body = await parseJsonBodyImpl(req, {
+        mode: 'optional',
+        fallback: {},
+        onMalformedJson: (err) =>
+          new ValidationError('Malformed JSON body', undefined, {
+            userId: actor.id,
+            parseError: err instanceof Error ? err.message : String(err),
+          }),
+      });
 
-			const parseResult = createPortalBodySchema.safeParse(body);
-			if (!parseResult.success) {
-				const rawReturnUrl =
-					typeof body === 'object' &&
-					body !== null &&
-					'returnUrl' in body &&
-					typeof (body as { returnUrl?: unknown }).returnUrl === 'string'
-						? (body as { returnUrl: string }).returnUrl
-						: undefined;
-				const firstMessage = getFirstZodIssueMessage(parseResult.error);
-				throw new ValidationError(
-					firstMessage ?? 'Invalid request body',
-					undefined,
-					{
-						userId: actor.id,
-						returnUrl: rawReturnUrl,
-						validationMessage: firstMessage,
-					},
-				);
-			}
+      const parseResult = createPortalBodySchema.safeParse(body);
+      if (!parseResult.success) {
+        const rawReturnUrl =
+          typeof body === 'object' &&
+          body !== null &&
+          'returnUrl' in body &&
+          typeof (body as { returnUrl?: unknown }).returnUrl === 'string'
+            ? (body as { returnUrl: string }).returnUrl
+            : undefined;
+        const firstMessage = getFirstZodIssueMessage(parseResult.error);
+        throw new ValidationError(
+          firstMessage ?? 'Invalid request body',
+          undefined,
+          {
+            userId: actor.id,
+            returnUrl: rawReturnUrl,
+            validationMessage: firstMessage,
+          },
+        );
+      }
 
-			const { returnUrl } = parseResult.data;
+      const { returnUrl } = parseResult.data;
 
-			let boundary = deps.boundary;
-			if (!boundary && deps.stripe) {
-				assertRawStripeAllowed();
-				boundary = createStripeCommerceBoundary({
-					gateway: new LiveStripeGateway(deps.stripe),
-				});
-			}
-			boundary ??= getStripeCommerceBoundary();
+      let boundary = deps.boundary;
+      if (!boundary && deps.stripe) {
+        assertRawStripeAllowed();
+        boundary = createStripeCommerceBoundary({
+          gateway: new LiveStripeGateway(deps.stripe),
+        });
+      }
+      boundary ??= getStripeCommerceBoundary();
 
-			const { portalUrl } = await boundary.openPortal({
-				actor: {
-					userId: actor.id,
-					stripeCustomerId: actor.stripeCustomerId,
-					subscriptionStatus: actor.subscriptionStatus,
-				},
-				returnUrl,
-			});
+      const { portalUrl } = await boundary.openPortal({
+        actor: {
+          userId: actor.id,
+          stripeCustomerId: actor.stripeCustomerId,
+          subscriptionStatus: actor.subscriptionStatus,
+        },
+        returnUrl,
+      });
 
-			return json({ portalUrl });
-		}),
-	);
+      return json({ portalUrl });
+    }),
+  );
 }
 
 export const POST = createCreatePortalHandler();

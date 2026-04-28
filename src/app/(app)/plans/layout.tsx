@@ -1,9 +1,9 @@
 import { PageShell } from '@/components/ui/page-shell';
 
 export default function PlansLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	return <PageShell>{children}</PageShell>;
+  return <PageShell>{children}</PageShell>;
 }

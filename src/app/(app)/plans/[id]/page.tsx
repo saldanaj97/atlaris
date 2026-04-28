@@ -4,29 +4,29 @@ import { Suspense } from 'react';
 
 import { PlanDetailPageError } from '@/app/(app)/plans/[id]/components/Error';
 import {
-	PlanDetailContent,
-	PlanDetailContentSkeleton,
+  PlanDetailContent,
+  PlanDetailContentSkeleton,
 } from '@/app/(app)/plans/[id]/components/PlanDetailContent';
 
 interface PlanPageProps {
-	params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>;
 }
 
 const PLAN_METADATA_TITLE =
-	'Atlaris — Turn learning goals into a scheduled plan';
+  'Atlaris — Turn learning goals into a scheduled plan';
 const PLAN_METADATA_DESCRIPTION =
-	'Generate a time-blocked study schedule from any goal and sync it to your calendar so you stay on track.';
+  'Generate a time-blocked study schedule from any goal and sync it to your calendar so you stay on track.';
 
 export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
-	return {
-		title: PLAN_METADATA_TITLE,
-		description: PLAN_METADATA_DESCRIPTION,
-		openGraph: {
-			title: PLAN_METADATA_TITLE,
-			description: PLAN_METADATA_DESCRIPTION,
-			type: 'website',
-		},
-	};
+  return {
+    title: PLAN_METADATA_TITLE,
+    description: PLAN_METADATA_DESCRIPTION,
+    openGraph: {
+      title: PLAN_METADATA_TITLE,
+      description: PLAN_METADATA_DESCRIPTION,
+      type: 'website',
+    },
+  };
 }
 
 /**
@@ -37,14 +37,14 @@ export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
  * by the route-level error.tsx boundary.
  */
 export default async function PlanDetailPage({
-	params,
+  params,
 }: PlanPageProps): Promise<JSX.Element> {
-	const { id } = await params;
-	if (!id) return <PlanDetailPageError />;
+  const { id } = await params;
+  if (!id) return <PlanDetailPageError />;
 
-	return (
-		<Suspense fallback={<PlanDetailContentSkeleton />}>
-			<PlanDetailContent planId={id} />
-		</Suspense>
-	);
+  return (
+    <Suspense fallback={<PlanDetailContentSkeleton />}>
+      <PlanDetailContent planId={id} />
+    </Suspense>
+  );
 }

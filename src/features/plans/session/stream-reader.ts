@@ -9,59 +9,59 @@ import type { PlanGenerationSessionEvent } from '@/features/plans/session/sessio
  * {@link parseSsePlanEventLine} so each non-empty line is one full JSON event payload.
  */
 export async function consumePlanGenerationSseStream(options: {
-	body: ReadableStream<Uint8Array>;
-	parseLine: (line: string) => PlanGenerationSessionEvent | null;
-	onEvent: (event: PlanGenerationSessionEvent) => void;
-	shouldStop: () => boolean;
+  body: ReadableStream<Uint8Array>;
+  parseLine: (line: string) => PlanGenerationSessionEvent | null;
+  onEvent: (event: PlanGenerationSessionEvent) => void;
+  shouldStop: () => boolean;
 }): Promise<void> {
-	const { body, parseLine, onEvent, shouldStop } = options;
-	const reader = body.getReader();
-	const decoder = new TextDecoder();
-	let buffer = '';
+  const { body, parseLine, onEvent, shouldStop } = options;
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
 
-	try {
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) {
-				const remaining = decoder.decode();
-				if (remaining) {
-					buffer += remaining;
-				}
-				if (buffer.trim()) {
-					const event = parseLine(buffer);
-					if (event) {
-						onEvent(event);
-					}
-					buffer = '';
-				}
-				return;
-			}
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        const remaining = decoder.decode();
+        if (remaining) {
+          buffer += remaining;
+        }
+        if (buffer.trim()) {
+          const event = parseLine(buffer);
+          if (event) {
+            onEvent(event);
+          }
+          buffer = '';
+        }
+        return;
+      }
 
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() ?? '';
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
 
-			for (const line of lines) {
-				const event = parseLine(line);
-				if (event) {
-					onEvent(event);
-					if (shouldStop()) {
-						await reader.cancel();
-						return;
-					}
-				}
-			}
-		}
-	} catch (error) {
-		try {
-			void reader
-				.cancel(error instanceof Error ? error : undefined)
-				.catch(() => undefined);
-		} catch {
-			// Ignore cancellation failures so the original read error still propagates.
-		}
-		throw error instanceof Error
-			? error
-			: new Error('Plan generation stream failed.');
-	}
+      for (const line of lines) {
+        const event = parseLine(line);
+        if (event) {
+          onEvent(event);
+          if (shouldStop()) {
+            await reader.cancel();
+            return;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    try {
+      void reader
+        .cancel(error instanceof Error ? error : undefined)
+        .catch(() => undefined);
+    } catch {
+      // Ignore cancellation failures so the original read error still propagates.
+    }
+    throw error instanceof Error
+      ? error
+      : new Error('Plan generation stream failed.');
+  }
 }

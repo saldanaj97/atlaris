@@ -4,12 +4,12 @@
  * without dragging in a dependency on each other.
  */
 export const FAILURE_CLASSIFICATIONS = [
-	'validation',
-	'conflict',
-	'provider_error',
-	'rate_limit',
-	'timeout',
-	'capped',
+  'validation',
+  'conflict',
+  'provider_error',
+  'rate_limit',
+  'timeout',
+  'capped',
 ] as const;
 
 export type FailureClassification = (typeof FAILURE_CLASSIFICATIONS)[number];

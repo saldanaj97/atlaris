@@ -9,5 +9,5 @@ import type { ZodError } from 'zod';
  * the most specific validation message to the caller.
  */
 export function getFirstZodIssueMessage(error: ZodError): string | undefined {
-	return error.issues[0]?.message;
+  return error.issues[0]?.message;
 }

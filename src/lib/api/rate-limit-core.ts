@@ -12,22 +12,22 @@ import { RateLimitError } from '@/lib/api/errors';
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 interface WindowEntry {
-	timestamps: number[];
+  timestamps: number[];
 }
 
 type SlidingWindowConfig = {
-	/** Maximum requests allowed within the window */
-	maxRequests: number;
-	/** Time window in milliseconds */
-	windowMs: number;
-	/** Maximum keys to track (LRU eviction). Defaults to 10 000. */
-	maxTrackedKeys?: number;
-	/** Builds the human-readable error message on limit breach. */
-	formatErrorMessage?: (maxRequests: number, windowMs: number) => string;
+  /** Maximum requests allowed within the window */
+  maxRequests: number;
+  /** Time window in milliseconds */
+  windowMs: number;
+  /** Maximum keys to track (LRU eviction). Defaults to 10 000. */
+  maxTrackedKeys?: number;
+  /** Builds the human-readable error message on limit breach. */
+  formatErrorMessage?: (maxRequests: number, windowMs: number) => string;
 };
 
 function defaultFormatError(maxRequests: number, windowMs: number): string {
-	return `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${Math.round(windowMs / 1000)} seconds.`;
+  return `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${Math.round(windowMs / 1000)} seconds.`;
 }
 
 /**
@@ -36,72 +36,72 @@ function defaultFormatError(maxRequests: number, windowMs: number): string {
  * @returns An object with check / remaining / reset / clear helpers.
  */
 export function createSlidingWindowLimiter(
-	config: SlidingWindowConfig,
+  config: SlidingWindowConfig,
 ): SlidingWindowLimiter {
-	const {
-		maxRequests,
-		windowMs,
-		maxTrackedKeys = 10_000,
-		formatErrorMessage = defaultFormatError,
-	} = config;
+  const {
+    maxRequests,
+    windowMs,
+    maxTrackedKeys = 10_000,
+    formatErrorMessage = defaultFormatError,
+  } = config;
 
-	const cache = new LRUCache<string, WindowEntry>({
-		max: maxTrackedKeys,
-		ttl: windowMs + 1000,
-	});
+  const cache = new LRUCache<string, WindowEntry>({
+    max: maxTrackedKeys,
+    ttl: windowMs + 1000,
+  });
 
-	function check(key: string): void {
-		const now = Date.now();
-		const entry = cache.get(key);
-		const cutoff = now - windowMs;
+  function check(key: string): void {
+    const now = Date.now();
+    const entry = cache.get(key);
+    const cutoff = now - windowMs;
 
-		const timestamps = entry ? entry.timestamps.filter((t) => t > cutoff) : [];
+    const timestamps = entry ? entry.timestamps.filter((t) => t > cutoff) : [];
 
-		if (timestamps.length >= maxRequests) {
-			// Don't add this request — it's rejected
-			cache.set(key, { timestamps }); // still prune expired entries
-			const retryAfter = Math.ceil((timestamps[0] + windowMs - now) / 1000);
-			throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
-				retryAfter,
-				limit: maxRequests,
-				remaining: 0,
-				reset: Math.ceil((timestamps[0] + windowMs) / 1000),
-			});
-		}
+    if (timestamps.length >= maxRequests) {
+      // Don't add this request — it's rejected
+      cache.set(key, { timestamps }); // still prune expired entries
+      const retryAfter = Math.ceil((timestamps[0] + windowMs - now) / 1000);
+      throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
+        retryAfter,
+        limit: maxRequests,
+        remaining: 0,
+        reset: Math.ceil((timestamps[0] + windowMs) / 1000),
+      });
+    }
 
-		timestamps.push(now);
-		cache.set(key, { timestamps });
-	}
+    timestamps.push(now);
+    cache.set(key, { timestamps });
+  }
 
-	function getRemainingRequests(key: string): number {
-		const now = Date.now();
-		const entry = cache.get(key);
+  function getRemainingRequests(key: string): number {
+    const now = Date.now();
+    const entry = cache.get(key);
 
-		if (!entry) return maxRequests;
+    if (!entry) return maxRequests;
 
-		const active = entry.timestamps.filter((t) => t > now - windowMs);
-		return Math.max(0, maxRequests - active.length);
-	}
+    const active = entry.timestamps.filter((t) => t > now - windowMs);
+    return Math.max(0, maxRequests - active.length);
+  }
 
-	function getResetTime(key: string): number {
-		const now = Date.now();
-		const entry = cache.get(key);
+  function getResetTime(key: string): number {
+    const now = Date.now();
+    const entry = cache.get(key);
 
-		if (!entry) return Math.ceil((now + windowMs) / 1000);
+    if (!entry) return Math.ceil((now + windowMs) / 1000);
 
-		const active = entry.timestamps.filter((t) => t > now - windowMs);
-		if (active.length === 0) return Math.ceil((now + windowMs) / 1000);
+    const active = entry.timestamps.filter((t) => t > now - windowMs);
+    if (active.length === 0) return Math.ceil((now + windowMs) / 1000);
 
-		return Math.ceil((active[0] + windowMs) / 1000);
-	}
+    return Math.ceil((active[0] + windowMs) / 1000);
+  }
 
-	function reset(key: string): void {
-		cache.delete(key);
-	}
+  function reset(key: string): void {
+    cache.delete(key);
+  }
 
-	function clear(): void {
-		cache.clear();
-	}
+  function clear(): void {
+    cache.clear();
+  }
 
-	return { check, getRemainingRequests, getResetTime, reset, clear };
+  return { check, getRemainingRequests, getResetTime, reset, clear };
 }

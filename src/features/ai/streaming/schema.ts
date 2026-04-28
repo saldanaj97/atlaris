@@ -1,70 +1,70 @@
 import { z } from 'zod';
 
 import {
-	LEARNING_STYLE_ENUM,
-	SKILL_LEVEL_ENUM,
+  LEARNING_STYLE_ENUM,
+  SKILL_LEVEL_ENUM,
 } from '@/shared/schemas/plan-validation.schemas';
 
 const planStartDataSchema = z.object({
-	planId: z.string(),
-	attemptNumber: z.number(),
-	topic: z.string(),
-	skillLevel: SKILL_LEVEL_ENUM,
-	learningStyle: LEARNING_STYLE_ENUM,
-	weeklyHours: z.number(),
-	startDate: z.string().nullable(),
-	deadlineDate: z.string().nullable(),
-	origin: z.enum(['ai', 'manual', 'template']).optional(),
+  planId: z.string(),
+  attemptNumber: z.number(),
+  topic: z.string(),
+  skillLevel: SKILL_LEVEL_ENUM,
+  learningStyle: LEARNING_STYLE_ENUM,
+  weeklyHours: z.number(),
+  startDate: z.string().nullable(),
+  deadlineDate: z.string().nullable(),
+  origin: z.enum(['ai', 'manual', 'template']).optional(),
 });
 
 const moduleSummaryDataSchema = z.object({
-	planId: z.string(),
-	index: z.number(),
-	title: z.string(),
-	description: z.string().nullable().optional(),
-	estimatedMinutes: z.number(),
-	tasksCount: z.number(),
+  planId: z.string(),
+  index: z.number(),
+  title: z.string(),
+  description: z.string().nullable().optional(),
+  estimatedMinutes: z.number(),
+  tasksCount: z.number(),
 });
 
 const progressDataSchema = z.object({
-	planId: z.string(),
-	modulesParsed: z.number(),
-	modulesTotalHint: z.number().optional(),
-	percent: z.number(),
+  planId: z.string(),
+  modulesParsed: z.number(),
+  modulesTotalHint: z.number().optional(),
+  percent: z.number(),
 });
 
 const completeDataSchema = z.object({
-	planId: z.string(),
-	modulesCount: z.number(),
-	tasksCount: z.number(),
-	totalMinutes: z.number(),
+  planId: z.string(),
+  modulesCount: z.number(),
+  tasksCount: z.number(),
+  totalMinutes: z.number(),
 });
 
 const errorDataSchema = z.object({
-	planId: z.string().nullable().optional(),
-	code: z.string(),
-	message: z.string(),
-	classification: z.string(),
-	retryable: z.boolean(),
-	requestId: z.string().optional(),
+  planId: z.string().nullable().optional(),
+  code: z.string(),
+  message: z.string(),
+  classification: z.string(),
+  retryable: z.boolean(),
+  requestId: z.string().optional(),
 });
 
 const cancelledDataSchema = z.object({
-	planId: z.string(),
-	message: z.string(),
-	classification: z.string(),
-	retryable: z.boolean(),
-	requestId: z.string().optional(),
+  planId: z.string(),
+  message: z.string(),
+  classification: z.string(),
+  retryable: z.boolean(),
+  requestId: z.string().optional(),
 });
 
 export const StreamingEventSchema = z.discriminatedUnion('type', [
-	z.object({ type: z.literal('plan_start'), data: planStartDataSchema }),
-	z.object({
-		type: z.literal('module_summary'),
-		data: moduleSummaryDataSchema,
-	}),
-	z.object({ type: z.literal('progress'), data: progressDataSchema }),
-	z.object({ type: z.literal('complete'), data: completeDataSchema }),
-	z.object({ type: z.literal('error'), data: errorDataSchema }),
-	z.object({ type: z.literal('cancelled'), data: cancelledDataSchema }),
+  z.object({ type: z.literal('plan_start'), data: planStartDataSchema }),
+  z.object({
+    type: z.literal('module_summary'),
+    data: moduleSummaryDataSchema,
+  }),
+  z.object({ type: z.literal('progress'), data: progressDataSchema }),
+  z.object({ type: z.literal('complete'), data: completeDataSchema }),
+  z.object({ type: z.literal('error'), data: errorDataSchema }),
+  z.object({ type: z.literal('cancelled'), data: cancelledDataSchema }),
 ]);

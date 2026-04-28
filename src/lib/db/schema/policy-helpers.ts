@@ -5,9 +5,9 @@ import { currentUserId } from './tables/common';
 import { users } from './tables/users';
 
 type BasePlanParams = {
-	planIdColumn: AnyPgColumn;
-	planTable: AnyPgTable;
-	planIdReferenceColumn: AnyPgColumn;
+  planIdColumn: AnyPgColumn;
+  planTable: AnyPgTable;
+  planIdReferenceColumn: AnyPgColumn;
 };
 
 /**
@@ -19,26 +19,26 @@ type BasePlanParams = {
  * SQL fragment that ensures a row belongs to the current authenticated user.
  */
 export const recordOwnedByCurrentUser = (userIdColumn: AnyPgColumn): SQL =>
-	sql`
+  sql`
     ${userIdColumn} IN (
       SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
     )
   `;
 
 type PlanOwnershipParams = BasePlanParams & {
-	planUserIdColumn: AnyPgColumn;
+  planUserIdColumn: AnyPgColumn;
 };
 
 /**
  * SQL fragment that ensures the referenced plan belongs to the current user.
  */
 export const planOwnedByCurrentUser = ({
-	planIdColumn,
-	planTable,
-	planIdReferenceColumn,
-	planUserIdColumn,
+  planIdColumn,
+  planTable,
+  planIdReferenceColumn,
+  planUserIdColumn,
 }: PlanOwnershipParams): SQL =>
-	sql`
+  sql`
     EXISTS (
       SELECT 1 FROM ${planTable}
       WHERE ${planIdReferenceColumn} = ${planIdColumn}

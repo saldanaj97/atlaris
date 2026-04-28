@@ -1,28 +1,28 @@
 import pRetry from 'p-retry';
 import {
-	ProviderError,
-	ProviderInvalidResponseError,
+  ProviderError,
+  ProviderInvalidResponseError,
 } from '@/features/ai/providers/errors';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
 import type {
-	AiPlanGenerationProvider,
-	GenerationInput,
-	GenerationOptions,
-	ProviderGenerateResult,
+  AiPlanGenerationProvider,
+  GenerationInput,
+  GenerationOptions,
+  ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
 import {
-	MAX_PROVIDER_RETRIES,
-	PROVIDER_RETRY_MAX_MS,
-	PROVIDER_RETRY_MIN_MS,
+  MAX_PROVIDER_RETRIES,
+  PROVIDER_RETRY_MAX_MS,
+  PROVIDER_RETRY_MIN_MS,
 } from '@/features/plans/retry-policy';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
 export type RouterConfig = {
-	useMock?: boolean;
-	model?: string;
+  useMock?: boolean;
+  model?: string;
 };
 
 /**
@@ -31,149 +31,149 @@ export type RouterConfig = {
  * as `unknown` so callers must pass through untyped errors (e.g. from fetch or
  * OpenRouter SDK) and we narrow safely using explicit checks for `status`,
  * `statusCode`, and `response.status`. If the linter flags `unknown` here, add a
- * targeted biome-ignore for that rule and reference getStatusCode in the comment
+ * targeted oxlint disable for that rule and reference getStatusCode in the comment
  * so future readers know it is intentional.
  */
 function getStatusCode(error: unknown): number | undefined {
-	if (!error || typeof error !== 'object') {
-		return undefined;
-	}
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
 
-	const statusFromDirect =
-		'status' in error && typeof error.status === 'number' && error.status > 0
-			? error.status
-			: undefined;
-	if (statusFromDirect !== undefined) {
-		return statusFromDirect;
-	}
+  const statusFromDirect =
+    'status' in error && typeof error.status === 'number' && error.status > 0
+      ? error.status
+      : undefined;
+  if (statusFromDirect !== undefined) {
+    return statusFromDirect;
+  }
 
-	const statusFromProvider =
-		'statusCode' in error &&
-		typeof error.statusCode === 'number' &&
-		error.statusCode > 0
-			? error.statusCode
-			: undefined;
-	if (statusFromProvider !== undefined) {
-		return statusFromProvider;
-	}
+  const statusFromProvider =
+    'statusCode' in error &&
+    typeof error.statusCode === 'number' &&
+    error.statusCode > 0
+      ? error.statusCode
+      : undefined;
+  if (statusFromProvider !== undefined) {
+    return statusFromProvider;
+  }
 
-	const responseStatus =
-		'response' in error &&
-		typeof error.response === 'object' &&
-		error.response !== null &&
-		'status' in error.response &&
-		typeof error.response.status === 'number' &&
-		error.response.status > 0
-			? error.response.status
-			: undefined;
+  const responseStatus =
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'status' in error.response &&
+    typeof error.response.status === 'number' &&
+    error.response.status > 0
+      ? error.response.status
+      : undefined;
 
-	return responseStatus;
+  return responseStatus;
 }
 
 function shouldRetry(error: unknown): boolean {
-	if (isAbortError(error)) {
-		return false;
-	}
+  if (isAbortError(error)) {
+    return false;
+  }
 
-	if (error instanceof ProviderInvalidResponseError) {
-		return false;
-	}
+  if (error instanceof ProviderInvalidResponseError) {
+    return false;
+  }
 
-	if (error instanceof ProviderError) {
-		if (error.kind === 'rate_limit') {
-			return true;
-		}
-		if (error.kind === 'timeout' || error.kind === 'invalid_response') {
-			return false;
-		}
-		const status = getStatusCode(error) ?? getStatusCode(error.cause);
-		return typeof status === 'number' ? status >= 500 : false;
-	}
+  if (error instanceof ProviderError) {
+    if (error.kind === 'rate_limit') {
+      return true;
+    }
+    if (error.kind === 'timeout' || error.kind === 'invalid_response') {
+      return false;
+    }
+    const status = getStatusCode(error) ?? getStatusCode(error.cause);
+    return typeof status === 'number' ? status >= 500 : false;
+  }
 
-	const status = getStatusCode(error);
-	return typeof status === 'number' ? status >= 500 : false;
+  const status = getStatusCode(error);
+  return typeof status === 'number' ? status >= 500 : false;
 }
 
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
-	private readonly providers: (() => AiPlanGenerationProvider)[];
+  private readonly providers: (() => AiPlanGenerationProvider)[];
 
-	constructor(cfg: RouterConfig = {}) {
-		if (cfg.useMock === true) {
-			this.providers = [() => new MockGenerationProvider()];
-			return;
-		}
+  constructor(cfg: RouterConfig = {}) {
+    if (cfg.useMock === true) {
+      this.providers = [() => new MockGenerationProvider()];
+      return;
+    }
 
-		if (cfg.useMock === false) {
-			const model = cfg.model ?? aiEnv.defaultModel;
-			this.providers = [() => new OpenRouterProvider({ model })];
-			return;
-		}
+    if (cfg.useMock === false) {
+      const model = cfg.model ?? aiEnv.defaultModel;
+      this.providers = [() => new OpenRouterProvider({ model })];
+      return;
+    }
 
-		const useMock = aiEnv.useMock && !appEnv.isProduction;
+    const useMock = aiEnv.useMock && !appEnv.isProduction;
 
-		if (useMock) {
-			this.providers = [() => new MockGenerationProvider()];
-			return;
-		}
+    if (useMock) {
+      this.providers = [() => new MockGenerationProvider()];
+      return;
+    }
 
-		const model = cfg.model ?? aiEnv.defaultModel;
-		this.providers = [() => new OpenRouterProvider({ model })];
-	}
+    const model = cfg.model ?? aiEnv.defaultModel;
+    this.providers = [() => new OpenRouterProvider({ model })];
+  }
 
-	async generate(
-		input: GenerationInput,
-		options?: GenerationOptions,
-	): Promise<ProviderGenerateResult> {
-		let lastError: unknown;
+  async generate(
+    input: GenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    let lastError: unknown;
 
-		for (const factory of this.providers) {
-			const provider = factory();
-			const providerName = provider.constructor?.name ?? 'unknown-provider';
-			if (!appEnv.isProduction) {
-				logger.debug(
-					{
-						source: 'ai-router',
-						event: 'provider_attempt',
-						provider: providerName,
-					},
-					'AI router attempting provider',
-				);
-			}
-			try {
-				const result = await pRetry(() => provider.generate(input, options), {
-					retries: MAX_PROVIDER_RETRIES,
-					minTimeout: PROVIDER_RETRY_MIN_MS,
-					maxTimeout: PROVIDER_RETRY_MAX_MS,
-					randomize: true,
-					signal: options?.signal,
-					onFailedAttempt: ({ error }) => {
-						if (!shouldRetry(error)) {
-							throw error;
-						}
-					},
-				});
-				return result;
-			} catch (err) {
-				lastError = err;
-				const message = err instanceof Error ? err.message : 'unknown error';
-				logger.warn(
-					{
-						source: 'ai-router',
-						event: 'provider_failed',
-						provider: providerName,
-						message,
-						...(err instanceof Error && !appEnv.isProduction
-							? { stack: err.stack }
-							: {}),
-					},
-					'AI router provider failed',
-				);
-			}
-		}
+    for (const factory of this.providers) {
+      const provider = factory();
+      const providerName = provider.constructor?.name ?? 'unknown-provider';
+      if (!appEnv.isProduction) {
+        logger.debug(
+          {
+            source: 'ai-router',
+            event: 'provider_attempt',
+            provider: providerName,
+          },
+          'AI router attempting provider',
+        );
+      }
+      try {
+        const result = await pRetry(() => provider.generate(input, options), {
+          retries: MAX_PROVIDER_RETRIES,
+          minTimeout: PROVIDER_RETRY_MIN_MS,
+          maxTimeout: PROVIDER_RETRY_MAX_MS,
+          randomize: true,
+          signal: options?.signal,
+          onFailedAttempt: ({ error }) => {
+            if (!shouldRetry(error)) {
+              throw error;
+            }
+          },
+        });
+        return result;
+      } catch (err) {
+        lastError = err;
+        const message = err instanceof Error ? err.message : 'unknown error';
+        logger.warn(
+          {
+            source: 'ai-router',
+            event: 'provider_failed',
+            provider: providerName,
+            message,
+            ...(err instanceof Error && !appEnv.isProduction
+              ? { stack: err.stack }
+              : {}),
+          },
+          'AI router provider failed',
+        );
+      }
+    }
 
-		if (lastError instanceof Error) {
-			throw lastError;
-		}
-		throw new Error('All AI providers failed');
-	}
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
+    throw new Error('All AI providers failed');
+  }
 }

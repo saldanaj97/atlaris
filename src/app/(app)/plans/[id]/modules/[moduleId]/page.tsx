@@ -4,25 +4,25 @@ import { Suspense } from 'react';
 
 import { ModuleDetailPageError } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/Error';
 import {
-	ModuleDetailContent,
-	ModuleDetailContentSkeleton,
+  ModuleDetailContent,
+  ModuleDetailContentSkeleton,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleDetailContent';
 
 interface ModulePageProps {
-	params: Promise<{ id: string; moduleId: string }>;
+  params: Promise<{ id: string; moduleId: string }>;
 }
 
 const MODULE_METADATA_DESCRIPTION =
-	'View module details, tasks, and resources for this learning plan module.';
+  'View module details, tasks, and resources for this learning plan module.';
 
 export async function generateMetadata({
-	params,
+  params,
 }: ModulePageProps): Promise<Metadata> {
-	await params;
-	return {
-		title: 'Module Details | Atlaris',
-		description: MODULE_METADATA_DESCRIPTION,
-	};
+  await params;
+  return {
+    title: 'Module Details | Atlaris',
+    description: MODULE_METADATA_DESCRIPTION,
+  };
 }
 
 /**
@@ -32,17 +32,17 @@ export async function generateMetadata({
  * (module details, error states) in a Suspense boundary.
  */
 export default async function ModuleDetailPage({
-	params,
+  params,
 }: ModulePageProps): Promise<JSX.Element> {
-	const { id: planId, moduleId } = await params;
+  const { id: planId, moduleId } = await params;
 
-	if (!moduleId) {
-		return <ModuleDetailPageError planId={planId} />;
-	}
+  if (!moduleId) {
+    return <ModuleDetailPageError planId={planId} />;
+  }
 
-	return (
-		<Suspense fallback={<ModuleDetailContentSkeleton />}>
-			<ModuleDetailContent planId={planId} moduleId={moduleId} />
-		</Suspense>
-	);
+  return (
+    <Suspense fallback={<ModuleDetailContentSkeleton />}>
+      <ModuleDetailContent planId={planId} moduleId={moduleId} />
+    </Suspense>
+  );
 }

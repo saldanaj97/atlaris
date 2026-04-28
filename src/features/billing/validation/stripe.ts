@@ -1,10 +1,7 @@
 export {
-	createCheckoutResponseSchema,
-	createPortalResponseSchema,
-	stripePriceFieldsSchema,
-	stripeProductFieldsSchema,
+  createCheckoutResponseSchema,
+  createPortalResponseSchema,
+  stripePriceFieldsSchema,
+  stripeProductFieldsSchema,
 } from './stripe.schemas';
-export type {
-	StripePriceFields,
-	StripeProductFields,
-} from './stripe.types';
+export type { StripePriceFields, StripeProductFields } from './stripe.types';

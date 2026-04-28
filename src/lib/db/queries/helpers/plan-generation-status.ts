@@ -15,11 +15,11 @@ type LearningPlanInsert = typeof learningPlans.$inferInsert;
  * generation succeeds ({@link markPlanGenerationSuccess}).
  */
 export const PLAN_GENERATING_INSERT_DEFAULTS = {
-	generationStatus: 'generating',
-	isQuotaEligible: false,
+  generationStatus: 'generating',
+  isQuotaEligible: false,
 } as const satisfies Pick<
-	LearningPlanInsert,
-	'generationStatus' | 'isQuotaEligible'
+  LearningPlanInsert,
+  'generationStatus' | 'isQuotaEligible'
 >;
 
 // ─── UPDATE helper ──────────────────────────────────────────────
@@ -39,14 +39,14 @@ type PlanStatusUpdateClient = Pick<DbClient, 'update'>;
  * reapplication.
  */
 export async function setLearningPlanGenerating(
-	tx: PlanStatusUpdateClient,
-	params: { planId: string; updatedAt: Date },
+  tx: PlanStatusUpdateClient,
+  params: { planId: string; updatedAt: Date },
 ): Promise<void> {
-	await tx
-		.update(learningPlans)
-		.set({
-			generationStatus: 'generating',
-			updatedAt: params.updatedAt,
-		})
-		.where(eq(learningPlans.id, params.planId));
+  await tx
+    .update(learningPlans)
+    .set({
+      generationStatus: 'generating',
+      updatedAt: params.updatedAt,
+    })
+    .where(eq(learningPlans.id, params.planId));
 }

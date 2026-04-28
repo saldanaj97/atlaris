@@ -6,166 +6,166 @@ import { createLogger, logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 function hasStringCode(value: unknown): value is { code: string } {
-	if (typeof value !== 'object' || value === null) {
-		return false;
-	}
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
 
-	const maybeRecord = value as Record<string, unknown>;
-	return typeof maybeRecord.code === 'string';
+  const maybeRecord = value as Record<string, unknown>;
+  return typeof maybeRecord.code === 'string';
 }
 
 export class AppError extends Error {
-	constructor(
-		message: string,
-		public options: {
-			status?: number;
-			code?: string;
-			details?: unknown;
-			classification?: FailureClassification;
-			headers?: Record<string, string>;
-			logMeta?: Record<string, unknown>;
-			cause?: unknown;
-		} = {},
-	) {
-		super(
-			message,
-			options.cause != null ? { cause: options.cause } : undefined,
-		);
-		this.name = this.constructor.name;
-	}
+  constructor(
+    message: string,
+    public options: {
+      status?: number;
+      code?: string;
+      details?: unknown;
+      classification?: FailureClassification;
+      headers?: Record<string, string>;
+      logMeta?: Record<string, unknown>;
+      cause?: unknown;
+    } = {},
+  ) {
+    super(
+      message,
+      options.cause != null ? { cause: options.cause } : undefined,
+    );
+    this.name = this.constructor.name;
+  }
 
-	status(): number {
-		return this.options.status ?? 500;
-	}
+  status(): number {
+    return this.options.status ?? 500;
+  }
 
-	code(): string {
-		return this.options.code ?? 'INTERNAL_ERROR';
-	}
+  code(): string {
+    return this.options.code ?? 'INTERNAL_ERROR';
+  }
 
-	details(): unknown {
-		return this.options.details;
-	}
+  details(): unknown {
+    return this.options.details;
+  }
 
-	classification(): FailureClassification | undefined {
-		return this.options.classification;
-	}
+  classification(): FailureClassification | undefined {
+    return this.options.classification;
+  }
 
-	headers(): Record<string, string> {
-		return this.options.headers ?? {};
-	}
+  headers(): Record<string, string> {
+    return this.options.headers ?? {};
+  }
 
-	logMeta(): Record<string, unknown> | undefined {
-		return this.options.logMeta;
-	}
+  logMeta(): Record<string, unknown> | undefined {
+    return this.options.logMeta;
+  }
 }
 
 export class AuthError extends AppError {
-	constructor(message = 'Unauthorized', details?: unknown) {
-		super(message, { status: 401, code: 'UNAUTHORIZED', details });
-	}
+  constructor(message = 'Unauthorized', details?: unknown) {
+    super(message, { status: 401, code: 'UNAUTHORIZED', details });
+  }
 }
 
 export class ForbiddenError extends AppError {
-	constructor(message = 'Forbidden', details?: unknown) {
-		super(message, { status: 403, code: 'FORBIDDEN', details });
-	}
+  constructor(message = 'Forbidden', details?: unknown) {
+    super(message, { status: 403, code: 'FORBIDDEN', details });
+  }
 }
 
 export class NotFoundError extends AppError {
-	constructor(
-		message = 'Not Found',
-		details?: unknown,
-		logMeta?: Record<string, unknown>,
-	) {
-		super(message, { status: 404, code: 'NOT_FOUND', details, logMeta });
-	}
+  constructor(
+    message = 'Not Found',
+    details?: unknown,
+    logMeta?: Record<string, unknown>,
+  ) {
+    super(message, { status: 404, code: 'NOT_FOUND', details, logMeta });
+  }
 }
 
 export class ValidationError extends AppError {
-	constructor(
-		message = 'Validation Failed',
-		details?: unknown,
-		logMeta?: Record<string, unknown>,
-	) {
-		super(message, {
-			status: 400,
-			code: 'VALIDATION_ERROR',
-			details,
-			classification: 'validation',
-			logMeta,
-		});
-	}
+  constructor(
+    message = 'Validation Failed',
+    details?: unknown,
+    logMeta?: Record<string, unknown>,
+  ) {
+    super(message, {
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details,
+      classification: 'validation',
+      logMeta,
+    });
+  }
 }
 
 export class ConflictError extends AppError {
-	constructor(message = 'Conflict', details?: unknown) {
-		super(message, { status: 409, code: 'CONFLICT', details });
-	}
+  constructor(message = 'Conflict', details?: unknown) {
+    super(message, { status: 409, code: 'CONFLICT', details });
+  }
 }
 
 export class ServiceUnavailableError extends AppError {
-	constructor(
-		message = 'Service unavailable',
-		details?: unknown,
-		logMeta?: Record<string, unknown>,
-	) {
-		super(message, {
-			status: 503,
-			code: 'SERVICE_UNAVAILABLE',
-			details,
-			logMeta,
-		});
-	}
+  constructor(
+    message = 'Service unavailable',
+    details?: unknown,
+    logMeta?: Record<string, unknown>,
+  ) {
+    super(message, {
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      details,
+      logMeta,
+    });
+  }
 }
 
 type RateLimitErrorDetails = {
-	retryAfter?: number;
-	remaining?: number;
-	limit?: number;
-	reset?: number;
+  retryAfter?: number;
+  remaining?: number;
+  limit?: number;
+  reset?: number;
 };
 
 type RateLimitErrorOptions = {
-	headers?: Record<string, string>;
+  headers?: Record<string, string>;
 };
 
 export class RateLimitError extends AppError {
-	public retryAfter?: number;
-	public remaining?: number;
-	public limit?: number;
-	public reset?: number;
+  public retryAfter?: number;
+  public remaining?: number;
+  public limit?: number;
+  public reset?: number;
 
-	constructor(
-		message = 'Too Many Requests',
-		details?: RateLimitErrorDetails,
-		options?: RateLimitErrorOptions,
-	) {
-		super(message, {
-			status: 429,
-			code: 'RATE_LIMITED',
-			details,
-			classification: 'rate_limit',
-			headers: options?.headers,
-		});
-		this.retryAfter = details?.retryAfter;
-		this.remaining = details?.remaining;
-		this.limit = details?.limit;
-		this.reset = details?.reset;
-	}
+  constructor(
+    message = 'Too Many Requests',
+    details?: RateLimitErrorDetails,
+    options?: RateLimitErrorOptions,
+  ) {
+    super(message, {
+      status: 429,
+      code: 'RATE_LIMITED',
+      details,
+      classification: 'rate_limit',
+      headers: options?.headers,
+    });
+    this.retryAfter = details?.retryAfter;
+    this.remaining = details?.remaining;
+    this.limit = details?.limit;
+    this.reset = details?.reset;
+  }
 }
 
 export class AttemptCapExceededError extends AppError {
-	constructor(
-		message = 'Maximum generation attempts exceeded',
-		details?: unknown,
-	) {
-		super(message, {
-			status: 429,
-			code: 'ATTEMPTS_CAPPED',
-			details,
-			classification: 'capped',
-		});
-	}
+  constructor(
+    message = 'Maximum generation attempts exceeded',
+    details?: unknown,
+  ) {
+    super(message, {
+      status: 429,
+      code: 'ATTEMPTS_CAPPED',
+      details,
+      classification: 'capped',
+    });
+  }
 }
 
 /**
@@ -173,10 +173,10 @@ export class AttemptCapExceededError extends AppError {
  * Returns `undefined` when the value has no string `code` field.
  */
 export function extractErrorCode(error: unknown): string | undefined {
-	if (hasStringCode(error)) {
-		return error.code;
-	}
-	return undefined;
+  if (hasStringCode(error)) {
+    return error.code;
+  }
+  return undefined;
 }
 
 /**
@@ -185,18 +185,18 @@ export function extractErrorCode(error: unknown): string | undefined {
  * Preserves the function name and relative path for debuggability.
  */
 function redactStackTrace(stack: string | undefined): string | undefined {
-	if (!stack) {
-		return undefined;
-	}
+  if (!stack) {
+    return undefined;
+  }
 
-	// Normalize separators first so Windows and POSIX stacks are handled equally.
-	const normalizedStack = stack.replace(/\\/g, '/');
+  // Normalize separators first so Windows and POSIX stacks are handled equally.
+  const normalizedStack = stack.replace(/\\/g, '/');
 
-	// Strip absolute prefixes while keeping relative app/build paths.
-	return normalizedStack.replace(
-		/(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
-		'$1',
-	);
+  // Strip absolute prefixes while keeping relative app/build paths.
+  return normalizedStack.replace(
+    /(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
+    '$1',
+  );
 }
 
 /**
@@ -205,90 +205,90 @@ function redactStackTrace(stack: string | undefined): string | undefined {
  * Not exported as it's only intended for internal use within this module.
  */
 function toSafeError(err: unknown): Record<string, unknown> {
-	if (err instanceof AppError) {
-		return {
-			name: err.name,
-			message: err.message,
-			status: err.status(),
-			code: err.code(),
-		};
-	}
+  if (err instanceof AppError) {
+    return {
+      name: err.name,
+      message: err.message,
+      status: err.status(),
+      code: err.code(),
+    };
+  }
 
-	if (err instanceof Error) {
-		return {
-			name: err.name,
-			message: err.message,
-			stack: redactStackTrace(err.stack),
-		};
-	}
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: redactStackTrace(err.stack),
+    };
+  }
 
-	if (typeof err === 'object' && err !== null) {
-		return {
-			message: 'Unknown error object',
-			type: err.constructor?.name ?? 'Object',
-		};
-	}
+  if (typeof err === 'object' && err !== null) {
+    return {
+      message: 'Unknown error object',
+      type: err.constructor?.name ?? 'Object',
+    };
+  }
 
-	return {
-		message: String(err),
-	};
+  return {
+    message: String(err),
+  };
 }
 
 function logAppError(err: AppError): void {
-	const status = err.status();
-	const logMeta = err.logMeta();
-	const payload = {
-		status,
-		code: err.code(),
-		message: err.message,
-		details: err.details(),
-		...(logMeta != null ? logMeta : {}),
-	};
-	const requestId = getCorrelationId();
-	const log = requestId ? createLogger({ requestId }) : logger;
-	if (status >= 500) {
-		log.error(payload, 'API error');
-	} else {
-		log.warn(payload, 'API error');
-	}
+  const status = err.status();
+  const logMeta = err.logMeta();
+  const payload = {
+    status,
+    code: err.code(),
+    message: err.message,
+    details: err.details(),
+    ...(logMeta != null ? logMeta : {}),
+  };
+  const requestId = getCorrelationId();
+  const log = requestId ? createLogger({ requestId }) : logger;
+  if (status >= 500) {
+    log.error(payload, 'API error');
+  } else {
+    log.warn(payload, 'API error');
+  }
 }
 
 export function toErrorResponse(err: unknown): Response {
-	if (err instanceof AppError) {
-		logAppError(err);
-		const headers: Record<string, string> = { ...err.headers() };
-		let retryAfter: number | undefined;
+  if (err instanceof AppError) {
+    logAppError(err);
+    const headers: Record<string, string> = { ...err.headers() };
+    let retryAfter: number | undefined;
 
-		if (err instanceof RateLimitError) {
-			if (err.retryAfter !== undefined) {
-				retryAfter = err.retryAfter;
-				headers['Retry-After'] = String(err.retryAfter);
-			}
-			if (err.limit !== undefined) {
-				headers['X-RateLimit-Limit'] = String(err.limit);
-			}
-			if (err.remaining !== undefined) {
-				headers['X-RateLimit-Remaining'] = String(Math.max(0, err.remaining));
-			}
-			if (err.reset !== undefined) {
-				headers['X-RateLimit-Reset'] = String(err.reset);
-			}
-		}
+    if (err instanceof RateLimitError) {
+      if (err.retryAfter !== undefined) {
+        retryAfter = err.retryAfter;
+        headers['Retry-After'] = String(err.retryAfter);
+      }
+      if (err.limit !== undefined) {
+        headers['X-RateLimit-Limit'] = String(err.limit);
+      }
+      if (err.remaining !== undefined) {
+        headers['X-RateLimit-Remaining'] = String(Math.max(0, err.remaining));
+      }
+      if (err.reset !== undefined) {
+        headers['X-RateLimit-Reset'] = String(err.reset);
+      }
+    }
 
-		return jsonError(err.message, {
-			status: err.status(),
-			code: err.code(),
-			classification: err.classification(),
-			details: err.details(),
-			retryAfter,
-			headers,
-		});
-	}
-	const requestId = getCorrelationId();
-	const log = requestId ? createLogger({ requestId }) : logger;
-	log.error({ error: toSafeError(err) }, 'Unexpected API error');
-	return jsonError('Internal Server Error', {
-		status: 500,
-		code: 'INTERNAL_ERROR',
-	});
+    return jsonError(err.message, {
+      status: err.status(),
+      code: err.code(),
+      classification: err.classification(),
+      details: err.details(),
+      retryAfter,
+      headers,
+    });
+  }
+  const requestId = getCorrelationId();
+  const log = requestId ? createLogger({ requestId }) : logger;
+  log.error({ error: toSafeError(err) }, 'Unexpected API error');
+  return jsonError('Internal Server Error', {
+    status: 500,
+    code: 'INTERNAL_ERROR',
+  });
 }
