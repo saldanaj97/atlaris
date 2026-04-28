@@ -4,13 +4,13 @@ import { stripeWebhookEvents } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
 export async function ensureStripeWebhookEvents() {
-	await db.select().from(stripeWebhookEvents).limit(1);
+  await db.select().from(stripeWebhookEvents).limit(1);
 }
 
 export async function ensureJobTypeEnumValue() {
-	// Add plan_regeneration to job_type enum if it doesn't exist
-	// This handles the case where the enum value needs to be added for tests
-	await db.execute(sql`
+  // Add plan_regeneration to job_type enum if it doesn't exist
+  // This handles the case where the enum value needs to be added for tests
+  await db.execute(sql`
     DO $$
     BEGIN
       IF NOT EXISTS (

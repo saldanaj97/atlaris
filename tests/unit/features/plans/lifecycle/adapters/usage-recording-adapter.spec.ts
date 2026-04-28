@@ -6,100 +6,100 @@ import type { DbClient } from '@/lib/db/types';
 import type { RecordUsageParams } from '@/lib/db/usage';
 
 vi.mock('@sentry/nextjs', () => ({
-	captureException: vi.fn(),
+  captureException: vi.fn(),
 }));
 
 describe('UsageRecordingAdapter', () => {
-	const fakeDb = {} as DbClient;
-	const mockRecordUsage = vi.fn();
-	const mockIncrementUsage = vi.fn();
+  const fakeDb = {} as DbClient;
+  const mockRecordUsage = vi.fn();
+  const mockIncrementUsage = vi.fn();
 
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockRecordUsage.mockResolvedValue(undefined);
-		mockIncrementUsage.mockResolvedValue(undefined);
-	});
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRecordUsage.mockResolvedValue(undefined);
+    mockIncrementUsage.mockResolvedValue(undefined);
+  });
 
-	it('calls recordUsage with RecordUsageParams derived from safeNormalizeUsage for equivalent metadata', async () => {
-		const metadata = makeOpenRouterGpt4oProviderMetadata();
-		const canonical = safeNormalizeUsage(metadata);
-		const expected: RecordUsageParams = {
-			userId: 'user-1',
-			provider: canonical.provider,
-			model: canonical.model,
-			inputTokens: canonical.inputTokens,
-			outputTokens: canonical.outputTokens,
-			costCents: canonical.estimatedCostCents,
-		};
-		const mockToRecordParams = vi.fn().mockReturnValue(expected);
+  it('calls recordUsage with RecordUsageParams derived from safeNormalizeUsage for equivalent metadata', async () => {
+    const metadata = makeOpenRouterGpt4oProviderMetadata();
+    const canonical = safeNormalizeUsage(metadata);
+    const expected: RecordUsageParams = {
+      userId: 'user-1',
+      provider: canonical.provider,
+      model: canonical.model,
+      inputTokens: canonical.inputTokens,
+      outputTokens: canonical.outputTokens,
+      costCents: canonical.estimatedCostCents,
+    };
+    const mockToRecordParams = vi.fn().mockReturnValue(expected);
 
-		const adapter = new UsageRecordingAdapter(fakeDb, {
-			recordUsage: mockRecordUsage,
-			incrementUsage: mockIncrementUsage,
-			canonicalUsageToRecordParams: mockToRecordParams,
-		});
-		await adapter.recordUsage({
-			userId: 'user-1',
-			usage: canonical,
-			kind: 'plan',
-		});
+    const adapter = new UsageRecordingAdapter(fakeDb, {
+      recordUsage: mockRecordUsage,
+      incrementUsage: mockIncrementUsage,
+      canonicalUsageToRecordParams: mockToRecordParams,
+    });
+    await adapter.recordUsage({
+      userId: 'user-1',
+      usage: canonical,
+      kind: 'plan',
+    });
 
-		expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-1');
-		expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-		expect(mockRecordUsage).toHaveBeenCalledWith(expected, fakeDb);
-		expect(mockIncrementUsage).toHaveBeenCalledWith('user-1', 'plan', fakeDb);
-	});
+    expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-1');
+    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
+    expect(mockRecordUsage).toHaveBeenCalledWith(expected, fakeDb);
+    expect(mockIncrementUsage).toHaveBeenCalledWith('user-1', 'plan', fakeDb);
+  });
 
-	it('omits provider microusd and snapshot when usage is partial', async () => {
-		const metadata = {
-			model: 'openai/gpt-4o',
-			usage: {
-				promptTokens: 1,
-				completionTokens: 2,
-				totalTokens: 3,
-			},
-		};
-		const canonical = safeNormalizeUsage(metadata);
-		expect(canonical.isPartial).toBe(true);
-		const expected: RecordUsageParams = {
-			userId: 'user-2',
-			provider: canonical.provider,
-			model: canonical.model,
-			inputTokens: canonical.inputTokens,
-			outputTokens: canonical.outputTokens,
-			costCents: canonical.estimatedCostCents,
-		};
-		const mockToRecordParams = vi.fn().mockReturnValue(expected);
+  it('omits provider microusd and snapshot when usage is partial', async () => {
+    const metadata = {
+      model: 'openai/gpt-4o',
+      usage: {
+        promptTokens: 1,
+        completionTokens: 2,
+        totalTokens: 3,
+      },
+    };
+    const canonical = safeNormalizeUsage(metadata);
+    expect(canonical.isPartial).toBe(true);
+    const expected: RecordUsageParams = {
+      userId: 'user-2',
+      provider: canonical.provider,
+      model: canonical.model,
+      inputTokens: canonical.inputTokens,
+      outputTokens: canonical.outputTokens,
+      costCents: canonical.estimatedCostCents,
+    };
+    const mockToRecordParams = vi.fn().mockReturnValue(expected);
 
-		const adapter = new UsageRecordingAdapter(fakeDb, {
-			recordUsage: mockRecordUsage,
-			incrementUsage: mockIncrementUsage,
-			canonicalUsageToRecordParams: mockToRecordParams,
-		});
-		await adapter.recordUsage({
-			userId: 'user-2',
-			usage: canonical,
-			kind: 'plan',
-		});
+    const adapter = new UsageRecordingAdapter(fakeDb, {
+      recordUsage: mockRecordUsage,
+      incrementUsage: mockIncrementUsage,
+      canonicalUsageToRecordParams: mockToRecordParams,
+    });
+    await adapter.recordUsage({
+      userId: 'user-2',
+      usage: canonical,
+      kind: 'plan',
+    });
 
-		expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-2');
-		expect(mockRecordUsage).toHaveBeenCalledWith(expected, fakeDb);
-	});
+    expect(mockToRecordParams).toHaveBeenCalledWith(canonical, 'user-2');
+    expect(mockRecordUsage).toHaveBeenCalledWith(expected, fakeDb);
+  });
 
-	it('does not increment aggregates when kind is omitted', async () => {
-		const canonical = safeNormalizeUsage(makeOpenRouterGpt4oProviderMetadata());
+  it('does not increment aggregates when kind is omitted', async () => {
+    const canonical = safeNormalizeUsage(makeOpenRouterGpt4oProviderMetadata());
 
-		const adapter = new UsageRecordingAdapter(fakeDb, {
-			recordUsage: mockRecordUsage,
-			incrementUsage: mockIncrementUsage,
-		});
+    const adapter = new UsageRecordingAdapter(fakeDb, {
+      recordUsage: mockRecordUsage,
+      incrementUsage: mockIncrementUsage,
+    });
 
-		await adapter.recordUsage({
-			userId: 'user-3',
-			usage: canonical,
-		});
+    await adapter.recordUsage({
+      userId: 'user-3',
+      usage: canonical,
+    });
 
-		expect(mockRecordUsage).toHaveBeenCalledTimes(1);
-		expect(mockIncrementUsage).not.toHaveBeenCalled();
-	});
+    expect(mockRecordUsage).toHaveBeenCalledTimes(1);
+    expect(mockIncrementUsage).not.toHaveBeenCalled();
+  });
 });

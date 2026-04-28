@@ -19,8 +19,8 @@
  */
 
 import {
-	createAnonymousRlsClient,
-	createAuthenticatedRlsClient,
+  createAnonymousRlsClient,
+  createAuthenticatedRlsClient,
 } from '@/lib/db/rls';
 import { db } from '@/lib/db/service-role';
 
@@ -30,7 +30,7 @@ type CleanupCallback = () => Promise<void>;
 const trackedRlsClientCleanups = new Set<CleanupCallback>();
 
 function trackCleanup(cleanup: CleanupCallback): void {
-	trackedRlsClientCleanups.add(cleanup);
+  trackedRlsClientCleanups.add(cleanup);
 }
 
 /**
@@ -46,9 +46,9 @@ function trackCleanup(cleanup: CleanupCallback): void {
  * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
  */
 export async function createAnonRlsDb(): Promise<DbInstance> {
-	const result = await createAnonymousRlsClient();
-	trackCleanup(result.cleanup);
-	return result.db;
+  const result = await createAnonymousRlsClient();
+  trackCleanup(result.cleanup);
+  return result.db;
 }
 
 /**
@@ -64,11 +64,11 @@ export async function createAnonRlsDb(): Promise<DbInstance> {
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
 export async function createRlsDbForUser(
-	authUserId: string,
+  authUserId: string,
 ): Promise<DbInstance> {
-	const result = await createAuthenticatedRlsClient(authUserId);
-	trackCleanup(result.cleanup);
-	return result.db;
+  const result = await createAuthenticatedRlsClient(authUserId);
+  trackCleanup(result.cleanup);
+  return result.db;
 }
 
 /**
@@ -77,9 +77,9 @@ export async function createRlsDbForUser(
  * Safe to call repeatedly; each cleanup callback is idempotent.
  */
 export async function cleanupTrackedRlsClients(): Promise<void> {
-	const cleanups = [...trackedRlsClientCleanups];
-	trackedRlsClientCleanups.clear();
-	await Promise.allSettled(cleanups.map((cleanup) => cleanup()));
+  const cleanups = [...trackedRlsClientCleanups];
+  trackedRlsClientCleanups.clear();
+  await Promise.allSettled(cleanups.map((cleanup) => cleanup()));
 }
 
 /**
@@ -91,5 +91,5 @@ export async function cleanupTrackedRlsClients(): Promise<void> {
  * @returns Drizzle database client with RLS bypassed (service role)
  */
 export function getServiceRoleDb(): DbInstance {
-	return db;
+  return db;
 }

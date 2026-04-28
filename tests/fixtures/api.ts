@@ -2,22 +2,22 @@
  * Creates a request targeting the auth catch-all route.
  */
 export function createAuthRequest(
-	path: string,
-	options?: RequestInit,
+  path: string,
+  options?: RequestInit,
 ): Request {
-	const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-	return new Request(`http://localhost/api/auth${normalizedPath}`, options);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return new Request(`http://localhost/api/auth${normalizedPath}`, options);
 }
 
 /**
  * Creates dynamic route context for /api/auth/[...path].
  */
 export function createRouteContext(path: string[]): {
-	params: Promise<{ path: string[] }>;
+  params: Promise<{ path: string[] }>;
 } {
-	return {
-		params: Promise.resolve({ path }),
-	};
+  return {
+    params: Promise.resolve({ path }),
+  };
 }
 
 /**

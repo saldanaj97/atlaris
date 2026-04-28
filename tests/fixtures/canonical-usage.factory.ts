@@ -5,20 +5,20 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 const CATALOG_MODEL_OPENAI_GPT4O = 'openai/gpt-4o' as const;
 
 export function makeCanonicalUsage(
-	overrides?: Partial<CanonicalAIUsage>,
+  overrides?: Partial<CanonicalAIUsage>,
 ): CanonicalAIUsage {
-	return {
-		inputTokens: 100,
-		outputTokens: 200,
-		totalTokens: 300,
-		model: 'gpt-4o',
-		provider: 'openai',
-		estimatedCostCents: 0,
-		providerCostMicrousd: null,
-		isPartial: false,
-		missingFields: [],
-		...overrides,
-	};
+  return {
+    inputTokens: 100,
+    outputTokens: 200,
+    totalTokens: 300,
+    model: 'gpt-4o',
+    provider: 'openai',
+    estimatedCostCents: 0,
+    providerCostMicrousd: null,
+    isPartial: false,
+    missingFields: [],
+    ...overrides,
+  };
 }
 
 /**
@@ -26,20 +26,20 @@ export function makeCanonicalUsage(
  * provider USD cost (for entry-point tests that exercise snapshot + microusd).
  */
 export function makeOpenRouterGpt4oProviderMetadata(
-	overrides?: Partial<ProviderMetadata>,
+  overrides?: Partial<ProviderMetadata>,
 ): ProviderMetadata {
-	const { usage: usageOverrides, ...restOverrides } = overrides ?? {};
+  const { usage: usageOverrides, ...restOverrides } = overrides ?? {};
 
-	return {
-		provider: 'openrouter',
-		model: CATALOG_MODEL_OPENAI_GPT4O,
-		usage: {
-			promptTokens: 10,
-			completionTokens: 20,
-			totalTokens: 30,
-			providerReportedCostUsd: 0.001,
-			...usageOverrides,
-		},
-		...restOverrides,
-	};
+  return {
+    provider: 'openrouter',
+    model: CATALOG_MODEL_OPENAI_GPT4O,
+    usage: {
+      promptTokens: 10,
+      completionTokens: 20,
+      totalTokens: 30,
+      providerReportedCostUsd: 0.001,
+      ...usageOverrides,
+    },
+    ...restOverrides,
+  };
 }

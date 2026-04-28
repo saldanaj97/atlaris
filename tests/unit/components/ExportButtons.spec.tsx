@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ExportButtons } from '@/app/(app)/plans/[id]/components/ExportButtons';
 
 describe('ExportButtons', () => {
-	it('renders nothing while export feature is disabled', () => {
-		const { container } = render(<ExportButtons planId="test-plan-123" />);
+  it('renders nothing while export feature is disabled', () => {
+    const { container } = render(<ExportButtons planId="test-plan-123" />);
 
-		expect(container.firstChild).toBeNull();
-	});
+    expect(container.firstChild).toBeNull();
+  });
 });

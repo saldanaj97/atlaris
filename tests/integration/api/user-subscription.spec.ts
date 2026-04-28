@@ -8,176 +8,176 @@ import { ensureUser } from '../../helpers/db';
 
 // Mock auth before importing the route
 vi.mock('@/lib/auth/server', () => ({
-	auth: { getSession: vi.fn() },
+  auth: { getSession: vi.fn() },
 }));
 
 describe('GET /api/v1/user/subscription', () => {
-	const authUserId = 'auth_subscription_test_user';
-	let userId: string;
+  const authUserId = 'auth_subscription_test_user';
+  let userId: string;
 
-	beforeEach(async () => {
-		const { auth } = await import('@/lib/auth/server');
-		vi.mocked(auth.getSession).mockResolvedValue({
-			data: { user: { id: authUserId } },
-		});
+  beforeEach(async () => {
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: { id: authUserId } },
+    });
 
-		setTestUser(authUserId);
+    setTestUser(authUserId);
 
-		userId = await ensureUser({
-			authUserId,
-			email: 'subscription@example.com',
-			subscriptionTier: 'free',
-		});
-	});
+    userId = await ensureUser({
+      authUserId,
+      email: 'subscription@example.com',
+      subscriptionTier: 'free',
+    });
+  });
 
-	afterEach(() => {
-		vi.clearAllMocks();
-		clearTestUser();
-	});
+  afterEach(() => {
+    vi.clearAllMocks();
+    clearTestUser();
+  });
 
-	it('should return subscription information for authenticated user', async () => {
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+  it('should return subscription information for authenticated user', async () => {
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(200);
-		const body = await response.json();
+    expect(response.status).toBe(200);
+    const body = await response.json();
 
-		expect(body).toHaveProperty('tier', 'free');
-		expect(body).toHaveProperty('status');
-		expect(body).toHaveProperty('periodEnd');
-		expect(body).toHaveProperty('cancelAtPeriodEnd', false);
-		expect(body).toHaveProperty('usage');
-		expect(body.usage).toHaveProperty('activePlans');
-		expect(body.usage).toHaveProperty('regenerations');
-		expect(body.usage).toHaveProperty('exports');
-	});
+    expect(body).toHaveProperty('tier', 'free');
+    expect(body).toHaveProperty('status');
+    expect(body).toHaveProperty('periodEnd');
+    expect(body).toHaveProperty('cancelAtPeriodEnd', false);
+    expect(body).toHaveProperty('usage');
+    expect(body.usage).toHaveProperty('activePlans');
+    expect(body.usage).toHaveProperty('regenerations');
+    expect(body.usage).toHaveProperty('exports');
+  });
 
-	it('should return usage metrics including active plans', async () => {
-		// Create some plans for the user
-		await db.insert(learningPlans).values([
-			{
-				userId,
-				topic: 'TypeScript',
-				skillLevel: 'beginner',
-				weeklyHours: 5,
-				learningStyle: 'mixed',
-				visibility: 'private',
-				origin: 'ai',
-				generationStatus: 'ready',
-				isQuotaEligible: true,
-				finalizedAt: new Date(),
-			},
-			{
-				userId,
-				topic: 'React',
-				skillLevel: 'intermediate',
-				weeklyHours: 10,
-				learningStyle: 'practice',
-				visibility: 'private',
-				origin: 'ai',
-				generationStatus: 'ready',
-				isQuotaEligible: true,
-				finalizedAt: new Date(),
-			},
-		]);
+  it('should return usage metrics including active plans', async () => {
+    // Create some plans for the user
+    await db.insert(learningPlans).values([
+      {
+        userId,
+        topic: 'TypeScript',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt: new Date(),
+      },
+      {
+        userId,
+        topic: 'React',
+        skillLevel: 'intermediate',
+        weeklyHours: 10,
+        learningStyle: 'practice',
+        visibility: 'private',
+        origin: 'ai',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt: new Date(),
+      },
+    ]);
 
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(200);
-		const body = await response.json();
+    expect(response.status).toBe(200);
+    const body = await response.json();
 
-		expect(body.usage.activePlans.current).toBe(2);
-	});
+    expect(body.usage.activePlans.current).toBe(2);
+  });
 
-	it('should return 401 for unauthenticated requests', async () => {
-		clearTestUser();
+  it('should return 401 for unauthenticated requests', async () => {
+    clearTestUser();
 
-		// Mock auth to return null (unauthenticated)
-		const { auth } = await import('@/lib/auth/server');
-		vi.mocked(auth.getSession).mockResolvedValue({
-			data: { user: null },
-		});
+    // Mock auth to return null (unauthenticated)
+    const { auth } = await import('@/lib/auth/server');
+    vi.mocked(auth.getSession).mockResolvedValue({
+      data: { user: null },
+    });
 
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(401);
-		const body = await response.json();
-		expect(body).toHaveProperty('error');
-	});
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body).toHaveProperty('error');
+  });
 
-	it('should handle pro tier subscriptions', async () => {
-		await ensureUser({
-			authUserId,
-			email: 'subscription@example.com',
-			subscriptionTier: 'pro',
-		});
+  it('should handle pro tier subscriptions', async () => {
+    await ensureUser({
+      authUserId,
+      email: 'subscription@example.com',
+      subscriptionTier: 'pro',
+    });
 
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(200);
-		const body = await response.json();
-		expect(body.tier).toBe('pro');
-	});
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.tier).toBe('pro');
+  });
 
-	it('should handle starter tier subscriptions', async () => {
-		await ensureUser({
-			authUserId,
-			email: 'subscription@example.com',
-			subscriptionTier: 'starter',
-		});
+  it('should handle starter tier subscriptions', async () => {
+    await ensureUser({
+      authUserId,
+      email: 'subscription@example.com',
+      subscriptionTier: 'starter',
+    });
 
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(200);
-		const body = await response.json();
-		expect(body.tier).toBe('starter');
-	});
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.tier).toBe('starter');
+  });
 
-	it('should return cancelAtPeriodEnd from the local database state', async () => {
-		await db
-			.update(users)
-			.set({ cancelAtPeriodEnd: true })
-			.where(eq(users.id, userId));
+  it('should return cancelAtPeriodEnd from the local database state', async () => {
+    await db
+      .update(users)
+      .set({ cancelAtPeriodEnd: true })
+      .where(eq(users.id, userId));
 
-		const { GET } = await import('@/app/api/v1/user/subscription/route');
-		const request = new NextRequest(
-			'http://localhost:3000/api/v1/user/subscription',
-			{ method: 'GET' },
-		);
+    const { GET } = await import('@/app/api/v1/user/subscription/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/subscription',
+      { method: 'GET' },
+    );
 
-		const response = await GET(request);
+    const response = await GET(request);
 
-		expect(response.status).toBe(200);
-		const body = await response.json();
-		expect(body.cancelAtPeriodEnd).toBe(true);
-	});
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.cancelAtPeriodEnd).toBe(true);
+  });
 });

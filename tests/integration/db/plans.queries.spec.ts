@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-	getPlanDetailForRead,
-	listLightweightPlansForApi,
+  getPlanDetailForRead,
+  listLightweightPlansForApi,
 } from '@/features/plans/read-projection';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
@@ -11,101 +11,101 @@ import { createTestUser } from '../../fixtures/users';
 const NON_EXISTENT_PLAN_ID = '00000000-0000-0000-0000-000000000000';
 
 describe('Plan Queries - Tenant Scoping', () => {
-	let ownerId: string;
-	let attackerId: string;
-	let ownerPlanId: string;
-	let ownerPlanTopic: string;
+  let ownerId: string;
+  let attackerId: string;
+  let ownerPlanId: string;
+  let ownerPlanTopic: string;
 
-	beforeEach(async () => {
-		const owner = await createTestUser();
-		const attacker = await createTestUser();
-		ownerId = owner.id;
-		attackerId = attacker.id;
+  beforeEach(async () => {
+    const owner = await createTestUser();
+    const attacker = await createTestUser();
+    ownerId = owner.id;
+    attackerId = attacker.id;
 
-		const plan = await createTestPlan({
-			userId: ownerId,
-			visibility: 'private',
-			generationStatus: 'ready',
-		});
-		ownerPlanId = plan.id;
-		ownerPlanTopic = plan.topic;
+    const plan = await createTestPlan({
+      userId: ownerId,
+      visibility: 'private',
+      generationStatus: 'ready',
+    });
+    ownerPlanId = plan.id;
+    ownerPlanTopic = plan.topic;
 
-		const module = await createTestModule({
-			planId: ownerPlanId,
-			title: 'Test Module',
-			description: 'Test description',
-			estimatedMinutes: 60,
-		});
+    const module = await createTestModule({
+      planId: ownerPlanId,
+      title: 'Test Module',
+      description: 'Test description',
+      estimatedMinutes: 60,
+    });
 
-		await createTestTask({
-			moduleId: module.id,
-			title: 'Test Task',
-			description: 'Test task description',
-			estimatedMinutes: 30,
-		});
-	});
+    await createTestTask({
+      moduleId: module.id,
+      title: 'Test Task',
+      description: 'Test task description',
+      estimatedMinutes: 30,
+    });
+  });
 
-	describe('getPlanDetailForRead', () => {
-		it('returns plan detail for owner', async () => {
-			const detail = await getPlanDetailForRead({
-				planId: ownerPlanId,
-				userId: ownerId,
-			});
+  describe('getPlanDetailForRead', () => {
+    it('returns plan detail for owner', async () => {
+      const detail = await getPlanDetailForRead({
+        planId: ownerPlanId,
+        userId: ownerId,
+      });
 
-			expect(detail).not.toBeNull();
-			expect(detail?.id).toBe(ownerPlanId);
-			expect(detail?.topic).toBe(ownerPlanTopic);
-		});
+      expect(detail).not.toBeNull();
+      expect(detail?.id).toBe(ownerPlanId);
+      expect(detail?.topic).toBe(ownerPlanTopic);
+    });
 
-		it('returns null when accessing plan owned by another user (cross-tenant protection)', async () => {
-			const detail = await getPlanDetailForRead({
-				planId: ownerPlanId,
-				userId: attackerId,
-			});
+    it('returns null when accessing plan owned by another user (cross-tenant protection)', async () => {
+      const detail = await getPlanDetailForRead({
+        planId: ownerPlanId,
+        userId: attackerId,
+      });
 
-			expect(detail).toBeNull();
-		});
+      expect(detail).toBeNull();
+    });
 
-		it('returns null for non-existent plan', async () => {
-			const detail = await getPlanDetailForRead({
-				planId: NON_EXISTENT_PLAN_ID,
-				userId: ownerId,
-			});
+    it('returns null for non-existent plan', async () => {
+      const detail = await getPlanDetailForRead({
+        planId: NON_EXISTENT_PLAN_ID,
+        userId: ownerId,
+      });
 
-			expect(detail).toBeNull();
-		});
-	});
+      expect(detail).toBeNull();
+    });
+  });
 
-	describe('getPlanAttemptsForUser', () => {
-		it('returns attempts for owner', async () => {
-			const result = await getPlanAttemptsForUser(ownerPlanId, ownerId);
+  describe('getPlanAttemptsForUser', () => {
+    it('returns attempts for owner', async () => {
+      const result = await getPlanAttemptsForUser(ownerPlanId, ownerId);
 
-			expect(result).not.toBeNull();
-			expect(result?.plan.id).toBe(ownerPlanId);
-			expect(result?.plan.topic).toBe(ownerPlanTopic);
-			expect(result?.plan.generationStatus).toBe('ready');
-			// Ownership is already enforced by the WHERE clause in the query
-		});
+      expect(result).not.toBeNull();
+      expect(result?.plan.id).toBe(ownerPlanId);
+      expect(result?.plan.topic).toBe(ownerPlanTopic);
+      expect(result?.plan.generationStatus).toBe('ready');
+      // Ownership is already enforced by the WHERE clause in the query
+    });
 
-		it('returns null when accessing plan owned by another user (cross-tenant protection)', async () => {
-			const result = await getPlanAttemptsForUser(ownerPlanId, attackerId);
+    it('returns null when accessing plan owned by another user (cross-tenant protection)', async () => {
+      const result = await getPlanAttemptsForUser(ownerPlanId, attackerId);
 
-			expect(result).toBeNull();
-		});
-	});
+      expect(result).toBeNull();
+    });
+  });
 
-	describe('pagination validation', () => {
-		it('rejects invalid lightweight summary pagination instead of silently clamping', async () => {
-			await expect(
-				listLightweightPlansForApi({ userId: ownerId, options: { limit: 0 } }),
-			).rejects.toThrow('limit must be an integer greater than or equal to 1');
+  describe('pagination validation', () => {
+    it('rejects invalid lightweight summary pagination instead of silently clamping', async () => {
+      await expect(
+        listLightweightPlansForApi({ userId: ownerId, options: { limit: 0 } }),
+      ).rejects.toThrow('limit must be an integer greater than or equal to 1');
 
-			await expect(
-				listLightweightPlansForApi({
-					userId: ownerId,
-					options: { offset: -1 },
-				}),
-			).rejects.toThrow('offset must be an integer greater than or equal to 0');
-		});
-	});
+      await expect(
+        listLightweightPlansForApi({
+          userId: ownerId,
+          options: { offset: -1 },
+        }),
+      ).rejects.toThrow('offset must be an integer greater than or equal to 0');
+    });
+  });
 });

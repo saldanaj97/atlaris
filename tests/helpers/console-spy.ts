@@ -10,18 +10,18 @@ type ConsoleMethod = 'log' | 'info' | 'warn' | 'error' | 'debug';
  * use inside `afterEach`.
  */
 export function spyOnConsole(method: ConsoleMethod): {
-	spy: MockInstance<(typeof console)[ConsoleMethod]>;
-	restore: () => void;
+  spy: MockInstance<(typeof console)[ConsoleMethod]>;
+  restore: () => void;
 } {
-	const spy = vi
-		.spyOn(console, method)
-		.mockImplementation(() => undefined) as MockInstance<
-		(typeof console)[ConsoleMethod]
-	>;
-	return {
-		spy,
-		restore: () => {
-			spy.mockRestore();
-		},
-	};
+  const spy = vi
+    .spyOn(console, method)
+    .mockImplementation(() => undefined) as MockInstance<
+    (typeof console)[ConsoleMethod]
+  >;
+  return {
+    spy,
+    restore: () => {
+      spy.mockRestore();
+    },
+  };
 }

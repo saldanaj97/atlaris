@@ -1,5 +1,5 @@
 ---
-description: 
+description:
 alwaysApply: false
 ---
 
@@ -45,17 +45,17 @@ Use the same path aliases as the rest of the repo instead of long `../../../../`
 - **`@/`** — application code under `src/` (e.g. components under test, shared modules). Matches production import style.
 - **`@tests/`** — anything under `tests/` (fixtures, `helpers/`, `mocks/`, shared test utilities). Example: `@tests/helpers/deferred-promise`, `@tests/mocks/unit/client-logger.unit`, `@tests/fixtures/plans`.
 
-Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases` (`vitest.config.ts`) so unit tests resolve them reliably. When a file must load side-effect mocks **before** other imports, keep that order; if Biome’s `organizeImports` would break it, use a targeted `biome-ignore` (see root `docs/agent-context/learnings.md`).
+Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases` (`vitest.config.ts`) so unit tests resolve them reliably. When a file must load side-effect mocks **before** other imports, keep that order; Prettier does not organize imports, so do not add import-sorting tooling casually.
 
 ## Test Types
 
-| Type        | Setup                 | Concurrency | DB  | Timeout |
-| ----------- | --------------------- | ----------- | --- | ------- |
-| Unit        | `tests/unit/setup.ts` | Parallel    | No  | 20s     |
-| Integration | `tests/setup.ts`      | Sequential  | Yes | 90s     |
-| E2E         | `tests/setup.ts`      | Sequential  | Yes | 90s     |
-| Security    | `tests/setup.ts`      | Sequential  | Yes | 90s     |
-| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s     |
+| Type        | Setup                 | Concurrency                           | DB                  | Timeout |
+| ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
+| Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
+| Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
+| E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
+| Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
+| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s    |
 
 ## Commands
 

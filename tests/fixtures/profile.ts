@@ -3,24 +3,24 @@
  */
 
 interface ProfileFixture {
-	id: string;
-	name: string;
-	email: string;
-	subscriptionTier: string;
-	subscriptionStatus: string;
-	createdAt: string;
+  id: string;
+  name: string;
+  email: string;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  createdAt: string;
 }
 
 export function buildProfile(
-	overrides: Partial<ProfileFixture> = {},
+  overrides: Partial<ProfileFixture> = {},
 ): ProfileFixture {
-	return {
-		id: crypto.randomUUID(),
-		name: 'Ada Lovelace',
-		email: 'ada@example.com',
-		subscriptionTier: 'free',
-		subscriptionStatus: 'active',
-		createdAt: '2025-06-15T10:00:00.000Z',
-		...overrides,
-	};
+  return {
+    id: crypto.randomUUID(),
+    name: 'Ada Lovelace',
+    email: 'ada@example.com',
+    subscriptionTier: 'free',
+    subscriptionStatus: 'active',
+    createdAt: '2025-06-15T10:00:00.000Z',
+    ...overrides,
+  };
 }

@@ -3,10 +3,10 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6);
 
 function sanitizeScenario(scenario: string): string {
-	return scenario
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '-')
-		.replace(/^-+|-+$/g, '');
+  return scenario
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 /**
@@ -14,10 +14,10 @@ function sanitizeScenario(scenario: string): string {
  * @param scenario - Human-friendly scenario name
  */
 export function buildTestAuthUserId(scenario: string): string {
-	const timestamp = Date.now().toString(36);
-	const suffix = nanoid();
-	const sanitized = sanitizeScenario(scenario || 'test');
-	return `auth_test_${sanitized}-${timestamp}-${suffix}`;
+  const timestamp = Date.now().toString(36);
+  const suffix = nanoid();
+  const sanitized = sanitizeScenario(scenario || 'test');
+  return `auth_test_${sanitized}-${timestamp}-${suffix}`;
 }
 
 /**
@@ -25,5 +25,5 @@ export function buildTestAuthUserId(scenario: string): string {
  * @param authUserId - Auth user id used to build the email
  */
 export function buildTestEmail(authUserId: string): string {
-	return `${authUserId}@example.test`;
+  return `${authUserId}@example.test`;
 }

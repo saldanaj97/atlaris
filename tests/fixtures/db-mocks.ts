@@ -13,22 +13,22 @@ import type { DbClient } from '@/lib/db/types';
  * `something as unknown as DbClient`, which silently masked shape drift.
  */
 export function makeDbClient(overrides: Partial<DbClient> = {}): DbClient {
-	const fallback = (method: string) =>
-		vi.fn().mockImplementation(() => {
-			throw new Error(
-				`makeDbClient: ${method}() called but no implementation was provided. Pass it in the overrides argument.`,
-			);
-		});
+  const fallback = (method: string) =>
+    vi.fn().mockImplementation(() => {
+      throw new Error(
+        `makeDbClient: ${method}() called but no implementation was provided. Pass it in the overrides argument.`,
+      );
+    });
 
-	return {
-		select: overrides.select ?? fallback('select'),
-		insert: overrides.insert ?? fallback('insert'),
-		update: overrides.update ?? fallback('update'),
-		delete: overrides.delete ?? fallback('delete'),
-		transaction: overrides.transaction ?? fallback('transaction'),
-		execute: overrides.execute ?? fallback('execute'),
-		query: overrides.query ?? fallback('query'),
-	} as DbClient;
+  return {
+    select: overrides.select ?? fallback('select'),
+    insert: overrides.insert ?? fallback('insert'),
+    update: overrides.update ?? fallback('update'),
+    delete: overrides.delete ?? fallback('delete'),
+    transaction: overrides.transaction ?? fallback('transaction'),
+    execute: overrides.execute ?? fallback('execute'),
+    query: overrides.query ?? fallback('query'),
+  } as DbClient;
 }
 
 /**
@@ -37,7 +37,7 @@ export function makeDbClient(overrides: Partial<DbClient> = {}): DbClient {
  * make their intent explicit at the call site.
  */
 export function makeAttemptsDbClient(
-	overrides: Partial<AttemptsDbClient> = {},
+  overrides: Partial<AttemptsDbClient> = {},
 ): AttemptsDbClient {
-	return makeDbClient(overrides);
+  return makeDbClient(overrides);
 }
