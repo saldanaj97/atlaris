@@ -1,15 +1,14 @@
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
 import { Lock } from 'lucide-react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 export interface LockedFeatureCardProps {
-	icon: LucideIcon;
+	icon: ReactNode;
 	title: string;
 	description: string;
 	className?: string;
@@ -20,7 +19,7 @@ export interface LockedFeatureCardProps {
  * dashed edge — avoids washing entire card with opacity.
  */
 export function LockedFeatureCard({
-	icon: Icon,
+	icon,
 	title,
 	description,
 	className,
@@ -41,7 +40,9 @@ export function LockedFeatureCard({
 				</div>
 
 				<div className="flex flex-col gap-3 pr-8">
-					<Icon className="text-primary h-8 w-8 shrink-0" aria-hidden="true" />
+					<span className="shrink-0" aria-hidden="true">
+						{icon}
+					</span>
 					<div>
 						<h3 className="font-medium text-foreground">{title}</h3>
 						<p className="text-muted-foreground mt-1 text-sm">{description}</p>

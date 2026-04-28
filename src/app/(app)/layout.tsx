@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 
 import SiteHeader from '@/components/shared/SiteHeader';
 
+export const dynamic = 'force-dynamic';
+
 export default function AppLayout({
 	children,
 }: Readonly<{ children: ReactNode }>) {

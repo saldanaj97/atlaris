@@ -18,43 +18,45 @@ export const metadata: Metadata = {
 	},
 };
 
+const iconClass = 'text-primary h-8 w-8 shrink-0';
+
 const ACHIEVEMENTS = [
 	{
-		icon: Trophy,
+		icon: <Trophy className={iconClass} aria-hidden />,
 		name: 'First Steps',
 		description:
 			'Complete your first learning plan and kickstart your growth journey.',
 	},
 	{
-		icon: Flame,
+		icon: <Flame className={iconClass} aria-hidden />,
 		name: 'Streak Master',
 		description:
 			'Maintain a daily learning streak and build unstoppable momentum.',
 	},
 	{
-		icon: BookOpen,
+		icon: <BookOpen className={iconClass} aria-hidden />,
 		name: 'Knowledge Seeker',
 		description:
 			'Complete multiple modules and expand your expertise across topics.',
 	},
 	{
-		icon: Zap,
+		icon: <Zap className={iconClass} aria-hidden />,
 		name: 'Speed Learner',
 		description:
 			'Finish plans ahead of schedule and prove you thrive under pressure.',
 	},
 	{
-		icon: Star,
+		icon: <Star className={iconClass} aria-hidden />,
 		name: 'Consistency King',
 		description: 'Log regular weekly study sessions and make learning a habit.',
 	},
 	{
-		icon: Target,
+		icon: <Target className={iconClass} aria-hidden />,
 		name: 'Goal Crusher',
 		description:
 			'Hit every learning target you set and master the art of follow-through.',
 	},
-] as const;
+];
 
 export default function AchievementsPage(): JSX.Element {
 	return (

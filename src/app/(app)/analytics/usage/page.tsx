@@ -20,32 +20,34 @@ export const metadata: Metadata = {
 	},
 };
 
+const iconClass = 'text-primary h-8 w-8 shrink-0';
+
 const PREVIEW_CARDS = [
 	{
-		icon: Clock,
+		icon: <Clock className={iconClass} aria-hidden />,
 		title: 'Study Time Tracking',
 		description:
 			'See exactly how many hours you spend learning each week. Spot your most productive days and find your ideal study rhythm.',
 	},
 	{
-		icon: Target,
+		icon: <Target className={iconClass} aria-hidden />,
 		title: 'Completion Rates',
 		description:
 			"Track your progress across every plan. Know which topics you're crushing and where you might need a little more focus.",
 	},
 	{
-		icon: Flame,
+		icon: <Flame className={iconClass} aria-hidden />,
 		title: 'Learning Streaks',
 		description:
 			'Build consistency with daily and weekly streak tracking. Small wins compound — watch your momentum grow.',
 	},
 	{
-		icon: BarChart3,
+		icon: <BarChart3 className={iconClass} aria-hidden />,
 		title: 'Weekly Reports',
 		description:
 			'Get a clear snapshot of your week — time invested, milestones hit, and personalized suggestions for what to tackle next.',
 	},
-] as const;
+];
 
 export default function UsageAnalyticsPage(): JSX.Element {
 	return (
