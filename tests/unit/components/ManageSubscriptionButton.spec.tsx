@@ -1,7 +1,7 @@
 // biome-ignore assist/source/organizeImports: sonner mock must load before the component under test
 import '../../mocks/unit/sonner.unit';
 
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
+import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
+import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/(marketing)/pricing/components/PricingMissingStripeNotice';
 import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
@@ -9,7 +10,6 @@ import {
 } from '@/app/(marketing)/pricing/components/pricing-config';
 import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
 import { fetchStripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deriveBillingSubscriptionSnapshot } from '@/features/billing/account-snapshot';

@@ -81,17 +81,20 @@ vi.mock(
 	}),
 );
 
-vi.mock('@/components/billing/ManageSubscriptionButton', () => ({
-	default: (props: { canOpenBillingPortal: boolean }) => {
-		mocks.manageSubscriptionButtonMock(props);
-		return (
-			<div
-				data-testid="manage-subscription-button"
-				data-can-open-billing-portal={String(props.canOpenBillingPortal)}
-			/>
-		);
-	},
-}));
+vi.mock(
+	'@/app/(app)/settings/billing/components/ManageSubscriptionButton',
+	() => ({
+		default: (props: { canOpenBillingPortal: boolean }) => {
+			mocks.manageSubscriptionButtonMock(props);
+			return (
+				<div
+					data-testid="manage-subscription-button"
+					data-can-open-billing-portal={String(props.canOpenBillingPortal)}
+				/>
+			);
+		},
+	}),
+);
 
 async function renderPricingPage(): Promise<void> {
 	// Reset the module cache before dynamically importing '@/app/(marketing)/pricing/page'

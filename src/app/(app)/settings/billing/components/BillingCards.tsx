@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
 import { isUnlimitedNumber } from '@/app/(app)/plans/components/usage-types';
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import ManageSubscriptionButton from './ManageSubscriptionButton';
 
 /**
  * Async component that fetches subscription and usage data.
