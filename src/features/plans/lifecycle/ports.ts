@@ -9,13 +9,17 @@
 import type {
   AttemptRejection,
   AttemptReservation,
+  GenerationAttemptRecord,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
-
+import type {
+  FinalizeGenerationFailureParams,
+  FinalizeGenerationSuccessInput,
+} from './generation-finalization/types';
 import type {
   AtomicInsertResult,
   DurationCapResult,
@@ -114,6 +118,8 @@ type GenerationRunSuccess = {
   metadata: Record<string, unknown>;
   usage: CanonicalAIUsage;
   durationMs: number;
+  reservation: AttemptReservation;
+  extendedTimeout: boolean;
 };
 
 type GenerationRunFailure = {
@@ -123,6 +129,10 @@ type GenerationRunFailure = {
   metadata?: Record<string, unknown>;
   usage?: CanonicalAIUsage;
   durationMs: number;
+  /** Present when an in-progress attempt row exists (lifecycle must finalize). */
+  reservation?: AttemptReservation;
+  timedOut?: boolean;
+  extendedTimeout?: boolean;
   reservationRejectionReason?: AttemptRejection['reason'];
 };
 
@@ -134,6 +144,24 @@ export interface GenerationPort {
     this: void,
     params: GenerationRunParams,
   ): Promise<GenerationRunResult>;
+}
+
+// ─── GenerationFinalizationPort ───────────────────────────────────
+
+/**
+ * Single-transaction settlement for plan generation outcomes (attempt + content + plan status + usage).
+ * Not used for stream cleanup paths that only touch {@link PlanGenerationStatusPort}.
+ */
+export interface GenerationFinalizationPort {
+  finalizeSuccess(
+    this: void,
+    input: FinalizeGenerationSuccessInput,
+  ): Promise<GenerationAttemptRecord>;
+
+  finalizeFailure(
+    this: void,
+    input: FinalizeGenerationFailureParams,
+  ): Promise<GenerationAttemptRecord | void>;
 }
 
 // ─── UsageRecordingPort ──────────────────────────────────────────

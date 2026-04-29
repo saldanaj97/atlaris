@@ -2,6 +2,7 @@
 export { createPlanLifecycleService } from './factory';
 // ─── Ports ───────────────────────────────────────────────────────
 export type {
+  GenerationFinalizationPort,
   GenerationPort,
   JobQueuePort,
   PlanGenerationStatusPort,

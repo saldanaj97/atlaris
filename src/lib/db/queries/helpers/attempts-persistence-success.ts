@@ -4,10 +4,12 @@ import {
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
   AttemptReservation,
+  FinalizeSuccessPersistenceInTxParams,
   FinalizeSuccessPersistenceParams,
   GenerationAttemptRecord,
   NormalizedModuleData,
 } from '@/lib/db/queries/types/attempts.types';
+import type { DbTransaction } from '@/lib/db/types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
 import { and, eq } from 'drizzle-orm';
 
@@ -39,8 +41,9 @@ export function whereInProgressGenerationAttemptForPlan(params: {
   );
 }
 
-export async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams,
+export async function persistSuccessfulAttemptInTx(
+  tx: DbTransaction,
+  params: FinalizeSuccessPersistenceInTxParams,
 ): Promise<GenerationAttemptRecord> {
   const {
     attemptId,
@@ -52,95 +55,101 @@ export async function persistSuccessfulAttempt(
     tasksCount,
     durationMs,
     metadata,
-    dbClient,
   } = params;
+
+  await tx.delete(modules).where(eq(modules.planId, planId));
+
+  const moduleValues = normalizedModules.map(
+    (normalizedModule: NormalizedModuleData, index: number) => ({
+      planId,
+      order: index + 1,
+      title: normalizedModule.title,
+      description: normalizedModule.description,
+      estimatedMinutes: normalizedModule.estimatedMinutes,
+    }),
+  );
+  const insertedModuleRows =
+    moduleValues.length > 0
+      ? await tx
+          .insert(modules)
+          .values(moduleValues)
+          .returning({ id: modules.id })
+      : [];
+
+  if (insertedModuleRows.length !== normalizedModules.length) {
+    throw new Error(
+      `Failed to insert generated modules for attempt ${attemptId}: expected ${normalizedModules.length}, inserted ${insertedModuleRows.length}.`,
+    );
+  }
+
+  const taskValues: TaskInsertValue[] = insertedModuleRows.flatMap(
+    (moduleRow, moduleIndex) => {
+      const moduleEntry = normalizedModules[moduleIndex];
+
+      if (!moduleEntry) {
+        throw new Error(
+          `Failed to map inserted module ${moduleIndex + 1} to generated tasks for attempt ${attemptId}.`,
+        );
+      }
+
+      return moduleEntry.tasks.map((task, taskIndex) => ({
+        moduleId: moduleRow.id,
+        order: taskIndex + 1,
+        title: task.title,
+        description: task.description,
+        estimatedMinutes: task.estimatedMinutes,
+      }));
+    },
+  );
+
+  if (taskValues.length > 0) {
+    const insertedTaskRows = await tx
+      .insert(tasks)
+      .values(taskValues)
+      .returning({ id: tasks.id });
+
+    if (insertedTaskRows.length !== taskValues.length) {
+      throw new Error(
+        `Failed to insert generated tasks for attempt ${attemptId}: expected ${taskValues.length}, inserted ${insertedTaskRows.length}.`,
+      );
+    }
+  }
+
+  const [attempt] = await tx
+    .update(generationAttempts)
+    .set({
+      status: 'success',
+      classification: null,
+      durationMs: Math.max(0, Math.round(durationMs)),
+      modulesCount,
+      tasksCount,
+      truncatedTopic: preparation.sanitized.topic.truncated,
+      truncatedNotes: preparation.sanitized.notes.truncated ?? false,
+      normalizedEffort:
+        normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
+      metadata,
+    })
+    .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
+    .returning();
+
+  if (!attempt) {
+    throw new Error(
+      `Failed to finalize successful generation attempt ${attemptId} for plan ${planId}; attempt was not in progress.`,
+    );
+  }
+
+  return attempt;
+}
+
+export async function persistSuccessfulAttempt(
+  params: FinalizeSuccessPersistenceParams,
+): Promise<GenerationAttemptRecord> {
+  const { dbClient, ...inTxParams } = params;
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   return dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
-    await tx.delete(modules).where(eq(modules.planId, planId));
-
-    const moduleValues = normalizedModules.map(
-      (normalizedModule: NormalizedModuleData, index: number) => ({
-        planId,
-        order: index + 1,
-        title: normalizedModule.title,
-        description: normalizedModule.description,
-        estimatedMinutes: normalizedModule.estimatedMinutes,
-      }),
-    );
-    const insertedModuleRows =
-      moduleValues.length > 0
-        ? await tx
-            .insert(modules)
-            .values(moduleValues)
-            .returning({ id: modules.id })
-        : [];
-
-    if (insertedModuleRows.length !== normalizedModules.length) {
-      throw new Error(
-        `Failed to insert generated modules for attempt ${attemptId}: expected ${normalizedModules.length}, inserted ${insertedModuleRows.length}.`,
-      );
-    }
-
-    const taskValues: TaskInsertValue[] = insertedModuleRows.flatMap(
-      (moduleRow, moduleIndex) => {
-        const moduleEntry = normalizedModules[moduleIndex];
-
-        if (!moduleEntry) {
-          throw new Error(
-            `Failed to map inserted module ${moduleIndex + 1} to generated tasks for attempt ${attemptId}.`,
-          );
-        }
-
-        return moduleEntry.tasks.map((task, taskIndex) => ({
-          moduleId: moduleRow.id,
-          order: taskIndex + 1,
-          title: task.title,
-          description: task.description,
-          estimatedMinutes: task.estimatedMinutes,
-        }));
-      },
-    );
-
-    if (taskValues.length > 0) {
-      const insertedTaskRows = await tx
-        .insert(tasks)
-        .values(taskValues)
-        .returning({ id: tasks.id });
-
-      if (insertedTaskRows.length !== taskValues.length) {
-        throw new Error(
-          `Failed to insert generated tasks for attempt ${attemptId}: expected ${taskValues.length}, inserted ${insertedTaskRows.length}.`,
-        );
-      }
-    }
-
-    const [attempt] = await tx
-      .update(generationAttempts)
-      .set({
-        status: 'success',
-        classification: null,
-        durationMs: Math.max(0, Math.round(durationMs)),
-        modulesCount,
-        tasksCount,
-        truncatedTopic: preparation.sanitized.topic.truncated,
-        truncatedNotes: preparation.sanitized.notes.truncated ?? false,
-        normalizedEffort:
-          normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
-        metadata,
-      })
-      .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
-      .returning();
-
-    if (!attempt) {
-      throw new Error(
-        `Failed to finalize successful generation attempt ${attemptId} for plan ${planId}; attempt was not in progress.`,
-      );
-    }
-
-    return attempt;
+    return persistSuccessfulAttemptInTx(tx, inTxParams);
   });
 }

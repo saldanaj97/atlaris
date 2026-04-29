@@ -14,15 +14,62 @@ import {
 import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+
+import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
 
 type PlanWriteClient = Pick<DbClient, 'update'>;
+type PlanUpdateTx = Pick<DbTransaction, 'update'>;
+
+export async function markPlanGenerationSuccessInTx(
+  tx: PlanUpdateTx,
+  planId: string,
+  timestamp: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(learningPlans)
+    .set({
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: timestamp,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId))
+    .returning({ id: learningPlans.id });
+
+  if (updated.length === 0) {
+    throw new Error(
+      `markPlanGenerationSuccessInTx: no plan updated for id ${planId}`,
+    );
+  }
+}
+
+export async function markPlanGenerationFailureInTx(
+  tx: PlanUpdateTx,
+  planId: string,
+  timestamp: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(learningPlans)
+    .set({
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId))
+    .returning({ id: learningPlans.id });
+
+  if (updated.length === 0) {
+    throw new Error(
+      `markPlanGenerationFailureInTx: no plan updated for id ${planId}`,
+    );
+  }
+}
 
 export async function atomicCheckAndInsertPlan(
   userId: string,

@@ -5,20 +5,22 @@
  * All interaction with external concerns goes through injected ports.
  *
  * Returns discriminated union results for expected lifecycle outcomes.
- * Only unexpected errors (bugs) propagate as thrown exceptions.
+ * Generation finalization can throw on DB/RLS/infra errors after provider success;
+ * stream and worker layers treat those as unexpected failures.
  */
 
 import { logger } from '@/lib/logging/logger';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
-import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
 import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
+
+import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
 import type {
+  GenerationFinalizationPort,
   GenerationPort,
   GenerationRunResult,
   JobQueuePort,
   PlanPersistencePort,
   QuotaPort,
-  UsageRecordingPort,
 } from './ports';
 import type {
   CreateAiPlanInput,
@@ -38,7 +40,7 @@ export interface PlanLifecycleServicePorts {
   readonly planPersistence: PlanPersistencePort;
   readonly quota: QuotaPort;
   readonly generation: GenerationPort;
-  readonly usageRecording: UsageRecordingPort;
+  readonly generationFinalization: GenerationFinalizationPort;
   readonly jobQueue: JobQueuePort;
 }
 
@@ -91,11 +93,12 @@ export class PlanLifecycleService {
   /**
    * Process a generation attempt for an existing plan.
    *
-   * Flow: run generation → on success: mark ready + record usage
-   *       → on retryable failure: mark failed (no usage)
-   *       → on permanent failure: mark failed + record usage
+   * Flow: run generation (unfinalized) → single-transaction finalization (attempt + plan + usage)
+   *       → on retryable failure: mark failed via finalization (no usage)
+   *       → on permanent failure: mark failed + usage via finalization when usage exists
    *
-   * @returns A discriminated union result — never throws for lifecycle outcomes.
+   * @returns A discriminated union result for expected lifecycle outcomes.
+   * @throws When post-provider finalization fails (DB commit, RLS, etc.).
    */
   async processGenerationAttempt(
     input: ProcessGenerationInput,
@@ -105,7 +108,6 @@ export class PlanLifecycleService {
       'plan.lifecycle.generation: attempt started',
     );
 
-    // 1. Run generation via port
     const generationResult = await this.ports.generation.runGeneration({
       planId: input.planId,
       userId: input.userId,
@@ -124,14 +126,18 @@ export class PlanLifecycleService {
         : {}),
     });
 
-    // 2. Handle success
     if (generationResult.status === 'success') {
-      await this.ports.planPersistence.markGenerationSuccess(input.planId);
-
-      await this.ports.usageRecording.recordUsage({
+      await this.ports.generationFinalization.finalizeSuccess({
+        planId: input.planId,
         userId: input.userId,
+        attemptId: generationResult.reservation.attemptId,
+        preparation: generationResult.reservation,
+        modules: generationResult.modules,
+        providerMetadata: generationResult.metadata,
         usage: generationResult.usage,
-        kind: 'plan',
+        durationMs: generationResult.durationMs,
+        extendedTimeout: generationResult.extendedTimeout,
+        usageKind: 'plan',
       });
 
       logger.info(
@@ -148,16 +154,43 @@ export class PlanLifecycleService {
       };
     }
 
-    // 3. Handle failure — determine retryability
     const { classification, error } = generationResult;
     const retryable = isRetryableClassification(classification);
 
     if (shouldMarkPlanFailedAfterGenerationFailure(generationResult)) {
-      await this.ports.planPersistence.markGenerationFailure(input.planId);
+      if (generationResult.reservationRejectionReason !== undefined) {
+        await this.ports.generationFinalization.finalizeFailure({
+          variant: 'plan_only',
+          planId: input.planId,
+          userId: input.userId,
+          classification,
+          error,
+          durationMs: generationResult.durationMs,
+          usage: generationResult.usage,
+          usageKind: 'plan',
+          retryable,
+        });
+      } else if (generationResult.reservation) {
+        await this.ports.generationFinalization.finalizeFailure({
+          variant: 'reserved_attempt',
+          planId: input.planId,
+          userId: input.userId,
+          attemptId: generationResult.reservation.attemptId,
+          preparation: generationResult.reservation,
+          classification,
+          error,
+          durationMs: generationResult.durationMs,
+          timedOut: generationResult.timedOut ?? false,
+          extendedTimeout: generationResult.extendedTimeout ?? false,
+          providerMetadata: generationResult.metadata,
+          usage: generationResult.usage,
+          usageKind: 'plan',
+          retryable,
+        });
+      }
     }
 
     if (retryable) {
-      // Retryable failure — do NOT record usage (user will retry)
       logger.warn(
         { planId: input.planId, classification },
         'plan.lifecycle.generation: retryable failure',
@@ -167,15 +200,6 @@ export class PlanLifecycleService {
         classification,
         error,
       };
-    }
-
-    // Permanent failure — record usage if available (attempt consumed)
-    if (generationResult.usage) {
-      await this.ports.usageRecording.recordUsage({
-        userId: input.userId,
-        usage: generationResult.usage,
-        kind: 'plan',
-      });
     }
 
     logger.warn(

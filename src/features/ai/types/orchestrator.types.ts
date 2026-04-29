@@ -90,3 +90,38 @@ export type GenerationFailureResult = {
 export type GenerationResult =
   | GenerationSuccessResult
   | GenerationFailureResult;
+
+/** Unfinalized success after provider + parse + pace (no DB finalize yet). */
+export type GenerationExecutionSuccess = {
+  readonly kind: 'success';
+  readonly reservation: AttemptReservation;
+  readonly modules: ParsedModule[];
+  readonly rawText: string;
+  readonly metadata: ProviderMetadata;
+  readonly durationMs: number;
+  readonly extendedTimeout: boolean;
+};
+
+/** Unfinalized failure when an in_progress attempt row exists. */
+export type GenerationExecutionFailureReserved = {
+  readonly kind: 'failure_reserved';
+  readonly reservation: AttemptReservation;
+  readonly classification: FailureClassification;
+  readonly error: Error;
+  readonly metadata?: ProviderMetadata;
+  readonly rawText?: string;
+  readonly durationMs: number;
+  readonly extendedTimeout: boolean;
+  readonly timedOut: boolean;
+};
+
+/** Immediate failure (no attempt row) from reserveAttemptSlot rejection. */
+export type GenerationExecutionFailureRejected = {
+  readonly kind: 'failure_rejected';
+  readonly result: GenerationFailureResult;
+};
+
+export type GenerationExecutionResult =
+  | GenerationExecutionSuccess
+  | GenerationExecutionFailureReserved
+  | GenerationExecutionFailureRejected;

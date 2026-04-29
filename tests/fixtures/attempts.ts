@@ -6,6 +6,7 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { PLAN_GENERATION_LIMIT } from '@/features/ai/generation-policy';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -136,4 +137,30 @@ export async function seedFailedAttemptsForDurableWindow(
     promptHash: `${promptHashPrefix}-${index}`,
     metadata,
   }));
+}
+
+/** Minimal {@link AttemptReservation} for lifecycle / orchestrator unit tests. */
+export function makeAttemptReservation(
+  overrides?: Partial<AttemptReservation>,
+): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: 'test-attempt-id',
+    attemptNumber: 1,
+    startedAt: new Date('2025-01-01T00:00:00.000Z'),
+    sanitized: {
+      topic: {
+        value: 'Test Topic',
+        truncated: false,
+        originalLength: 10,
+      },
+      notes: {
+        value: undefined,
+        truncated: false,
+        originalLength: undefined,
+      },
+    },
+    promptHash: 'test-prompt-hash',
+    ...overrides,
+  };
 }

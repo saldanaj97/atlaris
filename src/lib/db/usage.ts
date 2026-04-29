@@ -2,7 +2,7 @@ import { buildModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot'
 import { microusdIntegerToBigint } from '@/features/ai/provider-cost-microusd';
 import { getDb } from '@/lib/db/runtime';
 import { aiUsageEvents } from '@/lib/db/schema';
-import type { DbClient } from '@/lib/db/types';
+import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { ModelPricingSnapshotV1 } from '@/shared/types/model-pricing-snapshot.types';
 
@@ -53,7 +53,14 @@ export async function recordUsage(
   params: RecordUsageParams,
   dbClient: DbClient = getDb(),
 ): Promise<void> {
-  await dbClient.insert(aiUsageEvents).values({
+  await recordUsageInTx(dbClient, params);
+}
+
+export async function recordUsageInTx(
+  tx: Pick<DbTransaction, 'insert'>,
+  params: RecordUsageParams,
+): Promise<void> {
+  await tx.insert(aiUsageEvents).values({
     userId: params.userId,
     provider: params.provider,
     model: params.model,

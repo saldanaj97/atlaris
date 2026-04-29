@@ -26,12 +26,14 @@ import {
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
+  AttemptMetadata,
   FinalizeFailureParams,
   FinalizeSuccessParams,
   GenerationAttemptRecord,
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
+import type { DbTransaction } from '@/lib/db/types';
 import { generationAttempts } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -265,6 +267,39 @@ export async function finalizeAttemptSuccess({
   return updatedAttempt;
 }
 
+export async function persistFailedAttemptInTx(
+  tx: DbTransaction,
+  params: {
+    readonly attemptId: string;
+    readonly planId: string;
+    readonly classification: FinalizeFailureParams['classification'];
+    readonly durationMs: number;
+    readonly metadata: AttemptMetadata;
+  },
+): Promise<GenerationAttemptRecord> {
+  const { attemptId, planId, classification, durationMs, metadata } = params;
+
+  const [updatedAttempt] = await tx
+    .update(generationAttempts)
+    .set({
+      status: 'failure',
+      classification,
+      durationMs: Math.max(0, Math.round(durationMs)),
+      modulesCount: 0,
+      tasksCount: 0,
+      normalizedEffort: false,
+      metadata,
+    })
+    .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
+    .returning();
+
+  if (!updatedAttempt) {
+    throw new Error('Failed to finalize generation attempt as failure.');
+  }
+
+  return updatedAttempt;
+}
+
 /**
  * Finalizes a previously reserved attempt as failed.
  * Updates only the in-progress attempt row.
@@ -305,31 +340,19 @@ export async function finalizeAttemptFailure({
   const attempt = await dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
-    const [updatedAttempt] = await tx
-      .update(generationAttempts)
-      .set({
-        status: 'failure',
-        classification,
-        durationMs: Math.max(0, Math.round(durationMs)),
-        modulesCount: 0,
-        tasksCount: 0,
-        normalizedEffort: false,
-        metadata,
-      })
-      .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
-      .returning();
-
-    if (!updatedAttempt) {
-      throw new Error('Failed to finalize generation attempt as failure.');
-    }
-
     void (classification === 'provider_error'
       ? isProviderErrorRetryable(error)
       : isRetryableClassification(classification));
     void preparation.attemptNumber;
     void finishedAt;
 
-    return updatedAttempt;
+    return persistFailedAttemptInTx(tx, {
+      attemptId,
+      planId,
+      classification,
+      durationMs,
+      metadata,
+    });
   });
 
   logAttemptEvent('failure', {

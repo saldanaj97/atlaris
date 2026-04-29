@@ -6,13 +6,19 @@
  *
  * Receives an injected `dbClient` so that all DB writes go through the
  * same connection as the rest of the lifecycle (avoiding the closed-connection bug).
+ *
+ * `PlanLifecycleService.processGenerationAttempt` does **not** use this adapter;
+ * successful/permanent-failure usage for normal generation flows is recorded inside
+ * `generationFinalization` (single transaction with attempt, modules/tasks, plan row).
+ * Keep this port for callers that still need standalone usage recording.
  */
 
 import { incrementUsage } from '@/features/billing/usage-metrics';
-import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
-import type { DbClient } from '@/lib/db/types';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
+
+import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
+import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 type UsageRecordingAdapterDependencies = {

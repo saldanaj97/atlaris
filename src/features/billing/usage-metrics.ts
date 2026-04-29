@@ -3,10 +3,12 @@ import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { and, eq, sql } from 'drizzle-orm';
 import { UsageMetricsLoadError } from './errors';
-import { type DbClient, resolveUserTier } from './tier';
+import { resolveUserTier } from './tier';
+
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';
@@ -195,12 +197,16 @@ export async function incrementUsageInTx(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string,
-  type: 'regeneration' | 'export',
+  type: 'plan' | 'regeneration' | 'export',
 ): Promise<void> {
+  await ensureUsageMetricsExist(tx, userId, month);
+
   const updateObj =
-    type === 'regeneration'
-      ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-      : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+    type === 'plan'
+      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
+      : type === 'regeneration'
+        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
   await tx
     .update(usageMetrics)

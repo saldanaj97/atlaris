@@ -193,6 +193,12 @@ export interface FinalizeSuccessPersistenceParams {
   dbClient: AttemptsDbClient;
 }
 
+/** Same as {@link FinalizeSuccessPersistenceParams} but for an existing transaction (no `dbClient`). */
+export type FinalizeSuccessPersistenceInTxParams = Omit<
+  FinalizeSuccessPersistenceParams,
+  'dbClient'
+>;
+
 export interface UserGenerationAttemptsSinceParams {
   userId: string;
   dbClient: AttemptsReadClient;
