@@ -8,6 +8,7 @@ import { formatSkillLevel } from '@/features/plans/formatters';
 import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { useRetryGeneration } from '@/hooks/useRetryGeneration';
+import { clientLogger } from '@/lib/logging/client';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
@@ -204,31 +205,22 @@ function FailurePanel({
 }) {
   const isInterruptedWithoutError =
     viewState.retryInterrupted && !viewState.displayError;
+  const containerClass = isInterruptedWithoutError
+    ? 'flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4'
+    : 'flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4';
+  const iconClass = isInterruptedWithoutError
+    ? 'mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400'
+    : 'mt-0.5 h-5 w-5 shrink-0 text-destructive';
+  const titleClass = isInterruptedWithoutError
+    ? 'font-semibold text-amber-600 dark:text-amber-400'
+    : 'font-semibold text-destructive';
 
   return (
     <div className="space-y-4">
-      <div
-        className={
-          isInterruptedWithoutError
-            ? 'flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4'
-            : 'flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4'
-        }
-      >
-        <AlertCircle
-          className={
-            isInterruptedWithoutError
-              ? 'mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400'
-              : 'mt-0.5 h-5 w-5 shrink-0 text-destructive'
-          }
-        />
+      <div className={containerClass}>
+        <AlertCircle className={iconClass} />
         <div className="space-y-1">
-          <p
-            className={
-              isInterruptedWithoutError
-                ? 'font-semibold text-amber-600 dark:text-amber-400'
-                : 'font-semibold text-destructive'
-            }
-          >
+          <p className={titleClass}>
             {isInterruptedWithoutError
               ? 'Generation interrupted'
               : 'Generation Failed'}
@@ -296,7 +288,9 @@ function ProcessingPanel({ attempts }: { attempts: number }) {
           goals. This usually takes 5-10 seconds.
         </p>
         {attempts > 1 ? (
-          <p className="text-sm text-muted-foreground">Attempt {attempts}</p>
+          <p className="text-sm text-muted-foreground">
+            Attempt {attempts} of {MAX_RETRY_ATTEMPTS}
+          </p>
         ) : null}
       </div>
     </div>
@@ -373,7 +367,32 @@ function GenerationStatusContent({
     return <ReadyPanel />;
   }
 
-  return null;
+  clientLogger.error('Unsupported plan generation status', {
+    status: viewState.status,
+    viewState,
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div className="space-y-1">
+          <p className="font-semibold text-amber-600 dark:text-amber-400">
+            Unknown Generation Status
+          </p>
+          <p className="text-sm text-muted-foreground">
+            This plan reported an unsupported status. Refresh to check for the
+            latest state.
+          </p>
+        </div>
+      </div>
+
+      <Button onClick={onRefresh} className="w-full" variant="outline">
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Refresh
+      </Button>
+    </div>
+  );
 }
 
 function PlanDetails({ plan }: { plan: ClientPlanDetail }) {
@@ -447,8 +466,22 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
           <GenerationStatusContent
             viewState={viewState}
             isRetryDisabled={isRetryDisabled}
-            onRefresh={() => void revalidate()}
-            onRetry={() => void retryGeneration()}
+            onRefresh={() => {
+              revalidate().catch((refreshError: unknown) => {
+                clientLogger.error('Failed to refresh plan status', {
+                  error: refreshError,
+                  planId: plan.id,
+                });
+              });
+            }}
+            onRetry={() => {
+              retryGeneration().catch((retryRuntimeError: unknown) => {
+                clientLogger.error('Failed to retry plan generation', {
+                  error: retryRuntimeError,
+                  planId: plan.id,
+                });
+              });
+            }}
           />
 
           <PlanDetails plan={plan} />

@@ -10,18 +10,15 @@ import type {
 const DEFAULT_SESSIONS_PER_WEEK = 3;
 const SESSION_DAYS_OFFSET = [0, 2, 4]; // Mon, Wed, Fri (0=Mon, 2=Wed, 4=Fri)
 
-/**
- * Allocate tasks into a week-by-week schedule with three sessions per week (Mon/Wed/Fri).
- *
- * @param inputs - Schedule input object containing at least `startDate`, `weeklyHours`, and `tasks`; tasks are distributed in order and may be split across sessions.
- * @returns The generated schedule object containing `weeks` (each with start/end dates and three session days), `totalWeeks`, and `totalSessions`.
- * @throws Error if `weeklyHours` is less than or equal to 0.
- * @throws Error if `tasks` is not an array.
- * @throws Error if any task has a negative `estimatedMinutes`.
- */
-export function distributeTasksToSessions(
-  inputs: ScheduleInputs,
-): ScheduleJson {
+type ScheduleTask = ScheduleInputs['tasks'][number];
+
+type AllocationState = {
+  tasks: ScheduleTask[];
+  taskIndex: number;
+  remainingTaskMinutes: number;
+};
+
+function validateScheduleInputs(inputs: ScheduleInputs) {
   if (inputs.weeklyHours <= 0) {
     throw new Error('weeklyHours must be greater than 0');
   }
@@ -37,6 +34,103 @@ export function distributeTasksToSessions(
       );
     }
   }
+}
+
+function getPositiveTasksInOrder(tasks: ScheduleTask[]) {
+  return tasks
+    .filter((task) => task.estimatedMinutes > 0)
+    .toSorted((a, b) => a.order - b.order);
+}
+
+function buildSessionAssignment(
+  task: ScheduleTask,
+  estimatedMinutes: number,
+): SessionAssignment {
+  return {
+    taskId: task.id,
+    taskTitle: task.title,
+    estimatedMinutes,
+    moduleId: task.moduleId,
+    moduleName: task.moduleTitle || `Module ${task.moduleId}`,
+  };
+}
+
+function allocateSessionTasks(
+  state: AllocationState,
+  sessionMinutes: number,
+): SessionAssignment[] {
+  const assignments: SessionAssignment[] = [];
+  let allocatedMinutes = 0;
+
+  while (
+    allocatedMinutes < sessionMinutes &&
+    state.taskIndex < state.tasks.length
+  ) {
+    const currentTask = state.tasks[state.taskIndex];
+    const remainingSessionCapacity = sessionMinutes - allocatedMinutes;
+    const minutesToAllocate = Math.min(
+      state.remainingTaskMinutes,
+      remainingSessionCapacity,
+    );
+
+    if (minutesToAllocate <= 0) {
+      break;
+    }
+
+    assignments.push(buildSessionAssignment(currentTask, minutesToAllocate));
+    allocatedMinutes += minutesToAllocate;
+    state.remainingTaskMinutes -= minutesToAllocate;
+
+    if (state.remainingTaskMinutes === 0) {
+      state.taskIndex++;
+      state.remainingTaskMinutes =
+        state.tasks[state.taskIndex]?.estimatedMinutes ?? 0;
+    }
+  }
+
+  return assignments;
+}
+
+function buildWeekSchedule(params: {
+  inputs: ScheduleInputs;
+  weekNumber: number;
+  state: AllocationState;
+  sessionMinutes: number;
+}): Week {
+  const { startDate, endDate } = getWeekBoundaries(
+    params.inputs.startDate,
+    params.weekNumber,
+  );
+
+  const days = SESSION_DAYS_OFFSET.map((dayOffset, sessionIdx): Day => {
+    return {
+      dayNumber: sessionIdx + 1,
+      date: addDaysToDate(startDate, dayOffset),
+      sessions: allocateSessionTasks(params.state, params.sessionMinutes),
+    };
+  });
+
+  return {
+    weekNumber: params.weekNumber,
+    startDate,
+    endDate,
+    days,
+  };
+}
+
+/**
+ * Allocate tasks into a week-by-week schedule with three sessions per week (Mon/Wed/Fri).
+ *
+ * @param inputs - Schedule input object containing at least `startDate`, `weeklyHours`, and `tasks`; tasks are distributed in order and may be split across sessions.
+ * @returns The generated schedule object containing `weeks` (each with start/end dates and three session days), `totalWeeks`, and `totalSessions`.
+ * @throws Error if `weeklyHours` is less than or equal to 0.
+ * @throws Error if `tasks` is not an array.
+ * @throws Error if any task has a negative `estimatedMinutes`.
+ */
+export function distributeTasksToSessions(
+  inputs: ScheduleInputs,
+): ScheduleJson {
+  validateScheduleInputs(inputs);
 
   const totalMinutes = inputs.tasks.reduce(
     (sum, t) => sum + t.estimatedMinutes,
@@ -55,80 +149,25 @@ export function distributeTasksToSessions(
   const totalWeeks = Math.ceil(totalMinutes / minutesPerWeek);
 
   // Sort by order for deterministic distribution; drop zero-minute tasks (no session capacity used).
-  const sortedTasks = inputs.tasks
-    .filter((t) => t.estimatedMinutes > 0)
-    .toSorted((a, b) => a.order - b.order);
+  const sortedTasks = getPositiveTasksInOrder(inputs.tasks);
 
   const weeks: Week[] = [];
-  let taskIndex = 0;
-  let remainingTaskMinutes = sortedTasks[0]?.estimatedMinutes || 0;
   const sessionMinutes = minutesPerWeek / DEFAULT_SESSIONS_PER_WEEK;
+  const allocationState: AllocationState = {
+    tasks: sortedTasks,
+    taskIndex: 0,
+    remainingTaskMinutes: sortedTasks[0]?.estimatedMinutes ?? 0,
+  };
 
   for (let weekNum = 1; weekNum <= totalWeeks; weekNum++) {
-    const { startDate, endDate } = getWeekBoundaries(inputs.startDate, weekNum);
-    const days: Day[] = [];
-
-    for (
-      let sessionIdx = 0;
-      sessionIdx < DEFAULT_SESSIONS_PER_WEEK;
-      sessionIdx++
-    ) {
-      const dayOffset = SESSION_DAYS_OFFSET[sessionIdx];
-      const date = addDaysToDate(startDate, dayOffset);
-      const sessions: SessionAssignment[] = [];
-      let allocatedMinutes = 0;
-
-      while (
-        allocatedMinutes < sessionMinutes &&
-        taskIndex < sortedTasks.length
-      ) {
-        const currentTask = sortedTasks[taskIndex];
-        const remainingSessionCapacity = sessionMinutes - allocatedMinutes;
-        const minutesToAllocate = Math.min(
-          remainingTaskMinutes,
-          remainingSessionCapacity,
-        );
-
-        if (minutesToAllocate > 0) {
-          sessions.push({
-            taskId: currentTask.id,
-            taskTitle: currentTask.title,
-            estimatedMinutes: minutesToAllocate,
-            moduleId: currentTask.moduleId,
-            moduleName:
-              // Prefer provided module title if available; fallback to id-based label
-              currentTask.moduleTitle || `Module ${currentTask.moduleId}`,
-          });
-
-          allocatedMinutes += minutesToAllocate;
-          remainingTaskMinutes -= minutesToAllocate;
-
-          // Move to next task if current is exhausted
-          if (remainingTaskMinutes === 0) {
-            taskIndex++;
-            if (taskIndex < sortedTasks.length) {
-              remainingTaskMinutes = sortedTasks[taskIndex].estimatedMinutes;
-            }
-          }
-        } else {
-          break;
-        }
-      }
-
-      // Always create day entry, even if no sessions (for consistent structure)
-      days.push({
-        dayNumber: sessionIdx + 1,
-        date,
-        sessions,
-      });
-    }
-
-    weeks.push({
-      weekNumber: weekNum,
-      startDate,
-      endDate,
-      days,
-    });
+    weeks.push(
+      buildWeekSchedule({
+        inputs,
+        weekNumber: weekNum,
+        state: allocationState,
+        sessionMinutes,
+      }),
+    );
   }
 
   return {

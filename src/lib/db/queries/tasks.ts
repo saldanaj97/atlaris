@@ -5,7 +5,6 @@ import type {
   DbTask,
   DbTaskProgress,
   TasksDbClient,
-  TasksTransaction,
 } from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
@@ -21,17 +20,19 @@ interface TaskProgressWriteOptions {
   now?: Date;
 }
 
+type OwnedTaskSelectClient = Pick<TasksDbClient, 'select'>;
+
 function ownedTaskScopeForUser(userId: string, taskScope: SQL) {
   return and(eq(learningPlans.userId, userId), taskScope);
 }
 
-function selectOwnedTaskIdsForUser(
-  tx: TasksTransaction,
+function selectOwnedTaskRowsForUser(
+  tx: OwnedTaskSelectClient,
   userId: string,
   taskScope: SQL,
 ) {
   return tx
-    .select({ id: tasks.id })
+    .select({ task: tasks })
     .from(tasks)
     .innerJoin(modules, eq(tasks.moduleId, modules.id))
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
@@ -45,12 +46,11 @@ export async function getAllTasksInPlan(
 ): Promise<DbTask[]> {
   const client = dbClient ?? getDb();
 
-  const rows = await client
-    .select({ task: tasks })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(ownedTaskScopeForUser(userId, eq(learningPlans.id, planId)));
+  const rows = await selectOwnedTaskRowsForUser(
+    client,
+    userId,
+    eq(learningPlans.id, planId),
+  );
   return rows.map((row) => row.task);
 }
 
@@ -75,7 +75,7 @@ async function setTaskProgress(
   const client = dbClient ?? getDb();
 
   return await client.transaction(async (tx) => {
-    const [taskRow] = await selectOwnedTaskIdsForUser(
+    const [taskRow] = await selectOwnedTaskRowsForUser(
       tx,
       userId,
       eq(tasks.id, taskId),
@@ -169,13 +169,13 @@ export async function setTaskProgressBatch(
   }
 
   return await client.transaction(async (tx) => {
-    const ownedTasks = await selectOwnedTaskIdsForUser(
+    const ownedTasks = await selectOwnedTaskRowsForUser(
       tx,
       userId,
-      and(...scopeConditions) ?? inArray(tasks.id, taskIds),
+      and(...scopeConditions)!,
     ).for('update');
 
-    const ownedIds = new Set(ownedTasks.map((t) => t.id));
+    const ownedIds = new Set(ownedTasks.map((row) => row.task.id));
     const missingIds = taskIds.filter((id) => !ownedIds.has(id));
     if (missingIds.length > 0) {
       throw new Error('One or more tasks not found.');

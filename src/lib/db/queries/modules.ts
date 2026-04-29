@@ -1,11 +1,11 @@
-import { and, asc, countDistinct, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
   buildResourcesByTask,
   computeModuleNavItemsFromCounts,
 } from '@/lib/db/queries/helpers/modules-helpers';
 import {
-  fetchTaskProgressRows,
-  fetchTaskResourceRows,
+  fetchModuleTaskMetricsRows,
+  fetchTaskRelationRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
 import type {
   ModuleDetail,
@@ -13,7 +13,7 @@ import type {
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import { learningPlans, modules, tasks } from '@/lib/db/schema';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 
@@ -54,27 +54,7 @@ export async function getModuleDetail(
   const planId = moduleRow.planId;
 
   const [allModulesRaw, taskRows] = await Promise.all([
-    client
-      .select({
-        id: modules.id,
-        order: modules.order,
-        title: modules.title,
-        totalTaskCount: countDistinct(tasks.id),
-        completedTaskCount: countDistinct(taskProgress.id),
-      })
-      .from(modules)
-      .leftJoin(tasks, eq(tasks.moduleId, modules.id))
-      .leftJoin(
-        taskProgress,
-        and(
-          eq(taskProgress.taskId, tasks.id),
-          eq(taskProgress.userId, userId),
-          eq(taskProgress.status, 'completed'),
-        ),
-      )
-      .where(eq(modules.planId, planId))
-      .groupBy(modules.id, modules.order, modules.title)
-      .orderBy(asc(modules.order)),
+    fetchModuleTaskMetricsRows({ planIds: [planId], userId, dbClient: client }),
     client
       .select()
       .from(tasks)
@@ -84,11 +64,11 @@ export async function getModuleDetail(
 
   const normalizedModuleRows: ModuleNavCompletionRaw[] = allModulesRaw.map(
     (row) => ({
-      id: row.id,
-      order: row.order,
-      title: row.title,
-      totalTaskCount: Number(row.totalTaskCount),
-      completedTaskCount: Number(row.completedTaskCount),
+      id: row.moduleId,
+      order: row.moduleOrder,
+      title: row.moduleTitle,
+      totalTaskCount: Number(row.totalTasks),
+      completedTaskCount: Number(row.completedTasks),
     }),
   );
 
@@ -119,10 +99,11 @@ export async function getModuleDetail(
 
   const taskIds = taskRows.map((task) => task.id);
 
-  const [progressRows, resourceRows] = await Promise.all([
-    fetchTaskProgressRows({ taskIds, userId, dbClient: client }),
-    fetchTaskResourceRows({ taskIds, dbClient: client }),
-  ]);
+  const { progressRows, resourceRows } = await fetchTaskRelationRows({
+    taskIds,
+    userId,
+    dbClient: client,
+  });
 
   const progressMap = new Map(
     progressRows.map((progressRow) => [progressRow.taskId, progressRow]),
