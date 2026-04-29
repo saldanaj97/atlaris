@@ -1,17 +1,6 @@
 'use client';
 
 import {
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  FileText,
-  Link as LinkIcon,
-  Lock,
-  PlayCircle,
-  Target,
-} from 'lucide-react';
-import { type ElementType, type JSX, useMemo } from 'react';
-import {
   type ContentBlock,
   generatePlaceholderContent,
   hashString,
@@ -24,14 +13,25 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { formatMinutes } from '@/features/plans/formatters';
 import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
+import { cn } from '@/lib/utils';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
+import {
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  FileText,
+  Link as LinkIcon,
+  Lock,
+  PlayCircle,
+  Target,
+} from 'lucide-react';
+import { type ElementType, type JSX, useMemo } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
   lesson: TaskWithRelations;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
-  /** Whether this lesson is locked (previous lessons/modules not complete) */
   isLocked?: boolean;
 }
 
@@ -73,6 +73,44 @@ const RESOURCE_CONFIG: Record<
 interface PlaceholderContentEntry {
   key: string;
   block: ContentBlock;
+}
+
+type LessonResources = NonNullable<TaskWithRelations['resources']>;
+
+function getCardClassName(isLocked: boolean, isCompleted: boolean): string {
+  if (isLocked) {
+    return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
+  }
+  if (isCompleted) {
+    return 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10';
+  }
+  return 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border';
+}
+
+function getMarkerClassName(isLocked: boolean, isCompleted: boolean): string {
+  if (isLocked) {
+    return 'bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500';
+  }
+  if (isCompleted) {
+    return 'bg-success text-success-foreground';
+  }
+  return 'bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary';
+}
+
+function getTitleClassName(isLocked: boolean, isCompleted: boolean): string {
+  if (isLocked) {
+    return 'text-stone-400 dark:text-stone-500';
+  }
+  if (isCompleted) {
+    return 'text-success dark:text-success';
+  }
+  return 'text-stone-900 dark:text-stone-100';
+}
+
+function getMutedTextClassName(isLocked: boolean): string {
+  return isLocked
+    ? 'text-stone-400 dark:text-stone-500'
+    : 'text-stone-500 dark:text-stone-400';
 }
 
 function createPlaceholderContentEntries(params: {
@@ -135,9 +173,126 @@ function ContentBlockRenderer({ block }: { block: ContentBlock }) {
   }
 }
 
+function LessonMarker({
+  lesson,
+  isCompleted,
+  isLocked,
+}: {
+  lesson: TaskWithRelations;
+  isCompleted: boolean;
+  isLocked: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+        getMarkerClassName(isLocked, isCompleted),
+      )}
+    >
+      {isLocked ? (
+        <Lock className="h-4 w-4" />
+      ) : isCompleted ? (
+        <CheckCircle2 className="h-5 w-5" />
+      ) : (
+        <span className="text-sm font-semibold">{lesson.order}</span>
+      )}
+    </div>
+  );
+}
+
+function ResourceSummary({
+  isLocked,
+  resourceCount,
+}: {
+  isLocked: boolean;
+  resourceCount: number;
+}) {
+  if (resourceCount === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        'mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm',
+        getMutedTextClassName(isLocked),
+      )}
+    >
+      <span className="inline-flex items-center gap-1.5">
+        <LinkIcon className="h-4 w-4" />
+        {resourceCount} resource{resourceCount !== 1 ? 's' : ''}
+      </span>
+    </div>
+  );
+}
+
+function LessonTriggerContent({
+  lesson,
+  isCompleted,
+  isLocked,
+  resourceCount,
+}: {
+  lesson: TaskWithRelations;
+  isCompleted: boolean;
+  isLocked: boolean;
+  resourceCount: number;
+}) {
+  return (
+    <>
+      <div className="flex-1 text-left">
+        <div className="mb-2 flex items-center gap-3">
+          <LessonMarker
+            lesson={lesson}
+            isCompleted={isCompleted}
+            isLocked={isLocked}
+          />
+          <h3
+            className={cn(
+              'text-lg font-semibold',
+              getTitleClassName(isLocked, isCompleted),
+            )}
+          >
+            {lesson.title}
+          </h3>
+          {isLocked ? (
+            <Badge variant="secondary" className="border-transparent">
+              Locked
+            </Badge>
+          ) : null}
+        </div>
+
+        {lesson.description ? (
+          <p
+            className={cn(
+              'mb-3 ml-11 text-sm leading-relaxed',
+              getMutedTextClassName(isLocked),
+            )}
+          >
+            {lesson.description}
+          </p>
+        ) : null}
+
+        <ResourceSummary isLocked={isLocked} resourceCount={resourceCount} />
+      </div>
+
+      <span
+        className={cn(
+          'flex shrink-0 items-center text-sm',
+          getMutedTextClassName(isLocked),
+        )}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Clock className="h-4 w-4" />
+          {formatMinutes(lesson.estimatedMinutes)}
+        </span>
+      </span>
+    </>
+  );
+}
+
 function LockedContentOverlay() {
   return (
-    <div className="relative min-h-[300px] overflow-hidden rounded-xl border border-stone-200/50 dark:border-stone-700/50">
+    <div className="relative min-h-75 overflow-hidden rounded-xl border border-stone-200/50 dark:border-stone-700/50">
       {/* Fallback text layer - visible if blur is removed via dev tools */}
       <div className="absolute inset-0 flex items-center justify-center bg-stone-100 p-8 text-center dark:bg-stone-800">
         <div className="max-w-md">
@@ -171,6 +326,132 @@ function LockedContentOverlay() {
   );
 }
 
+function LearningResourceCard({
+  taskResource,
+}: {
+  taskResource: LessonResources[number];
+}) {
+  const resource = taskResource.resource;
+  const config = RESOURCE_CONFIG[resource.type];
+  const Icon = config.icon;
+
+  return (
+    <a
+      href={resource.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30"
+    >
+      <div
+        className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          config.badgeClass,
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-center gap-2">
+          <span className="truncate font-medium text-stone-800 group-hover/resource:text-primary dark:text-stone-200 dark:group-hover/resource:text-primary">
+            {resource.title}
+          </span>
+          <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+          <Badge
+            className={cn(
+              'rounded border-transparent px-1.5',
+              config.badgeClass,
+            )}
+          >
+            {config.label}
+          </Badge>
+          {resource.durationMinutes ? (
+            <span>{formatMinutes(resource.durationMinutes)}</span>
+          ) : null}
+        </div>
+        {taskResource.notes ? (
+          <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+            {taskResource.notes}
+          </p>
+        ) : null}
+      </div>
+    </a>
+  );
+}
+
+function LearningResources({ resources }: { resources: LessonResources }) {
+  if (resources.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-6">
+      <h4 className="mb-3 text-sm font-medium text-stone-700 dark:text-stone-300">
+        Learning Resources
+      </h4>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {resources.map((taskResource) => (
+          <LearningResourceCard
+            key={taskResource.id}
+            taskResource={taskResource}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PlaceholderContentPanel({
+  placeholderContent,
+}: {
+  placeholderContent: readonly PlaceholderContentEntry[];
+}) {
+  return (
+    <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
+      <div className="prose prose-stone dark:prose-invert max-w-none">
+        {placeholderContent.map(({ key, block }) => (
+          <ContentBlockRenderer key={key} block={block} />
+        ))}
+      </div>
+
+      <div className="mt-6 rounded-lg bg-amber-50/50 p-3 text-center text-xs text-amber-700 dark:bg-amber-950/20 dark:text-amber-400">
+        This content is placeholder text. AI-generated learning material will
+        appear here.
+      </div>
+    </div>
+  );
+}
+
+function LessonContent({
+  lesson,
+  onStatusChange,
+  placeholderContent,
+  resources,
+  status,
+}: {
+  lesson: TaskWithRelations;
+  onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
+  placeholderContent: readonly PlaceholderContentEntry[];
+  resources: LessonResources;
+  status: ProgressStatus;
+}) {
+  return (
+    <>
+      <LearningResources resources={resources} />
+      <PlaceholderContentPanel placeholderContent={placeholderContent} />
+
+      <div className="mt-6 flex justify-end">
+        <TaskStatusButton
+          taskId={lesson.id}
+          status={status}
+          onStatusChange={onStatusChange}
+        />
+      </div>
+    </>
+  );
+}
+
 export function LessonAccordionItem({
   lesson,
   status,
@@ -189,106 +470,28 @@ export function LessonAccordionItem({
     [lesson.id, lesson.title],
   );
 
-  const getCardClassName = () => {
-    if (isLocked) {
-      return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
-    }
-    if (isCompleted) {
-      return 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10';
-    }
-    return 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border';
-  };
-
   return (
     <AccordionItem
       value={lesson.id}
       disabled={isLocked}
-      className={`rounded-2xl border transition-all duration-300 ${getCardClassName()}`}
+      className={cn(
+        'rounded-2xl border transition-all duration-300',
+        getCardClassName(isLocked, isCompleted),
+      )}
     >
       <AccordionTrigger
         hideChevron={false}
-        className={`items-center px-6 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180 ${
-          isLocked ? 'cursor-not-allowed' : ''
-        }`}
+        className={cn(
+          'items-center px-6 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180',
+          isLocked && 'cursor-not-allowed',
+        )}
       >
-        <div className="flex-1 text-left">
-          <div className="mb-2 flex items-center gap-3">
-            <div
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                isLocked
-                  ? 'bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500'
-                  : isCompleted
-                    ? 'bg-success text-success-foreground'
-                    : 'bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary'
-              }`}
-            >
-              {isLocked ? (
-                <Lock className="h-4 w-4" />
-              ) : isCompleted ? (
-                <CheckCircle2 className="h-5 w-5" />
-              ) : (
-                <span className="text-sm font-semibold">{lesson.order}</span>
-              )}
-            </div>
-            <h3
-              className={`text-lg font-semibold ${
-                isLocked
-                  ? 'text-stone-400 dark:text-stone-500'
-                  : isCompleted
-                    ? 'text-success dark:text-success'
-                    : 'text-stone-900 dark:text-stone-100'
-              }`}
-            >
-              {lesson.title}
-            </h3>
-            {isLocked && (
-              <Badge variant="secondary" className="border-transparent">
-                Locked
-              </Badge>
-            )}
-          </div>
-
-          {lesson.description && (
-            <p
-              className={`mb-3 ml-11 text-sm leading-relaxed ${
-                isLocked
-                  ? 'text-stone-400 dark:text-stone-500'
-                  : 'text-stone-500 dark:text-stone-400'
-              }`}
-            >
-              {lesson.description}
-            </p>
-          )}
-
-          {resources.length > 0 && (
-            <div
-              className={`mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm ${
-                isLocked
-                  ? 'text-stone-400 dark:text-stone-500'
-                  : 'text-stone-500 dark:text-stone-400'
-              }`}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <LinkIcon className="h-4 w-4" />
-                {resources.length} resource
-                {resources.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <span
-          className={`flex shrink-0 items-center text-sm ${
-            isLocked
-              ? 'text-stone-400 dark:text-stone-500'
-              : 'text-stone-500 dark:text-stone-400'
-          }`}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            {formatMinutes(lesson.estimatedMinutes)}
-          </span>
-        </span>
+        <LessonTriggerContent
+          lesson={lesson}
+          isCompleted={isCompleted}
+          isLocked={isLocked}
+          resourceCount={resources.length}
+        />
       </AccordionTrigger>
 
       <AccordionContent className="px-6 pb-6">
@@ -296,84 +499,13 @@ export function LessonAccordionItem({
           {isLocked ? (
             <LockedContentOverlay />
           ) : (
-            <>
-              {resources.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="mb-3 text-sm font-medium text-stone-700 dark:text-stone-300">
-                    Learning Resources
-                  </h4>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {resources.map((taskResource) => {
-                      const resource = taskResource.resource;
-                      const config = RESOURCE_CONFIG[resource.type];
-                      const Icon = config.icon;
-
-                      return (
-                        <a
-                          key={taskResource.id}
-                          href={resource.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30"
-                        >
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.badgeClass}`}
-                          >
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex items-center gap-2">
-                              <span className="truncate font-medium text-stone-800 group-hover/resource:text-primary dark:text-stone-200 dark:group-hover/resource:text-primary">
-                                {resource.title}
-                              </span>
-                              <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
-                              <Badge
-                                className={`rounded border-transparent px-1.5 ${config.badgeClass}`}
-                              >
-                                {config.label}
-                              </Badge>
-                              {resource.durationMinutes && (
-                                <span>
-                                  {formatMinutes(resource.durationMinutes)}
-                                </span>
-                              )}
-                            </div>
-                            {taskResource.notes && (
-                              <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                                {taskResource.notes}
-                              </p>
-                            )}
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
-                <div className="prose prose-stone dark:prose-invert max-w-none">
-                  {placeholderContent.map(({ key, block }) => (
-                    <ContentBlockRenderer key={key} block={block} />
-                  ))}
-                </div>
-
-                <div className="mt-6 rounded-lg bg-amber-50/50 p-3 text-center text-xs text-amber-700 dark:bg-amber-950/20 dark:text-amber-400">
-                  This content is placeholder text. AI-generated learning
-                  material will appear here.
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <TaskStatusButton
-                  taskId={lesson.id}
-                  status={status}
-                  onStatusChange={onStatusChange}
-                />
-              </div>
-            </>
+            <LessonContent
+              lesson={lesson}
+              status={status}
+              onStatusChange={onStatusChange}
+              placeholderContent={placeholderContent}
+              resources={resources}
+            />
           )}
         </div>
       </AccordionContent>
