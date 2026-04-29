@@ -31,7 +31,7 @@ const defaultBoundary: PlanGenerationSessionBoundary =
  * the lifecycle service under the boundary; production uses the default
  * boundary singleton.
  */
-export function createRetryHandler(deps?: {
+function createRetryHandler(deps?: {
   boundary?: PlanGenerationSessionBoundary;
 }): PlainHandler {
   const boundary = deps?.boundary ?? defaultBoundary;

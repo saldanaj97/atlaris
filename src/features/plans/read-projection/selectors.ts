@@ -15,7 +15,7 @@ import type { PlanSummary } from '@/shared/types/db.types';
  * `referenceDate` defaults to `new Date()` so callers only need to pass it when
  * they want deterministic comparisons (for example, tests).
  */
-export const PLAN_STALENESS_THRESHOLD_DAYS = 30;
+const PLAN_STALENESS_THRESHOLD_DAYS = 30;
 
 function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanStatus {
   const readStatus = derivePlanReadStatus(

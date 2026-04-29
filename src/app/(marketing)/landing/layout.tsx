@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-export const LANDING_CANONICAL_URL = '/landing';
+const LANDING_CANONICAL_URL = '/landing';
 export const LANDING_CANONICAL_TITLE =
   'Atlaris — Turn learning goals into a scheduled plan';
 export const LANDING_DESCRIPTION =

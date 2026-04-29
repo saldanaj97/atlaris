@@ -11,6 +11,13 @@ export interface ParseRunnerArgsOptions {
   defaultTestPath: string;
 }
 
+type RunnerHelpOptions = {
+  command: string;
+  defaultTestPath: string;
+  examples: string[];
+  environment?: string[];
+};
+
 /**
  * Shared argv parser for the unit/integration/security vitest runners.
  * Each runner only differs in `defaultTestPath`, `printHelp` text, and
@@ -54,4 +61,41 @@ export function parseRunnerArgs(
   }
 
   return { testPath, watch, changed, extraArgs, helpRequested };
+}
+
+export function printVitestRunnerHelp({
+  command,
+  defaultTestPath,
+  environment = [],
+  examples,
+}: RunnerHelpOptions): void {
+  console.log(
+    `Usage: tsx scripts/tests/run.ts ${command} [test-path] [OPTIONS]`,
+  );
+  console.log('');
+  console.log('Arguments:');
+  console.log(
+    `  test-path           Path to test file or directory (default: ${defaultTestPath})`,
+  );
+  console.log('');
+  console.log('Options:');
+  console.log(
+    '  --changed, -c       Run only tests related to uncommitted changes',
+  );
+  console.log('  --watch, -w         Run in watch mode');
+  console.log('  --help, -h          Show this help message');
+
+  if (environment.length > 0) {
+    console.log('');
+    console.log('Environment:');
+    for (const line of environment) {
+      console.log(line);
+    }
+  }
+
+  console.log('');
+  console.log('Examples:');
+  for (const example of examples) {
+    console.log(example);
+  }
 }
