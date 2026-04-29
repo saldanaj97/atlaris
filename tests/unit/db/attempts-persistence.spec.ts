@@ -7,7 +7,7 @@ import {
   vi,
 } from 'vitest';
 
-import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence';
+import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
 import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';

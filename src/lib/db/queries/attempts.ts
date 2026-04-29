@@ -1,4 +1,3 @@
-import { and, count, eq, sql } from 'drizzle-orm';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { hashSha256 } from '@/lib/crypto/hash';
 import {
@@ -10,11 +9,12 @@ import {
   sanitizeInput,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-input';
+import { normalizeParsedModules } from '@/lib/db/queries/helpers/attempts-persistence-normalization';
 import {
   assertAttemptIdMatchesReservation,
-  normalizeParsedModules,
   persistSuccessfulAttempt,
-} from '@/lib/db/queries/helpers/attempts-persistence';
+  whereInProgressGenerationAttemptForPlan,
+} from '@/lib/db/queries/helpers/attempts-persistence-success';
 import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
@@ -39,6 +39,7 @@ import {
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -315,13 +316,7 @@ export async function finalizeAttemptFailure({
         normalizedEffort: false,
         metadata,
       })
-      .where(
-        and(
-          eq(generationAttempts.id, attemptId),
-          eq(generationAttempts.planId, planId),
-          eq(generationAttempts.status, 'in_progress'),
-        ),
-      )
+      .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
       .returning();
 
     if (!updatedAttempt) {

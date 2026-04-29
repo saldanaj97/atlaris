@@ -21,6 +21,10 @@ interface TaskProgressWriteOptions {
   now?: Date;
 }
 
+function ownedTaskScopeForUser(userId: string, taskScope: SQL) {
+  return and(eq(learningPlans.userId, userId), taskScope);
+}
+
 function selectOwnedTaskIdsForUser(
   tx: TasksTransaction,
   userId: string,
@@ -31,7 +35,7 @@ function selectOwnedTaskIdsForUser(
     .from(tasks)
     .innerJoin(modules, eq(tasks.moduleId, modules.id))
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), taskScope));
+    .where(ownedTaskScopeForUser(userId, taskScope));
 }
 
 export async function getAllTasksInPlan(
@@ -46,7 +50,7 @@ export async function getAllTasksInPlan(
     .from(tasks)
     .innerJoin(modules, eq(tasks.moduleId, modules.id))
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId)));
+    .where(ownedTaskScopeForUser(userId, eq(learningPlans.id, planId)));
   return rows.map((row) => row.task);
 }
 

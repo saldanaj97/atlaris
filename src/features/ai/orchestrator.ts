@@ -23,7 +23,7 @@ import {
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-persistence';
+import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-db-client';
 
 const DEFAULT_CLOCK = () => Date.now();
 

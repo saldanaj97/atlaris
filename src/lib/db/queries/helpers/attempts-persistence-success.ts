@@ -1,4 +1,3 @@
-import { and, eq } from 'drizzle-orm';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
@@ -10,6 +9,7 @@ import type {
   NormalizedModuleData,
 } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 
 type TaskInsertValue = {
   moduleId: string;
@@ -26,6 +26,17 @@ export function assertAttemptIdMatchesReservation(
   if (attemptId !== preparation.attemptId) {
     throw new Error('Attempt ID mismatch between params and reserved attempt.');
   }
+}
+
+export function whereInProgressGenerationAttemptForPlan(params: {
+  attemptId: string;
+  planId: string;
+}) {
+  return and(
+    eq(generationAttempts.id, params.attemptId),
+    eq(generationAttempts.planId, params.planId),
+    eq(generationAttempts.status, 'in_progress'),
+  );
 }
 
 export async function persistSuccessfulAttempt(
@@ -121,13 +132,7 @@ export async function persistSuccessfulAttempt(
           normalizationFlags.modulesClamped || normalizationFlags.tasksClamped,
         metadata,
       })
-      .where(
-        and(
-          eq(generationAttempts.id, attemptId),
-          eq(generationAttempts.planId, planId),
-          eq(generationAttempts.status, 'in_progress'),
-        ),
-      )
+      .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
       .returning();
 
     if (!attempt) {
