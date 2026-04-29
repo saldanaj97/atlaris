@@ -1,8 +1,5 @@
-import { z } from 'zod';
-import {
-  getStripeCommerceBoundary,
-  type StripeCommerceBoundary,
-} from '@/features/billing/stripe-commerce';
+import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
@@ -10,6 +7,7 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
+import { z } from 'zod';
 
 const createCheckoutBodySchema = z
   .object({
@@ -25,7 +23,7 @@ const createCheckoutBodySchema = z
  * Factory deps for `createCreateCheckoutHandler`. Callers provide a commerce boundary so
  * tests and custom runtimes construct their Stripe gateway explicitly.
  */
-export type CreateCheckoutHandlerDeps = {
+type CreateCheckoutHandlerDeps = {
   boundary: StripeCommerceBoundary;
 };
 
@@ -64,12 +62,6 @@ export function createCreateCheckoutHandler(
   );
 }
 
-const defaultBoundary: StripeCommerceBoundary = {
-  beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
-  openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
-  acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
-};
-
 export const POST = createCreateCheckoutHandler({
-  boundary: defaultBoundary,
+  boundary: getLazyStripeCommerceBoundary(),
 });

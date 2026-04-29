@@ -22,15 +22,15 @@ export type GenerationAttemptContext = {
   input: GenerationInput;
 };
 
-export type ReserveAttemptSlotOperation = (
+type ReserveAttemptSlotOperation = (
   params: ReserveAttemptSlotParams,
 ) => Promise<ReserveAttemptResult>;
 
-export type FinalizeAttemptSuccessOperation = (
+type FinalizeAttemptSuccessOperation = (
   params: FinalizeSuccessParams,
 ) => Promise<GenerationAttemptRecord>;
 
-export type FinalizeAttemptFailureOperation = (
+type FinalizeAttemptFailureOperation = (
   params: FinalizeFailureParams,
 ) => Promise<GenerationAttemptRecord>;
 
@@ -53,7 +53,7 @@ export type RunGenerationOptions = {
   reservation?: AttemptReservation;
 };
 
-export type GenerationSuccessResult = {
+type GenerationSuccessResult = {
   status: 'success';
   classification: null;
   modules: ParsedModule[];

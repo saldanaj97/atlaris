@@ -1,5 +1,5 @@
 import { and, count, eq, sql } from 'drizzle-orm';
-import { getAttemptCap } from '@/lib/config/env';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { hashSha256 } from '@/lib/crypto/hash';
 import {
   isProviderErrorRetryable,
@@ -157,7 +157,7 @@ export async function reserveAttemptSlot(
     const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
     const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
-    if (existingAttempts >= getAttemptCap()) {
+    if (existingAttempts >= getGenerationAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
 

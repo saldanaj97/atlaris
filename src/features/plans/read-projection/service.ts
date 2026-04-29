@@ -31,8 +31,6 @@ import type {
   PlanSummary,
 } from '@/shared/types/db.types';
 
-export type { PlanDbClient } from '@/features/plans/read-projection/types';
-
 async function listPlanSummaries(params: {
   userId: string;
   dbClient?: PlanDbClient;

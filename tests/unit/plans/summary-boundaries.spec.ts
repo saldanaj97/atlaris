@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
@@ -35,7 +35,7 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap() - 1,
+        attemptsCount: getGenerationAttemptCap() - 1,
       }),
     ).toBe('generating');
   });
@@ -46,7 +46,7 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap(),
+        attemptsCount: getGenerationAttemptCap(),
       }),
     ).toBe('failed');
   });
@@ -57,13 +57,13 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap() + 1,
+        attemptsCount: getGenerationAttemptCap() + 1,
       }),
     ).toBe('failed');
   });
 
   it('derivePlanReadStatus treats modules as ground truth over failed generationStatus', () => {
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
 
     expect(
       derivePlanReadStatus({
@@ -76,7 +76,7 @@ describe('plan summary status boundaries', () => {
   });
 
   it('deriveCanonicalPlanSummaryStatus yields active when modules exist despite failed generationStatus', () => {
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
     const moduleRef = { id: 'module-1' } satisfies Pick<Module, 'id'>;
 
     expect(

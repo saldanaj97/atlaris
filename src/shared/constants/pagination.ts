@@ -15,7 +15,7 @@ const PAGINATION_MINIMUMS = {
   offset: 0,
 } as const;
 
-export type PaginationField = keyof typeof PAGINATION_DEFAULTS;
+type PaginationField = keyof typeof PAGINATION_DEFAULTS;
 export type PaginationOptions = Partial<Record<PaginationField, number>>;
 
 export function getPaginationDefault(field: PaginationField): number {

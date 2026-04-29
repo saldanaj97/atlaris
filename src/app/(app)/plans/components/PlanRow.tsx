@@ -1,5 +1,20 @@
 'use client';
 
+import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
+import {
+  getNextTaskName,
+  getPlanLastActivityRelative,
+  getPlanStatus,
+} from '@/app/(app)/plans/components/plan-utils';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
+import type { PlanSummary } from '@/shared/types/db.types';
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,23 +26,8 @@ import {
 import Link from 'next/link';
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
-import {
-  getNextTaskName,
-  getPlanLastActivityRelative,
-  getPlanStatus,
-} from '@/app/(app)/plans/components/plan-utils';
-import type { PlanStatus } from '@/app/(app)/plans/types';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import type { PlanSummary } from '@/shared/types/db.types';
 
-const STATUS_COLORS: Record<PlanStatus, string> = {
+const STATUS_COLORS: Record<PlanReadStatus, string> = {
   active: 'bg-emerald-500',
   paused: 'bg-amber-500',
   completed: 'bg-blue-500',

@@ -3,7 +3,7 @@ import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
 } from '@/features/plans/read-projection/read-status';
-import type { PlanStatus } from '@/features/plans/read-projection/types';
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import { toValidDate } from '@/lib/date/relative-time';
 import { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 import type { PlanSummary } from '@/shared/types/db.types';
@@ -17,7 +17,7 @@ import type { PlanSummary } from '@/shared/types/db.types';
  */
 const PLAN_STALENESS_THRESHOLD_DAYS = 30;
 
-function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanStatus {
+function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanReadStatus {
   const readStatus = derivePlanReadStatus(
     summary.attemptsCount === undefined
       ? {
@@ -41,7 +41,7 @@ function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanStatus {
 export function derivePlanSummaryDisplayStatus(params: {
   summary: PlanSummary;
   referenceDate?: Date | string | null;
-}): PlanStatus {
+}): PlanReadStatus {
   const { summary, referenceDate = new Date() } = params;
   const canonicalStatus = deriveClientPlanSummaryStatus(summary);
 

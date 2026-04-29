@@ -7,11 +7,11 @@ import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
 import { jobQueue, usageMetrics } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 

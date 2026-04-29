@@ -2,15 +2,7 @@
 
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import {
-  type ReactElement,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useOptimistic,
-  useRef,
-  useTransition,
-} from 'react';
+import { type ReactElement, useCallback, useMemo } from 'react';
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import { ExportButtons } from '@/app/(app)/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
@@ -20,9 +12,9 @@ import {
   computeOverviewStats,
   getStatusesFromModules,
 } from '@/app/(app)/plans/[id]/helpers';
+import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
-import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 
@@ -40,62 +32,46 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
 
-  const [statuses, addOptimisticStatus] = useOptimistic(
-    initialStatuses,
-    (
-      current: Record<string, ProgressStatus>,
-      update: { taskId: string; status: ProgressStatus },
-    ) => ({
-      ...current,
-      [update.taskId]: update.status,
-    }),
-  );
-
-  // Store the ref object, not a snapshot value, so `handleStatusChange` can read
-  // the pre-optimistic status from `statusesRef.current` when queueing a revert.
-  // `useLayoutEffect` then updates the ref after each committed render so the next
-  // interaction always sees the latest committed statuses.
-  const statusesRef = useRef(statuses);
-  useLayoutEffect(() => {
-    statusesRef.current = statuses;
-  }, [statuses]);
-
-  const [_isPending, startTransition] = useTransition();
-
-  const batcher = useTaskStatusBatcher({
-    flushAction: async (updates) => {
+  const flushTaskProgress = useCallback(
+    async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
       await batchUpdateTaskProgressAction({ planId: plan.id, updates });
     },
+    [plan.id],
+  );
+
+  const handleTaskStatusError = useCallback(
+    ({
+      error,
+      taskId,
+      previousStatus,
+      nextStatus,
+    }: {
+      error: unknown;
+      taskId: string;
+      previousStatus: ProgressStatus;
+      nextStatus: ProgressStatus;
+    }) => {
+      const { errorMessage, errorStack } = getLoggableErrorDetails(error);
+      clientLogger.error('Optimistic status revert', {
+        errorMessage,
+        errorStack,
+        taskId,
+        previousStatus,
+        nextStatus,
+      });
+    },
+    [],
+  );
+
+  const { statuses, handleStatusChange } = useOptimisticTaskStatusUpdates({
+    initialStatuses,
+    flushAction: flushTaskProgress,
+    onError: handleTaskStatusError,
   });
 
   const overviewStats = useMemo(
     () => computeOverviewStats(plan, statuses),
     [plan, statuses],
-  );
-
-  const handleStatusChange = useCallback(
-    (taskId: string, nextStatus: ProgressStatus) => {
-      const previousStatus = statusesRef.current[taskId] ?? 'not_started';
-
-      startTransition(async () => {
-        addOptimisticStatus({ taskId, status: nextStatus });
-        try {
-          await batcher.queue(taskId, nextStatus, previousStatus);
-        } catch (error: unknown) {
-          const { errorMessage, errorStack } = getLoggableErrorDetails(error);
-          clientLogger.error('Optimistic status revert', {
-            errorMessage,
-            errorStack,
-            taskId,
-            previousStatus,
-            nextStatus,
-          });
-          // Transition settling auto-reverts optimistic state.
-          // Toast is shown by the batcher.
-        }
-      });
-    },
-    [addOptimisticStatus, batcher],
   );
 
   const isPendingOrProcessing =

@@ -10,7 +10,7 @@ import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
-  createRequestContext,
+  createLoggingRequestContext,
 } from '@/lib/logging/request-context';
 
 function createPreferencesUpdateFailedError(userId: string | number): AppError {
@@ -28,7 +28,7 @@ function createPreferencesUpdateFailedError(userId: string | number): AppError {
  */
 export const GET = withErrorBoundary(
   requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor }) => {
-    const { requestId, logger } = createRequestContext(req, {
+    const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'GET /api/v1/user/preferences',
       userId: actor.id,
     });
@@ -77,7 +77,7 @@ export const GET = withErrorBoundary(
  */
 export const PATCH = withErrorBoundary(
   requestBoundary.route({ rateLimit: 'mutation' }, async ({ req, actor }) => {
-    const { requestId, logger } = createRequestContext(req, {
+    const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'PATCH /api/v1/user/preferences',
       userId: actor.id,
     });

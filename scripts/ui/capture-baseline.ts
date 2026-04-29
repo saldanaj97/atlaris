@@ -15,7 +15,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
-import { chromium, type Page } from '@playwright/test';
+import { chromium, type BrowserContext, type Page } from '@playwright/test';
 
 import { prepareSmokeDatabase } from '@tests/helpers/smoke/db-pipeline';
 import {
@@ -84,6 +84,16 @@ type CaptureManifestEntry = {
   height: number;
   status: 'ok' | 'error';
   error?: string;
+};
+
+type CaptureRouteScreenshotInput = {
+  context: BrowserContext;
+  route: string;
+  base: BaseMode;
+  baseUrl: string;
+  viewport: (typeof VIEWPORTS)[number];
+  variant: Variant;
+  outDir: string;
 };
 
 const SERVER_START_TIMEOUT_MS = 180_000;
@@ -282,6 +292,64 @@ nextjs-portal,
   });
 }
 
+async function captureRouteScreenshot({
+  context,
+  route,
+  base,
+  baseUrl,
+  viewport,
+  variant,
+  outDir,
+}: CaptureRouteScreenshotInput): Promise<CaptureManifestEntry> {
+  const url = `${baseUrl}${route}`;
+  const slug = routeToFileSlug(route);
+  const file = `${slug}--${base}--${viewport.name}--${variant}.png`;
+  const filePath = join(outDir, file);
+  const entry: CaptureManifestEntry = {
+    route,
+    base,
+    viewport: viewport.name,
+    variant,
+    url,
+    file,
+    expectedWidth: viewport.width,
+    expectedHeightMin: viewport.height,
+    width: 0,
+    height: 0,
+    status: 'ok',
+  };
+  const page = await context.newPage();
+
+  try {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.goto(url, {
+      waitUntil: 'networkidle',
+      timeout: CAPTURE_GOTO_TIMEOUT_MS,
+    });
+    await hideDevelopmentCaptureArtifacts(page);
+    await page.screenshot({
+      path: filePath,
+      fullPage: variant === 'fullPage',
+      scale: 'css',
+    });
+    const dims = readPngDimensions(filePath);
+    entry.width = dims.width;
+    entry.height = dims.height;
+    validateViewportVariantSize(entry, viewport);
+    validateFullPageWidth(entry, viewport);
+  } catch (err) {
+    entry.status = 'error';
+    entry.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    await page.close();
+  }
+
+  return entry;
+}
+
 async function main(): Promise<void> {
   const { outDir, anonBase, authBase, help } = parseArgs(process.argv.slice(2));
   if (help) {
@@ -343,93 +411,31 @@ async function main(): Promise<void> {
     for (const vp of VIEWPORTS) {
       for (const variant of VARIANTS) {
         for (const route of ANON_ROUTES) {
-          const url = `${anonUrl}${route}`;
-          const slug = routeToFileSlug(route);
-          const file = `${slug}--anon--${vp.name}--${variant}.png`;
-          const filePath = join(resolvedOut, file);
-          const entry: CaptureManifestEntry = {
-            route,
-            base: 'anon',
-            viewport: vp.name,
-            variant,
-            url,
-            file,
-            expectedWidth: vp.width,
-            expectedHeightMin: variant === 'viewport' ? vp.height : vp.height,
-            width: 0,
-            height: 0,
-            status: 'ok',
-          };
-          const page = await context.newPage();
-          try {
-            await page.setViewportSize({ width: vp.width, height: vp.height });
-            await page.goto(url, {
-              waitUntil: 'networkidle',
-              timeout: CAPTURE_GOTO_TIMEOUT_MS,
-            });
-            await hideDevelopmentCaptureArtifacts(page);
-            await page.screenshot({
-              path: filePath,
-              fullPage: variant === 'fullPage',
-              scale: 'css',
-            });
-            const dims = readPngDimensions(filePath);
-            entry.width = dims.width;
-            entry.height = dims.height;
-            validateViewportVariantSize(entry, vp);
-            validateFullPageWidth(entry, vp);
-          } catch (err) {
-            entry.status = 'error';
-            entry.error = err instanceof Error ? err.message : String(err);
-          } finally {
-            await page.close();
-          }
-          manifestEntries.push(entry);
+          manifestEntries.push(
+            await captureRouteScreenshot({
+              context,
+              route,
+              base: 'anon',
+              baseUrl: anonUrl,
+              viewport: vp,
+              variant,
+              outDir: resolvedOut,
+            }),
+          );
         }
 
         for (const route of AUTH_ROUTES) {
-          const url = `${authUrl}${route}`;
-          const slug = routeToFileSlug(route);
-          const file = `${slug}--auth--${vp.name}--${variant}.png`;
-          const filePath = join(resolvedOut, file);
-          const entry: CaptureManifestEntry = {
-            route,
-            base: 'auth',
-            viewport: vp.name,
-            variant,
-            url,
-            file,
-            expectedWidth: vp.width,
-            expectedHeightMin: vp.height,
-            width: 0,
-            height: 0,
-            status: 'ok',
-          };
-          const page = await context.newPage();
-          try {
-            await page.setViewportSize({ width: vp.width, height: vp.height });
-            await page.goto(url, {
-              waitUntil: 'networkidle',
-              timeout: CAPTURE_GOTO_TIMEOUT_MS,
-            });
-            await hideDevelopmentCaptureArtifacts(page);
-            await page.screenshot({
-              path: filePath,
-              fullPage: variant === 'fullPage',
-              scale: 'css',
-            });
-            const dims = readPngDimensions(filePath);
-            entry.width = dims.width;
-            entry.height = dims.height;
-            validateViewportVariantSize(entry, vp);
-            validateFullPageWidth(entry, vp);
-          } catch (err) {
-            entry.status = 'error';
-            entry.error = err instanceof Error ? err.message : String(err);
-          } finally {
-            await page.close();
-          }
-          manifestEntries.push(entry);
+          manifestEntries.push(
+            await captureRouteScreenshot({
+              context,
+              route,
+              base: 'auth',
+              baseUrl: authUrl,
+              viewport: vp,
+              variant,
+              outDir: resolvedOut,
+            }),
+          );
         }
       }
     }

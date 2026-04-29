@@ -1,4 +1,4 @@
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   accumulateLightweightModuleMetricsRowInPlace,
   computeTaskRowCompletionMetrics,
@@ -117,7 +117,7 @@ export function buildPlanSummaries(params: {
 
 export function deriveCanonicalPlanSummaryStatus(
   summary: SummaryStatusInput,
-  attemptCap: number = getAttemptCap(),
+  attemptCap: number = getGenerationAttemptCap(),
 ): PlanSummaryReadStatus {
   const readStatus = derivePlanReadStatus(
     summary.attemptsCount === undefined

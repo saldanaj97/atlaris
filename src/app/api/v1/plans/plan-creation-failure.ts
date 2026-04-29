@@ -1,25 +1,10 @@
 import type {
-  FailureClassification,
   PermanentFailure,
   RetryableFailure,
 } from '@/features/plans/lifecycle/types';
+import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
 import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
-
-const classificationMap: Record<
-  FailureClassification | 'unknown',
-  { status: number; code: string }
-> = {
-  validation: { status: 400, code: 'PLAN_CREATION_VALIDATION_FAILED' },
-  capped: { status: 403, code: 'PLAN_CREATION_CAPPED' },
-  conflict: { status: 409, code: 'PLAN_CREATION_CONFLICT' },
-  rate_limit: { status: 429, code: 'PLAN_CREATION_RATE_LIMITED' },
-  timeout: { status: 504, code: 'PLAN_CREATION_TIMEOUT' },
-  provider_error: { status: 503, code: 'PLAN_CREATION_PROVIDER_ERROR' },
-  unknown: { status: 500, code: 'PLAN_CREATION_FAILED' },
-};
-
-const defaultMapping = { status: 500, code: 'PLAN_CREATION_FAILED' } as const;
 
 /**
  * Maps topic plan creation permanent or retryable failures to HTTP errors.
@@ -33,7 +18,8 @@ export function throwPlanCreationFailureError(
       : new Error('Plan creation failed');
 
   const { status, code } =
-    classificationMap[createResult.classification] ?? defaultMapping;
+    PLAN_CREATION_FAILURE_HTTP_MAP[createResult.classification] ??
+    PLAN_CREATION_FAILURE_HTTP_MAP.unknown;
 
   logger.warn(
     {

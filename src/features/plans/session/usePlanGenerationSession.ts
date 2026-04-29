@@ -17,7 +17,7 @@ type SessionStatus =
   | 'complete'
   | 'error';
 
-export type DraftModule = {
+type DraftModule = {
   index: number;
   title: string;
   description?: string | null;
@@ -25,13 +25,13 @@ export type DraftModule = {
   tasksCount: number;
 };
 
-export type SessionError = {
+type SessionError = {
   message: string;
   classification: string;
   retryable: boolean;
 };
 
-export type SessionProgress = {
+type SessionProgress = {
   modulesParsed: number;
   modulesTotalHint?: number;
   percent: number;
@@ -78,7 +78,7 @@ export type PlanGenerationSessionState = {
   error?: SessionError;
 };
 
-export type StartPlanGenerationSessionRequest =
+type StartPlanGenerationSessionRequest =
   | {
       kind: 'create';
       input: CreateLearningPlanInput;
@@ -88,7 +88,7 @@ export type StartPlanGenerationSessionRequest =
       planId: string;
     };
 
-export type StartPlanGenerationSessionOptions = {
+type StartPlanGenerationSessionOptions = {
   onPlanIdReady?: (planId: string) => void;
 };
 

@@ -9,7 +9,7 @@ export type PlanStartEvent = {
   };
 };
 
-export type ModuleSummaryEvent = {
+type ModuleSummaryEvent = {
   type: 'module_summary';
   data: {
     planId: string;
@@ -21,7 +21,7 @@ export type ModuleSummaryEvent = {
   };
 };
 
-export type ProgressEvent = {
+type ProgressEvent = {
   type: 'progress';
   data: {
     planId: string;
@@ -31,7 +31,7 @@ export type ProgressEvent = {
   };
 };
 
-export type CompleteEvent = {
+type CompleteEvent = {
   type: 'complete';
   data: {
     planId: string;
@@ -41,7 +41,7 @@ export type CompleteEvent = {
   };
 };
 
-export type ErrorEvent = {
+type ErrorEvent = {
   type: 'error';
   data: {
     planId?: string | null;
@@ -53,7 +53,7 @@ export type ErrorEvent = {
   };
 };
 
-export type CancelledEvent = {
+type CancelledEvent = {
   type: 'cancelled';
   data: {
     planId: string;

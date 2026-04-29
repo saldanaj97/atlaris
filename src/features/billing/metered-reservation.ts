@@ -11,20 +11,20 @@
  * meters should add their own boundary instead of reaching into this file.
  */
 
-import { and, eq, sql } from 'drizzle-orm';
 import { usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { and, eq, sql } from 'drizzle-orm';
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';
-import { TIER_LIMITS } from './tier-limits';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
   incrementUsageInTx,
 } from './usage-metrics';
 
-export type MeterKind = 'regeneration' | 'export';
+type MeterKind = 'regeneration' | 'export';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.

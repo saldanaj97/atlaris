@@ -1,8 +1,5 @@
 'use client';
 
-import { UserButton } from '@neondatabase/auth/react';
-import Link from 'next/link';
-import type { ReactElement } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +7,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { UserButton } from '@neondatabase/auth/react';
+import Link from 'next/link';
+import type { ReactElement } from 'react';
 
 interface AuthControlsProps {
   isAuthenticated: boolean;

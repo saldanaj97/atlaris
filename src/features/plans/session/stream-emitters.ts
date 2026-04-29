@@ -13,7 +13,7 @@ import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import { toFallbackErrorLike } from './stream-cleanup';
 
-export type SessionEmitFn = (event: StreamingEvent) => void;
+type SessionEmitFn = (event: StreamingEvent) => void;
 
 interface EmitSanitizedFailureEventParams {
   emit: SessionEmitFn;

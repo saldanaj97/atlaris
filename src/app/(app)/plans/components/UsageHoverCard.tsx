@@ -1,7 +1,5 @@
 'use client';
 
-import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
-import Link from 'next/link';
 import {
   formatUsageLimit,
   type UsageData,
@@ -12,7 +10,9 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
+import Link from 'next/link';
 
 interface UsageHoverCardProps {
   usage: UsageData;

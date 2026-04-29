@@ -19,4 +19,4 @@ const generationAttemptCap = createGetAttemptCap();
 
 export { DEFAULT_ATTEMPT_CAP, PLAN_GENERATION_LIMIT };
 
-export const getAttemptCap = generationAttemptCap;
+export const getGenerationAttemptCap = generationAttemptCap;

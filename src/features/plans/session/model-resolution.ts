@@ -3,7 +3,7 @@ import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-export type StreamModelResolution = {
+type StreamModelResolution = {
   modelOverride?: string;
   resolutionSource:
     | 'query_override'
@@ -14,7 +14,7 @@ export type StreamModelResolution = {
   validationError?: StreamModelValidationError;
 };
 
-export type StreamModelValidationError = {
+type StreamModelValidationError = {
   reason: string;
 };
 

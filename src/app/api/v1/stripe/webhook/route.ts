@@ -1,7 +1,5 @@
-import {
-  getStripeCommerceBoundary,
-  type StripeCommerceBoundary,
-} from '@/features/billing/stripe-commerce';
+import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import type { PlainHandler } from '@/lib/api/auth';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
@@ -9,7 +7,7 @@ import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv, stripeEnv } from '@/lib/config/env';
 import {
   attachRequestIdHeader,
-  createRequestContext,
+  createLoggingRequestContext,
 } from '@/lib/logging/request-context';
 
 export const runtime = 'nodejs';
@@ -23,10 +21,10 @@ if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
 }
 
 /**
- * Factory deps for `createWebhookHandler`. Default `POST` uses `getStripeCommerceBoundary()`;
+ * Factory deps for `createWebhookHandler`. Default `POST` uses `getLazyStripeCommerceBoundary()`;
  * tests and custom runtimes pass an explicit commerce boundary.
  */
-export type WebhookHandlerDeps = {
+type WebhookHandlerDeps = {
   boundary: StripeCommerceBoundary;
 };
 
@@ -35,7 +33,7 @@ export type WebhookHandlerDeps = {
  */
 export function createWebhookHandler(deps: WebhookHandlerDeps): PlainHandler {
   return withErrorBoundary(async (req: Request) => {
-    const { requestId, logger } = createRequestContext(req, {
+    const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'stripe_webhook',
     });
     const respond = (body: BodyInit | null, init?: ResponseInit) =>
@@ -84,12 +82,6 @@ export function createWebhookHandler(deps: WebhookHandlerDeps): PlainHandler {
   });
 }
 
-const defaultBoundary: StripeCommerceBoundary = {
-  beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
-  openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
-  acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
-};
-
 export const POST = createWebhookHandler({
-  boundary: defaultBoundary,
+  boundary: getLazyStripeCommerceBoundary(),
 });

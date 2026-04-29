@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
-export type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
+type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
 
 export interface IntegrationCardProps {
   name: string;

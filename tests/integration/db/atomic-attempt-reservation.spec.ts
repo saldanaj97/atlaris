@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -17,7 +17,7 @@ import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
-  const attemptCap = getAttemptCap();
+  const attemptCap = getGenerationAttemptCap();
   let userId: string;
   let planId: string;
 

@@ -6,7 +6,7 @@ import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
-import { getRequestContext } from '@/lib/logging/request-context';
+import { getLoggingRequestContext } from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization');
@@ -36,7 +36,7 @@ function tokensMatch(expectedToken: string, providedToken: string): boolean {
 }
 
 export const POST: PlainHandler = withErrorBoundary(async (request) => {
-  const { logger } = getRequestContext(request);
+  const { logger } = getLoggingRequestContext(request);
   const pathname = new URL(request.url).pathname;
 
   checkIpRateLimit(request, 'internal');

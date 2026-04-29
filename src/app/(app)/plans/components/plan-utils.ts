@@ -1,8 +1,8 @@
-import type { PlanStatus } from '@/app/(app)/plans/types';
 import {
   derivePlanSummaryDisplayStatus,
   isPlanSummaryFullyComplete,
 } from '@/features/plans/read-projection/client';
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
 
@@ -86,7 +86,7 @@ export function getPlanLastActivityRelative(
 export function getPlanStatus(
   summary: PlanSummary,
   referenceDate: DateInput,
-): PlanStatus {
+): PlanReadStatus {
   return derivePlanSummaryDisplayStatus({ summary, referenceDate });
 }
 

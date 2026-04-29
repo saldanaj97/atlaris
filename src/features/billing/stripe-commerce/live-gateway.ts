@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 import Stripe from 'stripe';
 import type { CommerceWebhookEvent } from '@/features/billing/stripe-commerce/dtos';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';

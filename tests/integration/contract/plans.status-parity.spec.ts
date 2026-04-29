@@ -2,7 +2,7 @@ import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
 import { describe, expect, it } from 'vitest';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -65,7 +65,7 @@ describe('Plan status parity contract', () => {
       email: 'status-parity@example.com',
     });
 
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
     const fixtures: StatusFixture[] = [
       {
         generationStatus: 'generating',

@@ -1,8 +1,4 @@
-export type ContentBlockType =
-  | 'heading1'
-  | 'heading2'
-  | 'heading3'
-  | 'paragraph';
+type ContentBlockType = 'heading1' | 'heading2' | 'heading3' | 'paragraph';
 
 export type ContentBlock = {
   type: ContentBlockType;

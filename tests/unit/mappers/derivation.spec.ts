@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import {
   buildGenerationAttempt,
@@ -10,7 +10,7 @@ import {
 } from '../../fixtures/plan-detail';
 
 describe('derived plan status mapping', () => {
-  const cap = getAttemptCap();
+  const cap = getGenerationAttemptCap();
 
   it('returns pending when no modules and attempts below cap', () => {
     const detail = buildPlanDetail({

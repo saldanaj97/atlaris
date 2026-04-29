@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file
 /**
  * Top-level smoke orchestration: one ephemeral Postgres per invocation,
  * migrations + seed, temp state file, guaranteed teardown.

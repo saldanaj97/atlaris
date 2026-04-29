@@ -1,5 +1,5 @@
 import { isUnlimitedNumber } from '@/app/(app)/plans/components/usage-types';
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 interface TierConfig {

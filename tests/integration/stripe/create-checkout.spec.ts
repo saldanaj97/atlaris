@@ -1,16 +1,16 @@
-import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
-import { sql } from 'drizzle-orm';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
 import { ensureUser } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
 } from '@/app/api/v1/stripe/create-checkout/route';
-import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
+import { sql } from 'drizzle-orm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const createTestBoundary = (stripe: ReturnType<typeof makeStripeMock>) =>
   createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) });

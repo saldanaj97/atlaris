@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file
 /**
  * Start `next dev --turbopack` with launcher-owned env (anon or auth).
  * Requires `SMOKE_STATE_FILE` pointing at JSON from `scripts/tests/smoke/run.ts`.

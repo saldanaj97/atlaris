@@ -1,18 +1,11 @@
 'use client';
 
-import {
-  type JSX,
-  useCallback,
-  useLayoutEffect,
-  useOptimistic,
-  useRef,
-  useTransition,
-} from 'react';
+import { type JSX, useCallback } from 'react';
 
 import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
+import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
 import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
 import { clientLogger } from '@/lib/logging/client';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -38,59 +31,35 @@ export function ModuleDetailClient({
   } = moduleData;
 
   const lessons = module.tasks;
-  const [statuses, addOptimisticStatus] = useOptimistic(
-    initialStatuses,
-    (
-      current: Record<string, ProgressStatus>,
-      update: { taskId: string; status: ProgressStatus },
-    ) => ({
-      ...current,
-      [update.taskId]: update.status,
-    }),
-  );
 
-  // Ref mirrors optimistic state so handleStatusChange reads the latest value
-  // without adding `statuses` to its dependency array (avoids callback churn).
-  const statusesRef = useRef(statuses);
-
-  useLayoutEffect(() => {
-    statusesRef.current = statuses;
-  }, [statuses]);
-
-  const [_isPending, startTransition] = useTransition();
-
-  const batcher = useTaskStatusBatcher({
-    flushAction: async (updates) => {
+  const flushModuleTaskProgress = useCallback(
+    async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
       await batchUpdateModuleTaskProgressAction({
         planId,
         moduleId: module.id,
         updates,
       });
     },
-  });
+    [module.id, planId],
+  );
 
-  const handleStatusChange = useCallback(
-    (taskId: string, nextStatus: ProgressStatus) => {
-      const previousStatus = statusesRef.current[taskId] ?? 'not_started';
-
-      startTransition(async () => {
-        addOptimisticStatus({ taskId, status: nextStatus });
-        try {
-          await batcher.queue(taskId, nextStatus, previousStatus);
-        } catch (error: unknown) {
-          clientLogger.error('Module task status batch failed', {
-            error,
-            moduleId: module.id,
-            planId,
-            taskId,
-          });
-          // Transition settling auto-reverts optimistic state.
-          // Toast is shown by the batcher.
-        }
+  const handleTaskStatusError = useCallback(
+    ({ error, taskId }: { error: unknown; taskId: string }) => {
+      clientLogger.error('Module task status batch failed', {
+        error,
+        moduleId: module.id,
+        planId,
+        taskId,
       });
     },
-    [addOptimisticStatus, batcher, module.id, planId],
+    [module.id, planId],
   );
+
+  const { statuses, handleStatusChange } = useOptimisticTaskStatusUpdates({
+    initialStatuses,
+    flushAction: flushModuleTaskProgress,
+    onError: handleTaskStatusError,
+  });
 
   return (
     <div className="space-y-8">

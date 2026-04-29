@@ -20,7 +20,7 @@ import { formatMinutes } from '@/features/plans/formatters';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 
-export type ModuleStatus = 'completed' | 'active' | 'locked';
+type ModuleStatus = 'completed' | 'active' | 'locked';
 
 export interface TimelineModule {
   id: string;

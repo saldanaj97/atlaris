@@ -1,10 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { PageHeader } from '@/components/ui/page-header';
-import { clientLogger } from '@/lib/logging/client';
+import { SettingsErrorContent } from '@/app/(app)/settings/components/SettingsErrorContent';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -16,29 +12,14 @@ interface ErrorProps {
  * Catches unexpected runtime errors and provides a recovery option.
  */
 export default function BillingError({ error, reset }: ErrorProps) {
-  useEffect(() => {
-    clientLogger.error('Billing page error:', {
-      errorDigest: error.digest,
-      message: error.message,
-      stack: error.stack,
-    });
-  }, [error]);
-
   return (
-    <>
-      <PageHeader title="Billing" titleAs="h2" />
-      <Card className="p-6" role="alert">
-        <h3 className="mb-2 text-xl font-semibold text-red-600">
-          Error Loading Billing Information
-        </h3>
-        <p className="mb-4 text-muted-foreground">
-          We couldn&apos;t load your billing information. This could be a
-          temporary issue.
-        </p>
-        <Button onClick={reset} variant="default">
-          Try Again
-        </Button>
-      </Card>
-    </>
+    <SettingsErrorContent
+      error={error}
+      reset={reset}
+      logMessage="Billing page error:"
+      title="Billing"
+      errorTitle="Error Loading Billing Information"
+      errorMessage="We couldn't load your billing information. This could be a temporary issue."
+    />
   );
 }

@@ -5,8 +5,8 @@ import {
 import { resolveUserTier } from '@/features/billing/tier';
 import type { PlansDbClient } from '@/features/plans/api/route-context';
 import {
-  type CreatePlanResult,
   createPlanLifecycleService,
+  type CreatePlanResult,
   type GenerationAttemptResult,
   type JobQueuePort,
   type PermanentFailure,
@@ -15,6 +15,7 @@ import {
   type RetryableFailure,
 } from '@/features/plans/lifecycle';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
+import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
@@ -31,18 +32,6 @@ import {
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
-const PLAN_CREATION_FAILURE_MAP: Record<
-  FailureClassification | 'unknown',
-  { status: number; code: string }
-> = {
-  validation: { status: 400, code: 'PLAN_CREATION_VALIDATION_FAILED' },
-  capped: { status: 403, code: 'PLAN_CREATION_CAPPED' },
-  conflict: { status: 409, code: 'PLAN_CREATION_CONFLICT' },
-  rate_limit: { status: 429, code: 'PLAN_CREATION_RATE_LIMITED' },
-  timeout: { status: 504, code: 'PLAN_CREATION_TIMEOUT' },
-  provider_error: { status: 503, code: 'PLAN_CREATION_PROVIDER_ERROR' },
-  unknown: { status: 500, code: 'PLAN_CREATION_FAILED' },
-};
 
 const noopJobQueue: JobQueuePort = {
   async enqueueJob() {
@@ -521,8 +510,8 @@ function throwPlanCreationFailure(
 ): never {
   const error = createResult.error;
   const { status, code } =
-    PLAN_CREATION_FAILURE_MAP[createResult.classification] ??
-    PLAN_CREATION_FAILURE_MAP.unknown;
+    PLAN_CREATION_FAILURE_HTTP_MAP[createResult.classification] ??
+    PLAN_CREATION_FAILURE_HTTP_MAP.unknown;
 
   logger.warn(
     {

@@ -1,9 +1,9 @@
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
+import type { PlanSummary } from '@/shared/types/db.types';
 import { createId } from '@tests/fixtures/ids';
 import { buildPlan, buildPlanSummary } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
-import type { PlanStatus } from '@/app/(app)/plans/types';
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
-import type { PlanSummary } from '@/shared/types/db.types';
 
 type SummaryFixture = Omit<Partial<PlanSummary>, 'plan'> & {
   plan?: Partial<PlanSummary['plan']>;
@@ -47,7 +47,7 @@ describe('derivePlanSummaryDisplayStatus', () => {
   it.each<{
     name: string;
     overrides: SummaryFixture;
-    expected: PlanStatus;
+    expected: PlanReadStatus;
   }>([
     {
       name: 'active when canonical active and recently updated',

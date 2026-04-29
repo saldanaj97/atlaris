@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 /**
  * GenerationAdapter — production implementation of GenerationPort.
  *

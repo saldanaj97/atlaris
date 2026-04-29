@@ -5,7 +5,11 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { createPortalResponseSchema } from '@/features/billing/validation/stripe';
-import { parseApiErrorResponse } from '@/lib/api/error-response';
+import {
+  clientErrorFieldsFromParsedApi,
+  parseApiErrorUnlessOk,
+  readResponseJsonBody,
+} from '@/lib/api/client-response-body';
 import { clientLogger } from '@/lib/logging/client';
 
 const PORTAL_TIMEOUT_MS = 15_000;
@@ -138,23 +142,19 @@ async function requestBillingPortal(params: {
 
   const { response } = responseResult;
 
-  if (!response.ok) {
-    const parsedError = await parseApiErrorResponse(
-      response,
-      'Failed to open billing portal',
-    );
+  const apiError = await parseApiErrorUnlessOk(
+    response,
+    'Failed to open billing portal',
+  );
+  if (apiError !== null) {
     return {
       kind: 'error',
-      message: parsedError.error,
-      error: new Error(parsedError.error),
+      ...clientErrorFieldsFromParsedApi(apiError),
       reason: 'api',
     };
   }
 
-  const bodyResult = await response
-    .json()
-    .then((raw: unknown) => ({ kind: 'body' as const, raw }))
-    .catch((error: unknown) => ({ kind: 'parse-error' as const, error }));
+  const bodyResult = await readResponseJsonBody(response);
 
   if (bodyResult.kind === 'parse-error') {
     return {

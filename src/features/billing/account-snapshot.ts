@@ -1,5 +1,4 @@
-import { eq } from 'drizzle-orm';
-import { canOpenBillingPortalForUser } from '@/features/billing/stripe-commerce';
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import {
   getUsageSummaryForTier,
   type UsageSummary,
@@ -11,6 +10,7 @@ import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { eq } from 'drizzle-orm';
 
 export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {
@@ -23,9 +23,9 @@ export class BillingSnapshotNotFoundError extends AppError {
   }
 }
 
-export type BillingAccountProjection = 'full' | 'subscription';
+type BillingAccountProjection = 'full' | 'subscription';
 
-export type BillingSubscriptionSnapshot = {
+type BillingSubscriptionSnapshot = {
   tier: SubscriptionTier;
   subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing' | null;
   subscriptionPeriodEnd: Date | null;
@@ -35,7 +35,7 @@ export type BillingSubscriptionSnapshot = {
   canOpenBillingPortal: boolean;
 };
 
-export type BillingAccountSnapshot = BillingSubscriptionSnapshot & {
+type BillingAccountSnapshot = BillingSubscriptionSnapshot & {
   usage: UsageSummary;
 };
 

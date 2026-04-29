@@ -28,7 +28,7 @@ export type RequestScope = Readonly<{
   correlationId: string;
 }>;
 
-export type RouteScope = RequestScope &
+type RouteScope = RequestScope &
   Readonly<{
     req: Request;
     params: RouteParams;
@@ -37,7 +37,7 @@ export type RouteScope = RequestScope &
 type RequestBoundaryWork<T> = (scope: RequestScope) => Promise<T> | T;
 type RouteBoundaryWork = (scope: RouteScope) => Promise<Response> | Response;
 
-export type RouteBoundaryOptions = Readonly<{
+type RouteBoundaryOptions = Readonly<{
   rateLimit?: UserRateLimitCategory;
 }>;
 
@@ -97,7 +97,7 @@ function createRouteMethod(): RouteMethod {
   return route as RouteMethod;
 }
 
-export interface RequestBoundary {
+interface RequestBoundary {
   route: RouteMethod;
   component<T>(run: RequestBoundaryWork<T>): Promise<T | null>;
   action<T>(run: RequestBoundaryWork<T>): Promise<T | null>;

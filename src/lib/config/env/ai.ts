@@ -34,7 +34,7 @@ interface AiMockEnv {
  * string and treated everything except `mock` as "use the real router";
  * tighten to this fixed union so unintended typos surface at parse time.
  */
-export type AiProviderEnvValue = 'mock' | 'router';
+type AiProviderEnvValue = 'mock' | 'router';
 
 /**
  * Core AI env facets used by provider selection and generation defaults.

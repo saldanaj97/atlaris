@@ -1,19 +1,11 @@
-import { toErrorResponse } from '@/lib/api/errors';
-import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { getOpenApiDocument } from '@/lib/api/openapi';
 import { json } from '@/lib/api/response';
-import { appEnv } from '@/lib/config/env';
+
+import { enforceDocsAccess } from '../enforce-docs-access';
 
 export const GET = async (request: Request) => {
-  if (!appEnv.isDevelopment && !appEnv.isTest) {
-    return new Response('Not Found', { status: 404 });
-  }
-
-  try {
-    checkIpRateLimit(request, 'docs');
-  } catch (error) {
-    return toErrorResponse(error);
-  }
+  const denied = enforceDocsAccess(request);
+  if (denied) return denied;
 
   const document = await getOpenApiDocument();
 

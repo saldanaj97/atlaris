@@ -19,8 +19,6 @@ import type {
   SubscriptionTier,
 } from './types';
 
-export type { FailureClassification } from './types';
-
 // ─── PlanPersistencePort ─────────────────────────────────────────
 
 export interface PlanPersistencePort {
@@ -102,7 +100,7 @@ export type GenerationRunParams = {
   signal?: AbortSignal;
 };
 
-export type GenerationRunSuccess = {
+type GenerationRunSuccess = {
   status: 'success';
   modules: GeneratedModule[];
   metadata: Record<string, unknown>;
@@ -110,7 +108,7 @@ export type GenerationRunSuccess = {
   durationMs: number;
 };
 
-export type GenerationRunFailure = {
+type GenerationRunFailure = {
   status: 'failure';
   classification: FailureClassification;
   error: Error;

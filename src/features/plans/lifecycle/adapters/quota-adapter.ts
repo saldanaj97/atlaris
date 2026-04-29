@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 /**
  * QuotaAdapter — production implementation of QuotaPort.
  *

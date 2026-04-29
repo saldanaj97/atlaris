@@ -1,7 +1,7 @@
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
-export type PlanRegenerationOverrides = PlanRegenerationOverridesInput;
+type PlanRegenerationOverrides = PlanRegenerationOverridesInput;
 
 /** Owned plan row fields required for regeneration orchestration (no Drizzle exports). */
 export type RegenerationOwnedPlan = {
@@ -23,7 +23,7 @@ export type RequestPlanRegenerationArgs = {
   inlineProcessingEnabled: boolean;
 };
 
-export type PlanGenerationRateLimitSnapshot = {
+type PlanGenerationRateLimitSnapshot = {
   remaining: number;
   limit: number;
   /** Unix timestamp in whole seconds since epoch (UTC), not milliseconds. Matches `X-RateLimit-Reset` emitted for this snapshot. */

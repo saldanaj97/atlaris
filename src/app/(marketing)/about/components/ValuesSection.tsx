@@ -4,6 +4,8 @@ import { useId } from 'react';
 
 import { Card } from '@/components/ui/card';
 
+import { MarketingSectionLayout } from './MarketingSectionLayout';
+
 /**
  * Core values section with glassmorphism cards.
  */
@@ -11,42 +13,37 @@ export function ValuesSection(): JSX.Element {
   const headingId = useId();
 
   return (
-    <section className="relative py-24 lg:py-32" aria-labelledby={headingId}>
-      <div className="relative z-10 mx-auto max-w-screen-xl px-6">
-        <div className="mb-16 text-center">
-          <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
-            What We <span className="gradient-text">Believe</span>
-          </h2>
-          <p className="marketing-subtitle mx-auto max-w-2xl text-muted-foreground">
-            The principles that guide every feature we build.
-          </p>
-        </div>
+    <MarketingSectionLayout
+      headingId={headingId}
+      title={
+        <>
+          What We <span className="gradient-text">Believe</span>
+        </>
+      }
+      subtitle="The principles that guide every feature we build."
+    >
+      <div className="grid gap-6 md:grid-cols-3">
+        {VALUES.map((value) => (
+          <Card
+            key={value.title}
+            className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
+          >
+            <div
+              className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
+              aria-hidden="true"
+            />
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {VALUES.map((value) => (
-            <Card
-              key={value.title}
-              className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
-            >
-              <div
-                className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
-                aria-hidden="true"
-              />
-
-              <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl shadow-lg">
-                {value.icon}
-              </div>
-              <h3 className="marketing-h3 mb-3 text-foreground">
-                {value.title}
-              </h3>
-              <p className="leading-relaxed text-muted-foreground">
-                {value.description}
-              </p>
-            </Card>
-          ))}
-        </div>
+            <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl shadow-lg">
+              {value.icon}
+            </div>
+            <h3 className="marketing-h3 mb-3 text-foreground">{value.title}</h3>
+            <p className="leading-relaxed text-muted-foreground">
+              {value.description}
+            </p>
+          </Card>
+        ))}
       </div>
-    </section>
+    </MarketingSectionLayout>
   );
 }
 

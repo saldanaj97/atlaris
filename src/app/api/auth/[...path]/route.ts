@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth/server';
 
 type AuthRouteHandler = ReturnType<typeof auth.handler>['GET'];
 
-export type CreateAuthHandlersDeps = {
+type CreateAuthHandlersDeps = {
   checkIpRateLimit: typeof realCheckIpRateLimit;
 };
 

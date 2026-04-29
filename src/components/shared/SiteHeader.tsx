@@ -1,4 +1,3 @@
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
@@ -7,6 +6,7 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 import { getShellAuthUserId } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
 

@@ -83,6 +83,24 @@ async function runNamedStep(
   }
 }
 
+function printSuiteSummary(
+  passedSuites: string[],
+  failedSuites: string[],
+  successMessage: string,
+): number {
+  if (passedSuites.length > 0) {
+    console.log(`Passed: ${passedSuites.join(' ')}`);
+  }
+
+  if (failedSuites.length > 0) {
+    console.log(`Failed: ${failedSuites.join(' ')}`);
+    return 1;
+  }
+
+  logInfo(successMessage);
+  return 0;
+}
+
 function parseAllOptions(args: string[]): AllCommandOptions | null {
   const options: AllCommandOptions = {
     withE2E: false,
@@ -190,17 +208,11 @@ async function runAllCommand(args: string[]): Promise<number> {
 
   printBanner('TEST SUITE SUMMARY');
 
-  if (passedSuites.length > 0) {
-    console.log(`Passed: ${passedSuites.join(' ')}`);
-  }
-
-  if (failedSuites.length > 0) {
-    console.log(`Failed: ${failedSuites.join(' ')}`);
-    return 1;
-  }
-
-  logInfo('All test suites passed!');
-  return 0;
+  return printSuiteSummary(
+    passedSuites,
+    failedSuites,
+    'All test suites passed!',
+  );
 }
 
 async function runChangedCommand(args: string[]): Promise<number> {
@@ -236,17 +248,11 @@ async function runChangedCommand(args: string[]): Promise<number> {
 
   printBanner('CHANGED TEST SUMMARY');
 
-  if (passedSuites.length > 0) {
-    console.log(`Passed: ${passedSuites.join(' ')}`);
-  }
-
-  if (failedSuites.length > 0) {
-    console.log(`Failed: ${failedSuites.join(' ')}`);
-    return 1;
-  }
-
-  logInfo('Changed test bundle passed!');
-  return 0;
+  return printSuiteSummary(
+    passedSuites,
+    failedSuites,
+    'Changed test bundle passed!',
+  );
 }
 
 async function main(): Promise<void> {

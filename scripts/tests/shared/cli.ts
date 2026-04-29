@@ -1,4 +1,4 @@
-export interface ParsedRunnerArgs {
+interface ParsedRunnerArgs {
   testPath: string;
   watch: boolean;
   changed: boolean;
@@ -7,7 +7,7 @@ export interface ParsedRunnerArgs {
   helpRequested: boolean;
 }
 
-export interface ParseRunnerArgsOptions {
+interface ParseRunnerArgsOptions {
   defaultTestPath: string;
 }
 

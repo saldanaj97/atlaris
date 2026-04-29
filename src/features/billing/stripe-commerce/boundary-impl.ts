@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 import Stripe from 'stripe';
 import { z } from 'zod';
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';

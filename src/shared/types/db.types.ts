@@ -40,7 +40,7 @@ export type LearningPlanWithModules = LearningPlan & {
   modules: ModuleWithTasks[];
 };
 
-export type ProgressMetrics = {
+type ProgressMetrics = {
   completion: number;
   completedTasks: number;
   totalTasks: number;
@@ -63,8 +63,6 @@ export type PlanSummary = ProgressMetrics & {
 };
 
 // Query-layer row contract that backs LightweightPlanSummary.
-export type { LightweightPlanListRow };
-
 /** Lightweight plan summary for API list views. */
 export type LightweightPlanSummary = LightweightPlanListRow &
   ProgressMetrics & {

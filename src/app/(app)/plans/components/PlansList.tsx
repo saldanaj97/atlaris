@@ -1,15 +1,18 @@
 'use client';
 
-import { Search } from 'lucide-react';
-import type { JSX } from 'react';
-import { useMemo, useState } from 'react';
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
 import type { UsageData } from '@/app/(app)/plans/components/usage-types';
-import type { FilterStatus, PlanStatus } from '@/app/(app)/plans/types';
 import { Button } from '@/components/ui/button';
+import type {
+  FilterStatus,
+  PlanReadStatus,
+} from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
+import { Search } from 'lucide-react';
+import type { JSX } from 'react';
+import { useMemo, useState } from 'react';
 
 interface PlansListProps {
   summaries: PlanSummary[];
@@ -58,7 +61,7 @@ export function PlansList({
         completed: 0,
         generating: 0,
         failed: 0,
-      } as Record<PlanStatus, number>,
+      } as Record<PlanReadStatus, number>,
     );
   }, [summaries, effectiveReferenceTimestamp]);
 

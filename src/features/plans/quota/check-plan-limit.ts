@@ -5,9 +5,9 @@
 import { eq, sql } from 'drizzle-orm';
 
 import { resolveUserTier } from '@/features/billing/tier';
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import { learningPlans } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 
 /**
  * Count plans that consume the user's plan quota (eligible + in-flight generating).

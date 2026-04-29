@@ -12,7 +12,7 @@ export type Module = InferSelectModel<DbSchemaModule['modules']>;
 export type Task = InferSelectModel<DbSchemaModule['tasks']>;
 
 /** Select model for taskResources table. */
-export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
+type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 
 /** Select model for taskProgress table. */
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
@@ -60,7 +60,7 @@ export interface ModuleDetail {
 }
 
 /** Raw module row from DB select (id, order, title) for nav item computation. */
-export interface ModuleNavRaw {
+interface ModuleNavRaw {
   id: string;
   order: number;
   title: string;

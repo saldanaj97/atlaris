@@ -1,13 +1,17 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
+import {
+  clientErrorFieldsFromParsedApi,
+  parseApiErrorUnlessOk,
+  readResponseJsonBody,
+} from '@/lib/api/client-response-body';
+import { isAbortError } from '@/lib/errors';
+import { clientLogger } from '@/lib/logging/client';
 import type { ReactElement } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
-import { parseApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError } from '@/lib/errors';
-import { clientLogger } from '@/lib/logging/client';
 
 type CheckoutRequestResult =
   | { kind: 'success'; sessionUrl: string }
@@ -88,22 +92,18 @@ async function requestCheckoutSession(params: {
 
   const { response } = responseResult;
 
-  if (!response.ok) {
-    const parsedError = await parseApiErrorResponse(
-      response,
-      'Failed to start checkout',
-    );
+  const apiError = await parseApiErrorUnlessOk(
+    response,
+    'Failed to start checkout',
+  );
+  if (apiError !== null) {
     return {
       kind: 'error',
-      message: parsedError.error,
-      error: new Error(parsedError.error),
+      ...clientErrorFieldsFromParsedApi(apiError),
     };
   }
 
-  const bodyResult = await response
-    .json()
-    .then((raw: unknown) => ({ kind: 'body' as const, raw }))
-    .catch((error: unknown) => ({ kind: 'parse-error' as const, error }));
+  const bodyResult = await readResponseJsonBody(response);
 
   if (bodyResult.kind === 'parse-error') {
     return {

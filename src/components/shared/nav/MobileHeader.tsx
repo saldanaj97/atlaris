@@ -1,9 +1,5 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { JSX } from 'react';
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
@@ -14,9 +10,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import { type NavItem, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { JSX } from 'react';
 
 interface MobileHeaderProps {
   navItems: NavItem[];

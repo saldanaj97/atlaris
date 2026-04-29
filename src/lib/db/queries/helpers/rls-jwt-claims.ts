@@ -3,7 +3,7 @@ import { type SQLWrapper, sql } from 'drizzle-orm';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import { db as serviceDb } from '@/lib/db/service-role';
 
-export type RlsTransactionContext = {
+type RlsTransactionContext = {
   shouldNormalizeRlsContext: boolean;
   requestJwtClaims: string | null;
 };

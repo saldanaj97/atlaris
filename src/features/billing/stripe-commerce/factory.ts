@@ -1,4 +1,3 @@
-import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
 import {
   DefaultStripeCommerceBoundary,
@@ -14,6 +13,7 @@ import { users } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import type { createLogger } from '@/lib/logging/logger';
 import { logger } from '@/lib/logging/logger';
+import type Stripe from 'stripe';
 
 type AppLogger = ReturnType<typeof createLogger>;
 
@@ -70,6 +70,21 @@ export function getStripeCommerceBoundary(): StripeCommerceBoundary {
     commerceBoundarySingleton = createStripeCommerceBoundary();
   }
   return commerceBoundarySingleton;
+}
+
+let lazyStripeCommerceBoundary: StripeCommerceBoundary | null = null;
+
+/**
+ * Default route wiring: each method delegates to `getStripeCommerceBoundary()`.
+ * Single module copy avoids duplicate proxy blocks across API routes.
+ */
+export function getLazyStripeCommerceBoundary(): StripeCommerceBoundary {
+  lazyStripeCommerceBoundary ??= {
+    beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
+    openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
+    acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
+  };
+  return lazyStripeCommerceBoundary;
 }
 
 /**

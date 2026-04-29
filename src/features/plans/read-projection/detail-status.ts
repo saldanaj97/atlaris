@@ -1,4 +1,4 @@
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
 import type {
   PlanStatus as ClientPlanStatus,
@@ -53,7 +53,7 @@ export function buildPlanDetailStatusSnapshot(params: {
       generationStatus: plan.generationStatus,
       hasModules,
       attemptsCount,
-      attemptCap: getAttemptCap(),
+      attemptCap: getGenerationAttemptCap(),
     }),
     attempts: attemptsCount,
     latestClassification: toStatusClassification(latestAttempt?.classification),

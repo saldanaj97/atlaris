@@ -35,7 +35,7 @@ export type ClientGenerationAttempt = {
   createdAt: string;
 };
 
-export type ClientResource = Pick<
+type ClientResource = Pick<
   Resource,
   'id' | 'type' | 'title' | 'url' | 'durationMinutes'
 > & {

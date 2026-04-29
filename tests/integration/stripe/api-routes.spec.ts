@@ -1,3 +1,13 @@
+import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
+import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
+import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
+import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
+import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import {
   makeStripeInvoice,
   makeStripeMock,
@@ -6,18 +16,6 @@ import {
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
-import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
-import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
-import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
-import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
-import {
-  createStripeCommerceBoundary,
-  type StripeCommerceBoundary,
-} from '@/features/billing/stripe-commerce';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import {

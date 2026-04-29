@@ -5,9 +5,8 @@
 
 import { and, count, eq, gte, notExists, sql } from 'drizzle-orm';
 
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import {
   PlanCreationError,
   PlanLimitReachedError,
@@ -17,6 +16,7 @@ import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-g
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
@@ -163,7 +163,7 @@ export async function findCappedPlanWithoutModules(
       ),
     )
     .groupBy(generationAttempts.planId)
-    .having(gte(count(generationAttempts.id), getAttemptCap()))
+    .having(gte(count(generationAttempts.id), getGenerationAttemptCap()))
     .limit(1);
 
   return row?.planId ?? null;

@@ -7,7 +7,7 @@ import type { users } from '@/lib/db/schema';
 export type DbUser = InferSelectModel<typeof users>;
 
 /** Inferred insert type for the `users` table (use for create operations). */
-export type DbUserInsert = InferInsertModel<typeof users>;
+type DbUserInsert = InferInsertModel<typeof users>;
 
 /** Input data for createUser (authUserId, email, optional name). */
 export type CreateUserData = Pick<

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { isValidRedirectUrl } from '@/app/api/v1/stripe/_shared/redirect';
 import {
   isLocalPriceId,
@@ -7,12 +6,13 @@ import {
 import {
   executeLocalSubscriptionReplay,
   isLocalStripeCompletionRouteEnabled,
-} from '@/features/billing/stripe-commerce';
+} from '@/features/billing/stripe-commerce/factory';
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuth } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { appEnv } from '@/lib/config/env';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
