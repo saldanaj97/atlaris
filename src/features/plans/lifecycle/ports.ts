@@ -6,17 +6,22 @@
  * these interfaces — never on concrete implementations.
  */
 
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import type {
   AtomicInsertResult,
   DurationCapResult,
-  FailureClassification,
   GeneratedModule,
   NormalizedDuration,
   PlanInsertData,
-  SubscriptionTier,
 } from './types';
 
 // ─── PlanPersistencePort ─────────────────────────────────────────
@@ -98,6 +103,9 @@ export type GenerationRunParams = {
   input: Readonly<GenerationInput>;
   modelOverride?: string | null;
   signal?: AbortSignal;
+  allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
+  requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
+  onAttemptReserved?: (reservation: AttemptReservation) => void;
 };
 
 type GenerationRunSuccess = {
@@ -115,6 +123,7 @@ type GenerationRunFailure = {
   metadata?: Record<string, unknown>;
   usage?: CanonicalAIUsage;
   durationMs: number;
+  reservationRejectionReason?: AttemptRejection['reason'];
 };
 
 export type GenerationRunResult = GenerationRunSuccess | GenerationRunFailure;

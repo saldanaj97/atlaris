@@ -1,4 +1,5 @@
 import type {
+  AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
   FinalizeFailureParams,
@@ -51,6 +52,9 @@ export type RunGenerationOptions = {
   now?: () => Date;
   signal?: AbortSignal;
   reservation?: AttemptReservation;
+  allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
+  requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
+  onAttemptReserved?: (reservation: AttemptReservation) => void;
 };
 
 type GenerationSuccessResult = {
@@ -79,6 +83,8 @@ export type GenerationFailureResult = {
   extendedTimeout: boolean;
   timedOut: boolean;
   attempt: GenerationAttemptRecordForResponse;
+  /** Present when failure came from `reserveAttemptSlot` rejection (no in-progress row). */
+  reservationRejectionReason?: AttemptRejection['reason'];
 };
 
 export type GenerationResult =

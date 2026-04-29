@@ -4,6 +4,7 @@ import {
 } from '@/features/plans/api/route-context';
 import {
   createPlanGenerationSessionBoundary,
+  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
   type PlanGenerationSessionBoundary,
 } from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
@@ -14,11 +15,12 @@ import {
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 
 export const maxDuration = 60;
 
-const RETRYABLE_STATUSES = new Set(['failed', 'pending_retry']);
+const RETRYABLE_STATUSES: ReadonlySet<string> = new Set(
+  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+);
 
 const defaultBoundary: PlanGenerationSessionBoundary =
   createPlanGenerationSessionBoundary();
@@ -56,12 +58,6 @@ function createRetryHandler(deps?: {
           ownerUserId: internalUserId,
           dbClient: db,
         });
-        const attemptsSnapshot = await getPlanAttemptsForUser(
-          plan.id,
-          internalUserId,
-          db,
-        );
-        const attemptNumber = (attemptsSnapshot?.attempts.length ?? 0) + 1;
 
         // Pre-flight: reject non-retryable plan statuses with a clear HTTP error
         if (!RETRYABLE_STATUSES.has(plan.generationStatus ?? '')) {
@@ -81,7 +77,6 @@ function createRetryHandler(deps?: {
           authUserId,
           internalUserId,
           planId,
-          attemptNumber,
           plan: {
             topic: plan.topic,
             skillLevel: plan.skillLevel,

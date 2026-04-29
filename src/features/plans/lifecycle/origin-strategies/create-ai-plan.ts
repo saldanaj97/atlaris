@@ -6,9 +6,9 @@ import type { PlanCreationStrategyPorts } from '@/features/plans/lifecycle/origi
 import type {
   CreateAiPlanInput,
   CreatePlanResult,
-  SubscriptionTier,
 } from '@/features/plans/lifecycle/types';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export async function createAiPlanWithStrategy(
   ports: PlanCreationStrategyPorts,

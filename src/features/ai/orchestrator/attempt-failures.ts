@@ -12,6 +12,7 @@ import type {
 } from '@/features/ai/types/orchestrator.types';
 import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 import type {
+  AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
   FinalizeFailureParams,
@@ -116,14 +117,18 @@ export function createFailureResult(params: {
   attempt: GenerationAttemptRecordForResponse;
   metadata?: ProviderMetadata;
   rawText?: string;
+  reservationRejectionReason?: AttemptRejection['reason'];
 }): GenerationFailureResult {
-  const { metadata, rawText, ...rest } = params;
+  const { metadata, rawText, reservationRejectionReason, ...rest } = params;
 
   return {
     ...rest,
     status: 'failure',
     ...(metadata !== undefined && { metadata }),
     ...(rawText !== undefined && { rawText }),
+    ...(reservationRejectionReason !== undefined && {
+      reservationRejectionReason,
+    }),
   };
 }
 

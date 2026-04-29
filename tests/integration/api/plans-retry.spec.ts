@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
@@ -124,6 +124,15 @@ async function listAttempts(planId: string) {
     .orderBy(desc(generationAttempts.createdAt));
 }
 
+beforeAll(() => {
+  vi.stubEnv('AI_PROVIDER', 'mock');
+  vi.stubEnv('MOCK_GENERATION_DELAY_MS', '25');
+});
+
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
+
 describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary smoke', () => {
   it('streams retry success with incremented attempt numbering via the default boundary', async () => {
     const authUserId = 'auth_retry_success';
@@ -169,6 +178,68 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       status: 'failure',
       classification: 'timeout',
     });
+  });
+
+  it('serializes concurrent retries: winner stream completes; loser 400 or SSE error', async () => {
+    const authUserId = 'auth_retry_concurrent';
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: 'retry-concurrent@example.com',
+      subscriptionTier: 'pro',
+    });
+
+    const plan = await createTestPlanWithAttempt({
+      userId,
+      attemptOverrides: {
+        status: 'failure',
+        classification: 'timeout',
+        durationMs: 1_000,
+        promptHash: 'retry-concurrent-first',
+      },
+    });
+
+    const [resA, resB] = await Promise.all([
+      POST(createRetryRequest(plan.id)),
+      POST(createRetryRequest(plan.id)),
+    ]);
+
+    if (resA.status === 200 && resB.status === 200) {
+      const [eventsA, eventsB] = await Promise.all([
+        readStreamingResponse(resA),
+        readStreamingResponse(resB),
+      ]);
+      const hasStart = (events: typeof eventsA) =>
+        events.some((e) => e.type === 'plan_start');
+      expect(hasStart(eventsA) !== hasStart(eventsB)).toBe(true);
+      const winner = hasStart(eventsA) ? eventsA : eventsB;
+      const loser = hasStart(eventsA) ? eventsB : eventsA;
+      expectPlanStartEvent(winner, 2);
+      expect(winner.some((e) => e.type === 'complete')).toBe(true);
+      expect(loser.some((e) => e.type === 'plan_start')).toBe(false);
+      expect(loser.some((e) => e.type === 'error')).toBe(true);
+    } else {
+      const statuses = [resA.status, resB.status].sort((a, b) => a - b);
+      expect(statuses).toEqual([200, 400]);
+      const streamRes = resA.status === 200 ? resA : resB;
+      const rejectedRes = resA.status === 400 ? resA : resB;
+      const errBody = (await rejectedRes.json()) as { code?: string };
+      expect(errBody.code).toBe('VALIDATION_ERROR');
+      const events = await readStreamingResponse(streamRes);
+      expectPlanStartEvent(events, 2);
+      expect(events.some((e) => e.type === 'complete')).toBe(true);
+    }
+
+    const attempts = await listAttempts(plan.id);
+    expect(attempts).toHaveLength(2);
+
+    const [persistedPlan] = await db
+      .select({ generationStatus: learningPlans.generationStatus })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, plan.id))
+      .limit(1);
+
+    expect(persistedPlan?.generationStatus).toBe('ready');
   });
 
   it('applies durable generation_attempts rate limit before retry starts', async () => {

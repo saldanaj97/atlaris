@@ -1,5 +1,6 @@
 import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import type { PlanPersistencePort, QuotaPort } from './ports';
 import type {
@@ -7,7 +8,6 @@ import type {
   CreatePlanSuccess,
   NormalizedDuration,
   PlanInsertData,
-  SubscriptionTier,
 } from './types';
 
 type CreationLifecycleLabel = 'create';

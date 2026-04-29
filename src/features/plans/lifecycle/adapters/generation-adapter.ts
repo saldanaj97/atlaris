@@ -52,6 +52,15 @@ export class GenerationAdapter implements GenerationPort {
         provider,
         dbClient: this.dbClient,
         signal: params.signal,
+        ...(params.allowedGenerationStatuses !== undefined
+          ? { allowedGenerationStatuses: params.allowedGenerationStatuses }
+          : {}),
+        ...(params.requiredGenerationStatus !== undefined
+          ? { requiredGenerationStatus: params.requiredGenerationStatus }
+          : {}),
+        ...(params.onAttemptReserved !== undefined
+          ? { onAttemptReserved: params.onAttemptReserved }
+          : {}),
       },
     );
 
@@ -72,6 +81,9 @@ export class GenerationAdapter implements GenerationPort {
       metadata: result.metadata as Record<string, unknown> | undefined,
       usage: result.metadata ? safeNormalizeUsage(result.metadata) : undefined,
       durationMs: result.durationMs,
+      ...(result.reservationRejectionReason !== undefined
+        ? { reservationRejectionReason: result.reservationRejectionReason }
+        : {}),
     };
   }
 }

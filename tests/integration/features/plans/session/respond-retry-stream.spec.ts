@@ -12,9 +12,11 @@ import type {
 } from '@/features/plans/lifecycle';
 import {
   createPlanGenerationSessionBoundary,
+  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
   type RespondRetryStreamArgs,
   type RetryPlanGenerationPlanSnapshot,
 } from '@/features/plans/session/plan-generation-session';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { db } from '@/lib/db/service-role';
 
 const SUCCESS_ATTEMPT_RESULT: GenerationAttemptResult = {
@@ -54,10 +56,35 @@ interface FakeLifecycleHandle {
   processGenerationAttempt: ReturnType<typeof vi.fn>;
 }
 
+function fakeReservation(attemptNumber: number): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: `fake-attempt-${attemptNumber}`,
+    attemptNumber,
+    startedAt: new Date(),
+    sanitized: {
+      topic: {
+        value: BASE_PLAN_SNAPSHOT.topic,
+        truncated: false,
+        originalLength: BASE_PLAN_SNAPSHOT.topic.length,
+      },
+      notes: { value: undefined, truncated: false },
+    },
+    promptHash: `fake-hash-${attemptNumber}`,
+  };
+}
+
 function buildFakeLifecycle(
   process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>,
+  options?: { reserveAttemptNumber?: number },
 ): FakeLifecycleHandle {
-  const processGenerationAttempt = vi.fn(process);
+  const reserveN = options?.reserveAttemptNumber ?? 2;
+  const processGenerationAttempt = vi.fn(
+    async (input: ProcessGenerationInput) => {
+      input.onAttemptReserved?.(fakeReservation(reserveN));
+      return process(input);
+    },
+  );
 
   const service = {
     createPlan: vi.fn(),
@@ -79,7 +106,6 @@ interface BuildArgsInput {
   authUserId: string;
   internalUserId: string;
   planId?: string;
-  attemptNumber?: number;
   plan?: RetryPlanGenerationPlanSnapshot;
   responseHeaders?: HeadersInit;
 }
@@ -90,7 +116,6 @@ function buildArgs(input: BuildArgsInput): RespondRetryStreamArgs {
     authUserId: input.authUserId,
     internalUserId: input.internalUserId,
     planId: input.planId ?? 'plan_boundary_retry',
-    attemptNumber: input.attemptNumber ?? 2,
     plan: input.plan ?? { ...BASE_PLAN_SNAPSHOT },
     tierDb: db,
     ...(input.responseHeaders
@@ -138,7 +163,6 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_success',
-        attemptNumber: 2,
       }),
     );
 
@@ -320,6 +344,37 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(response.headers.get('Content-Type')).toBe('text/event-stream');
 
     await response.body?.cancel();
+  });
+
+  it('forwards allowedGenerationStatuses on processGenerationInput for retry', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildFakeLifecycle(async (input) => {
+      captured.push(input);
+      return SUCCESS_ATTEMPT_RESULT;
+    });
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupUser(
+      'boundary-retry-allowed-statuses',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildArgs({
+        req: buildRetryRequest('plan_retry_allowed'),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_allowed',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await readStreamingResponse(response);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.allowedGenerationStatuses).toEqual(
+      PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+    );
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {

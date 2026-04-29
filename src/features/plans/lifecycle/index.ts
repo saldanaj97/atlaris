@@ -11,6 +11,9 @@ export type {
 } from './ports';
 export type { PlanLifecycleServicePorts } from './service';
 // ─── Service ─────────────────────────────────────────────────────
+export type { SubscriptionTier } from '@/shared/types/billing.types';
+export { isRetryableClassification } from '@/shared/types/failure-classification';
+export type { FailureClassification } from '@/shared/types/failure-classification.types';
 export { PlanLifecycleService } from './service';
 export type {
   AlreadyFinalized,
@@ -21,7 +24,6 @@ export type {
   CreatePlanSuccess,
   DuplicateDetected,
   DurationCapResult,
-  FailureClassification,
   GeneratedModule,
   GeneratedTask,
   GenerationAttemptResult,
@@ -33,7 +35,4 @@ export type {
   ProcessGenerationInput,
   QuotaRejection,
   RetryableFailure,
-  SubscriptionTier,
 } from './types';
-// ─── Types ───────────────────────────────────────────────────────
-export { isRetryableClassification } from './types';

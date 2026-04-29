@@ -77,5 +77,6 @@ export function createReservationRejectionResult(
     extendedTimeout: false,
     timedOut: false,
     attempt,
+    reservationRejectionReason: reservation.reason,
   });
 }

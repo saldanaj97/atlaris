@@ -9,10 +9,12 @@
  */
 
 import { logger } from '@/lib/logging/logger';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
 import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
 import type {
   GenerationPort,
+  GenerationRunResult,
   JobQueuePort,
   PlanPersistencePort,
   QuotaPort,
@@ -24,7 +26,13 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from './types';
-import { isRetryableClassification } from './types';
+
+function shouldMarkPlanFailedAfterGenerationFailure(
+  result: Extract<GenerationRunResult, { status: 'failure' }>,
+): boolean {
+  const reason = result.reservationRejectionReason;
+  return reason !== 'in_progress' && reason !== 'invalid_status';
+}
 
 export interface PlanLifecycleServicePorts {
   readonly planPersistence: PlanPersistencePort;
@@ -105,6 +113,15 @@ export class PlanLifecycleService {
       input: input.input,
       modelOverride: input.modelOverride,
       signal: input.signal,
+      ...(input.allowedGenerationStatuses !== undefined
+        ? { allowedGenerationStatuses: input.allowedGenerationStatuses }
+        : {}),
+      ...(input.requiredGenerationStatus !== undefined
+        ? { requiredGenerationStatus: input.requiredGenerationStatus }
+        : {}),
+      ...(input.onAttemptReserved !== undefined
+        ? { onAttemptReserved: input.onAttemptReserved }
+        : {}),
     });
 
     // 2. Handle success
@@ -135,8 +152,9 @@ export class PlanLifecycleService {
     const { classification, error } = generationResult;
     const retryable = isRetryableClassification(classification);
 
-    // Always mark plan as failed
-    await this.ports.planPersistence.markGenerationFailure(input.planId);
+    if (shouldMarkPlanFailedAfterGenerationFailure(generationResult)) {
+      await this.ports.planPersistence.markGenerationFailure(input.planId);
+    }
 
     if (retryable) {
       // Retryable failure — do NOT record usage (user will retry)

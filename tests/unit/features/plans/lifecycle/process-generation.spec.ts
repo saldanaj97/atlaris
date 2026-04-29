@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
-import { isRetryableClassification } from '@/features/plans/lifecycle/types';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
 
 function createMockPorts(
@@ -307,6 +307,120 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
       input: validGenerationInput.input,
       signal,
     });
+  });
+
+  it('forwards allowedGenerationStatuses and onAttemptReserved to the generation port', async () => {
+    const onAttemptReserved = vi.fn();
+    const signal = new AbortController().signal;
+    const input: ProcessGenerationInput = {
+      ...validGenerationInput,
+      tier: 'pro',
+      signal,
+      allowedGenerationStatuses: ['failed', 'pending_retry'] as const,
+      onAttemptReserved,
+    };
+
+    await service.processGenerationAttempt(input);
+    const runGeneration = vi.mocked(ports.generation.runGeneration);
+
+    expect(runGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planId: 'plan-gen-001',
+        userId: 'user-abc',
+        tier: 'pro',
+        input: validGenerationInput.input,
+        signal,
+        allowedGenerationStatuses: ['failed', 'pending_retry'],
+        onAttemptReserved,
+      }),
+    );
+  });
+
+  it('does not mark plan failed when generation fails with in_progress reservation rejection', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'rate_limit',
+          error: new Error('concurrent'),
+          durationMs: 1,
+          reservationRejectionReason: 'in_progress',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttempt(validGenerationInput);
+
+    expect(result.status).toBe('retryable_failure');
+    expect(
+      vi.mocked(ports.planPersistence.markGenerationFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('does not mark plan failed when generation fails with invalid_status reservation rejection', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'validation',
+          error: new Error('bad status'),
+          durationMs: 1,
+          reservationRejectionReason: 'invalid_status',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttempt(validGenerationInput);
+
+    expect(result.status).toBe('permanent_failure');
+    expect(
+      vi.mocked(ports.planPersistence.markGenerationFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('marks plan failed when generation fails with rate_limited reservation rejection', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'rate_limit',
+          error: new Error('rate limited'),
+          durationMs: 1,
+          reservationRejectionReason: 'rate_limited',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    await service.processGenerationAttempt(validGenerationInput);
+
+    expect(
+      vi.mocked(ports.planPersistence.markGenerationFailure),
+    ).toHaveBeenCalledWith('plan-gen-001');
+  });
+
+  it('marks plan failed when generation fails with capped reservation rejection', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'capped',
+          error: new Error('capped'),
+          durationMs: 1,
+          reservationRejectionReason: 'capped',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttempt(validGenerationInput);
+
+    expect(result.status).toBe('permanent_failure');
+    expect(
+      vi.mocked(ports.planPersistence.markGenerationFailure),
+    ).toHaveBeenCalledWith('plan-gen-001');
   });
 
   // ─── Usage metadata extraction ───────────────────────────────

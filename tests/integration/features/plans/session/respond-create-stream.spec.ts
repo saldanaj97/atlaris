@@ -16,7 +16,10 @@ import {
   type RespondCreateStreamArgs,
 } from '@/features/plans/session/plan-generation-session';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptReservation,
+  AttemptsDbClient,
+} from '@/lib/db/queries/types/attempts.types';
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
@@ -69,6 +72,24 @@ const BASE_BODY: CreateLearningPlanInput = {
   origin: 'ai',
 };
 
+function fakeReservation(attemptNumber: number): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: `fake-attempt-${attemptNumber}`,
+    attemptNumber,
+    startedAt: new Date(),
+    sanitized: {
+      topic: {
+        value: BASE_BODY.topic,
+        truncated: false,
+        originalLength: BASE_BODY.topic.length,
+      },
+      notes: { value: undefined, truncated: false },
+    },
+    promptHash: `fake-hash-${attemptNumber}`,
+  };
+}
+
 interface FakeLifecycleHandle {
   service: PlanLifecycleService;
   createPlan: ReturnType<typeof vi.fn>;
@@ -78,12 +99,19 @@ interface FakeLifecycleHandle {
 function buildFakeLifecycle({
   createResult = SUCCESS_CREATE_RESULT,
   process,
+  reserveAttemptNumber = 1,
 }: {
   createResult?: CreatePlanResult;
   process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>;
+  reserveAttemptNumber?: number;
 }): FakeLifecycleHandle {
   const createPlan = vi.fn().mockResolvedValue(createResult);
-  const processGenerationAttempt = vi.fn(process);
+  const processGenerationAttempt = vi.fn(
+    async (input: ProcessGenerationInput) => {
+      input.onAttemptReserved?.(fakeReservation(reserveAttemptNumber));
+      return process(input);
+    },
+  );
 
   const service = {
     createPlan,

@@ -65,6 +65,12 @@ export async function runGenerationAttempt(
       input: context.input,
       dbClient,
       now: nowFn,
+      ...(options.allowedGenerationStatuses !== undefined
+        ? { allowedGenerationStatuses: options.allowedGenerationStatuses }
+        : {}),
+      ...(options.requiredGenerationStatus !== undefined
+        ? { requiredGenerationStatus: options.requiredGenerationStatus }
+        : {}),
     }));
 
   if (!reservation.reserved) {
@@ -77,13 +83,14 @@ export async function runGenerationAttempt(
     );
   }
 
-  const provider = options.provider ?? getGenerationProvider();
-
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;
   let timeoutLifecycle: TimeoutLifecycle | undefined;
 
   try {
+    const provider = options.provider ?? getGenerationProvider();
+    options.onAttemptReserved?.(reservation);
+
     const { controller, ...lifecycle } = setupAbortAndTimeout(
       timeoutConfig,
       options.signal,

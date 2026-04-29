@@ -18,7 +18,10 @@ import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan
 import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptReservation,
+  AttemptsDbClient,
+} from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
@@ -32,6 +35,12 @@ import {
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
+
+/** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
+export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [
+  'failed',
+  'pending_retry',
+] as const;
 
 const noopJobQueue: JobQueuePort = {
   async enqueueJob() {
@@ -67,7 +76,6 @@ export interface RespondRetryStreamArgs {
   authUserId: string;
   internalUserId: string;
   planId: string;
-  attemptNumber: number;
   plan: RetryPlanGenerationPlanSnapshot;
   tierDb: PlansDbClient;
   responseHeaders?: HeadersInit;
@@ -132,7 +140,6 @@ type SessionCommand =
 
 interface PreparedSessionPlan {
   planId: string;
-  attemptNumber: number;
   planStartInput: CreateLearningPlanInput;
   generationInput: ProcessGenerationInput;
   fallbackClassification: FailureClassification | 'unknown';
@@ -165,7 +172,6 @@ async function run(
       dbClient,
       cleanup: closeStreamDb,
       planId: prepared.planId,
-      attemptNumber: prepared.attemptNumber,
       planStartInput: prepared.planStartInput,
       generationInput: prepared.generationInput,
       processGeneration:
@@ -246,7 +252,6 @@ async function prepareCreate(
 
   return {
     planId: createResult.planId,
-    attemptNumber: 1,
     planStartInput: {
       ...body,
       topic: createResult.normalizedInput.topic,
@@ -280,13 +285,12 @@ async function prepareRetry(
   command: Extract<SessionCommand, { kind: 'retry' }>,
   _lifecycleService: PlanLifecycleService,
 ): Promise<PreparedSessionPlan> {
-  const { internalUserId, planId, attemptNumber, plan, tierDb } = command;
+  const { internalUserId, planId, plan, tierDb } = command;
 
   const tier = await resolveUserTier(internalUserId, tierDb);
 
   return {
     planId,
-    attemptNumber,
     planStartInput: {
       topic: plan.topic,
       skillLevel: plan.skillLevel,
@@ -302,6 +306,7 @@ async function prepareRetry(
       planId,
       userId: internalUserId,
       tier,
+      allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
       input: {
         topic: plan.topic,
         skillLevel: plan.skillLevel,
@@ -340,7 +345,6 @@ interface CreatePlanGenerationSessionResponseParams {
   dbClient: AttemptsDbClient;
   cleanup: () => Promise<void>;
   planId: string;
-  attemptNumber?: number;
   planStartInput: CreateLearningPlanInput;
   generationInput: ProcessGenerationInput;
   processGeneration: (
@@ -361,7 +365,6 @@ async function createPlanGenerationSessionResponse({
   dbClient,
   cleanup,
   planId,
-  attemptNumber = 1,
   planStartInput,
   generationInput,
   processGeneration,
@@ -372,22 +375,42 @@ async function createPlanGenerationSessionResponse({
   try {
     const stream = createEventStream(
       async (emit, _controller, streamContext) => {
-        try {
-          emit(
-            buildPlanStartEvent({
-              planId,
-              attemptNumber,
-              input: planStartInput,
-            }),
-          );
+        let planStartEmitted = false;
 
+        const generationInputWithReservation: ProcessGenerationInput = {
+          ...generationInput,
+          onAttemptReserved: (reservation: AttemptReservation) => {
+            if (planStartEmitted) {
+              logger.warn(
+                {
+                  planId,
+                  attemptId: reservation.attemptId,
+                  attemptNumber: reservation.attemptNumber,
+                },
+                'plan_start reservation callback invoked more than once; ignoring duplicate',
+              );
+              return;
+            }
+            planStartEmitted = true;
+            emit(
+              buildPlanStartEvent({
+                planId,
+                attemptNumber: reservation.attemptNumber,
+                input: planStartInput,
+              }),
+            );
+          },
+        };
+
+        try {
           await executeLifecycleGenerationStream({
             reqSignal: req.signal,
             streamSignal: streamContext.signal,
             planId,
             userId: authUserId,
             emit,
-            processGeneration: () => processGeneration(generationInput),
+            processGeneration: () =>
+              processGeneration(generationInputWithReservation),
             onUnhandledError: async (error, startedAt) => {
               await onUnhandledError(error, startedAt, dbClient);
             },

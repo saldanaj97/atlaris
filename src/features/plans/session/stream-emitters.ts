@@ -168,14 +168,16 @@ function getCancellationReason(
 /**
  * Execute the post-`plan_start` portion of a lifecycle-backed generation stream.
  *
- * Callers must emit `plan_start` before invoking this helper. That keeps the
- * persisted plan metadata/start handshake in one place and prevents duplicate
- * start events when retries or alternate lifecycle paths reuse this executor.
+ * **Contract:** session boundary invokes `processGeneration` only after DB
+ * reservation succeeds. `processGeneration` must call `onAttemptReserved` on
+ * `ProcessGenerationInput` before returning so `plan_start` is emitted before
+ * any `module_summary`/`progress`/`complete` events.
  *
  * Intended SSE flow:
  * - success: `plan_start` → zero or more `module_summary`/`progress` pairs →
  *   `complete`
  * - handled failure: `plan_start` → `error`
+ * - reservation rejection (no row): `error` only (no `plan_start`)
  * - unhandled failure with an attached client: `plan_start` → fallback `error`
  * - client disconnect or already-finalized attempt: `plan_start` may be the
  *   only event because completion/failure is recovered from persisted state

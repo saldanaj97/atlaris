@@ -6,17 +6,16 @@
  */
 
 import type {
+  AttemptReservation,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
+import type {
   GenerationInput,
   PlanGenerationCoreFields,
   PlanGenerationCoreFieldsNormalized,
 } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
-
-// Re-export commonly used types so the service can import from one place
-export type { SubscriptionTier } from '@/shared/types/billing.types';
-export { isRetryableClassification } from '@/shared/types/failure-classification';
-export type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 /** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {
@@ -134,6 +133,11 @@ export type ProcessGenerationInput = {
   readonly input: Readonly<GenerationInput>;
   readonly modelOverride?: string | null;
   readonly signal?: AbortSignal;
+  /** When set, passed to `reserveAttemptSlot` for transactional status checks. */
+  readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
+  readonly requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
+  /** Invoked once after DB reservation succeeds, before provider generation. */
+  readonly onAttemptReserved?: (reservation: AttemptReservation) => void;
 };
 
 /** Data returned on a successful generation. */
