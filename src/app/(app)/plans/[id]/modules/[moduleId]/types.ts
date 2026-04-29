@@ -6,7 +6,7 @@
  * and not-found cases.
  */
 
-import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 
 /**
  * Error codes for module access failures.
@@ -35,5 +35,5 @@ export type ModuleAccessError = {
  * Uses discriminated union for exhaustive error handling.
  */
 export type ModuleAccessResult =
-  | { success: true; data: ModuleDetail }
+  | { success: true; data: ModuleDetailReadModel }
   | { success: false; error: ModuleAccessError };

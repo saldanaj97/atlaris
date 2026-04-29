@@ -1,42 +1,35 @@
 import { and, asc, eq } from 'drizzle-orm';
-import {
-  buildResourcesByTask,
-  computeModuleNavItemsFromCounts,
-} from '@/lib/db/queries/helpers/modules-helpers';
+
 import {
   fetchModuleTaskMetricsRows,
   fetchTaskRelationRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
 import type {
-  ModuleDetail,
-  ModuleNavCompletionRaw,
-  ModuleWithTasks,
+  ModuleDetailRows,
+  ModuleTaskMetricRow,
+  TaskProgress,
+  TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, tasks } from '@/lib/db/schema';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 
-/**
- * Module queries: full module detail with plan context, resources, and progress.
- * Uses getDb() for request-scoped RLS.
- */
+export type { ModuleDetailRows };
 
 /**
- * Retrieves detailed module data including tasks, resources, and progress.
- * Also includes plan context for breadcrumb navigation.
- *
- * @param moduleId - The ID of the module to fetch
- * @returns Module detail with plan context, or null if not found/unauthorized
+ * Module rows for module-detail read projection (plan-scoped ownership).
+ * Uses getDb() for request-scoped RLS when `dbClient` omitted.
  */
-export async function getModuleDetail(
+export async function getModuleDetailRows(
+  planId: string,
   moduleId: string,
   userId: string,
   dbClient?: ModulesDbClient,
-): Promise<ModuleDetail | null> {
+): Promise<ModuleDetailRows | null> {
   const client = dbClient ?? getDb();
 
-  const [moduleRow] = await client
+  const [scoped] = await client
     .select({
       module: modules,
       planId: learningPlans.id,
@@ -44,14 +37,18 @@ export async function getModuleDetail(
     })
     .from(modules)
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(modules.id, moduleId), eq(learningPlans.userId, userId)))
+    .where(
+      and(
+        eq(modules.id, moduleId),
+        eq(modules.planId, planId),
+        eq(learningPlans.userId, userId),
+      ),
+    )
     .limit(1);
 
-  if (!moduleRow) {
+  if (!scoped) {
     return null;
   }
-
-  const planId = moduleRow.planId;
 
   const [allModulesRaw, taskRows] = await Promise.all([
     fetchModuleTaskMetricsRows({ planIds: [planId], userId, dbClient: client }),
@@ -62,71 +59,37 @@ export async function getModuleDetail(
       .orderBy(asc(tasks.order)),
   ]);
 
-  const normalizedModuleRows: ModuleNavCompletionRaw[] = allModulesRaw.map(
-    (row) => ({
-      id: row.moduleId,
-      order: row.moduleOrder,
-      title: row.moduleTitle,
-      totalTaskCount: Number(row.totalTasks),
-      completedTaskCount: Number(row.completedTasks),
-    }),
-  );
-
-  const allModules = computeModuleNavItemsFromCounts(normalizedModuleRows);
-
-  const currentIndex = allModules.findIndex((m) => m.id === moduleId);
-  if (currentIndex < 0) {
-    // `moduleRow` was resolved earlier, so under the normal invariant it should also
-    // exist in `allModules` (which is derived from `allModulesRaw` for the same
-    // `planId`). Keep this guard as a narrow defense against a race where the module
-    // is deleted or otherwise disappears between the `moduleRow` lookup and the
-    // `allModulesRaw` fetch; in that case `computeModuleNavItemsFromCounts` cannot
-    // produce a valid position for the missing module.
-    return null;
-  }
-
-  const currentModule = allModules[currentIndex];
-
-  const previousModuleId =
-    currentIndex > 0 ? allModules[currentIndex - 1].id : null;
-  const nextModuleId =
-    currentIndex < allModules.length - 1
-      ? allModules[currentIndex + 1].id
-      : null;
-
-  // previousModulesComplete is the inverse of isLocked for the current module
-  const previousModulesComplete = !currentModule.isLocked;
+  const moduleMetricsRows: ModuleTaskMetricRow[] = allModulesRaw.map((row) => ({
+    id: row.moduleId,
+    order: row.moduleOrder,
+    title: row.moduleTitle,
+    totalTaskCount: Number(row.totalTasks),
+    completedTaskCount: Number(row.completedTasks),
+  }));
 
   const taskIds = taskRows.map((task) => task.id);
 
-  const { progressRows, resourceRows } = await fetchTaskRelationRows({
-    taskIds,
-    userId,
-    dbClient: client,
-  });
-
-  const progressMap = new Map(
-    progressRows.map((progressRow) => [progressRow.taskId, progressRow]),
-  );
-  const resourcesByTask = buildResourcesByTask(resourceRows);
-
-  const moduleWithTasks: ModuleWithTasks = {
-    ...moduleRow.module,
-    tasks: taskRows.map((task) => ({
-      ...task,
-      resources: resourcesByTask.get(task.id) ?? [],
-      progress: progressMap.get(task.id) ?? null,
-    })),
-  };
+  const {
+    progressRows,
+    resourceRows,
+  }: {
+    progressRows: TaskProgress[];
+    resourceRows: TaskResourceWithResource[];
+  } =
+    taskIds.length === 0
+      ? { progressRows: [], resourceRows: [] }
+      : await fetchTaskRelationRows({
+          taskIds,
+          userId,
+          dbClient: client,
+        });
 
   return {
-    module: moduleWithTasks,
-    planId,
-    planTopic: moduleRow.planTopic,
-    totalModules: allModules.length,
-    previousModuleId,
-    nextModuleId,
-    previousModulesComplete,
-    allModules,
+    plan: { id: scoped.planId, topic: scoped.planTopic },
+    module: scoped.module,
+    moduleMetricsRows,
+    taskRows,
+    progressRows,
+    resourceRows,
   };
 }

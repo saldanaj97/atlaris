@@ -20,15 +20,21 @@ import {
   validateTaskProgressBatchInput,
 } from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getModuleDetail } from '@/lib/db/queries/modules';
+import { getModuleDetailForRead } from '@/features/plans/read-projection/service';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 export async function getModuleForPage(
+  planId: string,
   moduleId: string,
 ): Promise<ModuleAccessResult> {
   const boundaryResult = await requestBoundary.action(async ({ actor, db }) => {
-    const moduleData = await getModuleDetail(moduleId, actor.id, db);
+    const moduleData = await getModuleDetailForRead({
+      planId,
+      moduleId,
+      userId: actor.id,
+      dbClient: db,
+    });
     if (!moduleData) {
       logger.debug(
         { moduleId, userId: actor.id },

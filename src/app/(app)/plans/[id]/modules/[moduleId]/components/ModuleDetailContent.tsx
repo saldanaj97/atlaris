@@ -25,7 +25,7 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await getModuleForPage(moduleId);
+  const moduleResult = await getModuleForPage(planId, moduleId);
 
   if (!isModuleSuccess(moduleResult)) {
     const error = getModuleError(moduleResult);

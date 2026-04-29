@@ -6,12 +6,12 @@ import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modu
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
-import type { ModuleDetail as ModuleDetailData } from '@/lib/db/queries/types/modules.types';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 import { clientLogger } from '@/lib/logging/client';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleDetailClientProps {
-  moduleData: ModuleDetailData;
+  moduleData: ModuleDetailReadModel;
   initialStatuses: Record<string, ProgressStatus>;
 }
 

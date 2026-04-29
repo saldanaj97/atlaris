@@ -1,5 +1,4 @@
 import { formatSkillLevel } from '@/features/plans/formatters';
-import type { ModuleWithTasks } from '@/lib/db/queries/types/modules.types';
 import type {
   ClientModule,
   ClientPlanDetail,
@@ -24,14 +23,33 @@ function getTaskStatus(
 
 function getTaskProgressStatus(
   statuses: Record<string, ProgressStatus>,
-  task: { id: string; progress?: { status: ProgressStatus } | null },
+  task: {
+    id: string;
+    status?: ProgressStatus;
+    progress?: { status: ProgressStatus } | null;
+  },
 ): ProgressStatus {
-  return statuses[task.id] ?? task.progress?.status ?? DEFAULT_PROGRESS_STATUS;
+  return (
+    statuses[task.id] ??
+    task.status ??
+    task.progress?.status ??
+    DEFAULT_PROGRESS_STATUS
+  );
 }
 
 type LessonProgressSource = {
   id: string;
+  status?: ProgressStatus;
   progress?: { status: ProgressStatus } | null;
+};
+
+type ModuleCompletionSource = {
+  tasks: Array<{
+    id: string;
+    estimatedMinutes: number | null;
+    status?: ProgressStatus;
+    progress?: { status: ProgressStatus } | null;
+  }>;
 };
 
 export function buildTaskStatusMap(
@@ -283,7 +301,7 @@ export function deriveFirstUnlockedIncompleteLessonId(
 }
 
 export function deriveModuleCompletionSummary(
-  module: ModuleWithTasks,
+  module: ModuleCompletionSource,
   statuses: Record<string, ProgressStatus>,
 ): ModuleCompletionSummary {
   const tasks = module.tasks;

@@ -10,12 +10,12 @@ import type {
   ModuleAccessErrorCode,
   ModuleAccessResult,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/types';
-import type { ModuleDetail } from '@/lib/db/queries/types/modules.types';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 
 /**
  * Helper to create success result
  */
-export function moduleSuccess(data: ModuleDetail): ModuleAccessResult {
+export function moduleSuccess(data: ModuleDetailReadModel): ModuleAccessResult {
   return { success: true, data };
 }
 
@@ -34,7 +34,7 @@ export function moduleError(
  */
 export function isModuleSuccess(
   result: ModuleAccessResult,
-): result is { success: true; data: ModuleDetail } {
+): result is { success: true; data: ModuleDetailReadModel } {
   return result.success === true;
 }
 

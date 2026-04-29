@@ -7,11 +7,16 @@ import {
   buildPlanDetailStatusSnapshot,
   type PlanDetailStatusSnapshot,
 } from '@/features/plans/read-projection/detail-status';
+import { buildModuleDetailReadModel } from '@/features/plans/read-projection/module-detail';
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
-import type { PlanDbClient } from '@/features/plans/read-projection/types';
+import type {
+  ModuleDetailReadModel,
+  PlanDbClient,
+} from '@/features/plans/read-projection/types';
+import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -151,4 +156,24 @@ export async function getPlanGenerationAttemptsForRead(params: {
   }
 
   return toClientGenerationAttempts(attempts.attempts);
+}
+
+export async function getModuleDetailForRead(params: {
+  planId: string;
+  moduleId: string;
+  userId: string;
+  dbClient?: PlanDbClient;
+}): Promise<ModuleDetailReadModel | null> {
+  const rows = await getModuleDetailRows(
+    params.planId,
+    params.moduleId,
+    params.userId,
+    params.dbClient,
+  );
+
+  if (!rows) {
+    return null;
+  }
+
+  return buildModuleDetailReadModel(rows);
 }

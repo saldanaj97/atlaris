@@ -20,15 +20,15 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes } from '@/features/plans/formatters';
-import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import type {
-  ModuleNavItem,
-  ModuleWithTasks,
-} from '@/lib/db/queries/types/modules.types';
+  ModuleDetailModule,
+  ModuleDetailNavItem,
+} from '@/features/plans/read-projection/types';
+import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleHeaderProps {
-  module: ModuleWithTasks;
+  module: ModuleDetailModule;
   planId: string;
   planTopic: string;
   totalModules: number;
@@ -36,7 +36,7 @@ interface ModuleHeaderProps {
   nextModuleId: string | null;
   statuses: Record<string, ProgressStatus>;
   previousModulesComplete: boolean;
-  allModules: ModuleNavItem[];
+  allModules: ModuleDetailNavItem[];
 }
 
 // Gradient presets based on module order for visual variety

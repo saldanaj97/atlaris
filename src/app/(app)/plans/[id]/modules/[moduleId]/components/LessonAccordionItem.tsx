@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { formatMinutes } from '@/features/plans/formatters';
-import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
+import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import { cn } from '@/lib/utils';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import {
@@ -29,7 +29,7 @@ import { type ElementType, type JSX, useMemo } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
-  lesson: TaskWithRelations;
+  lesson: ModuleDetailTask;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   isLocked?: boolean;
@@ -75,7 +75,7 @@ interface PlaceholderContentEntry {
   block: ContentBlock;
 }
 
-type LessonResources = NonNullable<TaskWithRelations['resources']>;
+type LessonResources = NonNullable<ModuleDetailTask['resources']>;
 
 function getCardClassName(isLocked: boolean, isCompleted: boolean): string {
   if (isLocked) {
@@ -178,7 +178,7 @@ function LessonMarker({
   isCompleted,
   isLocked,
 }: {
-  lesson: TaskWithRelations;
+  lesson: ModuleDetailTask;
   isCompleted: boolean;
   isLocked: boolean;
 }) {
@@ -232,7 +232,7 @@ function LessonTriggerContent({
   isLocked,
   resourceCount,
 }: {
-  lesson: TaskWithRelations;
+  lesson: ModuleDetailTask;
   isCompleted: boolean;
   isLocked: boolean;
   resourceCount: number;
@@ -327,11 +327,10 @@ function LockedContentOverlay() {
 }
 
 function LearningResourceCard({
-  taskResource,
+  resource,
 }: {
-  taskResource: LessonResources[number];
+  resource: LessonResources[number];
 }) {
-  const resource = taskResource.resource;
   const config = RESOURCE_CONFIG[resource.type];
   const Icon = config.icon;
 
@@ -370,9 +369,9 @@ function LearningResourceCard({
             <span>{formatMinutes(resource.durationMinutes)}</span>
           ) : null}
         </div>
-        {taskResource.notes ? (
+        {resource.notes ? (
           <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-            {taskResource.notes}
+            {resource.notes}
           </p>
         ) : null}
       </div>
@@ -391,11 +390,8 @@ function LearningResources({ resources }: { resources: LessonResources }) {
         Learning Resources
       </h4>
       <div className="grid gap-3 sm:grid-cols-2">
-        {resources.map((taskResource) => (
-          <LearningResourceCard
-            key={taskResource.id}
-            taskResource={taskResource}
-          />
+        {resources.map((resource) => (
+          <LearningResourceCard key={resource.id} resource={resource} />
         ))}
       </div>
     </div>
@@ -430,7 +426,7 @@ function LessonContent({
   resources,
   status,
 }: {
-  lesson: TaskWithRelations;
+  lesson: ModuleDetailTask;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   placeholderContent: readonly PlaceholderContentEntry[];
   resources: LessonResources;

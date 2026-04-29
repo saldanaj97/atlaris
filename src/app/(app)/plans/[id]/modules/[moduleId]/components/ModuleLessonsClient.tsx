@@ -9,12 +9,12 @@ import { Accordion } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
-import type { TaskWithRelations } from '@/lib/db/queries/types/modules.types';
+import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleLessonsClientProps {
   planId: string;
-  lessons: TaskWithRelations[];
+  lessons: ModuleDetailTask[];
   nextModuleId: string | null;
   previousModulesComplete: boolean;
   statuses: Record<string, ProgressStatus>;
@@ -32,8 +32,7 @@ export function ModuleLessonsClient({
   const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
     const total = lessons.length;
     const completed = lessons.filter(
-      (lesson) =>
-        (statuses[lesson.id] ?? lesson.progress?.status) === 'completed',
+      (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
     ).length;
 
     return {
@@ -80,11 +79,7 @@ export function ModuleLessonsClient({
                 <LessonAccordionItem
                   key={lesson.id}
                   lesson={lesson}
-                  status={
-                    statuses[lesson.id] ??
-                    lesson.progress?.status ??
-                    'not_started'
-                  }
+                  status={statuses[lesson.id] ?? lesson.status}
                   onStatusChange={onStatusChange}
                   isLocked={locked}
                 />

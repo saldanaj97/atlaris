@@ -350,4 +350,18 @@ describe('task-progress visible-state', () => {
     expect(summary.completedTasks).toBe(1);
     expect(summary.completionPercent).toBe(50);
   });
+
+  it('deriveModuleCompletionSummary reads task.status without progress row', () => {
+    const summary = deriveModuleCompletionSummary(
+      {
+        tasks: [
+          { id: 'a', estimatedMinutes: 30, status: 'completed' },
+          { id: 'b', estimatedMinutes: 30, status: 'not_started' },
+        ],
+      },
+      {},
+    );
+    expect(summary.completedTasks).toBe(1);
+    expect(summary.completionPercent).toBe(50);
+  });
 });
