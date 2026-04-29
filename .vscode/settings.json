@@ -12,5 +12,9 @@
   "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "oxc.enable.oxlint": true,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }

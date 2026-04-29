@@ -31,7 +31,6 @@ pnpm check:lint         # Oxlint: lint source, script, and test code
 pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
 pnpm check:lint:fix     # Oxlint: apply safe lint fixes
 pnpm check:lint:changed # Oxlint only files changed vs base branch (see scripts/lint-changed.sh)
-pnpm check:knip         # Manual, non-destructive Knip audit (local-only, not part of check:full/CI)
 pnpm check:format       # Prettier formatter only (writes files)
 pnpm check:format:check # Prettier read-only format check
 pnpm check:type         # TypeScript type checking only
@@ -88,15 +87,6 @@ pnpm exec tsx scripts/tests/run.ts unit --changed                         # Run 
 pnpm exec tsx scripts/tests/run.ts unit --watch                           # Watch mode
 pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts  # Targeted integration file
 pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full suite (+ optional E2E)
-```
-
-### Knip tracing
-
-When `pnpm check:knip` reports a suspicious unused file, trace that specific path before acting on it:
-
-```bash
-pnpm exec knip --trace-file src/app/plans/components/PlansContent.tsx
-pnpm exec knip --debug
 ```
 
 ## Local API Testing Guidance
