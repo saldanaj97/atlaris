@@ -62,6 +62,34 @@ describe('plan summary status boundaries', () => {
     ).toBe('failed');
   });
 
+  it.each(['generating', 'pending_retry'] as const)(
+    'treats %s without modules below attempt cap as generating in summary views',
+    (generationStatus) => {
+      expect(
+        deriveCanonicalPlanSummaryStatus({
+          plan: { generationStatus },
+          completion: 0,
+          modules: [],
+          attemptsCount: getGenerationAttemptCap() - 1,
+        }),
+      ).toBe('generating');
+    },
+  );
+
+  it.each(['generating', 'pending_retry'] as const)(
+    'treats %s without modules at attempt cap as failed in summary views',
+    (generationStatus) => {
+      expect(
+        deriveCanonicalPlanSummaryStatus({
+          plan: { generationStatus },
+          completion: 0,
+          modules: [],
+          attemptsCount: getGenerationAttemptCap(),
+        }),
+      ).toBe('failed');
+    },
+  );
+
   it('derivePlanReadStatus treats modules as ground truth over failed generationStatus', () => {
     const attemptCap = getGenerationAttemptCap();
 

@@ -11,7 +11,7 @@ import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId } from '../../helpers/testIds';
 
 type StatusFixture = {
-  generationStatus: 'generating' | 'ready' | 'failed';
+  generationStatus: 'generating' | 'pending_retry' | 'ready' | 'failed';
   hasModules: boolean;
   attemptsCount?: number;
   expectedStatus: 'processing' | 'pending' | 'failed' | 'ready';
@@ -71,6 +71,18 @@ describe('Plan status parity contract', () => {
         generationStatus: 'generating',
         hasModules: false,
         expectedStatus: 'processing',
+      },
+      {
+        generationStatus: 'generating',
+        hasModules: false,
+        attemptsCount: attemptCap,
+        expectedStatus: 'failed',
+      },
+      {
+        generationStatus: 'pending_retry',
+        hasModules: false,
+        attemptsCount: attemptCap,
+        expectedStatus: 'failed',
       },
       {
         generationStatus: 'failed',

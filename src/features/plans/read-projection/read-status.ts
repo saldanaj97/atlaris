@@ -49,15 +49,20 @@ export function derivePlanReadStatus(
     return 'ready';
   }
 
+  const attemptsExhausted =
+    typeof attemptsCount === 'number' &&
+    typeof attemptCap === 'number' &&
+    attemptsCount >= attemptCap;
+
   switch (generationStatus) {
     case 'failed':
       return 'failed';
     case 'generating':
     case 'pending_retry':
-      return 'processing';
+      return attemptsExhausted ? 'failed' : 'processing';
     case 'ready':
       if (typeof attemptsCount === 'number' && typeof attemptCap === 'number') {
-        return attemptsCount >= attemptCap ? 'failed' : 'pending';
+        return attemptsExhausted ? 'failed' : 'pending';
       }
       return 'ready';
     default: {

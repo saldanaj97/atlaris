@@ -55,6 +55,34 @@ describe('derivePlanReadStatus', () => {
     ).toBe('processing');
   });
 
+  it.each(['generating', 'pending_retry'] as const)(
+    'returns processing for %s without modules when attempts are below the retry cap',
+    (generationStatus) => {
+      expect(
+        derivePlanReadStatus({
+          generationStatus,
+          hasModules: false,
+          attemptsCount: DEFAULT_ATTEMPT_CAP - 1,
+          attemptCap: DEFAULT_ATTEMPT_CAP,
+        }),
+      ).toBe('processing');
+    },
+  );
+
+  it.each(['generating', 'pending_retry'] as const)(
+    'returns failed for %s without modules when attempts reached the retry cap',
+    (generationStatus) => {
+      expect(
+        derivePlanReadStatus({
+          generationStatus,
+          hasModules: false,
+          attemptsCount: DEFAULT_ATTEMPT_CAP,
+          attemptCap: DEFAULT_ATTEMPT_CAP,
+        }),
+      ).toBe('failed');
+    },
+  );
+
   it('returns pending when ready plans are still below the retry cap', () => {
     expect(
       derivePlanReadStatus({

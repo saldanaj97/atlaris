@@ -1,4 +1,5 @@
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 import { createId } from '@tests/fixtures/ids';
@@ -61,6 +62,18 @@ describe('derivePlanSummaryDisplayStatus', () => {
         modules: [],
       },
       expected: 'generating',
+    },
+    {
+      name: 'failed when generation in flight exhausted attempts without modules',
+      overrides: {
+        plan: {
+          generationStatus: 'generating',
+          updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+        },
+        modules: [],
+        attemptsCount: DEFAULT_ATTEMPT_CAP,
+      },
+      expected: 'failed',
     },
     {
       name: 'paused when canonical active but not updated 30+ days',
