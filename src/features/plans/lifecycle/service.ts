@@ -18,7 +18,6 @@ import type {
   GenerationFinalizationPort,
   GenerationPort,
   GenerationRunResult,
-  JobQueuePort,
   PlanPersistencePort,
   QuotaPort,
 } from './ports';
@@ -41,7 +40,6 @@ export interface PlanLifecycleServicePorts {
   readonly quota: QuotaPort;
   readonly generation: GenerationPort;
   readonly generationFinalization: GenerationFinalizationPort;
-  readonly jobQueue: JobQueuePort;
 }
 
 export class PlanLifecycleService {

@@ -8,7 +8,6 @@ import {
   createPlanLifecycleService,
   type CreatePlanResult,
   type GenerationAttemptResult,
-  type JobQueuePort,
   type PermanentFailure,
   type PlanLifecycleService,
   type ProcessGenerationInput,
@@ -41,14 +40,6 @@ export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [
   'failed',
   'pending_retry',
 ] as const;
-
-const noopJobQueue: JobQueuePort = {
-  async enqueueJob() {
-    return '';
-  },
-  async completeJob() {},
-  async failJob() {},
-};
 
 /**
  * Minimal plan snapshot needed to retry generation without route-owned session wiring.
@@ -113,16 +104,15 @@ interface CreateSessionBoundaryDeps {
  * Build a {@link PlanGenerationSessionBoundary}.
  *
  * Tests inject a fake `createLifecycleService` to swap the lifecycle service
- * under the boundary; production code calls this with no deps to get the
- * default `createPlanLifecycleService` wiring with a noop job queue.
+ * under the boundary; production uses default `createPlanLifecycleService`
+ * on the stream-scoped DB client.
  */
 export function createPlanGenerationSessionBoundary(
   deps: CreateSessionBoundaryDeps = {},
 ): PlanGenerationSessionBoundary {
   const buildLifecycle: CreateLifecycleService =
     deps.createLifecycleService ??
-    ((dbClient) =>
-      createPlanLifecycleService({ dbClient, jobQueue: noopJobQueue }));
+    ((dbClient) => createPlanLifecycleService({ dbClient }));
 
   return {
     respondCreateStream: (args) =>

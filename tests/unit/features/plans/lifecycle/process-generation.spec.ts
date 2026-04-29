@@ -73,11 +73,6 @@ function createMockPorts(
         .mockResolvedValue(mockSuccessAttemptReturn('plan-gen-001')),
       finalizeFailure: vi.fn().mockResolvedValue(undefined),
     },
-    jobQueue: {
-      enqueueJob: async () => 'job-123',
-      completeJob: async () => {},
-      failJob: async () => {},
-    },
     ...overrides,
   };
 }

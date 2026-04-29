@@ -10,7 +10,6 @@ import {
 import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
 import {
   createPlanLifecycleService,
-  type JobQueuePort,
   type PlanLifecycleService,
 } from '@/features/plans/lifecycle';
 import { shouldRetryJob } from '@/features/plans/retry-policy';
@@ -24,21 +23,7 @@ import { logger } from '@/lib/logging/logger';
 
 import type { RegenerationOwnedPlan } from './types';
 
-// Regeneration orchestration owns enqueue/complete/fail via deps.queue and process/request;
-// lifecycle processGenerationAttempt must not hit queue I/O here. If it does, fail loudly.
-function createNoOpJobQueueMethod(method: keyof JobQueuePort) {
-  return () => {
-    throw new Error(
-      `Unexpected JobQueuePort.${method} call in regeneration lifecycle setup`,
-    );
-  };
-}
-
-const noOpJobQueue: JobQueuePort = {
-  enqueueJob: createNoOpJobQueueMethod('enqueueJob'),
-  completeJob: createNoOpJobQueueMethod('completeJob'),
-  failJob: createNoOpJobQueueMethod('failJob'),
-};
+// Regeneration orchestration owns enqueue/complete/fail via deps.queue and process/request.
 
 export interface RegenerationOrchestrationDeps {
   dbClient: DbClient;
@@ -132,10 +117,7 @@ export function createDefaultRegenerationOrchestrationDeps(
     tier: { resolveUserTier },
     priority: { computeJobPriority, isPriorityTopic },
     lifecycle: {
-      service: createPlanLifecycleService({
-        dbClient,
-        jobQueue: noOpJobQueue,
-      }),
+      service: createPlanLifecycleService({ dbClient }),
     },
     retry: { shouldRetryJob },
     inlineDrain: {

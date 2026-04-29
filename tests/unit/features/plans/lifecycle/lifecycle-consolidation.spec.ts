@@ -93,11 +93,6 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
         ),
       finalizeFailure: vi.fn().mockResolvedValue(undefined),
     },
-    jobQueue: {
-      enqueueJob: async () => 'job-123',
-      completeJob: async () => {},
-      failJob: async () => {},
-    },
   };
 
   return {
@@ -111,7 +106,6 @@ function createMockPorts(overrides?: PortOverrides): PlanLifecycleServicePorts {
       ...defaults.generationFinalization,
       ...overrides?.generationFinalization,
     },
-    jobQueue: { ...defaults.jobQueue, ...overrides?.jobQueue },
   };
 }
 

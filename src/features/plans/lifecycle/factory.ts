@@ -21,17 +21,14 @@ import { GenerationFinalizationAdapter } from './generation-finalization/adapter
 import { PlanLifecycleService } from './service';
 
 import type { DbClient } from '@/lib/db/types';
-import type { JobQueuePort } from './ports';
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;
-  jobQueue: JobQueuePort;
 }): PlanLifecycleService {
   return new PlanLifecycleService({
     planPersistence: new PlanPersistenceAdapter(params.dbClient),
     quota: new QuotaAdapter(params.dbClient),
     generation: new GenerationAdapter(params.dbClient),
     generationFinalization: new GenerationFinalizationAdapter(params.dbClient),
-    jobQueue: params.jobQueue,
   });
 }

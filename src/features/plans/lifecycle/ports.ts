@@ -2,7 +2,7 @@
  * Port interfaces for the plan lifecycle module.
  *
  * Ports define the boundaries between the lifecycle service and external
- * concerns (persistence, billing, AI, jobs). The service depends only on
+ * concerns (persistence, billing, AI). The service depends only on
  * these interfaces — never on concrete implementations.
  */
 
@@ -175,36 +175,5 @@ export interface UsageRecordingPort {
       usage: CanonicalAIUsage;
       kind?: 'plan' | 'regeneration';
     },
-  ): Promise<void>;
-}
-
-// ─── JobQueuePort ────────────────────────────────────────────────
-
-export interface JobQueuePort {
-  /** Enqueue a job for background processing. */
-  enqueueJob(
-    this: void,
-    params: {
-      type: string;
-      planId: string | null;
-      userId: string;
-      data: Record<string, unknown>;
-      priority?: number;
-    },
-  ): Promise<string>;
-
-  /** Mark a job as completed with its result. */
-  completeJob(
-    this: void,
-    jobId: string,
-    result: Record<string, unknown>,
-  ): Promise<void>;
-
-  /** Mark a job as failed with an error message. */
-  failJob(
-    this: void,
-    jobId: string,
-    error: string,
-    options?: { retryable?: boolean },
   ): Promise<void>;
 }
