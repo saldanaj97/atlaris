@@ -26,10 +26,10 @@ vi.mock('@/lib/api/request-boundary', () => ({
   },
 }));
 
-vi.mock('@/features/plans/task-progress', async () => {
+vi.mock('@/features/plans/task-progress/boundary', async () => {
   const actual = await vi.importActual<
-    typeof import('@/features/plans/task-progress')
-  >('@/features/plans/task-progress');
+    typeof import('@/features/plans/task-progress/boundary')
+  >('@/features/plans/task-progress/boundary');
   return {
     ...actual,
     applyTaskProgressUpdates: applyTaskProgressUpdatesMock,
@@ -40,10 +40,10 @@ vi.mock('@/lib/logging/logger', () => ({
   logger: loggerMock,
 }));
 
-import { makeDbClient } from '@tests/fixtures/db-mocks';
-import { buildUserFixture } from '@tests/fixtures/users';
 import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import type { RequestScope } from '@/lib/api/request-boundary';
+import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { buildUserFixture } from '@tests/fixtures/users';
 
 const actionTestDb = makeDbClient();
 const actionTestActor = buildUserFixture({ id: 'user-1' });

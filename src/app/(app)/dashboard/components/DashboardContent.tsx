@@ -1,17 +1,17 @@
-import { redirect } from 'next/navigation';
-import type { JSX } from 'react';
-import { ActivityFeedClient } from '@/app/(app)/dashboard/components/ActivityFeedClient';
-import { ActivityStreamSidebar } from '@/app/(app)/dashboard/components/ActivityStreamSidebar';
 import {
   findActivePlan,
   generateActivities,
 } from '@/app/(app)/dashboard/components/activity-utils';
+import { ActivityFeedClient } from '@/app/(app)/dashboard/components/ActivityFeedClient';
+import { ActivityStreamSidebar } from '@/app/(app)/dashboard/components/ActivityStreamSidebar';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
-import { listDashboardPlanSummaries } from '@/features/plans/read-projection';
+import { listDashboardPlanSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 /**
  * Async component that fetches user plan data and renders dashboard content.

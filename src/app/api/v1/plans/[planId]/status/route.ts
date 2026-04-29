@@ -1,6 +1,6 @@
 import { classificationToUserMessage } from '@/features/ai/failure-presentation';
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-projection';
+import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-projection/service';
 import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';
 import { requestBoundary } from '@/lib/api/request-boundary';

@@ -14,16 +14,16 @@
  * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
  */
 
-import { revalidatePath } from 'next/cache';
 import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
-import { getPlanDetailForRead } from '@/features/plans/read-projection';
+import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import {
   applyTaskProgressUpdates,
   validateTaskProgressBatchInput,
-} from '@/features/plans/task-progress';
+} from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import { revalidatePath } from 'next/cache';
 import { planError, planSuccess } from './helpers';
 
 interface BatchUpdateTaskProgressInput {

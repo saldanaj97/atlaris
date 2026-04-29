@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getPlanDetailForRead,
   listLightweightPlansForApi,
-} from '@/features/plans/read-projection';
+} from '@/features/plans/read-projection/service';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { createTestPlan } from '../../fixtures/plans';
 import { createTestUser } from '../../fixtures/users';

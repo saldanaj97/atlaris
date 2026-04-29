@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TasksDbClient } from '@/lib/db/queries/types/tasks.types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { setTaskProgressBatchMock } = vi.hoisted(() => ({
   setTaskProgressBatchMock: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock('@/lib/db/queries/tasks', () => ({
   setTaskProgressBatch: setTaskProgressBatchMock,
 }));
 
-import { applyTaskProgressUpdates } from '@/features/plans/task-progress';
+import { applyTaskProgressUpdates } from '@/features/plans/task-progress/boundary';
 
 describe('applyTaskProgressUpdates', () => {
   const dbClient = {} as TasksDbClient;

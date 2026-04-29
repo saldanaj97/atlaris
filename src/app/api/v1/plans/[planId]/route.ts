@@ -1,5 +1,5 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { getPlanDetailForRead } from '@/features/plans/read-projection';
+import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import { removePlanForWrite } from '@/features/plans/write-service';
 import { NotFoundError } from '@/lib/api/errors';
 import { withErrorBoundary } from '@/lib/api/middleware';

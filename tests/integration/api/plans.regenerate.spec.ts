@@ -4,16 +4,16 @@ import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration';
+import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { RateLimitError } from '@/lib/api/errors';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
 
 vi.mock(
-  '@/features/plans/regeneration-orchestration',
+  '@/features/plans/regeneration-orchestration/request',
   async (importOriginal) => {
     const actual =
       await importOriginal<
-        typeof import('@/features/plans/regeneration-orchestration')
+        typeof import('@/features/plans/regeneration-orchestration/request')
       >();
     return {
       ...actual,

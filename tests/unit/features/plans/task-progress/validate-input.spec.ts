@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import {
   TASK_PROGRESS_MAX_BATCH,
   validateTaskProgressBatchInput,
-} from '@/features/plans/task-progress';
+} from '@/features/plans/task-progress/boundary';
+import { describe, expect, it } from 'vitest';
 
 describe('validateTaskProgressBatchInput', () => {
   it('accepts valid batches', () => {

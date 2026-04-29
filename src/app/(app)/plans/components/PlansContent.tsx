@@ -1,7 +1,3 @@
-import { Plus, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import type { JSX } from 'react';
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
@@ -15,8 +11,12 @@ import {
 } from '@/components/ui/empty';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
-import { listPlansPageSummaries } from '@/features/plans/read-projection';
+import { listPlansPageSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { Plus, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import type { JSX } from 'react';
 
 /**
  * Async component that fetches usage data and renders the plan count badge.

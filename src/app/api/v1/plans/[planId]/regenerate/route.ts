@@ -1,6 +1,5 @@
-import { ZodError } from 'zod';
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration';
+import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
@@ -16,6 +15,7 @@ import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { regenerationQueueEnv } from '@/lib/config/env';
+import { ZodError } from 'zod';
 
 /**
  * POST /api/v1/plans/:planId/regenerate

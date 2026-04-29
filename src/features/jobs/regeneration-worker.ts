@@ -1,7 +1,5 @@
-import {
-  type ProcessPlanRegenerationJobResult,
-  processNextPlanRegenerationJob,
-} from '@/features/plans/regeneration-orchestration';
+import { processNextPlanRegenerationJob } from '@/features/plans/regeneration-orchestration/process';
+import type { ProcessPlanRegenerationJobResult } from '@/features/plans/regeneration-orchestration/types';
 import { assertNever } from '@/lib/errors';
 
 export {

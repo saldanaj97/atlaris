@@ -18,7 +18,7 @@ import type { ModuleAccessResult } from '@/app/(app)/plans/[id]/modules/[moduleI
 import {
   applyTaskProgressUpdates,
   validateTaskProgressBatchInput,
-} from '@/features/plans/task-progress';
+} from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { getModuleDetail } from '@/lib/db/queries/modules';
 import { logger } from '@/lib/logging/logger';
