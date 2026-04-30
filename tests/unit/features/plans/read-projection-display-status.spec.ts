@@ -4,7 +4,14 @@ import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 import { createId } from '@tests/fixtures/ids';
 import { buildPlan, buildPlanSummary } from '@tests/fixtures/plan-detail';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const getGenerationAttemptCapMock = vi.hoisted(() => vi.fn(() => DEFAULT_ATTEMPT_CAP));
+
+vi.mock('@/features/ai/generation-policy', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/ai/generation-policy')>();
+  return { ...actual, getGenerationAttemptCap: getGenerationAttemptCapMock };
+});
 
 type SummaryFixture = Omit<Partial<PlanSummary>, 'plan'> & {
   plan?: Partial<PlanSummary['plan']>;
@@ -44,6 +51,10 @@ function summary(partial: SummaryFixture = {}): PlanSummary {
 
 describe('derivePlanSummaryDisplayStatus', () => {
   const ref = new Date('2026-04-22T12:00:00.000Z');
+
+  beforeEach(() => {
+    getGenerationAttemptCapMock.mockReturnValue(DEFAULT_ATTEMPT_CAP);
+  });
 
   it.each<{
     name: string;
@@ -112,5 +123,19 @@ describe('derivePlanSummaryDisplayStatus', () => {
         referenceDate: ref,
       }),
     ).toBe(expected);
+  });
+
+  it('uses configured attempt cap: below cap stays generating (not falsely failed)', () => {
+    getGenerationAttemptCapMock.mockReturnValue(5);
+    expect(
+      derivePlanSummaryDisplayStatus({
+        summary: summary({
+          plan: { generationStatus: 'generating' },
+          modules: [],
+          attemptsCount: 4,
+        }),
+        referenceDate: ref,
+      }),
+    ).toBe('generating');
   });
 });

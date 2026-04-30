@@ -1,11 +1,11 @@
 import { differenceInDays } from 'date-fns';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
 } from '@/features/plans/read-projection/read-status';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import { toValidDate } from '@/lib/date/relative-time';
-import { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 /**
@@ -28,7 +28,7 @@ function deriveClientPlanSummaryStatus(summary: PlanSummary): PlanReadStatus {
           generationStatus: summary.plan.generationStatus,
           hasModules: summary.modules.length > 0,
           attemptsCount: summary.attemptsCount,
-          attemptCap: DEFAULT_ATTEMPT_CAP,
+          attemptCap: getGenerationAttemptCap(),
         },
   );
 
