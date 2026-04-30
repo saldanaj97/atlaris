@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';

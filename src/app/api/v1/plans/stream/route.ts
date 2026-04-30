@@ -8,7 +8,7 @@ import { createLearningPlanSchema } from '@/features/plans/validation/learningPl
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,

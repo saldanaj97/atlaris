@@ -21,24 +21,29 @@ import type {
 } from './types';
 
 /**
- * Port interfaces for the plan lifecycle module (persistence, quota, AI, billing hooks).
+ * Persistence operations required by the plan lifecycle module.
+ *
+ * @property atomicInsertPlan Atomically enforces plan limits and inserts a plan
+ * inside one transaction.
+ * @property findCappedPlanWithoutModules Finds a plan that exhausted generation
+ * attempts before modules were created.
+ * @property findRecentDuplicatePlan Finds a recent duplicate plan with the same
+ * normalized topic inside the deduplication window.
+ * @property markGenerationSuccess Marks generation as successful for a plan.
+ * @property markGenerationFailure Marks generation as failed for a plan.
  */
-
 export interface PlanPersistencePort {
-  /** Atomically enforce plan limit and insert inside one transaction. */
   atomicInsertPlan(
     this: void,
     userId: string,
     planData: PlanInsertData,
   ): Promise<AtomicInsertResult>;
 
-  /** Find a plan that has exhausted generation attempts (capped without modules). */
   findCappedPlanWithoutModules(
     this: void,
     userId: string,
   ): Promise<string | null>;
 
-  /** Find a recent duplicate plan with the same normalized topic (dedup window). */
   findRecentDuplicatePlan(
     this: void,
     userId: string,
@@ -92,7 +97,7 @@ export type GenerationRunParams = {
   userId: string;
   tier: SubscriptionTier;
   input: Readonly<GenerationInput>;
-  modelOverride?: string | null;
+  modelOverride?: string;
   signal?: AbortSignal;
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];

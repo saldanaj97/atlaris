@@ -5,6 +5,7 @@ import type {
   FailureClassification,
 } from '@/shared/types/client.types';
 import type { GenerationAttempt, LearningPlan } from '@/shared/types/db.types';
+import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 
 function toStatusClassification(
   classification: string | null | undefined,
@@ -13,14 +14,7 @@ function toStatusClassification(
     return null;
   }
 
-  if (
-    classification === 'validation' ||
-    classification === 'conflict' ||
-    classification === 'provider_error' ||
-    classification === 'rate_limit' ||
-    classification === 'timeout' ||
-    classification === 'capped'
-  ) {
+  if (isKnownFailureClassification(classification)) {
     return classification;
   }
 

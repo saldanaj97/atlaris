@@ -160,6 +160,9 @@ export class PlanLifecycleService {
         retryable,
       };
 
+      // Reservation rejection means no attempt row was acquired. A reservation
+      // means provider/validation failed after acquisition, so finalize the
+      // reserved attempt. Missing both points to an upstream context bug.
       if (generationResult.reservationRejectionReason !== undefined) {
         await this.ports.generationFinalization.finalizeFailure({
           variant: 'plan_only',

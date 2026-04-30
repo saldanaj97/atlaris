@@ -1,6 +1,8 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
+import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
 import { MissingRequestDbContextError } from '@/lib/db/runtime';
+import type { DbClient } from '@/lib/db/types';
 import {
   safeStringifyUnknown,
   unknownThrownCore,
@@ -60,6 +62,26 @@ export async function safeMarkPlanFailed(
       'Failed to mark plan as failed after generation error (persistence path).',
     );
   }
+}
+
+/**
+ * `safeMarkPlanFailedWithDbClient` builds the `PlanPersistenceAdapter` used by
+ * `safeMarkPlanFailed`. Request handlers should pass the RLS-enforced
+ * `DbClient` returned by `getDb()`, while workers/tests may pass a service-role
+ * or test client matching their execution context.
+ */
+export async function safeMarkPlanFailedWithDbClient(
+  planId: string,
+  userId: string,
+  dbClient: DbClient,
+  deps?: SafeMarkPlanFailedDeps,
+): Promise<void> {
+  await safeMarkPlanFailed(
+    planId,
+    userId,
+    new PlanPersistenceAdapter(dbClient),
+    deps,
+  );
 }
 
 function assignFallbackCause(errorLike: ErrorLike, cause: unknown): void {

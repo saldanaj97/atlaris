@@ -1,3 +1,4 @@
+import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 type ApiErrorResponse = {
@@ -32,17 +33,6 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
   500: 'INTERNAL_ERROR',
   501: 'NOT_IMPLEMENTED',
 };
-
-const FAILURE_CLASSIFICATIONS = [
-  'validation',
-  'conflict',
-  'provider_error',
-  'rate_limit',
-  'timeout',
-  'capped',
-] as const satisfies readonly FailureClassification[];
-
-const FAILURE_CLASSIFICATION_SET = new Set(FAILURE_CLASSIFICATIONS);
 
 export function getDefaultErrorCode(status: number): string {
   return DEFAULT_ERROR_CODE_BY_STATUS[status] ?? 'ERROR';
@@ -103,10 +93,7 @@ function asNonEmptyString(value: unknown): string | undefined {
 function isFailureClassification(
   value: unknown,
 ): value is FailureClassification {
-  return (
-    typeof value === 'string' &&
-    (FAILURE_CLASSIFICATION_SET as ReadonlySet<string>).has(value)
-  );
+  return typeof value === 'string' && isKnownFailureClassification(value);
 }
 
 function asFailureClassification(

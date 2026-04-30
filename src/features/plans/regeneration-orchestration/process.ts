@@ -1,4 +1,6 @@
 import { JOB_TYPES } from '@/features/jobs/types';
+import { toPlanCalendarDate } from '@/features/plans/calendar-date';
+import { buildPlanGenerationInputFields } from '@/features/plans/generation-input';
 import { learningPlans } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
 import { assertNever } from '@/lib/errors';
@@ -12,7 +14,6 @@ import type { RegenerationOrchestrationDeps } from './deps';
 import type { PlanRegenerationJobPayload } from './schema';
 import type { ProcessPlanRegenerationJobResult } from './types';
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const INVALID_JOB_PAYLOAD_MESSAGE = 'Invalid plan regeneration job payload.';
 const PLAN_NOT_FOUND_MESSAGE = 'Plan not found for queued regeneration.';
 const UNSAFE_WORKER_FAILURE_MESSAGE = 'Queued plan regeneration failed.';
@@ -42,24 +43,6 @@ type PermanentFailureResult = Extract<
   { status: 'permanent_failure' }
 >;
 
-const toIsoDateString = (value: string | null): string | undefined => {
-  if (!value) {
-    return undefined;
-  }
-
-  if (!ISO_DATE_PATTERN.test(value)) {
-    return undefined;
-  }
-
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return undefined;
-  }
-
-  // Reject non-calendar dates (e.g. 2023-02-30) that JS normalizes.
-  return parsed.toISOString().startsWith(value) ? value : undefined;
-};
-
 const resolveRegenerationNotes = (
   overrides: PlanRegenerationJobPayload['overrides'],
 ) => {
@@ -73,7 +56,7 @@ const resolveRegenerationNotes = (
 const resolveDateOverride = (
   override: string | null | undefined,
   fallback: string | null,
-) => toIsoDateString(override === undefined ? fallback : override);
+) => toPlanCalendarDate(override === undefined ? fallback : override);
 
 function buildSanitizedGenerationFailureMessage(
   classification: string,
@@ -87,7 +70,7 @@ function buildGenerationInput(
 ) {
   const overrides = payload.overrides;
 
-  return {
+  return buildPlanGenerationInputFields({
     topic: overrides?.topic ?? plan.topic,
     notes: resolveRegenerationNotes(overrides),
     skillLevel: overrides?.skillLevel ?? plan.skillLevel,
@@ -98,7 +81,7 @@ function buildGenerationInput(
       overrides?.deadlineDate,
       plan.deadlineDate,
     ),
-  };
+  });
 }
 
 async function validateQueuedRegenerationPayload(
@@ -281,10 +264,6 @@ async function completeAlreadyFinalizedGeneration(
     tasksCount: 0,
     durationMs: 0,
   });
-  deps.logger.info(
-    { jobId: job.id, planId: plan.id },
-    'Regeneration job: queue job completed after already_finalized lifecycle outcome',
-  );
 
   return {
     kind: 'already-finalized',

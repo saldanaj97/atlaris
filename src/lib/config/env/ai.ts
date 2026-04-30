@@ -84,7 +84,7 @@ interface AiEnvFacets {
   readonly attemptsEnv: AttemptsEnv;
 }
 
-function parseOptionalBooleanFlag(
+function parseStrictOptionalBooleanFlag(
   value: string | undefined,
   envKey: string,
 ): boolean | undefined {
@@ -129,7 +129,7 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       );
     },
     get useMock() {
-      return parseOptionalBooleanFlag(
+      return parseStrictOptionalBooleanFlag(
         access.getServerOptional('AI_USE_MOCK'),
         'AI_USE_MOCK',
       );

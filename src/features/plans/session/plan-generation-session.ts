@@ -3,13 +3,16 @@ import {
   streamHeaders,
 } from '@/features/ai/streaming/events';
 import { resolveUserTier } from '@/features/billing/tier';
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
-import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
+import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
+import { throwCreatePlanResultError } from './create-plan-result-error';
+import {
+  buildCreateGenerationInput,
+  buildRetryGenerationInput,
+} from './generation-input';
 import { resolveStreamModelResolution } from './model-resolution';
-import { safeMarkPlanFailed } from './stream-cleanup';
+import { safeMarkPlanFailedWithDbClient } from './stream-cleanup';
 import { createStreamDbClient } from './stream-db';
 import {
   buildPlanStartEvent,
@@ -21,9 +24,7 @@ import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
   CreatePlanResult,
   GenerationAttemptResult,
-  PermanentFailure,
   ProcessGenerationInput,
-  RetryableFailure,
 } from '@/features/plans/lifecycle/types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
@@ -33,7 +34,6 @@ import type {
 import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_PROVIDER_FAILURE_CLASSIFICATION = 'provider_error' as const;
 
 /** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
@@ -122,15 +122,6 @@ type RetrySessionCommand = Extract<SessionCommand, { kind: 'retry' }>;
 type SuccessfulCreatePlanResult = Extract<
   CreatePlanResult,
   { status: 'success' }
->;
-type RetryGenerationInput = Pick<
-  CreateLearningPlanInput,
-  | 'topic'
-  | 'skillLevel'
-  | 'weeklyHours'
-  | 'learningStyle'
-  | 'startDate'
-  | 'deadlineDate'
 >;
 type UnhandledGenerationErrorHandler = (
   error: unknown,
@@ -269,7 +260,12 @@ async function prepareRetry(
   const { internalUserId, planId, plan, tierDb } = command;
 
   const tier = await resolveUserTier(internalUserId, tierDb);
-  const retryInput = buildRetryGenerationInput(plan);
+  const retryInput = buildRetryGenerationInput(plan, ({ field, value }) => {
+    logger.warn(
+      { field, value },
+      'Ignoring persisted plan session date with invalid ISO calendar format',
+    );
+  });
 
   return {
     planId,
@@ -389,7 +385,7 @@ function resolveCreateStreamModel({
   internalUserId: string;
   createResult: SuccessfulCreatePlanResult;
   savedPreferredAiModel: string | null;
-}): string | null | undefined {
+}): string | undefined {
   const { modelOverride, resolutionSource, suppliedModel } =
     resolveStreamModelResolution({
       searchParams: new URL(req.url).searchParams,
@@ -399,12 +395,12 @@ function resolveCreateStreamModel({
 
   const ignoredSuppliedModel =
     suppliedModel !== undefined && resolutionSource !== 'query_override';
-  let message = 'No query override or saved preference; tier default applies';
-  if (resolutionSource === 'query_override') {
-    message = 'Model override from query for stream generation';
-  } else if (resolutionSource === 'saved_preference') {
-    message = 'Using saved preferred AI model for stream generation';
-  }
+  const message =
+    resolutionSource === 'query_override'
+      ? 'Model override from query for stream generation'
+      : resolutionSource === 'saved_preference'
+        ? 'Using saved preferred AI model for stream generation'
+        : 'No query override or saved preference; tier default applies';
   const meta = {
     authUserId,
     userId: internalUserId,
@@ -416,26 +412,9 @@ function resolveCreateStreamModel({
     ...(ignoredSuppliedModel ? { ignoredSuppliedModel: true } : {}),
   };
 
-  if (ignoredSuppliedModel) {
-    logger.warn(meta, message);
-  } else {
-    logger.info(meta, message);
-  }
+  logger[ignoredSuppliedModel ? 'warn' : 'info'](meta, message);
 
   return modelOverride;
-}
-
-function buildRetryGenerationInput(
-  plan: RetryPlanGenerationPlanSnapshot,
-): RetryGenerationInput {
-  return {
-    topic: plan.topic,
-    skillLevel: plan.skillLevel,
-    weeklyHours: plan.weeklyHours,
-    learningStyle: plan.learningStyle,
-    startDate: toIsoDateString(plan.startDate, 'startDate'),
-    deadlineDate: toIsoDateString(plan.deadlineDate, 'deadlineDate'),
-  };
 }
 
 function withPlanStartOnReservation({
@@ -506,119 +485,7 @@ async function handleUnhandledStreamError({
     message,
   );
 
-  await safeMarkPlanFailed(
-    planId,
-    userId,
-    new PlanPersistenceAdapter(dbClient),
-  );
-}
-
-function buildCreateGenerationInput({
-  body,
-  createResult,
-  userId,
-  modelOverride,
-}: {
-  body: CreateLearningPlanInput;
-  createResult: SuccessfulCreatePlanResult;
-  userId: string;
-  modelOverride?: string | null;
-}): ProcessGenerationInput {
-  const { normalizedInput: ni, planId, tier } = createResult;
-
-  return {
-    planId,
-    userId,
-    tier,
-    input: {
-      topic: ni.topic,
-      notes: body.notes,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate: ni.startDate,
-      deadlineDate: ni.deadlineDate,
-    },
-    modelOverride,
-  };
-}
-
-function throwCreatePlanResultError(
-  createResult: Exclude<CreatePlanResult, { status: 'success' }>,
-): never {
-  if (createResult.status === 'duplicate_detected') {
-    throw new AppError(
-      'A plan with this topic is already being generated. Please wait for it to complete.',
-      {
-        status: 409,
-        code: 'DUPLICATE_PLAN',
-        details: { existingPlanId: createResult.existingPlanId },
-      },
-    );
-  }
-
-  if (createResult.status === 'quota_rejected') {
-    throw new AppError(createResult.reason, {
-      status: 403,
-      code: 'QUOTA_EXCEEDED',
-      details: { upgradeUrl: createResult.upgradeUrl },
-    });
-  }
-
-  if (createResult.status === 'attempt_cap_exceeded') {
-    throw new AttemptCapExceededError(createResult.reason, {
-      planId: createResult.cappedPlanId,
-    });
-  }
-
-  throwPlanCreationFailure(createResult);
-}
-
-function throwPlanCreationFailure(
-  createResult: PermanentFailure | RetryableFailure,
-): never {
-  const error = createResult.error;
-  const { status, code } =
-    PLAN_CREATION_FAILURE_HTTP_MAP[createResult.classification] ??
-    PLAN_CREATION_FAILURE_HTTP_MAP.unknown;
-
-  logger.warn(
-    {
-      status: createResult.status,
-      classification: createResult.classification,
-      error: error.message,
-    },
-    'Plan creation failure',
-  );
-
-  throw new AppError(error.message, {
-    status,
-    code,
-    classification:
-      createResult.classification === 'unknown'
-        ? undefined
-        : createResult.classification,
-    cause: error,
-  });
-}
-
-function toIsoDateString(
-  value: string | null,
-  field: 'startDate' | 'deadlineDate',
-): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  if (ISO_DATE_PATTERN.test(value)) {
-    return value;
-  }
-
-  logger.warn(
-    { field, value },
-    'Ignoring persisted plan session date with invalid ISO calendar format',
-  );
-  return undefined;
+  await safeMarkPlanFailedWithDbClient(planId, userId, dbClient);
 }
 
 function classifyError(error: unknown): FailureClassification | 'unknown' {

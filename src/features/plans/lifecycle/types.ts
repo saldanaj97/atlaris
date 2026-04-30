@@ -131,7 +131,7 @@ export type ProcessGenerationInput = {
   readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: Readonly<GenerationInput>;
-  readonly modelOverride?: string | null;
+  readonly modelOverride?: string;
   readonly signal?: AbortSignal;
   /** When set, passed to `reserveAttemptSlot` for transactional status checks. */
   readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];

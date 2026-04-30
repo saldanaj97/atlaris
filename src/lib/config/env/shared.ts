@@ -127,8 +127,11 @@ export function parseEnvNumber(
 }
 
 /**
- * Parses a string to a boolean. Use for consistent env boolean parsing.
- * Truthy (case-insensitive, trimmed): 'true' | '1'. All other non-empty values are false.
+ * Parses broad opt-in env toggles permissively.
+ *
+ * Missing or empty values return `fallback`; only `true` and `1`
+ * (case-insensitive, trimmed) return true. Every other non-empty value returns
+ * false. Use stricter parsers for env flags where typos should fail startup.
  */
 export function toBoolean(
   value: string | undefined,

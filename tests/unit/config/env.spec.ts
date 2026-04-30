@@ -122,6 +122,19 @@ describe('Environment Configuration', () => {
       expect(aiEnv.useMock).toBe(false);
     });
 
+    it.each([
+      ['true', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
+      const env = { AI_USE_MOCK: value } as const;
+      const access = createServerEnvAccess(() => env);
+      const { aiEnv } = createAiEnvFacets(access);
+
+      expect(aiEnv.useMock).toBe(expected);
+    });
+
     it('rejects malformed AI_USE_MOCK values', () => {
       const env = { AI_USE_MOCK: 'maybe' } as const;
       const access = createServerEnvAccess(() => env);

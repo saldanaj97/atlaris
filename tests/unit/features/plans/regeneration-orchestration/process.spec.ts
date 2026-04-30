@@ -254,6 +254,41 @@ describe('processPlanRegenerationJob', () => {
     );
   });
 
+  it('drops impossible persisted calendar dates before generation', async () => {
+    const processAttempt = vi.fn().mockResolvedValue({
+      status: 'generation_success',
+      data: {
+        modules: [],
+        durationMs: 0,
+      },
+    });
+    const findFirst = vi.fn(async () => ({
+      ...planRow,
+      startDate: '2026-02-30',
+      deadlineDate: '2026-13-01',
+    }));
+    const deps = buildProcessDeps({
+      dbClient: {
+        query: { learningPlans: { findFirst } },
+      } as unknown as DbClient,
+      lifecycle: {
+        service: makeLifecycleServiceMock(processAttempt),
+      },
+    });
+    const job = makeJob();
+
+    await processPlanRegenerationJob(job, deps);
+
+    expect(processAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          startDate: undefined,
+          deadlineDate: undefined,
+        }),
+      }),
+    );
+  });
+
   it('preserves notes semantics when overrides omit notes', async () => {
     const processAttempt = vi.fn().mockResolvedValue({
       status: 'generation_success',

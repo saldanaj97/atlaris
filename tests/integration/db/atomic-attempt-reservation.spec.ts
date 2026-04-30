@@ -360,7 +360,9 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         extendedTimeout: false,
         dbClient: db,
       }),
-    ).rejects.toThrow('Failed to finalize generation attempt as failure.');
+    ).rejects.toThrow(
+      /^Failed to finalize generation attempt .+ for plan .+ as timeout failure\.$/,
+    );
   });
 
   it('finalizes success correctly', async () => {

@@ -59,7 +59,7 @@ export function withRateLimit(
       ctx: Parameters<AuthHandler>[0],
     ): Promise<Awaited<ReturnType<AuthHandler>>> => {
       // `checkUserRateLimit` throws `RateLimitError` when the user exceeds the window.
-      checkUserRateLimit(ctx.userId, category);
+      await checkUserRateLimit(ctx.userId, category);
       const response = await handler(ctx);
       return applyUserRateLimitHeaders(response, ctx.userId, category);
     };

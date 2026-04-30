@@ -3,7 +3,7 @@ import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';

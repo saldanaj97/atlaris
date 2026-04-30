@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { logger } from '@/lib/logging/logger';
 
 describe('withErrorBoundary', () => {
@@ -45,6 +45,11 @@ describe('withErrorBoundary', () => {
       const res = await handler(req);
 
       expect(res.status).toBe(499);
+      expect(res.headers.get('Connection')).toBe('close');
+      expect(logger.debug).toHaveBeenCalledWith(
+        { url: req.url, method: req.method },
+        'Request aborted by client',
+      );
       expect(logger.error).not.toHaveBeenCalled();
     },
   );
@@ -57,8 +62,15 @@ describe('withErrorBoundary', () => {
     const req = new Request('http://localhost/api/z', { method: 'PUT' });
 
     const res = await handler(req);
+    const body = await res.json();
 
     expect(res.status).toBe(500);
+    expect(body).toEqual(
+      expect.objectContaining({
+        error: expect.any(String),
+        code: expect.any(String),
+      }),
+    );
     expect(logger.error).toHaveBeenCalledWith(
       { error: boom },
       'Unhandled API route error',

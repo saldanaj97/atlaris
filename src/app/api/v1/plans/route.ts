@@ -3,7 +3,7 @@ import {
   listLightweightPlansForApi,
 } from '@/features/plans/read-projection/service';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';

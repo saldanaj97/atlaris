@@ -9,7 +9,7 @@ import {
 } from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,

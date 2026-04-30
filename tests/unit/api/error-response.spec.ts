@@ -81,6 +81,22 @@ describe('error-response', () => {
       });
     });
 
+    it('strips invalid classification while preserving valid fields', () => {
+      const result = normalizeApiErrorResponse(
+        {
+          error: 'Proxy failure',
+          code: 'UPSTREAM',
+          classification: 'not_real',
+        },
+        { status: 500, fallbackMessage: 'Fallback' },
+      );
+
+      expect(result).toEqual({
+        error: 'Proxy failure',
+        code: 'UPSTREAM',
+      });
+    });
+
     it('falls back when payload is not parseable', () => {
       const result = normalizeApiErrorResponse('not-an-object', {
         status: 404,

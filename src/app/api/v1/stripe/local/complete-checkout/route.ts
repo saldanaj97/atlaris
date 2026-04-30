@@ -10,7 +10,7 @@ import {
 import type { PlainHandler } from '@/lib/api/auth';
 import { withAuth } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { appEnv } from '@/lib/config/env';
 import { NextResponse } from 'next/server';
 

@@ -6,7 +6,7 @@ import {
   withServerComponentContext,
 } from '@/lib/api/auth';
 import { getCorrelationId } from '@/lib/api/context';
-import { withRateLimit } from '@/lib/api/middleware';
+import { withRateLimit } from '@/lib/api/route-wrappers';
 import type {
   AuthHandler,
   PlainHandler,

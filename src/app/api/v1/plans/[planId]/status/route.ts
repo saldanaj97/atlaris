@@ -2,7 +2,7 @@ import { classificationToUserMessage } from '@/features/ai/failure-presentation'
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-projection/service';
 import { NotFoundError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
