@@ -8,10 +8,8 @@ import {
   getNextJob,
 } from '@/features/jobs/queue';
 import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
-import {
-  createPlanLifecycleService,
-  type PlanLifecycleService,
-} from '@/features/plans/lifecycle';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import { shouldRetryJob } from '@/features/plans/retry-policy';
 import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';

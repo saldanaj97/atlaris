@@ -1,19 +1,9 @@
-/**
- * PlanLifecycleService — orchestrates plan creation through port interfaces.
- *
- * This service has ZERO direct imports from billing, AI, DB, or job modules.
- * All interaction with external concerns goes through injected ports.
- *
- * Returns discriminated union results for expected lifecycle outcomes.
- * Generation finalization can throw on DB/RLS/infra errors after provider success;
- * stream and worker layers treat those as unexpected failures.
- */
-
 import { logger } from '@/lib/logging/logger';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { checkCreationGate } from './creation-pipeline';
 import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
 
-import { type CreationGatePorts, checkCreationGate } from './creation-pipeline';
+import { type CreationGatePorts } from './creation-pipeline';
 import type {
   GenerationFinalizationPort,
   GenerationPort,
@@ -28,18 +18,29 @@ import type {
   ProcessGenerationInput,
 } from './types';
 
-function shouldMarkPlanFailedAfterGenerationFailure(
-  result: Extract<GenerationRunResult, { status: 'failure' }>,
-): boolean {
-  const reason = result.reservationRejectionReason;
-  return reason !== 'in_progress' && reason !== 'invalid_status';
-}
+/**
+ * PlanLifecycleService — orchestrates plan creation through port interfaces.
+ *
+ * This service has ZERO direct imports from billing, AI, DB, or job modules.
+ * All interaction with external concerns goes through injected ports.
+ *
+ * Returns discriminated union results for expected lifecycle outcomes.
+ * Generation finalization can throw on DB/RLS/infra errors after provider success;
+ * stream and worker layers treat those as unexpected failures.
+ */
 
 export interface PlanLifecycleServicePorts {
   readonly planPersistence: PlanPersistencePort;
   readonly quota: QuotaPort;
   readonly generation: GenerationPort;
   readonly generationFinalization: GenerationFinalizationPort;
+}
+
+function shouldMarkPlanFailedAfterGenerationFailure(
+  result: Extract<GenerationRunResult, { status: 'failure' }>,
+): boolean {
+  const reason = result.reservationRejectionReason;
+  return reason !== 'in_progress' && reason !== 'invalid_status';
 }
 
 export class PlanLifecycleService {
@@ -101,53 +102,45 @@ export class PlanLifecycleService {
   async processGenerationAttempt(
     input: ProcessGenerationInput,
   ): Promise<GenerationAttemptResult> {
+    const { planId, userId, tier } = input;
+
     logger.info(
-      { planId: input.planId, userId: input.userId, tier: input.tier },
+      { planId, userId, tier },
       'plan.lifecycle.generation: attempt started',
     );
 
-    const generationResult = await this.ports.generation.runGeneration({
-      planId: input.planId,
-      userId: input.userId,
-      tier: input.tier,
-      input: input.input,
-      modelOverride: input.modelOverride,
-      signal: input.signal,
-      ...(input.allowedGenerationStatuses !== undefined
-        ? { allowedGenerationStatuses: input.allowedGenerationStatuses }
-        : {}),
-      ...(input.requiredGenerationStatus !== undefined
-        ? { requiredGenerationStatus: input.requiredGenerationStatus }
-        : {}),
-      ...(input.onAttemptReserved !== undefined
-        ? { onAttemptReserved: input.onAttemptReserved }
-        : {}),
-    });
+    const generationResult = await this.ports.generation.runGeneration(input);
 
     if (generationResult.status === 'success') {
+      const {
+        reservation,
+        modules,
+        metadata: providerMetadata,
+        usage,
+        durationMs,
+        extendedTimeout,
+      } = generationResult;
+
       await this.ports.generationFinalization.finalizeSuccess({
-        planId: input.planId,
-        userId: input.userId,
-        attemptId: generationResult.reservation.attemptId,
-        preparation: generationResult.reservation,
-        modules: generationResult.modules,
-        providerMetadata: generationResult.metadata,
-        usage: generationResult.usage,
-        durationMs: generationResult.durationMs,
-        extendedTimeout: generationResult.extendedTimeout,
+        planId,
+        userId,
+        attemptId: reservation.attemptId,
+        preparation: reservation,
+        modules,
+        providerMetadata,
+        usage,
+        durationMs,
+        extendedTimeout,
         usageKind: 'plan',
       });
 
-      logger.info(
-        { planId: input.planId, durationMs: generationResult.durationMs },
-        'plan.lifecycle.generation: success',
-      );
+      logger.info({ planId, durationMs }, 'plan.lifecycle.generation: success');
       return {
         status: 'generation_success',
         data: {
-          modules: generationResult.modules,
-          metadata: generationResult.metadata,
-          durationMs: generationResult.durationMs,
+          modules,
+          metadata: providerMetadata,
+          durationMs,
         },
       };
     }
@@ -156,49 +149,47 @@ export class PlanLifecycleService {
     const retryable = isRetryableClassification(classification);
 
     if (shouldMarkPlanFailedAfterGenerationFailure(generationResult)) {
+      const failureCommon = {
+        planId,
+        userId,
+        classification,
+        error,
+        durationMs: generationResult.durationMs,
+        usage: generationResult.usage,
+        usageKind: 'plan' as const,
+        retryable,
+      };
+
       if (generationResult.reservationRejectionReason !== undefined) {
         await this.ports.generationFinalization.finalizeFailure({
           variant: 'plan_only',
-          planId: input.planId,
-          userId: input.userId,
-          classification,
-          error,
-          durationMs: generationResult.durationMs,
-          usage: generationResult.usage,
-          usageKind: 'plan',
-          retryable,
+          ...failureCommon,
         });
       } else if (generationResult.reservation) {
+        const { reservation } = generationResult;
         await this.ports.generationFinalization.finalizeFailure({
           variant: 'reserved_attempt',
-          planId: input.planId,
-          userId: input.userId,
-          attemptId: generationResult.reservation.attemptId,
-          preparation: generationResult.reservation,
-          classification,
-          error,
-          durationMs: generationResult.durationMs,
+          ...failureCommon,
+          attemptId: reservation.attemptId,
+          preparation: reservation,
           timedOut: generationResult.timedOut ?? false,
           extendedTimeout: generationResult.extendedTimeout ?? false,
           providerMetadata: generationResult.metadata,
-          usage: generationResult.usage,
-          usageKind: 'plan',
-          retryable,
         });
       } else {
         logger.error(
-          { planId: input.planId, userId: input.userId, classification },
+          { planId, userId, classification },
           'plan.lifecycle.generation: failure result missing reservation context',
         );
         throw new Error(
-          `Generation failure for plan ${input.planId} did not include reservation context.`,
+          `Generation failure for plan ${planId} did not include reservation context.`,
         );
       }
     }
 
     if (retryable) {
       logger.warn(
-        { planId: input.planId, classification },
+        { planId, classification },
         'plan.lifecycle.generation: retryable failure',
       );
       return {
@@ -209,7 +200,7 @@ export class PlanLifecycleService {
     }
 
     logger.warn(
-      { planId: input.planId, classification },
+      { planId, classification },
       'plan.lifecycle.generation: permanent failure',
     );
     return {

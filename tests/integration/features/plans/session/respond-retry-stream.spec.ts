@@ -1,15 +1,8 @@
-import { ensureUser } from '@tests/helpers/db';
-import {
-  readStreamingResponse,
-  type StreamingEvent,
-} from '@tests/helpers/streaming';
-import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { describe, expect, it, vi } from 'vitest';
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
   GenerationAttemptResult,
-  PlanLifecycleService,
   ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
+} from '@/features/plans/lifecycle/types';
 import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -18,6 +11,13 @@ import {
 } from '@/features/plans/session/plan-generation-session';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { db } from '@/lib/db/service-role';
+import { ensureUser } from '@tests/helpers/db';
+import {
+  readStreamingResponse,
+  type StreamingEvent,
+} from '@tests/helpers/streaming';
+import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
+import { describe, expect, it, vi } from 'vitest';
 
 const SUCCESS_ATTEMPT_RESULT: GenerationAttemptResult = {
   status: 'generation_success',

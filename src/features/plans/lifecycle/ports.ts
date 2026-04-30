@@ -1,11 +1,3 @@
-/**
- * Port interfaces for the plan lifecycle module.
- *
- * Ports define the boundaries between the lifecycle service and external
- * concerns (persistence, billing, AI). The service depends only on
- * these interfaces — never on concrete implementations.
- */
-
 import type {
   AttemptRejection,
   AttemptReservation,
@@ -28,10 +20,12 @@ import type {
   PlanInsertData,
 } from './types';
 
-// ─── PlanPersistencePort ─────────────────────────────────────────
+/**
+ * Port interfaces for the plan lifecycle module (persistence, quota, AI, billing hooks).
+ */
 
 export interface PlanPersistencePort {
-  /** Atomically check plan limit and insert a new plan within a transaction. */
+  /** Atomically enforce plan limit and insert inside one transaction. */
   atomicInsertPlan(
     this: void,
     userId: string,
@@ -51,31 +45,23 @@ export interface PlanPersistencePort {
     normalizedTopic: string,
   ): Promise<string | null>;
 
-  /** Mark a plan's generation as successful. */
   markGenerationSuccess(this: void, planId: string): Promise<void>;
-
-  /** Mark a plan's generation as failed. */
   markGenerationFailure(this: void, planId: string): Promise<void>;
 }
 
-/**
- * Narrow persistence capability: persist **generation completion** only
- * (`markGenerationSuccess` / `markGenerationFailure` on `learning_plans`), e.g.
- * after a stream error path or stuck-plan cleanup. Not for general session
- * orchestration, SSE, or unrelated cleanup.
- */
+/** Persistence slice for marking generation success/failure only (e.g. error paths without full finalization). */
 export type PlanGenerationStatusPort = Pick<
   PlanPersistencePort,
   'markGenerationSuccess' | 'markGenerationFailure'
 >;
 
-// ─── QuotaPort ───────────────────────────────────────────────────
+/**
+ * Port interfaces for the plan lifecycle module (quota, billing hooks).
+ */
 
 export interface QuotaPort {
-  /** Resolve the user's current subscription tier. */
   resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
 
-  /** Check if the plan duration is within the tier's cap. */
   checkDurationCap(
     this: void,
     params: {
@@ -85,7 +71,6 @@ export interface QuotaPort {
     },
   ): DurationCapResult;
 
-  /** Normalize plan dates and compute total weeks based on tier constraints. */
   normalizePlanDuration(
     this: void,
     params: {
@@ -98,7 +83,9 @@ export interface QuotaPort {
   ): NormalizedDuration;
 }
 
-// ─── GenerationPort ──────────────────────────────────────────────
+/**
+ * Port interfaces for the plan lifecycle module (generation, AI hooks).
+ */
 
 export type GenerationRunParams = {
   planId: string;
@@ -129,7 +116,6 @@ type GenerationRunFailure = {
   metadata?: Record<string, unknown>;
   usage?: CanonicalAIUsage;
   durationMs: number;
-  /** Present when an in-progress attempt row exists (lifecycle must finalize). */
   reservation?: AttemptReservation;
   timedOut?: boolean;
   extendedTimeout?: boolean;
@@ -139,19 +125,17 @@ type GenerationRunFailure = {
 export type GenerationRunResult = GenerationRunSuccess | GenerationRunFailure;
 
 export interface GenerationPort {
-  /** Execute an AI plan generation attempt. */
   runGeneration(
     this: void,
     params: GenerationRunParams,
   ): Promise<GenerationRunResult>;
 }
 
-// ─── GenerationFinalizationPort ───────────────────────────────────
-
 /**
- * Single-transaction settlement for plan generation outcomes (attempt + content + plan status + usage).
- * Not used for stream cleanup paths that only touch {@link PlanGenerationStatusPort}.
+ * Port interfaces for the plan lifecycle module (generation finalization, billing hooks).
  */
+
+/** Full finalization in one transaction; use {@link PlanGenerationStatusPort} when only plan status must update. */
 export interface GenerationFinalizationPort {
   finalizeSuccess(
     this: void,
@@ -164,10 +148,11 @@ export interface GenerationFinalizationPort {
   ): Promise<GenerationAttemptRecord | void>;
 }
 
-// ─── UsageRecordingPort ──────────────────────────────────────────
+/**
+ * Port interfaces for the plan lifecycle module (usage recording, billing hooks).
+ */
 
 export interface UsageRecordingPort {
-  /** Record AI token usage for billing and analytics. */
   recordUsage(
     this: void,
     params: {

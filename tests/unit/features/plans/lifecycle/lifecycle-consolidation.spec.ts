@@ -188,11 +188,9 @@ describe('Lifecycle Consolidation', () => {
       await service.processGenerationAttempt(RETRY_INPUT);
       const runGeneration = vi.mocked(ports.generation.runGeneration);
 
-      expect(runGeneration).toHaveBeenCalledWith(
-        expect.objectContaining({
-          modelOverride: undefined,
-        }),
-      );
+      const [callArg] = runGeneration.mock.calls[0] ?? [];
+      expect(callArg).toBeDefined();
+      expect(callArg).not.toHaveProperty('modelOverride');
     });
   });
 
