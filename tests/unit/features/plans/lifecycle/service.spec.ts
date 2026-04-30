@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
+import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
-
-import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -493,6 +492,32 @@ describe('PlanLifecycleService', () => {
           retryable: false,
         }),
       );
+    });
+
+    it('throws when a permanent failure lacks reservation context', async () => {
+      const finalizeFailureSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        generationFinalization: {
+          finalizeSuccess: vi.fn(),
+          finalizeFailure: finalizeFailureSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'failure',
+            classification: 'validation',
+            error: new Error('invalid generation state'),
+            durationMs: 200,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await expect(
+        service.processGenerationAttempt(validGenerationInput),
+      ).rejects.toThrow(
+        'Generation failure for plan plan-gen-001 did not include reservation context.',
+      );
+      expect(finalizeFailureSpy).not.toHaveBeenCalled();
     });
   });
 });

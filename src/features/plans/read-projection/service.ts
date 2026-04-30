@@ -175,5 +175,31 @@ export async function getModuleDetailForRead(params: {
     return null;
   }
 
-  return buildModuleDetailReadModel(rows);
+  try {
+    const readModel = buildModuleDetailReadModel(rows);
+    if (!readModel) {
+      logger.error(
+        {
+          planId: params.planId,
+          moduleId: params.moduleId,
+          userId: params.userId,
+        },
+        'Failed to build module detail read model',
+      );
+      return null;
+    }
+
+    return readModel;
+  } catch (err) {
+    logger.error(
+      {
+        err,
+        planId: params.planId,
+        moduleId: params.moduleId,
+        userId: params.userId,
+      },
+      'Failed to build module detail read model',
+    );
+    return null;
+  }
 }

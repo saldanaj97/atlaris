@@ -81,6 +81,12 @@ describe('Plan status parity contract', () => {
       {
         generationStatus: 'pending_retry',
         hasModules: false,
+        attemptsCount: 1,
+        expectedStatus: 'processing',
+      },
+      {
+        generationStatus: 'pending_retry',
+        hasModules: false,
         attemptsCount: attemptCap,
         expectedStatus: 'failed',
       },

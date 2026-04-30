@@ -55,14 +55,23 @@ describe('derivePlanReadStatus', () => {
     ).toBe('processing');
   });
 
-  it.each(['generating', 'pending_retry'] as const)(
-    'returns processing for %s without modules when attempts are below the retry cap',
-    (generationStatus) => {
+  it.each([
+    ['generating', 0],
+    ['generating', 1],
+    ['generating', Math.floor(DEFAULT_ATTEMPT_CAP / 2)],
+    ['generating', DEFAULT_ATTEMPT_CAP - 1],
+    ['pending_retry', 0],
+    ['pending_retry', 1],
+    ['pending_retry', Math.floor(DEFAULT_ATTEMPT_CAP / 2)],
+    ['pending_retry', DEFAULT_ATTEMPT_CAP - 1],
+  ] as const)(
+    'returns processing for %s without modules when attempts=%d is below the retry cap',
+    (generationStatus, attemptsCount) => {
       expect(
         derivePlanReadStatus({
           generationStatus,
           hasModules: false,
-          attemptsCount: DEFAULT_ATTEMPT_CAP - 1,
+          attemptsCount,
           attemptCap: DEFAULT_ATTEMPT_CAP,
         }),
       ).toBe('processing');
@@ -82,6 +91,49 @@ describe('derivePlanReadStatus', () => {
       ).toBe('failed');
     },
   );
+
+  it.each(['generating', 'pending_retry'] as const)(
+    'returns failed for %s without modules when attempts exceed the retry cap',
+    (generationStatus) => {
+      expect(
+        derivePlanReadStatus({
+          generationStatus,
+          hasModules: false,
+          attemptsCount: DEFAULT_ATTEMPT_CAP + 1,
+          attemptCap: DEFAULT_ATTEMPT_CAP,
+        }),
+      ).toBe('failed');
+    },
+  );
+
+  it('returns processing for pending_retry when attempt counts are omitted', () => {
+    expect(
+      derivePlanReadStatus({
+        generationStatus: 'pending_retry',
+        hasModules: false,
+      }),
+    ).toBe('processing');
+  });
+
+  it('honors custom attempt caps', () => {
+    expect(
+      derivePlanReadStatus({
+        generationStatus: 'pending_retry',
+        hasModules: false,
+        attemptsCount: 1,
+        attemptCap: 2,
+      }),
+    ).toBe('processing');
+
+    expect(
+      derivePlanReadStatus({
+        generationStatus: 'pending_retry',
+        hasModules: false,
+        attemptsCount: 2,
+        attemptCap: 2,
+      }),
+    ).toBe('failed');
+  });
 
   it('returns pending when ready plans are still below the retry cap', () => {
     expect(

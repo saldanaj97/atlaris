@@ -43,6 +43,10 @@ export async function markPlanGenerationSuccessInTx(
     .returning({ id: learningPlans.id });
 
   if (updated.length === 0) {
+    logger.error(
+      { planId, timestamp, updatedCount: updated.length },
+      'markPlanGenerationSuccessInTx: no learningPlans rows updated in PlanUpdateTx',
+    );
     throw new Error(
       `markPlanGenerationSuccessInTx: no plan updated for id ${planId}`,
     );
@@ -65,6 +69,10 @@ export async function markPlanGenerationFailureInTx(
     .returning({ id: learningPlans.id });
 
   if (updated.length === 0) {
+    logger.error(
+      { planId, timestamp, updatedCount: updated.length },
+      'markPlanGenerationFailureInTx: no learningPlans rows updated in PlanUpdateTx',
+    );
     throw new Error(
       `markPlanGenerationFailureInTx: no plan updated for id ${planId}`,
     );

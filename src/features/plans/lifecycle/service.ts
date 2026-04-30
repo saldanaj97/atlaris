@@ -185,6 +185,14 @@ export class PlanLifecycleService {
           usageKind: 'plan',
           retryable,
         });
+      } else {
+        logger.error(
+          { planId: input.planId, userId: input.userId, classification },
+          'plan.lifecycle.generation: failure result missing reservation context',
+        );
+        throw new Error(
+          `Generation failure for plan ${input.planId} did not include reservation context.`,
+        );
       }
     }
 

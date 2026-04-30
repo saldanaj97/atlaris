@@ -7,10 +7,7 @@ import {
   markPlanGenerationSuccessInTx,
 } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
-import {
-  isProviderErrorRetryable,
-  logAttemptEvent,
-} from '@/lib/db/queries/helpers/attempts-helpers';
+import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import { buildMetadata } from '@/lib/db/queries/helpers/attempts-input';
 import { normalizeParsedModules } from '@/lib/db/queries/helpers/attempts-persistence-normalization';
 import {
@@ -22,7 +19,6 @@ import {
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { canonicalUsageToRecordParams, recordUsageInTx } from '@/lib/db/usage';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
 
 import type {
   AttemptsDbClient,
@@ -159,11 +155,6 @@ export async function commitPlanGenerationFailure(
       durationMs: input.durationMs,
       metadata,
     });
-
-    void (input.classification === 'provider_error'
-      ? isProviderErrorRetryable(input.error)
-      : isRetryableClassification(input.classification));
-    void input.preparation.attemptNumber;
 
     await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
 

@@ -1,9 +1,6 @@
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { hashSha256 } from '@/lib/crypto/hash';
-import {
-  isProviderErrorRetryable,
-  logAttemptEvent,
-} from '@/lib/db/queries/helpers/attempts-helpers';
+import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
   sanitizeInput,
@@ -40,7 +37,6 @@ import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { count, eq, sql } from 'drizzle-orm';
 
 /**
@@ -294,7 +290,9 @@ export async function persistFailedAttemptInTx(
     .returning();
 
   if (!updatedAttempt) {
-    throw new Error('Failed to finalize generation attempt as failure.');
+    throw new Error(
+      `Failed to finalize generation attempt ${attemptId} for plan ${planId} as ${classification} failure.`,
+    );
   }
 
   return updatedAttempt;
@@ -315,7 +313,6 @@ export async function finalizeAttemptFailure({
   timedOut = false,
   extendedTimeout = false,
   providerMetadata,
-  error,
   dbClient,
   now,
 }: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
@@ -339,12 +336,6 @@ export async function finalizeAttemptFailure({
 
   const attempt = await dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
-    void (classification === 'provider_error'
-      ? isProviderErrorRetryable(error)
-      : isRetryableClassification(classification));
-    void preparation.attemptNumber;
-    void finishedAt;
 
     return persistFailedAttemptInTx(tx, {
       attemptId,

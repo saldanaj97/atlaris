@@ -164,6 +164,46 @@ describe('module-detail read projection', () => {
     expect(model!.module.tasks[0].status).toBe('in_progress');
   });
 
+  it('sets previousModulesComplete to false when a prior module is incomplete', () => {
+    const planId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const m1 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+    const m2 = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+    const rows = rowsForReadModel({
+      plan: { id: planId, topic: 'T' },
+      module: {
+        id: m2,
+        planId,
+        order: 2,
+        title: 'M2',
+        description: null,
+        estimatedMinutes: 40,
+        createdAt: BASE,
+        updatedAt: BASE,
+      },
+      moduleMetricsRows: [
+        {
+          id: m1,
+          order: 1,
+          title: 'First',
+          totalTaskCount: 2,
+          completedTaskCount: 1,
+        },
+        {
+          id: m2,
+          order: 2,
+          title: 'Second',
+          totalTaskCount: 1,
+          completedTaskCount: 0,
+        },
+      ],
+    });
+
+    const model = buildModuleDetailReadModel(rows);
+    expect(model).not.toBeNull();
+    expect(model!.previousModulesComplete).toBe(false);
+  });
+
   it('returns null when current module id missing from metrics', () => {
     const planId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const wrongId = '99999999-9999-9999-9999-999999999999';

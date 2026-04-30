@@ -41,6 +41,11 @@ export function whereInProgressGenerationAttemptForPlan(params: {
   );
 }
 
+/**
+ * Persists success inside an existing transaction whose RLS/JWT claims have
+ * already been applied. Callers that need claim setup should use
+ * persistSuccessfulAttempt instead.
+ */
 export async function persistSuccessfulAttemptInTx(
   tx: DbTransaction,
   params: FinalizeSuccessPersistenceInTxParams,

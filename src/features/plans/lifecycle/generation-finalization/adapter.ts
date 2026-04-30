@@ -7,7 +7,6 @@ import type {
   AttemptsDbClient,
   GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
-import type { DbClient } from '@/lib/db/types';
 import type { GenerationFinalizationPort } from '../ports';
 import type {
   FinalizeGenerationFailureParams,
@@ -17,26 +16,19 @@ import type {
 
 export class GenerationFinalizationAdapter implements GenerationFinalizationPort {
   constructor(
-    private readonly dbClient: DbClient,
+    private readonly dbClient: AttemptsDbClient,
     private readonly deps: GenerationFinalizationStoreDeps = {},
   ) {}
 
   async finalizeSuccess(
     input: FinalizeGenerationSuccessInput,
   ): Promise<GenerationAttemptRecord> {
-    return commitPlanGenerationSuccess(
-      this.dbClient as AttemptsDbClient,
-      input,
-      this.deps,
-    );
+    return commitPlanGenerationSuccess(this.dbClient, input, this.deps);
   }
 
   async finalizeFailure(
     input: FinalizeGenerationFailureParams,
   ): Promise<GenerationAttemptRecord | void> {
-    return commitPlanGenerationFailure(
-      this.dbClient as AttemptsDbClient,
-      input,
-    );
+    return commitPlanGenerationFailure(this.dbClient, input);
   }
 }
