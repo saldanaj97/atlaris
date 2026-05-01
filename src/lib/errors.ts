@@ -101,6 +101,20 @@ export function getLoggableErrorDetails(error: unknown): {
   return { errorMessage: core.primaryMessage };
 }
 
+export function serializeErrorForLog(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    value: String(error),
+  };
+}
+
 /**
  * Exhaustive check helper for discriminated unions.
  * Passing a value of type `never` ensures all cases are handled at compile time.

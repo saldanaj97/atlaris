@@ -7,7 +7,6 @@ import type { ParsedModule } from '@/features/ai/types/parser.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { StreamingEvent } from '@/features/plans/session/session-events';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { getCorrelationId } from '@/lib/api/context';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
@@ -21,7 +20,7 @@ interface EmitSanitizedFailureEventParams {
   classification: FailureClassification | 'unknown';
   planId: string;
   userId: string;
-  getCorrelationId?: typeof getCorrelationId;
+  requestId?: string;
 }
 
 /**
@@ -33,13 +32,12 @@ function emitSanitizedFailureEvent({
   classification,
   planId,
   userId,
-  getCorrelationId: getCorrelationIdOverride,
+  requestId,
 }: EmitSanitizedFailureEventParams): void {
   const sanitized = sanitizeSseError(error, classification, {
     planId,
     userId,
   });
-  const requestId = (getCorrelationIdOverride ?? getCorrelationId)();
 
   emit({
     type: 'error',
@@ -130,7 +128,7 @@ interface LifecycleGenerationStreamParams {
   processGeneration: () => Promise<GenerationAttemptResult>;
   onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
   fallbackClassification?: FailureClassification | 'unknown';
-  getCorrelationId?: typeof getCorrelationId;
+  requestId?: string;
 }
 
 function getAbortReason(signal: AbortSignal): string | undefined {
@@ -191,7 +189,7 @@ export async function executeLifecycleGenerationStream({
   processGeneration,
   onUnhandledError,
   fallbackClassification = 'provider_error',
-  getCorrelationId: getCorrelationIdOverride,
+  requestId,
 }: LifecycleGenerationStreamParams): Promise<void> {
   const startedAt = Date.now();
 
@@ -230,7 +228,7 @@ export async function executeLifecycleGenerationStream({
           classification: result.classification,
           planId,
           userId,
-          getCorrelationId: getCorrelationIdOverride,
+          requestId,
         });
         return;
       }
@@ -291,7 +289,7 @@ export async function executeLifecycleGenerationStream({
       classification: fallbackClassification,
       planId,
       userId,
-      getCorrelationId: getCorrelationIdOverride,
+      requestId,
     });
   }
 }

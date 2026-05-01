@@ -14,6 +14,7 @@ import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
+import { serializeErrorForLog } from '@/lib/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { type Logger, logger } from '@/lib/logging/logger';
 
@@ -28,6 +29,7 @@ function tryBuildPayloadLog(
   | { ok: true; payloadLog: Record<string, unknown> }
   | { ok: false; error: unknown; fallback: Record<string, unknown> } {
   try {
+    // Payload logging must not break generation when unusual getters/proxies throw.
     return { ok: true, payloadLog: toPayloadLog(payload) };
   } catch (error) {
     return {
@@ -76,20 +78,6 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
   };
 }
 
-function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    value: String(error),
-  };
-}
-
 /**
  * Creates the stream POST handler with optional dependency overrides.
  *
@@ -108,9 +96,8 @@ export function createStreamHandler(deps?: {
   return withErrorBoundary(
     requestBoundary.route(
       { rateLimit: 'aiGeneration' },
-      async ({ req, actor, db }) => {
+      async ({ req, actor, db, correlationId }) => {
         const authUserId = actor.authUserId;
-        const currentUser = actor;
 
         routeLogger.info({ authUserId }, 'Plan stream handler entered');
 
@@ -120,7 +107,7 @@ export function createStreamHandler(deps?: {
             new ValidationError(
               'Invalid request body.',
               { reason: 'Malformed or invalid JSON payload.' },
-              { authUserId, error: serializeError(error) },
+              { authUserId, error: serializeErrorForLog(error) },
             ),
         });
 
@@ -135,7 +122,7 @@ export function createStreamHandler(deps?: {
           routeLogger.warn(
             {
               authUserId,
-              error: serializeError(error),
+              error: serializeErrorForLog(error),
               payload: fallback,
             },
             'Plan stream payload log failed',
@@ -161,22 +148,21 @@ export function createStreamHandler(deps?: {
           body = createLearningPlanSchema.parse(parsedBody);
         } catch (error) {
           if (error instanceof ZodError) {
-            throw new ValidationError(
-              'Invalid request body.',
-              error.flatten(),
-              { authUserId, validation: error.flatten() },
-            );
+            const validation = error.flatten();
+            throw new ValidationError('Invalid request body.', validation, {
+              authUserId,
+              validation,
+            });
           }
           throw new ValidationError(
             'Invalid request body.',
             { reason: 'Malformed or invalid JSON payload.' },
-            { authUserId, error: serializeError(error) },
+            { authUserId, error: serializeErrorForLog(error) },
           );
         }
 
-        const internalUserId = currentUser.id;
+        const internalUserId = actor.id;
 
-        // ─── Rate limiting (generation-specific, checked BEFORE plan creation) ──
         const rateLimit = await checkPlanGenerationRateLimit(
           internalUserId,
           db,
@@ -194,8 +180,9 @@ export function createStreamHandler(deps?: {
           authUserId,
           internalUserId,
           body,
-          savedPreferredAiModel: currentUser.preferredAiModel ?? null,
+          savedPreferredAiModel: actor.preferredAiModel ?? null,
           responseHeaders: generationRateLimitHeaders,
+          requestId: correlationId,
         });
       },
     ),

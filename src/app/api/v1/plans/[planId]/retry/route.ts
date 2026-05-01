@@ -18,9 +18,11 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 
 export const maxDuration = 60;
 
-const RETRYABLE_STATUSES: ReadonlySet<string> = new Set(
-  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
-);
+function isRetryableStatus(status: string | null): boolean {
+  return PLAN_RETRY_RESERVATION_ALLOWED_STATUSES.some(
+    (retryableStatus) => retryableStatus === status,
+  );
+}
 
 const defaultBoundary: PlanGenerationSessionBoundary =
   createPlanGenerationSessionBoundary();
@@ -33,7 +35,7 @@ const defaultBoundary: PlanGenerationSessionBoundary =
  * the lifecycle service under the boundary; production uses the default
  * boundary singleton.
  */
-function createRetryHandler(deps?: {
+export function createRetryHandler(deps?: {
   boundary?: PlanGenerationSessionBoundary;
 }): PlainHandler {
   const boundary = deps?.boundary ?? defaultBoundary;
@@ -41,7 +43,7 @@ function createRetryHandler(deps?: {
   return withErrorBoundary(
     requestBoundary.route(
       { rateLimit: 'aiGeneration' },
-      async ({ req, actor, db }): Promise<Response> => {
+      async ({ req, actor, db, correlationId }): Promise<Response> => {
         const authUserId = actor.authUserId;
         const internalUserId = actor.id;
         const planId = requirePlanIdFromRequest(req, 'second-to-last');
@@ -59,8 +61,7 @@ function createRetryHandler(deps?: {
           dbClient: db,
         });
 
-        // Pre-flight: reject non-retryable plan statuses with a clear HTTP error
-        if (!RETRYABLE_STATUSES.has(plan.generationStatus ?? '')) {
+        if (!isRetryableStatus(plan.generationStatus)) {
           throw new AppError(
             "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
             {
@@ -88,6 +89,7 @@ function createRetryHandler(deps?: {
           },
           tierDb: db,
           responseHeaders: generationRateLimitHeaders,
+          requestId: correlationId,
         });
       },
     ),
