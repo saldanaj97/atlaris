@@ -188,7 +188,7 @@ async function applyRetryableFailure(
   result: RetryableFailureResult,
 ): Promise<ProcessPlanRegenerationJobResult> {
   const { job, plan, deps } = context;
-  const decision = deps.retry.shouldRetryJob({
+  const decision = deps.retry.decideJobRetry({
     attemptNumber: job.attempts + 1,
     maxAttempts: job.maxAttempts,
     retryable: true,
@@ -208,7 +208,7 @@ async function applyRetryableFailure(
     job.id,
     buildSanitizedGenerationFailureMessage(result.classification),
     {
-      retryable: decision.shouldRetry,
+      retryable: true,
     },
   );
 

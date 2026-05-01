@@ -99,7 +99,7 @@ function buildDeps(
       service: {} as RegenerationOrchestrationDeps['lifecycle']['service'],
     },
     retry: {
-      shouldRetryJob: vi.fn(),
+      decideJobRetry: vi.fn(),
     },
     inlineDrain: {
       tryRegister,

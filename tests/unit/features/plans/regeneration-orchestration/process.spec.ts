@@ -97,8 +97,9 @@ function buildProcessDeps(
       service: makeLifecycleServiceMock(),
     },
     retry: {
-      shouldRetryJob: vi.fn(() => ({
-        shouldRetry: true,
+      decideJobRetry: vi.fn(() => ({
+        shouldRetry: true as const,
+        delayMs: 1_000,
         reason: 'retry',
       })),
     },
@@ -377,9 +378,10 @@ describe('processPlanRegenerationJob', () => {
     const deps = buildProcessDeps({
       queue: { failJob },
       retry: {
-        shouldRetryJob: vi.fn(() => ({
-          shouldRetry: true,
-          reason: 'Retryable — attempt 1/3',
+        decideJobRetry: vi.fn(() => ({
+          shouldRetry: true as const,
+          delayMs: 1_000,
+          reason: 'Retryable - attempt 1/3',
         })),
       },
       lifecycle: {
@@ -394,6 +396,11 @@ describe('processPlanRegenerationJob', () => {
       planId: planRow.id,
       willRetry: true,
     });
+    expect(deps.retry.decideJobRetry).toHaveBeenCalledWith({
+      attemptNumber: 1,
+      maxAttempts: 3,
+      retryable: true,
+    });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
       'Plan regeneration failed (timeout).',
@@ -403,7 +410,7 @@ describe('processPlanRegenerationJob', () => {
       expect.objectContaining({
         jobId: job.id,
         classification: 'timeout',
-        retryDecision: 'Retryable — attempt 1/3',
+        retryDecision: 'Retryable - attempt 1/3',
         error: expect.any(Error),
       }),
       'Regeneration job retryable failure — retry decision applied',
@@ -420,8 +427,8 @@ describe('processPlanRegenerationJob', () => {
     const deps = buildProcessDeps({
       queue: { failJob },
       retry: {
-        shouldRetryJob: vi.fn(() => ({
-          shouldRetry: false,
+        decideJobRetry: vi.fn(() => ({
+          shouldRetry: false as const,
           reason: 'Attempt cap reached (3/3)',
         })),
       },
@@ -435,10 +442,15 @@ describe('processPlanRegenerationJob', () => {
       kind: 'retryable-failure',
       willRetry: false,
     });
+    expect(deps.retry.decideJobRetry).toHaveBeenCalledWith({
+      attemptNumber: 3,
+      maxAttempts: 3,
+      retryable: true,
+    });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
       'Plan regeneration failed (timeout).',
-      { retryable: false },
+      { retryable: true },
     );
   });
 

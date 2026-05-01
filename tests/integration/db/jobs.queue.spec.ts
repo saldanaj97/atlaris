@@ -16,6 +16,7 @@ import {
 } from '@/features/jobs/types';
 import { jobQueue, learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { getJobRetryDelayMs } from '@/shared/retry-policy';
 
 const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
 
@@ -364,7 +365,7 @@ describe('Job queue service', () => {
     }
     expect(
       firstRetryRow.scheduledFor.getTime() - firstRetryRow.updatedAt.getTime(),
-    ).toBe(2_000);
+    ).toBe(getJobRetryDelayMs(1));
 
     await getNextJob([JOB_TYPE]);
     const second = await failJob(jobId, 'still failing');
@@ -380,7 +381,7 @@ describe('Job queue service', () => {
     expect(
       secondRetryRow.scheduledFor.getTime() -
         secondRetryRow.updatedAt.getTime(),
-    ).toBe(4_000);
+    ).toBe(getJobRetryDelayMs(2));
 
     await getNextJob([JOB_TYPE]);
     const terminal = await failJob(jobId, 'fatal error');
@@ -388,6 +389,55 @@ describe('Job queue service', () => {
     expect(terminal?.attempts).toBe(3);
     expect(terminal?.error).toBe('fatal error');
     expect(terminal?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('fails terminal on first failure when retryable is false', async () => {
+    const { plan, userId } = await createPlanFixture('no-retry');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'no-retry-topic' },
+      }),
+    );
+
+    await getNextJob([JOB_TYPE]);
+    const result = await failJob(jobId, 'non-retryable error', {
+      retryable: false,
+    });
+    expect(result?.status).toBe('failed');
+    expect(result?.attempts).toBe(1);
+    expect(result?.error).toBe('non-retryable error');
+    expect(result?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('respects custom maxAttempts for terminal retry cap', async () => {
+    const { plan, userId } = await createPlanFixture('max-two');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'max-two-topic' },
+      }),
+    );
+
+    await db
+      .update(jobQueue)
+      .set({ maxAttempts: 2 })
+      .where(eq(jobQueue.id, jobId));
+
+    await getNextJob([JOB_TYPE]);
+    const first = await failJob(jobId, 'first');
+    expect(first?.status).toBe('pending');
+    expect(first?.attempts).toBe(1);
+
+    await getNextJob([JOB_TYPE]);
+    const terminal = await failJob(jobId, 'second');
+    expect(terminal?.status).toBe('failed');
+    expect(terminal?.attempts).toBe(2);
+    expect(terminal?.error).toBe('second');
   });
 
   it('completes jobs and preserves attempt counter', async () => {

@@ -15,7 +15,7 @@ import {
   MAX_PROVIDER_RETRIES,
   PROVIDER_RETRY_MAX_MS,
   PROVIDER_RETRY_MIN_MS,
-} from '@/features/plans/retry-policy';
+} from '@/shared/constants/retry-policy';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';

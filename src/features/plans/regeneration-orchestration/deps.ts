@@ -10,7 +10,7 @@ import {
 import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-import { shouldRetryJob } from '@/features/plans/retry-policy';
+import { decideJobRetry } from '@/shared/retry-policy';
 import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { regenerationQueueEnv } from '@/lib/config/env';
@@ -58,7 +58,7 @@ export interface RegenerationOrchestrationDeps {
     service: PlanLifecycleService;
   };
   retry: {
-    shouldRetryJob: typeof shouldRetryJob;
+    decideJobRetry: typeof decideJobRetry;
   };
   inlineDrain: {
     tryRegister: typeof tryRegisterInlineDrain;
@@ -117,7 +117,7 @@ export function createDefaultRegenerationOrchestrationDeps(
     lifecycle: {
       service: createPlanLifecycleService({ dbClient }),
     },
-    retry: { shouldRetryJob },
+    retry: { decideJobRetry },
     inlineDrain: {
       tryRegister: tryRegisterInlineDrain,
       drain: options.inlineDrain ?? noopInlineDrain,

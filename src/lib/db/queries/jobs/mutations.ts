@@ -19,12 +19,8 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import {
-  computeShouldRetry,
-  getRetryDelaySeconds,
-  jobQueueSelect,
-  runJobMutationIfEditable,
-} from './shared';
+import { decideJobRetry } from '@/shared/retry-policy';
+import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 
 /**
  * Inserts a new job into the queue. For plan regeneration jobs with a planId,
@@ -196,16 +192,11 @@ export async function failJobRecord(
   return runJobMutationIfEditable(client, jobId, async (tx, current) => {
     const nextAttempts = current.attempts + 1;
     const now = new Date();
-    const shouldRetry = computeShouldRetry(
+    const decision = decideJobRetry({
+      attemptNumber: nextAttempts,
+      maxAttempts: current.maxAttempts,
       retryable,
-      nextAttempts,
-      current.maxAttempts,
-    );
-
-    const retryDelaySeconds = getRetryDelaySeconds(nextAttempts);
-    const scheduledForRetry = new Date(
-      now.getTime() + retryDelaySeconds * 1000,
-    );
+    });
 
     const payloadWithHistory = appendErrorHistoryEntry(current.payload, {
       attempt: nextAttempts,
@@ -213,7 +204,7 @@ export async function failJobRecord(
       timestamp: now.toISOString(),
     });
 
-    const updatePayload = shouldRetry
+    const updatePayload = decision.shouldRetry
       ? {
           attempts: nextAttempts,
           status: 'pending' as const,
@@ -221,7 +212,7 @@ export async function failJobRecord(
           result: null,
           completedAt: null,
           startedAt: null,
-          scheduledFor: scheduledForRetry,
+          scheduledFor: new Date(now.getTime() + decision.delayMs),
           updatedAt: now,
           payload: payloadWithHistory,
         }

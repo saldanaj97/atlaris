@@ -5,14 +5,7 @@ import type {
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
 import { jobQueue } from '@/lib/db/schema';
-import {
-  JOB_RETRY_BASE_SECONDS,
-  JOB_RETRY_MAX_DELAY_SECONDS,
-} from '@/shared/constants/retry-policy';
 import type { Job } from '@/shared/types/jobs.types';
-
-/** Cap for exponential retry delay in seconds (5 minutes). */
-const MAX_RETRY_DELAY_SECONDS = JOB_RETRY_MAX_DELAY_SECONDS;
 
 export const jobQueueSelect = {
   id: jobQueue.id,
@@ -79,38 +72,23 @@ export async function runJobMutationIfEditable(
   });
 }
 
-export function computeShouldRetry(
-  retryable: boolean | undefined,
-  nextAttempts: number,
-  maxAttempts: number,
-): boolean {
-  if (retryable === false) {
-    return false;
-  }
-
-  // retryable === true OR undefined: both respect maxAttempts (no ABSOLUTE_MAX bypass)
-  return nextAttempts < maxAttempts;
-}
-
-export function getRetryDelaySeconds(attemptNumber: number): number {
-  const normalizedAttempt = Math.max(1, Math.trunc(attemptNumber));
-  return Math.min(
-    MAX_RETRY_DELAY_SECONDS,
-    JOB_RETRY_BASE_SECONDS * 2 ** (normalizedAttempt - 1),
-  );
-}
+type MutationCountResult = {
+  count?: unknown;
+  rowCount?: unknown;
+};
 
 export function normalizeMutationCount(result: unknown): number {
   if (!result || typeof result !== 'object') {
     return 0;
   }
 
-  const candidate = (result as { count?: unknown; rowCount?: unknown }).count;
+  const mutationResult = result as MutationCountResult;
+  const candidate = mutationResult.count;
   if (typeof candidate === 'number' && Number.isFinite(candidate)) {
     return Math.max(0, Math.trunc(candidate));
   }
 
-  const rowCount = (result as { rowCount?: unknown }).rowCount;
+  const rowCount = mutationResult.rowCount;
   if (typeof rowCount === 'number' && Number.isFinite(rowCount)) {
     return Math.max(0, Math.trunc(rowCount));
   }
