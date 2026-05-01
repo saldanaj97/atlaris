@@ -416,6 +416,7 @@ describe('toErrorResponse', () => {
     expect(body).toEqual({
       error: 'Already exists',
       code: 'CONFLICT',
+      classification: 'conflict',
     });
   });
 

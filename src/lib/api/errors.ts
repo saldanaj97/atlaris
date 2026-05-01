@@ -99,7 +99,12 @@ export class ValidationError extends AppError {
 
 export class ConflictError extends AppError {
   constructor(message = 'Conflict', details?: unknown) {
-    super(message, { status: 409, code: 'CONFLICT', details });
+    super(message, {
+      status: 409,
+      code: 'CONFLICT',
+      details,
+      classification: 'conflict',
+    });
   }
 }
 

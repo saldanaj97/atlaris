@@ -6,11 +6,10 @@ import {
   withServerComponentContext,
 } from '@/lib/api/auth';
 import { getCorrelationId } from '@/lib/api/context';
-import { withRateLimit } from '@/lib/api/route-wrappers';
+import { withErrorBoundary, withRateLimit } from '@/lib/api/route-wrappers';
 import type {
   AuthHandler,
   PlainHandler,
-  RouteHandlerContext,
   RouteParams,
 } from '@/lib/api/types/auth.types';
 import type { UserRateLimitCategory } from '@/lib/api/user-rate-limit';
@@ -72,26 +71,27 @@ function createRouteMethod(): RouteMethod {
     optionsOrRun: RouteBoundaryOptions | RouteBoundaryWork,
     maybeRun?: RouteBoundaryWork,
   ): PlainHandler {
-    if (typeof optionsOrRun === 'function') {
-      const handler = withAuth(wrapRouteBoundaryWork(optionsOrRun));
-      return (req: Request, context?: RouteHandlerContext) =>
-        handler(req, context);
-    }
+    let options: RouteBoundaryOptions | undefined;
+    let run: RouteBoundaryWork;
 
-    if (maybeRun === undefined) {
+    if (typeof optionsOrRun === 'function') {
+      run = optionsOrRun;
+    } else if (maybeRun === undefined) {
       throw new TypeError(
         'requestBoundary.route: handler required as second argument when passing options',
       );
+    } else {
+      options = optionsOrRun;
+      run = maybeRun;
     }
 
-    const options = optionsOrRun;
-    const authHandler =
-      options.rateLimit !== undefined
-        ? withRateLimit(options.rateLimit)(wrapRouteBoundaryWork(maybeRun))
-        : wrapRouteBoundaryWork(maybeRun);
+    let authHandler = wrapRouteBoundaryWork(run);
+    if (options?.rateLimit !== undefined) {
+      authHandler = withRateLimit(options.rateLimit)(authHandler);
+    }
+
     const handler = withAuth(authHandler);
-    return (req: Request, context?: RouteHandlerContext) =>
-      handler(req, context);
+    return withErrorBoundary(handler);
   }
 
   return route as RouteMethod;

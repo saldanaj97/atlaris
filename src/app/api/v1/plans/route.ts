@@ -3,7 +3,6 @@ import {
   listLightweightPlansForApi,
 } from '@/features/plans/read-projection/service';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
@@ -13,8 +12,9 @@ import {
   PAGINATION_MAX_LIMIT,
 } from '@/shared/constants/pagination';
 
-export const GET: PlainHandler = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
+export const GET: PlainHandler = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor, db }) => {
     const url = new URL(req.url);
 
     const { limit, offset } = parseListPaginationParams(url.searchParams, {
@@ -58,5 +58,5 @@ export const GET: PlainHandler = withErrorBoundary(
     return json(summaries, {
       headers: { 'X-Total-Count': String(totalCount) },
     });
-  }),
+  },
 );

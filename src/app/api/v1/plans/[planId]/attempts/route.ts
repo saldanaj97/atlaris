@@ -1,12 +1,12 @@
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { getPlanGenerationAttemptsForRead } from '@/features/plans/read-projection/service';
 import { NotFoundError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor }) => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
     const attempts = await getPlanGenerationAttemptsForRead({
@@ -18,5 +18,5 @@ export const GET = withErrorBoundary(
     }
 
     return json(attempts);
-  }),
+  },
 );

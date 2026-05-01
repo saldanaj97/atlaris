@@ -2,7 +2,6 @@ import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import { removePlanForWrite } from '@/features/plans/write-service';
 import { NotFoundError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
@@ -19,8 +18,9 @@ import { logger } from '@/lib/logging/logger';
  * PUT intentionally deferred (no direct user edits in MVP; regeneration flow supersedes manual editing).
  */
 
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor, db }) => {
     const planId = requirePlanIdFromRequest(req, 'last');
 
     logger.info({ planId, userId: actor.id }, 'Fetching learning plan detail');
@@ -41,22 +41,20 @@ export const GET = withErrorBoundary(
     logger.debug({ planId, userId: actor.id }, 'Fetched learning plan detail');
 
     return json(detail);
-  }),
+  },
 );
 
-export const DELETE = withErrorBoundary(
-  requestBoundary.route(
-    { rateLimit: 'mutation' },
-    async ({ req, actor, db }) => {
-      const planId = requirePlanIdFromRequest(req, 'last');
+export const DELETE = requestBoundary.route(
+  { rateLimit: 'mutation' },
+  async ({ req, actor, db }) => {
+    const planId = requirePlanIdFromRequest(req, 'last');
 
-      logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
+    logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
 
-      await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
+    await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
 
-      logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
+    logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
 
-      return json({ success: true });
-    },
-  ),
+    return json({ success: true });
+  },
 );

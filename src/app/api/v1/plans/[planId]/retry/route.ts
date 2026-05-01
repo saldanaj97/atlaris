@@ -9,7 +9,6 @@ import {
 } from '@/features/plans/session/plan-generation-session';
 import type { PlainHandler } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
@@ -40,59 +39,54 @@ export function createRetryHandler(deps?: {
 }): PlainHandler {
   const boundary = deps?.boundary ?? defaultBoundary;
 
-  return withErrorBoundary(
-    requestBoundary.route(
-      { rateLimit: 'aiGeneration' },
-      async ({ req, actor, db, correlationId }): Promise<Response> => {
-        const authUserId = actor.authUserId;
-        const internalUserId = actor.id;
-        const planId = requirePlanIdFromRequest(req, 'second-to-last');
+  return requestBoundary.route(
+    { rateLimit: 'aiGeneration' },
+    async ({ req, actor, db, correlationId }): Promise<Response> => {
+      const authUserId = actor.authUserId;
+      const internalUserId = actor.id;
+      const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
-        const rateLimit = await checkPlanGenerationRateLimit(
-          internalUserId,
-          db,
-        );
-        const generationRateLimitHeaders =
-          getPlanGenerationRateLimitHeaders(rateLimit);
+      const rateLimit = await checkPlanGenerationRateLimit(internalUserId, db);
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(rateLimit);
 
-        const plan = await requireOwnedPlanById({
-          planId,
-          ownerUserId: internalUserId,
-          dbClient: db,
-        });
+      const plan = await requireOwnedPlanById({
+        planId,
+        ownerUserId: internalUserId,
+        dbClient: db,
+      });
 
-        if (!isRetryableStatus(plan.generationStatus)) {
-          throw new AppError(
-            "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
-            {
-              status: 400,
-              code: 'VALIDATION_ERROR',
-              classification: 'validation',
-              headers: generationRateLimitHeaders,
-            },
-          );
-        }
-
-        return await boundary.respondRetryStream({
-          req,
-          authUserId,
-          internalUserId,
-          planId,
-          plan: {
-            topic: plan.topic,
-            skillLevel: plan.skillLevel,
-            weeklyHours: plan.weeklyHours,
-            learningStyle: plan.learningStyle,
-            startDate: plan.startDate,
-            deadlineDate: plan.deadlineDate,
-            origin: plan.origin,
+      if (!isRetryableStatus(plan.generationStatus)) {
+        throw new AppError(
+          "Plan is not eligible for retry. Only plans in 'failed' or 'pending_retry' may be retried.",
+          {
+            status: 400,
+            code: 'VALIDATION_ERROR',
+            classification: 'validation',
+            headers: generationRateLimitHeaders,
           },
-          tierDb: db,
-          responseHeaders: generationRateLimitHeaders,
-          requestId: correlationId,
-        });
-      },
-    ),
+        );
+      }
+
+      return await boundary.respondRetryStream({
+        req,
+        authUserId,
+        internalUserId,
+        planId,
+        plan: {
+          topic: plan.topic,
+          skillLevel: plan.skillLevel,
+          weeklyHours: plan.weeklyHours,
+          learningStyle: plan.learningStyle,
+          startDate: plan.startDate,
+          deadlineDate: plan.deadlineDate,
+          origin: plan.origin,
+        },
+        tierDb: db,
+        responseHeaders: generationRateLimitHeaders,
+        requestId: correlationId,
+      });
+    },
   );
 }
 

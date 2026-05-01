@@ -8,7 +8,6 @@ import { createLearningPlanSchema } from '@/features/plans/validation/learningPl
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
@@ -93,99 +92,94 @@ export function createStreamHandler(deps?: {
   const routeLogger = deps?.logger ?? logger;
   const boundary = deps?.boundary ?? defaultBoundary;
 
-  return withErrorBoundary(
-    requestBoundary.route(
-      { rateLimit: 'aiGeneration' },
-      async ({ req, actor, db, correlationId }) => {
-        const authUserId = actor.authUserId;
+  return requestBoundary.route(
+    { rateLimit: 'aiGeneration' },
+    async ({ req, actor, db, correlationId }) => {
+      const authUserId = actor.authUserId;
 
-        routeLogger.info({ authUserId }, 'Plan stream handler entered');
+      routeLogger.info({ authUserId }, 'Plan stream handler entered');
 
-        const parsedBody = await parseJsonBody(req, {
-          mode: 'required',
-          onMalformedJson: (error) =>
-            new ValidationError(
-              'Invalid request body.',
-              { reason: 'Malformed or invalid JSON payload.' },
-              { authUserId, error: serializeErrorForLog(error) },
-            ),
-        });
-
-        const payloadLogResult = tryBuildPayloadLog(parsedBody);
-        if (payloadLogResult.ok) {
-          routeLogger.info(
-            { authUserId, payload: payloadLogResult.payloadLog },
-            'Plan stream request payload received',
-          );
-        } else {
-          const { error, fallback } = payloadLogResult;
-          routeLogger.warn(
-            {
-              authUserId,
-              error: serializeErrorForLog(error),
-              payload: fallback,
-            },
-            'Plan stream payload log failed',
-          );
-          Sentry.captureException(
-            error instanceof Error ? error : new Error(String(error)),
-            {
-              level: 'warning',
-              tags: {
-                route: 'plans-stream',
-                source: 'payload-log',
-              },
-              extra: {
-                authUserId,
-                payload: fallback,
-              },
-            },
-          );
-        }
-
-        let body: CreateLearningPlanInput;
-        try {
-          body = createLearningPlanSchema.parse(parsedBody);
-        } catch (error) {
-          if (error instanceof ZodError) {
-            const validation = error.flatten();
-            throw new ValidationError('Invalid request body.', validation, {
-              authUserId,
-              validation,
-            });
-          }
-          throw new ValidationError(
+      const parsedBody = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: (error) =>
+          new ValidationError(
             'Invalid request body.',
             { reason: 'Malformed or invalid JSON payload.' },
             { authUserId, error: serializeErrorForLog(error) },
-          );
-        }
+          ),
+      });
 
-        const internalUserId = actor.id;
-
-        const rateLimit = await checkPlanGenerationRateLimit(
-          internalUserId,
-          db,
-        );
-        const generationRateLimitHeaders =
-          getPlanGenerationRateLimitHeaders(rateLimit);
-
+      const payloadLogResult = tryBuildPayloadLog(parsedBody);
+      if (payloadLogResult.ok) {
         routeLogger.info(
-          { authUserId },
-          'Delegating plan stream request to generation session',
+          { authUserId, payload: payloadLogResult.payloadLog },
+          'Plan stream request payload received',
         );
+      } else {
+        const { error, fallback } = payloadLogResult;
+        routeLogger.warn(
+          {
+            authUserId,
+            error: serializeErrorForLog(error),
+            payload: fallback,
+          },
+          'Plan stream payload log failed',
+        );
+        Sentry.captureException(
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            level: 'warning',
+            tags: {
+              route: 'plans-stream',
+              source: 'payload-log',
+            },
+            extra: {
+              authUserId,
+              payload: fallback,
+            },
+          },
+        );
+      }
 
-        return await boundary.respondCreateStream({
-          req,
-          authUserId,
-          internalUserId,
-          body,
-          savedPreferredAiModel: actor.preferredAiModel ?? null,
-          responseHeaders: generationRateLimitHeaders,
-          requestId: correlationId,
-        });
-      },
-    ),
+      let body: CreateLearningPlanInput;
+      try {
+        body = createLearningPlanSchema.parse(parsedBody);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          const validation = error.flatten();
+          throw new ValidationError('Invalid request body.', validation, {
+            authUserId,
+            validation,
+          });
+        }
+        throw new ValidationError(
+          'Invalid request body.',
+          { reason: 'Malformed or invalid JSON payload.' },
+          { authUserId, error: serializeErrorForLog(error) },
+        );
+      }
+
+      const internalUserId = actor.id;
+
+      const rateLimit = await checkPlanGenerationRateLimit(internalUserId, db);
+      const generationRateLimitHeaders =
+        getPlanGenerationRateLimitHeaders(rateLimit);
+
+      routeLogger.info(
+        { authUserId },
+        'Delegating plan stream request to generation session',
+      );
+
+      return await boundary.respondCreateStream({
+        req,
+        authUserId,
+        internalUserId,
+        body,
+        savedPreferredAiModel: actor.preferredAiModel ?? null,
+        responseHeaders: generationRateLimitHeaders,
+        requestId: correlationId,
+      });
+    },
   );
 }
 

@@ -5,7 +5,6 @@ import {
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
@@ -44,14 +43,24 @@ function assertRawStripeAllowed(): void {
   );
 }
 
+function getReturnUrlForLog(body: unknown): string | undefined {
+  if (typeof body !== 'object' || body === null || !('returnUrl' in body)) {
+    return undefined;
+  }
+
+  const { returnUrl } = body as { returnUrl?: unknown };
+  return typeof returnUrl === 'string' ? returnUrl : undefined;
+}
+
 /**
  * Factory for the create-portal POST handler.
  */
 export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
   const parseJsonBodyImpl = deps.parseJsonBody ?? parseJsonBody;
 
-  return withErrorBoundary(
-    requestBoundary.route({ rateLimit: 'billing' }, async ({ req, actor }) => {
+  return requestBoundary.route(
+    { rateLimit: 'billing' },
+    async ({ req, actor }) => {
       logger.info(
         {
           userId: actor.id,
@@ -73,20 +82,13 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
 
       const parseResult = createPortalBodySchema.safeParse(body);
       if (!parseResult.success) {
-        const rawReturnUrl =
-          typeof body === 'object' &&
-          body !== null &&
-          'returnUrl' in body &&
-          typeof (body as { returnUrl?: unknown }).returnUrl === 'string'
-            ? (body as { returnUrl: string }).returnUrl
-            : undefined;
         const firstMessage = getFirstZodIssueMessage(parseResult.error);
         throw new ValidationError(
           firstMessage ?? 'Invalid request body',
           undefined,
           {
             userId: actor.id,
-            returnUrl: rawReturnUrl,
+            returnUrl: getReturnUrlForLog(body),
             validationMessage: firstMessage,
           },
         );
@@ -113,7 +115,7 @@ export function createCreatePortalHandler(deps: CreatePortalHandlerDeps = {}) {
       });
 
       return json({ portalUrl });
-    }),
+    },
   );
 }
 

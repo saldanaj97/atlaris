@@ -24,7 +24,7 @@ Fields:
 
 - `error` (required): user-safe message string.
 - `code` (required): stable machine-readable code.
-- `classification` (optional): one of `validation | provider_error | rate_limit | timeout | capped`.
+- `classification` (optional): one of `validation | conflict | provider_error | rate_limit | timeout | capped`.
 - `details` (optional): structured metadata safe to expose to clients.
 - `retryAfter` (optional): seconds until client should retry (typically rate limit responses).
 
@@ -37,7 +37,8 @@ Use these helpers only:
 
 ### Route/middleware pattern (required)
 
-- For route handlers, compose `withErrorBoundary(...)` (directly or via factories such as `requestBoundary.route` + `withErrorBoundary`) and throw typed `AppError` variants (`ValidationError`, `AuthError`, `NotFoundError`, etc.); the boundary serializes them through `toErrorResponse(...)`.
+- For authenticated route handlers, use `requestBoundary.route(...)` and throw typed `AppError` variants (`ValidationError`, `AuthError`, `NotFoundError`, etc.); the boundary serializes them through `toErrorResponse(...)`.
+- For unauthenticated/custom adapters (webhooks, internal worker endpoints, docs, health checks), compose `withErrorBoundary(...)` directly when the handler should still use canonical API error serialization.
 - Wrapper and middleware code under `src/lib/api/**` should also throw typed errors in the same way when the execution path is covered by `withErrorBoundary`.
 - Use `jsonError(...)` when you need the canonical shape **without** that wrapper (e.g. small pre-boundary checks, or a handler that cannot yet be refactored to `throw` only). This is a convenience path, not a “legacy only” exception list.
 

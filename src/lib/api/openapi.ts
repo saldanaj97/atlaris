@@ -21,7 +21,14 @@ const errorResponseSchema = z
     error: z.string(),
     code: z.string(),
     classification: z
-      .enum(['validation', 'provider_error', 'rate_limit', 'timeout', 'capped'])
+      .enum([
+        'validation',
+        'conflict',
+        'provider_error',
+        'rate_limit',
+        'timeout',
+        'capped',
+      ])
       .optional(),
     details: z.unknown().optional(),
     retryAfter: z.number().int().nonnegative().optional(),

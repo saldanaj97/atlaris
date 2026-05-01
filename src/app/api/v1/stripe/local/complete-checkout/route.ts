@@ -8,9 +8,8 @@ import {
   isLocalStripeCompletionRouteEnabled,
 } from '@/features/billing/stripe-commerce/factory';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuth } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { appEnv } from '@/lib/config/env';
 import { NextResponse } from 'next/server';
 
@@ -21,8 +20,8 @@ export const dynamic = 'force-dynamic';
  * Finishes local Stripe checkout by applying a synthetic subscription.created
  * event through the same webhook dedupe + processor path as production.
  */
-export const GET: PlainHandler = withErrorBoundary(
-  withAuth(async ({ req, user }) => {
+export const GET: PlainHandler = requestBoundary.route(
+  async ({ req, actor }) => {
     if (!isLocalStripeCompletionRouteEnabled()) {
       return new NextResponse('Not found', { status: 404 });
     }
@@ -46,10 +45,10 @@ export const GET: PlainHandler = withErrorBoundary(
     }
 
     await executeLocalSubscriptionReplay({
-      user: { id: user.id, email: user.email },
+      user: { id: actor.id, email: actor.email },
       priceId,
     });
 
     return NextResponse.redirect(new URL(nextPath, appEnv.url));
-  }),
+  },
 );

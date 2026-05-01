@@ -1,11 +1,11 @@
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ actor, db }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ actor, db }) => {
     try {
       const snapshot = await getBillingAccountSnapshot({
         userId: actor.id,
@@ -35,5 +35,5 @@ export const GET = withErrorBoundary(
       );
       throw error;
     }
-  }),
+  },
 );

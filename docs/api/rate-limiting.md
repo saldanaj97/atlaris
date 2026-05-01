@@ -52,18 +52,19 @@ For authenticated API routes, use the request boundary with an explicit rate-lim
 
 ```typescript
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { withErrorBoundary } from '@/lib/api/middleware';
 
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor, db }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor, db }) => {
     // Handler code
-  }),
+  },
 );
 
-export const POST = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'mutation' }, async ({ req, actor }) => {
+export const POST = requestBoundary.route(
+  { rateLimit: 'mutation' },
+  async ({ req, actor }) => {
     // Handler code
-  }),
+  },
 );
 ```
 
@@ -213,6 +214,6 @@ For strict global rate limiting across multiple server instances, the `createUse
 - `src/lib/api/user-rate-limit.ts` - User-based rate limiting module
 - `src/lib/api/rate-limit.ts` - Plan generation rate limiting
 - `src/lib/api/request-boundary.ts` - request-boundary route helper
-- `src/lib/api/middleware.ts` - shared user rate-limit wrapper/header logic
+- `src/lib/api/route-wrappers.ts` - shared error boundary and user rate-limit wrapper/header logic
 - `src/lib/api/errors.ts` - `RateLimitError` class
 - `tests/unit/api/user-rate-limit.spec.ts` - Unit tests

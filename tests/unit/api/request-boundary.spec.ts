@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getRequestContext } from '@/lib/api/context';
-import { AuthError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
+import { ConflictError } from '@/lib/api/errors';
 import {
   createRequestBoundary,
   requestBoundary,
@@ -105,19 +104,27 @@ describe('requestBoundary', () => {
     expect(response.status).toBe(200);
   });
 
-  it('throws on unauthenticated route access', async () => {
+  it('returns canonical 401 on unauthenticated route access', async () => {
     const handler = createRequestBoundary().route(async () => {
       return new Response('ok', { status: 200 });
     });
 
-    await expect(
-      handler(new Request('http://localhost/plans/plan-1'), {
+    const response = await handler(
+      new Request('http://localhost/plans/plan-1'),
+      {
         params: Promise.resolve({ planId: 'plan-1' }),
-      }),
-    ).rejects.toBeInstanceOf(AuthError);
+      },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toMatchObject({
+      error: 'Unauthorized',
+      code: 'UNAUTHORIZED',
+    });
   });
 
-  it('throws on unauthenticated access when route uses rateLimit option', async () => {
+  it('returns canonical 401 on unauthenticated access when route uses rateLimit option', async () => {
     const handler = createRequestBoundary().route(
       { rateLimit: 'read' },
       async () => {
@@ -125,11 +132,16 @@ describe('requestBoundary', () => {
       },
     );
 
-    await expect(
-      handler(new Request('http://localhost/x'), {
-        params: Promise.resolve({}),
-      }),
-    ).rejects.toBeInstanceOf(AuthError);
+    const response = await handler(new Request('http://localhost/x'), {
+      params: Promise.resolve({}),
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body).toMatchObject({
+      error: 'Unauthorized',
+      code: 'UNAUTHORIZED',
+    });
   });
 
   it('applies user-rate-limit headers when rateLimit option is set', async () => {
@@ -187,7 +199,7 @@ describe('requestBoundary', () => {
     expect(response.headers.get('X-RateLimit-Limit')).toBeNull();
   });
 
-  it('composes withErrorBoundary so route throws map to error responses', async () => {
+  it('maps thrown route errors to canonical error responses', async () => {
     const user = buildUserFixture({
       id: 'user_eb',
       authUserId: 'auth_eb',
@@ -198,11 +210,9 @@ describe('requestBoundary', () => {
     setTestUser(user.authUserId);
     getUserByAuthIdMock.mockResolvedValue(user);
 
-    const handler = withErrorBoundary(
-      createRequestBoundary().route(async () => {
-        throw new Error('boom');
-      }),
-    );
+    const handler = createRequestBoundary().route(async () => {
+      throw new Error('boom');
+    });
 
     const response = await handler(
       new Request('http://localhost/api', { method: 'GET' }),
@@ -214,7 +224,63 @@ describe('requestBoundary', () => {
     expect(body).toMatchObject({ code: 'INTERNAL_ERROR' });
   });
 
-  it('composes withErrorBoundary over rate-limited route', async () => {
+  it('serializes ConflictError with conflict classification', async () => {
+    const user = buildUserFixture({
+      id: 'user_conflict',
+      authUserId: 'auth_conflict',
+      email: 'conflict@example.test',
+      name: 'Conflict User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const handler = createRequestBoundary().route(async () => {
+      throw new ConflictError('Already exists', { field: 'topic' });
+    });
+
+    const response = await handler(
+      new Request('http://localhost/api', { method: 'POST' }),
+      { params: Promise.resolve({}) },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      error: 'Already exists',
+      code: 'CONFLICT',
+      classification: 'conflict',
+      details: { field: 'topic' },
+    });
+  });
+
+  it('maps AbortError to 499 from route boundary', async () => {
+    const user = buildUserFixture({
+      id: 'user_abort',
+      authUserId: 'auth_abort',
+      email: 'abort@example.test',
+      name: 'Abort User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const abort = new Error('aborted');
+    abort.name = 'AbortError';
+    const handler = createRequestBoundary().route(async () => {
+      throw abort;
+    });
+
+    const response = await handler(
+      new Request('http://localhost/api', { method: 'POST' }),
+      { params: Promise.resolve({}) },
+    );
+
+    expect(response.status).toBe(499);
+    expect(response.headers.get('Connection')).toBe('close');
+  });
+
+  it('maps rate-limit failures to canonical 429 responses with retry headers', async () => {
     const user = buildUserFixture({
       id: 'user_eb_rl',
       authUserId: 'auth_eb_rl',
@@ -225,19 +291,36 @@ describe('requestBoundary', () => {
     setTestUser(user.authUserId);
     getUserByAuthIdMock.mockResolvedValue(user);
 
-    const handler = withErrorBoundary(
-      createRequestBoundary().route({ rateLimit: 'read' }, async () => {
-        throw new Error('boom');
-      }),
+    const handler = createRequestBoundary().route(
+      { rateLimit: 'billing' },
+      async () => new Response('ok', { status: 200 }),
     );
+
+    for (let i = 0; i < USER_RATE_LIMIT_CONFIGS.billing.maxRequests; i += 1) {
+      const allowed = await handler(
+        new Request('http://localhost/api', { method: 'POST' }),
+        { params: Promise.resolve({}) },
+      );
+      expect(allowed.status).toBe(200);
+    }
 
     const response = await handler(
-      new Request('http://localhost/api', { method: 'GET' }),
+      new Request('http://localhost/api', { method: 'POST' }),
       { params: Promise.resolve({}) },
     );
-
-    expect(response.status).toBe(500);
     const body = await response.json();
-    expect(body).toMatchObject({ code: 'INTERNAL_ERROR' });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('Retry-After')).not.toBeNull();
+    expect(response.headers.get('X-RateLimit-Limit')).toBe(
+      String(USER_RATE_LIMIT_CONFIGS.billing.maxRequests),
+    );
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+    expect(response.headers.get('X-RateLimit-Reset')).not.toBeNull();
+    expect(body).toMatchObject({
+      code: 'RATE_LIMITED',
+      classification: 'rate_limit',
+      retryAfter: expect.any(Number),
+    });
   });
 });

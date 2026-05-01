@@ -3,7 +3,6 @@ import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
@@ -26,8 +25,9 @@ function createPreferencesUpdateFailedError(userId: string | number): AppError {
  *
  * Retrieves the authenticated user's AI model preferences and available models.
  */
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor }) => {
     const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'GET /api/v1/user/preferences',
       userId: actor.id,
@@ -66,7 +66,7 @@ export const GET = withErrorBoundary(
     });
 
     return attachRequestIdHeader(response, requestId);
-  }),
+  },
 );
 
 /**
@@ -75,8 +75,9 @@ export const GET = withErrorBoundary(
  * Updates the authenticated user's AI model preference.
  * Validates the model ID and enforces tier-gating.
  */
-export const PATCH = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'mutation' }, async ({ req, actor }) => {
+export const PATCH = requestBoundary.route(
+  { rateLimit: 'mutation' },
+  async ({ req, actor }) => {
     const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'PATCH /api/v1/user/preferences',
       userId: actor.id,
@@ -92,9 +93,8 @@ export const PATCH = withErrorBoundary(
     const parsed = updatePreferencesSchema.safeParse(body);
 
     if (!parsed.success) {
-      throw new ValidationError('Invalid preferences', parsed.error.flatten(), {
-        errors: parsed.error.flatten(),
-      });
+      const errors = parsed.error.flatten();
+      throw new ValidationError('Invalid preferences', errors, { errors });
     }
 
     const userTier = actor.subscriptionTier;
@@ -199,5 +199,5 @@ export const PATCH = withErrorBoundary(
     });
 
     return attachRequestIdHeader(response, requestId);
-  }),
+  },
 );

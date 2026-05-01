@@ -2,7 +2,6 @@ import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
@@ -17,8 +16,9 @@ const resourcesTypeQuerySchema = z.object({
 });
 
 // GET /api/v1/resources
-export const GET = withErrorBoundary(
-  requestBoundary.route({ rateLimit: 'read' }, async ({ req, db }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, db }) => {
     const url = new URL(req.url);
 
     const parsedTypeQuery = resourcesTypeQuerySchema.safeParse({
@@ -58,5 +58,5 @@ export const GET = withErrorBoundary(
       .offset(offset);
 
     return json(rows);
-  }),
+  },
 );
