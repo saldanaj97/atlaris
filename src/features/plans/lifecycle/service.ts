@@ -40,7 +40,10 @@ function shouldMarkPlanFailedAfterGenerationFailure(
   result: Extract<GenerationRunResult, { status: 'failure' }>,
 ): boolean {
   const reason = result.reservationRejectionReason;
-  return reason !== 'in_progress' && reason !== 'invalid_status';
+  // Only skip settlement when another attempt still holds the in-progress slot.
+  // invalid_status (e.g. retry while plan still generating) must still run
+  // finalizeFailure(plan_only) or the plan stays stuck in `generating`.
+  return reason !== 'in_progress';
 }
 
 export class PlanLifecycleService {

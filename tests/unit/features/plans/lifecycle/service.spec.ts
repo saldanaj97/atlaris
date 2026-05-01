@@ -519,5 +519,72 @@ describe('PlanLifecycleService', () => {
       );
       expect(finalizeFailureSpy).not.toHaveBeenCalled();
     });
+
+    it('finalizes plan_only when reservation rejects for invalid_status', async () => {
+      const finalizeFailureSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        generationFinalization: {
+          finalizeSuccess: vi.fn(),
+          finalizeFailure: finalizeFailureSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'failure',
+            classification: 'validation',
+            error: new Error(
+              'Generation attempt is not allowed for plan status: generating',
+            ),
+            durationMs: 5,
+            reservationRejectionReason: 'invalid_status' as const,
+            timedOut: false,
+            extendedTimeout: false,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result =
+        await service.processGenerationAttempt(validGenerationInput);
+
+      expect(result.status).toBe('permanent_failure');
+      expect(finalizeFailureSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'plan_only',
+          planId: 'plan-gen-001',
+          userId: 'user-abc',
+          retryable: false,
+        }),
+      );
+    });
+
+    it('does not finalize when reservation rejects for in_progress (concurrent)', async () => {
+      const finalizeFailureSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        generationFinalization: {
+          finalizeSuccess: vi.fn(),
+          finalizeFailure: finalizeFailureSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'failure',
+            classification: 'rate_limit',
+            error: new Error(
+              'A generation is already in progress for this plan (concurrent conflict)',
+            ),
+            durationMs: 5,
+            reservationRejectionReason: 'in_progress' as const,
+            timedOut: false,
+            extendedTimeout: false,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result =
+        await service.processGenerationAttempt(validGenerationInput);
+
+      expect(result.status).toBe('retryable_failure');
+      expect(finalizeFailureSpy).not.toHaveBeenCalled();
+    });
   });
 });
