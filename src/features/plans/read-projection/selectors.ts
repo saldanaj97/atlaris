@@ -1,4 +1,5 @@
 import { differenceInDays } from 'date-fns';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
