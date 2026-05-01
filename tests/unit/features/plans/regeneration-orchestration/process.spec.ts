@@ -366,9 +366,10 @@ describe('processPlanRegenerationJob', () => {
       expect.objectContaining({
         jobId: job.id,
         planId: planRow.id,
-        classification: 'timeout',
-        message: 'Plan regeneration failed (timeout).',
-        error: expect.any(Error),
+        error: expect.objectContaining({
+          name: 'Error',
+          message: 'boom',
+        }),
       }),
       'Regeneration job retryable failure diagnostic',
     );
