@@ -8,11 +8,13 @@ import {
   MONTHLY_TIER_CONFIGS,
   YEARLY_TIER_CONFIGS,
 } from '@/app/(marketing)/pricing/components/pricing-config';
-import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
-import { fetchStripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deriveBillingSubscriptionSnapshot } from '@/features/billing/account-snapshot';
+import {
+  readBillingCatalogTierData,
+  type BillingCatalogTierData,
+} from '@/features/billing/catalog-read';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -38,8 +40,10 @@ interface PricingInterval {
 }
 
 interface ResolvedPricingInterval extends PricingInterval {
-  rawStripeData: ReadonlyMap<SubscriptionTier, StripeTierData>;
-  stripeData: Map<SubscriptionTier, StripeTierData>;
+  /** What the catalog read returned before any UI fallback emptying. */
+  rawBillingCatalogData: ReadonlyMap<SubscriptionTier, BillingCatalogTierData>;
+  /** Per-tier labels/amounts for the grid; cleared when any paid tier is missing from catalog read. */
+  tierDisplayMap: Map<SubscriptionTier, BillingCatalogTierData>;
   missingTierKeys: PaidTierKey[];
 }
 
@@ -66,7 +70,11 @@ const PRICING_INTERVALS: readonly [PricingInterval, PricingInterval] = [
 const PAID_TIER_KEYS: readonly PaidTierKey[] = MONTHLY_TIER_CONFIGS.map(
   (c) => c.key,
 ).filter((key): key is PaidTierKey => key !== 'free');
-const EMPTY_STRIPE_TIER_DATA = new Map<SubscriptionTier, StripeTierData>();
+/** Empty map forced when any paid tier lacks catalog data — grid then uses static fallbacks. */
+const EMPTY_BILLING_CATALOG_GRID_DATA = new Map<
+  SubscriptionTier,
+  BillingCatalogTierData
+>();
 
 function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
   const starterId = configs.find((config) => config.key === 'starter')?.priceId;
@@ -86,30 +94,35 @@ function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
 
 function getMissingPaidTierKeys(
   priceIds: PaidTierPriceIds | null,
-  stripeData: ReadonlyMap<SubscriptionTier, StripeTierData>,
+  tierDisplayMap: ReadonlyMap<SubscriptionTier, BillingCatalogTierData>,
 ): PaidTierKey[] {
-  if (priceIds === null || stripeData.size === 0) {
+  if (priceIds === null || tierDisplayMap.size === 0) {
     return [...PAID_TIER_KEYS];
   }
 
-  return PAID_TIER_KEYS.filter((tierKey) => !stripeData.has(tierKey));
+  return PAID_TIER_KEYS.filter((tierKey) => !tierDisplayMap.has(tierKey));
 }
 
-async function loadStripeTierData(
+async function loadBillingCatalogDisplayMap(
+  interval: 'monthly' | 'yearly',
   priceIds: PaidTierPriceIds | null,
-): Promise<Map<SubscriptionTier, StripeTierData>> {
+): Promise<Map<SubscriptionTier, BillingCatalogTierData>> {
   if (priceIds === null) {
-    return new Map<SubscriptionTier, StripeTierData>();
+    return new Map<SubscriptionTier, BillingCatalogTierData>();
   }
 
   try {
-    return await fetchStripeTierData(priceIds);
+    return await readBillingCatalogTierData({
+      interval,
+      starterId: priceIds.starterId,
+      proId: priceIds.proId,
+    });
   } catch (error) {
     logger.error(
       { err: error },
-      '[loadStripeTierData] Failed to fetch Stripe tier data; rendering with static fallback pricing',
+      '[loadBillingCatalogDisplayMap] Failed billing catalog read; rendering static fallback pricing',
     );
-    return new Map<SubscriptionTier, StripeTierData>();
+    return new Map<SubscriptionTier, BillingCatalogTierData>();
   }
 }
 
@@ -117,14 +130,19 @@ async function resolvePricingInterval(
   interval: PricingInterval,
 ): Promise<ResolvedPricingInterval> {
   const priceIds = getPaidTierPriceIds(interval.configs);
-  const stripeData = await loadStripeTierData(priceIds);
-  const missingTierKeys = getMissingPaidTierKeys(priceIds, stripeData);
+  const tierDisplayMap = await loadBillingCatalogDisplayMap(
+    interval.value,
+    priceIds,
+  );
+  const missingTierKeys = getMissingPaidTierKeys(priceIds, tierDisplayMap);
 
   return {
     ...interval,
-    rawStripeData: stripeData,
-    stripeData:
-      missingTierKeys.length === 0 ? stripeData : EMPTY_STRIPE_TIER_DATA,
+    rawBillingCatalogData: tierDisplayMap,
+    tierDisplayMap:
+      missingTierKeys.length === 0
+        ? tierDisplayMap
+        : EMPTY_BILLING_CATALOG_GRID_DATA,
     missingTierKeys,
   };
 }
@@ -140,9 +158,9 @@ function logMissingStripeData(
 
   logger.warn(
     {
-      monthlyLoadedTierKeys: [...monthlyInterval.rawStripeData.keys()],
+      monthlyLoadedTierKeys: [...monthlyInterval.rawBillingCatalogData.keys()],
       monthlyMissingTierKeys: monthlyInterval.missingTierKeys,
-      yearlyLoadedTierKeys: [...yearlyInterval.rawStripeData.keys()],
+      yearlyLoadedTierKeys: [...yearlyInterval.rawBillingCatalogData.keys()],
       yearlyMissingTierKeys: yearlyInterval.missingTierKeys,
     },
     '[PricingPage] Incomplete Stripe pricing data detected; rendering static fallback pricing',
@@ -214,7 +232,7 @@ export default async function PricingPage(): Promise<ReactElement> {
                 <PricingGrid
                   configs={interval.configs}
                   intervalLabel={interval.intervalLabel}
-                  stripeData={interval.stripeData}
+                  tierDisplayMap={interval.tierDisplayMap}
                   subscribeLabel={interval.subscribeLabel}
                 />
               </TabsContent>

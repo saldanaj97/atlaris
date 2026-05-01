@@ -1,7 +1,10 @@
-import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
+import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-const DEFAULT_STRIPE_TIER_DATA: Record<SubscriptionTier, StripeTierData> = {
+const DEFAULT_STRIPE_TIER_DATA: Record<
+  SubscriptionTier,
+  BillingCatalogTierData
+> = {
   free: { name: 'Free', amount: '$0' },
   starter: { name: 'Starter', amount: '$9' },
   pro: { name: 'Pro', amount: '$29' },
@@ -9,8 +12,8 @@ const DEFAULT_STRIPE_TIER_DATA: Record<SubscriptionTier, StripeTierData> = {
 
 function createMockStripeData(
   key: SubscriptionTier,
-  overrides: Partial<StripeTierData> = {},
-): StripeTierData {
+  overrides: Partial<BillingCatalogTierData> = {},
+): BillingCatalogTierData {
   return {
     ...DEFAULT_STRIPE_TIER_DATA[key],
     ...overrides,
@@ -19,9 +22,9 @@ function createMockStripeData(
 
 export function createStripeTierMap(
   keys: SubscriptionTier[],
-): Map<SubscriptionTier, StripeTierData> {
+): Map<SubscriptionTier, BillingCatalogTierData> {
   return new Map(
-    keys.map((key): [SubscriptionTier, StripeTierData] => [
+    keys.map((key): [SubscriptionTier, BillingCatalogTierData] => [
       key,
       createMockStripeData(key),
     ]),

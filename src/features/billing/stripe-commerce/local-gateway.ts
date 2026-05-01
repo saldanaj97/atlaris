@@ -1,11 +1,37 @@
 import Stripe from 'stripe';
-import { tierFromLocalPriceId } from '@/features/billing/local-catalog';
+import { localCatalogEntryFromPriceId } from '@/features/billing/local-catalog';
 import { appEnv } from '@/lib/config/env';
 
 let localStripeMock: Stripe | null = null;
 
 function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** Stripe-shaped local price for tests and in-process mock `prices.retrieve`. */
+export function buildMockLocalStripePrice(priceId: string): Stripe.Price {
+  const entry = localCatalogEntryFromPriceId(priceId);
+  if (!entry) {
+    throw new Stripe.errors.StripeInvalidRequestError({
+      type: 'invalid_request_error',
+      message: `No such price: ${priceId}`,
+    });
+  }
+  const { tier } = entry;
+  const productId = `prod_local_${tier}`;
+  return {
+    id: priceId,
+    object: 'price',
+    active: true,
+    currency: entry.currency,
+    product: {
+      id: productId,
+      object: 'product',
+      name: tier === 'starter' ? 'Starter' : 'Pro',
+      metadata: { tier },
+    },
+    unit_amount: entry.unitAmount,
+  } as unknown as Stripe.Price;
 }
 
 function buildLocalStripeMock(baseUrl: string): Stripe {
@@ -79,29 +105,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
     retrieve: async (
       priceId: string,
       _params?: Stripe.PriceRetrieveParams,
-    ): Promise<Stripe.Price> => {
-      const tier = tierFromLocalPriceId(priceId);
-      if (!tier) {
-        throw new Stripe.errors.StripeInvalidRequestError({
-          type: 'invalid_request_error',
-          message: `No such price: ${priceId}`,
-        });
-      }
-      const productId = `prod_local_${tier}`;
-      return {
-        id: priceId,
-        object: 'price',
-        active: true,
-        currency: 'usd',
-        product: {
-          id: productId,
-          object: 'product',
-          name: tier === 'starter' ? 'Starter' : 'Pro',
-          metadata: { tier },
-        },
-        unit_amount: tier === 'starter' ? 1200 : 2900,
-      } as unknown as Stripe.Price;
-    },
+    ): Promise<Stripe.Price> => buildMockLocalStripePrice(priceId),
   };
 
   const subscriptions = {

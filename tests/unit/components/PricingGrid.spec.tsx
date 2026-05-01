@@ -3,7 +3,7 @@ import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
 import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
-import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
+import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Mock SubscribeButton
@@ -41,7 +41,7 @@ describe('PricingGrid', () => {
     },
   ];
 
-  const mockStripeData = new Map<SubscriptionTier, StripeTierData>([
+  const mockStripeData = new Map<SubscriptionTier, BillingCatalogTierData>([
     ['free', { name: 'Free', amount: '$0' }],
     ['starter', { name: 'Starter', amount: '$9' }],
     ['pro', { name: 'Pro', amount: '$29' }],
@@ -52,7 +52,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -67,7 +67,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -82,7 +82,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -97,7 +97,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Get Started"
       />,
     );
@@ -118,7 +118,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -132,7 +132,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -154,7 +154,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -170,7 +170,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -181,13 +181,13 @@ describe('PricingGrid', () => {
   });
 
   it('should handle empty stripe data gracefully', () => {
-    const emptyStripeData = new Map<SubscriptionTier, StripeTierData>();
+    const emptyStripeData = new Map<SubscriptionTier, BillingCatalogTierData>();
 
     render(
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={emptyStripeData}
+        tierDisplayMap={emptyStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -210,7 +210,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={singleConfig}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -225,7 +225,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={[{ key: 'starter' }]}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -238,7 +238,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Upgrade Now"
       />,
     );
@@ -251,7 +251,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/year"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -265,7 +265,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -281,7 +281,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -304,7 +304,7 @@ describe('PricingGrid', () => {
       <PricingGrid
         configs={configsWithEmptyPriceId}
         intervalLabel="/month"
-        stripeData={mockStripeData}
+        tierDisplayMap={mockStripeData}
         subscribeLabel="Subscribe"
       />,
     );
@@ -314,16 +314,18 @@ describe('PricingGrid', () => {
   });
 
   it('should fall back to default price when Stripe data is missing', () => {
-    const partialStripeData = new Map<SubscriptionTier, StripeTierData>([
-      ['free', { name: 'Free', amount: '$0' }],
-      // Missing starter and pro
-    ]);
+    const partialStripeData = new Map<SubscriptionTier, BillingCatalogTierData>(
+      [
+        ['free', { name: 'Free', amount: '$0' }],
+        // Missing starter and pro
+      ],
+    );
 
     render(
       <PricingGrid
         configs={mockConfigs}
         intervalLabel="/month"
-        stripeData={partialStripeData}
+        tierDisplayMap={partialStripeData}
         subscribeLabel="Subscribe"
       />,
     );
