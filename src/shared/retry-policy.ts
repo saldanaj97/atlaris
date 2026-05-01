@@ -18,6 +18,10 @@ export type JobRetryDecision =
       reason: string;
     };
 
+function normalizeAttemptNumber(attemptNumber: number): number {
+  return Math.max(1, Math.trunc(attemptNumber));
+}
+
 /**
  * Backoff for the Nth failure that will become `attempts` after this fail (1-based).
  * Matches historical queue formula: base * 2^(n-1), capped, truncated attempt >= 1.
@@ -26,7 +30,7 @@ export function getJobRetryDelayMs(
   attemptNumber: number,
   random: () => number = Math.random,
 ): number {
-  const normalizedAttempt = Math.max(1, Math.trunc(attemptNumber));
+  const normalizedAttempt = normalizeAttemptNumber(attemptNumber);
   const delaySeconds = Math.min(
     JOB_RETRY_MAX_DELAY_SECONDS,
     JOB_RETRY_BASE_SECONDS * 2 ** (normalizedAttempt - 1),
@@ -45,19 +49,21 @@ export function decideJobRetry(params: {
   maxAttempts: number;
   retryable: boolean | undefined;
 }): JobRetryDecision {
+  const attemptNumber = normalizeAttemptNumber(params.attemptNumber);
+
   if (params.retryable === false) {
     return { shouldRetry: false, reason: 'job_retry:not_retryable' };
   }
-  if (params.attemptNumber >= params.maxAttempts) {
+  if (attemptNumber >= params.maxAttempts) {
     return {
       shouldRetry: false,
-      reason: `job_retry:attempt_cap:${params.attemptNumber}/${params.maxAttempts}`,
+      reason: `job_retry:attempt_cap:${attemptNumber}/${params.maxAttempts}`,
     };
   }
-  const delayMs = getJobRetryDelayMs(params.attemptNumber);
+  const delayMs = getJobRetryDelayMs(attemptNumber);
   return {
     shouldRetry: true,
     delayMs,
-    reason: `job_retry:scheduled:${params.attemptNumber}/${params.maxAttempts}`,
+    reason: `job_retry:scheduled:${attemptNumber}/${params.maxAttempts}`,
   };
 }
