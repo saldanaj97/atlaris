@@ -17,7 +17,7 @@ import { logger as appLogger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Display names aligned with marketing `PRICING_TIERS`; billing owns read fallback strings. */
-export const BILLING_CATALOG_FALLBACK_PRODUCT_NAMES = {
+const BILLING_CATALOG_FALLBACK_PRODUCT_NAMES = {
   starter: 'Starter',
   pro: 'Pro',
 } as const;
@@ -50,6 +50,14 @@ export interface ReadBillingCatalogInput {
   proId: string;
 }
 
+function createBillingCatalogLogger(): BillingCatalogLogger {
+  return {
+    error: (meta, message) => appLogger.error(meta, message),
+    warn: (meta, message) => appLogger.warn(meta, message),
+    info: (meta, message) => appLogger.info(meta, message),
+  };
+}
+
 function defaultDeps(): BillingCatalogReadDeps {
   const client = getStripe();
 
@@ -60,19 +68,7 @@ function defaultDeps(): BillingCatalogReadDeps {
       retrieveProduct: (productId: string) =>
         client.products.retrieve(productId),
     },
-    logger: {
-      error: (meta, message) => appLogger.error(meta, message),
-      warn: (meta, message) => appLogger.warn(meta, message),
-      info: (meta, message) => appLogger.info(meta, message),
-    },
-  };
-}
-
-function defaultLogger(): BillingCatalogLogger {
-  return {
-    error: (meta, message) => appLogger.error(meta, message),
-    warn: (meta, message) => appLogger.warn(meta, message),
-    info: (meta, message) => appLogger.info(meta, message),
+    logger: createBillingCatalogLogger(),
   };
 }
 
@@ -92,7 +88,7 @@ function mergeDeps(
     return {
       localMode: true,
       stripe: partial.stripe ?? unusedLocalStripeClient,
-      logger: partial.logger ?? defaultLogger(),
+      logger: partial.logger ?? createBillingCatalogLogger(),
     };
   }
 

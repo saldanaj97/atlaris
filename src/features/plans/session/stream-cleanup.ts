@@ -91,46 +91,58 @@ function assignFallbackCause(errorLike: ErrorLike, cause: unknown): void {
   }
 }
 
-/** ErrorLike shape for SSE fallback when the thrown value is not already typed. */
-export function toFallbackErrorLike(error: unknown): ErrorLike {
-  const core = unknownThrownCore(error);
-
-  if (typeof error === 'object' && error !== null) {
-    const objectError = error as Record<string, unknown>;
-    const errorLike: ErrorLike = {
-      name: core.name ?? 'UnknownGenerationError',
-      message:
-        typeof objectError.message === 'string' &&
-        objectError.message.length > 0
-          ? objectError.message
-          : safeStringifyUnknown(error),
-      ...(typeof core.stack === 'string' ? { stack: core.stack } : {}),
-    };
-
-    if (typeof objectError.status === 'number') {
-      errorLike.status = objectError.status;
-    }
-    if (typeof objectError.statusCode === 'number') {
-      errorLike.statusCode = objectError.statusCode;
-    }
-    if ('response' in objectError) {
-      const response = objectError.response;
-      if (response === null) {
-        errorLike.response = null;
-      } else if (typeof response === 'object' && response !== null) {
-        const responseRecord = response as Record<string, unknown>;
-        errorLike.response =
-          typeof responseRecord.status === 'number'
-            ? { status: responseRecord.status }
-            : {};
-      }
-    }
-
-    assignFallbackCause(errorLike, core.cause);
-
-    return errorLike;
+function assignHttpFieldsFromObject(
+  errorLike: ErrorLike,
+  objectError: Record<string, unknown>,
+): void {
+  if (typeof objectError.status === 'number') {
+    errorLike.status = objectError.status;
   }
+  if (typeof objectError.statusCode === 'number') {
+    errorLike.statusCode = objectError.statusCode;
+  }
+}
 
+function assignResponseSummaryIfPresent(
+  errorLike: ErrorLike,
+  objectError: Record<string, unknown>,
+): void {
+  if (!('response' in objectError)) {
+    return;
+  }
+  const response = objectError.response;
+  if (response === null) {
+    errorLike.response = null;
+  } else if (typeof response === 'object' && response !== null) {
+    const responseRecord = response as Record<string, unknown>;
+    errorLike.response =
+      typeof responseRecord.status === 'number'
+        ? { status: responseRecord.status }
+        : {};
+  }
+}
+
+function fallbackErrorLikeFromThrownObject(error: object): ErrorLike {
+  const core = unknownThrownCore(error);
+  const objectError = error as Record<string, unknown>;
+  const errorLike: ErrorLike = {
+    name: core.name ?? 'UnknownGenerationError',
+    message:
+      typeof objectError.message === 'string' && objectError.message.length > 0
+        ? objectError.message
+        : safeStringifyUnknown(error),
+    ...(typeof core.stack === 'string' ? { stack: core.stack } : {}),
+  };
+
+  assignHttpFieldsFromObject(errorLike, objectError);
+  assignResponseSummaryIfPresent(errorLike, objectError);
+  assignFallbackCause(errorLike, core.cause);
+
+  return errorLike;
+}
+
+function fallbackErrorLikeFromThrownNonObject(error: unknown): ErrorLike {
+  const core = unknownThrownCore(error);
   const errorLike: ErrorLike = {
     name: core.name ?? 'UnknownGenerationError',
     message: core.primaryMessage,
@@ -143,4 +155,13 @@ export function toFallbackErrorLike(error: unknown): ErrorLike {
   assignFallbackCause(errorLike, core.cause);
 
   return errorLike;
+}
+
+/** ErrorLike shape for SSE fallback when the thrown value is not already typed. */
+export function toFallbackErrorLike(error: unknown): ErrorLike {
+  if (typeof error === 'object' && error !== null) {
+    return fallbackErrorLikeFromThrownObject(error);
+  }
+
+  return fallbackErrorLikeFromThrownNonObject(error);
 }
