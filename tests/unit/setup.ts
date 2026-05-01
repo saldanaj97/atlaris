@@ -21,12 +21,15 @@ vi.mock('@/lib/db/service-role', async (importOriginal) => {
     execute: vi.fn(),
   };
 
-  const db = {
+  let db: Record<PropertyKey, unknown>;
+  const transaction = vi.fn(
+    (fn: (tx: Record<PropertyKey, unknown>) => Promise<unknown>) => fn(db),
+  );
+
+  db = {
     [actual.SERVICE_ROLE_DB_MARKER]: true,
     ...crud,
-    transaction: vi.fn((fn: (tx: typeof crud) => Promise<unknown>) =>
-      fn({ ...crud }),
-    ),
+    transaction,
     query: {
       learningPlans: {
         findFirst: vi.fn(),
