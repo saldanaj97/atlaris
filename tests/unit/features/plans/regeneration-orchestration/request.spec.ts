@@ -1,4 +1,8 @@
 import { makeDbClient } from '@tests/fixtures/db-mocks';
+import {
+  makeRegenerationOrchestrationDeps,
+  type RegenerationOrchestrationDepsOverrides,
+} from '@tests/helpers/regeneration-orchestration-deps';
 import { describe, expect, it, vi } from 'vitest';
 import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
 import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
@@ -39,18 +43,8 @@ function deferred<T = void>() {
   return { promise, resolve, reject };
 }
 
-type RequestDepsOverrides = {
-  dbClient?: RegenerationOrchestrationDeps['dbClient'];
-  queue?: Partial<RegenerationOrchestrationDeps['queue']>;
-  quota?: Partial<RegenerationOrchestrationDeps['quota']>;
-  plans?: Partial<RegenerationOrchestrationDeps['plans']>;
-  inlineDrain?: Partial<RegenerationOrchestrationDeps['inlineDrain']>;
-  rateLimit?: Partial<RegenerationOrchestrationDeps['rateLimit']>;
-  logger?: Partial<RegenerationOrchestrationDeps['logger']>;
-};
-
 function buildDeps(
-  overrides: RequestDepsOverrides = {},
+  overrides: RegenerationOrchestrationDepsOverrides = {},
 ): RegenerationOrchestrationDeps {
   const tryRegister = vi.fn((getDrainPromise: () => Promise<void>) => {
     void getDrainPromise();
@@ -58,18 +52,10 @@ function buildDeps(
   });
   const drain = vi.fn(() => Promise.resolve());
 
-  const base: RegenerationOrchestrationDeps = {
-    dbClient: fakeDb,
-    queue: {
-      enabled: vi.fn(() => true),
-      enqueueWithResult: vi.fn(async () => ({
-        id: 'job-1',
-        deduplicated: false,
-      })),
-      getNextJob: vi.fn(),
-      completeJob: vi.fn(),
-      failJob: vi.fn(),
-    },
+  return makeRegenerationOrchestrationDeps({
+    ...overrides,
+    dbClient: overrides.dbClient ?? fakeDb,
+    queue: { ...overrides.queue },
     quota: {
       runReserved: vi.fn(async (args) => {
         const workResult = await args.work();
@@ -87,53 +73,19 @@ function buildDeps(
           reconciliationRequired: false as const,
         };
       }) as RegenerationOrchestrationDeps['quota']['runReserved'],
+      ...overrides.quota,
     },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),
       findOwnedPlan: vi.fn(async () => ownedPlan),
-    },
-    tier: {
-      resolveUserTier: vi.fn(async () => 'pro' as const),
-    },
-    priority: {
-      computeJobPriority: vi.fn(() => 7),
-      isPriorityTopic: vi.fn(() => false),
-    },
-    lifecycle: {
-      service: {} as RegenerationOrchestrationDeps['lifecycle']['service'],
+      ...overrides.plans,
     },
     inlineDrain: {
       tryRegister,
       drain,
+      ...overrides.inlineDrain,
     },
-    rateLimit: {
-      check: vi.fn(async () => ({
-        remaining: 4,
-        limit: 10,
-        reset: 1_700_000_000,
-      })),
-    },
-    logger: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-    },
-  };
-
-  return {
-    ...base,
-    dbClient: overrides.dbClient ?? base.dbClient,
-    queue: { ...base.queue, ...overrides.queue },
-    quota: { ...base.quota, ...overrides.quota },
-    plans: { ...base.plans, ...overrides.plans },
-    tier: { ...base.tier, ...overrides.tier },
-    priority: { ...base.priority, ...overrides.priority },
-    lifecycle: { ...base.lifecycle, ...overrides.lifecycle },
-    inlineDrain: { ...base.inlineDrain, ...overrides.inlineDrain },
-    rateLimit: { ...base.rateLimit, ...overrides.rateLimit },
-    logger: { ...base.logger, ...overrides.logger },
-  };
+  });
 }
 
 describe('requestPlanRegeneration', () => {
