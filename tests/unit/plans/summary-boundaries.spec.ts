@@ -4,7 +4,7 @@ import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
 } from '@/features/plans/read-projection/read-status';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import type { Module } from '@/shared/types/db.types';
 
 describe('plan summary status boundaries', () => {

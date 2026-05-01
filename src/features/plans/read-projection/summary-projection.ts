@@ -1,14 +1,8 @@
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   accumulateLightweightModuleMetricsRowInPlace,
   computeTaskRowCompletionMetrics,
   countCompletedModulesFromFlatTasks,
 } from '@/features/plans/read-projection/completion-metrics';
-import {
-  derivePlanReadStatus,
-  derivePlanSummaryStatus,
-  type PlanSummaryReadStatus,
-} from '@/features/plans/read-projection/read-status';
 import type {
   LightweightModuleMetricsRow,
   LightweightPlanListRow,
@@ -21,13 +15,6 @@ import type {
   Module,
   PlanSummary,
 } from '@/shared/types/db.types';
-
-type SummaryStatusInput = {
-  plan: Pick<LearningPlan, 'generationStatus'>;
-  completion: number;
-  modules: Array<{ id: string }>;
-  attemptsCount?: number;
-};
 
 type LightweightPlanMetrics = Pick<
   LightweightPlanSummary,
@@ -112,30 +99,6 @@ export function buildPlanSummaries(params: {
       completedModules,
       attemptsCount: attemptCountsByPlanId?.get(plan.id),
     } satisfies PlanSummary;
-  });
-}
-
-export function deriveCanonicalPlanSummaryStatus(
-  summary: SummaryStatusInput,
-  attemptCap: number = getGenerationAttemptCap(),
-): PlanSummaryReadStatus {
-  const readStatus = derivePlanReadStatus(
-    summary.attemptsCount === undefined
-      ? {
-          generationStatus: summary.plan.generationStatus,
-          hasModules: summary.modules.length > 0,
-        }
-      : {
-          generationStatus: summary.plan.generationStatus,
-          hasModules: summary.modules.length > 0,
-          attemptsCount: summary.attemptsCount,
-          attemptCap,
-        },
-  );
-
-  return derivePlanSummaryStatus({
-    readStatus,
-    completion: summary.completion,
   });
 }
 

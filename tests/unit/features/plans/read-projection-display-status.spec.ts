@@ -1,5 +1,6 @@
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 import { createId } from '@tests/fixtures/ids';
@@ -112,5 +113,122 @@ describe('derivePlanSummaryDisplayStatus', () => {
         referenceDate: ref,
       }),
     ).toBe(expected);
+  });
+
+  it('omits attempt cap when attemptsCount is undefined (ready, no modules -> active -> paused if stale)', () => {
+    const s = summary({
+      modules: [],
+      plan: { updatedAt: new Date('2026-03-01T00:00:00.000Z') },
+      attemptsCount: undefined,
+    });
+    expect(s.attemptsCount).toBeUndefined();
+    expect(
+      derivePlanSummaryDisplayStatus({ summary: s, referenceDate: ref }),
+    ).toBe('paused');
+  });
+
+  it('below attempt cap stays generating when stale (no paused overlay on non-active canonical)', () => {
+    expect(
+      derivePlanSummaryDisplayStatus({
+        summary: summary({
+          modules: [],
+          plan: {
+            generationStatus: 'ready',
+            updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+          },
+          attemptsCount: getGenerationAttemptCap() - 1,
+        }),
+        referenceDate: ref,
+      }),
+    ).toBe('generating');
+  });
+
+  it.each(['generating', 'pending_retry'] as const)(
+    'no attemptsCount still generating when stale for %s without modules',
+    (generationStatus) => {
+      expect(
+        derivePlanSummaryDisplayStatus({
+          summary: summary({
+            modules: [],
+            plan: {
+              generationStatus,
+              updatedAt: new Date('2026-03-01T00:00:00.000Z'),
+            },
+            attemptsCount: undefined,
+          }),
+          referenceDate: ref,
+        }),
+      ).toBe('generating');
+    },
+  );
+
+  it('active when invalid updatedAt Date but reference valid (staleness skipped)', () => {
+    expect(
+      derivePlanSummaryDisplayStatus({
+        summary: summary({
+          plan: { updatedAt: new Date(Number.NaN) },
+        }),
+        referenceDate: ref,
+      }),
+    ).toBe('active');
+  });
+
+  it('active when unparsable updatedAt string but reference valid (staleness skipped)', () => {
+    expect(
+      derivePlanSummaryDisplayStatus({
+        summary: summary({
+          plan: {
+            updatedAt: 'not-a-date' as unknown as Date,
+          },
+        }),
+        referenceDate: ref,
+      }),
+    ).toBe('active');
+  });
+
+  it('active when referenceDate is invalid (staleness skipped)', () => {
+    expect(
+      derivePlanSummaryDisplayStatus({
+        summary: summary({
+          plan: { updatedAt: new Date('2026-03-01T00:00:00.000Z') },
+        }),
+        referenceDate: 'not-a-date',
+      }),
+    ).toBe('active');
+  });
+
+  it('display matches canonical summary status whenever overlay would not change result', () => {
+    const cases: SummaryFixture[] = [
+      {
+        plan: { generationStatus: 'generating' },
+        modules: [],
+      },
+      {
+        plan: { generationStatus: 'failed' },
+        modules: [],
+      },
+      { completion: 1 },
+      {
+        modules: [],
+        attemptsCount: getGenerationAttemptCap(),
+        plan: { generationStatus: 'ready' },
+      },
+    ];
+
+    for (const overrides of cases) {
+      const s = summary(overrides);
+      const canonical = deriveCanonicalPlanSummaryStatus({
+        plan: s.plan,
+        completion: s.completion,
+        modules: s.modules.map((m) => ({ id: m.id })),
+        attemptsCount: s.attemptsCount,
+      });
+      expect(
+        derivePlanSummaryDisplayStatus({
+          summary: s,
+          referenceDate: ref,
+        }),
+      ).toBe(canonical);
+    }
   });
 });
