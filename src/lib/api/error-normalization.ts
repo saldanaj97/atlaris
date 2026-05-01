@@ -19,24 +19,26 @@ type AttemptErrorResult = {
   httpStatus?: number;
 };
 
-function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
+function isOptionalAttemptString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string';
+}
+
+function isOptionalAttemptNumber(value: unknown): value is number | undefined {
+  return value === undefined || typeof value === 'number';
+}
+
+/** Type guard for plain objects that resemble attempt errors (logging/persistence). */
+export function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
   if (obj === null || typeof obj !== 'object') {
     return false;
   }
   const o = obj as AttemptErrorLike;
-  if (o.message !== undefined && typeof o.message !== 'string') {
-    return false;
-  }
-  if (o.status !== undefined && typeof o.status !== 'number') {
-    return false;
-  }
-  if (o.statusCode !== undefined && typeof o.statusCode !== 'number') {
-    return false;
-  }
-  if (o.httpStatus !== undefined && typeof o.httpStatus !== 'number') {
-    return false;
-  }
-  return true;
+  return (
+    isOptionalAttemptString(o.message) &&
+    isOptionalAttemptNumber(o.status) &&
+    isOptionalAttemptNumber(o.statusCode) &&
+    isOptionalAttemptNumber(o.httpStatus)
+  );
 }
 
 function extractStatusFields(

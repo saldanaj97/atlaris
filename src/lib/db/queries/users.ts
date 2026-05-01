@@ -36,6 +36,29 @@ function isOptionalPreferredAiModel(
   return value === null || (typeof value === 'string' && isValidModelId(value));
 }
 
+function hasCoreIdentityFields(maybeUser: Partial<DbUser>): boolean {
+  return (
+    typeof maybeUser.id === 'string' &&
+    typeof maybeUser.authUserId === 'string' &&
+    typeof maybeUser.email === 'string'
+  );
+}
+
+function hasValidSubscriptionTier(maybeUser: Partial<DbUser>): boolean {
+  return (
+    typeof maybeUser.subscriptionTier === 'string' &&
+    SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier)
+  );
+}
+
+function hasValidSubscriptionStatus(maybeUser: Partial<DbUser>): boolean {
+  return (
+    maybeUser.subscriptionStatus === null ||
+    (typeof maybeUser.subscriptionStatus === 'string' &&
+      SUBSCRIPTION_STATUSES.has(maybeUser.subscriptionStatus))
+  );
+}
+
 function isDbUser(user: unknown): user is DbUser {
   if (!user || typeof user !== 'object') {
     return false;
@@ -44,23 +67,33 @@ function isDbUser(user: unknown): user is DbUser {
   const maybeUser = user as Partial<DbUser>;
 
   return (
-    typeof maybeUser.id === 'string' &&
-    typeof maybeUser.authUserId === 'string' &&
-    typeof maybeUser.email === 'string' &&
-    typeof maybeUser.subscriptionTier === 'string' &&
-    SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier) &&
+    hasCoreIdentityFields(maybeUser) &&
+    hasValidSubscriptionTier(maybeUser) &&
     typeof maybeUser.monthlyExportCount === 'number' &&
     maybeUser.createdAt instanceof Date &&
     maybeUser.updatedAt instanceof Date &&
     isOptionalString(maybeUser.name) &&
     isOptionalString(maybeUser.stripeCustomerId) &&
     isOptionalString(maybeUser.stripeSubscriptionId) &&
-    (maybeUser.subscriptionStatus === null ||
-      (typeof maybeUser.subscriptionStatus === 'string' &&
-        SUBSCRIPTION_STATUSES.has(maybeUser.subscriptionStatus))) &&
+    hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
     isOptionalPreferredAiModel(maybeUser.preferredAiModel)
   );
+}
+
+function matchingContextDbUser(
+  contextUser: unknown,
+  authUserId: string,
+): DbUser | undefined {
+  if (
+    !contextUser ||
+    typeof contextUser !== 'object' ||
+    !('authUserId' in contextUser) ||
+    (contextUser as { authUserId: string }).authUserId !== authUserId
+  ) {
+    return undefined;
+  }
+  return isDbUser(contextUser) ? contextUser : undefined;
 }
 
 interface GetUserByAuthIdDeps extends UsersQueryDeps {
@@ -96,8 +129,9 @@ export async function getUserByAuthId(
 ): Promise<DbUser | undefined> {
   if (dbClient === undefined) {
     const contextUser = deps.getRequestContext()?.user;
-    if (contextUser?.authUserId === authUserId && isDbUser(contextUser)) {
-      return contextUser;
+    const cached = matchingContextDbUser(contextUser, authUserId);
+    if (cached !== undefined) {
+      return cached;
     }
   }
 

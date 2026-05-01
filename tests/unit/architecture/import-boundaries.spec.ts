@@ -86,6 +86,61 @@ type ParsedImport = {
   isExportAll: boolean;
 };
 
+function pushImportDeclarationResult(
+  results: ParsedImport[],
+  node: ts.ImportDeclaration,
+  specifier: string,
+): void {
+  const named = new Set<string>();
+  let isNamespace = false;
+  let isExportAll = false;
+
+  const clause = node.importClause;
+  if (clause?.isTypeOnly) {
+    results.push({ specifier, named, isNamespace, isExportAll });
+    return;
+  }
+
+  if (clause?.namedBindings) {
+    if (ts.isNamespaceImport(clause.namedBindings)) {
+      isNamespace = true;
+    } else if (ts.isNamedImports(clause.namedBindings)) {
+      for (const el of clause.namedBindings.elements) {
+        if (el.isTypeOnly) {
+          continue;
+        }
+        const exportedName = el.propertyName?.text ?? el.name.text;
+        named.add(exportedName);
+      }
+    }
+  }
+
+  results.push({ specifier, named, isNamespace, isExportAll });
+}
+
+function pushExportDeclarationResult(
+  results: ParsedImport[],
+  node: ts.ExportDeclaration,
+  specifier: string,
+): void {
+  const named = new Set<string>();
+  let isNamespace = false;
+  let isExportAll = false;
+
+  if (node.exportClause === undefined) {
+    isExportAll = true;
+  } else if (ts.isNamespaceExport(node.exportClause)) {
+    isNamespace = true;
+  } else if (ts.isNamedExports(node.exportClause)) {
+    for (const el of node.exportClause.elements) {
+      const exportedName = el.propertyName?.text ?? el.name.text;
+      named.add(exportedName);
+    }
+  }
+
+  results.push({ specifier, named, isNamespace, isExportAll });
+}
+
 function parseImports(sourceText: string, fileName: string): ParsedImport[] {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -104,42 +159,11 @@ function parseImports(sourceText: string, fileName: string): ParsedImport[] {
       ts.isStringLiteral(node.moduleSpecifier)
     ) {
       const specifier = node.moduleSpecifier.text;
-      const named = new Set<string>();
-      let isNamespace = false;
-      let isExportAll = false;
-
       if (ts.isImportDeclaration(node)) {
-        const clause = node.importClause;
-        if (clause?.isTypeOnly) {
-          results.push({ specifier, named, isNamespace, isExportAll });
-          return;
-        }
-
-        if (clause?.namedBindings) {
-          if (ts.isNamespaceImport(clause.namedBindings)) {
-            isNamespace = true;
-          } else if (ts.isNamedImports(clause.namedBindings)) {
-            for (const el of clause.namedBindings.elements) {
-              if (el.isTypeOnly) {
-                continue;
-              }
-              const exportedName = el.propertyName?.text ?? el.name.text;
-              named.add(exportedName);
-            }
-          }
-        }
-      } else if (node.exportClause === undefined) {
-        isExportAll = true;
-      } else if (ts.isNamespaceExport(node.exportClause)) {
-        isNamespace = true;
-      } else if (ts.isNamedExports(node.exportClause)) {
-        for (const el of node.exportClause.elements) {
-          const exportedName = el.propertyName?.text ?? el.name.text;
-          named.add(exportedName);
-        }
+        pushImportDeclarationResult(results, node, specifier);
+      } else {
+        pushExportDeclarationResult(results, node, specifier);
       }
-
-      results.push({ specifier, named, isNamespace, isExportAll });
       return;
     }
 

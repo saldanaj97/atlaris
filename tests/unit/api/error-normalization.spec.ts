@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { toAttemptError } from '@/lib/api/error-normalization';
+import {
+  isAttemptErrorLike,
+  toAttemptError,
+} from '@/lib/api/error-normalization';
+
+describe('isAttemptErrorLike', () => {
+  it('rejects wrong field types', () => {
+    expect(isAttemptErrorLike({ message: 1 })).toBe(false);
+    expect(isAttemptErrorLike({ status: 'x' })).toBe(false);
+  });
+
+  it('accepts empty object', () => {
+    expect(isAttemptErrorLike({})).toBe(true);
+  });
+});
 
 describe('toAttemptError', () => {
   it('passes through strings', () => {

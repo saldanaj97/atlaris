@@ -49,11 +49,19 @@ function isValidJobType(value: string): value is JobType {
  * Uses type inference from Drizzle schema for the input type.
  */
 export function mapRowToJob(row: JobQueueRow): Job {
-  const jobType = row.jobType;
+  const jobType = assertJobTypeForRow(row.jobType);
+
+  return mapValidatedRowToJob(row, jobType);
+}
+
+function assertJobTypeForRow(jobType: string): JobType {
   if (!isValidJobType(jobType)) {
     throw new Error(`Invalid job type in database: ${String(jobType)}`);
   }
+  return jobType;
+}
 
+function mapValidatedRowToJob(row: JobQueueRow, jobType: JobType): Job {
   return {
     id: row.id,
     type: jobType,
@@ -114,10 +122,7 @@ export function appendErrorHistoryEntry(
   entry: ErrorHistoryEntry,
 ): Record<string, unknown> {
   const base = isRecord(payload) ? payload : {};
-
-  const existingHistory = isErrorHistoryArray(base.errorHistory)
-    ? [...base.errorHistory]
-    : [];
+  const existingHistory = copyErrorHistoryFromPayload(base);
 
   existingHistory.push(entry);
 
@@ -125,4 +130,10 @@ export function appendErrorHistoryEntry(
     ...base,
     errorHistory: existingHistory,
   };
+}
+
+function copyErrorHistoryFromPayload(
+  base: Record<string, unknown>,
+): ErrorHistoryEntry[] {
+  return isErrorHistoryArray(base.errorHistory) ? [...base.errorHistory] : [];
 }

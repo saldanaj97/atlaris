@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import {
+  isProtectedRoute,
+  resolveMaintenanceRedirectPath,
+  shouldBypassNeonAuthMiddleware,
+  toGetRequestForSessionValidation,
+} from '@/lib/proxy/middleware-policy';
 
 const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
@@ -26,27 +32,6 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const PROTECTED_PREFIXES = [
-  '/dashboard',
-  '/api',
-  '/plans',
-  '/account',
-  '/settings',
-  '/analytics',
-];
-
-function isProtectedRoute(pathname: string): boolean {
-  // Auth API routes must NOT be protected (they handle sign-in/sign-up)
-  if (pathname.startsWith('/api/auth/')) {
-    return false;
-  }
-  // Stripe webhooks bypass all checks
-  if (pathname.startsWith('/api/v1/stripe/webhook')) {
-    return false;
-  }
-  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
-
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const CORRELATION_ID_MAX_LENGTH = 64;
 
@@ -62,6 +47,26 @@ const getCorrelationId = (request: NextRequest): string => {
   const headerCorrelationId = request.headers.get('x-correlation-id');
   const sanitized = sanitizeCorrelationId(headerCorrelationId);
   return sanitized ?? crypto.randomUUID();
+};
+
+const withSecurityHeaders = (response: NextResponse): NextResponse => {
+  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=()',
+  );
+
+  if (appEnv.isProduction) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload',
+    );
+  }
+
+  return response;
 };
 
 const withCorrelationId = (
@@ -85,26 +90,6 @@ const nextWithCorrelationId = (request: NextRequest): NextResponse => {
   return withSecurityHeaders(response);
 };
 
-const withSecurityHeaders = (response: NextResponse): NextResponse => {
-  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()',
-  );
-
-  if (appEnv.isProduction) {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload',
-    );
-  }
-
-  return response;
-};
-
 export default async function proxy(
   request: NextRequest,
 ): Promise<NextResponse> {
@@ -116,19 +101,15 @@ export default async function proxy(
   }
 
   // Maintenance mode
-  const isMaintenanceMode = appEnv.maintenanceMode;
-  const isMaintenancePage = pathname === '/maintenance';
+  const maintenanceTarget = resolveMaintenanceRedirectPath(
+    appEnv.maintenanceMode,
+    pathname,
+  );
 
-  if (isMaintenanceMode && !isMaintenancePage) {
+  if (maintenanceTarget !== null) {
     return withCorrelationId(
       request,
-      NextResponse.redirect(new URL('/maintenance', request.url)),
-    );
-  }
-  if (!isMaintenanceMode && isMaintenancePage) {
-    return withCorrelationId(
-      request,
-      NextResponse.redirect(new URL('/', request.url)),
+      NextResponse.redirect(new URL(maintenanceTarget, request.url)),
     );
   }
 
@@ -141,18 +122,14 @@ export default async function proxy(
     // Route handlers still run withAuth and use getEffectiveAuthUserId.
     // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
     // shell and server components match the seeded local identity.
-    const devBypass =
-      appEnv.isDevelopment &&
-      devAuthEnv.userId !== undefined &&
-      pathname.startsWith('/api/');
-
-    const localProductTestingPageBypass =
-      appEnv.isDevelopment &&
-      devAuthEnv.userId !== undefined &&
-      localProductTestingEnv.enabled &&
-      !pathname.startsWith('/api/');
-
-    if (devBypass || localProductTestingPageBypass) {
+    if (
+      shouldBypassNeonAuthMiddleware({
+        isDevelopment: appEnv.isDevelopment,
+        devAuthUserId: devAuthEnv.userId,
+        localProductTestingEnabled: localProductTestingEnv.enabled,
+        pathname,
+      })
+    ) {
       console.debug('[dev_auth_bypass]', {
         event: 'dev_auth_bypass',
         userId: devAuthEnv.userId,
@@ -169,13 +146,7 @@ export default async function proxy(
     // for GET requests. Server actions (POST) and other non-GET methods
     // cause /get-session to fail, resulting in a false redirect to sign-in.
     // Normalise to GET so session validation works for all methods.
-    const authRequest =
-      request.method !== 'GET'
-        ? new NextRequest(request.url, {
-            method: 'GET',
-            headers: request.headers,
-          })
-        : request;
+    const authRequest = toGetRequestForSessionValidation(request);
 
     const authResponse = await authMiddleware(authRequest);
 

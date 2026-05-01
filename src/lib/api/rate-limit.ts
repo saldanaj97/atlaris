@@ -18,6 +18,46 @@ export type PlanGenerationRateLimitResult = {
   reset: number;
 };
 
+function planGenerationWindowSeconds(): number {
+  return PLAN_GENERATION_WINDOW_MINUTES * 60;
+}
+
+/** When durable attempt query failed: full-window backoff. Otherwise: time until oldest attempt ages out. */
+function exceededPlanGenerationWindowTiming(
+  nowMs: number,
+  countFailed: boolean,
+  oldestAttempt: Date | null,
+  windowSeconds: number,
+): { retryAfter: number; reset: number } {
+  if (countFailed) {
+    const retryAfter = windowSeconds;
+    return { retryAfter, reset: Math.ceil(nowMs / 1000) + retryAfter };
+  }
+
+  const retryAfter = oldestAttempt
+    ? Math.max(
+        0,
+        Math.floor(
+          (oldestAttempt.getTime() + windowSeconds * 1000 - nowMs) / 1000,
+        ),
+      )
+    : windowSeconds;
+  const reset = oldestAttempt
+    ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
+    : Math.ceil(nowMs / 1000) + retryAfter;
+  return { retryAfter, reset };
+}
+
+function successPlanGenerationReset(
+  nowMs: number,
+  oldestAttempt: Date | null,
+  windowSeconds: number,
+): number {
+  return oldestAttempt
+    ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
+    : Math.ceil(nowMs / 1000) + windowSeconds;
+}
+
 /** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(
   result: PlanGenerationRateLimitResult,
@@ -71,29 +111,16 @@ export async function checkPlanGenerationRateLimit(
   }
 
   const attemptCount = attemptWindowStats.count;
+  const windowSeconds = planGenerationWindowSeconds();
+  const nowMs = Date.now();
 
   if (attemptCount >= PLAN_GENERATION_LIMIT) {
-    const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
-    let retryAfter: number;
-    let reset: number | undefined;
-    if (countFailed) {
-      retryAfter = windowSeconds;
-      reset = Math.ceil(Date.now() / 1000) + retryAfter;
-    } else {
-      const oldestAttempt = attemptWindowStats.oldestAttemptCreatedAt;
-      retryAfter = oldestAttempt
-        ? Math.max(
-            0,
-            Math.floor(
-              (oldestAttempt.getTime() + windowSeconds * 1000 - Date.now()) /
-                1000,
-            ),
-          )
-        : windowSeconds;
-      reset = oldestAttempt
-        ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
-        : Math.ceil(Date.now() / 1000) + retryAfter;
-    }
+    const { retryAfter, reset } = exceededPlanGenerationWindowTiming(
+      nowMs,
+      countFailed,
+      attemptWindowStats.oldestAttemptCreatedAt,
+      windowSeconds,
+    );
     throw new RateLimitError(
       `Rate limit exceeded. Maximum ${PLAN_GENERATION_LIMIT} plan generation requests allowed per ${PLAN_GENERATION_WINDOW_MINUTES} minutes.`,
       {
@@ -105,11 +132,8 @@ export async function checkPlanGenerationRateLimit(
     );
   }
 
-  const windowSeconds = PLAN_GENERATION_WINDOW_MINUTES * 60;
   const oldestAttempt = attemptWindowStats.oldestAttemptCreatedAt;
-  const reset = oldestAttempt
-    ? Math.ceil((oldestAttempt.getTime() + windowSeconds * 1000) / 1000)
-    : Math.ceil(Date.now() / 1000) + windowSeconds;
+  const reset = successPlanGenerationReset(nowMs, oldestAttempt, windowSeconds);
 
   return {
     remaining: Math.max(0, PLAN_GENERATION_LIMIT - attemptCount),
