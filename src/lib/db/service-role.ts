@@ -100,19 +100,37 @@ function getLazyProxyProperty<T extends object>(
   return Reflect.get(initialize(), prop);
 }
 
+/** Recognized by RLS helpers so `=== serviceDb` is not the only bypass signal. */
+export const SERVICE_ROLE_DB_MARKER = Symbol.for('atlaris.serviceRoleDb');
+
+const serviceRoleProxyTarget: Record<PropertyKey, unknown> = {
+  [SERVICE_ROLE_DB_MARKER]: true,
+};
+
+export function isServiceRoleDbClient(client: unknown): boolean {
+  return (
+    typeof client === 'object' &&
+    client !== null &&
+    Reflect.get(client, SERVICE_ROLE_DB_MARKER) === true
+  );
+}
+
 /**
  * Service role database client - BYPASSES RLS (lazily initialized).
  * Use getDb() from @/lib/db/runtime in request handlers instead.
  */
 export const db: ServiceRoleDb = new Proxy(
-  {},
+  serviceRoleProxyTarget,
   {
-    get(_target, prop: string | symbol): unknown {
+    get(target, prop: string | symbol, receiver): unknown {
+      if (prop === SERVICE_ROLE_DB_MARKER) {
+        return Reflect.get(target, prop, receiver);
+      }
       return getLazyProxyProperty(initializeDb, prop);
     },
   },
   // Cast the proxy to the concrete Drizzle client type
-) as ServiceRoleDb;
+) as unknown as ServiceRoleDb;
 
 /**
  * Check if the database client has been initialized.

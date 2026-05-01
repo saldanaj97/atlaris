@@ -51,7 +51,7 @@ export async function handleUnhandledStreamError({
   dbClient: AttemptsDbClient;
   planId: string;
   userId: string;
-  classification: FailureClassification | 'unknown';
+  classification: FailureClassification;
   message: string;
 }): Promise<void> {
   logger.error(
@@ -70,7 +70,7 @@ export async function handleUnhandledStreamError({
 
 export function classifyUnhandledGenerationError(
   error: unknown,
-): FailureClassification | 'unknown' {
+): FailureClassification {
   if (error instanceof AppError) {
     return error.classification() ?? DEFAULT_PROVIDER_FAILURE_CLASSIFICATION;
   }

@@ -73,6 +73,14 @@ export const PUT = requestBoundary.route(
 
     const updatedUser = updatedRows[0];
     if (!updatedUser) {
+      logger.error(
+        {
+          action: 'profile.update',
+          authUserId: actor.authUserId,
+          internalUserId: actor.id,
+        },
+        'Profile update affected no rows; authenticated user missing from database',
+      );
       throw new AppError(
         'Authenticated user record missing despite provisioning.',
         {

@@ -127,7 +127,7 @@ interface LifecycleGenerationStreamParams {
   emit: SessionEmitFn;
   processGeneration: () => Promise<GenerationAttemptResult>;
   onUnhandledError: (error: unknown, startedAt: number) => Promise<void>;
-  fallbackClassification?: FailureClassification | 'unknown';
+  fallbackClassification?: FailureClassification;
   requestId?: string;
 }
 

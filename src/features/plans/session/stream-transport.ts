@@ -110,7 +110,14 @@ export async function runPlanGenerationSessionStream({
             requestId,
           });
         } finally {
-          await cleanup();
+          try {
+            await cleanup();
+          } catch (cleanupError) {
+            logger.error(
+              { authUserId, planId: prepared.planId, err: cleanupError },
+              'plan generation stream cleanup failed after stream',
+            );
+          }
         }
       },
     );
@@ -123,7 +130,14 @@ export async function runPlanGenerationSessionStream({
       },
     });
   } catch (error) {
-    await cleanup();
+    try {
+      await cleanup();
+    } catch (cleanupError) {
+      logger.error(
+        { authUserId, planId: prepared.planId, err: cleanupError },
+        'plan generation stream cleanup failed after outer error',
+      );
+    }
     throw error;
   }
 }

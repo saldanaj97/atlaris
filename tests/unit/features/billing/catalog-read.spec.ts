@@ -8,7 +8,7 @@ import { buildMockLocalStripePrice } from '@/features/billing/stripe-commerce/lo
 
 describe('readBillingCatalogTierData', () => {
   function baseLogger() {
-    return { error: vi.fn(), warn: vi.fn() };
+    return { error: vi.fn(), warn: vi.fn(), info: vi.fn() };
   }
 
   function emptyStripe(): BillingCatalogStripeClient {

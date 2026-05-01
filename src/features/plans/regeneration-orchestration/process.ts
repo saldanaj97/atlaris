@@ -3,7 +3,7 @@ import { toPlanCalendarDate } from '@/features/plans/calendar-date';
 import { buildPlanGenerationInputFields } from '@/features/plans/generation-input';
 import { learningPlans } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
-import { assertNever } from '@/lib/errors';
+import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { eq } from 'drizzle-orm';
 import { createDefaultRegenerationOrchestrationDeps } from './deps';
 import { planRegenerationJobPayloadSchema } from './schema';
@@ -213,8 +213,9 @@ async function applyRetryableFailure(
   );
   deps.logger.debug(
     {
-      ...retryLogContext,
-      error: result.error,
+      jobId: job.id,
+      planId: plan.id,
+      error: serializeErrorForLog(result.error),
     },
     'Regeneration job retryable failure diagnostic',
   );

@@ -130,18 +130,19 @@ async function resolvePricingInterval(
   interval: PricingInterval,
 ): Promise<ResolvedPricingInterval> {
   const priceIds = getPaidTierPriceIds(interval.configs);
-  const tierDisplayMap = await loadBillingCatalogDisplayMap(
-    interval.value,
+  const loaded = await loadBillingCatalogDisplayMap(interval.value, priceIds);
+  const rawBillingCatalogData = new Map(loaded);
+  const missingTierKeys = getMissingPaidTierKeys(
     priceIds,
+    rawBillingCatalogData,
   );
-  const missingTierKeys = getMissingPaidTierKeys(priceIds, tierDisplayMap);
 
   return {
     ...interval,
-    rawBillingCatalogData: tierDisplayMap,
+    rawBillingCatalogData,
     tierDisplayMap:
       missingTierKeys.length === 0
-        ? tierDisplayMap
+        ? new Map(rawBillingCatalogData)
         : EMPTY_BILLING_CATALOG_GRID_DATA,
     missingTierKeys,
   };

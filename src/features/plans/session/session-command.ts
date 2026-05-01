@@ -84,7 +84,7 @@ export interface PreparedSessionPlan {
   planId: string;
   planStartInput: CreateLearningPlanInput;
   generationInput: ProcessGenerationInput;
-  fallbackClassification: FailureClassification | 'unknown';
+  fallbackClassification: FailureClassification;
   onUnhandledError: UnhandledGenerationErrorHandler;
 }
 
@@ -153,7 +153,7 @@ async function prepareCreate(
         dbClient: sessionDbClient,
         planId: createResult.planId,
         userId: internalUserId,
-        classification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
+        classification: classifyUnhandledGenerationError(error),
         message:
           'Unhandled exception during stream generation; marking plan failed',
       }),

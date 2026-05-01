@@ -39,7 +39,7 @@ export function formatAmount(
   fractionDigits: number = 2,
   locale?: string,
 ): string {
-  if (cents == null || Number.isNaN(cents)) return '—';
+  if (cents == null || !Number.isFinite(cents)) return '—';
 
   const amount = cents / 100;
   const normalizedCurrency = normalizeCurrency(currency);

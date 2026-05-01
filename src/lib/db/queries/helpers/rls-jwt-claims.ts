@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm';
 
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { isServiceRoleDbClient } from '@/lib/db/service-role';
 
 /**
  * Session snapshot for replaying `request.jwt.claims` on the connection Drizzle uses inside `transaction()`.
- * `requiresJwtClaimReplay` is false for service-role (`dbClient === serviceDb`). Otherwise `prepareRlsTransactionContext`
+ * `requiresJwtClaimReplay` is false for service-role (`isServiceRoleDbClient(dbClient)`). Otherwise `prepareRlsTransactionContext`
  * runs `current_setting('request.jwt.claims', true)`; `requestJwtClaims` stays null when unset or empty so `reapplyJwtClaimsInTransaction` is a no-op.
  */
 export type RlsTransactionContext = {
@@ -23,7 +23,7 @@ type RlsClaimsClient = Pick<AttemptsDbClient, 'execute'>;
 export async function prepareRlsTransactionContext(
   dbClient: RlsClaimsClient,
 ): Promise<RlsTransactionContext> {
-  const requiresJwtClaimReplay = dbClient !== serviceDb;
+  const requiresJwtClaimReplay = !isServiceRoleDbClient(dbClient);
   let requestJwtClaims: string | null = null;
 
   if (requiresJwtClaimReplay) {

@@ -1,10 +1,14 @@
 # Technical Debt
 
-## `tests/integration/db/jobs.queue.spec.ts` failure under `pnpm test:changed`
+## ~~`tests/integration/db/jobs.queue.spec.ts` failure under `pnpm test:changed`~~ _(resolved)_
 
-`pnpm test:changed` currently fails in `tests/integration/db/jobs.queue.spec.ts` with ordering assertions in the job queue service suite.
+Previously tracked because `pnpm test:changed` failed in
+`tests/integration/db/jobs.queue.spec.ts` with ordering assertions in the job
+queue service suite.
 
-This is unrelated to the current CodeRabbit follow-up work and is intentionally deferred for a later pass.
+Resolved as stale on 2026-05-01: targeted
+`pnpm vitest run tests/integration/db/jobs.queue.spec.ts --project integration`
+passed 10/10, and `pnpm test:changed` passed.
 
 ## ~~Reserved `plan_generation` job type~~ _(resolved)_
 
@@ -13,7 +17,7 @@ TypeScript constant map, and all associated dead types (`PlanGenerationJobData`,
 `PlanGenerationJobResult`, `PlanGenerationJobPayload`). A migration drops the
 enum value from PostgreSQL.
 
-## Thin queue wrapper in `src/features/jobs/queue.ts`
+## ~~Thin queue wrapper in `src/features/jobs/queue.ts`~~ _(resolved: intentional boundary)_
 
 `src/features/jobs/queue.ts` mostly delegates one-for-one into
 `src/lib/db/queries/jobs.ts`. That duplication is intentional today because it
@@ -22,6 +26,9 @@ imports throughout worker and route code.
 
 This should only be refactored if a richer queue domain layer emerges. Until
 then, the wrapper stays as a narrow composition boundary.
+
+Closed as not actionable on 2026-05-01. This is a deliberate composition
+boundary, not a cleanup target.
 
 ## ~~Dead `getCurrentUserRecordSafe()` cleanup in `src/lib/api/auth.ts`~~ _(resolved)_
 

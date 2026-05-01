@@ -31,6 +31,7 @@ describe('withErrorBoundary', () => {
       'Request aborted by client',
     );
     expect(logger.error).not.toHaveBeenCalled();
+    await expect(res.text()).resolves.toBe('');
   });
 
   it.skipIf(typeof DOMException === 'undefined')(

@@ -43,7 +43,7 @@ function assertRawStripeAllowed(): void {
   );
 }
 
-function getReturnUrlForLog(body: unknown): string | undefined {
+export function getReturnUrlForLog(body: unknown): string | undefined {
   if (typeof body !== 'object' || body === null || !('returnUrl' in body)) {
     return undefined;
   }

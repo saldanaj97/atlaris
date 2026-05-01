@@ -33,8 +33,9 @@ export interface BillingCatalogStripeClient {
 }
 
 export interface BillingCatalogLogger {
-  error: (meta: Record<string, unknown>, message: string) => void;
-  warn: (meta: Record<string, unknown>, message: string) => void;
+  error: (obj: Record<string, unknown>, msg: string) => void;
+  warn: (obj: Record<string, unknown>, msg: string) => void;
+  info: (obj: Record<string, unknown>, msg: string) => void;
 }
 
 export interface BillingCatalogReadDeps {
@@ -51,12 +52,6 @@ export interface ReadBillingCatalogInput {
 
 function defaultDeps(): BillingCatalogReadDeps {
   const client = getStripe();
-  const logError = appLogger.error.bind(
-    appLogger,
-  ) as BillingCatalogLogger['error'];
-  const logWarn = appLogger.warn.bind(
-    appLogger,
-  ) as BillingCatalogLogger['warn'];
 
   return {
     localMode: stripeEnv.localMode,
@@ -65,7 +60,11 @@ function defaultDeps(): BillingCatalogReadDeps {
       retrieveProduct: (productId: string) =>
         client.products.retrieve(productId),
     },
-    logger: { error: logError, warn: logWarn },
+    logger: {
+      error: (meta, message) => appLogger.error(meta, message),
+      warn: (meta, message) => appLogger.warn(meta, message),
+      info: (meta, message) => appLogger.info(meta, message),
+    },
   };
 }
 

@@ -17,10 +17,12 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 
 export const maxDuration = 60;
 
+const RETRYABLE_PLAN_GENERATION_STATUSES: ReadonlySet<string> = new Set(
+  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+);
+
 function isRetryableStatus(status: string | null): boolean {
-  return PLAN_RETRY_RESERVATION_ALLOWED_STATUSES.some(
-    (retryableStatus) => retryableStatus === status,
-  );
+  return status != null && RETRYABLE_PLAN_GENERATION_STATUSES.has(status);
 }
 
 const defaultBoundary: PlanGenerationSessionBoundary =

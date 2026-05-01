@@ -16,9 +16,33 @@ import {
 } from '@/features/jobs/types';
 import { jobQueue, learningPlans, users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
-import { getJobRetryDelayMs } from '@/shared/retry-policy';
+import {
+  JOB_RETRY_BASE_SECONDS,
+  JOB_RETRY_MAX_DELAY_SECONDS,
+} from '@/shared/constants/retry-policy';
 
 const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
+
+function nominalRetryBackoffMs(attempt: number): number {
+  const n = Math.max(1, Math.trunc(attempt));
+  return (
+    Math.min(
+      JOB_RETRY_MAX_DELAY_SECONDS,
+      JOB_RETRY_BASE_SECONDS * 2 ** (n - 1),
+    ) * 1000
+  );
+}
+
+function expectScheduledDelayNearNominal(
+  deltaMs: number,
+  attempt: number,
+): void {
+  const nominal = nominalRetryBackoffMs(attempt);
+  const low = Math.floor(nominal * 0.75) - 2;
+  const high = Math.ceil(nominal * 1.25) + 2;
+  expect(deltaMs).toBeGreaterThanOrEqual(low);
+  expect(deltaMs).toBeLessThanOrEqual(high);
+}
 
 type InsertedPlan = typeof learningPlans.$inferSelect;
 
@@ -363,9 +387,10 @@ describe('Job queue service', () => {
     if (!firstRetryRow) {
       throw new Error('Expected first retry row');
     }
-    expect(
+    expectScheduledDelayNearNominal(
       firstRetryRow.scheduledFor.getTime() - firstRetryRow.updatedAt.getTime(),
-    ).toBe(getJobRetryDelayMs(1));
+      1,
+    );
 
     await getNextJob([JOB_TYPE]);
     const second = await failJob(jobId, 'still failing');
@@ -378,10 +403,11 @@ describe('Job queue service', () => {
     if (!secondRetryRow) {
       throw new Error('Expected second retry row');
     }
-    expect(
+    expectScheduledDelayNearNominal(
       secondRetryRow.scheduledFor.getTime() -
         secondRetryRow.updatedAt.getTime(),
-    ).toBe(getJobRetryDelayMs(2));
+      2,
+    );
 
     await getNextJob([JOB_TYPE]);
     const terminal = await failJob(jobId, 'fatal error');

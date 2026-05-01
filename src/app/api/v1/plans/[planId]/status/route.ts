@@ -17,10 +17,13 @@ import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
-  async ({ req, actor, db }): Promise<Response> => {
+  async ({ req, actor, db, correlationId }): Promise<Response> => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
 
-    logger.debug({ planId, userId: actor.id }, 'Plan status request received');
+    logger.debug(
+      { planId, userId: actor.id, correlationId },
+      'Plan status request received',
+    );
 
     const statusSnapshot = await getPlanGenerationStatusSnapshot({
       planId,
@@ -36,6 +39,7 @@ export const GET = requestBoundary.route(
       {
         planId,
         userId: actor.id,
+        correlationId,
         status: statusSnapshot.status,
         attempts: statusSnapshot.attempts,
       },
@@ -51,6 +55,7 @@ export const GET = requestBoundary.route(
         {
           planId,
           userId: actor.id,
+          correlationId,
           status: statusSnapshot.status,
           attempts: statusSnapshot.attempts,
           classification: statusSnapshot.latestClassification,

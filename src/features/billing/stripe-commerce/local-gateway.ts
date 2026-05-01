@@ -4,6 +4,22 @@ import { appEnv } from '@/lib/config/env';
 
 let localStripeMock: Stripe | null = null;
 
+const LOCAL_TIER_PRODUCT_NAMES: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+};
+
+function localTierToProductName(tier: string): string {
+  const mapped = LOCAL_TIER_PRODUCT_NAMES[tier];
+  if (mapped) {
+    return mapped;
+  }
+  if (tier.length === 0) {
+    return 'Paid';
+  }
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
 function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -27,7 +43,7 @@ export function buildMockLocalStripePrice(priceId: string): Stripe.Price {
     product: {
       id: productId,
       object: 'product',
-      name: tier === 'starter' ? 'Starter' : 'Pro',
+      name: localTierToProductName(tier),
       metadata: { tier },
     },
     unit_amount: entry.unitAmount,
