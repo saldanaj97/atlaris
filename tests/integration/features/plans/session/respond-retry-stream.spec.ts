@@ -9,12 +9,13 @@ import {
   type RespondRetryStreamArgs,
   type RetryPlanGenerationPlanSnapshot,
 } from '@/features/plans/session/plan-generation-session';
+import * as streamCleanup from '@/features/plans/session/stream-cleanup';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { db } from '@/lib/db/service-role';
 import { ensureUser } from '@tests/helpers/db';
 import {
+  findStreamingEvent,
   readStreamingResponse,
-  type StreamingEvent,
 } from '@tests/helpers/streaming';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { describe, expect, it, vi } from 'vitest';
@@ -108,6 +109,7 @@ interface BuildArgsInput {
   planId?: string;
   plan?: RetryPlanGenerationPlanSnapshot;
   responseHeaders?: HeadersInit;
+  requestId?: string;
 }
 
 function buildArgs(input: BuildArgsInput): RespondRetryStreamArgs {
@@ -121,14 +123,8 @@ function buildArgs(input: BuildArgsInput): RespondRetryStreamArgs {
     ...(input.responseHeaders
       ? { responseHeaders: input.responseHeaders }
       : {}),
+    ...(input.requestId !== undefined ? { requestId: input.requestId } : {}),
   };
-}
-
-function findEvent(
-  events: StreamingEvent[],
-  type: string,
-): StreamingEvent | undefined {
-  return events.find((event) => event.type === type);
 }
 
 async function setupUser(scenario: string): Promise<{
@@ -171,8 +167,8 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(fake.processGenerationAttempt).toHaveBeenCalledTimes(1);
 
     const events = await readStreamingResponse(response);
-    const planStart = findEvent(events, 'plan_start');
-    const complete = findEvent(events, 'complete');
+    const planStart = findStreamingEvent(events, 'plan_start');
+    const complete = findStreamingEvent(events, 'complete');
 
     expect(planStart?.data).toMatchObject({
       planId: 'plan_retry_success',
@@ -213,7 +209,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     );
 
     const events = await readStreamingResponse(response);
-    const errorEvent = findEvent(events, 'error');
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(errorEvent?.data).toMatchObject({
       code: 'GENERATION_FAILED',
       classification: 'provider_error',
@@ -222,6 +218,39 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     const message = String(errorEvent?.data?.message ?? '');
     expect(message).not.toContain('api_key');
     expect(message).not.toContain('sk-live-secret-value');
+    expect(errorEvent?.data).not.toHaveProperty('requestId');
+  });
+
+  it('includes requestId on handled error SSE when requestId is supplied', async () => {
+    const fake = buildFakeLifecycle(async () => ({
+      status: 'retryable_failure',
+      classification: 'provider_error',
+      error: new Error('upstream'),
+    }));
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupUser(
+      'boundary-retry-reqid',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildArgs({
+        req: buildRetryRequest('plan_retry_reqid'),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_reqid',
+        requestId: 'corr-boundary-retry-1',
+      }),
+    );
+
+    const events = await readStreamingResponse(response);
+    const errorEvent = findStreamingEvent(events, 'error');
+    expect(errorEvent?.data).toMatchObject({
+      requestId: 'corr-boundary-retry-1',
+      code: 'GENERATION_FAILED',
+    });
   });
 
   it('emits permanent failure error code for validation-classified failures', async () => {
@@ -248,7 +277,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     );
 
     const events = await readStreamingResponse(response);
-    const errorEvent = findEvent(events, 'error');
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(errorEvent?.data).toMatchObject({
       code: 'INVALID_OUTPUT',
       classification: 'validation',
@@ -257,6 +286,10 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
   });
 
   it('emits fallback error event when generation throws an unhandled error', async () => {
+    const markSpy = vi
+      .spyOn(streamCleanup, 'safeMarkPlanFailedWithDbClient')
+      .mockResolvedValue(undefined);
+
     const fake = buildFakeLifecycle(async () => {
       throw new Error('retry boom');
     });
@@ -274,16 +307,24 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_unhandled',
+        requestId: 'corr-boundary-retry-unhandled',
       }),
     );
 
     const events = await readStreamingResponse(response);
-    expect(findEvent(events, 'plan_start')).toBeDefined();
-    expect(findEvent(events, 'complete')).toBeUndefined();
-    const errorEvent = findEvent(events, 'error');
+    expect(findStreamingEvent(events, 'plan_start')).toBeDefined();
+    expect(findStreamingEvent(events, 'complete')).toBeUndefined();
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(errorEvent?.data).toMatchObject({
       classification: 'provider_error',
+      requestId: 'corr-boundary-retry-unhandled',
     });
+    expect(markSpy).toHaveBeenCalledWith(
+      'plan_retry_unhandled',
+      internalUserId,
+      expect.anything(),
+    );
+    markSpy.mockRestore();
   });
 
   it('suppresses terminal SSE events when the client disconnects mid-stream', async () => {
@@ -311,9 +352,9 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
 
     expect(response.status).toBe(200);
     const events = await readStreamingResponse(response);
-    expect(findEvent(events, 'plan_start')).toBeDefined();
-    expect(findEvent(events, 'complete')).toBeUndefined();
-    expect(findEvent(events, 'error')).toBeUndefined();
+    expect(findStreamingEvent(events, 'plan_start')).toBeDefined();
+    expect(findStreamingEvent(events, 'complete')).toBeUndefined();
+    expect(findStreamingEvent(events, 'error')).toBeUndefined();
   });
 
   it('passes responseHeaders through to the streaming Response', async () => {

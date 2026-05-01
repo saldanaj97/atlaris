@@ -13,6 +13,13 @@ export type StreamingEvent = {
   data?: Record<string, unknown>;
 };
 
+export function findStreamingEvent(
+  events: StreamingEvent[],
+  type: string,
+): StreamingEvent | undefined {
+  return events.find((event) => event.type === type);
+}
+
 /**
  * Reads a streaming response and parses SSE events into an array.
  * @param response - The Response object with a streaming body
