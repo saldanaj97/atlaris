@@ -189,7 +189,7 @@ describe('persistSuccessfulAttempt', () => {
     useMockTransaction(mockTx);
 
     const rlsContext = {
-      shouldNormalizeRlsContext: true,
+      requiresJwtClaimReplay: true,
       requestJwtClaims: '{"sub":"auth-user-1"}',
     };
     const prepareSpy = vi

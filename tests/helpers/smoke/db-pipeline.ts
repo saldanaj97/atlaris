@@ -54,6 +54,7 @@ export async function prepareSmokeDatabase(
 
   console.log('[smoke] Granting RLS permissions…');
   await grantRlsPermissions(connectionUrl);
+  // No `applyRuntimeDatabaseFixups` here: integration uses `tests/setup/testcontainers.ts` after grants for policy/enum repair; smoke stays migrate+grants+seed only.
 
   console.log('[smoke] Seeding local product-testing user…');
   await seedLocalProductTestingUser(connectionUrl);

@@ -133,6 +133,18 @@ Query modules that must enforce RLS on every call (e.g. generation attempts, aud
 - **Example:** `src/lib/db/queries/attempts.ts` — `StartAttemptParams.dbClient`, `AttemptsDbClient`; callers pass `getDb()` from the request handler.
 - **Do not:** Add `dbClient = getDb()` or make `dbClient` optional in these modules.
 
+### JWT claim replay inside `transaction()`
+
+After you obtain the same explicit `dbClient` as for other RLS-sensitive calls (see above), call `prepareRlsTransactionContext(dbClient)` before `transaction()`, then `reapplyJwtClaimsInTransaction(tx, ctx)` when `ctx.requiresJwtClaimReplay && ctx.requestJwtClaims !== null`. Service-role skips claim capture; replay uses transaction-local `set_config(..., true)`. Type and helpers: [`queries/helpers/rls-jwt-claims.ts`](./queries/helpers/rls-jwt-claims.ts).
+
+### Row-lock helpers (`for('update')`)
+
+`lockOwnedPlanById` in `queries/helpers/plans-helpers.ts` requires an explicit `dbClient` argument (no optional/default) because `FOR UPDATE` must run on the same connection as the surrounding transaction.
+
+### Admin metrics (`service-role` default)
+
+`queries/admin/jobs-metrics.ts` aggregates queue-wide counts and defaults to the service-role client only—do not add `getDb()` fallback or wire these helpers into user-scoped routes without an explicit audit.
+
 ## Key Tables
 
 | Table                 | Purpose                      | Notes                                                                      |
