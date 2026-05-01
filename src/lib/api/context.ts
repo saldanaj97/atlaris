@@ -18,7 +18,7 @@ const storage = new AsyncLocalStorage<RequestContext>();
 
 export function withRequestContext<T>(
   context: RequestContext,
-  run: () => T
+  run: () => T,
 ): T {
   return storage.run(context, run);
 }
@@ -51,7 +51,7 @@ type HeaderSource =
  */
 function readHeader(
   source: HeaderSource | undefined,
-  key: string
+  key: string,
 ): string | undefined {
   if (!source) return undefined;
   if ('headers' in source && source.headers) {
@@ -70,7 +70,7 @@ function readHeader(
  */
 export function ensureCorrelationId(
   source?: HeaderSource,
-  headerName = 'x-correlation-id'
+  headerName = 'x-correlation-id',
 ): string {
   const existing = readHeader(source, headerName);
   return existing && existing.length > 0 ? existing : randomUUID();
@@ -85,7 +85,7 @@ type CreateContextOptions = {
 
 export function createRequestContext(
   req: Request | undefined,
-  options?: CreateContextOptions
+  options?: CreateContextOptions,
 ): RequestContext {
   const correlationId = ensureCorrelationId(req?.headers);
   return {

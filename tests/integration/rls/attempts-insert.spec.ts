@@ -62,7 +62,7 @@ describe('RLS attempt insertion', () => {
             learningStyle: 'reading',
           },
         },
-        { provider: mock.provider, dbClient: rlsDb }
+        { provider: mock.provider, dbClient: rlsDb },
       );
     } catch (e) {
       error = e;
@@ -83,11 +83,11 @@ describe('RLS attempt insertion', () => {
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
       /permission denied|row[- ]level security|not found or inaccessible/i.test(
-        combinedMsg
+        combinedMsg,
       );
     expect(
       hasPermissionCode || hasPermissionMessage,
-      `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`
+      `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`,
     ).toBe(true);
 
     const attempts = await db
@@ -129,7 +129,7 @@ describe('RLS attempt insertion', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: rlsDb }
+      { provider: mock.provider, dbClient: rlsDb },
     );
 
     expect(result.status).toBe('success');

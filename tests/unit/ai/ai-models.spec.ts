@@ -180,13 +180,13 @@ describe('AI Models Configuration', () => {
       { tier: 'free', expectedMinCount: 1 },
       { tier: 'starter', expectedMinCount: 1 },
       { tier: 'pro', expectedMinCount: 2 },
-    ])('$tier tier returns at least $expectedMinCount models', ({
-      tier,
-      expectedMinCount,
-    }) => {
-      const models = getModelsForTier(tier);
-      expect(models.length).toBeGreaterThanOrEqual(expectedMinCount);
-    });
+    ])(
+      '$tier tier returns at least $expectedMinCount models',
+      ({ tier, expectedMinCount }) => {
+        const models = getModelsForTier(tier);
+        expect(models.length).toBeGreaterThanOrEqual(expectedMinCount);
+      },
+    );
   });
 
   describe('isValidModelId', () => {
@@ -273,7 +273,7 @@ describe('AI Models Configuration', () => {
 
     it('known free models have zero input cost', () => {
       const freeModels = AVAILABLE_MODELS.filter(
-        (m) => m.tier === 'free' && m.inputCostPerMillion === 0
+        (m) => m.tier === 'free' && m.inputCostPerMillion === 0,
       );
       // At least some free models should have zero cost
       expect(freeModels.length).toBeGreaterThan(0);

@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PricingGrid } from '@/app/pricing/components/PricingGrid';
-import type { TierConfig } from '@/app/pricing/components/pricing-config';
-import type { StripeTierData } from '@/app/pricing/components/stripe-pricing';
+import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
+import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
+import type { StripeTierData } from '@/app/(marketing)/pricing/components/stripe-pricing';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Mock SubscribeButton
-vi.mock('@/app/pricing/components/SubscribeButton', () => ({
+vi.mock('@/app/(marketing)/pricing/components/SubscribeButton', () => ({
   default: ({ priceId, label }: { priceId: string; label: string }) => (
     <button type="button" data-testid={`subscribe-${priceId}`}>
       {label}
@@ -54,7 +54,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     expect(screen.getAllByText('Free').length).toBeGreaterThanOrEqual(1);
@@ -69,7 +69,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     expect(screen.getByText(/\$0/)).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // All prices should be followed by interval label
@@ -99,15 +99,15 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Get Started"
-      />
+      />,
     );
 
     // Should have SubscribeButtons for starter and pro
     expect(
-      screen.getByTestId('subscribe-price_starter_monthly')
+      screen.getByTestId('subscribe-price_starter_monthly'),
     ).toBeInTheDocument();
     expect(
-      screen.getByTestId('subscribe-price_pro_monthly')
+      screen.getByTestId('subscribe-price_pro_monthly'),
     ).toBeInTheDocument();
     const buttons = screen.getAllByText('Get Started');
     expect(buttons.length).toBeGreaterThanOrEqual(2);
@@ -120,7 +120,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Free tier should have a link to dashboard
@@ -134,18 +134,18 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Check for some expected features (across multiple tiers)
     expect(screen.getAllByText(/active plans/).length).toBeGreaterThanOrEqual(
-      1
+      1,
     );
     expect(
-      screen.getAllByText(/regenerations per month/).length
+      screen.getAllByText(/regenerations per month/).length,
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getAllByText(/exports per month/).length
+      screen.getAllByText(/exports per month/).length,
     ).toBeGreaterThanOrEqual(1);
   });
 
@@ -156,7 +156,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     const grid = container.querySelector('.grid');
@@ -172,7 +172,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Should have at least 3 pricing cards
@@ -189,7 +189,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={emptyStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Should still render tier names from defaults
@@ -212,7 +212,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     expect(screen.getByText('Starter')).toBeInTheDocument();
@@ -227,7 +227,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Unavailable' })).toBeDisabled();
@@ -240,7 +240,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Upgrade Now"
-      />
+      />,
     );
 
     expect(screen.getAllByText('Upgrade Now').length).toBeGreaterThanOrEqual(2);
@@ -253,7 +253,7 @@ describe('PricingGrid', () => {
         intervalLabel="/year"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     const yearLabels = screen.getAllByText(/\/year/);
@@ -267,7 +267,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Check for tier badges
@@ -283,7 +283,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Free tier should not have a SubscribeButton
@@ -306,7 +306,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={mockStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     expect(screen.queryByTestId('subscribe-')).not.toBeInTheDocument();
@@ -325,7 +325,7 @@ describe('PricingGrid', () => {
         intervalLabel="/month"
         stripeData={partialStripeData}
         subscribeLabel="Subscribe"
-      />
+      />,
     );
 
     // Should show fallback price symbol

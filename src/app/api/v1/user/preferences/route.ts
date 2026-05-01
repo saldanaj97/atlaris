@@ -2,15 +2,15 @@ import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validatio
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
 import {
   attachRequestIdHeader,
-  createRequestContext,
+  createLoggingRequestContext,
 } from '@/lib/logging/request-context';
 
 function createPreferencesUpdateFailedError(userId: string | number): AppError {
@@ -27,35 +27,35 @@ function createPreferencesUpdateFailedError(userId: string | number): AppError {
  * Retrieves the authenticated user's AI model preferences and available models.
  */
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, user }) => {
-    const { requestId, logger } = createRequestContext(req, {
+  requestBoundary.route({ rateLimit: 'read' }, async ({ req, actor }) => {
+    const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'GET /api/v1/user/preferences',
-      userId: user.id,
+      userId: actor.id,
     });
 
-    const userTier = user.subscriptionTier;
+    const userTier = actor.subscriptionTier;
     const availableModels = getPersistableModelsForTier(userTier);
 
     const fallbackModel = getDefaultModelForTier(userTier);
     let preferredAiModel = fallbackModel;
 
-    if (user.preferredAiModel) {
+    if (actor.preferredAiModel) {
       const modelValidation = validateModelForTier(
         userTier,
-        user.preferredAiModel
+        actor.preferredAiModel,
       );
 
       if (modelValidation.valid) {
-        preferredAiModel = user.preferredAiModel;
+        preferredAiModel = actor.preferredAiModel;
       } else {
         logger.warn(
           {
-            storedPreferredAiModel: user.preferredAiModel,
+            storedPreferredAiModel: actor.preferredAiModel,
             tier: userTier,
             reason: modelValidation.reason,
             fallbackModel,
           },
-          'Stored preferred AI model is not allowed for current tier; using fallback'
+          'Stored preferred AI model is not allowed for current tier; using fallback',
         );
       }
     }
@@ -66,7 +66,7 @@ export const GET = withErrorBoundary(
     });
 
     return attachRequestIdHeader(response, requestId);
-  })
+  }),
 );
 
 /**
@@ -76,10 +76,10 @@ export const GET = withErrorBoundary(
  * Validates the model ID and enforces tier-gating.
  */
 export const PATCH = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async ({ req, user }) => {
-    const { requestId, logger } = createRequestContext(req, {
+  requestBoundary.route({ rateLimit: 'mutation' }, async ({ req, actor }) => {
+    const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'PATCH /api/v1/user/preferences',
-      userId: user.id,
+      userId: actor.id,
     });
 
     logger.info('Updating user preferences');
@@ -97,18 +97,18 @@ export const PATCH = withErrorBoundary(
       });
     }
 
-    const userTier = user.subscriptionTier;
+    const userTier = actor.subscriptionTier;
 
     if (parsed.data.preferredAiModel === null) {
-      const updatedUser = await updateUserPreferredAiModel(user.id, null);
+      const updatedUser = await updateUserPreferredAiModel(actor.id, null);
 
       if (!updatedUser) {
-        throw createPreferencesUpdateFailedError(user.id);
+        throw createPreferencesUpdateFailedError(actor.id);
       }
 
       logger.info(
         { preferredAiModel: updatedUser.preferredAiModel },
-        'User preferences cleared (tier default applies)'
+        'User preferences cleared (tier default applies)',
       );
 
       const response = json({
@@ -121,7 +121,7 @@ export const PATCH = withErrorBoundary(
 
     const modelValidation = validateModelForTier(
       userTier,
-      parsed.data.preferredAiModel
+      parsed.data.preferredAiModel,
     );
 
     // Enumerate every known reason from validateModelForTier (see ModelValidationResult in
@@ -148,7 +148,7 @@ export const PATCH = withErrorBoundary(
                 preferredAiModel: parsed.data.preferredAiModel,
                 tier: userTier,
               },
-            }
+            },
           );
         default: {
           const _exhaustiveCheck: never = reason;
@@ -165,32 +165,32 @@ export const PATCH = withErrorBoundary(
                 reason: String(_exhaustiveCheck),
                 preferredAiModel: parsed.data.preferredAiModel,
               },
-            }
+            },
           );
         }
       }
     }
 
     const updatedUser = await updateUserPreferredAiModel(
-      user.id,
-      parsed.data.preferredAiModel
+      actor.id,
+      parsed.data.preferredAiModel,
     );
 
     if (!updatedUser) {
-      throw createPreferencesUpdateFailedError(user.id);
+      throw createPreferencesUpdateFailedError(actor.id);
     }
 
     if (updatedUser.preferredAiModel === null) {
       throw new AppError('Failed to persist preference value.', {
         status: 500,
         code: 'PREFERENCES_PERSISTED_NULL',
-        logMeta: { userId: user.id },
+        logMeta: { userId: actor.id },
       });
     }
 
     logger.info(
       { preferredAiModel: updatedUser.preferredAiModel },
-      'User preferences updated successfully'
+      'User preferences updated successfully',
     );
 
     const response = json({
@@ -199,5 +199,5 @@ export const PATCH = withErrorBoundary(
     });
 
     return attachRequestIdHeader(response, requestId);
-  })
+  }),
 );

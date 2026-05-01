@@ -1,0 +1,61 @@
+import { Plus } from 'lucide-react';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import type { JSX } from 'react';
+import { Suspense } from 'react';
+import {
+  PlanCountBadgeContent,
+  PlansContent,
+} from '@/app/(app)/plans/components/PlansContent';
+import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
+import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { Skeleton } from '@/components/ui/skeleton';
+
+export const metadata: Metadata = {
+  title: 'Your Plans | Atlaris',
+  description:
+    'View, search, and manage your learning plans and track your progress in Atlaris.',
+  openGraph: {
+    title: 'Your Plans | Atlaris',
+    description:
+      'View, search, and manage your learning plans and track your progress in Atlaris.',
+    url: '/plans',
+    images: ['/og-default.jpg'],
+  },
+};
+
+/**
+ * Plans list page with Suspense boundaries for data-dependent content.
+ *
+ * Static elements (title, "New Plan" button) render immediately.
+ * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
+ */
+export default function PlansPage(): JSX.Element {
+  return (
+    <>
+      {/* Static header - renders immediately; count waits independently. */}
+      <PageHeader
+        title="Your Plans"
+        actions={
+          <>
+            <Suspense fallback={<Skeleton className="h-6 w-16 rounded-full" />}>
+              <PlanCountBadgeContent />
+            </Suspense>
+            <Button asChild>
+              <Link href="/plans/new">
+                <Plus className="h-4 w-4" />
+                New Plan
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
+      <Suspense fallback={<PlansContentSkeleton />}>
+        <PlansContent />
+      </Suspense>
+    </>
+  );
+}

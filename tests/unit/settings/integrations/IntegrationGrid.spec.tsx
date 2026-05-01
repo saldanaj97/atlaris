@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { IntegrationGrid } from '@/app/settings/integrations/components/IntegrationGrid';
+import { IntegrationGrid } from '@/app/(app)/settings/integrations/components/IntegrationGrid';
 
 describe('IntegrationGrid', () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe('IntegrationGrid', () => {
     render(<IntegrationGrid />);
 
     expect(
-      screen.getByRole('region', { name: 'Google Calendar' })
+      screen.getByRole('region', { name: 'Google Calendar' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Slack' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Todoist' })).toBeInTheDocument();
@@ -33,10 +33,10 @@ describe('IntegrationGrid', () => {
     const googleCard = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(googleCard).getByRole('status', { name: 'Coming Soon' })
+      within(googleCard).getByRole('status', { name: 'Coming Soon' }),
     ).toBeInTheDocument();
     expect(
-      within(googleCard).getByRole('button', { name: 'Coming Soon' })
+      within(googleCard).getByRole('button', { name: 'Coming Soon' }),
     ).toBeDisabled();
     expect(fetchSpy).not.toHaveBeenCalled();
   });

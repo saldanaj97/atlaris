@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAmount } from '@/app/pricing/components/utils';
+import { formatAmount } from '@/app/(marketing)/pricing/components/utils';
 
 describe('formatAmount', () => {
   describe('default behavior (2 decimal places)', () => {

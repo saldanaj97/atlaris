@@ -92,12 +92,12 @@ export async function GET(request: Request): Promise<Response> {
       }
       if (backlogCheck.status === 'fail') {
         reasons.push(
-          `backlog of ${backlogCount} pending jobs exceeds threshold`
+          `backlog of ${backlogCount} pending jobs exceeds threshold`,
         );
       }
       if (regenerationCheck.status === 'fail') {
         reasons.push(
-          `${stuckRegenerationCount} stuck regeneration job(s) detected`
+          `${stuckRegenerationCount} stuck regeneration job(s) detected`,
         );
       }
       response.reason = reasons.join('; ');
@@ -129,7 +129,7 @@ export async function GET(request: Request): Promise<Response> {
         },
         reason: 'Health check failed due to an internal monitoring error',
       } satisfies HealthCheckResponse,
-      { status: 503 }
+      { status: 503 },
     );
   }
 }

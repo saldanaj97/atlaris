@@ -76,7 +76,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '1-2',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(2);
 
     expect(
@@ -87,7 +87,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '3-5',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(5);
 
     expect(
@@ -98,7 +98,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '6-10',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(10);
 
     expect(
@@ -109,7 +109,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '11-15',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(15);
 
     expect(
@@ -120,7 +120,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '16-20',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(20);
 
     expect(
@@ -131,7 +131,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '20+',
         deadlineDate: getDateString(60),
         notes: undefined,
-      }).weeklyHours
+      }).weeklyHours,
     ).toBe(25);
   });
 
@@ -170,7 +170,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '3-5',
         deadlineDate: getDateString(60),
         notes: undefined,
-      })
+      }),
     ).toThrow('Unsupported skill level');
   });
 
@@ -183,7 +183,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: '3-5',
         deadlineDate: getDateString(60),
         notes: undefined,
-      })
+      }),
     ).toThrow('Unsupported learning style');
   });
 
@@ -196,7 +196,7 @@ describe('normalizeOnboardingValues', () => {
         weeklyHours: 'invalid',
         deadlineDate: getDateString(60),
         notes: undefined,
-      })
+      }),
     ).toThrow('Unable to parse weekly hours');
   });
 

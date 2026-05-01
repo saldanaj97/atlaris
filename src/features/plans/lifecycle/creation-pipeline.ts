@@ -1,5 +1,6 @@
 import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import type { PlanPersistencePort, QuotaPort } from './ports';
 import type {
@@ -7,13 +8,13 @@ import type {
   CreatePlanSuccess,
   NormalizedDuration,
   PlanInsertData,
-  SubscriptionTier,
 } from './types';
 
 type CreationLifecycleLabel = 'create';
 
 export interface CreationGatePorts
-  extends Pick<PlanPersistencePort, 'findCappedPlanWithoutModules'>,
+  extends
+    Pick<PlanPersistencePort, 'findCappedPlanWithoutModules'>,
     Pick<
       QuotaPort,
       'resolveUserTier' | 'checkDurationCap' | 'normalizePlanDuration'
@@ -32,7 +33,7 @@ const CREATE_LOG_BASE: Record<CreationLifecycleLabel, string> = {
 };
 
 export function getCreateLogBase(
-  lifecycleLabel: CreationLifecycleLabel
+  lifecycleLabel: CreationLifecycleLabel,
 ): string {
   return CREATE_LOG_BASE[lifecycleLabel];
 }
@@ -45,7 +46,7 @@ export async function checkCreationGate(
     startDate: string | null;
     deadlineDate: string | null;
     lifecycleLabel: CreationLifecycleLabel;
-  }
+  },
 ): Promise<CreationGateResult> {
   const { userId, weeklyHours, startDate, deadlineDate, lifecycleLabel } =
     params;
@@ -55,7 +56,7 @@ export async function checkCreationGate(
   if (cappedPlanId) {
     logger.info(
       { userId, cappedPlanId },
-      `${logBase}: attempt cap exceeded (existing capped plan)`
+      `${logBase}: attempt cap exceeded (existing capped plan)`,
     );
     return {
       blocked: true,
@@ -82,7 +83,7 @@ export async function checkCreationGate(
   if (!requestedCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (requested duration cap)`
+      `${logBase}: quota rejected (requested duration cap)`,
     );
     return {
       blocked: true,
@@ -110,7 +111,7 @@ export async function checkCreationGate(
   if (!durationCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (normalized duration cap)`
+      `${logBase}: quota rejected (normalized duration cap)`,
     );
     return {
       blocked: true,
@@ -147,7 +148,7 @@ export async function insertCreatedPlan(params: {
   if (!insertResult.success) {
     logger.info(
       { userId },
-      `${getCreateLogBase(lifecycleLabel)}: quota rejected (plan limit)`
+      `${getCreateLogBase(lifecycleLabel)}: quota rejected (plan limit)`,
     );
     return {
       status: 'quota_rejected',
@@ -157,7 +158,7 @@ export async function insertCreatedPlan(params: {
 
   logger.info(
     { userId, planId: insertResult.id, tier, origin: planData.origin },
-    `${getCreateLogBase(lifecycleLabel)}: plan created`
+    `${getCreateLogBase(lifecycleLabel)}: plan created`,
   );
   return {
     status: 'success',

@@ -72,7 +72,7 @@ describe('POST /api/v1/plans/stream user provisioning', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-      })
+      }),
     );
 
     expect(response.status).toBe(200);

@@ -16,11 +16,11 @@ type NormalizedEffortResult = {
 function normalizeEffort(
   minutes: number,
   min: number,
-  max: number
+  max: number,
 ): NormalizedEffortResult {
   if (!Number.isFinite(minutes)) {
     throw new Error(
-      `Effort value must be a finite number (received: ${typeof minutes})`
+      `Effort value must be a finite number (received: ${typeof minutes})`,
     );
   }
 
@@ -32,7 +32,7 @@ function normalizeEffort(
 }
 
 export function normalizeModuleMinutes(
-  minutes: number
+  minutes: number,
 ): NormalizedEffortResult {
   return normalizeEffort(minutes, MODULE_MIN_MINUTES, MODULE_MAX_MINUTES);
 }
@@ -43,7 +43,7 @@ export function normalizeTaskMinutes(minutes: number): NormalizedEffortResult {
 
 export function aggregateNormalizationFlags(
   moduleResults: NormalizedEffortResult[],
-  taskResults: NormalizedEffortResult[]
+  taskResults: NormalizedEffortResult[],
 ): EffortNormalizationFlags {
   return {
     modulesClamped: moduleResults.some((result) => result.clamped),

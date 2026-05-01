@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lte } from 'drizzle-orm';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -50,7 +50,7 @@ export async function insertJobRecord(
     data: JobPayload;
     priority: number;
   },
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<JobEnqueueResult> {
   const client = dbClient ?? getDb();
 
@@ -109,7 +109,7 @@ export async function insertJobRecord(
  */
 export async function claimNextPendingJob(
   types: JobType[],
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -127,8 +127,8 @@ export async function claimNextPendingJob(
         and(
           eq(jobQueue.status, 'pending'),
           inArray(jobQueue.jobType, types),
-          lte(jobQueue.scheduledFor, startTime)
-        )
+          lte(jobQueue.scheduledFor, sql<Date>`now()`),
+        ),
       )
       .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
       .limit(1)
@@ -159,7 +159,7 @@ export async function claimNextPendingJob(
 export async function completeJobRecord(
   jobId: string,
   result: JobResult,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -189,7 +189,7 @@ export async function failJobRecord(
   jobId: string,
   error: string,
   retryable?: boolean,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -199,12 +199,12 @@ export async function failJobRecord(
     const shouldRetry = computeShouldRetry(
       retryable,
       nextAttempts,
-      current.maxAttempts
+      current.maxAttempts,
     );
 
     const retryDelaySeconds = getRetryDelaySeconds(nextAttempts);
     const scheduledForRetry = new Date(
-      now.getTime() + retryDelaySeconds * 1000
+      now.getTime() + retryDelaySeconds * 1000,
     );
 
     const payloadWithHistory = appendErrorHistoryEntry(current.payload, {

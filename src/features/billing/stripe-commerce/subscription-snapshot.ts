@@ -5,7 +5,7 @@ import type { CommerceSubscriptionSnapshot } from '@/features/billing/stripe-com
  * Maps a Stripe subscription object into the commerce gateway snapshot shape.
  */
 export function stripeSubscriptionToCommerceSnapshot(
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
 ): CommerceSubscriptionSnapshot {
   const customerId =
     typeof subscription.customer === 'string'

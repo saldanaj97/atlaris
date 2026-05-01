@@ -31,7 +31,7 @@ function isOptionalDate(value: unknown): value is Date | null {
 }
 
 function isOptionalPreferredAiModel(
-  value: unknown
+  value: unknown,
 ): value is PreferredAiModel | null {
   return value === null || (typeof value === 'string' && isValidModelId(value));
 }
@@ -92,7 +92,7 @@ const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
 export async function getUserByAuthId(
   authUserId: string,
   dbClient?: UsersDbClient,
-  deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps
+  deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps,
 ): Promise<DbUser | undefined> {
   if (dbClient === undefined) {
     const contextUser = deps.getRequestContext()?.user;
@@ -120,7 +120,7 @@ export async function getUserByAuthId(
 export async function createUser(
   userData: CreateUserData,
   dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps
+  deps: UsersQueryDeps = defaultUsersQueryDeps,
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? deps.getDb();
 
@@ -146,7 +146,7 @@ export async function updateUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
   dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps
+  deps: UsersQueryDeps = defaultUsersQueryDeps,
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? deps.getDb();
 

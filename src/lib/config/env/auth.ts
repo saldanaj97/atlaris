@@ -70,7 +70,7 @@ export function createNeonAuthEnv(env: EnvSource): NeonAuthEnv {
       issues.length > 0
         ? issues.map((issue) => issue.message).join('; ')
         : 'Invalid Neon auth config',
-      envKeys.length === 1 ? envKeys[0] : undefined
+      envKeys.length === 1 ? envKeys[0] : undefined,
     );
   }
   return parsed.data;

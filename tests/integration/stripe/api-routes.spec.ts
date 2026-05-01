@@ -1,3 +1,13 @@
+import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
+import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
+import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
+import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
+import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
+import { users } from '@/lib/db/schema';
+import { db } from '@/lib/db/service-role';
 import {
   makeStripeInvoice,
   makeStripeMock,
@@ -6,12 +16,7 @@ import {
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
-import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
-import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { setTestUser } from '../../helpers/auth';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,
@@ -46,7 +51,25 @@ function makeStripeEvent({
 
 /** Minimal Stripe client so webhook tests never touch real `getStripe()` / env keys. */
 const defaultWebhookStripe = makeStripeMock({});
-const webhookPOST = createWebhookHandler({ stripe: defaultWebhookStripe });
+const createTestBoundary = (
+  stripe: ReturnType<typeof makeStripeMock>,
+): StripeCommerceBoundary => ({
+  beginCheckout: (input) =>
+    createStripeCommerceBoundary({
+      gateway: new LiveStripeGateway(stripe),
+    }).beginCheckout(input),
+  openPortal: (input) =>
+    createStripeCommerceBoundary({
+      gateway: new LiveStripeGateway(stripe),
+    }).openPortal(input),
+  acceptWebhook: (input) =>
+    createStripeCommerceBoundary({
+      gateway: new LiveStripeGateway(stripe),
+    }).acceptWebhook(input),
+});
+const webhookPOST = createWebhookHandler({
+  boundary: createTestBoundary(defaultWebhookStripe),
+});
 
 describe('Stripe API Routes', () => {
   afterEach(() => {
@@ -87,7 +110,7 @@ describe('Stripe API Routes', () => {
           body: JSON.stringify({
             returnUrl: '/settings',
           }),
-        }
+        },
       );
 
       const response = await portalPOST(request);
@@ -96,7 +119,7 @@ describe('Stripe API Routes', () => {
 
       const body = await response.json();
       expect(body.portalUrl).toBe(
-        'https://billing.stripe.com/session_portal123'
+        'https://billing.stripe.com/session_portal123',
       );
     });
 
@@ -128,7 +151,7 @@ describe('Stripe API Routes', () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({}),
-        }
+        },
       );
 
       const response = await portalPOST(request);
@@ -163,7 +186,7 @@ describe('Stripe API Routes', () => {
         'http://localhost/api/v1/stripe/create-portal',
         {
           method: 'POST',
-        }
+        },
       );
 
       const response = await portalPOST(request);
@@ -171,7 +194,7 @@ describe('Stripe API Routes', () => {
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body.portalUrl).toBe(
-        'https://billing.stripe.com/session_empty_body'
+        'https://billing.stripe.com/session_empty_body',
       );
       expect(mockStripe.billingPortal.sessions.create).toHaveBeenCalled();
     });
@@ -202,7 +225,7 @@ describe('Stripe API Routes', () => {
             'Content-Type': 'application/json',
           },
           body: '{ not valid json',
-        }
+        },
       );
 
       const response = await portalPOST(request);
@@ -249,7 +272,7 @@ describe('Stripe API Routes', () => {
           body: JSON.stringify({
             returnUrl,
           }),
-        }
+        },
       );
 
       const response = await portalPOST(request);
@@ -299,76 +322,83 @@ describe('Stripe API Routes', () => {
     it.each([
       { cancelAtPeriodEnd: true, eventId: 'evt_sub_created_true' },
       { cancelAtPeriodEnd: false, eventId: 'evt_sub_created_false' },
-    ])('handles subscription.created event and syncs cancelAtPeriodEnd=$cancelAtPeriodEnd to DB', async ({
-      cancelAtPeriodEnd,
-      eventId,
-    }) => {
-      const userId = await createAuthTestUser();
-      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
-        subscriptionTier: 'free',
-        subscriptionStatus: 'canceled',
-      });
-      const expectedSubscriptionId = buildStripeSubscriptionId(
-        userId,
-        'webhook-created'
-      );
+    ])(
+      'handles subscription.created event and syncs cancelAtPeriodEnd=$cancelAtPeriodEnd to DB',
+      async ({ cancelAtPeriodEnd, eventId }) => {
+        const userId = await createAuthTestUser();
+        const { stripeCustomerId } = await markUserAsSubscribed(userId, {
+          subscriptionTier: 'free',
+          subscriptionStatus: 'canceled',
+        });
+        const expectedSubscriptionId = buildStripeSubscriptionId(
+          userId,
+          'webhook-created',
+        );
 
-      const event = makeStripeEvent({
-        id: eventId,
-        type: 'customer.subscription.created',
-        livemode: false,
-        dataObject: makeStripeSubscription({
-          id: expectedSubscriptionId,
-          customer: stripeCustomerId,
-          status: 'active',
-          cancel_at_period_end: cancelAtPeriodEnd,
-          items: {
-            data: [
-              {
-                price: { id: 'price_starter' },
-              },
-            ],
-          },
-          current_period_end: 1735689600,
-        }),
-      });
-
-      const mockStripe = makeStripeMock({
-        prices: {
-          retrieve: vi.fn().mockResolvedValue({
-            id: 'price_starter',
-            product: {
-              metadata: { tier: 'starter' },
+        const event = makeStripeEvent({
+          id: eventId,
+          type: 'customer.subscription.created',
+          livemode: false,
+          dataObject: makeStripeSubscription({
+            id: expectedSubscriptionId,
+            customer: stripeCustomerId,
+            status: 'active',
+            cancel_at_period_end: cancelAtPeriodEnd,
+            items: {
+              data: [
+                {
+                  price: { id: 'price_starter' },
+                },
+              ],
             },
+            current_period_end: 1735689600,
           }),
-        },
-      });
-
-      const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
-
-      vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
-
-      const createWebhookRequest = () =>
-        new Request('http://localhost/api/v1/stripe/webhook', {
-          method: 'POST',
-          headers: {
-            'stripe-signature': 'test_signature',
-          },
-          body: JSON.stringify(event),
         });
 
-      const response = await webhookPOSTWithMock(createWebhookRequest());
+        const mockStripe = makeStripeMock({
+          prices: {
+            retrieve: vi.fn().mockResolvedValue({
+              id: 'price_starter',
+              product: {
+                metadata: { tier: 'starter' },
+              },
+            }),
+          },
+        });
 
-      expect(response.status).toBe(200);
+        const webhookPOSTWithMock = createWebhookHandler({
+          boundary: createTestBoundary(mockStripe),
+        });
 
-      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
-      expect(user?.subscriptionTier).toBe('starter');
-      expect(user?.subscriptionStatus).toBe('active');
-      expect(user?.stripeCustomerId).toBe(stripeCustomerId);
-      expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
-      expect(user?.subscriptionPeriodEnd).toEqual(new Date(1735689600 * 1000));
-      expect(user?.cancelAtPeriodEnd).toBe(cancelAtPeriodEnd);
-    });
+        vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
+
+        const createWebhookRequest = () =>
+          new Request('http://localhost/api/v1/stripe/webhook', {
+            method: 'POST',
+            headers: {
+              'stripe-signature': 'test_signature',
+            },
+            body: JSON.stringify(event),
+          });
+
+        const response = await webhookPOSTWithMock(createWebhookRequest());
+
+        expect(response.status).toBe(200);
+
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(sql`id = ${userId}`);
+        expect(user?.subscriptionTier).toBe('starter');
+        expect(user?.subscriptionStatus).toBe('active');
+        expect(user?.stripeCustomerId).toBe(stripeCustomerId);
+        expect(user?.stripeSubscriptionId).toBe(expectedSubscriptionId);
+        expect(user?.subscriptionPeriodEnd).toEqual(
+          new Date(1735689600 * 1000),
+        );
+        expect(user?.cancelAtPeriodEnd).toBe(cancelAtPeriodEnd);
+      },
+    );
 
     it('handles subscription.deleted event and downgrades to free', async () => {
       const userId = await createAuthTestUser();
@@ -382,7 +412,7 @@ describe('Stripe API Routes', () => {
         .where(sql`id = ${userId}`);
       const expectedSubscriptionId = buildStripeSubscriptionId(
         userId,
-        'webhook-deleted'
+        'webhook-deleted',
       );
 
       const event = makeStripeEvent({
@@ -397,7 +427,7 @@ describe('Stripe API Routes', () => {
 
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
       const webhookPOSTWithMock = createWebhookHandler({
-        stripe: makeStripeMock({}),
+        boundary: createTestBoundary(makeStripeMock({})),
       });
 
       const request = new Request('http://localhost/api/v1/stripe/webhook', {
@@ -413,7 +443,10 @@ describe('Stripe API Routes', () => {
       expect(response.status).toBe(200);
 
       // Verify downgraded to free
-      const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(sql`id = ${userId}`);
       expect(user?.subscriptionTier).toBe('free');
       expect(user?.subscriptionStatus).toBe('canceled');
       expect(user?.stripeSubscriptionId).toBeNull();
@@ -428,7 +461,7 @@ describe('Stripe API Routes', () => {
       });
       const expectedSubscriptionId = buildStripeSubscriptionId(
         userId,
-        'webhook-paid'
+        'webhook-paid',
       );
 
       const event = makeStripeEvent({
@@ -458,7 +491,7 @@ describe('Stripe API Routes', () => {
                 ],
               },
               current_period_end: 1735689600,
-            })
+            }),
           ),
         },
         prices: {
@@ -471,7 +504,9 @@ describe('Stripe API Routes', () => {
         },
       });
 
-      const webhookPOSTWithMock = createWebhookHandler({ stripe: mockStripe });
+      const webhookPOSTWithMock = createWebhookHandler({
+        boundary: createTestBoundary(mockStripe),
+      });
 
       vi.spyOn(Stripe.webhooks, 'constructEvent').mockReturnValue(event);
 
@@ -496,7 +531,7 @@ describe('Stripe API Routes', () => {
       expect(firstUser?.subscriptionStatus).toBe('active');
       expect(firstUser?.stripeSubscriptionId).toBe(expectedSubscriptionId);
       expect(firstUser?.subscriptionPeriodEnd).toEqual(
-        new Date(1735689600 * 1000)
+        new Date(1735689600 * 1000),
       );
       expect(firstUser?.cancelAtPeriodEnd).toBe(false);
 
@@ -509,13 +544,13 @@ describe('Stripe API Routes', () => {
         .where(sql`id = ${userId}`);
       expect(secondUser?.subscriptionTier).toBe(firstUser?.subscriptionTier);
       expect(secondUser?.subscriptionStatus).toBe(
-        firstUser?.subscriptionStatus
+        firstUser?.subscriptionStatus,
       );
       expect(secondUser?.stripeSubscriptionId).toBe(
-        firstUser?.stripeSubscriptionId
+        firstUser?.stripeSubscriptionId,
       );
       expect(secondUser?.subscriptionPeriodEnd).toEqual(
-        firstUser?.subscriptionPeriodEnd
+        firstUser?.subscriptionPeriodEnd,
       );
       expect(secondUser?.cancelAtPeriodEnd).toBe(firstUser?.cancelAtPeriodEnd);
     });
@@ -574,6 +609,68 @@ describe('Stripe API Routes', () => {
       const response = await subscriptionGET(request);
 
       expect(response.status).toBe(401);
+    });
+  });
+
+  describe('GET /api/v1/stripe/local/complete-checkout', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('returns 401 when not authenticated', async () => {
+      vi.stubEnv('STRIPE_LOCAL_MODE', 'true');
+      vi.stubEnv('LOCAL_PRODUCT_TESTING', 'true');
+      clearTestUser();
+
+      const url = new URL(
+        'http://localhost/api/v1/stripe/local/complete-checkout',
+      );
+      url.searchParams.set('price_id', LOCAL_PRICE_IDS.starterMonthly);
+      url.searchParams.set('next', '/settings/billing');
+
+      const response = await localCompleteCheckoutGET(
+        new Request(url.toString()),
+      );
+
+      expect(response.status).toBe(401);
+    });
+
+    it('returns 404 when local completion route is disabled', async () => {
+      vi.stubEnv('STRIPE_LOCAL_MODE', 'false');
+      vi.stubEnv('LOCAL_PRODUCT_TESTING', 'false');
+
+      await createAuthTestUser();
+
+      const url = new URL(
+        'http://localhost/api/v1/stripe/local/complete-checkout',
+      );
+      url.searchParams.set('price_id', LOCAL_PRICE_IDS.starterMonthly);
+      url.searchParams.set('next', '/settings/billing');
+
+      const response = await localCompleteCheckoutGET(
+        new Request(url.toString()),
+      );
+
+      expect(response.status).toBe(404);
+    });
+
+    it('returns 400 when price_id is not a local catalog id', async () => {
+      vi.stubEnv('STRIPE_LOCAL_MODE', 'true');
+      vi.stubEnv('LOCAL_PRODUCT_TESTING', 'true');
+
+      await createAuthTestUser();
+
+      const url = new URL(
+        'http://localhost/api/v1/stripe/local/complete-checkout',
+      );
+      url.searchParams.set('price_id', 'price_unknown_not_local');
+      url.searchParams.set('next', '/settings/billing');
+
+      const response = await localCompleteCheckoutGET(
+        new Request(url.toString()),
+      );
+
+      expect(response.status).toBe(400);
     });
   });
 });

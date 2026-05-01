@@ -19,7 +19,7 @@ export type StreamingEvent = {
  * @returns Array of parsed streaming events
  */
 export async function readStreamingResponse(
-  response: Response
+  response: Response,
 ): Promise<StreamingEvent[]> {
   const reader = response.body?.getReader();
   const decoder = new TextDecoder();

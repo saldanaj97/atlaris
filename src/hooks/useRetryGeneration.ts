@@ -26,7 +26,7 @@ export function useRetryGeneration(
   planId: string,
   maxAttempts: number,
   currentAttempts: number,
-  session: UsePlanGenerationSessionResult
+  session: UsePlanGenerationSessionResult,
 ): UseRetryGenerationReturn {
   const router = useRouter();
   const { state, startSession, cancel } = session;

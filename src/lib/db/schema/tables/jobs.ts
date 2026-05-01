@@ -51,7 +51,7 @@ export const jobQueue = pgTable(
     index('idx_job_queue_status_scheduled_priority').on(
       table.status,
       table.scheduledFor,
-      table.priority
+      table.priority,
     ),
     index('idx_job_queue_user_id').on(table.userId),
     index('idx_job_queue_plan_id').on(table.planId),
@@ -68,19 +68,7 @@ export const jobQueue = pgTable(
       )`,
     }),
 
-    // Users can create jobs only for themselves
-    pgPolicy('job_queue_insert_own', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: sql`${table.userId} IN (
-        SELECT id FROM ${users} WHERE ${users.authUserId} = ${currentUserId}
-      )`,
-    }),
-
-    // Intentionally no authenticated UPDATE policy:
-    // only service-role workers can transition job state.
-
-    // Intentionally no authenticated DELETE policy:
-    // only service-role workers can perform queue cleanup.
-  ]
+    // Intentionally no authenticated INSERT/UPDATE/DELETE policies:
+    // only service-role workers can write queue rows.
+  ],
 ).enableRLS();

@@ -36,7 +36,7 @@ describe('Client Logger', () => {
       expect(consoleError.spy).toHaveBeenCalledWith(
         'Error:',
         'Something went wrong',
-        { code: 500 }
+        { code: 500 },
       );
     });
 
@@ -45,7 +45,7 @@ describe('Client Logger', () => {
       clientLogger.error('An error occurred:', error);
       expect(consoleError.spy).toHaveBeenCalledWith(
         'An error occurred:',
-        error
+        error,
       );
     });
 
@@ -71,7 +71,7 @@ describe('Client Logger', () => {
       expect(consoleWarn.spy).toHaveBeenCalledWith(
         'Warning:',
         'Deprecated feature',
-        { feature: 'old-api' }
+        { feature: 'old-api' },
       );
     });
 
@@ -97,7 +97,7 @@ describe('Client Logger', () => {
       expect(consoleInfo.spy).toHaveBeenCalledWith(
         'User action:',
         'Button clicked',
-        { buttonId: 'submit' }
+        { buttonId: 'submit' },
       );
     });
 
@@ -121,7 +121,7 @@ describe('Client Logger', () => {
       expect(consoleDebug.spy).toHaveBeenCalledWith(
         'Debug:',
         'Component rendered',
-        { count: 5 }
+        { count: 5 },
       );
     });
 
@@ -199,7 +199,7 @@ describe('Client Logger', () => {
       clientLogger.warn('Warning:', 'This feature is deprecated');
       expect(consoleWarn.spy).toHaveBeenCalledWith(
         'Warning:',
-        'This feature is deprecated'
+        'This feature is deprecated',
       );
     });
 

@@ -22,7 +22,7 @@ function normalizeColumns(rawColumns: string): string[] {
 function extractUsersUpdateGrantColumns(fileContents: string): string[][] {
   return [
     ...fileContents.matchAll(
-      /GRANT UPDATE \(([^)]+)\) ON "users" TO authenticated;/g
+      /GRANT UPDATE \(([^)]+)\) ON "users" TO authenticated;/g,
     ),
   ].map((match) => normalizeColumns(match[1] ?? ''));
 }
@@ -34,9 +34,9 @@ describe('authenticated users UPDATE allowlist sync', () => {
     const migrationContents = readFileSync(
       resolve(
         TEST_DIR,
-        '../../../src/lib/db/migrations/0018_harden_users_update_columns.sql'
+        '../../../src/lib/db/migrations/0018_harden_users_update_columns.sql',
       ),
-      'utf8'
+      'utf8',
     );
 
     const migrationMatches = extractUsersUpdateGrantColumns(migrationContents);
@@ -48,7 +48,7 @@ describe('authenticated users UPDATE allowlist sync', () => {
   it('keeps ci-trunk grant blocks in sync with the canonical allowlist', () => {
     const workflowContents = readFileSync(
       resolve(TEST_DIR, '../../../.github/workflows/ci-trunk.yml'),
-      'utf8'
+      'utf8',
     );
 
     const workflowMatches = extractUsersUpdateGrantColumns(workflowContents);
@@ -63,38 +63,38 @@ describe('authenticated users UPDATE allowlist sync', () => {
   it('keeps shared Postgres bootstrap using the canonical column list for users UPDATE', () => {
     const contents = readFileSync(
       resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
-      'utf8'
+      'utf8',
     );
 
     expect(contents).toMatch(
-      /GRANT UPDATE \(\$\{USERS_AUTHENTICATED_UPDATE_COLUMNS\.join\(', '\)\}\) ON "users" TO authenticated/
+      /GRANT UPDATE \(\$\{USERS_AUTHENTICATED_UPDATE_COLUMNS\.join\(', '\)\}\) ON "users" TO authenticated/,
     );
   });
 
   it('keeps rls-bootstrap using canonical privileges for users UPDATE', () => {
     const contents = readFileSync(
       resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
-      'utf8'
+      'utf8',
     );
 
     expect(contents).toContain('USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL');
     expect(contents).toContain(
-      'sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)'
+      'sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)',
     );
   });
 
   it('installs auth.jwt from the shared bootstrap module and rls-bootstrap', () => {
     const sharedBootstrap = readFileSync(
       resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
-      'utf8'
+      'utf8',
     );
     const testcontainers = readFileSync(
       resolve(TEST_DIR, '../../setup/testcontainers.ts'),
-      'utf8'
+      'utf8',
     );
     const rlsBootstrap = readFileSync(
       resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
-      'utf8'
+      'utf8',
     );
 
     expect(sharedBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");

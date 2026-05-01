@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
 import type { JSX } from 'react';
 
+import { Surface } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
 
 interface ComingSoonAlertProps {
@@ -22,24 +23,22 @@ export function ComingSoonAlert({
   className,
 }: ComingSoonAlertProps): JSX.Element {
   return (
-    <section
+    <Surface
+      variant="muted"
+      padding="comfortable"
+      role="region"
       aria-label="Coming soon"
-      className={cn(
-        'relative flex items-start gap-4 overflow-hidden rounded-2xl border border-white/40 bg-white/30 px-5 py-4 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30',
-        className
-      )}
+      className={cn('flex items-start gap-4', className)}
     >
-      <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
-
-      <div className="gradient-brand flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-md">
-        <Icon className="h-4 w-4 text-white" aria-hidden="true" />
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-panel-border bg-panel text-primary shadow-none">
+        <Icon className="h-4 w-4" aria-hidden="true" />
       </div>
       <div className="min-w-0 space-y-0.5">
-        <p className="text-sm font-medium">{title}</p>
-        <p className="text-muted-foreground text-sm leading-relaxed">
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {description}
         </p>
       </div>
-    </section>
+    </Surface>
   );
 }

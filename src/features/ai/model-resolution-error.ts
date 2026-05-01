@@ -12,11 +12,11 @@ export class ModelResolutionError extends Error {
 
   constructor(
     message = 'Provider initialization failed.',
-    options: ModelResolutionErrorOptions = {}
+    options: ModelResolutionErrorOptions = {},
   ) {
     super(
       message,
-      options.cause != null ? { cause: options.cause } : undefined
+      options.cause != null ? { cause: options.cause } : undefined,
     );
     this.name = 'ModelResolutionError';
     this.code = options.code ?? 'PROVIDER_INIT_FAILED';

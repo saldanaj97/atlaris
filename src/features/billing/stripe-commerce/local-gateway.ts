@@ -13,7 +13,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
 
   const customers = {
     create: async (
-      params: Stripe.CustomerCreateParams
+      params: Stripe.CustomerCreateParams,
     ): Promise<Stripe.Customer> => {
       const meta = params.metadata;
       const userId =
@@ -30,7 +30,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   const checkout = {
     sessions: {
       create: async (
-        params: Stripe.Checkout.SessionCreateParams
+        params: Stripe.Checkout.SessionCreateParams,
       ): Promise<Stripe.Checkout.Session> => {
         const lineItem = params.line_items?.[0];
         const priceId =
@@ -51,7 +51,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
           }
         }
         const url = `${normalizedBase}/api/v1/stripe/local/complete-checkout?price_id=${encodeURIComponent(
-          priceId
+          priceId,
         )}&session_id=${encodeURIComponent(sessionId)}&next=${encodeURIComponent(nextPath)}`;
         return {
           id: sessionId,
@@ -78,7 +78,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   const prices = {
     retrieve: async (
       priceId: string,
-      _params?: Stripe.PriceRetrieveParams
+      _params?: Stripe.PriceRetrieveParams,
     ): Promise<Stripe.Price> => {
       const tier = tierFromLocalPriceId(priceId);
       if (!tier) {
@@ -126,7 +126,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
       }) as unknown as Stripe.Subscription,
     update: async (
       id: string,
-      _params: Stripe.SubscriptionUpdateParams
+      _params: Stripe.SubscriptionUpdateParams,
     ): Promise<Stripe.Subscription> =>
       ({
         id,

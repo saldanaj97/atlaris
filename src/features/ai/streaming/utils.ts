@@ -1,9 +1,5 @@
 import { logger } from '@/lib/logging/logger';
 
-/**
- * Converts an object to a single-chunk ReadableStream<string>.
- * This keeps provider contracts aligned on native web streams.
- */
 export function toStream(obj: unknown): ReadableStream<string> {
   const data =
     typeof obj === 'string'
@@ -23,11 +19,12 @@ export function toStream(obj: unknown): ReadableStream<string> {
 }
 
 /**
- * Converts a ReadableStream<string> to AsyncIterable<string> for parser compatibility.
- * Logs and throws on invalid non-string chunks instead of silently dropping.
+ * Converts a ReadableStream into an AsyncIterable of string chunks for stream parsers.
+ * Non-string chunks are logged and thrown, and early exits cancel the reader before
+ * releasing the stream lock.
  */
 export function readableStreamToAsyncIterable(
-  stream: ReadableStream<string>
+  stream: ReadableStream<string>,
 ): AsyncIterable<string> {
   return {
     async *[Symbol.asyncIterator]() {
@@ -43,7 +40,7 @@ export function readableStreamToAsyncIterable(
           if (typeof value !== 'string') {
             logger.warn(
               { chunkType: typeof value },
-              'Invalid non-string chunk in AI stream; expected string'
+              'Invalid non-string chunk in AI stream; expected string',
             );
             throw new TypeError(`Expected string chunk, got ${typeof value}`);
           }
@@ -62,11 +59,8 @@ export function readableStreamToAsyncIterable(
   };
 }
 
-/**
- * Converts async text chunks into a native ReadableStream<string>.
- */
 export function asyncIterableToReadableStream(
-  iterable: AsyncIterable<string>
+  iterable: AsyncIterable<string>,
 ): ReadableStream<string> {
   let cancelled = false;
   let pump: Promise<void> | null = null;

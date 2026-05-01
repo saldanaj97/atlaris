@@ -1,8 +1,3 @@
-/**
- * Shared fixtures for LearningPlanDetail, GenerationAttempt, and related types.
- * Used by mapper tests (detailToClient, derivation) and plan access tests.
- */
-
 import type {
   ModuleWithTasks,
   TaskResourceWithResource,
@@ -20,9 +15,8 @@ import { createId } from './ids';
 
 const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
 
-/** Builds a GenerationAttempt with failure defaults (for status-derivation tests). */
 export function buildGenerationAttempt(
-  overrides: Partial<GenerationAttempt> = {}
+  overrides: Partial<GenerationAttempt> = {},
 ): GenerationAttempt {
   const planId = overrides.planId ?? createId('plan');
   return {
@@ -43,9 +37,8 @@ export function buildGenerationAttempt(
   } satisfies GenerationAttempt;
 }
 
-/** Builds a GenerationAttempt with success defaults (for mapAttemptsToClient etc). */
 export function buildSuccessAttempt(
-  overrides: Partial<GenerationAttempt> = {}
+  overrides: Partial<GenerationAttempt> = {},
 ): GenerationAttempt {
   const planId = overrides.planId ?? createId('plan');
   return {
@@ -70,9 +63,8 @@ export function buildSuccessAttempt(
   } satisfies GenerationAttempt;
 }
 
-/** Builds a TaskResourceWithResource for task fixtures. */
 export function buildTaskResource(
-  overrides: Partial<TaskResourceWithResource> = {}
+  overrides: Partial<TaskResourceWithResource> = {},
 ): TaskResourceWithResource {
   const taskId = overrides.taskId ?? createId('task');
   const resourceId =
@@ -103,9 +95,8 @@ export function buildTaskResource(
   } satisfies TaskResourceWithResource;
 }
 
-/** Builds a TaskWithRelations for module fixtures. */
 export function buildTask(
-  overrides: Partial<TaskWithRelations> = {}
+  overrides: Partial<TaskWithRelations> = {},
 ): TaskWithRelations {
   const moduleId = overrides.moduleId ?? createId('module');
   const taskId = overrides.id ?? createId('task');
@@ -126,9 +117,8 @@ export function buildTask(
   } satisfies TaskWithRelations;
 }
 
-/** Builds a ModuleWithTasks. Use tasks: [] for minimal status-derivation tests. */
 export function buildModule(
-  overrides: Partial<ModuleWithTasks> = {}
+  overrides: Partial<ModuleWithTasks> = {},
 ): ModuleWithTasks {
   const planId = overrides.planId ?? createId('plan');
   const moduleId = overrides.id ?? createId('module');
@@ -146,17 +136,15 @@ export function buildModule(
   } satisfies ModuleWithTasks;
 }
 
-/** Builds a Module (plan row only, no tasks). Use for PlanSummary.modules. */
 function buildModuleRow(overrides: Partial<Module> = {}): Module {
   const { tasks: _tasks, ...row } = buildModule();
   return { ...row, ...overrides } satisfies Module;
 }
 
-/** Builds N module rows for a plan. Use for PlanSummary.modules. */
 export function buildModuleRows(
   planId: string,
   count: number,
-  overrides: Partial<Module> = {}
+  overrides: Partial<Module> = {},
 ): Module[] {
   return Array.from({ length: count }, (_, i) =>
     buildModuleRow({
@@ -164,13 +152,12 @@ export function buildModuleRows(
       id: overrides.id ?? createId('module'),
       planId,
       order: i + 1,
-    })
+    }),
   );
 }
 
-/** Builds a LearningPlanWithModules. */
 export function buildPlan(
-  overrides: Partial<LearningPlanWithModules> = {}
+  overrides: Partial<LearningPlanWithModules> = {},
 ): LearningPlanWithModules {
   return {
     id: overrides.id ?? createId('plan'),
@@ -193,9 +180,8 @@ export function buildPlan(
   } satisfies LearningPlanWithModules;
 }
 
-/** Builds a LearningPlanDetail with optional overrides for all fields. */
 export function buildPlanDetail(
-  overrides: Partial<LearningPlanDetail> = {}
+  overrides: Partial<LearningPlanDetail> = {},
 ): LearningPlanDetail {
   return {
     plan: buildPlan(),
@@ -210,9 +196,8 @@ export function buildPlanDetail(
   } satisfies LearningPlanDetail;
 }
 
-/** Builds a PlanSummary with optional overrides. Centralizes schema so type changes stay in one place. */
 export function buildPlanSummary(
-  overrides: Partial<PlanSummary> = {}
+  overrides: Partial<PlanSummary> = {},
 ): PlanSummary {
   const fullPlan = buildPlan();
   const { modules: _planModules, ...plan } = fullPlan;

@@ -13,8 +13,6 @@ import type { RlsClient } from '@/lib/db/rls';
 import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
 import { AuthError } from './errors';
-import { withRateLimit } from './middleware';
-import type { UserRateLimitCategory } from './user-rate-limit';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
 
@@ -71,7 +69,7 @@ async function requireUser(): Promise<string> {
 
 async function ensureUserRecord(
   authUserId: string,
-  dbClient?: UsersDbClient
+  dbClient?: UsersDbClient,
 ): Promise<DbUser> {
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
@@ -80,7 +78,7 @@ async function ensureUserRecord(
 
   if (localProductTestingEnv.enabled) {
     throw new AuthError(
-      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).'
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
     );
   }
 
@@ -101,7 +99,7 @@ async function ensureUserRecord(
       email,
       name: session.user.name || undefined,
     },
-    dbClient
+    dbClient,
   );
 
   if (!created) {
@@ -123,7 +121,7 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
 async function runWithAuthenticatedContext<T>(
   authUserId: string,
   fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
-  req?: Request
+  req?: Request,
 ): Promise<T> {
   const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
@@ -148,7 +146,7 @@ async function runWithAuthenticatedContext<T>(
 async function runWithTestContext<T>(
   authUserId: string,
   fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
-  req?: Request
+  req?: Request,
 ): Promise<T> {
   const requestDb = getDb();
   const user = await ensureUserRecord(authUserId, requestDb);
@@ -176,7 +174,7 @@ export function withAuth(handler: AuthHandler): PlainHandler {
       return runWithTestContext(
         authUserId,
         (user) => handler({ req, userId: authUserId, user, params }),
-        req
+        req,
       );
     }
 
@@ -185,20 +183,32 @@ export function withAuth(handler: AuthHandler): PlainHandler {
     return runWithAuthenticatedContext(
       authUserId,
       (user) => handler({ req, userId: authUserId, user, params }),
-      req
+      req,
     );
   };
 }
 
 /**
+ * @deprecated Use `requestBoundary.component()` instead. See docs/CHANGELOG.md.
+ * Will be removed in v2.0.
+ *
  * Establishes an RLS-enforced DB context for Server Components.
  * This is the Server Component equivalent of `withAuth` for API routes.
  *
  * Returns null if the user is not authenticated.
  */
+let didWarnWithServerComponentContextDeprecation = false;
+
 export async function withServerComponentContext<T>(
-  fn: (user: DbUser) => MaybePromise<T>
+  fn: (user: DbUser) => MaybePromise<T>,
 ): Promise<T | null> {
+  if (!didWarnWithServerComponentContextDeprecation) {
+    didWarnWithServerComponentContextDeprecation = true;
+    console.warn(
+      'withServerComponentContext() is deprecated; use requestBoundary.component() instead. Removal planned for v2.0.',
+    );
+  }
+
   const authUserId = await getEffectiveAuthUserId();
   if (!authUserId) return null;
 
@@ -210,6 +220,8 @@ export async function withServerComponentContext<T>(
 }
 
 /**
+ * @internal Compatibility shim. Prefer `requestBoundary.action()` for new code.
+ *
  * Wrapper for Server Actions that sets up authenticated RLS context.
  * Equivalent to withServerComponentContext but designed for 'use server' functions.
  * Handles auth, RLS client creation, user lookup, and cleanup.
@@ -220,7 +232,7 @@ export async function withServerComponentContext<T>(
  * Returns null if user is not authenticated (caller should handle).
  */
 export async function withServerActionContext<T>(
-  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>
+  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>,
 ): Promise<T | null> {
   const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
@@ -230,11 +242,4 @@ export async function withServerActionContext<T>(
   }
 
   return runWithAuthenticatedContext(authUserId, fn);
-}
-
-export function withAuthAndRateLimit(
-  category: UserRateLimitCategory,
-  handler: AuthHandler
-): PlainHandler {
-  return withAuth(withRateLimit(category)(handler));
 }

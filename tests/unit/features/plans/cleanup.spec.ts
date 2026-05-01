@@ -41,7 +41,7 @@ function createMockDbClient(resultCount: number) {
   } as unknown as DbClient;
 
   transactionFn.mockImplementation(
-    async (callback: (tx: DbClient) => unknown) => callback(client)
+    async (callback: (tx: DbClient) => unknown) => callback(client),
   );
 
   return {
@@ -83,7 +83,7 @@ describe('cleanupStuckPlans', () => {
       1,
       'id-0',
       mockDb.client,
-      expect.any(Function)
+      expect.any(Function),
     );
 
     const firstClock = markFailure.mock.calls[0]?.[2] as
@@ -141,7 +141,7 @@ describe('cleanupOrphanedAttempts', () => {
     expect(mockDb.spies.setFn).toHaveBeenCalledWith(
       expect.objectContaining({
         classification: 'timeout',
-      })
+      }),
     );
   });
 
@@ -166,7 +166,7 @@ describe('cleanupOrphanedAttempts', () => {
 
     const result = await cleanupOrphanedAttempts(
       mockDb.client,
-      customThreshold
+      customThreshold,
     );
 
     expect(result.cleaned).toBe(2);

@@ -35,14 +35,14 @@ export async function enqueueJob(
   planId: string | null,
   userId: string,
   data: JobPayload,
-  priority = 0
+  priority = 0,
 ): Promise<string> {
   const result = await enqueueJobWithResult(
     type,
     planId,
     userId,
     data,
-    priority
+    priority,
   );
   return result.id;
 }
@@ -52,7 +52,7 @@ export async function enqueueJobWithResult(
   planId: string | null,
   userId: string,
   data: JobPayload,
-  priority = 0
+  priority = 0,
 ): Promise<JobEnqueueResult> {
   return insertJobRecord({ type, planId, userId, data, priority }, db);
 }
@@ -63,7 +63,7 @@ export async function getNextJob(types: JobType[]): Promise<Job | null> {
 
 export async function completeJob(
   jobId: string,
-  result: JobResult
+  result: JobResult,
 ): Promise<Job | null> {
   return completeJobRecord(jobId, result, db);
 }
@@ -71,7 +71,7 @@ export async function completeJob(
 export async function failJob(
   jobId: string,
   error: string,
-  options: FailJobOptions = {}
+  options: FailJobOptions = {},
 ): Promise<Job | null> {
   return failJobRecord(jobId, error, options.retryable, db);
 }
@@ -79,7 +79,7 @@ export async function failJob(
 export async function getUserJobCount(
   userId: string,
   type: JobType,
-  since: Date
+  since: Date,
 ): Promise<number> {
   return countUserJobsSince(userId, type, since, db);
 }

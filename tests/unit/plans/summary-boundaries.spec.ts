@@ -1,31 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { getAttemptCap } from '@/features/ai/generation-policy';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-models/summary';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
-} from '@/features/plans/status/read-status';
+} from '@/features/plans/read-projection/read-status';
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-projection';
 import type { Module } from '@/shared/types/db.types';
 
 describe('plan summary status boundaries', () => {
   it('maps pending and processing read states to generating summary state', () => {
     expect(
-      derivePlanSummaryStatus({ readStatus: 'pending', completion: 0 })
+      derivePlanSummaryStatus({ readStatus: 'pending', completion: 0 }),
     ).toBe('generating');
     expect(
-      derivePlanSummaryStatus({ readStatus: 'processing', completion: 0.4 })
+      derivePlanSummaryStatus({ readStatus: 'processing', completion: 0.4 }),
     ).toBe('generating');
   });
 
   it('maps ready read state to active or completed based on completion', () => {
     expect(
-      derivePlanSummaryStatus({ readStatus: 'ready', completion: 0 })
+      derivePlanSummaryStatus({ readStatus: 'ready', completion: 0 }),
     ).toBe('active');
     expect(
-      derivePlanSummaryStatus({ readStatus: 'ready', completion: 0.2 })
+      derivePlanSummaryStatus({ readStatus: 'ready', completion: 0.2 }),
     ).toBe('active');
     expect(
-      derivePlanSummaryStatus({ readStatus: 'ready', completion: 1 })
+      derivePlanSummaryStatus({ readStatus: 'ready', completion: 1 }),
     ).toBe('completed');
   });
 
@@ -35,8 +35,8 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap() - 1,
-      })
+        attemptsCount: getGenerationAttemptCap() - 1,
+      }),
     ).toBe('generating');
   });
 
@@ -46,8 +46,8 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap(),
-      })
+        attemptsCount: getGenerationAttemptCap(),
+      }),
     ).toBe('failed');
   });
 
@@ -57,13 +57,41 @@ describe('plan summary status boundaries', () => {
         plan: { generationStatus: 'ready' },
         completion: 0,
         modules: [],
-        attemptsCount: getAttemptCap() + 1,
-      })
+        attemptsCount: getGenerationAttemptCap() + 1,
+      }),
     ).toBe('failed');
   });
 
+  it.each(['generating', 'pending_retry'] as const)(
+    'treats %s without modules below attempt cap as generating in summary views',
+    (generationStatus) => {
+      expect(
+        deriveCanonicalPlanSummaryStatus({
+          plan: { generationStatus },
+          completion: 0,
+          modules: [],
+          attemptsCount: getGenerationAttemptCap() - 1,
+        }),
+      ).toBe('generating');
+    },
+  );
+
+  it.each(['generating', 'pending_retry'] as const)(
+    'treats %s without modules at attempt cap as failed in summary views',
+    (generationStatus) => {
+      expect(
+        deriveCanonicalPlanSummaryStatus({
+          plan: { generationStatus },
+          completion: 0,
+          modules: [],
+          attemptsCount: getGenerationAttemptCap(),
+        }),
+      ).toBe('failed');
+    },
+  );
+
   it('derivePlanReadStatus treats modules as ground truth over failed generationStatus', () => {
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
 
     expect(
       derivePlanReadStatus({
@@ -71,12 +99,12 @@ describe('plan summary status boundaries', () => {
         hasModules: true,
         attemptsCount: attemptCap,
         attemptCap,
-      })
+      }),
     ).toBe('ready');
   });
 
   it('deriveCanonicalPlanSummaryStatus yields active when modules exist despite failed generationStatus', () => {
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
     const moduleRef = { id: 'module-1' } satisfies Pick<Module, 'id'>;
 
     expect(
@@ -85,7 +113,7 @@ describe('plan summary status boundaries', () => {
         completion: 0.25,
         modules: [moduleRef],
         attemptsCount: attemptCap,
-      })
+      }),
     ).toBe('active');
   });
 });

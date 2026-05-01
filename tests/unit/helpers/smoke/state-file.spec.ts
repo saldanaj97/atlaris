@@ -81,7 +81,7 @@ describe('smoke state-file', () => {
     const dir = createSmokeStateTempDir(deps);
     createdDirs.push(dir);
     const payload = buildSmokeStatePayload(
-      'postgresql://u:p@127.0.0.1:5432/atlaris_test'
+      'postgresql://u:p@127.0.0.1:5432/atlaris_test',
     );
     const path = writeSmokeStateFile(dir, payload, deps);
     createdPaths.push(path);
@@ -90,7 +90,7 @@ describe('smoke state-file', () => {
 
   it('fails fast when file is missing', () => {
     expect(() =>
-      readSmokeStateFromPath(join(tmpdir(), 'missing-smoke-state.json'), deps)
+      readSmokeStateFromPath(join(tmpdir(), 'missing-smoke-state.json'), deps),
     ).toThrow(/cannot read/);
   });
 
@@ -110,11 +110,11 @@ describe('smoke state-file', () => {
     fakeFs.writeFileSync(
       path,
       JSON.stringify(buildIncompleteSmokeState()),
-      'utf8'
+      'utf8',
     );
     createdPaths.push(path);
     expect(() => readSmokeStateFromPath(path, deps)).toThrow(
-      /DATABASE_URL_UNPOOLED/
+      /DATABASE_URL_UNPOOLED/,
     );
   });
 
@@ -124,7 +124,7 @@ describe('smoke state-file', () => {
     const path = writeSmokeStateFile(
       dir,
       buildSmokeStatePayload('postgresql://localhost/db'),
-      deps
+      deps,
     );
     createdPaths.push(path);
     expect(() => readSmokeStateFromPath(path, deps)).not.toThrow();

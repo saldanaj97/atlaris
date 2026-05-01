@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 /**
  * QuotaAdapter — production implementation of QuotaPort.
  *
@@ -11,12 +12,9 @@ import {
 } from '@/features/plans/policy/duration';
 import type { DbClient } from '@/lib/db/types';
 
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { QuotaPort } from '../ports';
-import type {
-  DurationCapResult,
-  NormalizedDuration,
-  SubscriptionTier,
-} from '../types';
+import type { DurationCapResult, NormalizedDuration } from '../types';
 
 export class QuotaAdapter implements QuotaPort {
   constructor(private readonly dbClient: DbClient) {}

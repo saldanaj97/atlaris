@@ -15,7 +15,7 @@ describe('local product testing identity', () => {
   it('rejects when no user row exists for DEV_AUTH_USER_ID', async () => {
     setTestUser('ghost-user-not-in-database');
     await expect(requireCurrentUserRecord()).rejects.toThrow(
-      /Local product testing requires a seeded user row/
+      /Local product testing requires a seeded user row/,
     );
   });
 });

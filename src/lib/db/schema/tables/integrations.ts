@@ -57,5 +57,5 @@ export const oauthStateTokens = pgTable(
       to: 'authenticated',
       using: sql`${table.authUserId} = ${currentUserId}`,
     }),
-  ]
+  ],
 ).enableRLS();

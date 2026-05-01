@@ -6,10 +6,7 @@ export {
   openRouterEnv,
 } from '@/lib/config/env/ai';
 
-export {
-  appEnv,
-  createAppEnv,
-} from '@/lib/config/env/app';
+export { appEnv, createAppEnv } from '@/lib/config/env/app';
 export {
   createNeonAuthEnv,
   devAuthEnv,

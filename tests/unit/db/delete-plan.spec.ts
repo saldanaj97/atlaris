@@ -94,12 +94,12 @@ describe('deletePlan', () => {
     expect(mockWhere).toHaveBeenCalledTimes(1);
 
     const deleteWhereQuery = pgDialect.sqlToQuery(
-      capturedDeleteWhere as Parameters<PgDialect['sqlToQuery']>[0]
+      capturedDeleteWhere as Parameters<PgDialect['sqlToQuery']>[0],
     );
     expect(deleteWhereQuery.sql).toContain('"learning_plans"."id"');
     expect(deleteWhereQuery.sql).toContain('"learning_plans"."user_id"');
     expect(deleteWhereQuery.sql).toContain(
-      '"learning_plans"."generation_status"'
+      '"learning_plans"."generation_status"',
     );
     expect(deleteWhereQuery.params).toEqual([
       planId,
@@ -125,28 +125,28 @@ describe('deletePlan', () => {
     await expect(
       deletePlan(planId, userId, mockDbClient, {
         selectOwnedPlanById: mockSelectOwnedPlanById,
-      })
+      }),
     ).rejects.toThrow(connectionLostError);
   });
 
-  it.each([
-    'failed',
-    'pending_retry',
-  ] as const)('deletes a %s plan and returns success', async (generationStatus) => {
-    const plan = createTestPlan({
-      id: planId,
-      userId,
-      generationStatus,
-    });
-    mockSelectOwnedPlanById.mockResolvedValue(plan);
+  it.each(['failed', 'pending_retry'] as const)(
+    'deletes a %s plan and returns success',
+    async (generationStatus) => {
+      const plan = createTestPlan({
+        id: planId,
+        userId,
+        generationStatus,
+      });
+      mockSelectOwnedPlanById.mockResolvedValue(plan);
 
-    const result = await deletePlan(planId, userId, mockDbClient, {
-      selectOwnedPlanById: mockSelectOwnedPlanById,
-    });
+      const result = await deletePlan(planId, userId, mockDbClient, {
+        selectOwnedPlanById: mockSelectOwnedPlanById,
+      });
 
-    expect(result).toEqual({ success: true });
-    expect(mockDeleteFn).toHaveBeenCalledTimes(1);
-  });
+      expect(result).toEqual({ success: true });
+      expect(mockDeleteFn).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('returns currently_generating when the plan starts generating before delete', async () => {
     mockSelectOwnedPlanById
@@ -155,14 +155,14 @@ describe('deletePlan', () => {
           id: planId,
           userId,
           generationStatus: 'ready',
-        })
+        }),
       )
       .mockResolvedValueOnce(
         createTestPlan({
           id: planId,
           userId,
           generationStatus: 'generating',
-        })
+        }),
       );
     mockReturning.mockResolvedValue([]);
 
@@ -181,7 +181,7 @@ describe('deletePlan', () => {
           id: planId,
           userId,
           generationStatus: 'ready',
-        })
+        }),
       )
       .mockResolvedValueOnce(null);
     mockReturning.mockResolvedValue([]);

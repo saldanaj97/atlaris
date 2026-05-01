@@ -26,7 +26,7 @@ type AnalyticsWindow = Window & {
   gtag?: (
     command: 'event',
     eventName: string,
-    payload: GtagEventPayload
+    payload: GtagEventPayload,
   ) => void;
   dataLayer?: DataLayerEvent[];
 };

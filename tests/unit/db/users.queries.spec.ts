@@ -101,7 +101,7 @@ describe('users queries optimization', () => {
     const insert = vi.fn().mockReturnValue({ values });
 
     mockedGetDb.mockReturnValue(
-      makeDbClient({ insert: insert as unknown as DbClient['insert'] })
+      makeDbClient({ insert: insert as unknown as DbClient['insert'] }),
     );
 
     const user = await createUser(
@@ -111,7 +111,7 @@ describe('users queries optimization', () => {
         name: 'User Four',
       },
       undefined,
-      { getDb: mockedGetDb }
+      { getDb: mockedGetDb },
     );
 
     expect(user?.id).toBe('internal-user-4');
@@ -132,14 +132,14 @@ describe('users queries optimization', () => {
     const update = vi.fn().mockReturnValue({ set });
 
     mockedGetDb.mockReturnValue(
-      makeDbClient({ update: update as unknown as DbClient['update'] })
+      makeDbClient({ update: update as unknown as DbClient['update'] }),
     );
 
     const user = await updateUserPreferredAiModel(
       'internal-user-5',
       'google/gemini-2.0-flash-exp:free',
       undefined,
-      { getDb: mockedGetDb }
+      { getDb: mockedGetDb },
     );
 
     expect(user?.id).toBe('internal-user-5');

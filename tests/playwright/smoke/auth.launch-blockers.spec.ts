@@ -26,7 +26,7 @@ async function expectBillingPage(page: Page): Promise<void> {
   await expectHeading(page, 'Settings');
   await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Current Plan' })
+    page.getByRole('heading', { name: 'Current Plan' }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Usage' })).toBeVisible();
   await expect(page.getByText('Status')).toBeVisible();
@@ -61,7 +61,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     const generationResponsePromise = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/plans/stream') &&
-        response.request().method() === 'POST'
+        response.request().method() === 'POST',
     );
 
     await page.getByRole('button', { name: 'Generate my plan' }).click();
@@ -79,7 +79,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
       .count();
     expect(
       generatedModuleLinkCount,
-      'Expected at least one generated module link after plan generation.'
+      'Expected at least one generated module link after plan generation.',
     ).toBeGreaterThan(0);
     const firstModuleLink = page
       .getByRole('link', { name: /view full module/i })
@@ -107,7 +107,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     await page.getByRole('link', { name: planInput.topic }).click();
     await expect(page).toHaveURL(planUrl);
     await expect(
-      page.getByRole('link', { name: /view full module/i }).first()
+      page.getByRole('link', { name: /view full module/i }).first(),
     ).toBeVisible({
       // Returning to the existing plan page should complete like a normal route navigation.
       timeout: STANDARD_NAVIGATION_TIMEOUT_MS,
@@ -148,7 +148,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
         (url) =>
           url.pathname === '/settings/billing' &&
           url.searchParams.get('local_portal') === '1',
-        { timeout: CHECKOUT_TIMEOUT_MS }
+        { timeout: CHECKOUT_TIMEOUT_MS },
       ),
       manageSubscriptionButton.click(),
     ]);

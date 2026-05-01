@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 const migration0027Sql = readFileSync(
   resolve(process.cwd(), 'src/lib/db/migrations/0027_windy_agent_zero.sql'),
-  'utf8'
+  'utf8',
 );
 
 const restoreLegacyPdfSchemaSql = `
@@ -36,7 +36,7 @@ describe('migration 0027_windy_agent_zero', () => {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error(
-        'DATABASE_URL is required for migration integration tests.'
+        'DATABASE_URL is required for migration integration tests.',
       );
     }
 
@@ -139,7 +139,7 @@ describe('migration 0027_windy_agent_zero', () => {
       expect(indexes).toHaveLength(1);
 
       expect(notices).toContain(
-        'migration 0027: coercing 1 pdf-origin plans to manual'
+        'migration 0027: coercing 1 pdf-origin plans to manual',
       );
     } finally {
       await sql.end();

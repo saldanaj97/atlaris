@@ -29,7 +29,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
   get enabled(): boolean {
     return toBoolean(
       defaultQueueAccess.getServerOptional('REGENERATION_QUEUE_ENABLED'),
-      true
+      true,
     );
   },
   /**
@@ -39,7 +39,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
   get inlineProcessingEnabled(): boolean {
     return toBoolean(
       defaultQueueAccess.getServerOptional('REGENERATION_INLINE_PROCESSING'),
-      !isQueueProductionRuntime()
+      !isQueueProductionRuntime(),
     );
   },
   /**
@@ -48,7 +48,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
    */
   get maxJobsPerDrain(): number {
     const parsed = parseEnvNumber(
-      defaultQueueAccess.getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN')
+      defaultQueueAccess.getServerOptional('REGENERATION_MAX_JOBS_PER_DRAIN'),
     );
     if (parsed === undefined || !Number.isFinite(parsed) || parsed < 0) {
       return 1;
@@ -63,7 +63,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
    */
   get workerToken(): string | undefined {
     return defaultQueueAccess.getServerRequiredProdOnly(
-      'REGENERATION_WORKER_TOKEN'
+      'REGENERATION_WORKER_TOKEN',
     );
   },
 };

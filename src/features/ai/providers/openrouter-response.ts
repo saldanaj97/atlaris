@@ -27,13 +27,13 @@ export type StreamEventLike = OpenRouterStreamChunk & {
 };
 
 export function isObjectRecord(
-  value: unknown
+  value: unknown,
 ): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 export function isAsyncIterable(
-  value: unknown
+  value: unknown,
 ): value is AsyncIterable<StreamEventLike> {
   return (
     isObjectRecord(value) &&
@@ -43,7 +43,7 @@ export function isAsyncIterable(
 }
 
 export function parseContent(
-  content: string | TextPart[] | null | undefined
+  content: string | TextPart[] | null | undefined,
 ): string | null {
   if (!content) {
     return null;
@@ -81,7 +81,7 @@ function extractChunkText(event: StreamEventLike): string {
 }
 
 export function normalizeUsage(
-  usage: OpenRouterUsage | undefined | null
+  usage: OpenRouterUsage | undefined | null,
 ): ProviderUsage {
   const base: ProviderUsage = {
     promptTokens: usage?.promptTokens ?? usage?.input_tokens,
@@ -94,12 +94,12 @@ export function normalizeUsage(
     if (rawCost !== undefined && rawCost !== null) {
       if (typeof rawCost !== 'number' || !Number.isFinite(rawCost)) {
         throw new ProviderInvalidResponseError(
-          'OpenRouter usage.cost must be a finite number when present'
+          'OpenRouter usage.cost must be a finite number when present',
         );
       }
       if (rawCost < 0) {
         throw new ProviderInvalidResponseError(
-          'OpenRouter usage.cost must be non-negative when present'
+          'OpenRouter usage.cost must be non-negative when present',
         );
       }
       return { ...base, providerReportedCostUsd: rawCost };
@@ -193,10 +193,10 @@ function describeResponseValue(value: unknown): string {
 function createInvalidShapeError(
   fieldPath: string,
   expected: string,
-  actual: unknown
+  actual: unknown,
 ): ProviderInvalidResponseError {
   return new ProviderInvalidResponseError(
-    `OpenRouter returned invalid response shape: expected ${fieldPath} to be ${expected}, received ${describeResponseValue(actual)}`
+    `OpenRouter returned invalid response shape: expected ${fieldPath} to be ${expected}, received ${describeResponseValue(actual)}`,
   );
 }
 
@@ -216,7 +216,7 @@ export function validateNonStreamingResponse(response: unknown): {
 
   if (choices.length === 0) {
     throw new ProviderInvalidResponseError(
-      'OpenRouter returned an empty response (choices array was empty)'
+      'OpenRouter returned an empty response (choices array was empty)',
     );
   }
 
@@ -235,7 +235,7 @@ export function validateNonStreamingResponse(response: unknown): {
     throw createInvalidShapeError(
       'choices[0].message.content',
       'a string or TextPart[]',
-      rawContent
+      rawContent,
     );
   }
 
@@ -244,7 +244,7 @@ export function validateNonStreamingResponse(response: unknown): {
     throw createInvalidShapeError(
       'usage',
       'an object with numeric token fields',
-      usage
+      usage,
     );
   }
 
@@ -307,7 +307,7 @@ export function streamFromEvents(params: {
 
     if (!emittedAnyText) {
       throw new ProviderInvalidResponseError(
-        'OpenRouter returned no text content'
+        'OpenRouter returned no text content',
       );
     }
   })();

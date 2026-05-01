@@ -52,16 +52,16 @@ async function setupWorkerDatabaseEnv(): Promise<void> {
   const workerId = normalizeWorkerId(process.env.VITEST_POOL_ID);
   const workerDbName = getWorkerDbName(workerId);
   const adminConnectionUrl = createAdminDatabaseUrl(
-    runtimeState.TEST_DB_CONTAINER_URL
+    runtimeState.TEST_DB_CONTAINER_URL,
   );
   const workerConnectionUrl = createDatabaseUrl(
     runtimeState.TEST_DB_CONTAINER_URL,
-    workerDbName
+    workerDbName,
   );
 
   const workerDbAlreadyExists = await workerDatabaseExists(
     adminConnectionUrl,
-    workerDbName
+    workerDbName,
   );
 
   if (!workerDbAlreadyExists) {
@@ -83,7 +83,7 @@ async function setupWorkerDatabaseEnv(): Promise<void> {
 
   if (shouldLogTestDbDebug()) {
     console.log(
-      `[Test DB] worker ${workerId} -> ${workerDbName}${workerDbAlreadyExists ? ' (reused)' : ' (created)'}`
+      `[Test DB] worker ${workerId} -> ${workerDbName}${workerDbAlreadyExists ? ' (reused)' : ' (created)'}`,
     );
   }
 }

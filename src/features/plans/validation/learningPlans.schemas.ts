@@ -16,7 +16,7 @@ const planNotesOverrideSchema = z
   .trim()
   .max(
     NOTES_MAX_LENGTH,
-    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`
+    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`,
   )
   .transform((value) => (value.length > 0 ? value : null));
 
@@ -26,7 +26,7 @@ const planTopicOverrideSchema = z
   .min(3, 'topic must be at least 3 characters long.')
   .max(
     TOPIC_MAX_LENGTH,
-    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`
+    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`,
   );
 
 const planStartDateOverrideSchema = z
@@ -34,7 +34,7 @@ const planStartDateOverrideSchema = z
   .trim()
   .refine(
     (value) => !Number.isNaN(Date.parse(value)),
-    'Start date must be a valid ISO date string.'
+    'Start date must be a valid ISO date string.',
   )
   .transform((value) => (value ? value : null));
 
@@ -43,7 +43,7 @@ const planDeadlineDateOverrideSchema = z
   .trim()
   .refine(
     (value) => !Number.isNaN(Date.parse(value)),
-    'Deadline date must be a valid ISO date string.'
+    'Deadline date must be a valid ISO date string.',
   )
   .transform((value) => (value ? value : null));
 
@@ -78,11 +78,11 @@ export const onboardingFormObject = z.object({
     .optional()
     .refine(
       (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Start date must be in YYYY-MM-DD format.'
+      'Start date must be in YYYY-MM-DD format.',
     )
     .refine(
       (value) => !value || !Number.isNaN(Date.parse(value)),
-      'Start date must be a valid date.'
+      'Start date must be a valid date.',
     ),
   deadlineDate: z
     .string()
@@ -90,10 +90,10 @@ export const onboardingFormObject = z.object({
     .min(1, 'Please select a deadline date.')
     .refine(
       (value) => /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Deadline date must be in YYYY-MM-DD format.'
+      'Deadline date must be in YYYY-MM-DD format.',
     )
     .refine(
       (value) => !Number.isNaN(Date.parse(value)),
-      'Deadline date must be a valid date.'
+      'Deadline date must be a valid date.',
     ),
 });

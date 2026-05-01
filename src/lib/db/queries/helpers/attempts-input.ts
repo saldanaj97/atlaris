@@ -45,7 +45,7 @@ export function buildMetadata(params: MetadataParams): AttemptMetadata {
       finished_at: finishedAt.toISOString(),
       duration_ms: Math.max(
         0,
-        Math.round(finishedAt.getTime() - startedAt.getTime())
+        Math.round(finishedAt.getTime() - startedAt.getTime()),
       ),
       extended_timeout: extendedTimeout,
     },
@@ -68,7 +68,7 @@ export function sanitizeInput(input: GenerationInput): SanitizedInput {
 
   const notesResult = truncateToLength(
     input.notes ?? undefined,
-    NOTES_MAX_LENGTH
+    NOTES_MAX_LENGTH,
   );
 
   return {
@@ -89,7 +89,7 @@ export function toPromptHashPayload(
   planId: string,
   userId: string,
   input: GenerationInput,
-  sanitized: SanitizedInput
+  sanitized: SanitizedInput,
 ): Record<string, unknown> {
   return {
     planId,

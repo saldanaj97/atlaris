@@ -76,5 +76,5 @@ export const users = pgTable(
 
     // Users cannot delete their own records
     // (Deletion is handled by service-role client from workers)
-  ]
+  ],
 ).enableRLS();

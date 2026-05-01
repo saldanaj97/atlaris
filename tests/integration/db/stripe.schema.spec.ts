@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { type InferSelectModel, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { ensureUser } from '@/../tests/helpers/db';
@@ -47,9 +47,13 @@ describe('Stripe DB schema', () => {
       await expect(
         db
           .update(users)
-          // Negative-path coverage: intentionally bypass TS so Postgres rejects the invalid enum value.
-          .set({ subscriptionTier: 'gold' as any })
-          .where(sql`id = ${userId}`)
+          // Negative path: string is not a valid enum member; cast satisfies Drizzle, DB still rejects.
+          .set({
+            subscriptionTier: 'gold' as unknown as InferSelectModel<
+              typeof users
+            >['subscriptionTier'],
+          })
+          .where(sql`id = ${userId}`),
       ).rejects.toThrow();
     });
 
@@ -76,13 +80,13 @@ describe('Stripe DB schema', () => {
         db
           .update(users)
           .set({ stripeCustomerId: 'cus_123' })
-          .where(sql`id = ${b}`)
+          .where(sql`id = ${b}`),
       ).rejects.toThrow();
       await expect(
         db
           .update(users)
           .set({ stripeSubscriptionId: 'sub_456' })
-          .where(sql`id = ${b}`)
+          .where(sql`id = ${b}`),
       ).rejects.toThrow();
     });
 
@@ -134,7 +138,7 @@ describe('Stripe DB schema', () => {
 
       await db.insert(usageMetrics).values({ userId, month: '2025-02' });
       await expect(
-        db.insert(usageMetrics).values({ userId, month: '2025-02' })
+        db.insert(usageMetrics).values({ userId, month: '2025-02' }),
       ).rejects.toThrow();
     });
 
@@ -146,17 +150,17 @@ describe('Stripe DB schema', () => {
       await expect(
         db
           .insert(usageMetrics)
-          .values({ userId, month: '2025-03', plansGenerated: -1 })
+          .values({ userId, month: '2025-03', plansGenerated: -1 }),
       ).rejects.toThrow();
       await expect(
         db
           .insert(usageMetrics)
-          .values({ userId, month: '2025-03', regenerationsUsed: -1 })
+          .values({ userId, month: '2025-03', regenerationsUsed: -1 }),
       ).rejects.toThrow();
       await expect(
         db
           .insert(usageMetrics)
-          .values({ userId, month: '2025-03', exportsUsed: -1 })
+          .values({ userId, month: '2025-03', exportsUsed: -1 }),
       ).rejects.toThrow();
     });
 
@@ -179,7 +183,7 @@ describe('Stripe DB schema', () => {
         tablename: string;
         indexname: string;
       }>(
-        sql`select schemaname, tablename, indexname from pg_indexes where schemaname = 'public' and tablename = 'usage_metrics'`
+        sql`select schemaname, tablename, indexname from pg_indexes where schemaname = 'public' and tablename = 'usage_metrics'`,
       );
 
       const names = indexes.map((r) => r.indexname);
@@ -187,7 +191,7 @@ describe('Stripe DB schema', () => {
         expect.arrayContaining([
           'idx_usage_metrics_user_id',
           'idx_usage_metrics_month',
-        ])
+        ]),
       );
     });
   });

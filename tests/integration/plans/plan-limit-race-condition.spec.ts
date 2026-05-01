@@ -40,7 +40,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: (error as Error).message }))
+      }).catch((error) => ({ error: (error as Error).message })),
     );
 
     const results = await Promise.all(promises);
@@ -114,7 +114,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'practice',
         visibility: 'private',
         origin: 'ai',
-      })
+      }),
     );
 
     const results = await Promise.all(promises);
@@ -150,7 +150,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'video',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: (error as Error).message }))
+      }).catch((error) => ({ error: (error as Error).message })),
     );
 
     const results = await Promise.all(promises);
@@ -230,7 +230,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
-      })
+      }),
     ).rejects.toThrow('Plan limit reached');
 
     // Verify we still have exactly 3 plans (not 4)

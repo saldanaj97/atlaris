@@ -1,33 +1,39 @@
-import { finalizeGenerationFailure } from '@/features/ai/orchestrator/attempt-failures';
+import {
+  buildUnfinalizedReservedFailure,
+  finalizeReservedExecutionFailure,
+} from '@/features/ai/orchestrator/attempt-failures';
 import { generateWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
 import { createReservationRejectionResult } from '@/features/ai/orchestrator/reservation';
 import {
   cleanupTimeoutLifecycle,
   resolveTimeoutConfig,
   setupAbortAndTimeout,
+  type TimeoutLifecycle,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { pacePlan } from '@/features/ai/pacing';
 import { parseGenerationStream } from '@/features/ai/parser';
 import { getGenerationProvider } from '@/features/ai/providers/factory';
-import type {
-  AttemptOperations,
-  AttemptOperationsOverrides,
-  GenerationAttemptContext,
-  GenerationResult,
-  RunGenerationOptions,
-} from '@/features/ai/types/orchestrator.types';
-import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-persistence';
+import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-db-client';
+
+import type {
+  AttemptOperations,
+  AttemptOperationsOverrides,
+  GenerationAttemptContext,
+  GenerationExecutionResult,
+  GenerationResult,
+  RunGenerationOptions,
+} from '@/features/ai/types/orchestrator.types';
+import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 
 const DEFAULT_CLOCK = () => Date.now();
 
 function resolveAttemptOperations(
-  overrides?: AttemptOperationsOverrides
+  overrides?: AttemptOperationsOverrides,
 ): AttemptOperations {
   return {
     reserveAttemptSlot: overrides?.reserveAttemptSlot ?? reserveAttemptSlot,
@@ -38,17 +44,21 @@ function resolveAttemptOperations(
   };
 }
 
-export async function runGenerationAttempt(
+/**
+ * Provider → parse → pace without persisting attempt outcome.
+ * Lifecycle finalization owns the single transactional settlement after this returns.
+ */
+export async function runGenerationExecution(
   context: GenerationAttemptContext,
-  options: RunGenerationOptions
-): Promise<GenerationResult> {
+  options: RunGenerationOptions,
+): Promise<GenerationExecutionResult> {
   const clock = options.clock ?? DEFAULT_CLOCK;
   const nowFn = options.now ?? (() => new Date());
   const dbClient = options.dbClient;
 
   if (!isAttemptsDbClient(dbClient)) {
     throw new Error(
-      'runGenerationAttempt requires dbClient (pass request-scoped getDb() from API routes)'
+      'runGenerationExecution requires dbClient (pass request-scoped getDb() from API routes)',
     );
   }
 
@@ -64,49 +74,48 @@ export async function runGenerationAttempt(
       input: context.input,
       dbClient,
       now: nowFn,
+      ...(options.allowedGenerationStatuses !== undefined
+        ? { allowedGenerationStatuses: options.allowedGenerationStatuses }
+        : {}),
+      ...(options.requiredGenerationStatus !== undefined
+        ? { requiredGenerationStatus: options.requiredGenerationStatus }
+        : {}),
     }));
 
   if (!reservation.reserved) {
-    return createReservationRejectionResult(
-      context,
-      reservation,
-      attemptClockStart,
-      clock,
-      nowFn
-    );
+    return {
+      kind: 'failure_rejected',
+      result: createReservationRejectionResult(
+        context,
+        reservation,
+        attemptClockStart,
+        clock,
+        nowFn,
+      ),
+    };
   }
 
-  const provider = options.provider ?? getGenerationProvider();
-
-  let setup: ReturnType<typeof setupAbortAndTimeout>;
-  try {
-    setup = setupAbortAndTimeout(timeoutConfig, options.signal);
-  } catch (error) {
-    return finalizeGenerationFailure({
-      error,
-      reservation,
-      attemptOps,
-      context,
-      attemptClockStart,
-      clock,
-      nowFn,
-      dbClient,
-    });
-  }
-
-  const { timeout, controller, cleanupTimeoutAbort, cleanupExternalAbort } =
-    setup;
   let providerMetadata: ProviderMetadata | undefined;
   let rawText: string | undefined;
+  let timeoutLifecycle: TimeoutLifecycle | undefined;
 
   try {
+    const provider = options.provider ?? getGenerationProvider();
+    options.onAttemptReserved?.(reservation);
+
+    const { controller, ...lifecycle } = setupAbortAndTimeout(
+      timeoutConfig,
+      options.signal,
+    );
+    timeoutLifecycle = lifecycle;
+    const { timeout } = lifecycle;
     const providerResult = await generateWithInstrumentation(
       provider,
       context.input,
       {
         signal: controller.signal,
         timeoutMs: timeoutConfig.baseMs,
-      }
+      },
     );
     providerMetadata = providerResult.metadata;
 
@@ -118,53 +127,78 @@ export async function runGenerationAttempt(
 
     const modules = pacePlan(parsed.modules, context.input);
     const durationMs = Math.max(0, clock() - attemptClockStart);
-    cleanupTimeoutLifecycle({
-      timeout,
-      cleanupTimeoutAbort,
-      cleanupExternalAbort,
-    });
+    cleanupTimeoutLifecycle(timeoutLifecycle);
 
     const metadata = providerMetadata ?? {};
-    const attempt = await attemptOps.finalizeAttemptSuccess({
-      attemptId: reservation.attemptId,
-      planId: context.planId,
-      preparation: reservation,
-      modules,
-      providerMetadata: metadata,
-      durationMs,
-      extendedTimeout: timeout.didExtend,
-      dbClient,
-      now: nowFn,
-    });
 
     return {
-      status: 'success',
-      classification: null,
+      kind: 'success',
+      reservation,
       modules,
       rawText: parsed.rawText,
       metadata,
       durationMs,
       extendedTimeout: timeout.didExtend,
-      timedOut: false,
-      attempt,
     };
   } catch (error) {
-    return finalizeGenerationFailure({
+    return buildUnfinalizedReservedFailure({
       error,
       reservation,
-      attemptOps,
-      context,
       attemptClockStart,
       clock,
-      nowFn,
-      dbClient,
-      timeoutLifecycle: {
-        timeout,
-        cleanupTimeoutAbort,
-        cleanupExternalAbort,
-      },
+      timeoutLifecycle,
       providerMetadata,
       rawText,
     });
   }
+}
+
+/** Reserve + generate + finalize attempt row (modules/tasks) in DB. Plan lifecycle + usage finalization stay separate. */
+export async function runGenerationAttempt(
+  context: GenerationAttemptContext,
+  options: RunGenerationOptions,
+): Promise<GenerationResult> {
+  const nowFn = options.now ?? (() => new Date());
+  const dbClient = options.dbClient;
+  const attemptOps = resolveAttemptOperations(options.attemptOperations);
+
+  const exec = await runGenerationExecution(context, options);
+
+  if (exec.kind === 'failure_rejected') {
+    return exec.result;
+  }
+
+  if (exec.kind === 'failure_reserved') {
+    return finalizeReservedExecutionFailure({
+      unfinalized: exec,
+      attemptOps,
+      context,
+      dbClient,
+      nowFn,
+    });
+  }
+
+  const attempt = await attemptOps.finalizeAttemptSuccess({
+    attemptId: exec.reservation.attemptId,
+    planId: context.planId,
+    preparation: exec.reservation,
+    modules: exec.modules,
+    providerMetadata: exec.metadata,
+    durationMs: exec.durationMs,
+    extendedTimeout: exec.extendedTimeout,
+    dbClient,
+    now: nowFn,
+  });
+
+  return {
+    status: 'success',
+    classification: null,
+    modules: exec.modules,
+    rawText: exec.rawText,
+    metadata: exec.metadata,
+    durationMs: exec.durationMs,
+    extendedTimeout: exec.extendedTimeout,
+    timedOut: false,
+    attempt,
+  };
 }

@@ -90,7 +90,7 @@ export const modules = pgTable(
         using: ownPlanAccess,
       }),
     ];
-  }
+  },
 ).enableRLS();
 
 export const tasks = pgTable(
@@ -117,7 +117,7 @@ export const tasks = pgTable(
             planTable: learningPlans,
             planIdReferenceColumn: learningPlans.id,
             planUserIdColumn: learningPlans.userId,
-          })
+          }),
         )}
       )
     `;
@@ -161,7 +161,7 @@ export const tasks = pgTable(
         using: moduleOwnPlanAccess,
       }),
     ];
-  }
+  },
 ).enableRLS();
 
 const taskBelongsToUserPlan = (taskIdColumn: AnyPgColumn) =>
@@ -208,7 +208,7 @@ export const resources = pgTable(
     }),
 
     // Only service role can manage resources (admin/system only)
-  ]
+  ],
 ).enableRLS();
 
 export const taskResources = pgTable(
@@ -234,7 +234,7 @@ export const taskResources = pgTable(
       check('order_check', sql`${table.order} >= 1`),
       unique('task_resources_task_id_resource_id_unique').on(
         table.taskId,
-        table.resourceId
+        table.resourceId,
       ),
       index('idx_task_resources_task_id').on(table.taskId),
       index('idx_task_resources_resource_id').on(table.resourceId),
@@ -268,7 +268,7 @@ export const taskResources = pgTable(
         using: taskOwnAccess,
       }),
     ];
-  }
+  },
 ).enableRLS();
 
 /** id + taskId + userId for per-user rows scoped to a task (see integration sync tables). */
@@ -302,7 +302,7 @@ export const taskProgress = pgTable(
     return [
       unique('task_progress_task_id_user_id_unique').on(
         table.taskId,
-        table.userId
+        table.userId,
       ),
       index('idx_task_progress_user_id').on(table.userId),
       index('idx_task_progress_task_id').on(table.taskId),
@@ -345,5 +345,5 @@ export const taskProgress = pgTable(
         using: userOwnsRecord,
       }),
     ];
-  }
+  },
 ).enableRLS();

@@ -9,7 +9,7 @@ export class EnvValidationError extends Error {
   constructor(
     message: string,
     public readonly envKey?: string,
-    options?: ErrorOptions
+    options?: ErrorOptions,
   ) {
     super(message, options);
     this.name = 'EnvValidationError';
@@ -36,13 +36,13 @@ export function getProcessEnvSource(): EnvSource {
   return process.env as EnvSource;
 }
 
-type NodeEnv = 'development' | 'production' | 'test';
+export type NodeEnv = 'development' | 'production' | 'test';
 
 const NodeEnvSchema = z.enum(['development', 'production', 'test']);
 
 export function optionalEnvFrom(
   env: EnvSource,
-  key: string
+  key: string,
 ): string | undefined {
   return normalize(env[key]);
 }
@@ -52,7 +52,7 @@ export function requireEnvFrom(env: EnvSource, key: string): string {
   if (!value) {
     throw new EnvValidationError(
       `Missing required environment variable: ${key}`,
-      key
+      key,
     );
   }
   return value;
@@ -71,7 +71,7 @@ export function parseNodeEnv(env: EnvSource): NodeEnv {
   if (!parsed.success) {
     throw new EnvValidationError(
       `NODE_ENV must be one of: development, production, test. Received: ${raw}`,
-      'NODE_ENV'
+      'NODE_ENV',
     );
   }
   return parsed.data;
@@ -110,11 +110,11 @@ const parseableNumericEnvString = z.string().transform((s, ctx) => {
 export function parseEnvNumber(value: string | undefined): number | undefined;
 export function parseEnvNumber(
   value: string | undefined,
-  fallback: number
+  fallback: number,
 ): number;
 export function parseEnvNumber(
   value: string | undefined,
-  fallback?: number
+  fallback?: number,
 ): number | undefined {
   if (value === undefined) {
     return fallback;
@@ -127,12 +127,15 @@ export function parseEnvNumber(
 }
 
 /**
- * Parses a string to a boolean. Use for consistent env boolean parsing.
- * Truthy (case-insensitive, trimmed): 'true' | '1'. All other non-empty values are false.
+ * Parses broad opt-in env toggles permissively.
+ *
+ * Missing or empty values return `fallback`; only `true` and `1`
+ * (case-insensitive, trimmed) return true. Every other non-empty value returns
+ * false. Use stricter parsers for env flags where typos should fail startup.
  */
 export function toBoolean(
   value: string | undefined,
-  fallback: boolean
+  fallback: boolean,
 ): boolean {
   if (value === undefined) {
     return fallback;
@@ -159,7 +162,7 @@ function ensureServerRuntime(isNonProduction: boolean): void {
   }
   if (typeof window !== 'undefined') {
     throw new EnvValidationError(
-      'Attempted to access a server-only environment variable in the browser bundle.'
+      'Attempted to access a server-only environment variable in the browser bundle.',
     );
   }
 }
@@ -167,7 +170,7 @@ function ensureServerRuntime(isNonProduction: boolean): void {
 function getCachedServerRequired(
   cache: Map<string, string>,
   key: string,
-  loader: () => string
+  loader: () => string,
 ): string {
   if (!cache.has(key)) {
     cache.set(key, loader());
@@ -191,7 +194,7 @@ export interface ServerEnvAccess {
  * Caches required/optional reads in production only; non-production re-reads each time.
  */
 export function createServerEnvAccess(
-  getEnv: () => EnvSource
+  getEnv: () => EnvSource,
 ): ServerEnvAccess {
   const requiredCache = new Map<string, string>();
   const optionalCache = new Map<string, string | undefined>();
@@ -214,7 +217,7 @@ export function createServerEnvAccess(
         return requireEnvFrom(env, key);
       }
       return getCachedServerRequired(requiredCache, key, () =>
-        requireEnvFrom(env, key)
+        requireEnvFrom(env, key),
       );
     },
     getServerOptional(key: string): string | undefined {
@@ -233,7 +236,7 @@ export function createServerEnvAccess(
         return optionalEnvFrom(env, key);
       }
       return getCachedServerRequired(requiredCache, key, () =>
-        requireEnvFrom(env, key)
+        requireEnvFrom(env, key),
       );
     },
     getProductionCached<T>(key: string, loader: () => T): T {
@@ -266,22 +269,22 @@ function assertProdForbiddenFlags(): void {
   }
   const localProductTestingEnvEnabled = toBoolean(
     optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
-    false
+    false,
   );
   if (localProductTestingEnvEnabled) {
     throw new EnvValidationError(
       'LOCAL_PRODUCT_TESTING cannot be enabled in production',
-      'LOCAL_PRODUCT_TESTING'
+      'LOCAL_PRODUCT_TESTING',
     );
   }
   const stripeLocalModeEnabled = toBoolean(
     optionalEnvFrom(env, 'STRIPE_LOCAL_MODE'),
-    false
+    false,
   );
   if (stripeLocalModeEnabled) {
     throw new EnvValidationError(
       'STRIPE_LOCAL_MODE cannot be enabled in production',
-      'STRIPE_LOCAL_MODE'
+      'STRIPE_LOCAL_MODE',
     );
   }
 }

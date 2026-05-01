@@ -88,7 +88,7 @@ describe('Concurrency - rollback on DB error', () => {
             learningStyle: 'reading',
           },
         },
-        { provider: mock.provider, dbClient: failingClient }
+        { provider: mock.provider, dbClient: failingClient },
       );
     } catch (e) {
       error = e;

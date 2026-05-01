@@ -3,10 +3,10 @@ import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
-import { getRequestContext } from '@/lib/logging/request-context';
+import { getLoggingRequestContext } from '@/lib/logging/request-context';
 
 function readWorkerToken(request: Request): string | null {
   const authHeader = request.headers.get('authorization');
@@ -36,14 +36,14 @@ function tokensMatch(expectedToken: string, providedToken: string): boolean {
 }
 
 export const POST: PlainHandler = withErrorBoundary(async (request) => {
-  const { logger } = getRequestContext(request);
+  const { logger } = getLoggingRequestContext(request);
   const pathname = new URL(request.url).pathname;
 
   checkIpRateLimit(request, 'internal');
 
   if (!regenerationQueueEnv.enabled) {
     throw new ServiceUnavailableError(
-      'Regeneration processing is currently unavailable.'
+      'Regeneration processing is currently unavailable.',
     );
   }
 
@@ -57,7 +57,7 @@ export const POST: PlainHandler = withErrorBoundary(async (request) => {
           method: request.method,
           hasToken: Boolean(providedToken),
         },
-        'Unauthorized regeneration worker trigger attempt'
+        'Unauthorized regeneration worker trigger attempt',
       );
 
       throw new AuthError('Unauthorized worker trigger.');
@@ -65,11 +65,11 @@ export const POST: PlainHandler = withErrorBoundary(async (request) => {
   } else if (appEnv.isProduction) {
     logger.error(
       { path: pathname, method: request.method },
-      'Regeneration worker token missing in production'
+      'Regeneration worker token missing in production',
     );
 
     throw new ServiceUnavailableError(
-      'Regeneration processing is currently unavailable.'
+      'Regeneration processing is currently unavailable.',
     );
   }
 
@@ -86,7 +86,7 @@ export const POST: PlainHandler = withErrorBoundary(async (request) => {
   } catch (error: unknown) {
     logger.error(
       { error, maxJobs },
-      'Failed to drain regeneration queue from internal route'
+      'Failed to drain regeneration queue from internal route',
     );
 
     const diagnostic =

@@ -47,7 +47,7 @@ function isJwtClaimsRowArray(value: unknown): value is JwtClaimsRow[] {
  */
 async function readJwtClaims(executor: ClaimsExecutor): Promise<string | null> {
   const result = await executor.execute(
-    sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    sql`SELECT current_setting('request.jwt.claims', true) AS claims`,
   );
   if (!isJwtClaimsRowArray(result)) {
     return null;
@@ -62,10 +62,10 @@ async function readJwtClaims(executor: ClaimsExecutor): Promise<string | null> {
 function logClaimComparison(
   scenario: string,
   expected: string,
-  actual: string | null
+  actual: string | null,
 ): void {
   console.info(
-    `${LOG_PREFIX} ${scenario} — expected: ${expected} | read: ${actual === null ? '(null)' : actual}`
+    `${LOG_PREFIX} ${scenario} — expected: ${expected} | read: ${actual === null ? '(null)' : actual}`,
   );
 }
 
@@ -112,7 +112,7 @@ describe('RLS JWT claim transaction stability — Testcontainers Postgres', () =
   it('JWT claims remain visible after pg_advisory_xact_lock inside transaction', async () => {
     const actual = await rlsDb.transaction(async (tx) => {
       await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(1, hashtext(${internalUserId}))`
+        sql`SELECT pg_advisory_xact_lock(1, hashtext(${internalUserId}))`,
       );
       return readJwtClaims(tx);
     });

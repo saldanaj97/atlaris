@@ -64,7 +64,7 @@ export async function createAnonRlsDb(): Promise<DbInstance> {
  * @returns Promise resolving to Drizzle database client with RLS enforcement for this user
  */
 export async function createRlsDbForUser(
-  authUserId: string
+  authUserId: string,
 ): Promise<DbInstance> {
   const result = await createAuthenticatedRlsClient(authUserId);
   trackCleanup(result.cleanup);

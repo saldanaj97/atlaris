@@ -39,7 +39,7 @@ describe('Environment Configuration', () => {
 
     it('throws EnvValidationError for invalid NODE_ENV', () => {
       expect(() => parseNodeEnv({ NODE_ENV: 'staging' })).toThrow(
-        EnvValidationError
+        EnvValidationError,
       );
     });
   });
@@ -88,7 +88,7 @@ describe('Environment Configuration', () => {
           NODE_ENV: 'production',
           NEON_AUTH_BASE_URL: 'http://localhost:9999',
           NEON_AUTH_COOKIE_SECRET: 'x'.repeat(32),
-        })
+        }),
       ).toThrow(EnvValidationError);
     });
 
@@ -98,9 +98,9 @@ describe('Environment Configuration', () => {
           NODE_ENV: 'production',
           NEON_AUTH_BASE_URL: 'http://localhost:9999',
           NEON_AUTH_COOKIE_SECRET: 'short-secret',
-        })
+        }),
       ).toThrow(
-        /NEON_AUTH_BASE_URL: NEON_AUTH_BASE_URL must use https in production; NEON_AUTH_COOKIE_SECRET: NEON_AUTH_COOKIE_SECRET must be at least 32 characters in production/
+        /NEON_AUTH_BASE_URL: NEON_AUTH_BASE_URL must use https in production; NEON_AUTH_COOKIE_SECRET: NEON_AUTH_COOKIE_SECRET must be at least 32 characters in production/,
       );
     });
   });
@@ -122,13 +122,26 @@ describe('Environment Configuration', () => {
       expect(aiEnv.useMock).toBe(false);
     });
 
+    it.each([
+      ['true', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
+      const env = { AI_USE_MOCK: value } as const;
+      const access = createServerEnvAccess(() => env);
+      const { aiEnv } = createAiEnvFacets(access);
+
+      expect(aiEnv.useMock).toBe(expected);
+    });
+
     it('rejects malformed AI_USE_MOCK values', () => {
       const env = { AI_USE_MOCK: 'maybe' } as const;
       const access = createServerEnvAccess(() => env);
       const { aiEnv } = createAiEnvFacets(access);
 
       expect(() => aiEnv.useMock).toThrow(
-        /AI_USE_MOCK must be one of: true, false, 1, 0/
+        /AI_USE_MOCK must be one of: true, false, 1, 0/,
       );
     });
 
@@ -182,7 +195,7 @@ describe('Environment Configuration', () => {
     it('should throw EnvValidationError for missing environment variable', () => {
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -191,7 +204,7 @@ describe('Environment Configuration', () => {
 
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -200,7 +213,7 @@ describe('Environment Configuration', () => {
 
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -386,7 +399,7 @@ describe('Environment Configuration', () => {
 
         expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
         expect(() => aiEnv.defaultModel).toThrow(
-          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/
+          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/,
         );
       });
     });
@@ -437,7 +450,7 @@ describe('Environment Configuration', () => {
         vi.stubEnv('AI_USE_MOCK', 'sometimes');
 
         expect(() => aiEnv.useMock).toThrow(
-          /AI_USE_MOCK must be one of: true, false, 1, 0/
+          /AI_USE_MOCK must be one of: true, false, 1, 0/,
         );
       });
     });

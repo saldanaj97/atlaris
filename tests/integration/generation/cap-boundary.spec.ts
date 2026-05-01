@@ -48,7 +48,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(thirdAttempt.status).toBe('success');
@@ -89,7 +89,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(fourthAttempt.status).toBe('failure');
@@ -105,7 +105,7 @@ describe('generation integration - attempt cap boundary', () => {
     // Cap rejection is synthetic; no fourth attempt row is persisted.
     expect(cappedAttempts).toHaveLength(3);
     expect(
-      cappedAttempts.some((attempt) => attempt.classification === 'capped')
+      cappedAttempts.some((attempt) => attempt.classification === 'capped'),
     ).toBe(false);
     expect(fourthAttempt.attempt.id).toBeNull();
   });

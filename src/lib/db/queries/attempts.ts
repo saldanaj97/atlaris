@@ -1,20 +1,17 @@
-import { and, count, eq, sql } from 'drizzle-orm';
-import { getAttemptCap } from '@/lib/config/env';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { hashSha256 } from '@/lib/crypto/hash';
-import {
-  isProviderErrorRetryable,
-  logAttemptEvent,
-} from '@/lib/db/queries/helpers/attempts-helpers';
+import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
   sanitizeInput,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-input';
+import { normalizeParsedModules } from '@/lib/db/queries/helpers/attempts-persistence-normalization';
 import {
   assertAttemptIdMatchesReservation,
-  normalizeParsedModules,
   persistSuccessfulAttempt,
-} from '@/lib/db/queries/helpers/attempts-persistence';
+  whereInProgressGenerationAttemptForPlan,
+} from '@/lib/db/queries/helpers/attempts-persistence-success';
 import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
@@ -26,19 +23,21 @@ import {
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
+  AttemptMetadata,
   FinalizeFailureParams,
   FinalizeSuccessParams,
   GenerationAttemptRecord,
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
+import type { DbTransaction } from '@/lib/db/types';
 import { generationAttempts } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { count, eq, sql } from 'drizzle-orm';
 
 /**
  * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
@@ -60,7 +59,7 @@ import { isRetryableClassification } from '@/shared/types/failure-classification
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
 export async function reserveAttemptSlot(
-  params: ReserveAttemptSlotParams
+  params: ReserveAttemptSlotParams,
 ): Promise<ReserveAttemptResult> {
   const {
     planId,
@@ -74,7 +73,7 @@ export async function reserveAttemptSlot(
 
   const sanitized = sanitizeInput(input);
   const promptHash = hashSha256(
-    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized))
+    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
   );
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
@@ -112,7 +111,7 @@ export async function reserveAttemptSlot(
           allowed: allowedGenerationStatuses ?? requiredGenerationStatus,
           actualStatus: plan.generationStatus,
         },
-        'Plan reservation aborted: generation status mismatch'
+        'Plan reservation aborted: generation status mismatch',
       );
       return {
         reserved: false,
@@ -133,7 +132,7 @@ export async function reserveAttemptSlot(
     if (attemptsInWindow >= PLAN_GENERATION_LIMIT) {
       const retryAfter = computeRetryAfterSeconds(
         attemptWindowStats.oldestAttemptCreatedAt,
-        startedAt
+        startedAt,
       );
 
       return {
@@ -148,7 +147,7 @@ export async function reserveAttemptSlot(
         existingAttempts: count(generationAttempts.id),
         inProgressAttempts:
           sql`count(*) filter (where ${generationAttempts.status} = 'in_progress')`.mapWith(
-            Number
+            Number,
           ),
       })
       .from(generationAttempts)
@@ -157,7 +156,7 @@ export async function reserveAttemptSlot(
     const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
     const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
-    if (existingAttempts >= getAttemptCap()) {
+    if (existingAttempts >= getGenerationAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
 
@@ -224,7 +223,7 @@ export async function finalizeAttemptSuccess({
   const modulesCount = normalizedModules.length;
   const tasksCount = normalizedModules.reduce(
     (sum, module) => sum + module.tasks.length,
-    0
+    0,
   );
 
   const finishedAt = nowFn();
@@ -264,6 +263,41 @@ export async function finalizeAttemptSuccess({
   return updatedAttempt;
 }
 
+export async function persistFailedAttemptInTx(
+  tx: DbTransaction,
+  params: {
+    readonly attemptId: string;
+    readonly planId: string;
+    readonly classification: FinalizeFailureParams['classification'];
+    readonly durationMs: number;
+    readonly metadata: AttemptMetadata;
+  },
+): Promise<GenerationAttemptRecord> {
+  const { attemptId, planId, classification, durationMs, metadata } = params;
+
+  const [updatedAttempt] = await tx
+    .update(generationAttempts)
+    .set({
+      status: 'failure',
+      classification,
+      durationMs: Math.max(0, Math.round(durationMs)),
+      modulesCount: 0,
+      tasksCount: 0,
+      normalizedEffort: false,
+      metadata,
+    })
+    .where(whereInProgressGenerationAttemptForPlan({ attemptId, planId }))
+    .returning();
+
+  if (!updatedAttempt) {
+    throw new Error(
+      `Failed to finalize generation attempt ${attemptId} for plan ${planId} as ${classification} failure.`,
+    );
+  }
+
+  return updatedAttempt;
+}
+
 /**
  * Finalizes a previously reserved attempt as failed.
  * Updates only the in-progress attempt row.
@@ -279,7 +313,6 @@ export async function finalizeAttemptFailure({
   timedOut = false,
   extendedTimeout = false,
   providerMetadata,
-  error,
   dbClient,
   now,
 }: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
@@ -304,37 +337,13 @@ export async function finalizeAttemptFailure({
   const attempt = await dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
-    const [updatedAttempt] = await tx
-      .update(generationAttempts)
-      .set({
-        status: 'failure',
-        classification,
-        durationMs: Math.max(0, Math.round(durationMs)),
-        modulesCount: 0,
-        tasksCount: 0,
-        normalizedEffort: false,
-        metadata,
-      })
-      .where(
-        and(
-          eq(generationAttempts.id, attemptId),
-          eq(generationAttempts.planId, planId),
-          eq(generationAttempts.status, 'in_progress')
-        )
-      )
-      .returning();
-
-    if (!updatedAttempt) {
-      throw new Error('Failed to finalize generation attempt as failure.');
-    }
-
-    void (classification === 'provider_error'
-      ? isProviderErrorRetryable(error)
-      : isRetryableClassification(classification));
-    void preparation.attemptNumber;
-    void finishedAt;
-
-    return updatedAttempt;
+    return persistFailedAttemptInTx(tx, {
+      attemptId,
+      planId,
+      classification,
+      durationMs,
+      metadata,
+    });
   });
 
   logAttemptEvent('failure', {

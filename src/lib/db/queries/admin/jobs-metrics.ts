@@ -20,7 +20,7 @@ type SystemWideJobMetrics = {
 export async function getSystemWideJobMetrics(
   stuckThreshold: Date,
   // Admin monitoring intentionally defaults to the service-role client.
-  dbClient: typeof serviceRoleDb = serviceRoleDb
+  dbClient: typeof serviceRoleDb = serviceRoleDb,
 ): Promise<SystemWideJobMetrics> {
   const [metrics] = await dbClient
     .select({

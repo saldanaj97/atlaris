@@ -11,6 +11,8 @@ This repo’s committed browser smoke lane exists to prove the launch-blocker fl
 
 Use it for narrow, high-signal browser confidence. Do not turn it into a broad matrix suite.
 
+For **UI audit / marketing vs product screenshot baselines**, use [UI baseline capture](./ui-baseline-capture.md) instead (`pnpm ui:capture-baseline`).
+
 ## Command Surface
 
 ```bash
@@ -31,7 +33,7 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 
 - `scripts/tests/smoke/run.ts`
   - starts and tears down the disposable Postgres container
-  - runs migrations, grants, and local smoke seeding
+  - runs migrations (via `drizzle-kit` CLI invoked with Node — does not require `pnpm` on `PATH` for the migration subprocess), grants, and local smoke seeding
   - writes `SMOKE_STATE_FILE`
   - invokes Playwright
 - `scripts/tests/smoke/start-app.ts`

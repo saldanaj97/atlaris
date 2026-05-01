@@ -28,7 +28,7 @@ describe('useTaskStatusBatcher', () => {
         flushAction,
         debounceMs: 100,
         maxWaitMs: 250,
-      })
+      }),
     );
 
     let firstPromise: Promise<void> = Promise.resolve();
@@ -72,7 +72,7 @@ describe('useTaskStatusBatcher', () => {
     ]);
 
     await expect(
-      Promise.all([firstPromise, secondPromise, thirdPromise])
+      Promise.all([firstPromise, secondPromise, thirdPromise]),
     ).resolves.toEqual([undefined, undefined, undefined]);
   });
 
@@ -87,7 +87,7 @@ describe('useTaskStatusBatcher', () => {
         flushAction,
         debounceMs: 100,
         maxWaitMs: 250,
-      })
+      }),
     );
 
     let firstBatchPromise: Promise<void> = Promise.resolve();
@@ -99,7 +99,7 @@ describe('useTaskStatusBatcher', () => {
       firstBatchPromise = result.current.queue(
         'task-1',
         IN_PROGRESS,
-        NOT_STARTED
+        NOT_STARTED,
       );
     });
 
@@ -111,7 +111,7 @@ describe('useTaskStatusBatcher', () => {
       secondBatchPromise = result.current.queue(
         'task-2',
         COMPLETED,
-        NOT_STARTED
+        NOT_STARTED,
       );
     });
 
@@ -123,7 +123,7 @@ describe('useTaskStatusBatcher', () => {
       thirdBatchPromise = result.current.queue(
         'task-3',
         COMPLETED,
-        NOT_STARTED
+        NOT_STARTED,
       );
     });
 
@@ -134,7 +134,7 @@ describe('useTaskStatusBatcher', () => {
     expect(flushAction).toHaveBeenCalledTimes(1);
 
     await expect(
-      Promise.all([firstBatchPromise, secondBatchPromise, thirdBatchPromise])
+      Promise.all([firstBatchPromise, secondBatchPromise, thirdBatchPromise]),
     ).resolves.toEqual([undefined, undefined, undefined]);
 
     act(() => {

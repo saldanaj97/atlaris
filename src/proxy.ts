@@ -66,7 +66,7 @@ const getCorrelationId = (request: NextRequest): string => {
 
 const withCorrelationId = (
   request: NextRequest,
-  response: NextResponse
+  response: NextResponse,
 ): NextResponse => {
   const correlationId = getCorrelationId(request);
   response.headers.set('x-correlation-id', correlationId);
@@ -92,13 +92,13 @@ const withSecurityHeaders = (response: NextResponse): NextResponse => {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()'
+    'camera=(), microphone=(), geolocation=()',
   );
 
   if (appEnv.isProduction) {
     response.headers.set(
       'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload'
+      'max-age=31536000; includeSubDomains; preload',
     );
   }
 
@@ -106,7 +106,7 @@ const withSecurityHeaders = (response: NextResponse): NextResponse => {
 };
 
 export default async function proxy(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
@@ -122,13 +122,13 @@ export default async function proxy(
   if (isMaintenanceMode && !isMaintenancePage) {
     return withCorrelationId(
       request,
-      NextResponse.redirect(new URL('/maintenance', request.url))
+      NextResponse.redirect(new URL('/maintenance', request.url)),
     );
   }
   if (!isMaintenanceMode && isMaintenancePage) {
     return withCorrelationId(
       request,
-      NextResponse.redirect(new URL('/', request.url))
+      NextResponse.redirect(new URL('/', request.url)),
     );
   }
 
@@ -182,7 +182,7 @@ export default async function proxy(
     authResponse.headers.set('x-correlation-id', correlationId);
     authResponse.headers.set(
       'x-middleware-request-x-correlation-id',
-      correlationId
+      correlationId,
     );
     return withSecurityHeaders(authResponse);
   }

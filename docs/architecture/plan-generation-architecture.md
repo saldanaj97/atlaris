@@ -1,7 +1,7 @@
 # Plan Generation Architecture
 
 **Audience:** Developers onboarding to the plan generation pipeline  
-**Last Updated:** March 2026
+**Last Updated:** April 2026
 
 ## Overview
 
@@ -15,7 +15,8 @@ At runtime, the pipeline combines:
 - request-scoped RLS database access via `getDb()`
 - OpenRouter-backed streaming model generation
 - strict parsing and pacing before persistence
-- atomic attempt finalization in the database
+- generation execution without DB settlement (orchestrator)
+- lifecycle generation-finalization: one transaction for attempt + modules/tasks + plan status + usage when applicable
 
 ## High-level flow
 
@@ -30,7 +31,8 @@ User submits create form
   → call AI provider
   → parse streamed output
   → pace modules/tasks to available hours
-  → finalize success or failure atomically
+  → return unfinalized outcome to lifecycle (orchestrator)
+  → lifecycle finalizes attempt, content, plan status, and usage in one DB transaction
   → emit SSE events to client
 ```
 
@@ -58,18 +60,19 @@ This separation between external auth identity and internal app user row is not 
 
 ### AI layer
 
-| File                                 | Responsibility                            |
-| ------------------------------------ | ----------------------------------------- |
-| `src/lib/ai/orchestrator.ts`         | Main generation control plane             |
-| `src/lib/ai/provider-factory.ts`     | Provider and model selection              |
-| `src/lib/ai/providers/openrouter.ts` | OpenRouter transport adapter              |
-| `src/lib/ai/providers/router.ts`     | Provider routing and retry behavior       |
-| `src/lib/ai/providers/mock.ts`       | Deterministic mock provider               |
-| `src/lib/ai/parser.ts`               | Stream parsing and validation             |
-| `src/lib/ai/pacing.ts`               | Adjust output to available schedule hours |
-| `src/lib/ai/classification.ts`       | Failure classification                    |
-| `src/lib/ai/timeout.ts`              | Adaptive timeout policy                   |
-| `src/lib/ai/generation-policy.ts`    | Durable generation-window enforcement     |
+| File                                                    | Responsibility                            |
+| ------------------------------------------------------- | ----------------------------------------- |
+| `src/features/ai/orchestrator.ts`                       | Main generation control plane             |
+| `src/lib/ai/provider-factory.ts`                        | Provider and model selection              |
+| `src/lib/ai/providers/openrouter.ts`                    | OpenRouter transport adapter              |
+| `src/lib/ai/providers/router.ts`                        | Provider routing and retry behavior       |
+| `src/lib/ai/providers/mock.ts`                          | Deterministic mock provider               |
+| `src/lib/ai/parser.ts`                                  | Stream parsing and validation             |
+| `src/lib/ai/pacing.ts`                                  | Adjust output to available schedule hours |
+| `src/lib/ai/classification.ts`                          | Failure classification                    |
+| `src/lib/ai/timeout.ts`                                 | Adaptive timeout policy                   |
+| `src/lib/ai/generation-policy.ts`                       | Durable generation-window enforcement     |
+| `src/features/plans/lifecycle/generation-finalization/` | Durable settlement after provider run     |
 
 ### Database layer
 
@@ -98,9 +101,9 @@ This separation between external auth identity and internal app user row is not 
 
 The stream route must not couple the plan’s lifecycle to a fragile client connection. Early navigation is common; silent partial failure is worse.
 
-### 2) Run the orchestrator
+### 2) Run generation execution
 
-`runGenerationAttempt(...)` in `src/lib/ai/orchestrator.ts` is the core pipeline:
+Production path: `GenerationAdapter` calls `runGenerationExecution(...)` in `src/features/ai/orchestrator.ts`:
 
 1. reserve an attempt slot
 2. determine timeout budget
@@ -108,18 +111,28 @@ The stream route must not couple the plan’s lifecycle to a fragile client conn
 4. parse and validate streamed output
 5. classify failures where needed
 6. pace modules/tasks to fit available hours
-7. finalize success or failure in the database
+7. return **unfinalized** success or failure (attempt still reserved / in-flight at DB)
 
-### 3) Finalize atomically
+`runGenerationAttempt(...)` still composes execution + `finalizeAttemptSuccess` / `finalizeAttemptFailure` for tests and legacy call sites that expect a fully persisted attempt in one call.
 
-Successful attempt finalization writes, in one transactional flow:
+### 3) Finalize in lifecycle (one transaction)
 
-- attempt completion metadata
-- ordered module rows
-- ordered task rows
-- final plan generation state
+`PlanLifecycleService.processGenerationAttempt` calls `generationFinalization.finalizeSuccess` or `finalizeFailure`. Each method runs **one** DB transaction that settles:
 
-Failure finalization records the attempt outcome and updates the plan status consistently. The point is to prevent drift between the attempt log and the user-visible plan state.
+**Success:**
+
+- replace modules/tasks for the plan
+- mark `generation_attempts` success
+- set `learning_plans` to `ready`, quota-eligible, `finalizedAt`
+- insert `ai_usage_events` and increment `usage_metrics.plansGenerated` (`kind: 'plan'`)
+
+**Failure:**
+
+- mark attempt failure and plan `failed` (not quota-eligible)
+- **retryable:** no usage writes (same domain rule as before)
+- **permanent with usage:** usage event + metric increment in the same transaction
+
+Low-level `finalizeAttemptSuccess` / `finalizeAttemptFailure` remain **attempt-only** helpers; they do not move the plan row or record usage. Integration tests (`attempts-atomic-observability`) still assert attempt-only success leaves plan `generating` until lifecycle finalization runs.
 
 ## Stream contract
 

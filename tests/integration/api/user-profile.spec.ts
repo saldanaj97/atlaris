@@ -50,7 +50,7 @@ describe('GET /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'GET',
-      }
+      },
     );
 
     const response = await GET(request);
@@ -109,7 +109,7 @@ describe('PUT /api/v1/user/profile', () => {
       {
         method: 'PUT',
         body: JSON.stringify({ name: 'New Name' }),
-      }
+      },
     );
 
     const response = await PUT(request);
@@ -131,7 +131,7 @@ describe('PUT /api/v1/user/profile', () => {
     });
     expect(updated?.name).toBe('New Name');
     expect(updated?.updatedAt.getTime()).toBeGreaterThan(
-      before?.updatedAt.getTime() ?? 0
+      before?.updatedAt.getTime() ?? 0,
     );
   });
 
@@ -142,7 +142,7 @@ describe('PUT /api/v1/user/profile', () => {
       {
         method: 'PUT',
         body: JSON.stringify({ name: null }),
-      }
+      },
     );
 
     const response = await PUT(request);
@@ -167,7 +167,7 @@ describe('PUT /api/v1/user/profile', () => {
           'Content-Type': 'application/json',
         },
         body: '{ not json',
-      }
+      },
     );
 
     const response = await PUT(request);
@@ -187,7 +187,7 @@ describe('PUT /api/v1/user/profile', () => {
           name: 'Still Valid',
           email: 'should-not-be-allowed@example.com',
         }),
-      }
+      },
     );
 
     const response = await PUT(request);
@@ -207,7 +207,7 @@ describe('PUT /api/v1/user/profile', () => {
         body: JSON.stringify({
           name: 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH + 1),
         }),
-      }
+      },
     );
 
     const response = await PUT(request);

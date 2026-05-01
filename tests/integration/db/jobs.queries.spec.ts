@@ -20,7 +20,7 @@ describe('Job Queries', () => {
 
   function expectPresent<T>(
     value: T | null | undefined,
-    message: string
+    message: string,
   ): NonNullable<T> {
     expect(value).toBeDefined();
     if (value == null) {
@@ -30,7 +30,7 @@ describe('Job Queries', () => {
   }
 
   async function createJob(
-    overrides: Partial<JobInsert> = {}
+    overrides: Partial<JobInsert> = {},
   ): Promise<InferSelectModel<typeof jobQueue>> {
     const defaults: Partial<JobInsert> = {
       jobType: 'plan_regeneration',
@@ -92,7 +92,7 @@ describe('Job Queries', () => {
       expect(failedJobs.length).toBe(1);
       const failedJob = expectPresent(
         failedJobs[0],
-        'Expected failed job to be returned'
+        'Expected failed job to be returned',
       );
       expect(failedJob.status).toBe('failed');
       expect(failedJob.error).toBe('Generation failed');
@@ -135,7 +135,7 @@ describe('Job Queries', () => {
       expect(failedJobs.length).toBeGreaterThanOrEqual(2);
       const mostRecentFailedJob = expectPresent(
         failedJobs[0],
-        'Expected most recent failed job'
+        'Expected most recent failed job',
       );
       expect(mostRecentFailedJob.error).toBe('Recent error');
     });
@@ -211,14 +211,14 @@ describe('Job Queries', () => {
       expect(failedJobs.map((job) => job.id)).toContain(failed.id);
       const persistedBeforeRead = expectPresent(
         beforeRead,
-        'Expected failed row before monitoring read'
+        'Expected failed row before monitoring read',
       );
       const persistedAfterRead = expectPresent(
         afterRead,
-        'Expected failed row after monitoring read'
+        'Expected failed row after monitoring read',
       );
       expect(persistedAfterRead.updatedAt).toEqual(
-        persistedBeforeRead.updatedAt
+        persistedBeforeRead.updatedAt,
       );
       expect(persistedAfterRead.attempts).toBe(persistedBeforeRead.attempts);
       expect(persistedAfterRead.error).toBe('Stable failure');
@@ -358,8 +358,8 @@ describe('Job Queries', () => {
       expect(remainingJobs.length).toBeGreaterThanOrEqual(1);
       expect(
         remainingJobs.every(
-          (job) => job.completedAt && job.completedAt > threshold
-        )
+          (job) => job.completedAt && job.completedAt > threshold,
+        ),
       ).toBe(true);
     });
 
@@ -399,7 +399,7 @@ describe('Job Queries', () => {
       const remainingJobs = await db.select().from(jobQueue);
       const hasPending = remainingJobs.some((job) => job.status === 'pending');
       const hasProcessing = remainingJobs.some(
-        (job) => job.status === 'processing'
+        (job) => job.status === 'processing',
       );
 
       expect(hasPending).toBe(true);
@@ -457,7 +457,7 @@ describe('Job Queries', () => {
       const remainingJobs = await db.select().from(jobQueue);
       expect(remainingJobs.some((job) => job.id === oldJob.id)).toBe(false);
       expect(remainingJobs.some((job) => job.id === thresholdJob.id)).toBe(
-        true
+        true,
       );
     });
   });
@@ -492,7 +492,7 @@ describe('Job Queries', () => {
           data: { planId },
           priority: 0,
         },
-        db
+        db,
       );
 
       const dedupedForSameUser = await insertJobRecord(
@@ -503,7 +503,7 @@ describe('Job Queries', () => {
           data: { planId },
           priority: 0,
         },
-        db
+        db,
       );
 
       const secondUserInsert = await insertJobRecord(
@@ -514,7 +514,7 @@ describe('Job Queries', () => {
           data: { planId: secondUserPlan.id },
           priority: 0,
         },
-        db
+        db,
       );
 
       await expect(
@@ -526,8 +526,8 @@ describe('Job Queries', () => {
             data: { planId },
             priority: 0,
           },
-          db
-        )
+          db,
+        ),
       ).rejects.toThrow(`Plan not found or inaccessible: ${planId}`);
 
       expect(firstInsert.deduplicated).toBe(false);
@@ -539,21 +539,21 @@ describe('Job Queries', () => {
       const activeForFirstUser = await getActiveRegenerationJob(
         planId,
         userId,
-        db
+        db,
       );
       const activeForSecondUser = await getActiveRegenerationJob(
         secondUserPlan.id,
         secondUserId,
-        db
+        db,
       );
 
       const secondUserActiveJob = expectPresent(
         activeForSecondUser,
-        'Expected active job for second user'
+        'Expected active job for second user',
       );
       const firstUserActiveJob = expectPresent(
         activeForFirstUser,
-        'Expected active job for first user'
+        'Expected active job for first user',
       );
       expect(firstUserActiveJob.id).toBe(firstInsert.id);
       expect(secondUserActiveJob.id).toBe(secondUserInsert.id);

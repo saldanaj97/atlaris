@@ -34,7 +34,7 @@ export const learningPlansRelations = relations(
     planSchedules: one(planSchedules),
     generationAttempts: many(generationAttempts),
     jobQueue: many(jobQueue),
-  })
+  }),
 );
 
 export const planSchedulesRelations = relations(planSchedules, ({ one }) => ({
@@ -51,7 +51,7 @@ export const generationAttemptsRelations = relations(
       fields: [generationAttempts.planId],
       references: [learningPlans.id],
     }),
-  })
+  }),
 );
 
 export const modulesRelations = relations(modules, ({ one, many }) => ({

@@ -7,7 +7,7 @@ import {
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
 
 export function normalizeParsedModules(
-  modulesInput: ParsedModule[]
+  modulesInput: ParsedModule[],
 ): NormalizedModulesResult {
   const moduleFlags: Array<ReturnType<typeof normalizeModuleMinutes>> = [];
   const taskFlags: Array<ReturnType<typeof normalizeTaskMinutes>> = [];
@@ -36,7 +36,7 @@ export function normalizeParsedModules(
 
   const normalizationFlags = aggregateNormalizationFlags(
     moduleFlags,
-    taskFlags
+    taskFlags,
   );
 
   return { normalizedModules, normalizationFlags };

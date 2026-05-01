@@ -19,6 +19,7 @@ import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  jobQueue,
   learningPlans,
   modules,
   resources,
@@ -44,10 +45,11 @@ const policyRowSchema = z.object({
 // this file. Do not add metadata-only tables here without functional tests.
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, generation_attempts, task_resources,
-// usage_metrics, ai_usage_events, oauth_state_tokens, job_queue.
+// usage_metrics, ai_usage_events, oauth_state_tokens.
 const expectedPolicyTables = [
   'users',
   'learning_plans',
+  'job_queue',
   'modules',
   'tasks',
   'resources',
@@ -66,7 +68,8 @@ async function expectRlsViolation(operation: () => Promise<unknown>) {
 
     if (!/row.*level.*security|permission/i.test(combinedMessage)) {
       throw new Error(
-        `Expected RLS violation error but got: ${message}${causeMessage ? ` (cause: ${causeMessage})` : ''}`
+        `Expected RLS violation error but got: ${message}${causeMessage ? ` (cause: ${causeMessage})` : ''}`,
+        { cause: error },
       );
     }
   }
@@ -89,7 +92,7 @@ describe('RLS Policy Verification', () => {
         FROM pg_policies
         WHERE schemaname = 'public'
           AND tablename = ANY(ARRAY[${sql.raw(
-            expectedPolicyTables.map((name) => `'${name}'`).join(',')
+            expectedPolicyTables.map((name) => `'${name}'`).join(','),
           )}]::text[])
         ORDER BY tablename, policyname, role
       `);
@@ -102,10 +105,10 @@ describe('RLS Policy Verification', () => {
       const rolesByPolicy = new Map<string, Set<string>>();
       const allowedRoles = new Set(['authenticated']);
       const tablesWithPolicies = new Set(
-        policyRows.map((row) => row.tablename)
+        policyRows.map((row) => row.tablename),
       );
       const missingTables = expectedPolicyTables.filter(
-        (tableName) => !tablesWithPolicies.has(tableName)
+        (tableName) => !tablesWithPolicies.has(tableName),
       );
 
       expect(missingTables).toEqual([]);
@@ -222,7 +225,7 @@ describe('RLS Policy Verification', () => {
           weeklyHours: 5,
           learningStyle: 'mixed',
           visibility: 'private',
-        })
+        }),
       );
     });
 
@@ -260,14 +263,14 @@ describe('RLS Policy Verification', () => {
           .update(learningPlans)
           .set({ topic: 'Should Not Update' })
           .where(eq(learningPlans.id, plan.id))
-          .returning({ id: learningPlans.id })
+          .returning({ id: learningPlans.id }),
       );
 
       await expectRlsViolation(() =>
         anonDb
           .delete(learningPlans)
           .where(eq(learningPlans.id, plan.id))
-          .returning({ id: learningPlans.id })
+          .returning({ id: learningPlans.id }),
       );
 
       const persistedPlan = await db.query.learningPlans.findFirst({
@@ -307,7 +310,7 @@ describe('RLS Policy Verification', () => {
           order: 1,
           title: 'Unauthorized Module',
           estimatedMinutes: 30,
-        })
+        }),
       );
     });
   });
@@ -364,6 +367,148 @@ describe('RLS Policy Verification', () => {
       expect(crossTenantUpdate).toHaveLength(0);
     });
 
+    // Transitive ownership: `job_queue_select_own` only returns rows for plans
+    // owned by the current user. Anonymous has no `job_queue` visibility.
+    it('authenticated can read own job_queue rows, cannot forge/change rows; anonymous cannot read or write', async () => {
+      const [owner] = await db
+        .insert(users)
+        .values({
+          authUserId: 'job_queue_owner',
+          email: 'job-queue-owner@test.com',
+        })
+        .returning({ id: users.id });
+
+      const [otherUser] = await db
+        .insert(users)
+        .values({
+          authUserId: 'job_queue_other',
+          email: 'job-queue-other@test.com',
+        })
+        .returning({ id: users.id });
+
+      const [ownerPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: owner.id,
+          topic: 'Owner Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        })
+        .returning({ id: learningPlans.id });
+
+      const [otherPlan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: otherUser.id,
+          topic: 'Other Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        })
+        .returning({ id: learningPlans.id });
+
+      const ownerDb = await createRlsDbForUser('job_queue_owner');
+      const anonDb = await createAnonRlsDb();
+
+      const [seededJob] = await db
+        .insert(jobQueue)
+        .values({
+          planId: ownerPlan.id,
+          userId: owner.id,
+          jobType: 'plan_regeneration',
+          status: 'pending',
+          payload: { planId: ownerPlan.id },
+          priority: 0,
+        })
+        .returning({
+          id: jobQueue.id,
+          planId: jobQueue.planId,
+          userId: jobQueue.userId,
+          jobType: jobQueue.jobType,
+        });
+
+      const [otherSeededJob] = await db
+        .insert(jobQueue)
+        .values({
+          planId: otherPlan.id,
+          userId: otherUser.id,
+          jobType: 'plan_regeneration',
+          status: 'pending',
+          payload: { planId: otherPlan.id },
+          priority: 0,
+        })
+        .returning({
+          id: jobQueue.id,
+          planId: jobQueue.planId,
+          userId: jobQueue.userId,
+          jobType: jobQueue.jobType,
+        });
+
+      const visibleJobs = await ownerDb
+        .select({
+          id: jobQueue.id,
+          planId: jobQueue.planId,
+          userId: jobQueue.userId,
+          jobType: jobQueue.jobType,
+        })
+        .from(jobQueue);
+
+      expect(visibleJobs).toEqual([seededJob]);
+      expect(visibleJobs).not.toContainEqual(otherSeededJob);
+
+      const anonRows = await anonDb
+        .select({
+          id: jobQueue.id,
+        })
+        .from(jobQueue);
+      expect(anonRows).toHaveLength(0);
+
+      await expectRlsViolation(() =>
+        ownerDb.insert(jobQueue).values({
+          planId: otherPlan.id,
+          userId: owner.id,
+          jobType: 'plan_regeneration',
+          status: 'pending',
+          payload: { planId: otherPlan.id },
+          priority: 0,
+        }),
+      );
+
+      await expectRlsViolation(() =>
+        ownerDb
+          .update(jobQueue)
+          .set({ status: 'processing' })
+          .where(eq(jobQueue.id, seededJob.id)),
+      );
+
+      await expectRlsViolation(() =>
+        ownerDb.delete(jobQueue).where(eq(jobQueue.id, seededJob.id)),
+      );
+
+      await expectRlsViolation(() =>
+        anonDb.insert(jobQueue).values({
+          planId: ownerPlan.id,
+          userId: owner.id,
+          jobType: 'plan_regeneration',
+          status: 'pending',
+          payload: { planId: ownerPlan.id },
+          priority: 0,
+        }),
+      );
+      await expectRlsViolation(() =>
+        anonDb
+          .update(jobQueue)
+          .set({ status: 'processing' })
+          .where(eq(jobQueue.id, seededJob.id)),
+      );
+      await expectRlsViolation(() =>
+        anonDb.delete(jobQueue).where(eq(jobQueue.id, seededJob.id)),
+      );
+    });
+
     it('authenticated users cannot update billing/system-managed columns on their own row', async () => {
       // RLS limits authenticated users to their own row, and migration 0018's
       // column-level UPDATE grants keep billing/system-managed fields writable
@@ -389,21 +534,21 @@ describe('RLS Policy Verification', () => {
         userDb
           .update(users)
           .set({ cancelAtPeriodEnd: true })
-          .where(eq(users.id, user.id))
+          .where(eq(users.id, user.id)),
       );
 
       await expectRlsViolation(() =>
         userDb
           .update(users)
           .set({ stripeCustomerId: 'cus_fake123' })
-          .where(eq(users.id, user.id))
+          .where(eq(users.id, user.id)),
       );
 
       await expectRlsViolation(() =>
         userDb
           .update(users)
           .set({ subscriptionStatus: 'active' })
-          .where(eq(users.id, user.id))
+          .where(eq(users.id, user.id)),
       );
 
       const [billingAfterViolations] = await userDb
@@ -438,7 +583,7 @@ describe('RLS Policy Verification', () => {
 
       expect(updatedPreferred).toHaveLength(1);
       expect(updatedPreferred[0]?.preferredAiModel).toBe(
-        'google/gemini-2.0-flash-exp:free'
+        'google/gemini-2.0-flash-exp:free',
       );
     });
 
@@ -583,7 +728,7 @@ describe('RLS Policy Verification', () => {
           weeklyHours: 5,
           learningStyle: 'mixed',
           visibility: 'private',
-        })
+        }),
       );
     });
 
@@ -998,7 +1143,7 @@ describe('RLS Policy Verification', () => {
           type: 'video',
           title: 'Unauthorized Resource',
           url: `https://example.com/video-${Date.now()}`,
-        })
+        }),
       );
 
       // Service role should be able to manage resources

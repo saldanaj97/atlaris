@@ -21,7 +21,7 @@ import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
 export async function validatePlanOwnership(
   planId: string,
   userId: string,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<void> {
   const plan = await selectOwnedPlanById({
     planId,
@@ -48,7 +48,7 @@ export async function validatePlanOwnership(
 export async function getPlanScheduleCache(
   planId: string,
   userId: string,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<ScheduleCacheRow | null> {
   await validatePlanOwnership(planId, userId, dbClient);
 
@@ -79,7 +79,7 @@ export async function upsertPlanScheduleCache(
   planId: string,
   userId: string,
   payload: UpsertPlanScheduleCachePayload,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<void> {
   const {
     scheduleJson,
@@ -112,7 +112,7 @@ export async function upsertPlanScheduleCache(
     if (isPlanOwnershipWriteError(error)) {
       logger.warn(
         { planId, userId },
-        'Plan write failed - not found or access denied'
+        'Plan write failed - not found or access denied',
       );
       throw new Error('Plan not found or access denied', { cause: error });
     }

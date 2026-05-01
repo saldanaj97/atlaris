@@ -4,13 +4,13 @@ import { auth } from '@/lib/auth/server';
 
 type AuthRouteHandler = ReturnType<typeof auth.handler>['GET'];
 
-export type CreateAuthHandlersDeps = {
+type CreateAuthHandlersDeps = {
   checkIpRateLimit: typeof realCheckIpRateLimit;
 };
 
 function withAuthIpRateLimit(
   handler: AuthRouteHandler,
-  checkIpRateLimit: CreateAuthHandlersDeps['checkIpRateLimit']
+  checkIpRateLimit: CreateAuthHandlersDeps['checkIpRateLimit'],
 ): AuthRouteHandler {
   return async (request, context) => {
     try {

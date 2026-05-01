@@ -6,7 +6,7 @@ import type { ModuleResourceRow } from '@/lib/db/queries/types/modules.types';
 const BASE_DATE = new Date('2026-01-01T00:00:00.000Z');
 
 function buildResourceRow(
-  overrides: Partial<ModuleResourceRow>
+  overrides: Partial<ModuleResourceRow>,
 ): ModuleResourceRow {
   return {
     id: overrides.id ?? 'task-resource-1',

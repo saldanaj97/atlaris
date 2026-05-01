@@ -46,7 +46,7 @@ const testcontainersEnvFile =
   join(
     __dirname,
     '..',
-    `.testcontainers-env.${process.pid}.${randomUUID()}.json`
+    `.testcontainers-env.${process.pid}.${randomUUID()}.json`,
   );
 
 // Each Vitest process needs its own runtime-state file. A fixed shared path lets

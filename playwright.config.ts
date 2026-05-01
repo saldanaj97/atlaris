@@ -2,7 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 const SMOKE_ANON_BASE_URL = 'http://127.0.0.1:3100';
 const SMOKE_AUTH_BASE_URL = 'http://127.0.0.1:3101';
-const PLAYWRIGHT_REPORT_DIR = './tests/test-results/playwright/playwright-report';
+const PLAYWRIGHT_REPORT_DIR =
+  './tests/test-results/playwright/playwright-report';
 const PLAYWRIGHT_OUTPUT_DIR = './tests/test-results/playwright';
 const SMOKE_SERVER_TIMEOUT_MS = 180_000;
 const SMOKE_SERVER_SHUTDOWN = { signal: 'SIGTERM' as const, timeout: 5_000 };

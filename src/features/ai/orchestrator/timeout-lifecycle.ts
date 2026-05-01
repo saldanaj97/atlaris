@@ -11,7 +11,7 @@ export type TimeoutLifecycle = {
 
 export function resolveTimeoutConfig(
   timeoutConfig?: Partial<AdaptiveTimeoutConfig>,
-  clock?: () => number
+  clock?: () => number,
 ): AdaptiveTimeoutConfig {
   const {
     baseMs = aiTimeoutEnv.baseMs,
@@ -29,7 +29,7 @@ export function resolveTimeoutConfig(
 
 export function setupAbortAndTimeout(
   timeoutConfig: AdaptiveTimeoutConfig,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
 ): TimeoutLifecycle & { controller: AbortController } {
   const timeout = createAdaptiveTimeout(timeoutConfig);
   const controller = new AbortController();
@@ -43,7 +43,7 @@ export function setupAbortAndTimeout(
 }
 
 export function cleanupTimeoutLifecycle(
-  timeoutLifecycle: TimeoutLifecycle
+  timeoutLifecycle: TimeoutLifecycle,
 ): void {
   timeoutLifecycle.timeout.cancel();
   timeoutLifecycle.cleanupTimeoutAbort();

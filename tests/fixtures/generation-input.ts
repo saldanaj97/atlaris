@@ -14,7 +14,7 @@ const DEFAULT_GENERATION_INPUT: GenerationInput = {
 };
 
 export function createGenerationInput(
-  overrides: Partial<GenerationInput> = {}
+  overrides: Partial<GenerationInput> = {},
 ): GenerationInput {
   return {
     ...DEFAULT_GENERATION_INPUT,

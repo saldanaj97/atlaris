@@ -1,3 +1,16 @@
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import type {
+  GenerationAttemptResult,
+  ProcessGenerationInput,
+} from '@/features/plans/lifecycle/types';
+import {
+  createPlanGenerationSessionBoundary,
+  PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+  type RespondRetryStreamArgs,
+  type RetryPlanGenerationPlanSnapshot,
+} from '@/features/plans/session/plan-generation-session';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+import { db } from '@/lib/db/service-role';
 import { ensureUser } from '@tests/helpers/db';
 import {
   readStreamingResponse,
@@ -5,17 +18,6 @@ import {
 } from '@tests/helpers/streaming';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { describe, expect, it, vi } from 'vitest';
-import type {
-  GenerationAttemptResult,
-  PlanLifecycleService,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
-import {
-  createPlanGenerationSessionBoundary,
-  type RespondRetryStreamArgs,
-  type RetryPlanGenerationPlanSnapshot,
-} from '@/features/plans/session/plan-generation-session';
-import { db } from '@/lib/db/service-role';
 
 const SUCCESS_ATTEMPT_RESULT: GenerationAttemptResult = {
   status: 'generation_success',
@@ -54,10 +56,35 @@ interface FakeLifecycleHandle {
   processGenerationAttempt: ReturnType<typeof vi.fn>;
 }
 
+function fakeReservation(attemptNumber: number): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: `fake-attempt-${attemptNumber}`,
+    attemptNumber,
+    startedAt: new Date(),
+    sanitized: {
+      topic: {
+        value: BASE_PLAN_SNAPSHOT.topic,
+        truncated: false,
+        originalLength: BASE_PLAN_SNAPSHOT.topic.length,
+      },
+      notes: { value: undefined, truncated: false },
+    },
+    promptHash: `fake-hash-${attemptNumber}`,
+  };
+}
+
 function buildFakeLifecycle(
-  process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>
+  process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>,
+  options?: { reserveAttemptNumber?: number },
 ): FakeLifecycleHandle {
-  const processGenerationAttempt = vi.fn(process);
+  const reserveN = options?.reserveAttemptNumber ?? 2;
+  const processGenerationAttempt = vi.fn(
+    async (input: ProcessGenerationInput) => {
+      input.onAttemptReserved?.(fakeReservation(reserveN));
+      return process(input);
+    },
+  );
 
   const service = {
     createPlan: vi.fn(),
@@ -79,7 +106,6 @@ interface BuildArgsInput {
   authUserId: string;
   internalUserId: string;
   planId?: string;
-  attemptNumber?: number;
   plan?: RetryPlanGenerationPlanSnapshot;
   responseHeaders?: HeadersInit;
 }
@@ -90,7 +116,6 @@ function buildArgs(input: BuildArgsInput): RespondRetryStreamArgs {
     authUserId: input.authUserId,
     internalUserId: input.internalUserId,
     planId: input.planId ?? 'plan_boundary_retry',
-    attemptNumber: input.attemptNumber ?? 2,
     plan: input.plan ?? { ...BASE_PLAN_SNAPSHOT },
     tierDb: db,
     ...(input.responseHeaders
@@ -101,7 +126,7 @@ function buildArgs(input: BuildArgsInput): RespondRetryStreamArgs {
 
 function findEvent(
   events: StreamingEvent[],
-  type: string
+  type: string,
 ): StreamingEvent | undefined {
   return events.find((event) => event.type === type);
 }
@@ -128,7 +153,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-success'
+      'boundary-retry-success',
     );
     const req = buildRetryRequest('plan_retry_success');
 
@@ -138,8 +163,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_success',
-        attemptNumber: 2,
-      })
+      }),
     );
 
     expect(response.status).toBe(200);
@@ -168,7 +192,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
       status: 'retryable_failure',
       classification: 'provider_error',
       error: new Error(
-        'OpenRouter upstream failure: api_key=sk-live-secret-value'
+        'OpenRouter upstream failure: api_key=sk-live-secret-value',
       ),
     }));
     const boundary = createPlanGenerationSessionBoundary({
@@ -176,7 +200,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-retryable'
+      'boundary-retry-retryable',
     );
 
     const response = await boundary.respondRetryStream(
@@ -185,7 +209,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_retryable',
-      })
+      }),
     );
 
     const events = await readStreamingResponse(response);
@@ -211,7 +235,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-permanent'
+      'boundary-retry-permanent',
     );
 
     const response = await boundary.respondRetryStream(
@@ -220,7 +244,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_permanent',
-      })
+      }),
     );
 
     const events = await readStreamingResponse(response);
@@ -241,7 +265,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-unhandled'
+      'boundary-retry-unhandled',
     );
 
     const response = await boundary.respondRetryStream(
@@ -250,7 +274,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_unhandled',
-      })
+      }),
     );
 
     const events = await readStreamingResponse(response);
@@ -273,7 +297,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-disconnect'
+      'boundary-retry-disconnect',
     );
 
     const response = await boundary.respondRetryStream(
@@ -282,7 +306,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
         authUserId,
         internalUserId,
         planId: 'plan_retry_disconnect',
-      })
+      }),
     );
 
     expect(response.status).toBe(200);
@@ -299,7 +323,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-headers'
+      'boundary-retry-headers',
     );
 
     const response = await boundary.respondRetryStream(
@@ -312,7 +336,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
           'X-RateLimit-Limit': '11',
           'X-Custom-Test': 'retry',
         },
-      })
+      }),
     );
 
     expect(response.headers.get('X-RateLimit-Limit')).toBe('11');
@@ -320,6 +344,37 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(response.headers.get('Content-Type')).toBe('text/event-stream');
 
     await response.body?.cancel();
+  });
+
+  it('forwards allowedGenerationStatuses on processGenerationInput for retry', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildFakeLifecycle(async (input) => {
+      captured.push(input);
+      return SUCCESS_ATTEMPT_RESULT;
+    });
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupUser(
+      'boundary-retry-allowed-statuses',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildArgs({
+        req: buildRetryRequest('plan_retry_allowed'),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_allowed',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await readStreamingResponse(response);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.allowedGenerationStatuses).toEqual(
+      PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+    );
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {
@@ -334,7 +389,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     });
 
     const { authUserId, internalUserId } = await setupUser(
-      'boundary-retry-factory'
+      'boundary-retry-factory',
     );
 
     const responses = await Promise.all([
@@ -344,7 +399,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
           authUserId,
           internalUserId,
           planId: 'plan_retry_factory_a',
-        })
+        }),
       ),
       boundary.respondRetryStream(
         buildArgs({
@@ -352,12 +407,12 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
           authUserId,
           internalUserId,
           planId: 'plan_retry_factory_b',
-        })
+        }),
       ),
     ]);
 
     await Promise.all(
-      responses.map((response) => readStreamingResponse(response))
+      responses.map((response) => readStreamingResponse(response)),
     );
 
     expect(createLifecycleService).toHaveBeenCalledTimes(2);

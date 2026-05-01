@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -17,7 +17,7 @@ import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
-  const attemptCap = getAttemptCap();
+  const attemptCap = getGenerationAttemptCap();
   let userId: string;
   let planId: string;
 
@@ -133,8 +133,8 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
           visibility: 'private',
           origin: 'ai',
           generationStatus: 'failed',
-        })
-      )
+        }),
+      ),
     );
     let globalIndex = 0;
     for (const p of throwawayPlans) {
@@ -180,7 +180,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     expect(rejected).toBeDefined();
     if (rejected && !rejected.reserved) {
       expect(['rate_limited', 'in_progress', 'capped']).toContain(
-        rejected.reason
+        rejected.reason,
       );
       if (rejected.reason === 'rate_limited') {
         expect(typeof rejected.retryAfter).toBe('number');
@@ -199,7 +199,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         durationMs: 1000,
         promptHash: `hash-${i}`,
         metadata: {},
-      })
+      }),
     );
     expect(failedAttempts).toHaveLength(attemptCap);
 
@@ -317,7 +317,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         durationMs: 3000,
         extendedTimeout: false,
         dbClient: db,
-      })
+      }),
     ).rejects.toThrow(/Failed to finalize successful generation attempt/);
   });
 
@@ -359,8 +359,10 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         timedOut: true,
         extendedTimeout: false,
         dbClient: db,
-      })
-    ).rejects.toThrow('Failed to finalize generation attempt as failure.');
+      }),
+    ).rejects.toThrow(
+      /^Failed to finalize generation attempt .+ for plan .+ as timeout failure\.$/,
+    );
   });
 
   it('finalizes success correctly', async () => {

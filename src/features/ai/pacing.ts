@@ -89,7 +89,7 @@ export function computeCapacity(params: PacingParams): number {
  */
 export function trimModulesToCapacity(
   modules: ParsedModule[],
-  capacity: number
+  capacity: number,
 ): ParsedModule[] {
   if (capacity <= 0) {
     return [];
@@ -172,7 +172,7 @@ export function trimModulesToCapacity(
  */
 export function pacePlan(
   modules: ParsedModule[],
-  input: GenerationInput
+  input: GenerationInput,
 ): ParsedModule[] {
   // If no deadline provided, do not trim the plan.
   // Treat as unbounded capacity to preserve original modules (excluding empties).

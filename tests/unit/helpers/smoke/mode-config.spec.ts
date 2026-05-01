@@ -38,7 +38,7 @@ describe('smoke mode-config', () => {
   it('buildAuthModeLayer sets seeded auth id and local mocks', () => {
     const layer = buildAuthModeLayer(FAKE_STATE);
     expect(layer.DEV_AUTH_USER_ID).toBe(
-      LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID
+      LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
     );
     expect(layer.LOCAL_PRODUCT_TESTING).toBe('true');
     expect(layer.ENABLE_SENTRY).toBe('false');
@@ -108,7 +108,7 @@ describe('smoke mode-config', () => {
 
   it('parseSmokeAppMode throws when mode is invalid', () => {
     expect(() => parseSmokeAppMode(['--mode=invalid'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 
@@ -122,13 +122,13 @@ describe('smoke mode-config', () => {
 
   it('parseSmokeAppMode rejects space-separated mode flags', () => {
     expect(() => parseSmokeAppMode(['--mode', 'anon'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 
   it('parseSmokeAppMode treats flag names as case-sensitive', () => {
     expect(() => parseSmokeAppMode(['--MODE=anon'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 

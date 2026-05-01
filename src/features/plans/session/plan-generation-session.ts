@@ -3,53 +3,44 @@ import {
   streamHeaders,
 } from '@/features/ai/streaming/events';
 import { resolveUserTier } from '@/features/billing/tier';
-import type { PlansDbClient } from '@/features/plans/api/route-context';
-import {
-  type CreatePlanResult,
-  createPlanLifecycleService,
-  type GenerationAttemptResult,
-  type JobQueuePort,
-  type PermanentFailure,
-  type PlanLifecycleService,
-  type ProcessGenerationInput,
-  type RetryableFailure,
-} from '@/features/plans/lifecycle';
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import { throwCreatePlanResultError } from './create-plan-result-error';
+import {
+  buildCreateGenerationInput,
+  buildRetryGenerationInput,
+} from './generation-input';
 import { resolveStreamModelResolution } from './model-resolution';
-import { safeMarkPlanFailed } from './stream-cleanup';
+import { safeMarkPlanFailedWithDbClient } from './stream-cleanup';
 import { createStreamDbClient } from './stream-db';
 import {
   buildPlanStartEvent,
   executeLifecycleGenerationStream,
 } from './stream-emitters';
 
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const UNSTRUCTURED_EXCEPTION_CLASSIFICATION = 'provider_error' as const;
-const PLAN_CREATION_FAILURE_MAP: Record<
-  FailureClassification | 'unknown',
-  { status: number; code: string }
-> = {
-  validation: { status: 400, code: 'PLAN_CREATION_VALIDATION_FAILED' },
-  capped: { status: 403, code: 'PLAN_CREATION_CAPPED' },
-  conflict: { status: 409, code: 'PLAN_CREATION_CONFLICT' },
-  rate_limit: { status: 429, code: 'PLAN_CREATION_RATE_LIMITED' },
-  timeout: { status: 504, code: 'PLAN_CREATION_TIMEOUT' },
-  provider_error: { status: 503, code: 'PLAN_CREATION_PROVIDER_ERROR' },
-  unknown: { status: 500, code: 'PLAN_CREATION_FAILED' },
-};
+import type { PlansDbClient } from '@/features/plans/api/route-context';
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import type {
+  CreatePlanResult,
+  GenerationAttemptResult,
+  ProcessGenerationInput,
+} from '@/features/plans/lifecycle/types';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import type {
+  AttemptReservation,
+  AttemptsDbClient,
+} from '@/lib/db/queries/types/attempts.types';
+import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-const noopJobQueue: JobQueuePort = {
-  async enqueueJob() {
-    return '';
-  },
-  async completeJob() {},
-  async failJob() {},
-};
+const DEFAULT_PROVIDER_FAILURE_CLASSIFICATION = 'provider_error' as const;
+
+/** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
+export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [
+  'failed',
+  'pending_retry',
+] as const;
 
 /**
  * Minimal plan snapshot needed to retry generation without route-owned session wiring.
@@ -57,13 +48,7 @@ const noopJobQueue: JobQueuePort = {
  * Routes hydrate this from the persisted plan row before delegating to
  * {@link PlanGenerationSessionBoundary.respondRetryStream}.
  */
-export interface RetryPlanGenerationPlanSnapshot {
-  topic: string;
-  skillLevel: 'beginner' | 'intermediate' | 'advanced';
-  weeklyHours: number;
-  learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-  startDate: string | null;
-  deadlineDate: string | null;
+export interface RetryPlanGenerationPlanSnapshot extends PlanGenerationCoreFieldsNormalized {
   origin: 'ai' | 'manual' | 'template' | null;
 }
 
@@ -83,7 +68,6 @@ export interface RespondRetryStreamArgs {
   authUserId: string;
   internalUserId: string;
   planId: string;
-  attemptNumber: number;
   plan: RetryPlanGenerationPlanSnapshot;
   tierDb: PlansDbClient;
   responseHeaders?: HeadersInit;
@@ -94,13 +78,10 @@ export interface RespondRetryStreamArgs {
  * streaming plan-generation `Response`.
  *
  * Implementations hide:
- * - stream-scoped DB lease creation and idempotent cleanup
- * - lifecycle service construction on that lease
- * - create vs retry orchestration branching
- * - model resolution and logging
- * - `plan_start` emission and SSE event sequencing
- * - disconnect suppression and fallback failure emission
- * - `safeMarkPlanFailed` / unhandled-exception cleanup behavior
+ * - stream-scoped DB lease lifecycle
+ * - create vs retry preparation
+ * - `plan_start` emission and SSE sequencing
+ * - unhandled-exception cleanup
  */
 export interface PlanGenerationSessionBoundary {
   respondCreateStream(args: RespondCreateStreamArgs): Promise<Response>;
@@ -109,7 +90,7 @@ export interface PlanGenerationSessionBoundary {
 
 /** Lifecycle factory injected at the boundary; defaults to the production wiring. */
 type CreateLifecycleService = (
-  dbClient: AttemptsDbClient
+  dbClient: AttemptsDbClient,
 ) => PlanLifecycleService;
 
 /** Optional dependency overrides for {@link createPlanGenerationSessionBoundary}. */
@@ -117,20 +98,58 @@ interface CreateSessionBoundaryDeps {
   createLifecycleService?: CreateLifecycleService;
 }
 
+interface CreatePlanGenerationSessionResponseParams {
+  req: Request;
+  authUserId: string;
+  dbClient: AttemptsDbClient;
+  cleanup: () => Promise<void>;
+  planId: string;
+  planStartInput: CreateLearningPlanInput;
+  generationInput: ProcessGenerationInput;
+  processGeneration: (
+    input: ProcessGenerationInput,
+  ) => Promise<GenerationAttemptResult>;
+  onUnhandledError: UnhandledGenerationErrorHandler;
+  fallbackClassification?: FailureClassification | 'unknown';
+  responseHeaders?: HeadersInit;
+}
+
+type SessionCommand =
+  | ({ kind: 'create' } & RespondCreateStreamArgs)
+  | ({ kind: 'retry' } & RespondRetryStreamArgs);
+type CreateSessionCommand = Extract<SessionCommand, { kind: 'create' }>;
+type RetrySessionCommand = Extract<SessionCommand, { kind: 'retry' }>;
+type SuccessfulCreatePlanResult = Extract<
+  CreatePlanResult,
+  { status: 'success' }
+>;
+type UnhandledGenerationErrorHandler = (
+  error: unknown,
+  startedAt: number,
+  dbClient: AttemptsDbClient,
+) => Promise<void>;
+
+interface PreparedSessionPlan {
+  planId: string;
+  planStartInput: CreateLearningPlanInput;
+  generationInput: ProcessGenerationInput;
+  fallbackClassification: FailureClassification | 'unknown';
+  onUnhandledError: UnhandledGenerationErrorHandler;
+}
+
 /**
  * Build a {@link PlanGenerationSessionBoundary}.
  *
  * Tests inject a fake `createLifecycleService` to swap the lifecycle service
- * under the boundary; production code calls this with no deps to get the
- * default `createPlanLifecycleService` wiring with a noop job queue.
+ * under the boundary; production uses default `createPlanLifecycleService`
+ * on the stream-scoped DB client.
  */
 export function createPlanGenerationSessionBoundary(
-  deps: CreateSessionBoundaryDeps = {}
+  deps: CreateSessionBoundaryDeps = {},
 ): PlanGenerationSessionBoundary {
   const buildLifecycle: CreateLifecycleService =
     deps.createLifecycleService ??
-    ((dbClient) =>
-      createPlanLifecycleService({ dbClient, jobQueue: noopJobQueue }));
+    ((dbClient) => createPlanLifecycleService({ dbClient }));
 
   return {
     respondCreateStream: (args) =>
@@ -140,32 +159,12 @@ export function createPlanGenerationSessionBoundary(
   };
 }
 
-// ─── Internal: shared run path ─────────────────────────────────────────────
-
-type SessionCommand =
-  | ({ kind: 'create' } & RespondCreateStreamArgs)
-  | ({ kind: 'retry' } & RespondRetryStreamArgs);
-
-interface PreparedSessionPlan {
-  planId: string;
-  attemptNumber: number;
-  planStartInput: CreateLearningPlanInput;
-  generationInput: ProcessGenerationInput;
-  fallbackClassification: FailureClassification | 'unknown';
-  onUnhandledError: (
-    error: unknown,
-    startedAt: number,
-    dbClient: AttemptsDbClient
-  ) => Promise<void>;
-}
-
 async function run(
   command: SessionCommand,
-  buildLifecycle: CreateLifecycleService
+  buildLifecycle: CreateLifecycleService,
 ): Promise<Response> {
-  const { dbClient, closeStreamDb } = await openStreamSession(
-    command.authUserId
-  );
+  const { dbClient, cleanup } = await createStreamDbClient(command.authUserId);
+  const closeStreamDb = createSafeStreamCleanup(command.authUserId, cleanup);
 
   try {
     const lifecycleService = buildLifecycle(dbClient);
@@ -173,7 +172,7 @@ async function run(
     const prepared =
       command.kind === 'create'
         ? await prepareCreate(command, lifecycleService)
-        : await prepareRetry(command, lifecycleService);
+        : await prepareRetry(command);
 
     return await createPlanGenerationSessionResponse({
       req: command.req,
@@ -181,7 +180,6 @@ async function run(
       dbClient,
       cleanup: closeStreamDb,
       planId: prepared.planId,
-      attemptNumber: prepared.attemptNumber,
       planStartInput: prepared.planStartInput,
       generationInput: prepared.generationInput,
       processGeneration:
@@ -197,8 +195,8 @@ async function run(
 }
 
 async function prepareCreate(
-  command: Extract<SessionCommand, { kind: 'create' }>,
-  lifecycleService: PlanLifecycleService
+  command: CreateSessionCommand,
+  lifecycleService: PlanLifecycleService,
 ): Promise<PreparedSessionPlan> {
   const { req, authUserId, internalUserId, body, savedPreferredAiModel } =
     command;
@@ -217,41 +215,13 @@ async function prepareCreate(
     throwCreatePlanResultError(createResult);
   }
 
-  const { modelOverride, resolutionSource, suppliedModel } =
-    resolveStreamModelResolution({
-      searchParams: new URL(req.url).searchParams,
-      tier: createResult.tier,
-      savedPreferredAiModel,
-    });
-
-  const ignoredSuppliedModel =
-    suppliedModel !== undefined && resolutionSource !== 'query_override';
-
-  const resolutionMessage =
-    resolutionSource === 'query_override'
-      ? 'Model override from query for stream generation'
-      : resolutionSource === 'saved_preference'
-        ? 'Using saved preferred AI model for stream generation'
-        : 'No query override or saved preference; tier default applies';
-
-  const resolutionMeta = {
+  const modelOverride = resolveCreateStreamModel({
+    req,
     authUserId,
-    userId: internalUserId,
-    planId: createResult.planId,
-    tier: createResult.tier,
-    modelResolutionSource: resolutionSource,
-    suppliedModel,
-    ...(modelOverride !== undefined ? { modelOverride } : {}),
-    ...(ignoredSuppliedModel ? { ignoredSuppliedModel: true } : {}),
-  };
-
-  // Use `warn` when an explicit query override was rejected so callers can
-  // diagnose tier/validation issues; otherwise `info` for the resolved source.
-  if (ignoredSuppliedModel) {
-    logger.warn(resolutionMeta, resolutionMessage);
-  } else {
-    logger.info(resolutionMeta, resolutionMessage);
-  }
+    internalUserId,
+    createResult,
+    savedPreferredAiModel,
+  });
 
   const generationInput = buildCreateGenerationInput({
     body,
@@ -262,7 +232,6 @@ async function prepareCreate(
 
   return {
     planId: createResult.planId,
-    attemptNumber: 1,
     planStartInput: {
       ...body,
       topic: createResult.normalizedInput.topic,
@@ -270,47 +239,39 @@ async function prepareCreate(
       deadlineDate: createResult.normalizedInput.deadlineDate ?? undefined,
     },
     generationInput,
-    fallbackClassification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-    onUnhandledError: async (error, startedAt, sessionDbClient) => {
-      logger.error(
-        {
-          planId: createResult.planId,
-          userId: internalUserId,
-          classification: UNSTRUCTURED_EXCEPTION_CLASSIFICATION,
-          durationMs: Math.max(0, Date.now() - startedAt),
-          error: serializeError(error),
-        },
-        'Unhandled exception during stream generation; marking plan failed'
-      );
-
-      await safeMarkPlanFailed(
-        createResult.planId,
-        internalUserId,
-        new PlanPersistenceAdapter(sessionDbClient)
-      );
-    },
+    fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
+    onUnhandledError: (error, startedAt, sessionDbClient) =>
+      handleUnhandledStreamError({
+        error,
+        startedAt,
+        dbClient: sessionDbClient,
+        planId: createResult.planId,
+        userId: internalUserId,
+        classification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
+        message:
+          'Unhandled exception during stream generation; marking plan failed',
+      }),
   };
 }
 
 async function prepareRetry(
-  command: Extract<SessionCommand, { kind: 'retry' }>,
-  _lifecycleService: PlanLifecycleService
+  command: RetrySessionCommand,
 ): Promise<PreparedSessionPlan> {
-  const { internalUserId, planId, attemptNumber, plan, tierDb } = command;
+  const { internalUserId, planId, plan, tierDb } = command;
 
   const tier = await resolveUserTier(internalUserId, tierDb);
+  const retryInput = buildRetryGenerationInput(plan, ({ field, value }) => {
+    logger.warn(
+      { field, value },
+      'Ignoring persisted plan session date with invalid ISO calendar format',
+    );
+  });
 
   return {
     planId,
-    attemptNumber,
     planStartInput: {
-      topic: plan.topic,
-      skillLevel: plan.skillLevel,
-      weeklyHours: plan.weeklyHours,
-      learningStyle: plan.learningStyle,
+      ...retryInput,
       notes: undefined,
-      startDate: toIsoDateString(plan.startDate, 'startDate'),
-      deadlineDate: toIsoDateString(plan.deadlineDate, 'deadlineDate'),
       visibility: 'private',
       origin: plan.origin ?? 'ai',
     },
@@ -318,57 +279,22 @@ async function prepareRetry(
       planId,
       userId: internalUserId,
       tier,
-      input: {
-        topic: plan.topic,
-        skillLevel: plan.skillLevel,
-        weeklyHours: plan.weeklyHours,
-        learningStyle: plan.learningStyle,
-        startDate: toIsoDateString(plan.startDate, 'startDate'),
-        deadlineDate: toIsoDateString(plan.deadlineDate, 'deadlineDate'),
-      },
+      allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+      input: retryInput,
     },
-    fallbackClassification: 'provider_error',
-    onUnhandledError: async (error, startedAt, sessionDbClient) => {
-      const classification = classifyError(error);
-      logger.error(
-        {
-          planId,
-          userId: internalUserId,
-          classification,
-          durationMs: Math.max(0, Date.now() - startedAt),
-          error: serializeError(error),
-        },
-        'Unhandled exception during retry generation; marking plan failed'
-      );
-
-      await safeMarkPlanFailed(
+    fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
+    onUnhandledError: (error, startedAt, sessionDbClient) =>
+      handleUnhandledStreamError({
+        error,
+        startedAt,
+        dbClient: sessionDbClient,
         planId,
-        internalUserId,
-        new PlanPersistenceAdapter(sessionDbClient)
-      );
-    },
+        userId: internalUserId,
+        classification: classifyError(error),
+        message:
+          'Unhandled exception during retry generation; marking plan failed',
+      }),
   };
-}
-
-interface CreatePlanGenerationSessionResponseParams {
-  req: Request;
-  authUserId: string;
-  dbClient: AttemptsDbClient;
-  cleanup: () => Promise<void>;
-  planId: string;
-  attemptNumber?: number;
-  planStartInput: CreateLearningPlanInput;
-  generationInput: ProcessGenerationInput;
-  processGeneration: (
-    input: ProcessGenerationInput
-  ) => Promise<GenerationAttemptResult>;
-  onUnhandledError: (
-    error: unknown,
-    startedAt: number,
-    dbClient: AttemptsDbClient
-  ) => Promise<void>;
-  fallbackClassification?: FailureClassification | 'unknown';
-  responseHeaders?: HeadersInit;
 }
 
 async function createPlanGenerationSessionResponse({
@@ -377,33 +303,32 @@ async function createPlanGenerationSessionResponse({
   dbClient,
   cleanup,
   planId,
-  attemptNumber = 1,
   planStartInput,
   generationInput,
   processGeneration,
   onUnhandledError,
-  fallbackClassification = 'provider_error',
+  fallbackClassification = DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
   responseHeaders,
 }: CreatePlanGenerationSessionResponseParams): Promise<Response> {
   try {
     const stream = createEventStream(
       async (emit, _controller, streamContext) => {
-        try {
-          emit(
-            buildPlanStartEvent({
-              planId,
-              attemptNumber,
-              input: planStartInput,
-            })
-          );
+        const generationInputWithReservation = withPlanStartOnReservation({
+          generationInput,
+          planId,
+          planStartInput,
+          emit,
+        });
 
+        try {
           await executeLifecycleGenerationStream({
             reqSignal: req.signal,
             streamSignal: streamContext.signal,
             planId,
             userId: authUserId,
             emit,
-            processGeneration: () => processGeneration(generationInput),
+            processGeneration: () =>
+              processGeneration(generationInputWithReservation),
             onUnhandledError: async (error, startedAt) => {
               await onUnhandledError(error, startedAt, dbClient);
             },
@@ -412,7 +337,7 @@ async function createPlanGenerationSessionResponse({
         } finally {
           await cleanup();
         }
-      }
+      },
     );
 
     return new Response(stream, {
@@ -428,21 +353,9 @@ async function createPlanGenerationSessionResponse({
   }
 }
 
-async function openStreamSession(authUserId: string): Promise<{
-  dbClient: AttemptsDbClient;
-  closeStreamDb: () => Promise<void>;
-}> {
-  const { dbClient, cleanup } = await createStreamDbClient(authUserId);
-
-  return {
-    dbClient,
-    closeStreamDb: createSafeStreamCleanup(authUserId, cleanup),
-  };
-}
-
 function createSafeStreamCleanup(
   authUserId: string,
-  cleanup: () => Promise<void>
+  cleanup: () => Promise<void>,
 ): () => Promise<void> {
   let closed = false;
 
@@ -460,117 +373,124 @@ function createSafeStreamCleanup(
   };
 }
 
-function buildCreateGenerationInput({
-  body,
+function resolveCreateStreamModel({
+  req,
+  authUserId,
+  internalUserId,
   createResult,
-  userId,
-  modelOverride,
+  savedPreferredAiModel,
 }: {
-  body: CreateLearningPlanInput;
-  createResult: Extract<CreatePlanResult, { status: 'success' }>;
-  userId: string;
-  modelOverride?: string | null;
+  req: Request;
+  authUserId: string;
+  internalUserId: string;
+  createResult: SuccessfulCreatePlanResult;
+  savedPreferredAiModel: string | null;
+}): string | undefined {
+  const { modelOverride, resolutionSource, suppliedModel } =
+    resolveStreamModelResolution({
+      searchParams: new URL(req.url).searchParams,
+      tier: createResult.tier,
+      savedPreferredAiModel,
+    });
+
+  const ignoredSuppliedModel =
+    suppliedModel !== undefined && resolutionSource !== 'query_override';
+  const message =
+    resolutionSource === 'query_override'
+      ? 'Model override from query for stream generation'
+      : resolutionSource === 'saved_preference'
+        ? 'Using saved preferred AI model for stream generation'
+        : 'No query override or saved preference; tier default applies';
+  const meta = {
+    authUserId,
+    userId: internalUserId,
+    planId: createResult.planId,
+    tier: createResult.tier,
+    modelResolutionSource: resolutionSource,
+    suppliedModel,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
+    ...(ignoredSuppliedModel ? { ignoredSuppliedModel: true } : {}),
+  };
+
+  logger[ignoredSuppliedModel ? 'warn' : 'info'](meta, message);
+
+  return modelOverride;
+}
+
+function withPlanStartOnReservation({
+  generationInput,
+  planId,
+  planStartInput,
+  emit,
+}: {
+  generationInput: ProcessGenerationInput;
+  planId: string;
+  planStartInput: CreateLearningPlanInput;
+  emit: (event: ReturnType<typeof buildPlanStartEvent>) => void;
 }): ProcessGenerationInput {
-  const { normalizedInput: ni, planId, tier } = createResult;
+  let planStartEmitted = false;
 
   return {
-    planId,
-    userId,
-    tier,
-    input: {
-      topic: ni.topic,
-      notes: body.notes,
-      skillLevel: body.skillLevel,
-      weeklyHours: body.weeklyHours,
-      learningStyle: body.learningStyle,
-      startDate: ni.startDate,
-      deadlineDate: ni.deadlineDate,
+    ...generationInput,
+    onAttemptReserved: (reservation: AttemptReservation) => {
+      if (planStartEmitted) {
+        logger.warn(
+          {
+            planId,
+            attemptId: reservation.attemptId,
+            attemptNumber: reservation.attemptNumber,
+          },
+          'plan_start reservation callback invoked more than once; ignoring duplicate',
+        );
+        return;
+      }
+
+      planStartEmitted = true;
+      emit(
+        buildPlanStartEvent({
+          planId,
+          attemptNumber: reservation.attemptNumber,
+          input: planStartInput,
+        }),
+      );
     },
-    modelOverride,
   };
 }
 
-function throwCreatePlanResultError(
-  createResult: Exclude<CreatePlanResult, { status: 'success' }>
-): never {
-  if (createResult.status === 'duplicate_detected') {
-    throw new AppError(
-      'A plan with this topic is already being generated. Please wait for it to complete.',
-      {
-        status: 409,
-        code: 'DUPLICATE_PLAN',
-        details: { existingPlanId: createResult.existingPlanId },
-      }
-    );
-  }
-
-  if (createResult.status === 'quota_rejected') {
-    throw new AppError(createResult.reason, {
-      status: 403,
-      code: 'QUOTA_EXCEEDED',
-      details: { upgradeUrl: createResult.upgradeUrl },
-    });
-  }
-
-  if (createResult.status === 'attempt_cap_exceeded') {
-    throw new AttemptCapExceededError(createResult.reason, {
-      planId: createResult.cappedPlanId,
-    });
-  }
-
-  throwPlanCreationFailure(createResult);
-}
-
-function throwPlanCreationFailure(
-  createResult: PermanentFailure | RetryableFailure
-): never {
-  const error = createResult.error;
-  const { status, code } =
-    PLAN_CREATION_FAILURE_MAP[createResult.classification] ??
-    PLAN_CREATION_FAILURE_MAP.unknown;
-
-  logger.warn(
+async function handleUnhandledStreamError({
+  error,
+  startedAt,
+  dbClient,
+  planId,
+  userId,
+  classification,
+  message,
+}: {
+  error: unknown;
+  startedAt: number;
+  dbClient: AttemptsDbClient;
+  planId: string;
+  userId: string;
+  classification: FailureClassification | 'unknown';
+  message: string;
+}): Promise<void> {
+  logger.error(
     {
-      status: createResult.status,
-      classification: createResult.classification,
-      error: error.message,
+      planId,
+      userId,
+      classification,
+      durationMs: Math.max(0, Date.now() - startedAt),
+      error: serializeError(error),
     },
-    'Plan creation failure'
+    message,
   );
 
-  throw new AppError(error.message, {
-    status,
-    code,
-    classification:
-      createResult.classification === 'unknown'
-        ? undefined
-        : createResult.classification,
-    cause: error,
-  });
-}
-
-function toIsoDateString(
-  value: string | null,
-  field: 'startDate' | 'deadlineDate'
-): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  if (ISO_DATE_PATTERN.test(value)) {
-    return value;
-  }
-
-  logger.warn(
-    { field, value },
-    'Ignoring persisted plan session date with invalid ISO calendar format'
-  );
-  return undefined;
+  await safeMarkPlanFailedWithDbClient(planId, userId, dbClient);
 }
 
 function classifyError(error: unknown): FailureClassification | 'unknown' {
   if (error instanceof AppError) {
-    return error.classification() ?? 'provider_error';
+    return error.classification() ?? DEFAULT_PROVIDER_FAILURE_CLASSIFICATION;
   }
 
   if (
@@ -580,7 +500,7 @@ function classifyError(error: unknown): FailureClassification | 'unknown' {
     return 'timeout';
   }
 
-  return 'provider_error';
+  return DEFAULT_PROVIDER_FAILURE_CLASSIFICATION;
 }
 
 function serializeError(error: unknown): Record<string, unknown> {

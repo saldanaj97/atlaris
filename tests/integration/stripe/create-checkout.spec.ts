@@ -1,14 +1,19 @@
-import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
-import { sql } from 'drizzle-orm';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTestUser } from '@/../tests/helpers/auth';
 import { ensureUser } from '@/../tests/helpers/db';
 import {
   createCreateCheckoutHandler,
   POST,
 } from '@/app/api/v1/stripe/create-checkout/route';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
+import { sql } from 'drizzle-orm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const createTestBoundary = (stripe: ReturnType<typeof makeStripeMock>) =>
+  createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) });
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
@@ -24,7 +29,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     vi.clearAllMocks();
     vi.stubEnv(
       'STRIPE_STARTER_MONTHLY_PRICE_ID',
-      approvedStarterMonthlyPriceId
+      approvedStarterMonthlyPriceId,
     );
     vi.stubEnv('STRIPE_PRO_MONTHLY_PRICE_ID', approvedProMonthlyPriceId);
     vi.stubEnv('STRIPE_STARTER_YEARLY_PRICE_ID', approvedStarterYearlyPriceId);
@@ -58,7 +63,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     });
 
-    const POST = createCreateCheckoutHandler({ stripe: mockStripe });
+    const POST = createCreateCheckoutHandler({
+      boundary: createTestBoundary(mockStripe),
+    });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -73,7 +80,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           successUrl: 'http://localhost:3000/success',
           cancelUrl: 'http://localhost:3000/cancel',
         }),
-      }
+      },
     );
 
     const response = await POST(request);
@@ -91,7 +98,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
       {
         timeout: 10_000,
-      }
+      },
     );
 
     // Verify checkout session was created
@@ -104,7 +111,10 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     });
 
     // Verify customer ID was saved to DB
-    const [user] = await db.select().from(users).where(sql`id = ${userId}`);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`id = ${userId}`);
     expect(user?.stripeCustomerId).toBe('cus_new123');
   });
 
@@ -139,7 +149,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     });
 
-    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+    const handlerPOST = createCreateCheckoutHandler({
+      boundary: createTestBoundary(mockStripe),
+    });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -152,7 +164,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: approvedProMonthlyPriceId,
         }),
-      }
+      },
     );
 
     const response = await handlerPOST(request);
@@ -169,7 +181,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
     expect(createCheckoutSession).toHaveBeenCalledWith(
       expect.objectContaining({
         customer: 'cus_existing456',
-      })
+      }),
     );
   });
 
@@ -200,7 +212,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     });
 
-    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+    const handlerPOST = createCreateCheckoutHandler({
+      boundary: createTestBoundary(mockStripe),
+    });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -213,7 +227,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: approvedStarterMonthlyPriceId,
         }),
-      }
+      },
     );
 
     const response = await handlerPOST(request);
@@ -226,7 +240,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         success_url:
           'http://localhost:3000/settings/billing?session_id={CHECKOUT_SESSION_ID}',
         cancel_url: 'http://localhost:3000/settings/billing',
-      })
+      }),
     );
   });
 
@@ -246,7 +260,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           'Content-Type': 'application/json',
         },
         body: '{ not json',
-      }
+      },
     );
 
     const response = await POST(request);
@@ -272,7 +286,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-      }
+      },
     );
 
     const response = await POST(request);
@@ -299,7 +313,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
-      }
+      },
     );
 
     const response = await POST(request);
@@ -332,7 +346,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     });
 
-    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+    const handlerPOST = createCreateCheckoutHandler({
+      boundary: createTestBoundary(mockStripe),
+    });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -344,7 +360,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: 'price_tampered_not_allowed',
         }),
-      }
+      },
     );
 
     const response = await handlerPOST(request);
@@ -369,7 +385,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: approvedStarterMonthlyPriceId,
         }),
-      }
+      },
     );
 
     const response = await POST(request);
@@ -397,7 +413,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: approvedStarterMonthlyPriceId,
         }),
-      }
+      },
     );
 
     const response = await POST(request);
@@ -423,7 +439,9 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
     });
 
-    const handlerPOST = createCreateCheckoutHandler({ stripe: mockStripe });
+    const handlerPOST = createCreateCheckoutHandler({
+      boundary: createTestBoundary(mockStripe),
+    });
 
     const request = new Request(
       'http://localhost:3000/api/v1/stripe/create-checkout',
@@ -435,7 +453,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
         body: JSON.stringify({
           priceId: approvedStarterMonthlyPriceId,
         }),
-      }
+      },
     );
 
     const response = await handlerPOST(request);

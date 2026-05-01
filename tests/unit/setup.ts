@@ -27,7 +27,7 @@ vi.mock('@/lib/db/service-role', async (importOriginal) => {
     db: {
       ...crud,
       transaction: vi.fn((fn: (tx: typeof crud) => Promise<unknown>) =>
-        fn({ ...crud })
+        fn({ ...crud }),
       ),
       query: {
         learningPlans: {

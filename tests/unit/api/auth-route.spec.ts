@@ -60,8 +60,8 @@ describe('auth catch-all route rate limiting', () => {
     mocks.mockCheckIpRateLimit.mockImplementation(
       mockRateLimitExceeded(
         AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS,
-        'Too many auth attempts'
-      )
+        'Too many auth attempts',
+      ),
     );
 
     const { GET } = getMockHandlers();
@@ -84,8 +84,8 @@ describe('auth catch-all route rate limiting', () => {
     mocks.mockCheckIpRateLimit.mockImplementation(
       mockRateLimitExceeded(
         AUTH_RATE_LIMIT_RETRY_AFTER_SECONDS,
-        'Too many auth attempts'
-      )
+        'Too many auth attempts',
+      ),
     );
 
     const { POST } = getMockHandlers();

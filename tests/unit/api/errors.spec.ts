@@ -216,7 +216,7 @@ describe('ServiceUnavailableError', () => {
     const details = { provider: 'future_oauth_provider' };
     const error = new ServiceUnavailableError(
       'OAuth provider unavailable',
-      details
+      details,
     );
 
     expect(error.details()).toEqual(details);
@@ -345,7 +345,7 @@ describe('toErrorResponse', () => {
         status: 503,
         code: 'SERVICE_UNAVAILABLE',
         headers: { 'Retry-After': '15' },
-      })
+      }),
     );
 
     expect(response.headers.get('Retry-After')).toBe('15');

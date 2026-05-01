@@ -2,7 +2,7 @@ import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
 import { describe, expect, it } from 'vitest';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { learningPlans, modules } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -11,7 +11,7 @@ import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId } from '../../helpers/testIds';
 
 type StatusFixture = {
-  generationStatus: 'generating' | 'ready' | 'failed';
+  generationStatus: 'generating' | 'pending_retry' | 'ready' | 'failed';
   hasModules: boolean;
   attemptsCount?: number;
   expectedStatus: 'processing' | 'pending' | 'failed' | 'ready';
@@ -19,7 +19,7 @@ type StatusFixture = {
 
 async function createPlanFixture(
   userId: string,
-  fixture: StatusFixture
+  fixture: StatusFixture,
 ): Promise<string> {
   const [plan] = await db
     .insert(learningPlans)
@@ -65,12 +65,30 @@ describe('Plan status parity contract', () => {
       email: 'status-parity@example.com',
     });
 
-    const attemptCap = getAttemptCap();
+    const attemptCap = getGenerationAttemptCap();
     const fixtures: StatusFixture[] = [
       {
         generationStatus: 'generating',
         hasModules: false,
         expectedStatus: 'processing',
+      },
+      {
+        generationStatus: 'generating',
+        hasModules: false,
+        attemptsCount: attemptCap,
+        expectedStatus: 'failed',
+      },
+      {
+        generationStatus: 'pending_retry',
+        hasModules: false,
+        attemptsCount: 1,
+        expectedStatus: 'processing',
+      },
+      {
+        generationStatus: 'pending_retry',
+        hasModules: false,
+        attemptsCount: attemptCap,
+        expectedStatus: 'failed',
       },
       {
         generationStatus: 'failed',
@@ -112,12 +130,12 @@ describe('Plan status parity contract', () => {
       const detailResponse = await GET_PLAN_DETAIL(
         new Request(`http://localhost/api/v1/plans/${planId}`, {
           method: 'GET',
-        })
+        }),
       );
       const statusResponse = await GET_PLAN_STATUS(
         new Request(`http://localhost/api/v1/plans/${planId}/status`, {
           method: 'GET',
-        })
+        }),
       );
 
       expect(detailResponse.status).toBe(200);

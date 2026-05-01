@@ -7,11 +7,11 @@ import { ValidationError } from '@/lib/api/errors';
  */
 export function assertCheckoutPriceAllowed(
   localMode: boolean,
-  priceId: string
+  priceId: string,
 ): void {
   if (localMode && !isLocalPriceId(priceId)) {
     throw new ValidationError(
-      'priceId must be a canonical local catalog id when STRIPE_LOCAL_MODE is enabled'
+      'priceId must be a canonical local catalog id when STRIPE_LOCAL_MODE is enabled',
     );
   }
 

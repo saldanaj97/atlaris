@@ -41,15 +41,12 @@ describe('computeNextDelay', () => {
     expect(high).toBeLessThanOrEqual(expected * (1 + JITTER_FACTOR));
   });
 
-  it.each([
-    NaN,
-    Infinity,
-    -Infinity,
-    -1,
-    0,
-  ])('returns INITIAL_POLL_MS for invalid input: %s', (input) => {
-    expect(computeNextDelay(input)).toBe(INITIAL_POLL_MS);
-  });
+  it.each([NaN, Infinity, -Infinity, -1, 0])(
+    'returns INITIAL_POLL_MS for invalid input: %s',
+    (input) => {
+      expect(computeNextDelay(input)).toBe(INITIAL_POLL_MS);
+    },
+  );
 
   it('produces different values with different random seeds', () => {
     const results = new Set<number>();

@@ -13,7 +13,7 @@ import {
 } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RegenerateButton } from '@/app/plans/components/RegenerateButton';
+import { RegenerateButton } from '@/app/(app)/plans/components/RegenerateButton';
 
 describe('RegenerateButton', () => {
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe('RegenerateButton', () => {
     render(<RegenerateButton planId="test-plan-123" />);
 
     expect(
-      screen.getByRole('button', { name: /regenerate plan/i })
+      screen.getByRole('button', { name: /regenerate plan/i }),
     ).toBeInTheDocument();
   });
 
@@ -50,7 +50,7 @@ describe('RegenerateButton', () => {
         '/api/v1/plans/test-plan-123/regenerate',
         expect.objectContaining({
           method: 'POST',
-        })
+        }),
       );
     });
   });
@@ -133,7 +133,7 @@ describe('RegenerateButton', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        'Unable to enqueue regeneration'
+        'Unable to enqueue regeneration',
       );
     });
   });
@@ -149,7 +149,7 @@ describe('RegenerateButton', () => {
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
-        'Unable to enqueue regeneration'
+        'Unable to enqueue regeneration',
       );
     });
   });

@@ -6,13 +6,19 @@
  *
  * Receives an injected `dbClient` so that all DB writes go through the
  * same connection as the rest of the lifecycle (avoiding the closed-connection bug).
+ *
+ * `PlanLifecycleService.processGenerationAttempt` does **not** use this adapter;
+ * successful/permanent-failure usage for normal generation flows is recorded inside
+ * `generationFinalization` (single transaction with attempt, modules/tasks, plan row).
+ * Keep this port for callers that still need standalone usage recording.
  */
 
 import { incrementUsage } from '@/features/billing/usage-metrics';
-import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
-import type { DbClient } from '@/lib/db/types';
 import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
 import { logger } from '@/lib/logging/logger';
+
+import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
+import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 type UsageRecordingAdapterDependencies = {
@@ -28,7 +34,7 @@ export class UsageRecordingAdapter implements UsageRecordingPort {
 
   constructor(
     private readonly dbClient: DbClient,
-    deps: UsageRecordingAdapterDependencies = {}
+    deps: UsageRecordingAdapterDependencies = {},
   ) {
     this.recordUsageImpl = deps.recordUsage ?? recordUsage;
     this.incrementUsageImpl = deps.incrementUsage ?? incrementUsage;
@@ -43,7 +49,7 @@ export class UsageRecordingAdapter implements UsageRecordingPort {
   }): Promise<void> {
     await this.recordUsageImpl(
       this.toRecordParams(params.usage, params.userId),
-      this.dbClient
+      this.dbClient,
     );
 
     if (params.kind) {
@@ -51,7 +57,7 @@ export class UsageRecordingAdapter implements UsageRecordingPort {
         await this.incrementUsageImpl(
           params.userId,
           params.kind,
-          this.dbClient
+          this.dbClient,
         );
       } catch (error) {
         logger.error(
@@ -60,7 +66,7 @@ export class UsageRecordingAdapter implements UsageRecordingPort {
             userId: params.userId,
             kind: params.kind,
           },
-          'Failed to increment usage aggregate after recording usage event'
+          'Failed to increment usage aggregate after recording usage event',
         );
         throw error;
       }

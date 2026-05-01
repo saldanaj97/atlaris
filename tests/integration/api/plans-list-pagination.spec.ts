@@ -9,8 +9,9 @@ import { buildTestPlanInsert } from '../../fixtures/plans';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
-// Keep the module mock here because withAuthAndRateLimit closes over auth.getSession()
-// inside the Next.js route wrapper, so dependency injection would be more invasive.
+// Keep this auth-server mock local. Removing it cleanly would require routing
+// requestBoundary.route -> withAuth through injectable auth/session providers in
+// the middleware stack and every route-handler construction site.
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },
 }));
@@ -50,12 +51,12 @@ describe('GET /api/v1/plans pagination', () => {
         generationStatus: 'ready',
         isQuotaEligible: true,
         createdAt: new Date(
-          `2026-01-01T00:${String(index).padStart(2, '0')}:00Z`
+          `2026-01-01T00:${String(index).padStart(2, '0')}:00Z`,
         ),
         updatedAt: new Date(
-          `2026-01-01T01:${String(index).padStart(2, '0')}:00Z`
+          `2026-01-01T01:${String(index).padStart(2, '0')}:00Z`,
         ),
-      })
+      }),
     );
 
     const insertedPlans = await db
@@ -94,7 +95,7 @@ describe('GET /api/v1/plans pagination', () => {
     });
 
     const response = await GET(
-      new NextRequest('http://localhost:3000/api/v1/plans', { method: 'GET' })
+      new NextRequest('http://localhost:3000/api/v1/plans', { method: 'GET' }),
     );
 
     expect(response.status).toBe(200);
@@ -131,7 +132,7 @@ describe('GET /api/v1/plans pagination', () => {
         isQuotaEligible: true,
         createdAt: new Date(Date.UTC(2026, 1, 1, 0, 0, index)),
         updatedAt: new Date(Date.UTC(2026, 1, 1, 1, 0, index)),
-      })
+      }),
     );
 
     await db.insert(learningPlans).values(planRows);
@@ -139,24 +140,26 @@ describe('GET /api/v1/plans pagination', () => {
     const pagedResponse = await GET(
       new NextRequest('http://localhost:3000/api/v1/plans?limit=5&offset=10', {
         method: 'GET',
-      })
+      }),
     );
     expect(pagedResponse.status).toBe(200);
     const pagedBody = await pagedResponse.json();
     expect(pagedBody).toHaveLength(5);
     expect(
-      pagedBody.map((plan: { createdAt: string }) => Date.parse(plan.createdAt))
+      pagedBody.map((plan: { createdAt: string }) =>
+        Date.parse(plan.createdAt),
+      ),
     ).toEqual(
       [...pagedBody]
         .map((plan: { createdAt: string }) => Date.parse(plan.createdAt))
-        .sort((left, right) => right - left)
+        .sort((left, right) => right - left),
     );
     expect(pagedBody[0].topic).toBe('Paged Plan 94');
 
     const oversizedResponse = await GET(
       new NextRequest('http://localhost:3000/api/v1/plans?limit=200', {
         method: 'GET',
-      })
+      }),
     );
     expect(oversizedResponse.status).toBe(200);
     const oversizedBody = await oversizedResponse.json();
@@ -167,14 +170,14 @@ describe('GET /api/v1/plans pagination', () => {
     const invalidLimitResponse = await GET(
       new NextRequest('http://localhost:3000/api/v1/plans?limit=0', {
         method: 'GET',
-      })
+      }),
     );
     expect(invalidLimitResponse.status).toBe(400);
 
     const invalidOffsetResponse = await GET(
       new NextRequest('http://localhost:3000/api/v1/plans?offset=-1', {
         method: 'GET',
-      })
+      }),
     );
     expect(invalidOffsetResponse.status).toBe(400);
   });

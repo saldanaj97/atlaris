@@ -109,7 +109,7 @@ function getRandomInt(min: number, max: number): number {
 function generateModuleTitle(
   topic: string,
   skillLevel: string,
-  moduleIndex: number
+  moduleIndex: number,
 ): string {
   const templates =
     TOPICS_TEMPLATES[skillLevel as keyof typeof TOPICS_TEMPLATES] ??
@@ -121,7 +121,7 @@ function generateModuleTitle(
 function generateTaskTitle(
   topic: string,
   learningStyle: string,
-  taskIndex: number
+  taskIndex: number,
 ): string {
   const templates =
     TASK_TEMPLATES[learningStyle as keyof typeof TASK_TEMPLATES] ??
@@ -173,7 +173,7 @@ function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
 async function* createMockChunks(
   payload: unknown,
   delayMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): AsyncIterable<string> {
   const throwIfAborted = () => {
     if (signal?.aborted) {
@@ -239,10 +239,10 @@ async function* createMockChunks(
 function createMockStream(
   payload: unknown,
   delayMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): ReadableStream<string> {
   return asyncIterableToReadableStream(
-    createMockChunks(payload, delayMs, signal)
+    createMockChunks(payload, delayMs, signal),
   );
 }
 
@@ -262,22 +262,22 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
 
   generate(
     input: GenerationInput,
-    options?: GenerationOptions
+    options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
     const scenario = this.config.scenario;
     if (scenario === 'timeout') {
       return Promise.reject(
-        new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)')
+        new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)'),
       );
     }
     if (scenario === 'provider_error') {
       return Promise.reject(
-        new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error')
+        new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error'),
       );
     }
     if (scenario === 'rate_limit') {
       return Promise.reject(
-        new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit')
+        new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit'),
       );
     }
     if (scenario === 'invalid_response') {
@@ -312,8 +312,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
       return Promise.reject(
         new ProviderError(
           'provider_error',
-          'Mock provider simulated failure for testing'
-        )
+          'Mock provider simulated failure for testing',
+        ),
       );
     }
 

@@ -80,7 +80,7 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
     const drainResponse = await POST_DRAIN(
       new Request('http://localhost/api/internal/jobs/regeneration/process', {
         method: 'POST',
-      })
+      }),
     );
 
     expect(drainResponse.status).toBe(200);

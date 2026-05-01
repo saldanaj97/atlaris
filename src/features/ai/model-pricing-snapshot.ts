@@ -12,7 +12,7 @@ import {
  * Returns null when provenance would be misleading (partial usage, unknown model, router).
  */
 export function buildModelPricingSnapshot(
-  usage: CanonicalAIUsage
+  usage: CanonicalAIUsage,
 ): ModelPricingSnapshotV1 | null {
   if (usage.isPartial) {
     return null;
@@ -52,7 +52,7 @@ export function buildModelPricingSnapshot(
  * downstream code treats it as trusted pricing provenance.
  */
 export function parseModelPricingSnapshot(
-  value: unknown
+  value: unknown,
 ): ModelPricingSnapshot | null {
   if (value == null) {
     return null;

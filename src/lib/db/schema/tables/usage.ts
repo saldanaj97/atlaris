@@ -64,7 +64,7 @@ export const usageMetrics = pgTable(
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
-  ]
+  ],
 ).enableRLS();
 
 export const aiUsageEvents = pgTable(
@@ -89,7 +89,7 @@ export const aiUsageEvents = pgTable(
     }),
     /** Catalog-backed inputs used to compute `cost_cents` at insert time. */
     modelPricingSnapshot: jsonb(
-      'model_pricing_snapshot'
+      'model_pricing_snapshot',
     ).$type<ModelPricingSnapshot | null>(),
     requestId: text('request_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
@@ -101,20 +101,20 @@ export const aiUsageEvents = pgTable(
     index('idx_ai_usage_created_at').on(table.createdAt),
     index('idx_ai_usage_events_user_created_at').on(
       table.userId,
-      table.createdAt
+      table.createdAt,
     ),
     check(
       'ai_usage_events_input_tokens_nonneg',
-      sql`${table.inputTokens} >= 0`
+      sql`${table.inputTokens} >= 0`,
     ),
     check(
       'ai_usage_events_output_tokens_nonneg',
-      sql`${table.outputTokens} >= 0`
+      sql`${table.outputTokens} >= 0`,
     ),
     check('ai_usage_events_cost_cents_nonneg', sql`${table.costCents} >= 0`),
     check(
       'ai_usage_events_provider_cost_microusd_nonneg',
-      sql`${table.providerCostMicrousd} IS NULL OR ${table.providerCostMicrousd} >= 0`
+      sql`${table.providerCostMicrousd} IS NULL OR ${table.providerCostMicrousd} >= 0`,
     ),
 
     // RLS policies
@@ -128,5 +128,5 @@ export const aiUsageEvents = pgTable(
       to: 'authenticated',
       withCheck: recordOwnedByCurrentUser(table.userId),
     }),
-  ]
+  ],
 ).enableRLS();

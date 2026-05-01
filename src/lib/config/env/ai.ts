@@ -34,7 +34,7 @@ interface AiMockEnv {
  * string and treated everything except `mock` as "use the real router";
  * tighten to this fixed union so unintended typos surface at parse time.
  */
-export type AiProviderEnvValue = 'mock' | 'router';
+type AiProviderEnvValue = 'mock' | 'router';
 
 /**
  * Core AI env facets used by provider selection and generation defaults.
@@ -84,9 +84,9 @@ interface AiEnvFacets {
   readonly attemptsEnv: AttemptsEnv;
 }
 
-function parseOptionalBooleanFlag(
+function parseStrictOptionalBooleanFlag(
   value: string | undefined,
-  envKey: string
+  envKey: string,
 ): boolean | undefined {
   if (value === undefined) {
     return undefined;
@@ -102,14 +102,14 @@ function parseOptionalBooleanFlag(
 
   throw new EnvValidationError(
     `${envKey} must be one of: true, false, 1, 0`,
-    envKey
+    envKey,
   );
 }
 
 function getAiTimeoutBaseMs(access: ServerEnvAccess): number {
   return parseEnvNumber(
     access.getServerOptional('AI_TIMEOUT_BASE_MS'),
-    120_000
+    120_000,
   );
 }
 
@@ -125,13 +125,13 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       }
       throw new EnvValidationError(
         `AI_PROVIDER must be one of: mock, router (or unset to use environment defaults). Received: ${raw}`,
-        'AI_PROVIDER'
+        'AI_PROVIDER',
       );
     },
     get useMock() {
-      return parseOptionalBooleanFlag(
+      return parseStrictOptionalBooleanFlag(
         access.getServerOptional('AI_USE_MOCK'),
-        'AI_USE_MOCK'
+        'AI_USE_MOCK',
       );
     },
     get mockSeed() {
@@ -152,7 +152,7 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       if (!MOCK_AI_SCENARIO_VALUES.has(raw)) {
         throw new EnvValidationError(
           `MOCK_AI_SCENARIO must be one of: ${[...MOCK_AI_SCENARIO_VALUES].join(', ')}`,
-          'MOCK_AI_SCENARIO'
+          'MOCK_AI_SCENARIO',
         );
       }
       return raw;
@@ -160,12 +160,12 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     mock: {
       get delayMs() {
         return parseEnvNumber(
-          access.getServerOptional('MOCK_GENERATION_DELAY_MS')
+          access.getServerOptional('MOCK_GENERATION_DELAY_MS'),
         );
       },
       get failureRate() {
         return parseEnvNumber(
-          access.getServerOptional('MOCK_GENERATION_FAILURE_RATE')
+          access.getServerOptional('MOCK_GENERATION_FAILURE_RATE'),
         );
       },
     },
@@ -182,7 +182,7 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       if (!isValidModelId(configured)) {
         throw new EnvValidationError(
           `AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids. Received: ${configured}`,
-          'AI_DEFAULT_MODEL'
+          'AI_DEFAULT_MODEL',
         );
       }
 
@@ -197,12 +197,12 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     get extensionMs() {
       return parseEnvNumber(
         access.getServerOptional('AI_TIMEOUT_EXTENSION_MS'),
-        60_000
+        60_000,
       );
     },
     get extensionThresholdMs() {
       const override = parseEnvNumber(
-        access.getServerOptional('AI_TIMEOUT_EXTENSION_THRESHOLD_MS')
+        access.getServerOptional('AI_TIMEOUT_EXTENSION_THRESHOLD_MS'),
       );
       if (override !== undefined) {
         return override;
@@ -239,7 +239,7 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     get cap() {
       return parseEnvNumber(
         access.getServerOptional('ATTEMPT_CAP'),
-        DEFAULT_ATTEMPT_CAP
+        DEFAULT_ATTEMPT_CAP,
       );
     },
   };

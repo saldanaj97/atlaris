@@ -84,7 +84,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
     });
 
     const response = await GET(
-      buildRequest('00000000-0000-0000-0000-000000000000')
+      buildRequest('00000000-0000-0000-0000-000000000000'),
     );
     expect(response.status).toBe(404);
   });

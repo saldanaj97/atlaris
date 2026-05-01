@@ -15,18 +15,18 @@ users 1—* oauth_state_tokens
 
 Defined in `src/lib/db/enums.ts`:
 
-| Enum                   | Values                                           |
-| ---------------------- | ------------------------------------------------ |
-| `skill_level`          | `beginner`, `intermediate`, `advanced`           |
-| `learning_style`       | `reading`, `video`, `practice`, `mixed`          |
-| `resource_type`        | `youtube`, `article`, `course`, `doc`, `other`   |
-| `progress_status`      | `not_started`, `in_progress`, `completed`        |
-| `generation_status`    | `generating`, `pending_retry`, `ready`, `failed` |
-| `job_status`           | `pending`, `processing`, `completed`, `failed`   |
-| `job_type`             | values sourced from `src/lib/jobs/constants.ts`  |
-| `subscription_tier`    | `free`, `starter`, `pro`                         |
-| `subscription_status`  | `active`, `canceled`, `past_due`, `trialing`     |
-| `plan_origin`          | `ai`, `template`, `manual`                       |
+| Enum                  | Values                                           |
+| --------------------- | ------------------------------------------------ |
+| `skill_level`         | `beginner`, `intermediate`, `advanced`           |
+| `learning_style`      | `reading`, `video`, `practice`, `mixed`          |
+| `resource_type`       | `youtube`, `article`, `course`, `doc`, `other`   |
+| `progress_status`     | `not_started`, `in_progress`, `completed`        |
+| `generation_status`   | `generating`, `pending_retry`, `ready`, `failed` |
+| `job_status`          | `pending`, `processing`, `completed`, `failed`   |
+| `job_type`            | values sourced from `src/lib/jobs/constants.ts`  |
+| `subscription_tier`   | `free`, `starter`, `pro`                         |
+| `subscription_status` | `active`, `canceled`, `past_due`, `trialing`     |
+| `plan_origin`         | `ai`, `template`, `manual`                       |
 
 ## Key constraints
 
@@ -47,17 +47,17 @@ RLS is enforced through request-scoped Postgres session state:
 
 ## Frequently referenced indexes
 
-| Table                        | Index / uniqueness                                     |
-| ---------------------------- | ------------------------------------------------------ |
-| `learning_plans`             | `(user_id, is_quota_eligible, generation_status)`      |
-| `modules`                    | `(plan_id, order)`                                     |
-| `tasks`                      | `(module_id, order)`                                   |
-| `task_progress`              | `(user_id, task_id)`                                   |
-| `task_resources`             | `(task_id, resource_id)`                               |
-| `job_queue`                  | `(status, scheduled_for, priority)`                    |
-| `usage_metrics`              | `(user_id, month)`                                     |
-| `ai_usage_events`            | `(user_id, created_at)`                                |
-| `oauth_state_tokens`         | `(state_token_hash)`, `(expires_at)`                   |
+| Table                | Index / uniqueness                                |
+| -------------------- | ------------------------------------------------- |
+| `learning_plans`     | `(user_id, is_quota_eligible, generation_status)` |
+| `modules`            | `(plan_id, order)`                                |
+| `tasks`              | `(module_id, order)`                              |
+| `task_progress`      | `(user_id, task_id)`                              |
+| `task_resources`     | `(task_id, resource_id)`                          |
+| `job_queue`          | `(status, scheduled_for, priority)`               |
+| `usage_metrics`      | `(user_id, month)`                                |
+| `ai_usage_events`    | `(user_id, created_at)`                           |
+| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`              |
 
 ## Code locations
 

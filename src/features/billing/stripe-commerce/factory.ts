@@ -1,16 +1,28 @@
-import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce';
 import {
   DefaultStripeCommerceBoundary,
   type StripeCommerceBoundaryDeps,
 } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
+import { replaySyntheticSubscriptionCreated } from '@/features/billing/stripe-commerce/reconciliation';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
 import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import { db as serviceRoleDb } from '@/lib/db/service-role';
+import type { createLogger } from '@/lib/logging/logger';
+import { logger } from '@/lib/logging/logger';
+import type Stripe from 'stripe';
+
+type AppLogger = ReturnType<typeof createLogger>;
+
+type ExecuteLocalSubscriptionReplayOverrides = Partial<{
+  gateway: StripeGateway;
+  serviceRoleDb: typeof serviceRoleDb;
+  users: typeof users;
+  logger: AppLogger;
+}>;
 
 let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
 
@@ -18,7 +30,7 @@ let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
  * Shared Stripe client for billing features (delegates to `getStripe()` in
  * `client.ts` to avoid circular imports with the commerce boundary).
  */
-export function getBillingStripeClient(): Stripe {
+function getBillingStripeClient(): Stripe {
   return getStripe();
 }
 
@@ -32,7 +44,7 @@ type CreateStripeCommerceBoundaryOptions = Partial<
  * Builds a commerce boundary with injectable collaborators (used in tests).
  */
 export function createStripeCommerceBoundary(
-  options: CreateStripeCommerceBoundaryOptions = {}
+  options: CreateStripeCommerceBoundaryOptions = {},
 ): StripeCommerceBoundary {
   const gateway =
     options.gateway ?? new LiveStripeGateway(getBillingStripeClient());
@@ -60,10 +72,46 @@ export function getStripeCommerceBoundary(): StripeCommerceBoundary {
   return commerceBoundarySingleton;
 }
 
+let lazyStripeCommerceBoundary: StripeCommerceBoundary | null = null;
+
+/**
+ * Default route wiring: each method delegates to `getStripeCommerceBoundary()`.
+ * Single module copy avoids duplicate proxy blocks across API routes.
+ */
+export function getLazyStripeCommerceBoundary(): StripeCommerceBoundary {
+  lazyStripeCommerceBoundary ??= {
+    beginCheckout: (input) => getStripeCommerceBoundary().beginCheckout(input),
+    openPortal: (input) => getStripeCommerceBoundary().openPortal(input),
+    acceptWebhook: (input) => getStripeCommerceBoundary().acceptWebhook(input),
+  };
+  return lazyStripeCommerceBoundary;
+}
+
 /**
  * Whether the local Stripe completion redirect route should be active.
  * Centralizes `STRIPE_LOCAL_MODE` + local product testing gating.
  */
 export function isLocalStripeCompletionRouteEnabled(): boolean {
   return stripeEnv.localMode && localProductTestingEnv.enabled;
+}
+
+/**
+ * App-composed local checkout replay (issue #311): route stays transport-only;
+ * gateway / service-role DB / schema / logger wiring lives here.
+ */
+export async function executeLocalSubscriptionReplay(
+  input: { user: { id: string; email: string }; priceId: string },
+  overrides?: ExecuteLocalSubscriptionReplayOverrides,
+): Promise<void> {
+  const gateway =
+    overrides?.gateway ?? new LiveStripeGateway(getBillingStripeClient());
+
+  await replaySyntheticSubscriptionCreated({
+    user: input.user,
+    priceId: input.priceId,
+    gateway,
+    serviceRoleDb: overrides?.serviceRoleDb ?? serviceRoleDb,
+    users: overrides?.users ?? users,
+    logger: overrides?.logger ?? logger,
+  });
 }

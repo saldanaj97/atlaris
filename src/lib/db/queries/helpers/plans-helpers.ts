@@ -32,11 +32,11 @@ interface LockedOwnedPlanQueryParams {
 
 function ownedPlanWhere(
   planId: string,
-  ownerUserId: string
+  ownerUserId: string,
 ): ReturnType<typeof and> {
   return and(
     eq(learningPlans.id, planId),
-    eq(learningPlans.userId, ownerUserId)
+    eq(learningPlans.userId, ownerUserId),
   );
 }
 

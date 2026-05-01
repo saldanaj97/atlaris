@@ -132,7 +132,7 @@ export default function MyErrorBoundary({ error }: { error: Error }) {
 
 - ❌ **Client components importing server logger**: Will crash in browser
 - ❌ **Raw `console.*` calls in application code**: Use logger instead
-- ❌ **`biome-ignore` for console without a real reason**: Fix the architecture, not the lint rule
+- ❌ **Lint suppressions for console without a real reason**: Fix the architecture, not the lint rule
 
 ## Why Two Loggers?
 
@@ -150,9 +150,9 @@ export default function MyErrorBoundary({ error }: { error: Error }) {
 - In development, also logs to console for local visibility
 - No Node.js dependencies (Sentry runs in browser)
 
-## Biome
+## Oxlint
 
-Biome enforces these rules (see `biome.json`):
+Oxlint enforces these rules (see `.oxlintrc.json`):
 
 - `noConsole` (and related rules) discourages raw console usage in app code
 - Layer/import direction is enforced separately (see architecture docs); align new code with those boundaries
@@ -171,7 +171,7 @@ If you need to log from a client component, import `clientLogger`, not `logger`.
 **Cause**: Server logger uses Node.js-only modules (pino, crypto).
 **Fix**: Ensure client components only import from `@/lib/logging/client`.
 
-### `biome-ignore` for no-console
+### Lint suppressions for no-console
 
 **Cause**: Band-aid fix for mixing server/client loggers.
 **Fix**: Remove the ignore and use the correct logger for your context.

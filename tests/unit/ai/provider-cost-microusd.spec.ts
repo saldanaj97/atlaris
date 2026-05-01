@@ -21,22 +21,22 @@ describe('usdCostToMicrousdInteger', () => {
 
   it('throws for negative USD', () => {
     expect(() => usdCostToMicrousdInteger(-0.001)).toThrow(
-      'Invalid OpenRouter USD cost'
+      'Invalid OpenRouter USD cost',
     );
   });
 
   it('throws for NaN', () => {
     expect(() => usdCostToMicrousdInteger(Number.NaN)).toThrow(
-      'Invalid OpenRouter USD cost'
+      'Invalid OpenRouter USD cost',
     );
   });
 
   it('throws for infinite USD values', () => {
     expect(() => usdCostToMicrousdInteger(Number.POSITIVE_INFINITY)).toThrow(
-      'Invalid OpenRouter USD cost'
+      'Invalid OpenRouter USD cost',
     );
     expect(() => usdCostToMicrousdInteger(Number.NEGATIVE_INFINITY)).toThrow(
-      'Invalid OpenRouter USD cost'
+      'Invalid OpenRouter USD cost',
     );
   });
 
@@ -61,22 +61,22 @@ describe('microusdIntegerToBigint', () => {
 
   it('throws for non-finite micro-USD values', () => {
     expect(() => microusdIntegerToBigint(Number.NaN)).toThrow(
-      'Invalid micro-USD integer'
+      'Invalid micro-USD integer',
     );
     expect(() => microusdIntegerToBigint(Number.POSITIVE_INFINITY)).toThrow(
-      'Invalid micro-USD integer'
+      'Invalid micro-USD integer',
     );
     expect(() => microusdIntegerToBigint(Number.NEGATIVE_INFINITY)).toThrow(
-      'Invalid micro-USD integer'
+      'Invalid micro-USD integer',
     );
   });
 
   it('throws for fractional or unsafe micro-USD integers', () => {
     expect(() => microusdIntegerToBigint(1.5)).toThrow(
-      'Invalid micro-USD integer'
+      'Invalid micro-USD integer',
     );
     expect(() => microusdIntegerToBigint(Number.MAX_SAFE_INTEGER + 1)).toThrow(
-      'Invalid micro-USD integer'
+      'Invalid micro-USD integer',
     );
   });
 });

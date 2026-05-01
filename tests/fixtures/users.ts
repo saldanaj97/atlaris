@@ -25,7 +25,7 @@ const DEFAULT_SUBSCRIPTION_LIFECYCLE: SubscriptionLifecycleFields = {
 };
 
 function resolveSubscriptionLifecycle(
-  overrides: Partial<SubscriptionLifecycleFields> = {}
+  overrides: Partial<SubscriptionLifecycleFields> = {},
 ): SubscriptionLifecycleFields {
   return {
     subscriptionStatus:
@@ -55,7 +55,7 @@ type CreateTestUserParams = Partial<
  * @returns The created user row
  */
 export async function createTestUser(
-  overrides: CreateTestUserParams = {}
+  overrides: CreateTestUserParams = {},
 ): Promise<UserRow> {
   const baseAuthUserId = `auth_test_${nanoid(12)}`;
   const baseEmail = `test-${nanoid(12)}@example.test`;

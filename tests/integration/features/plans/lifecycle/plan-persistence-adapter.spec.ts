@@ -2,7 +2,7 @@ import { ensureUser } from '@tests/helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import { generationAttempts, learningPlans } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
@@ -152,7 +152,7 @@ describe('PlanPersistenceAdapter (integration)', () => {
       subscriptionTier: 'pro',
     });
     const adapter = new PlanPersistenceAdapter(db);
-    const cap = getAttemptCap();
+    const cap = getGenerationAttemptCap();
 
     const inserted = await adapter.atomicInsertPlan(userId, {
       ...planPayload,

@@ -5,13 +5,12 @@ import {
   EnvValidationError,
   getProcessEnvSource,
   isProdRuntimeEnv,
+  type NodeEnv,
   optionalEnvFrom,
   parseNodeEnv,
   type ServerEnvAccess,
   toBoolean,
 } from '@/lib/config/env/shared';
-
-type NodeEnv = 'development' | 'production' | 'test';
 
 const APP_URL_SCHEMA = z.string().url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
@@ -38,13 +37,13 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
     if (!parsed.success) {
       throw new EnvValidationError(
         'APP_URL must be a valid absolute URL',
-        'APP_URL'
+        'APP_URL',
       );
     }
     if (requireHttps && !parsed.data.startsWith('https://')) {
       throw new EnvValidationError(
         'APP_URL must use https in production',
-        'APP_URL'
+        'APP_URL',
       );
     }
     return parsed.data.replace(/\/$/, '');
@@ -76,7 +75,7 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
         return normalizeUrl(false);
       }
       return access.getProductionCached(APP_URL_CACHE_KEY, () =>
-        normalizeUrl(true)
+        normalizeUrl(true),
       );
     },
     get maintenanceMode(): boolean {

@@ -46,8 +46,8 @@ describe('Logger', () => {
       expect(() =>
         logger.info(
           { userId: '123', action: 'test' },
-          'test message with context'
-        )
+          'test message with context',
+        ),
       ).not.toThrow();
     });
   });
@@ -143,38 +143,38 @@ describe('Logger', () => {
   describe('structured logging', () => {
     it('should accept object as first parameter', () => {
       expect(() =>
-        logger.info({ event: 'test_event', count: 5 })
+        logger.info({ event: 'test_event', count: 5 }),
       ).not.toThrow();
     });
 
     it('should accept object and message', () => {
       expect(() =>
-        logger.info({ event: 'test_event', count: 5 }, 'Event occurred')
+        logger.info({ event: 'test_event', count: 5 }, 'Event occurred'),
       ).not.toThrow();
     });
 
     it('should handle Error objects', () => {
       const error = new Error('Test error');
       expect(() =>
-        logger.error({ err: error }, 'Error occurred')
+        logger.error({ err: error }, 'Error occurred'),
       ).not.toThrow();
     });
 
     it('should handle arrays in context', () => {
       expect(() =>
-        logger.info({ items: ['item1', 'item2', 'item3'] }, 'Processing items')
+        logger.info({ items: ['item1', 'item2', 'item3'] }, 'Processing items'),
       ).not.toThrow();
     });
 
     it('should handle numbers in context', () => {
       expect(() =>
-        logger.info({ count: 42, duration: 1234.56 }, 'Metrics logged')
+        logger.info({ count: 42, duration: 1234.56 }, 'Metrics logged'),
       ).not.toThrow();
     });
 
     it('should handle booleans in context', () => {
       expect(() =>
-        logger.info({ success: true, cached: false }, 'Operation completed')
+        logger.info({ success: true, cached: false }, 'Operation completed'),
       ).not.toThrow();
     });
   });
@@ -192,7 +192,7 @@ describe('Logger', () => {
     it('should allow adding additional context to child logger calls', () => {
       const childLogger = createLogger({ service: 'api' });
       expect(() =>
-        childLogger.info({ endpoint: '/users' }, 'API request handled')
+        childLogger.info({ endpoint: '/users' }, 'API request handled'),
       ).not.toThrow();
     });
 

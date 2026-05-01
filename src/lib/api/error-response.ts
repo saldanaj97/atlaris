@@ -1,4 +1,5 @@
-import type { FailureClassification } from '@/shared/types/client.types';
+import { isKnownFailureClassification } from '@/shared/types/failure-classification';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 type ApiErrorResponse = {
   error: string;
@@ -33,24 +34,13 @@ const DEFAULT_ERROR_CODE_BY_STATUS: Record<number, string> = {
   501: 'NOT_IMPLEMENTED',
 };
 
-const FAILURE_CLASSIFICATIONS = [
-  'validation',
-  'conflict',
-  'provider_error',
-  'rate_limit',
-  'timeout',
-  'capped',
-] as const satisfies readonly FailureClassification[];
-
-const FAILURE_CLASSIFICATION_SET = new Set(FAILURE_CLASSIFICATIONS);
-
 export function getDefaultErrorCode(status: number): string {
   return DEFAULT_ERROR_CODE_BY_STATUS[status] ?? 'ERROR';
 }
 
 export function buildApiErrorResponse(
   message: string,
-  options: ApiErrorResponseOptions = {}
+  options: ApiErrorResponseOptions = {},
 ): ApiErrorResponse {
   const { status = 400, code, classification, details, retryAfter } = options;
 
@@ -76,7 +66,7 @@ export function buildApiErrorResponse(
 
 export function toApiErrorJsonResponse(
   message: string,
-  options: ApiErrorJsonResponseOptions = {}
+  options: ApiErrorJsonResponseOptions = {},
 ): Response {
   const { status = 400, headers = {} } = options;
 
@@ -101,16 +91,13 @@ function asNonEmptyString(value: unknown): string | undefined {
 }
 
 function isFailureClassification(
-  value: unknown
+  value: unknown,
 ): value is FailureClassification {
-  return (
-    typeof value === 'string' &&
-    (FAILURE_CLASSIFICATION_SET as ReadonlySet<string>).has(value)
-  );
+  return typeof value === 'string' && isKnownFailureClassification(value);
 }
 
 function asFailureClassification(
-  value: unknown
+  value: unknown,
 ): FailureClassification | undefined {
   return isFailureClassification(value) ? value : undefined;
 }
@@ -139,7 +126,7 @@ function asRetryAfter(value: unknown): number | undefined {
  */
 export function normalizeApiErrorResponse(
   body: unknown,
-  options: { status: number; fallbackMessage: string }
+  options: { status: number; fallbackMessage: string },
 ): ApiErrorResponse {
   const { status, fallbackMessage } = options;
 
@@ -169,7 +156,7 @@ export function normalizeApiErrorResponse(
 
 export async function parseApiErrorResponse(
   response: Response,
-  fallbackMessage: string
+  fallbackMessage: string,
 ): Promise<ApiErrorResponse> {
   try {
     const body = (await response.json()) as unknown;

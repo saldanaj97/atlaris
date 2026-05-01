@@ -34,7 +34,7 @@ export function isAbortError(error: unknown): boolean {
 }
 
 export function normalizeThrown(
-  value: unknown
+  value: unknown,
 ): Error | { message: string; name?: string } {
   if (value instanceof Error) {
     return value;

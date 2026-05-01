@@ -1,19 +1,15 @@
+import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
+
 export type PlanStartEvent = {
   type: 'plan_start';
-  data: {
+  data: PlanGenerationCoreFieldsNormalized & {
     planId: string;
     attemptNumber: number;
-    topic: string;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
-    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
-    weeklyHours: number;
-    startDate: string | null;
-    deadlineDate: string | null;
     origin?: 'ai' | 'manual' | 'template';
   };
 };
 
-export type ModuleSummaryEvent = {
+type ModuleSummaryEvent = {
   type: 'module_summary';
   data: {
     planId: string;
@@ -25,7 +21,7 @@ export type ModuleSummaryEvent = {
   };
 };
 
-export type ProgressEvent = {
+type ProgressEvent = {
   type: 'progress';
   data: {
     planId: string;
@@ -35,7 +31,7 @@ export type ProgressEvent = {
   };
 };
 
-export type CompleteEvent = {
+type CompleteEvent = {
   type: 'complete';
   data: {
     planId: string;
@@ -45,7 +41,7 @@ export type CompleteEvent = {
   };
 };
 
-export type ErrorEvent = {
+type ErrorEvent = {
   type: 'error';
   data: {
     planId?: string | null;
@@ -57,7 +53,7 @@ export type ErrorEvent = {
   };
 };
 
-export type CancelledEvent = {
+type CancelledEvent = {
   type: 'cancelled';
   data: {
     planId: string;

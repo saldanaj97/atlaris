@@ -11,7 +11,7 @@ export type { DbClient };
  */
 export async function resolveUserTier(
   userId: string,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<SubscriptionTier> {
   const [user] = await dbClient
     .select({ subscriptionTier: users.subscriptionTier })

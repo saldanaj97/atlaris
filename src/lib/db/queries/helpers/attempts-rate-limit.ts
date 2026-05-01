@@ -8,11 +8,11 @@ import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
 
 function userAttemptsSincePredicate(
   userId: string,
-  since: Date
+  since: Date,
 ): SQL | undefined {
   return and(
     eq(learningPlans.userId, userId),
-    gte(generationAttempts.createdAt, since)
+    gte(generationAttempts.createdAt, since),
   );
 }
 
@@ -38,7 +38,7 @@ export async function selectUserGenerationAttemptWindowStats({
 
 export function computeRetryAfterSeconds(
   oldestAttemptCreatedAt: Date | null,
-  now: Date
+  now: Date,
 ): number {
   if (!oldestAttemptCreatedAt) {
     return Math.floor(PLAN_GENERATION_WINDOW_MS / 1000);
@@ -50,7 +50,7 @@ export function computeRetryAfterSeconds(
       (oldestAttemptCreatedAt.getTime() +
         PLAN_GENERATION_WINDOW_MS -
         now.getTime()) /
-        1000
-    )
+        1000,
+    ),
   );
 }

@@ -56,7 +56,7 @@ describe('getDb runtime safety', () => {
       createRequestContext(new Request('http://localhost/runtime-test'), {
         db: requestDb,
       }),
-      () => getDb()
+      () => getDb(),
     );
 
     expect(resolvedDb).toBe(requestDb);

@@ -3,13 +3,11 @@
  */
 
 import {
-  type SubscriptionTier,
-  TIER_LIMITS,
-} from '@/features/billing/tier-limits';
-import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/features/plans/validation/learningPlans';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
@@ -18,11 +16,22 @@ const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
   pro: 'pro',
 };
 
-export type PlanDurationCapResult = {
+type PlanDurationCapResult = {
   allowed: boolean;
   reason?: string;
   upgradeUrl?: string;
 };
+
+/** UTC midnight for today + plan start (defaults today when missing). */
+function utcPlanDayAnchors(today: Date, startDate?: string | null) {
+  const normalizedToday = new Date(today);
+  normalizedToday.setUTCHours(0, 0, 0, 0);
+
+  const start = startDate ? new Date(startDate) : normalizedToday;
+  start.setUTCHours(0, 0, 0, 0);
+
+  return { normalizedToday, start };
+}
 
 export function calculateTotalWeeks({
   startDate,
@@ -35,11 +44,7 @@ export function calculateTotalWeeks({
   today?: Date;
   defaultWeeks?: number;
 }): number {
-  const normalizedToday = new Date(today);
-  normalizedToday.setUTCHours(0, 0, 0, 0);
-
-  const start = startDate ? new Date(startDate) : normalizedToday;
-  start.setUTCHours(0, 0, 0, 0);
+  const { start } = utcPlanDayAnchors(today, startDate);
 
   if (!deadlineDate) {
     return defaultWeeks;
@@ -68,11 +73,7 @@ export function normalizePlanDurationForTier({
   deadlineDate: string | null;
   totalWeeks: number;
 } {
-  const normalizedToday = new Date(today);
-  normalizedToday.setUTCHours(0, 0, 0, 0);
-
-  const start = startDate ? new Date(startDate) : normalizedToday;
-  start.setUTCHours(0, 0, 0, 0);
+  const { normalizedToday, start } = utcPlanDayAnchors(today, startDate);
 
   const limits = TIER_LIMITS[tier];
   let deadline =
@@ -85,7 +86,7 @@ export function normalizePlanDurationForTier({
 
     if (limits.maxWeeks !== null) {
       const maxDeadline = new Date(
-        start.getTime() + limits.maxWeeks * MILLISECONDS_PER_WEEK
+        start.getTime() + limits.maxWeeks * MILLISECONDS_PER_WEEK,
       );
       if (deadline > maxDeadline) {
         deadline = maxDeadline;
@@ -95,10 +96,10 @@ export function normalizePlanDurationForTier({
     if (limits.maxHours !== null) {
       const weeksByHours = Math.max(
         1,
-        Math.floor(limits.maxHours / Math.max(weeklyHours, 1))
+        Math.floor(limits.maxHours / Math.max(weeklyHours, 1)),
       );
       const maxHoursDeadline = new Date(
-        start.getTime() + weeksByHours * MILLISECONDS_PER_WEEK
+        start.getTime() + weeksByHours * MILLISECONDS_PER_WEEK,
       );
       if (deadline > maxHoursDeadline) {
         deadline = maxHoursDeadline;

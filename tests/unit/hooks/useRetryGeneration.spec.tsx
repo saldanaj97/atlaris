@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 function createMockSession(
-  overrides: Partial<UsePlanGenerationSessionResult> = {}
+  overrides: Partial<UsePlanGenerationSessionResult> = {},
 ): UsePlanGenerationSessionResult {
   return {
     state: {
@@ -46,7 +46,7 @@ describe('useRetryGeneration', () => {
     const session = createMockSession({ startSession });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 0, session)
+      useRetryGeneration('plan-1', 3, 0, session),
     );
 
     await act(async () => {
@@ -70,7 +70,7 @@ describe('useRetryGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 0, session)
+      useRetryGeneration('plan-1', 3, 0, session),
     );
 
     expect(result.current.isDisabled).toBe(true);
@@ -81,7 +81,7 @@ describe('useRetryGeneration', () => {
     const session = createMockSession();
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 3, session)
+      useRetryGeneration('plan-1', 3, 3, session),
     );
 
     expect(result.current.isDisabled).toBe(true);
@@ -101,7 +101,7 @@ describe('useRetryGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 1, session)
+      useRetryGeneration('plan-1', 3, 1, session),
     );
 
     expect(result.current.status).toBe('error');
@@ -118,7 +118,7 @@ describe('useRetryGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 1, session)
+      useRetryGeneration('plan-1', 3, 1, session),
     );
 
     expect(result.current.status).toBe('cancelled');
@@ -136,7 +136,7 @@ describe('useRetryGeneration', () => {
     });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 3, session)
+      useRetryGeneration('plan-1', 3, 3, session),
     );
 
     expect(result.current.status).toBe('cancelled');

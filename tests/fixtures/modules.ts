@@ -34,7 +34,7 @@ type CreateTestTaskParams = {
  * Centralizes module creation so schema changes are reflected in one place.
  */
 export async function createTestModule(
-  params: CreateTestModuleParams
+  params: CreateTestModuleParams,
 ): Promise<ModuleRow> {
   const {
     planId,
@@ -67,7 +67,7 @@ export async function createTestModule(
  * Centralizes task creation so schema changes are reflected in one place.
  */
 export async function createTestTask(
-  params: CreateTestTaskParams
+  params: CreateTestTaskParams,
 ): Promise<TaskRow> {
   const {
     moduleId,

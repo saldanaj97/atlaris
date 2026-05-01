@@ -110,11 +110,11 @@ describe('getPlanSchedule API', () => {
             daySum +
             day.sessions.reduce(
               (sessionSum, session) => sessionSum + session.estimatedMinutes,
-              0
+              0,
             ),
-          0
+          0,
         ),
-      0
+      0,
     );
 
     // Add new task
@@ -145,11 +145,11 @@ describe('getPlanSchedule API', () => {
             daySum +
             day.sessions.reduce(
               (sessionSum, session) => sessionSum + session.estimatedMinutes,
-              0
+              0,
             ),
-          0
+          0,
         ),
-      0
+      0,
     );
 
     // The new schedule should include the additional 90 minutes

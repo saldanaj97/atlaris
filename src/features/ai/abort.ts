@@ -27,7 +27,7 @@ export function createAbortError(message = 'Operation aborted.'): DOMException {
  */
 export function attachAbortListener(
   signal: AbortSignal,
-  listener: () => void
+  listener: () => void,
 ): () => void {
   if (signal.aborted) {
     listener();

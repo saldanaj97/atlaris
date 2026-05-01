@@ -15,7 +15,7 @@ import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
-  ({ tier, id }) => tier === 'free' && id !== 'openrouter/free'
+  ({ tier, id }) => tier === 'free' && id !== 'openrouter/free',
 )?.id;
 
 if (!FREE_QUERY_OVERRIDE_MODEL) {
@@ -26,7 +26,7 @@ function assertNumericHeader(response: Response, name: string): void {
   const value = response.headers.get(name);
   expect(value, `Header ${name} should be present`).toBeTruthy();
   expect(value ?? '', `Header ${name} should be numeric`).toMatch(
-    NUMERIC_HEADER_PATTERN
+    NUMERIC_HEADER_PATTERN,
   );
 }
 
@@ -37,7 +37,7 @@ function expectJsonObject(value: unknown): Record<string, unknown> {
 }
 
 async function expectCompletedPlanId(
-  events: StreamingEvent[]
+  events: StreamingEvent[],
 ): Promise<string> {
   const start = expectPlanStartEvent(events, 1);
   const completeEvent = expectTerminalEventAfterStart(events, 'complete');
@@ -55,7 +55,7 @@ async function expectCompletedPlanId(
 
 function expectPlanStartEvent(
   events: StreamingEvent[],
-  expectedAttemptNumber: number
+  expectedAttemptNumber: number,
 ): { planId: string } {
   const startEvent = events.find((event) => event.type === 'plan_start');
   if (!startEvent) {
@@ -76,7 +76,7 @@ function expectPlanStartEvent(
 
 function expectTerminalEventAfterStart(
   events: StreamingEvent[],
-  terminalType: 'complete' | 'error' | 'cancelled'
+  terminalType: 'complete' | 'error' | 'cancelled',
 ): StreamingEvent {
   const eventTypes = events.map((event) => event.type);
   const startIndex = eventTypes.indexOf('plan_start');
@@ -87,7 +87,7 @@ function expectTerminalEventAfterStart(
   expect(
     eventTypes
       .slice(0, terminalIndex)
-      .filter((type) => ['complete', 'error', 'cancelled'].includes(type))
+      .filter((type) => ['complete', 'error', 'cancelled'].includes(type)),
   ).toEqual([]);
 
   const terminalEvent = events[terminalIndex];
@@ -216,7 +216,7 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
           payloadType: 'object',
         }),
       }),
-      'Plan stream payload log failed'
+      'Plan stream payload log failed',
     );
     expect(response.status).toBe(400);
   });
@@ -311,7 +311,7 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }
+      },
     );
 
     const response = await POST(request);
@@ -346,7 +346,7 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }
+      },
     );
 
     const response = await POST(request);

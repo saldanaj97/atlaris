@@ -12,9 +12,9 @@ type RequestContext = {
   logger: Logger;
 };
 
-export function createRequestContext(
+export function createLoggingRequestContext(
   request: Pick<Request, 'headers'>,
-  context: Record<string, unknown> = {}
+  context: Record<string, unknown> = {},
 ): RequestContext {
   const requestId = ensureCorrelationId(request, REQUEST_ID_HEADER);
 
@@ -26,16 +26,16 @@ export function createRequestContext(
   };
 }
 
-export function getRequestContext(
+export function getLoggingRequestContext(
   request: Pick<Request, 'headers'>,
-  context: Record<string, unknown> = {}
+  context: Record<string, unknown> = {},
 ): RequestContext {
-  return createRequestContext(request, context);
+  return createLoggingRequestContext(request, context);
 }
 
 export function attachRequestIdHeader(
   response: Response,
-  requestId: string
+  requestId: string,
 ): Response {
   if (response.headers.has(REQUEST_ID_HEADER)) {
     return response;

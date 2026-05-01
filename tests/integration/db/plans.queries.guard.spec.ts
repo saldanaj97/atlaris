@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getModuleDetail } from '@/lib/db/queries/modules';
+import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -35,7 +35,10 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
       HasRequiredLeadingArgs<typeof getPlanStatusRowsForUser, [string, string]>
     >;
     type _ModuleDetailRequiresUserId = Expect<
-      HasRequiredLeadingArgs<typeof getModuleDetail, [string, string]>
+      HasRequiredLeadingArgs<
+        typeof getModuleDetailRows,
+        [string, string, string]
+      >
     >;
 
     // Compile-time type assertions above are the primary guard here.
@@ -44,6 +47,6 @@ describe('Plan Queries - Tenant Scoping Guard', () => {
     expect(typeof getLearningPlanDetailRows).toBe('function');
     expect(typeof getPlanAttemptsForUser).toBe('function');
     expect(typeof getPlanStatusRowsForUser).toBe('function');
-    expect(typeof getModuleDetail).toBe('function');
+    expect(typeof getModuleDetailRows).toBe('function');
   });
 });

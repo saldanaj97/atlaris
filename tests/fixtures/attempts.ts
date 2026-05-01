@@ -6,6 +6,7 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { PLAN_GENERATION_LIMIT } from '@/features/ai/generation-policy';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
 
@@ -33,7 +34,7 @@ const FailedAttemptDefaults = {
  * Centralizes defaults so schema changes are reflected in one place.
  */
 function createFailedAttempt(
-  overrides: CreateFailedAttemptParams
+  overrides: CreateFailedAttemptParams,
 ): InferInsertModel<typeof generationAttempts> {
   const {
     planId,
@@ -57,7 +58,7 @@ function createFailedAttempt(
 export function createFailedAttempts(
   planId: string,
   count: number,
-  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>
+  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>,
 ): InferInsertModel<typeof generationAttempts>[] {
   return Array.from({ length: count }, (_, index) => {
     const base: CreateFailedAttemptParams = {
@@ -77,7 +78,7 @@ export function createFailedAttempts(
 export async function createFailedAttemptsInDb(
   planId: string,
   count: number,
-  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>
+  overridesPerIndex?: (index: number) => Partial<CreateFailedAttemptParams>,
 ): Promise<GenerationAttemptRow[]> {
   if (count === 0) {
     return [];
@@ -91,7 +92,7 @@ export async function createFailedAttemptsInDb(
 
   if (inserted.length !== count) {
     throw new Error(
-      `Failed to create expected failed attempts: expected ${count}, got ${inserted.length}`
+      `Failed to create expected failed attempts: expected ${count}, got ${inserted.length}`,
     );
   }
 
@@ -120,7 +121,7 @@ type SeedFailedAttemptsForDurableWindowOptions = {
  */
 export async function seedFailedAttemptsForDurableWindow(
   planId: string,
-  options: SeedFailedAttemptsForDurableWindowOptions = {}
+  options: SeedFailedAttemptsForDurableWindowOptions = {},
 ): Promise<GenerationAttemptRow[]> {
   const {
     slotsRemaining = 0,
@@ -136,4 +137,30 @@ export async function seedFailedAttemptsForDurableWindow(
     promptHash: `${promptHashPrefix}-${index}`,
     metadata,
   }));
+}
+
+/** Minimal {@link AttemptReservation} for lifecycle / orchestrator unit tests. */
+export function makeAttemptReservation(
+  overrides?: Partial<AttemptReservation>,
+): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: 'test-attempt-id',
+    attemptNumber: 1,
+    startedAt: new Date('2025-01-01T00:00:00.000Z'),
+    sanitized: {
+      topic: {
+        value: 'Test Topic',
+        truncated: false,
+        originalLength: 10,
+      },
+      notes: {
+        value: undefined,
+        truncated: false,
+        originalLength: undefined,
+      },
+    },
+    promptHash: 'test-prompt-hash',
+    ...overrides,
+  };
 }

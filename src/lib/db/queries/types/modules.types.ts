@@ -12,7 +12,7 @@ export type Module = InferSelectModel<DbSchemaModule['modules']>;
 export type Task = InferSelectModel<DbSchemaModule['tasks']>;
 
 /** Select model for taskResources table. */
-export type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
+type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 
 /** Select model for taskProgress table. */
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
@@ -30,47 +30,11 @@ export interface ModuleWithTasks extends Module {
   tasks: TaskWithRelations[];
 }
 
-/**
- * Minimal module info for the plan navigation dropdown (sidebar/breadcrumb).
- * Includes lock state so UI can disable links to modules that are not yet unlockable.
- */
-export interface ModuleNavItem {
+/** Per-module task completion aggregates for module navigation (storage / projection input). */
+export interface ModuleTaskMetricRow {
   id: string;
   order: number;
   title: string;
-  /** Whether this module is locked (previous modules not completed) */
-  isLocked: boolean;
-}
-
-/**
- * Full module detail response: module with tasks, resources, and progress, plus
- * plan-level context for breadcrumb navigation and prev/next links.
- */
-export interface ModuleDetail {
-  module: ModuleWithTasks;
-  planId: string;
-  planTopic: string;
-  totalModules: number;
-  previousModuleId: string | null;
-  nextModuleId: string | null;
-  /** Whether all previous modules have been fully completed */
-  previousModulesComplete: boolean;
-  /** All modules in the plan for navigation dropdown */
-  allModules: ModuleNavItem[];
-}
-
-/** Raw module row from DB select (id, order, title) for nav item computation. */
-export interface ModuleNavRaw {
-  id: string;
-  order: number;
-  title: string;
-}
-
-/**
- * Module completion aggregates for nav lock computation.
- * `totalTaskCount` and `completedTaskCount` are numeric SQL aggregates.
- */
-export interface ModuleNavCompletionRaw extends ModuleNavRaw {
   totalTaskCount: number;
   completedTaskCount: number;
 }
@@ -84,4 +48,16 @@ export type ModuleResourceRow = {
   notes: string | null;
   createdAt: Date;
   resource: Resource;
+};
+
+/**
+ * Storage bundle for module-detail read projection (`getModuleDetailRows`).
+ */
+export type ModuleDetailRows = {
+  plan: { id: string; topic: string };
+  module: Module;
+  moduleMetricsRows: ModuleTaskMetricRow[];
+  taskRows: Task[];
+  progressRows: TaskProgress[];
+  resourceRows: TaskResourceWithResource[];
 };

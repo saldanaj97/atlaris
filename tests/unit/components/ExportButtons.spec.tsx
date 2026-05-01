@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ExportButtons } from '@/app/plans/[id]/components/ExportButtons';
+import { ExportButtons } from '@/app/(app)/plans/[id]/components/ExportButtons';
 
 describe('ExportButtons', () => {
   it('renders nothing while export feature is disabled', () => {

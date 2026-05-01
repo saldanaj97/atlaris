@@ -20,10 +20,10 @@ async function* streamFromChunks(chunks: string[]) {
 describe('Generation parser validation', () => {
   it('throws invalid_json error when JSON cannot be parsed', async () => {
     await expect(
-      parseGenerationStream(streamFromString('{ invalid json'))
+      parseGenerationStream(streamFromString('{ invalid json')),
     ).rejects.toBeInstanceOf(ParserError);
     await expect(
-      parseGenerationStream(streamFromString('{ invalid json'))
+      parseGenerationStream(streamFromString('{ invalid json')),
     ).rejects.toMatchObject({
       kind: 'invalid_json',
     });
@@ -32,10 +32,10 @@ describe('Generation parser validation', () => {
   it('throws validation error when modules array is empty', async () => {
     const payload = JSON.stringify({ modules: [] });
     await expect(
-      parseGenerationStream(streamFromString(payload))
+      parseGenerationStream(streamFromString(payload)),
     ).rejects.toBeInstanceOf(ParserError);
     await expect(
-      parseGenerationStream(streamFromString(payload))
+      parseGenerationStream(streamFromString(payload)),
     ).rejects.toMatchObject({
       kind: 'validation',
     });
@@ -66,8 +66,8 @@ describe('Generation parser validation', () => {
   it('throws validation error when raw response exceeds max size', async () => {
     await expect(
       parseGenerationStream(
-        streamFromString('x'.repeat(MAX_RAW_RESPONSE_CHARS + 1))
-      )
+        streamFromString('x'.repeat(MAX_RAW_RESPONSE_CHARS + 1)),
+      ),
     ).rejects.toMatchObject({
       kind: 'validation',
     });
@@ -83,7 +83,7 @@ describe('Generation parser validation', () => {
     });
 
     await expect(
-      parseGenerationStream(streamFromString(payload))
+      parseGenerationStream(streamFromString(payload)),
     ).rejects.toMatchObject({
       kind: 'validation',
     });
@@ -100,14 +100,14 @@ describe('Generation parser validation', () => {
             (_, taskIndex) => ({
               title: `Task ${taskIndex + 1}`,
               estimated_minutes: 30,
-            })
+            }),
           ),
         },
       ],
     });
 
     await expect(
-      parseGenerationStream(streamFromString(payload))
+      parseGenerationStream(streamFromString(payload)),
     ).rejects.toMatchObject({
       kind: 'validation',
     });

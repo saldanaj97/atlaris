@@ -26,7 +26,7 @@ function getAllowedCheckoutPriceIds(): string[] {
           proYearly: stripeEnv.pricing.proYearly,
         },
       },
-      'Stripe pricing misconfigured: no valid checkout price IDs'
+      'Stripe pricing misconfigured: no valid checkout price IDs',
     );
     throw new Error('Stripe pricing misconfigured: no valid price IDs');
   }

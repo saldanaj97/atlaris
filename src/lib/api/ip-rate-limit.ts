@@ -106,7 +106,7 @@ export const IP_RATE_LIMIT_CONFIGS = {
  */
 export function getClientIp(
   request: Request,
-  config?: IpExtractionConfig
+  config?: IpExtractionConfig,
 ): string {
   const resolvedConfig = resolveIpExtractionConfig(config);
 
@@ -137,7 +137,7 @@ export function getClientIp(
 }
 
 function resolveIpExtractionConfig(
-  config?: IpExtractionConfig
+  config?: IpExtractionConfig,
 ): Required<IpExtractionConfig> {
   return {
     ipTrustMode: config?.ipTrustMode ?? 'leftmost',
@@ -147,7 +147,7 @@ function resolveIpExtractionConfig(
 
 function extractIpFromForwardedFor(
   forwardedFor: string,
-  config: Required<IpExtractionConfig>
+  config: Required<IpExtractionConfig>,
 ): string | undefined {
   const ips = forwardedFor
     .split(',')
@@ -164,7 +164,7 @@ function extractIpFromForwardedFor(
       trustedProxySet = new Set(
         config.trustedProxyList
           .map((ip) => ip.trim())
-          .filter((ip) => isValidIp(ip))
+          .filter((ip) => isValidIp(ip)),
       );
     }
     return trustedProxySet;
@@ -203,7 +203,7 @@ function logUnknownIpFallback(): void {
 
   lastUnknownIpWarnTimestamp = now;
   logger.warn(
-    'Unable to determine client IP for rate limiting — all unidentified requests share a single bucket'
+    'Unable to determine client IP for rate limiting — all unidentified requests share a single bucket',
   );
 }
 
@@ -226,7 +226,7 @@ function isValidIp(ip: string): boolean {
  * @returns A function that checks and enforces rate limits
  */
 export function createIpRateLimiter(
-  config: IpRateLimitConfig
+  config: IpRateLimitConfig,
 ): SlidingWindowLimiter {
   return createSlidingWindowLimiter({
     maxRequests: config.maxRequests,
@@ -242,7 +242,7 @@ const rateLimiters = new Map<string, SlidingWindowLimiter>();
  * Gets or creates a rate limiter for a specific endpoint type.
  */
 function getRateLimiter(
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS
+  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
 ): SlidingWindowLimiter {
   const existing = rateLimiters.get(type);
   if (existing) {
@@ -263,7 +263,7 @@ function getRateLimiter(
 export function checkIpRateLimit(
   request: Request,
   type: keyof typeof IP_RATE_LIMIT_CONFIGS,
-  config?: IpExtractionConfig
+  config?: IpExtractionConfig,
 ): void {
   const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
@@ -280,7 +280,7 @@ export function checkIpRateLimit(
 export function getRateLimitHeaders(
   request: Request,
   type: keyof typeof IP_RATE_LIMIT_CONFIGS,
-  config?: IpExtractionConfig
+  config?: IpExtractionConfig,
 ): Record<string, string> {
   const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);

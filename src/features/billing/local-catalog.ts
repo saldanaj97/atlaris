@@ -21,7 +21,7 @@ const PRICE_TO_TIER: Record<LocalPriceId, 'starter' | 'pro'> = {
 };
 
 export function tierFromLocalPriceId(
-  priceId: string
+  priceId: string,
 ): 'starter' | 'pro' | null {
   return PRICE_TO_TIER[priceId as LocalPriceId] ?? null;
 }
@@ -41,7 +41,7 @@ const LOCAL_STRIPE_DISPLAY_AMOUNTS: Record<
 
 export function localDisplayAmountForTier(
   tier: Exclude<SubscriptionTier, 'free'>,
-  interval: 'monthly' | 'yearly'
+  interval: 'monthly' | 'yearly',
 ): string {
   return LOCAL_STRIPE_DISPLAY_AMOUNTS[tier][interval];
 }

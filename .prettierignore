@@ -1,0 +1,14 @@
+node_modules
+.agents
+.daily-recap
+.next
+.test-dist
+coverage
+out
+build
+tests/results
+screenshots
+jscpd-report
+*.tsbuildinfo
+next-env.d.ts
+.env*

@@ -74,7 +74,7 @@ describe('auth helpers', () => {
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.id;
-      })
+      }),
     ).resolves.toBe('user_1');
   });
 
@@ -105,7 +105,7 @@ describe('auth helpers', () => {
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.authUserId;
-      })
+      }),
     ).resolves.toBe('auth_2');
   });
 });

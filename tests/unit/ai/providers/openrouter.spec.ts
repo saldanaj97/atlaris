@@ -136,14 +136,14 @@ describe('OpenRouterProvider', () => {
     it('throws error when model is not provided', () => {
       const { client } = createMockClient();
       expect(
-        () => new OpenRouterProvider({} as OpenRouterProviderConfig, client)
+        () => new OpenRouterProvider({} as OpenRouterProviderConfig, client),
       ).toThrow('OpenRouterProvider requires a model to be specified');
     });
 
     it('throws error when API key is not provided', () => {
       vi.stubEnv('OPENROUTER_API_KEY', '');
       expect(() => new OpenRouterProvider({ model: TEST_MODEL })).toThrow(
-        'OPENROUTER_API_KEY is not set'
+        'OPENROUTER_API_KEY is not set',
       );
     });
 
@@ -161,7 +161,7 @@ describe('OpenRouterProvider', () => {
 
       const provider = new OpenRouterProvider(
         { model: 'anthropic/claude-3-sonnet' },
-        client
+        client,
       );
 
       await provider.generate(SAMPLE_INPUT);
@@ -170,7 +170,7 @@ describe('OpenRouterProvider', () => {
         expect.objectContaining({
           model: 'anthropic/claude-3-sonnet',
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -327,7 +327,7 @@ describe('OpenRouterProvider', () => {
           model: 'anthropic/claude-3-opus',
           temperature: 0.7,
         },
-        client
+        client,
       );
 
       await provider.generate(SAMPLE_INPUT);
@@ -344,7 +344,7 @@ describe('OpenRouterProvider', () => {
             expect.objectContaining({ role: 'user' }),
           ]),
         }),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
 
@@ -365,7 +365,7 @@ describe('OpenRouterProvider', () => {
 
       const callArgs = send.mock.calls[0][0];
       const userMessage = callArgs.messages.find(
-        (m: { role: string }) => m.role === 'user'
+        (m: { role: string }) => m.role === 'user',
       );
 
       expect(userMessage.content).toContain('TypeScript Fundamentals');
@@ -389,7 +389,7 @@ describe('OpenRouterProvider', () => {
 
       const callArgs = send.mock.calls[0][0];
       const userMessage = callArgs.messages.find(
-        (m: { role: string }) => m.role === 'user'
+        (m: { role: string }) => m.role === 'user',
       );
 
       expect(userMessage.content).toContain('Notes: Focus on type safety');
@@ -402,7 +402,7 @@ describe('OpenRouterProvider', () => {
           promptTokens?: number;
           completionTokens?: number;
           totalTokens?: number;
-        }
+        },
       ): AsyncIterable<{
         delta?: string;
         choices?: Array<{
@@ -428,7 +428,7 @@ describe('OpenRouterProvider', () => {
             promptTokens: 100,
             completionTokens: 500,
             totalTokens: 600,
-          })
+          }),
         );
 
         const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
@@ -819,7 +819,7 @@ describe('OpenRouterProvider', () => {
       // openai/gpt-4o has maxOutputTokens: 64_000
       const provider = new OpenRouterProvider(
         { model: 'openai/gpt-4o' },
-        client
+        client,
       );
       await provider.generate(SAMPLE_INPUT);
 
@@ -828,7 +828,7 @@ describe('OpenRouterProvider', () => {
         [key: string]: unknown;
       };
       expect(requestBody.maxTokens).toBe(
-        getOutputTokenCeiling('openai/gpt-4o')
+        getOutputTokenCeiling('openai/gpt-4o'),
       );
     });
 
@@ -844,7 +844,7 @@ describe('OpenRouterProvider', () => {
 
       const provider = new OpenRouterProvider(
         { model: 'unknown/model-xyz' },
-        client
+        client,
       );
       await provider.generate(SAMPLE_INPUT);
 
@@ -870,10 +870,10 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
+        ProviderInvalidResponseError,
       );
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        'OpenRouter returned an empty response'
+        'OpenRouter returned an empty response',
       );
     });
 
@@ -892,7 +892,7 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
+        ProviderInvalidResponseError,
       );
     });
 
@@ -935,10 +935,10 @@ describe('OpenRouterProvider', () => {
       const provider = new OpenRouterProvider({ model: TEST_MODEL }, client);
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        ProviderInvalidResponseError
+        ProviderInvalidResponseError,
       );
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        'no text content'
+        'no text content',
       );
     });
   });

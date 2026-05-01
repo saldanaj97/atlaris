@@ -161,7 +161,7 @@ describe('User Queries', () => {
         createUser({
           authUserId: uniqueAuthId,
           email: 'second@example.com',
-        })
+        }),
       ).rejects.toThrow();
     });
 
@@ -192,7 +192,7 @@ describe('User Queries', () => {
         createUser({
           authUserId: `auth_perf_user_${i}`,
           email: `perfuser${i}@example.com`,
-        })
+        }),
       );
 
       await Promise.all(userPromises);

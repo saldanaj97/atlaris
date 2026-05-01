@@ -106,7 +106,7 @@ describe('AI Parser', () => {
       await expect(
         parseGenerationStream(createStream(['{"modules": []}']), {
           signal: abortController.signal,
-        })
+        }),
       ).rejects.toMatchObject({ name: 'AbortError' });
     });
 
@@ -147,7 +147,7 @@ describe('AI Parser', () => {
 
     it('should throw ParserError when modules array is missing', async () => {
       const promise = parseGenerationStream(
-        createStream([JSON.stringify({ data: [] })])
+        createStream([JSON.stringify({ data: [] })]),
       );
 
       await expect(promise).rejects.toThrow(ParserError);
@@ -156,7 +156,7 @@ describe('AI Parser', () => {
 
     it('should throw ParserError when modules array is empty', async () => {
       const promise = parseGenerationStream(
-        createStream([JSON.stringify({ modules: [] })])
+        createStream([JSON.stringify({ modules: [] })]),
       );
 
       await expect(promise).rejects.toThrow(ParserError);
@@ -440,7 +440,7 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].title).toHaveLength(MAX_TITLE_LENGTH);
       expect(result.modules[0].title).toBe(original.slice(0, MAX_TITLE_LENGTH));
       expect(result.modules[0].tasks[0].title).toBe(
-        original.slice(0, MAX_TITLE_LENGTH)
+        original.slice(0, MAX_TITLE_LENGTH),
       );
     });
 
@@ -497,7 +497,7 @@ describe('AI Parser', () => {
 
       expect(result.modules[0].title).toBe(core.slice(0, MAX_TITLE_LENGTH));
       expect(result.modules[0].tasks[0].title).toBe(
-        core.slice(0, MAX_TITLE_LENGTH)
+        core.slice(0, MAX_TITLE_LENGTH),
       );
     });
 

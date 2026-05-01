@@ -1,24 +1,12 @@
 #!/bin/sh
+set -e
 
-# Staged files only (see biome.json). --no-errors-on-unmatched: ok if nothing matches Biome.
-echo "Running Biome check on staged files..."
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
-pnpm exec biome check --write --staged --no-errors-on-unmatched
-if [ -n "$STAGED_FILES" ]; then
-  echo "$STAGED_FILES" | xargs git add
-fi
+echo "Running Oxlint and Prettier on staged files..."
+pnpm exec lint-staged
 
-# Skip ggshield when not installed
 echo "Running ggshield secret scan..."
 if ! command -v ggshield >/dev/null 2>&1; then
-  echo "⚠️  ggshield not installed, skipping secret scan"
+  echo "ggshield not installed, skipping secret scan"
 else
-  # ggshield will use GITGUARDIAN_API_KEY if set, otherwise it uses local auth
   ggshield secret scan pre-commit
-  if [ $? -ne 0 ]; then
-    echo "❌ Secret scan failed, aborting commit"
-    exit 1
-  else
-    echo "✅ Secret scan passed"
-  fi
 fi

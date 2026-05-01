@@ -35,7 +35,7 @@ describe('getBillingAccountSnapshot', () => {
     expect(snapshot.usage.exports.used).toBe(0);
     expect(snapshot.tier).toBe(snapshot.usage.tier);
     expect(snapshot.usage.activePlans.limit).toBe(
-      TIER_LIMITS.free.maxActivePlans
+      TIER_LIMITS.free.maxActivePlans,
     );
   });
 
@@ -83,7 +83,7 @@ describe('getBillingAccountSnapshot', () => {
     expect(snapshot.usage.activePlans.current).toBe(2);
     expect(snapshot.tier).toBe(snapshot.usage.tier);
     expect(snapshot.usage.activePlans.limit).toBe(
-      TIER_LIMITS.starter.maxActivePlans
+      TIER_LIMITS.starter.maxActivePlans,
     );
   });
 
@@ -133,12 +133,12 @@ describe('getBillingAccountSnapshot', () => {
     const missingId = randomUUID();
 
     await expect(
-      getBillingAccountSnapshot({ userId: missingId, dbClient: db })
+      getBillingAccountSnapshot({ userId: missingId, dbClient: db }),
     ).rejects.toSatisfy(
       (err: unknown) =>
         err instanceof BillingSnapshotNotFoundError &&
         err.code() === 'BILLING_SNAPSHOT_NOT_FOUND' &&
-        err.status() === 404
+        err.status() === 404,
     );
   });
 });

@@ -8,7 +8,7 @@ export type RouteHandlerContext = {
 
 export type PlainHandler = (
   req: Request,
-  context?: RouteHandlerContext
+  context?: RouteHandlerContext,
 ) => Promise<Response>;
 
 export type AuthHandlerContext = {
@@ -19,5 +19,5 @@ export type AuthHandlerContext = {
 };
 
 export type AuthHandler = (
-  ctx: AuthHandlerContext
+  ctx: AuthHandlerContext,
 ) => Promise<Response> | Response;

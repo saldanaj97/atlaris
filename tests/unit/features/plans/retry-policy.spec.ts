@@ -125,7 +125,7 @@ describe('retry-policy', () => {
   describe('constant invariants', () => {
     it('MAX_TOTAL_AI_CALLS_PER_JOB = MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1)', () => {
       expect(MAX_TOTAL_AI_CALLS_PER_JOB).toBe(
-        MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1)
+        MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1),
       );
     });
 

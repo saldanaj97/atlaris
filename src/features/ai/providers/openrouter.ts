@@ -79,7 +79,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
 
   async generate(
     input: GenerationInput,
-    options?: GenerationOptions
+    options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt({
@@ -131,7 +131,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               responseFormat: { type: 'json_object' },
               maxTokens: getOutputTokenCeiling(this.model),
             },
-            requestOptions
+            requestOptions,
           );
         } catch (err) {
           const status = getStatusCodeFromError(err);
@@ -204,7 +204,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               const content = parseContent(nonStreamResponse.rawContent);
               if (!content) {
                 throw new ProviderInvalidResponseError(
-                  'OpenRouter returned no text content'
+                  'OpenRouter returned no text content',
                 );
               }
               const normalizedUsage = normalizeUsage(nonStreamResponse?.usage);
@@ -225,11 +225,11 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         if (!isStreamingResponse) {
           span.setAttribute(
             'gen_ai.usage.input_tokens',
-            metadataUsage.promptTokens ?? 0
+            metadataUsage.promptTokens ?? 0,
           );
           span.setAttribute(
             'gen_ai.usage.output_tokens',
-            metadataUsage.completionTokens ?? 0
+            metadataUsage.completionTokens ?? 0,
           );
           finish();
         } else {
@@ -242,11 +242,11 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             streamSpanFinished = true;
             span.setAttribute(
               'gen_ai.usage.input_tokens',
-              metadataUsage.promptTokens ?? 0
+              metadataUsage.promptTokens ?? 0,
             );
             span.setAttribute(
               'gen_ai.usage.output_tokens',
-              metadataUsage.completionTokens ?? 0
+              metadataUsage.completionTokens ?? 0,
             );
             finish();
           };
@@ -275,7 +275,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             span.setAttribute('gen_ai.stream.terminated_with_error', true);
             span.setAttribute(
               'gen_ai.stream.termination_reason',
-              formatStreamReason(reason)
+              formatStreamReason(reason),
             );
             finishStreamSpan();
           };
@@ -299,7 +299,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
               },
             } as Transformer<string, string> & {
               cancel: (reason?: unknown) => void;
-            })
+            }),
           );
           let transformedReader: ReadableStreamDefaultReader<string> | null =
             null;
@@ -349,7 +349,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             model: this.model,
           },
         };
-      }
+      },
     );
   }
 }

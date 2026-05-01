@@ -54,7 +54,7 @@ type RequiredPlanInsertFields = Pick<
 type TestPlanOverrides = Partial<Omit<LearningPlanInsert, 'userId'>>;
 
 function buildTestPlanValues(
-  overrides: TestPlanOverrides = {}
+  overrides: TestPlanOverrides = {},
 ): RequiredPlanInsertFields &
   Partial<Omit<LearningPlanInsert, 'userId' | keyof RequiredPlanInsertFields>> {
   return {
@@ -65,7 +65,7 @@ function buildTestPlanValues(
 
 export function buildTestPlanInsert(
   userId: string,
-  overrides: TestPlanOverrides = {}
+  overrides: TestPlanOverrides = {},
 ): LearningPlanInsert {
   return {
     userId,
@@ -81,7 +81,9 @@ export function buildTestPlanInsert(
 async function insertPlanRow(
   userId: string,
   values: RequiredPlanInsertFields &
-    Partial<Omit<LearningPlanInsert, 'userId' | keyof RequiredPlanInsertFields>>
+    Partial<
+      Omit<LearningPlanInsert, 'userId' | keyof RequiredPlanInsertFields>
+    >,
 ): Promise<LearningPlanRow> {
   const insert: LearningPlanInsert = { userId, ...values };
   const [plan] = await db.insert(learningPlans).values(insert).returning();
@@ -99,7 +101,7 @@ async function insertPlanRow(
  */
 export async function createPlan(
   userId: string,
-  overrides?: TestPlanOverrides
+  overrides?: TestPlanOverrides,
 ): Promise<LearningPlanRow> {
   return insertPlanRow(userId, buildTestPlanValues(overrides));
 }
@@ -110,7 +112,7 @@ export async function createPlan(
  */
 export async function createPlanForRetryTest(
   userId: string,
-  overrides: TestPlanOverrides = {}
+  overrides: TestPlanOverrides = {},
 ): Promise<LearningPlanRow> {
   return createPlan(userId, { ...RETRY_TEST_PLAN_DEFAULTS, ...overrides });
 }
@@ -124,7 +126,7 @@ type CreateTestPlanParams = {
  * Centralizes plan creation so schema changes are reflected in one place.
  */
 export async function createTestPlan(
-  params: CreateTestPlanParams
+  params: CreateTestPlanParams,
 ): Promise<LearningPlanRow> {
   const { userId, ...overrides } = params;
 
@@ -137,7 +139,7 @@ export async function createTestPlan(
 }
 
 export function createTestPlanDetail(
-  overrides: Partial<ClientPlanDetail> = {}
+  overrides: Partial<ClientPlanDetail> = {},
 ): ClientPlanDetail {
   const moduleId = nanoid();
   const taskOneId = nanoid();

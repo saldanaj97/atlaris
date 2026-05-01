@@ -10,10 +10,10 @@ import type { CreateLearningPlanInput } from '@/features/plans/validation/learni
 import { getCorrelationId } from '@/lib/api/context';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import { toFallbackErrorLike } from './stream-cleanup';
 
-export type SessionEmitFn = (event: StreamingEvent) => void;
+type SessionEmitFn = (event: StreamingEvent) => void;
 
 interface EmitSanitizedFailureEventParams {
   emit: SessionEmitFn;
@@ -60,7 +60,7 @@ function emitSanitizedFailureEvent({
 function emitModuleSummaries(
   modules: ParsedModule[],
   planId: string,
-  emit: SessionEmitFn
+  emit: SessionEmitFn,
 ): void {
   const modulesCount = modules.length;
 
@@ -153,7 +153,7 @@ function getAbortReason(signal: AbortSignal): string | undefined {
 function getCancellationReason(
   error: unknown,
   reqSignal: AbortSignal,
-  streamSignal: AbortSignal
+  streamSignal: AbortSignal,
 ): string | undefined {
   if (
     error instanceof Error &&
@@ -168,14 +168,16 @@ function getCancellationReason(
 /**
  * Execute the post-`plan_start` portion of a lifecycle-backed generation stream.
  *
- * Callers must emit `plan_start` before invoking this helper. That keeps the
- * persisted plan metadata/start handshake in one place and prevents duplicate
- * start events when retries or alternate lifecycle paths reuse this executor.
+ * **Contract:** session boundary invokes `processGeneration` only after DB
+ * reservation succeeds. `processGeneration` must call `onAttemptReserved` on
+ * `ProcessGenerationInput` before returning so `plan_start` is emitted before
+ * any `module_summary`/`progress`/`complete` events.
  *
  * Intended SSE flow:
  * - success: `plan_start` → zero or more `module_summary`/`progress` pairs →
  *   `complete`
  * - handled failure: `plan_start` → `error`
+ * - reservation rejection (no row): `error` only (no `plan_start`)
  * - unhandled failure with an attached client: `plan_start` → fallback `error`
  * - client disconnect or already-finalized attempt: `plan_start` may be the
  *   only event because completion/failure is recovered from persisted state
@@ -203,7 +205,7 @@ export async function executeLifecycleGenerationStream({
         const tasksCount = modules.reduce((sum, m) => sum + m.tasks.length, 0);
         const totalMinutes = modules.reduce(
           (sum, module) => sum + module.estimatedMinutes,
-          0
+          0,
         );
 
         emitModuleSummaries(modules, planId, emit);
@@ -236,7 +238,7 @@ export async function executeLifecycleGenerationStream({
       case 'already_finalized': {
         logger.info(
           { planId, userId },
-          'Generation attempt skipped: plan already finalized'
+          'Generation attempt skipped: plan already finalized',
         );
         return;
       }
@@ -250,7 +252,7 @@ export async function executeLifecycleGenerationStream({
     const cancellationReason = getCancellationReason(
       error,
       reqSignal,
-      streamSignal
+      streamSignal,
     );
     const clientError = toFallbackErrorLike(error);
 
@@ -266,7 +268,7 @@ export async function executeLifecycleGenerationStream({
           clientDisconnected: clientDisconnectedBeforeCleanup,
           cancellationReason,
         },
-        'Failed cleanup after lifecycle generation stream error'
+        'Failed cleanup after lifecycle generation stream error',
       );
     }
 
@@ -278,7 +280,7 @@ export async function executeLifecycleGenerationStream({
     if (clientDisconnected) {
       logger.info(
         { planId, userId, cancellationReason },
-        'Client disconnected during generation; result saved to DB'
+        'Client disconnected during generation; result saved to DB',
       );
       return;
     }

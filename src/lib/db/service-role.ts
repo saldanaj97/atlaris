@@ -95,7 +95,7 @@ function initializeDb(): ServiceRoleDb {
 
 function getLazyProxyProperty<T extends object>(
   initialize: () => T,
-  prop: string | symbol
+  prop: string | symbol,
 ): unknown {
   return Reflect.get(initialize(), prop);
 }
@@ -110,7 +110,7 @@ export const db: ServiceRoleDb = new Proxy(
     get(_target, prop: string | symbol): unknown {
       return getLazyProxyProperty(initializeDb, prop);
     },
-  }
+  },
   // Cast the proxy to the concrete Drizzle client type
 ) as ServiceRoleDb;
 
@@ -131,7 +131,7 @@ export function isClientInitialized(): boolean {
 export async function resetServiceRoleClientForTests(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
-      'resetServiceRoleClientForTests is test-only and must not run in production.'
+      'resetServiceRoleClientForTests is test-only and must not run in production.',
     );
   }
 

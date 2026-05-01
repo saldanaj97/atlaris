@@ -55,13 +55,13 @@ export const learningPlans = pgTable(
     index('idx_learning_plans_user_id').on(table.userId),
     index('idx_learning_plans_user_generation_status').on(
       table.userId,
-      table.generationStatus
+      table.generationStatus,
     ),
     index('idx_learning_plans_user_origin').on(table.userId, table.origin),
     index('idx_learning_plans_user_quota_generation_status').on(
       table.userId,
       table.isQuotaEligible,
-      table.generationStatus
+      table.generationStatus,
     ),
 
     // RLS Policies (session-variable-based for Neon)
@@ -96,7 +96,7 @@ export const learningPlans = pgTable(
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
-  ]
+  ],
 ).enableRLS();
 
 export const planSchedules = pgTable(
@@ -156,7 +156,7 @@ export const planSchedules = pgTable(
         using: planOwnership,
       }),
     ];
-  }
+  },
 ).enableRLS();
 
 export const generationAttempts = pgTable(
@@ -192,7 +192,7 @@ export const generationAttempts = pgTable(
       index('idx_generation_attempts_plan_id').on(table.planId),
       index('idx_generation_attempts_created_at_plan_id').on(
         table.createdAt,
-        table.planId
+        table.planId,
       ),
       // classification NULL only when status = success (app-enforced; CHECK constraint added in migration)
 
@@ -228,5 +228,5 @@ export const generationAttempts = pgTable(
         using: sql`false`,
       }),
     ];
-  }
+  },
 ).enableRLS();

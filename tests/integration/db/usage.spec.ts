@@ -39,10 +39,10 @@ function hasConstraintViolation(err: unknown, constraintName: string): boolean {
 
 async function expectCheckConstraintViolation(
   promise: Promise<unknown>,
-  constraintName: string
+  constraintName: string,
 ): Promise<void> {
   await expect(promise).rejects.toSatisfy((err: unknown) =>
-    hasConstraintViolation(err, constraintName)
+    hasConstraintViolation(err, constraintName),
   );
 }
 
@@ -139,7 +139,7 @@ describe('AI usage logging', () => {
         INSERT INTO ai_usage_events (user_id, provider, model, input_tokens, output_tokens, cost_cents, provider_cost_microusd)
         VALUES (${userId}, 'test', 'test-model', 0, 0, 0, -1)
       `),
-      'ai_usage_events_provider_cost_microusd_nonneg'
+      'ai_usage_events_provider_cost_microusd_nonneg',
     );
   });
 });

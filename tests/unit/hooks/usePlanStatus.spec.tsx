@@ -38,7 +38,7 @@ describe('usePlanStatus', () => {
       .mockResolvedValue(createMockFetchResponse(createPlanStatusResponse()));
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     expect(result.current.status).toBe('pending');
@@ -56,8 +56,8 @@ describe('usePlanStatus', () => {
       .fn()
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
-        )
+          createPlanStatusResponse({ status: 'processing' }),
+        ),
       );
 
     renderHook(() => usePlanStatus('plan-123', 'pending', mockFetch));
@@ -73,12 +73,12 @@ describe('usePlanStatus', () => {
       .fn()
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing', attempts: 2 })
-        )
+          createPlanStatusResponse({ status: 'processing', attempts: 2 }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await waitFor(() => {
@@ -93,12 +93,12 @@ describe('usePlanStatus', () => {
       .fn()
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'ready', attempts: 3 })
-        )
+          createPlanStatusResponse({ status: 'ready', attempts: 3 }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await waitFor(() => {
@@ -114,12 +114,12 @@ describe('usePlanStatus', () => {
           status: 'failed',
           attempts: 3,
           latestError: 'AI provider error',
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await waitFor(() => {
@@ -135,12 +135,12 @@ describe('usePlanStatus', () => {
         createPlanStatusResponse({
           status: 'failed',
           latestError: 'Validation error: topic too short',
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await waitFor(() => {
@@ -183,8 +183,8 @@ describe('usePlanStatus', () => {
       .fn()
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
-        )
+          createPlanStatusResponse({ status: 'processing' }),
+        ),
       );
 
     renderHook(() => usePlanStatus('plan-123', 'processing', mockFetch));
@@ -205,7 +205,7 @@ describe('usePlanStatus', () => {
   it('should not poll when initial status is ready', async () => {
     const mockFetch = vi.fn();
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'ready', mockFetch)
+      usePlanStatus('plan-123', 'ready', mockFetch),
     );
 
     expect(result.current.status).toBe('ready');
@@ -217,7 +217,7 @@ describe('usePlanStatus', () => {
     const mockFetch = vi.fn();
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'failed', mockFetch)
+      usePlanStatus('plan-123', 'failed', mockFetch),
     );
 
     expect(result.current.status).toBe('failed');
@@ -236,12 +236,12 @@ describe('usePlanStatus', () => {
       })
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
-        )
+          createPlanStatusResponse({ status: 'processing' }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     // Flush effects + initial fetch (fails with 500)
@@ -278,12 +278,12 @@ describe('usePlanStatus', () => {
       })
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
-        )
+          createPlanStatusResponse({ status: 'processing' }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await act(async () => {
@@ -312,7 +312,7 @@ describe('usePlanStatus', () => {
     });
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await act(async () => {
@@ -343,12 +343,12 @@ describe('usePlanStatus', () => {
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
-        )
+          createPlanStatusResponse({ status: 'processing' }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     // Flush effects + initial fetch (throws network error)
@@ -383,12 +383,12 @@ describe('usePlanStatus', () => {
       })
       .mockResolvedValue(
         createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing', attempts: 1 })
-        )
+          createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+        ),
       );
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     await waitFor(() => {
@@ -415,7 +415,7 @@ describe('usePlanStatus', () => {
       .mockResolvedValue(createMockFetchResponse(createPlanStatusResponse()));
 
     const { unmount } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     // Flush effects + initial fetch
@@ -444,17 +444,17 @@ describe('usePlanStatus', () => {
         return createMockFetchResponse(createPlanStatusResponse());
       } else if (callCount === 2) {
         return createMockFetchResponse(
-          createPlanStatusResponse({ status: 'processing' })
+          createPlanStatusResponse({ status: 'processing' }),
         );
       } else {
         return createMockFetchResponse(
-          createPlanStatusResponse({ status: 'ready' })
+          createPlanStatusResponse({ status: 'ready' }),
         );
       }
     });
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-123', 'pending', mockFetch)
+      usePlanStatus('plan-123', 'pending', mockFetch),
     );
 
     // Initial fetch - pending
@@ -498,7 +498,7 @@ describe('usePlanStatus', () => {
         return createMockFetchResponse(createPlanStatusResponse());
       }
       return createMockFetchResponse(
-        createPlanStatusResponse({ status: 'processing' })
+        createPlanStatusResponse({ status: 'processing' }),
       );
     });
 

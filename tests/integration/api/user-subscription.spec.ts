@@ -39,7 +39,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -89,7 +89,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -112,7 +112,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -132,7 +132,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -152,7 +152,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -171,7 +171,7 @@ describe('GET /api/v1/user/subscription', () => {
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);

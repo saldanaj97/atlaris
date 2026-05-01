@@ -37,9 +37,9 @@ Use these helpers only:
 
 ### Route/middleware pattern (required)
 
-- In handlers wrapped by `withErrorBoundary(...)`, throw typed `AppError` variants (`ValidationError`, `AuthError`, `NotFoundError`, etc.) instead of returning ad-hoc `Response.json(...)` error payloads.
-- Wrapper/middleware utilities in `src/lib/api/**` should also throw typed errors; let `withErrorBoundary(...)` serialize them through `toErrorResponse(...)`.
-- Reserve direct `jsonError(...)` returns for legacy handlers that cannot use `withErrorBoundary(...)` yet.
+- For route handlers, compose `withErrorBoundary(...)` (directly or via factories such as `requestBoundary.route` + `withErrorBoundary`) and throw typed `AppError` variants (`ValidationError`, `AuthError`, `NotFoundError`, etc.); the boundary serializes them through `toErrorResponse(...)`.
+- Wrapper and middleware code under `src/lib/api/**` should also throw typed errors in the same way when the execution path is covered by `withErrorBoundary`.
+- Use `jsonError(...)` when you need the canonical shape **without** that wrapper (e.g. small pre-boundary checks, or a handler that cannot yet be refactored to `throw` only). This is a convenience path, not a “legacy only” exception list.
 
 Do not return ad-hoc `Response.json(...)` error payloads from API handlers.
 

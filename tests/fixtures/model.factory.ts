@@ -1,7 +1,7 @@
 import type { AvailableModel } from '@/features/ai/types/model.types';
 
 export function createTestModel(
-  overrides: Partial<AvailableModel> = {}
+  overrides: Partial<AvailableModel> = {},
 ): AvailableModel {
   const tier = overrides.tier ?? 'free';
 

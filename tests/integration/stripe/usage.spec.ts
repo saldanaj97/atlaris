@@ -290,7 +290,7 @@ describe('Usage Tracking', () => {
         .from(usageMetrics)
         .where(sql`user_id = ${userId} AND month = ${month}`);
       expect(after[0]?.updatedAt.getTime()).toBeGreaterThan(
-        initialTime.getTime()
+        initialTime.getTime(),
       );
     });
   });

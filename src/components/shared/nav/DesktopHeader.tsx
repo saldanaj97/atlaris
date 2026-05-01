@@ -1,17 +1,19 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
-import type { JSX } from 'react';
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
-import type { NavItem } from '@/features/navigation';
+import { type NavItem, ROUTES } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
+import { cn } from '@/lib/utils';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import type { JSX } from 'react';
 
 interface DesktopHeaderProps {
   navItems: NavItem[];
@@ -20,7 +22,7 @@ interface DesktopHeaderProps {
 }
 
 /**
- * Desktop header component (hidden on mobile/tablet, visible on desktop).
+ * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
  * Layout: brand (left) | navigation (center) | auth controls (right)
  */
@@ -29,8 +31,17 @@ export default function DesktopHeader({
   tier,
   isAuthenticated,
 }: DesktopHeaderProps): JSX.Element {
+  const pathname = usePathname();
+  const isPricingPage = pathname === ROUTES.PRICING;
+
   return (
-    <div className="dark:bg-card/50 hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl lg:grid dark:border-white/10">
+    <div
+      className={cn(
+        'hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl md:grid dark:border-white/10 dark:bg-card/50',
+        isPricingPage &&
+          'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20',
+      )}
+    >
       {/* Brand (left) */}
       <div className="flex items-center">
         <BrandLogo />
@@ -46,7 +57,7 @@ export default function DesktopHeader({
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-foreground gap-1.5"
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
           asChild
         >
           <Link
@@ -66,7 +77,7 @@ export default function DesktopHeader({
           </Link>
         </Button>
 
-        <ThemeToggle />
+        <ThemeToggle withTooltip />
 
         <Separator orientation="vertical" className="mx-1 h-5" />
 

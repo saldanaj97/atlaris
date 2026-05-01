@@ -1,7 +1,7 @@
-// biome-ignore assist/source/organizeImports: sonner mock must load before the component under test
+// sonner mock must load before the component under test.
 import '../../mocks/unit/sonner.unit';
 
-import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton';
+import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,7 +24,7 @@ describe('ManageSubscriptionButton', () => {
     render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
 
     expect(
-      screen.getByRole('button', { name: /manage subscription/i })
+      screen.getByRole('button', { name: /manage subscription/i }),
     ).toBeInTheDocument();
   });
 
@@ -33,11 +33,11 @@ describe('ManageSubscriptionButton', () => {
       <ManageSubscriptionButton
         canOpenBillingPortal={true}
         label="Billing Settings"
-      />
+      />,
     );
 
     expect(
-      screen.getByRole('button', { name: /billing settings/i })
+      screen.getByRole('button', { name: /billing settings/i }),
     ).toBeInTheDocument();
   });
 
@@ -46,7 +46,7 @@ describe('ManageSubscriptionButton', () => {
       <ManageSubscriptionButton
         canOpenBillingPortal={true}
         className="custom-class"
-      />
+      />,
     );
 
     const button = screen.getByRole('button');
@@ -75,7 +75,7 @@ describe('ManageSubscriptionButton', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ returnUrl: undefined }),
           signal: expect.any(AbortSignal),
-        })
+        }),
       );
     });
   });
@@ -93,7 +93,7 @@ describe('ManageSubscriptionButton', () => {
       <ManageSubscriptionButton
         canOpenBillingPortal={true}
         returnUrl="/dashboard"
-      />
+      />,
     );
 
     const button = screen.getByRole('button');
@@ -107,7 +107,7 @@ describe('ManageSubscriptionButton', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ returnUrl: '/dashboard' }),
           signal: expect.any(AbortSignal),
-        })
+        }),
       );
     });
   });
@@ -123,7 +123,7 @@ describe('ManageSubscriptionButton', () => {
       () =>
         new Promise<PortalResponse>((resolve) => {
           resolvePortal = resolve;
-        })
+        }),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -159,9 +159,9 @@ describe('ManageSubscriptionButton', () => {
                   portalUrl: 'https://billing.stripe.com/portal',
                 }),
               }),
-            100
-          )
-        )
+            100,
+          ),
+        ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -200,7 +200,7 @@ describe('ManageSubscriptionButton', () => {
 
     await waitFor(() => {
       expect(window.location.href).toBe(
-        'https://billing.stripe.com/portal/session_123'
+        'https://billing.stripe.com/portal/session_123',
       );
     });
   });
@@ -225,7 +225,7 @@ describe('ManageSubscriptionButton', () => {
         'Unable to open billing portal',
         {
           description: 'Portal creation failed',
-        }
+        },
       );
     });
   });
@@ -266,7 +266,7 @@ describe('ManageSubscriptionButton', () => {
         'Unable to open billing portal',
         {
           description: 'Network error',
-        }
+        },
       );
     });
   });
@@ -289,7 +289,7 @@ describe('ManageSubscriptionButton', () => {
         'Unable to open billing portal',
         {
           description: 'Server error',
-        }
+        },
       );
     });
 
@@ -310,9 +310,9 @@ describe('ManageSubscriptionButton', () => {
                   portalUrl: 'https://billing.stripe.com/portal',
                 }),
               }),
-            200
-          )
-        )
+            200,
+          ),
+        ),
     );
     vi.stubGlobal('fetch', mockFetch);
 
@@ -347,7 +347,7 @@ describe('ManageSubscriptionButton', () => {
         'Unable to open billing portal',
         {
           description: 'Something went wrong',
-        }
+        },
       );
     });
   });

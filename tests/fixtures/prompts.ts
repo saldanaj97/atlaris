@@ -1,6 +1,6 @@
-import type { PromptParams } from '@/features/ai/prompts';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
-const DEFAULT_PROMPT_PARAMS: PromptParams = {
+const DEFAULT_PROMPT_PARAMS: GenerationInput = {
   topic: 'TypeScript',
   skillLevel: 'intermediate',
   learningStyle: 'mixed',
@@ -8,8 +8,8 @@ const DEFAULT_PROMPT_PARAMS: PromptParams = {
 };
 
 export function createPromptParams(
-  overrides: Partial<PromptParams> = {}
-): PromptParams {
+  overrides: Partial<GenerationInput> = {},
+): GenerationInput {
   return {
     ...DEFAULT_PROMPT_PARAMS,
     ...overrides,

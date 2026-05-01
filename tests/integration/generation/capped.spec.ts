@@ -97,7 +97,7 @@ describe('generation integration - capped attempts', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(result.status).toBe('failure');
@@ -113,7 +113,7 @@ describe('generation integration - capped attempts', () => {
     // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
     expect(attempts).toHaveLength(3);
     expect(
-      attempts.some((attempt) => attempt.classification === 'capped')
+      attempts.some((attempt) => attempt.classification === 'capped'),
     ).toBe(false);
     // Runtime narrowing for discriminated union before accessing result.attempt.
     if (result.status !== 'failure') {

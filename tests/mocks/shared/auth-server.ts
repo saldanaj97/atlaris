@@ -16,7 +16,7 @@ type AuthRouteContext = {
 /** Single auth route handler (GET or POST). */
 type AuthRouteHandler = (
   request: Request,
-  context?: AuthRouteContext
+  context?: AuthRouteContext,
 ) => Promise<Response>;
 
 /** Return type of auth.handler() — GET and POST used by app/api/auth/[...path]/route. */
@@ -52,15 +52,15 @@ export const auth: MockAuth = {
       GET: vi.fn(
         async (
           _request: Request,
-          _context?: AuthRouteContext
-        ): Promise<Response> => new Response(null, { status: 405 })
+          _context?: AuthRouteContext,
+        ): Promise<Response> => new Response(null, { status: 405 }),
       ),
       POST: vi.fn(
         async (
           _request: Request,
-          _context?: AuthRouteContext
-        ): Promise<Response> => new Response(null, { status: 405 })
+          _context?: AuthRouteContext,
+        ): Promise<Response> => new Response(null, { status: 405 }),
       ),
-    })
+    }),
   ),
 };

@@ -43,7 +43,7 @@ type OnboardingDateFields = Pick<
 
 function validateOnboardingDateFields(
   data: OnboardingDateFields,
-  ctx: z.RefinementCtx
+  ctx: z.RefinementCtx,
 ): void {
   const { startDate, deadlineDate } = data;
   const normalizedStartDate = startDate || undefined;
@@ -108,5 +108,5 @@ function validateOnboardingDateFields(
 export const onboardingFormSchema = onboardingFormObject.superRefine(
   (data, ctx) => {
     validateOnboardingDateFields(data, ctx);
-  }
+  },
 );

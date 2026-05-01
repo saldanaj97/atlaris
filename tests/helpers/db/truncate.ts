@@ -30,7 +30,7 @@ function assertSafeToTruncate() {
   } catch {
     throw new Error(
       'Refusing to truncate database: invalid DATABASE_URL for safety. ' +
-        'Set a valid test DB URL or ALLOW_DB_TRUNCATE=true.'
+        'Set a valid test DB URL or ALLOW_DB_TRUNCATE=true.',
     );
   }
 
@@ -47,7 +47,7 @@ function assertSafeToTruncate() {
   if (!looksLikeTestDb) {
     throw new Error(
       `Refusing to truncate non-test database "${dbName}". ` +
-        'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.'
+        'Use a dedicated test DB (e.g., "postgres_test") or set ALLOW_DB_TRUNCATE=true.',
     );
   }
 }
@@ -100,7 +100,7 @@ export async function truncateAll() {
 
   const tableList = sql.join(
     TRUNCATE_TABLES.map((table) => sql`${table}`),
-    sql.raw(', ')
+    sql.raw(', '),
   );
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {

@@ -68,7 +68,7 @@ export function normalizeOnboardingValues(values: OnboardingFormValues) {
 }
 
 export function mapOnboardingToCreateInput(
-  values: OnboardingFormValues
+  values: OnboardingFormValues,
 ): CreateLearningPlanInput {
   const normalized = normalizeOnboardingValues(values);
   // Default optional startDate to today (YYYY-MM-DD, local time) if the user

@@ -1,13 +1,12 @@
 import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { parseListPaginationParams } from '@/lib/api/pagination';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { resourceType } from '@/lib/db/enums';
-import { getDb } from '@/lib/db/runtime';
 import { resources } from '@/lib/db/schema';
 import { PAGINATION_MAX_LIMIT } from '@/shared/constants/pagination';
 
@@ -19,7 +18,7 @@ const resourcesTypeQuerySchema = z.object({
 
 // GET /api/v1/resources
 export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req }) => {
+  requestBoundary.route({ rateLimit: 'read' }, async ({ req, db }) => {
     const url = new URL(req.url);
 
     const parsedTypeQuery = resourcesTypeQuerySchema.safeParse({
@@ -28,7 +27,7 @@ export const GET = withErrorBoundary(
     if (!parsedTypeQuery.success) {
       throw new ValidationError(
         'Invalid resources query parameters',
-        parsedTypeQuery.error.flatten()
+        parsedTypeQuery.error.flatten(),
       );
     }
 
@@ -37,7 +36,6 @@ export const GET = withErrorBoundary(
       maxLimit: PAGINATION_MAX_LIMIT,
     });
 
-    const db = getDb();
     const rows = await db
       .select({
         id: resources.id,
@@ -53,12 +51,12 @@ export const GET = withErrorBoundary(
       .where(
         parsedTypeQuery.data.type
           ? eq(resources.type, parsedTypeQuery.data.type)
-          : undefined
+          : undefined,
       )
       .orderBy(desc(resources.createdAt))
       .limit(limit)
       .offset(offset);
 
     return json(rows);
-  })
+  }),
 );

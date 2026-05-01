@@ -68,7 +68,7 @@ describe('AI Router (mock in tests)', () => {
           notes: null,
         },
       },
-      { dbClient: getDb() }
+      { dbClient: getDb() },
     );
 
     // In test setup, DB is truncated and direct insertion is allowed, but here we only assert result shape

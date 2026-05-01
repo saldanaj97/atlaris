@@ -53,8 +53,8 @@ describe('usePlanStatus', () => {
           {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
-          }
-        )
+          },
+        ),
       );
     });
 
@@ -113,12 +113,12 @@ describe('usePlanStatus', () => {
         new Response(JSON.stringify(body), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-        })
+        }),
       );
     });
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-err', 'processing')
+      usePlanStatus('plan-err', 'processing'),
     );
 
     // Initial state
@@ -161,13 +161,13 @@ describe('usePlanStatus', () => {
             error: 'upstream unavailable',
             code: 'BAD_GATEWAY',
           }),
-          { status: 502, headers: { 'Content-Type': 'application/json' } }
-        )
+          { status: 502, headers: { 'Content-Type': 'application/json' } },
+        ),
       );
     });
 
     const { result } = renderHook(() =>
-      usePlanStatus('plan-upstream', 'pending')
+      usePlanStatus('plan-upstream', 'pending'),
     );
 
     let guard = 0;

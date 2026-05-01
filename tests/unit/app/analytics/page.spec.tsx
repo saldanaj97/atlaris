@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { describe, expect, it, vi } from 'vitest';
 
-import { runAnalyticsRootRedirect } from '@/app/analytics/page';
+import { runAnalyticsRootRedirect } from '@/app/(app)/analytics/page';
 import { ROUTES } from '@/features/navigation/routes';
 
 vi.mock('next/navigation', () => ({

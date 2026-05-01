@@ -11,15 +11,16 @@ import {
   PLAN_GENERATION_WINDOW_MINUTES,
 } from '@/shared/constants/generation';
 
-type PlanGenerationRateLimitResult = {
+export type PlanGenerationRateLimitResult = {
   remaining: number;
   limit: number;
+  /** Unix timestamp in whole seconds since epoch (UTC), not milliseconds. Matches `X-RateLimit-Reset` from {@link getPlanGenerationRateLimitHeaders}. */
   reset: number;
 };
 
 /** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(
-  result: PlanGenerationRateLimitResult
+  result: PlanGenerationRateLimitResult,
 ): Record<string, string> {
   return {
     'X-RateLimit-Remaining': String(Math.max(0, result.remaining)),
@@ -39,7 +40,7 @@ export function getPlanGenerationRateLimitHeaders(
  */
 export async function checkPlanGenerationRateLimit(
   userId: string,
-  dbClient: AttemptsReadClient
+  dbClient: AttemptsReadClient,
 ): Promise<PlanGenerationRateLimitResult> {
   const windowStart = getPlanGenerationWindowStart(new Date());
 
@@ -60,7 +61,7 @@ export async function checkPlanGenerationRateLimit(
         userId,
         windowStart: windowStart.toISOString(),
       },
-      'selectUserGenerationAttemptWindowStats failed, failing closed'
+      'selectUserGenerationAttemptWindowStats failed, failing closed',
     );
     attemptWindowStats = {
       count: PLAN_GENERATION_LIMIT,
@@ -85,8 +86,8 @@ export async function checkPlanGenerationRateLimit(
             0,
             Math.floor(
               (oldestAttempt.getTime() + windowSeconds * 1000 - Date.now()) /
-                1000
-            )
+                1000,
+            ),
           )
         : windowSeconds;
       reset = oldestAttempt
@@ -100,7 +101,7 @@ export async function checkPlanGenerationRateLimit(
         remaining: 0,
         limit: PLAN_GENERATION_LIMIT,
         reset,
-      }
+      },
     );
   }
 

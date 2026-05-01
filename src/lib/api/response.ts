@@ -1,5 +1,5 @@
 import { toApiErrorJsonResponse } from '@/lib/api/error-response';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 interface JsonOptions {
   status?: number;
@@ -20,7 +20,7 @@ export function jsonError(
     details?: unknown;
     retryAfter?: number;
     headers?: Record<string, string>;
-  } = {}
+  } = {},
 ) {
   return toApiErrorJsonResponse(message, options);
 }

@@ -46,7 +46,7 @@ type JobsTransaction = Parameters<
  */
 async function lockJobAndCheckTerminal(
   tx: JobsTransaction,
-  jobId: string
+  jobId: string,
 ): Promise<{ row: JobQueueRow; isTerminal: boolean } | null> {
   const [row] = await tx
     .select(jobQueueSelect)
@@ -65,7 +65,7 @@ async function lockJobAndCheckTerminal(
 export async function runJobMutationIfEditable(
   client: JobsDbClient,
   jobId: string,
-  mutate: (tx: JobsTransaction, row: JobQueueRow) => Promise<Job | null>
+  mutate: (tx: JobsTransaction, row: JobQueueRow) => Promise<Job | null>,
 ): Promise<Job | null> {
   return client.transaction(async (tx) => {
     const locked = await lockJobAndCheckTerminal(tx, jobId);
@@ -82,7 +82,7 @@ export async function runJobMutationIfEditable(
 export function computeShouldRetry(
   retryable: boolean | undefined,
   nextAttempts: number,
-  maxAttempts: number
+  maxAttempts: number,
 ): boolean {
   if (retryable === false) {
     return false;
@@ -96,7 +96,7 @@ export function getRetryDelaySeconds(attemptNumber: number): number {
   const normalizedAttempt = Math.max(1, Math.trunc(attemptNumber));
   return Math.min(
     MAX_RETRY_DELAY_SECONDS,
-    JOB_RETRY_BASE_SECONDS * 2 ** (normalizedAttempt - 1)
+    JOB_RETRY_BASE_SECONDS * 2 ** (normalizedAttempt - 1),
   );
 }
 

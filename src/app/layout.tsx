@@ -4,8 +4,6 @@ import { Work_Sans, Young_Serif } from 'next/font/google';
 import type { ComponentProps } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/app/ThemeProvider';
-import SiteFooter from '@/components/shared/SiteFooter';
-import SiteHeader from '@/components/shared/SiteHeader';
 import { authClient } from '@/lib/auth/client';
 import './globals.css';
 
@@ -83,10 +81,8 @@ export default function RootLayout({
           }}
         >
           <ThemeProvider>
-            <SiteHeader />
-            <main className="flex-1 pt-16">{children}</main>
+            {children}
             <Toaster />
-            <SiteFooter />
           </ThemeProvider>
         </NeonAuthUIProvider>
       </body>

@@ -17,7 +17,7 @@ type SessionStatus =
   | 'complete'
   | 'error';
 
-export type DraftModule = {
+type DraftModule = {
   index: number;
   title: string;
   description?: string | null;
@@ -25,13 +25,13 @@ export type DraftModule = {
   tasksCount: number;
 };
 
-export type SessionError = {
+type SessionError = {
   message: string;
   classification: string;
   retryable: boolean;
 };
 
-export type SessionProgress = {
+type SessionProgress = {
   modulesParsed: number;
   modulesTotalHint?: number;
   percent: number;
@@ -78,7 +78,7 @@ export type PlanGenerationSessionState = {
   error?: SessionError;
 };
 
-export type StartPlanGenerationSessionRequest =
+type StartPlanGenerationSessionRequest =
   | {
       kind: 'create';
       input: CreateLearningPlanInput;
@@ -88,7 +88,7 @@ export type StartPlanGenerationSessionRequest =
       planId: string;
     };
 
-export type StartPlanGenerationSessionOptions = {
+type StartPlanGenerationSessionOptions = {
   onPlanIdReady?: (planId: string) => void;
 };
 
@@ -96,7 +96,7 @@ export type UsePlanGenerationSessionResult = {
   state: PlanGenerationSessionState;
   startSession: (
     request: StartPlanGenerationSessionRequest,
-    options?: StartPlanGenerationSessionOptions
+    options?: StartPlanGenerationSessionOptions,
   ) => Promise<PlanGenerationResult>;
   cancel: () => void;
 };
@@ -140,7 +140,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
   const startSession = useCallback(
     async (
       request: StartPlanGenerationSessionRequest,
-      options?: StartPlanGenerationSessionOptions
+      options?: StartPlanGenerationSessionOptions,
     ): Promise<PlanGenerationResult> => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -172,7 +172,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
                 : undefined,
             signal: controller.signal,
             credentials: 'include',
-          }
+          },
         );
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') {
@@ -205,7 +205,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
             : 'Failed to retry generation.';
         const parsedError = await parseApiErrorResponse(
           response,
-          fallbackMessage
+          fallbackMessage,
         );
         const classification =
           parsedError.classification ??
@@ -309,7 +309,7 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
         };
 
         const handleCancelled = (
-          event: Extract<PlanGenerationSessionEvent, { type: 'cancelled' }>
+          event: Extract<PlanGenerationSessionEvent, { type: 'cancelled' }>,
         ) => {
           latestPlanId = latestPlanId ?? event.data.planId;
           if (request.kind === 'retry') {
@@ -408,8 +408,8 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
               } else {
                 rejectOutcome(
                   new Error(
-                    'Plan generation completed but no plan ID was received.'
-                  )
+                    'Plan generation completed but no plan ID was received.',
+                  ),
                 );
               }
               break;
@@ -472,8 +472,8 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
             if (!completed && !errored) {
               rejectOutcome(
                 new Error(
-                  'Plan generation ended unexpectedly. Please try again.'
-                )
+                  'Plan generation ended unexpectedly. Please try again.',
+                ),
               );
             }
           })
@@ -481,12 +481,12 @@ export function usePlanGenerationSession(): UsePlanGenerationSessionResult {
             rejectOutcome(
               error instanceof Error
                 ? error
-                : new Error('Plan generation stream failed.')
+                : new Error('Plan generation stream failed.'),
             );
           });
       });
     },
-    []
+    [],
   );
 
   return {

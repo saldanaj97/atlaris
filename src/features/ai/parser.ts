@@ -20,7 +20,7 @@ export class ParserError extends Error {
   constructor(
     public readonly kind: ParserErrorKind,
     message: string,
-    options?: ErrorOptions
+    options?: ErrorOptions,
   ) {
     super(message, options);
     this.name = 'ParserError';
@@ -40,13 +40,13 @@ function ensureString(value: unknown, path: string): string {
 
 function ensureOptionalString(
   value: unknown,
-  path: string
+  path: string,
 ): string | undefined {
   if (value == null) return undefined;
   if (typeof value === 'string') return value.trim() || undefined;
   throw new ParserError(
     'validation',
-    `${path} must be a string when provided.`
+    `${path} must be a string when provided.`,
   );
 }
 
@@ -68,12 +68,12 @@ function truncateValidatedString(
   value: unknown,
   maxLength: number,
   path: string,
-  limitConstantName: string
+  limitConstantName: string,
 ): string {
   if (!Number.isInteger(maxLength) || maxLength <= 0) {
     throw new ParserError(
       'validation',
-      `Invalid configuration: ${limitConstantName} must be a positive integer (got ${String(maxLength)}).`
+      `Invalid configuration: ${limitConstantName} must be a positive integer (got ${String(maxLength)}).`,
     );
   }
   const trimmed = ensureString(value, path);
@@ -86,12 +86,12 @@ function truncateValidatedString(
 function toParsedTask(
   task: unknown,
   moduleIndex: number,
-  taskIndex: number
+  taskIndex: number,
 ): ParsedTask {
   if (!task || typeof task !== 'object') {
     throw new ParserError(
       'validation',
-      `Task ${taskIndex + 1} in module ${moduleIndex + 1} is not an object.`
+      `Task ${taskIndex + 1} in module ${moduleIndex + 1} is not an object.`,
     );
   }
 
@@ -100,15 +100,15 @@ function toParsedTask(
     record.title ?? record.task,
     MAX_TASK_TITLE_LENGTH,
     `Task ${taskIndex + 1} in module ${moduleIndex + 1} title`,
-    'MAX_TASK_TITLE_LENGTH'
+    'MAX_TASK_TITLE_LENGTH',
   );
   const description = ensureOptionalString(
     record.description ?? record.summary,
-    `Task ${taskIndex + 1} in module ${moduleIndex + 1} description`
+    `Task ${taskIndex + 1} in module ${moduleIndex + 1} description`,
   );
   const estimatedMinutes = ensureNumber(
     record.estimatedMinutes ?? record.estimated_minutes,
-    `Task ${taskIndex + 1} estimated minutes`
+    `Task ${taskIndex + 1} estimated minutes`,
   );
 
   return { title, description, estimatedMinutes };
@@ -118,7 +118,7 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
   if (!module || typeof module !== 'object') {
     throw new ParserError(
       'validation',
-      `Module ${moduleIndex + 1} is not an object.`
+      `Module ${moduleIndex + 1} is not an object.`,
     );
   }
 
@@ -127,33 +127,33 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
     record.title,
     MAX_MODULE_TITLE_LENGTH,
     `Module ${moduleIndex + 1} title`,
-    'MAX_MODULE_TITLE_LENGTH'
+    'MAX_MODULE_TITLE_LENGTH',
   );
   const description = ensureOptionalString(
     record.description ?? record.summary,
-    `Module ${moduleIndex + 1} description`
+    `Module ${moduleIndex + 1} description`,
   );
   const estimatedMinutes = ensureNumber(
     record.estimatedMinutes ?? record.estimated_minutes,
-    `Module ${moduleIndex + 1} estimated minutes`
+    `Module ${moduleIndex + 1} estimated minutes`,
   );
 
   const rawTasks = record.tasks;
   if (!Array.isArray(rawTasks) || rawTasks.length === 0) {
     throw new ParserError(
       'validation',
-      `Module ${moduleIndex + 1} must include at least one task.`
+      `Module ${moduleIndex + 1} must include at least one task.`,
     );
   }
   if (rawTasks.length > MAX_TASKS_PER_MODULE) {
     throw new ParserError(
       'validation',
-      `Module ${moduleIndex + 1} exceeds maximum tasks (${MAX_TASKS_PER_MODULE}).`
+      `Module ${moduleIndex + 1} exceeds maximum tasks (${MAX_TASKS_PER_MODULE}).`,
     );
   }
 
   const tasks = rawTasks.map((task, taskIndex) =>
-    toParsedTask(task, moduleIndex, taskIndex)
+    toParsedTask(task, moduleIndex, taskIndex),
   );
 
   return { title, description, estimatedMinutes, tasks };
@@ -161,7 +161,7 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
 
 export async function parseGenerationStream(
   stream: AsyncIterable<string> | ReadableStream<string>,
-  callbacks: ParserCallbacks = {}
+  callbacks: ParserCallbacks = {},
 ): Promise<ParsedGeneration> {
   let buffer = '';
   let moduleDetected = false;
@@ -175,7 +175,7 @@ export async function parseGenerationStream(
     if (buffer.length + chunk.length > MAX_RAW_RESPONSE_CHARS) {
       throw new ParserError(
         'validation',
-        `AI provider response exceeds maximum size (${MAX_RAW_RESPONSE_CHARS} chars).`
+        `AI provider response exceeds maximum size (${MAX_RAW_RESPONSE_CHARS} chars).`,
       );
     }
     buffer += chunk;
@@ -194,7 +194,7 @@ export async function parseGenerationStream(
   if (!buffer.trim()) {
     throw new ParserError(
       'invalid_json',
-      'AI provider returned an empty response.'
+      'AI provider returned an empty response.',
     );
   }
 
@@ -208,14 +208,14 @@ export async function parseGenerationStream(
     throw new ParserError(
       'invalid_json',
       'AI provider returned invalid JSON.',
-      { cause: error }
+      { cause: error },
     );
   }
 
   if (!parsed || typeof parsed !== 'object') {
     throw new ParserError(
       'validation',
-      'AI provider response must be an object.'
+      'AI provider response must be an object.',
     );
   }
 
@@ -223,7 +223,7 @@ export async function parseGenerationStream(
   if (!Array.isArray(modulesRaw)) {
     throw new ParserError(
       'validation',
-      'AI provider response missing modules array.'
+      'AI provider response missing modules array.',
     );
   }
   if (modulesRaw.length === 0) {
@@ -232,7 +232,7 @@ export async function parseGenerationStream(
   if (modulesRaw.length > MAX_MODULE_COUNT) {
     throw new ParserError(
       'validation',
-      `AI provider response exceeds maximum modules (${MAX_MODULE_COUNT}).`
+      `AI provider response exceeds maximum modules (${MAX_MODULE_COUNT}).`,
     );
   }
 

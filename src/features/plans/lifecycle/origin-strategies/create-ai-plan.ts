@@ -6,9 +6,9 @@ import type { PlanCreationStrategyPorts } from '@/features/plans/lifecycle/origi
 import type {
   CreateAiPlanInput,
   CreatePlanResult,
-  SubscriptionTier,
 } from '@/features/plans/lifecycle/types';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export async function createAiPlanWithStrategy(
   ports: PlanCreationStrategyPorts,
@@ -19,20 +19,20 @@ export async function createAiPlanWithStrategy(
       startDate: string | null;
       deadlineDate: string | null;
     };
-  }
+  },
 ): Promise<CreatePlanResult> {
   const { input, tier, duration } = params;
 
   if (!input.topic || input.topic.trim().length < 3) {
     logger.warn(
       { userId: input.userId },
-      `${getCreateLogBase('create')}: validation failed`
+      `${getCreateLogBase('create')}: validation failed`,
     );
     return {
       status: 'permanent_failure',
       classification: 'validation',
       error: new Error(
-        'Topic is required and must be at least 3 characters for AI-origin plans.'
+        'Topic is required and must be at least 3 characters for AI-origin plans.',
       ),
     };
   }
@@ -40,12 +40,12 @@ export async function createAiPlanWithStrategy(
   const normalizedTopic = input.topic.trim();
   const existingPlanId = await ports.planPersistence.findRecentDuplicatePlan(
     input.userId,
-    normalizedTopic
+    normalizedTopic,
   );
   if (existingPlanId) {
     logger.info(
       { userId: input.userId, existingPlanId },
-      `${getCreateLogBase('create')}: duplicate detected`
+      `${getCreateLogBase('create')}: duplicate detected`,
     );
     return {
       status: 'duplicate_detected',

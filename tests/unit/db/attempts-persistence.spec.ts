@@ -7,7 +7,7 @@ import {
   vi,
 } from 'vitest';
 
-import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence';
+import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
 import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts, modules, tasks } from '@/lib/db/schema';
@@ -32,7 +32,7 @@ const mockAttemptRecord = {
 };
 
 function createBaseParams(
-  overrides?: Partial<FinalizeSuccessPersistenceParams>
+  overrides?: Partial<FinalizeSuccessPersistenceParams>,
 ): FinalizeSuccessPersistenceParams {
   return {
     attemptId: 'attempt-1',
@@ -150,7 +150,7 @@ function useMockTransaction(mockTx: ReturnType<typeof createMockTx>): void {
   transactionMock.mockImplementation(
     // Drizzle's transaction callback type is wider than the chain this test
     // stubs, but the helper only exercises execute/delete/insert/update.
-    (fn) => fn(mockTx as never)
+    (fn) => fn(mockTx as never),
   );
 }
 
@@ -164,7 +164,7 @@ describe('persistSuccessfulAttempt', () => {
     useMockTransaction(mockTx); // 0 rows returned but 1 task expected
 
     await expect(persistSuccessfulAttempt(createBaseParams())).rejects.toThrow(
-      'Failed to insert generated tasks for attempt'
+      'Failed to insert generated tasks for attempt',
     );
     expect(mockTx.update).not.toHaveBeenCalled();
   });
@@ -214,13 +214,13 @@ describe('persistSuccessfulAttempt', () => {
         modulesCount: 1,
         tasksCount: 1,
         normalizedEffort: true,
-      })
+      }),
     );
     expect(mockTx.delete.mock.invocationCallOrder[0]).toBeLessThan(
-      mockTx.insert.mock.invocationCallOrder[0]
+      mockTx.insert.mock.invocationCallOrder[0],
     );
     expect(mockTx.insert.mock.invocationCallOrder[0]).toBeLessThan(
-      mockTx.update.mock.invocationCallOrder[0]
+      mockTx.update.mock.invocationCallOrder[0],
     );
   });
 });

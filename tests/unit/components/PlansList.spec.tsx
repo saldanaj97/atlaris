@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PlansList } from '@/app/plans/components/PlansList';
+import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import {
   buildModuleRows,
   buildPlan,
@@ -98,13 +98,13 @@ describe('PlansList', () => {
 
   it('should render empty state when no plans provided', () => {
     render(
-      <PlansList summaries={[]} referenceTimestamp={referenceTimestamp} />
+      <PlansList summaries={[]} referenceTimestamp={referenceTimestamp} />,
     );
 
     // EmptyPlansList shows "No Plans Found" title
     expect(screen.getByText('No Plans Found')).toBeInTheDocument();
     expect(
-      screen.getByText(/You haven't created any plans yet/i)
+      screen.getByText(/You haven't created any plans yet/i),
     ).toBeInTheDocument();
   });
 
@@ -113,7 +113,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockCompletedPlan, mockActivePlan, mockBeginnerPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByText('Learn TypeScript')).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockCompletedPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // 1.0 * 100 = 100%
@@ -138,7 +138,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // 0.4 * 100 = 40%
@@ -150,7 +150,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // PlanRow shows tasks as X/Y format
@@ -162,7 +162,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockCompletedPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByText('20/20')).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockBeginnerPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByText('0%')).toBeInTheDocument();
@@ -184,7 +184,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockBeginnerPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByText('0/15')).toBeInTheDocument();
@@ -195,12 +195,12 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockCompletedPlan, mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     const links = screen.getAllByRole('link');
     const planLinks = links.filter(
-      (link) => link.getAttribute('href')?.startsWith('/plans/plan-') ?? false
+      (link) => link.getAttribute('href')?.startsWith('/plans/plan-') ?? false,
     );
     expect(planLinks).toHaveLength(2);
     expect(planLinks[0]).toHaveAttribute('href', '/plans/plan-1');
@@ -212,7 +212,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByPlaceholderText('Search plans...')).toBeInTheDocument();
@@ -223,7 +223,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     expect(screen.getByText('All Plans')).toBeInTheDocument();
@@ -237,12 +237,12 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // PlanRow has a "Plan actions" dropdown trigger button
     expect(
-      screen.getByRole('button', { name: /plan actions/i })
+      screen.getByRole('button', { name: /plan actions/i }),
     ).toBeInTheDocument();
   });
 
@@ -256,7 +256,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[emptyModulesPlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // Should still render the plan topic
@@ -268,7 +268,7 @@ describe('PlansList', () => {
       <PlansList
         summaries={[mockCompletedPlan, mockActivePlan]}
         referenceTimestamp={referenceTimestamp}
-      />
+      />,
     );
 
     // Both plans are visible by their topic text

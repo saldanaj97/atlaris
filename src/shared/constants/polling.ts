@@ -27,7 +27,7 @@ export const JITTER_FACTOR = 0.2;
  */
 export function computeNextDelay(
   currentDelay: number,
-  randomFn: () => number = Math.random
+  randomFn: () => number = Math.random,
 ): number {
   if (!Number.isFinite(currentDelay) || currentDelay <= 0) {
     return INITIAL_POLL_MS;

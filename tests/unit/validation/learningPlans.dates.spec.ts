@@ -22,7 +22,7 @@ function yyyyMmDd(date: Date) {
 function expectFieldError(
   result: ReturnType<typeof onboardingFormSchema.safeParse>,
   field: 'deadlineDate' | 'startDate',
-  messageFragment: string
+  messageFragment: string,
 ) {
   expect(result.success).toBe(false);
 
@@ -32,7 +32,7 @@ function expectFieldError(
 
   const errors = result.error.flatten().fieldErrors[field] ?? [];
   expect(errors.some((message) => message?.includes(messageFragment))).toBe(
-    true
+    true,
   );
 }
 

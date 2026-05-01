@@ -66,14 +66,14 @@ const VALIDATION_PAYLOAD = {
 function createChunkStream(
   payload: unknown,
   chunkSize: number,
-  delayBetweenChunksMs: number
+  delayBetweenChunksMs: number,
 ): ReadableStream<string> {
   const serialized = JSON.stringify(payload);
   async function* iterator(): AsyncIterable<string> {
     for (let index = 0; index < serialized.length; index += chunkSize) {
       if (index > 0 && delayBetweenChunksMs > 0) {
         await new Promise((resolve) =>
-          setTimeout(resolve, delayBetweenChunksMs)
+          setTimeout(resolve, delayBetweenChunksMs),
         );
       }
       yield serialized.slice(index, index + chunkSize);
@@ -86,7 +86,7 @@ function createChunkStream(
 function buildResult(
   payload: unknown,
   metadataOverride?: Partial<ProviderMetadata>,
-  options?: { chunkSize?: number; delayBetweenChunksMs?: number }
+  options?: { chunkSize?: number; delayBetweenChunksMs?: number },
 ): ProviderGenerateResult {
   const { chunkSize = 80, delayBetweenChunksMs = 0 } = options ?? {};
   return {
@@ -105,7 +105,7 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
   const provider: AiPlanGenerationProvider = {
     async generate(
       _input: GenerationInput,
-      _options?: GenerationOptions
+      _options?: GenerationOptions,
     ): Promise<ProviderGenerateResult> {
       invocationCount += 1;
 
@@ -116,19 +116,19 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
           return buildResult(VALIDATION_PAYLOAD, undefined, config);
         case 'rate_limit':
           throw new ProviderRateLimitError(
-            'Mock provider simulated rate limit.'
+            'Mock provider simulated rate limit.',
           );
         case 'timeout':
           throw new ProviderTimeoutError('Mock provider simulated timeout.');
         case 'error':
           throw new ProviderError(
             'provider_error',
-            'Mock provider simulated failure.'
+            'Mock provider simulated failure.',
           );
         default:
           throw new ProviderError(
             'provider_error',
-            `Mock provider scenario "${String(config.scenario)}" not implemented.`
+            `Mock provider scenario "${String(config.scenario)}" not implemented.`,
           );
       }
     },

@@ -193,6 +193,17 @@ export interface FinalizeSuccessPersistenceParams {
   dbClient: AttemptsDbClient;
 }
 
+/**
+ * Same as {@link FinalizeSuccessPersistenceParams} but for an existing
+ * transaction (no `dbClient`). The caller must have already applied RLS/JWT
+ * claims to the transaction; use persistSuccessfulAttempt or
+ * commitPlanGenerationSuccess when claim setup should be handled for you.
+ */
+export type FinalizeSuccessPersistenceInTxParams = Omit<
+  FinalizeSuccessPersistenceParams,
+  'dbClient'
+>;
+
 export interface UserGenerationAttemptsSinceParams {
   userId: string;
   dbClient: AttemptsReadClient;

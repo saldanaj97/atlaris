@@ -31,7 +31,7 @@ function getNavItemClass(isActive: boolean): string {
     'flex items-center gap-1 text-sm font-medium transition',
     'hover:text-primary dark:hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
-    isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground'
+    isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground',
   );
 }
 
@@ -51,7 +51,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           aria-expanded={isOpen}
           className={cn(
             getNavItemClass(isActive),
-            'px-0 hover:bg-transparent dark:hover:bg-transparent'
+            'px-0 hover:bg-transparent dark:hover:bg-transparent',
           )}
         >
           <span>{item.label}</span>
@@ -66,8 +66,8 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
               onClick={() => setIsOpen(false)}
               className={cn(
                 pathname === dropdownItem.href
-                  ? 'text-primary font-semibold'
-                  : 'text-muted-foreground'
+                  ? 'font-semibold text-primary'
+                  : 'text-muted-foreground',
               )}
             >
               {dropdownItem.label}

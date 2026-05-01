@@ -20,10 +20,10 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 
 ## Ports and local services
 
-| Port  | Service                   | Database name   | Purpose                          |
-| ----- | ------------------------- | --------------- | -------------------------------- |
-| 54330 | `docker-compose.test.yml` | `atlaris_test`  | Manual / CI-style test Postgres  |
-| 54331 | Homebrew PostgreSQL 17    | `atlaris_dev`   | Long-lived local **dev** DB      |
+| Port  | Service                   | Database name  | Purpose                         |
+| ----- | ------------------------- | -------------- | ------------------------------- |
+| 54330 | `docker-compose.test.yml` | `atlaris_test` | Manual / CI-style test Postgres |
+| 54331 | Homebrew PostgreSQL 17    | `atlaris_dev`  | Long-lived local **dev** DB     |
 
 ## Quick start
 
@@ -97,12 +97,12 @@ For local dev, set all three to the **same** string.
 
 ## Scripts
 
-| Script               | Command                                                                 |
-| -------------------- | ----------------------------------------------------------------------- |
-| Start dev DB         | `pnpm db:dev:start`                                                     |
-| Stop dev DB          | `pnpm db:dev:stop`                                                      |
-| Reset dev DB         | `pnpm db:dev:reset`                                                     |
-| First-time bootstrap | `pnpm db:dev:bootstrap`                                                 |
+| Script               | Command                 |
+| -------------------- | ----------------------- |
+| Start dev DB         | `pnpm db:dev:start`     |
+| Stop dev DB          | `pnpm db:dev:stop`      |
+| Reset dev DB         | `pnpm db:dev:reset`     |
+| First-time bootstrap | `pnpm db:dev:bootstrap` |
 
 `bootstrap-local-db` refuses non-localhost hosts so it cannot accidentally run against Neon if misconfigured.
 

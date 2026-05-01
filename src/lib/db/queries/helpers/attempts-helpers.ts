@@ -4,7 +4,7 @@ import type { AttemptError } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
 
 function getProviderErrorStatus(
-  attemptErr: AttemptError | null | undefined
+  attemptErr: AttemptError | null | undefined,
 ): number | undefined {
   if (!attemptErr) return undefined;
 
@@ -35,7 +35,7 @@ function getProviderErrorStatus(
 }
 
 export function isProviderErrorRetryable(
-  attemptErr: AttemptError | null | undefined
+  attemptErr: AttemptError | null | undefined,
 ): boolean {
   if (attemptErr == null) return true;
   const status = getProviderErrorStatus(attemptErr);
@@ -47,7 +47,7 @@ export function isProviderErrorRetryable(
 
 export function logAttemptEvent(
   event: 'success' | 'failure',
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ): void {
   const correlationId = getCorrelationId();
   const enriched = {
@@ -60,7 +60,7 @@ export function logAttemptEvent(
       event,
       ...enriched,
     },
-    `attempts_${event}`
+    `attempts_${event}`,
   );
 
   if (appEnv.isTest) {

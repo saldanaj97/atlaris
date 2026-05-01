@@ -87,7 +87,7 @@ We use 4 core GitHub Actions workflows plus a schema diff workflow:
 
 **What it runs:**
 
-- Lint (Biome)
+- Lint (Oxlint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
 - Migration drift check (`pnpm db:generate` must not change committed migration files)

@@ -78,7 +78,7 @@ function streamFromJson(payload: object): ReadableStream<string> {
 }
 
 function buildContext(
-  overrides: Partial<GenerationAttemptContext> = {}
+  overrides: Partial<GenerationAttemptContext> = {},
 ): GenerationAttemptContext {
   return {
     planId: buildId('plan'),
@@ -104,7 +104,7 @@ function buildInput(overrides: Partial<GenerationInput> = {}): GenerationInput {
 }
 
 function buildReservation(
-  overrides: Partial<AttemptReservation> = {}
+  overrides: Partial<AttemptReservation> = {},
 ): AttemptReservation {
   return {
     reserved: true,
@@ -130,7 +130,7 @@ function buildReservation(
 
 function buildAttemptRecord(
   planId: string,
-  overrides: Partial<GenerationAttemptRecord> = {}
+  overrides: Partial<GenerationAttemptRecord> = {},
 ): GenerationAttemptRecord {
   return {
     id: buildId('attempt-record'),
@@ -160,7 +160,7 @@ function createProvider(
       description?: string;
       estimatedMinutes: number;
     }>;
-  }>
+  }>,
 ): AiPlanGenerationProvider {
   return {
     generate: vi.fn().mockResolvedValue({
@@ -276,7 +276,7 @@ describe('runGenerationAttempt pacing', () => {
       expect.objectContaining({
         modules: expectedPaced,
         providerMetadata: { model: 'gpt-4' },
-      })
+      }),
     );
   });
 

@@ -16,7 +16,7 @@ export function makeDbClient(overrides: Partial<DbClient> = {}): DbClient {
   const fallback = (method: string) =>
     vi.fn().mockImplementation(() => {
       throw new Error(
-        `makeDbClient: ${method}() called but no implementation was provided. Pass it in the overrides argument.`
+        `makeDbClient: ${method}() called but no implementation was provided. Pass it in the overrides argument.`,
       );
     });
 
@@ -37,7 +37,7 @@ export function makeDbClient(overrides: Partial<DbClient> = {}): DbClient {
  * make their intent explicit at the call site.
  */
 export function makeAttemptsDbClient(
-  overrides: Partial<AttemptsDbClient> = {}
+  overrides: Partial<AttemptsDbClient> = {},
 ): AttemptsDbClient {
   return makeDbClient(overrides);
 }

@@ -29,7 +29,7 @@ describe('parseSsePlanEventLine', () => {
 
     const event = parseSsePlanEventLine(
       'data: {"type":"plan_start","data":{"planId":"p1","attemptNumber":1,"topic":"t","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":null}}',
-      handlers
+      handlers,
     );
 
     expect(event?.type).toBe('plan_start');

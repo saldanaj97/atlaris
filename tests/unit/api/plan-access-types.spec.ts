@@ -5,26 +5,25 @@
  * plan access scenarios (success, auth failure, not found, etc.)
  */
 
+import { buildPlanDetail } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
-
-import { planError, planSuccess } from '@/app/plans/[id]/helpers';
+import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
 import type {
   PlanAccessErrorCode,
   PlanAccessResult,
-} from '@/app/plans/[id]/types';
-import { toClientPlanDetail } from '@/features/plans/read-models/detail-dto';
+} from '@/app/(app)/plans/[id]/types';
+import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
-import { buildPlanDetail } from '../../fixtures/plan-detail';
 
 function buildClientPlanDetail(
-  overrides: Parameters<typeof buildPlanDetail>[0] = {}
+  overrides: Parameters<typeof buildPlanDetail>[0] = {},
 ): ClientPlanDetail {
   const detail = buildPlanDetail(overrides);
   const clientDetail = toClientPlanDetail(detail);
 
   if (!clientDetail) {
     throw new Error(
-      `Expected client plan detail to be defined for overrides: ${JSON.stringify(overrides)}`
+      `Expected client plan detail to be defined for overrides: ${JSON.stringify(overrides)}`,
     );
   }
 
@@ -105,7 +104,7 @@ describe('Plan Access Types', () => {
     it('should allow type narrowing via success discriminant', () => {
       const result: PlanAccessResult = planError(
         'UNAUTHORIZED',
-        'Not authenticated'
+        'Not authenticated',
       );
 
       // TypeScript should narrow the type correctly
@@ -165,7 +164,7 @@ describe('Plan Access Types', () => {
             default: {
               const _exhaustiveCheck: never = result.error.code;
               throw new Error(
-                `Unhandled error code: ${String(_exhaustiveCheck)}`
+                `Unhandled error code: ${String(_exhaustiveCheck)}`,
               );
             }
           }
@@ -181,7 +180,7 @@ describe('Plan Access Types', () => {
 
     it('should map error codes to correct HTTP statuses at runtime', () => {
       for (const [code, expectedStatus] of Object.entries(
-        PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS
+        PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS,
       )) {
         const result = planError(code as PlanAccessErrorCode, 'Test');
         if (!result.success) {

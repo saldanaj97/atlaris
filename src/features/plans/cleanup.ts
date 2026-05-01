@@ -25,7 +25,7 @@ type CleanupStuckPlansDependencies = {
 export async function cleanupStuckPlans(
   dbClient: DbClient,
   thresholdMs: number = STUCK_PLAN_THRESHOLD_MS,
-  deps: CleanupStuckPlansDependencies = {}
+  deps: CleanupStuckPlansDependencies = {},
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
   const markFailure = deps.markFailure ?? markPlanGenerationFailure;
@@ -37,8 +37,8 @@ export async function cleanupStuckPlans(
       .where(
         and(
           eq(learningPlans.generationStatus, 'generating'),
-          lt(learningPlans.updatedAt, cutoff)
-        )
+          lt(learningPlans.updatedAt, cutoff),
+        ),
       )
       .limit(Number.MAX_SAFE_INTEGER)
       .for('update');
@@ -55,7 +55,7 @@ export async function cleanupStuckPlans(
     if (cleaned > 0) {
       logger.info(
         { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
-        `Marked ${cleaned} stuck plan(s) as failed`
+        `Marked ${cleaned} stuck plan(s) as failed`,
       );
     }
 
@@ -69,7 +69,7 @@ export async function cleanupStuckPlans(
  */
 export async function cleanupOrphanedAttempts(
   dbClient: DbClient,
-  thresholdMs: number = ORPHANED_ATTEMPT_THRESHOLD_MS
+  thresholdMs: number = ORPHANED_ATTEMPT_THRESHOLD_MS,
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
 
@@ -85,8 +85,8 @@ export async function cleanupOrphanedAttempts(
       and(
         isNull(generationAttempts.classification),
         eq(generationAttempts.status, 'in_progress'),
-        lt(generationAttempts.createdAt, cutoff)
-      )
+        lt(generationAttempts.createdAt, cutoff),
+      ),
     )
     .returning({ id: generationAttempts.id });
 
@@ -99,7 +99,7 @@ export async function cleanupOrphanedAttempts(
         event: 'orphaned_attempts_cleaned',
         count: cleaned,
       },
-      `Finalized ${cleaned} orphaned attempt(s)`
+      `Finalized ${cleaned} orphaned attempt(s)`,
     );
   }
 

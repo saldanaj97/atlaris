@@ -48,7 +48,7 @@ describe('IP Rate Limiting', () => {
         getClientIp(request, {
           ipTrustMode: 'rightmost-untrusted',
           trustedProxyList: ['150.172.238.178', '70.41.3.18'],
-        })
+        }),
       ).toBe('203.0.113.50');
     });
 
@@ -60,7 +60,7 @@ describe('IP Rate Limiting', () => {
         getClientIp(request, {
           ipTrustMode: 'trusted-proxies',
           trustedProxyList: ['192.0.2.10', '150.172.238.178'],
-        })
+        }),
       ).toBe('198.51.100.4');
     });
 
@@ -72,7 +72,7 @@ describe('IP Rate Limiting', () => {
         getClientIp(request, {
           ipTrustMode: 'rightmost-untrusted',
           trustedProxyList: ['70.41.3.18', '150.172.238.178'],
-        })
+        }),
       ).toBe('unknown');
     });
 
@@ -84,7 +84,7 @@ describe('IP Rate Limiting', () => {
         getClientIp(request, {
           ipTrustMode: 'trusted-proxies',
           trustedProxyList: ['70.41.3.18', '150.172.238.178'],
-        })
+        }),
       ).toBe('unknown');
     });
 
@@ -369,7 +369,7 @@ describe('IP Rate Limiting', () => {
 
       expect(headers['X-RateLimit-Limit']).toBe(String(docsConfig.maxRequests));
       expect(headers['X-RateLimit-Remaining']).toBe(
-        String(docsConfig.maxRequests)
+        String(docsConfig.maxRequests),
       );
       expect(headers['X-RateLimit-Reset']).toBeDefined();
       expect(headers['Retry-After']).toBeUndefined();
@@ -406,7 +406,7 @@ describe('IP Rate Limiting', () => {
       expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.health.maxRequests);
       expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.webhook.maxRequests);
       expect(authLimit).toBeLessThan(
-        IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests
+        IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests,
       );
       expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.docs.maxRequests);
     });
@@ -415,13 +415,13 @@ describe('IP Rate Limiting', () => {
       const webhookLimit = IP_RATE_LIMIT_CONFIGS.webhook.maxRequests;
 
       expect(webhookLimit).toBeGreaterThanOrEqual(
-        IP_RATE_LIMIT_CONFIGS.health.maxRequests
+        IP_RATE_LIMIT_CONFIGS.health.maxRequests,
       );
       expect(webhookLimit).toBeGreaterThan(
-        IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests
+        IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests,
       );
       expect(webhookLimit).toBeGreaterThan(
-        IP_RATE_LIMIT_CONFIGS.auth.maxRequests
+        IP_RATE_LIMIT_CONFIGS.auth.maxRequests,
       );
     });
   });

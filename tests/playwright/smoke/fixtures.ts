@@ -49,20 +49,20 @@ type HeadingName = RegExp | string;
 
 export function assertRedirectToSignIn(
   response: APIResponse,
-  route: string
+  route: string,
 ): void {
   expect(response.status(), `${route} should redirect anonymous users`).toBe(
-    307
+    307,
   );
   expect(
     response.headers().location,
-    `${route} should point at the sign-in page`
+    `${route} should point at the sign-in page`,
   ).toContain('/auth/sign-in');
 }
 
 export async function expectHeading(
   page: Page,
-  name: HeadingName
+  name: HeadingName,
 ): Promise<void> {
   await expect(page.getByRole('heading', { name })).toBeVisible();
 }
@@ -70,7 +70,7 @@ export async function expectHeading(
 export async function selectInlineDropdown(
   page: Page,
   label: string,
-  optionLabel: string
+  optionLabel: string,
 ): Promise<void> {
   await page.getByLabel(label).click();
   await page.getByRole('option', { name: optionLabel }).click();
@@ -101,7 +101,7 @@ async function checkGeneratedModules(page: Page): Promise<void> {
 
   if (await pendingErrorAlert.isVisible()) {
     throw new Error(
-      `Plan generation surfaced an error before modules became available: "${await pendingErrorAlert.innerText()}"`
+      `Plan generation surfaced an error before modules became available: "${await pendingErrorAlert.innerText()}"`,
     );
   }
 
@@ -114,7 +114,7 @@ async function checkGeneratedModules(page: Page): Promise<void> {
 
 export async function waitForGeneratedModules(
   page: Page,
-  timeoutMs = PLAN_GENERATION_TIMEOUT_MS
+  timeoutMs = PLAN_GENERATION_TIMEOUT_MS,
 ): Promise<void> {
   const emptyState = page.getByText('No modules available yet.');
   try {
@@ -133,13 +133,13 @@ export async function waitForGeneratedModules(
     if (await emptyState.isVisible()) {
       throw new Error(
         'Timed out waiting for generated modules; plan page remained in the empty "No modules available yet." state.',
-        { cause: error }
+        { cause: error },
       );
     }
 
     throw new Error(
       'Timed out waiting for generated modules; no module link appeared on the plan page.',
-      { cause: error }
+      { cause: error },
     );
   }
 }

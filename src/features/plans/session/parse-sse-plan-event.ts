@@ -24,7 +24,7 @@ const isIgnorableSseLine = (trimmed: string): boolean =>
  */
 export function parseSsePlanEventLine(
   line: string,
-  handlers: ParseSsePlanEventHandlers
+  handlers: ParseSsePlanEventHandlers,
 ): StreamingEvent | null {
   const trimmed = line.trim();
   if (!trimmed || isIgnorableSseLine(trimmed)) return null;

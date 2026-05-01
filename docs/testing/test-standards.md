@@ -305,7 +305,7 @@ expect(screen.getByRole('navigation', { name: /footer/i })).toBeInTheDocument();
 // Test behavior - does it do what it should?
 expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute(
   'href',
-  '/privacy'
+  '/privacy',
 );
 ```
 

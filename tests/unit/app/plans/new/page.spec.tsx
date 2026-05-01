@@ -8,7 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ManualCreatePanel } from '@/app/plans/new/components/ManualCreatePanel';
+import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
   PlanGenerationResult,
@@ -27,7 +27,7 @@ const mockStartGeneration =
   vi.fn<
     (
       input: CreateLearningPlanInput,
-      options?: { onPlanIdReady?: (planId: string) => void }
+      options?: { onPlanIdReady?: (planId: string) => void },
     ) => Promise<PlanGenerationResult>
   >();
 const mockCancel = vi.fn<() => void>();
@@ -137,7 +137,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(
-          'Your learning plan generation has started.'
+          'Your learning plan generation has started.',
         );
       });
 
@@ -183,7 +183,7 @@ describe('ManualCreatePanel', () => {
   describe('handleSubmit - abort handling', () => {
     it('shows the cancellation toast when generation is aborted', async () => {
       mockStartGeneration.mockRejectedValue(
-        new DOMException('Aborted', 'AbortError')
+        new DOMException('Aborted', 'AbortError'),
       );
 
       render(<ManualCreatePanel />);
@@ -228,7 +228,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith(
-          'Generation failed. You can retry from the plan page.'
+          'Generation failed. You can retry from the plan page.',
         );
       });
 
@@ -238,7 +238,7 @@ describe('ManualCreatePanel', () => {
 
       expect(clientLogger.error).toHaveBeenCalledWith(
         'Streaming plan generation failed',
-        errorWithPlanId
+        errorWithPlanId,
       );
     });
 
@@ -309,7 +309,7 @@ describe('ManualCreatePanel', () => {
       expect(pushMock).not.toHaveBeenCalled();
       expect(clientLogger.error).toHaveBeenCalledWith(
         'Streaming plan generation failed',
-        genericError
+        genericError,
       );
     });
 
@@ -323,7 +323,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith(
-          'We could not create your learning plan. Please try again.'
+          'We could not create your learning plan. Please try again.',
         );
       });
     });
@@ -341,7 +341,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: /generating/i })
+          screen.getByRole('button', { name: /generating/i }),
         ).toBeDisabled();
       });
 
@@ -353,7 +353,7 @@ describe('ManualCreatePanel', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: /generate my plan/i })
+          screen.getByRole('button', { name: /generate my plan/i }),
         ).toBeEnabled();
       });
     });

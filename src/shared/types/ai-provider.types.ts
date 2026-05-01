@@ -1,11 +1,37 @@
+// SkillLevel / LearningStyle derived from enums here (not from db.types) to avoid
+// circular: db.types → attempts.types → this file.
+type DbEnumsModule = typeof import('@/lib/db/enums');
+type SkillLevel = DbEnumsModule['skillLevel']['enumValues'][number];
+type LearningStyle = DbEnumsModule['learningStyle']['enumValues'][number];
+
 export type GenerationInput = {
   topic: string;
   notes?: string | null;
-  skillLevel: 'beginner' | 'intermediate' | 'advanced';
+  skillLevel: SkillLevel;
   weeklyHours: number;
-  learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+  learningStyle: LearningStyle;
   startDate?: string | null;
   deadlineDate?: string | null;
+};
+
+/** Core scalar fields shared across create/retry/stream/lifecycle. */
+export type PlanGenerationCoreFields = Pick<
+  GenerationInput,
+  | 'topic'
+  | 'skillLevel'
+  | 'learningStyle'
+  | 'weeklyHours'
+  | 'startDate'
+  | 'deadlineDate'
+>;
+
+/** Same as {@link PlanGenerationCoreFields} with explicit null dates after normalization. */
+export type PlanGenerationCoreFieldsNormalized = Omit<
+  PlanGenerationCoreFields,
+  'startDate' | 'deadlineDate'
+> & {
+  startDate: string | null;
+  deadlineDate: string | null;
 };
 
 export type ProviderUsage = {

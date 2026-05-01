@@ -21,7 +21,7 @@ type ManualCreatePayloadError = {
 };
 
 function normalizeManualCreatePayloadError(
-  error: unknown
+  error: unknown,
 ): ManualCreatePayloadError {
   const normalized = normalizeThrown(error);
 
@@ -40,7 +40,7 @@ function normalizeManualCreatePayloadError(
 }
 
 function convertPlanFormToOnboardingValues(
-  data: PlanFormData
+  data: PlanFormData,
 ): OnboardingFormValues {
   return {
     topic: data.topic,
@@ -54,7 +54,7 @@ function convertPlanFormToOnboardingValues(
 }
 
 export function buildManualCreatePayloadFromPlanForm(
-  data: PlanFormData
+  data: PlanFormData,
 ): ManualCreatePayloadResult {
   try {
     const onboardingValues = convertPlanFormToOnboardingValues(data);

@@ -38,7 +38,7 @@ describe('buildManualCreatePayloadFromPlanForm', () => {
           message: 'validation failed',
           name: 'Error',
           stack: expect.any(String),
-        })
+        }),
       );
     }
   });

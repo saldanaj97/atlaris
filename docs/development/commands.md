@@ -26,14 +26,17 @@ pnpm start            # Start production server
 ### Linting & Formatting
 
 ```bash
-pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type)
-pnpm check:lint         # Biome: format + lint + import assist (check only)
-pnpm check:lint:fix     # Biome: apply safe fixes (format + lint + organize imports)
-pnpm check:lint:changed # Biome check only files changed vs base branch (see scripts/biome-changed.sh)
-pnpm check:knip         # Manual, non-destructive Knip audit (local-only, not part of check:full/CI)
-pnpm check:format       # Biome formatter only (writes files)
+pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type + format)
+pnpm check:lint         # Oxlint: lint source, script, and test code
+pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
+pnpm check:lint:fix     # Oxlint: apply safe lint fixes
+pnpm check:lint:changed # Oxlint only files changed vs base branch (see scripts/lint-changed.sh)
+pnpm check:format       # Prettier formatter only (writes files)
+pnpm check:format:check # Prettier read-only format check
 pnpm check:type         # TypeScript type checking only
 ```
+
+Local Git hooks run through Husky in `.husky/`. Pre-commit runs Oxlint and Prettier on staged files, then runs `ggshield` when it is installed.
 
 ## Database (Drizzle)
 
@@ -84,15 +87,6 @@ pnpm exec tsx scripts/tests/run.ts unit --changed                         # Run 
 pnpm exec tsx scripts/tests/run.ts unit --watch                           # Watch mode
 pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts  # Targeted integration file
 pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full suite (+ optional E2E)
-```
-
-### Knip tracing
-
-When `pnpm check:knip` reports a suspicious unused file, trace that specific path before acting on it:
-
-```bash
-pnpm exec knip --trace-file src/app/plans/components/PlansContent.tsx
-pnpm exec knip --debug
 ```
 
 ## Local API Testing Guidance

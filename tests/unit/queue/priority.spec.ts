@@ -36,7 +36,7 @@ describe('computeJobPriority', () => {
       computeJobPriority({
         tier: 'invalid' as 'free',
         isPriorityTopic: false,
-      })
+      }),
     ).toThrow('Invalid tier: invalid');
   });
 });
@@ -54,7 +54,7 @@ describe('isPriorityTopic', () => {
   it('matches multi-word phrases within larger strings', () => {
     expect(isPriorityTopic('Working on interview prep this week')).toBe(true);
     expect(isPriorityTopic('My focus: ai engineering and system design')).toBe(
-      true
+      true,
     );
   });
 

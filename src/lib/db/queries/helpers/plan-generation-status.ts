@@ -40,7 +40,7 @@ type PlanStatusUpdateClient = Pick<DbClient, 'update'>;
  */
 export async function setLearningPlanGenerating(
   tx: PlanStatusUpdateClient,
-  params: { planId: string; updatedAt: Date }
+  params: { planId: string; updatedAt: Date },
 ): Promise<void> {
   await tx
     .update(learningPlans)

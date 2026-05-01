@@ -40,7 +40,7 @@ function isAttemptErrorLike(obj: unknown): obj is AttemptErrorLike {
 }
 
 function extractStatusFields(
-  obj: AttemptErrorLike
+  obj: AttemptErrorLike,
 ): Partial<AttemptErrorResult> {
   const fields: Partial<AttemptErrorResult> = {};
   if (typeof obj.status === 'number') {

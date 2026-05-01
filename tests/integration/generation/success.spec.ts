@@ -37,7 +37,7 @@ describe('generation integration - success path', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(result.status).toBe('success');

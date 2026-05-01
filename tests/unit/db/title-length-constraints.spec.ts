@@ -23,7 +23,8 @@ function findMigrationSqlForTitleConstraints(): string {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Could not read migrations directory: ${migrationsDir}. ${message}`
+      `Could not read migrations directory: ${migrationsDir}. ${message}`,
+      { cause: error },
     );
   }
 
@@ -44,13 +45,13 @@ function findMigrationSqlForTitleConstraints(): string {
 
   if (matches.length === 0) {
     throw new Error(
-      `No migration in ${migrationsDir} contains module_title_length, task_title_length, and resource_title_length CHECK definitions. Scanned ${String(files.length)} files.`
+      `No migration in ${migrationsDir} contains module_title_length, task_title_length, and resource_title_length CHECK definitions. Scanned ${String(files.length)} files.`,
     );
   }
 
   if (matches.length > 1) {
     throw new Error(
-      `Multiple migrations contain the three title-length constraints: ${matchedFiles.join(', ')} (found ${String(matches.length)} files).`
+      `Multiple migrations contain the three title-length constraints: ${matchedFiles.join(', ')} (found ${String(matches.length)} files).`,
     );
   }
 
@@ -65,13 +66,13 @@ function extractCheckLimit(constraintName: string, sqlText: string): number {
   const escaped = constraintName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(
     `(?:CONSTRAINT\\s+)?(?:"${escaped}"|${escaped})\\s+CHECK\\s*\\(\\s*(?:char_length|length)\\s*\\([^)]+\\)\\s*<=\\s*(\\d+)`,
-    'is'
+    'is',
   );
   const match = sqlText.match(re);
   if (!match) {
     const sample = sqlText.slice(0, 600);
     throw new Error(
-      `Could not parse CHECK limit for constraint "${constraintName}". Sample SQL:\n${sample}`
+      `Could not parse CHECK limit for constraint "${constraintName}". Sample SQL:\n${sample}`,
     );
   }
   return Number(match[1]);

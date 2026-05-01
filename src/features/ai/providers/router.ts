@@ -17,6 +17,7 @@ import {
   PROVIDER_RETRY_MIN_MS,
 } from '@/features/plans/retry-policy';
 import { aiEnv, appEnv } from '@/lib/config/env';
+import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
 export type RouterConfig = {
@@ -30,7 +31,7 @@ export type RouterConfig = {
  * as `unknown` so callers must pass through untyped errors (e.g. from fetch or
  * OpenRouter SDK) and we narrow safely using explicit checks for `status`,
  * `statusCode`, and `response.status`. If the linter flags `unknown` here, add a
- * targeted biome-ignore for that rule and reference getStatusCode in the comment
+ * targeted oxlint disable for that rule and reference getStatusCode in the comment
  * so future readers know it is intentional.
  */
 function getStatusCode(error: unknown): number | undefined {
@@ -69,13 +70,6 @@ function getStatusCode(error: unknown): number | undefined {
   return responseStatus;
 }
 
-function isAbortError(error: unknown): boolean {
-  return (
-    (error instanceof DOMException && error.name === 'AbortError') ||
-    (error instanceof Error && error.name === 'AbortError')
-  );
-}
-
 function shouldRetry(error: unknown): boolean {
   if (isAbortError(error)) {
     return false;
@@ -104,7 +98,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
   constructor(cfg: RouterConfig = {}) {
-    // Explicit config flag takes precedence over environment
     if (cfg.useMock === true) {
       this.providers = [() => new MockGenerationProvider()];
       return;
@@ -116,7 +109,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       return;
     }
 
-    // Fall back to environment-based mock behavior (only in non-production)
     const useMock = aiEnv.useMock && !appEnv.isProduction;
 
     if (useMock) {
@@ -124,17 +116,13 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       return;
     }
 
-    // OpenRouter is now the only provider (Google AI deprecated)
     const model = cfg.model ?? aiEnv.defaultModel;
     this.providers = [() => new OpenRouterProvider({ model })];
-
-    // TODO: Add Google AI as emergency fallback only if OpenRouter is completely down.
-    // For now, we rely on OpenRouter's internal model routing and fallbacks.
   }
 
   async generate(
     input: GenerationInput,
-    options?: GenerationOptions
+    options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
     let lastError: unknown;
 
@@ -142,18 +130,16 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       const provider = factory();
       const providerName = provider.constructor?.name ?? 'unknown-provider';
       if (!appEnv.isProduction) {
-        // Lightweight debug signal to help trace provider order and failures locally
         logger.debug(
           {
             source: 'ai-router',
             event: 'provider_attempt',
             provider: providerName,
           },
-          'AI router attempting provider'
+          'AI router attempting provider',
         );
       }
       try {
-        // Retry only transient provider failures.
         const result = await pRetry(() => provider.generate(input, options), {
           retries: MAX_PROVIDER_RETRIES,
           minTimeout: PROVIDER_RETRY_MIN_MS,
@@ -170,7 +156,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       } catch (err) {
         lastError = err;
         const message = err instanceof Error ? err.message : 'unknown error';
-        // Always log provider failures in production for visibility
         logger.warn(
           {
             source: 'ai-router',
@@ -181,12 +166,11 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
               ? { stack: err.stack }
               : {}),
           },
-          'AI router provider failed'
+          'AI router provider failed',
         );
       }
     }
 
-    // Ensure we throw an Error object
     if (lastError instanceof Error) {
       throw lastError;
     }

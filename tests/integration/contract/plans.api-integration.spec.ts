@@ -98,7 +98,7 @@ describe('Phase 4: API Integration', () => {
       const statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('failed');
       expect(statusPayload.latestError).toBe(
-        'Plan generation timed out. Please try again.'
+        'Plan generation timed out. Please try again.',
       );
     });
   });

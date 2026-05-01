@@ -23,8 +23,8 @@ export function createEventStream(
   handler: (
     emit: EmitEvent,
     controller: ReadableStreamDefaultController<Uint8Array>,
-    context: EventStreamContext
-  ) => Promise<void> | void
+    context: EventStreamContext,
+  ) => Promise<void> | void,
 ): ReadableStream<Uint8Array> {
   const cancelHandlers = new Set<() => void>();
   let abortController: AbortController | null = null;
@@ -96,7 +96,7 @@ export function createEventStream(
         } catch (error) {
           logger.error(
             { error },
-            'Failed while handling stream cancellation callback'
+            'Failed while handling stream cancellation callback',
           );
         }
       }

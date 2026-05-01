@@ -47,7 +47,7 @@ describe('generation integration - validation failure', () => {
           learningStyle: 'practice',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(result.status).toBe('failure');

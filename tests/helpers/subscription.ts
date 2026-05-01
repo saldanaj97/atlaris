@@ -16,7 +16,7 @@ interface MarkUserAsSubscribedOptions {
 
 export async function markUserAsSubscribed(
   userId: string,
-  options: MarkUserAsSubscribedOptions = {}
+  options: MarkUserAsSubscribedOptions = {},
 ): Promise<{
   stripeCustomerId: string;
   stripeSubscriptionId: string;

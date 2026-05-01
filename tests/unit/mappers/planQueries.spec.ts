@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildLearningPlanDetail } from '@/features/plans/read-models/detail-aggregate';
+import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
-} from '@/features/plans/read-models/summary';
+} from '@/features/plans/read-projection/summary-projection';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
@@ -19,13 +19,13 @@ type SummaryTaskRow = {
   id: string;
   moduleId: string;
   planId: string;
-  estimatedMinutes: number | null;
+  estimatedMinutes: number;
 };
 
 type ProgressStatusRow = Pick<TaskProgress, 'taskId' | 'status'>;
 
 function createLearningPlan(
-  overrides: Partial<LearningPlan> = {}
+  overrides: Partial<LearningPlan> = {},
 ): LearningPlan {
   return {
     id: createId('plan'),
@@ -77,7 +77,7 @@ function createTask(overrides: Partial<Task> = {}): Task {
 }
 
 function createTaskProgress(
-  overrides: Partial<TaskProgress> = {}
+  overrides: Partial<TaskProgress> = {},
 ): TaskProgress {
   return {
     id: createId('progress'),
@@ -92,7 +92,7 @@ function createTaskProgress(
 }
 
 function createSummaryTaskRow(
-  overrides: Partial<SummaryTaskRow> = {}
+  overrides: Partial<SummaryTaskRow> = {},
 ): SummaryTaskRow {
   return {
     id: createId('task'),
@@ -104,7 +104,7 @@ function createSummaryTaskRow(
 }
 
 function createTaskResourceWithResource(
-  overrides: Partial<TaskResourceWithResource> = {}
+  overrides: Partial<TaskResourceWithResource> = {},
 ): TaskResourceWithResource {
   const resourceId = overrides.resourceId ?? createId('resource');
 
@@ -133,7 +133,7 @@ function createTaskResourceWithResource(
 }
 
 function createGenerationAttempt(
-  overrides: Partial<GenerationAttempt> = {}
+  overrides: Partial<GenerationAttempt> = {},
 ): GenerationAttempt {
   return {
     id: createId('attempt'),
@@ -258,7 +258,7 @@ describe('buildPlanSummaries', () => {
     expect(result[0].modules).toHaveLength(0);
   });
 
-  it('should handle null estimated minutes', () => {
+  it('should handle zero estimated minutes', () => {
     const planId = createId('plan');
     const userId = createId('user');
     const moduleId = createId('module');
@@ -272,7 +272,7 @@ describe('buildPlanSummaries', () => {
         id: taskId,
         moduleId,
         planId,
-        estimatedMinutes: null,
+        estimatedMinutes: 0,
       }),
     ];
 

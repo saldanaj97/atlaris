@@ -5,9 +5,8 @@
 
 import { and, count, eq, gte, notExists, sql } from 'drizzle-orm';
 
-import { getAttemptCap } from '@/features/ai/generation-policy';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
-import { TIER_LIMITS } from '@/features/billing/tier-limits';
 import {
   PlanCreationError,
   PlanLimitReachedError,
@@ -15,27 +14,78 @@ import {
 import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
 import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+
+import type { DbClient, DbTransaction } from '@/lib/db/types';
+import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
 
 type PlanWriteClient = Pick<DbClient, 'update'>;
+type PlanUpdateTx = Pick<DbTransaction, 'update'>;
+
+export async function markPlanGenerationSuccessInTx(
+  tx: PlanUpdateTx,
+  planId: string,
+  timestamp: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(learningPlans)
+    .set({
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+      finalizedAt: timestamp,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId))
+    .returning({ id: learningPlans.id });
+
+  if (updated.length === 0) {
+    logger.error(
+      { planId, timestamp, updatedCount: updated.length },
+      'markPlanGenerationSuccessInTx: no learningPlans rows updated in PlanUpdateTx',
+    );
+    throw new Error(
+      `markPlanGenerationSuccessInTx: no plan updated for id ${planId}`,
+    );
+  }
+}
+
+export async function markPlanGenerationFailureInTx(
+  tx: PlanUpdateTx,
+  planId: string,
+  timestamp: Date,
+): Promise<void> {
+  const updated = await tx
+    .update(learningPlans)
+    .set({
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+      updatedAt: timestamp,
+    })
+    .where(eq(learningPlans.id, planId))
+    .returning({ id: learningPlans.id });
+
+  if (updated.length === 0) {
+    logger.error(
+      { planId, timestamp, updatedCount: updated.length },
+      'markPlanGenerationFailureInTx: no learningPlans rows updated in PlanUpdateTx',
+    );
+    throw new Error(
+      `markPlanGenerationFailureInTx: no plan updated for id ${planId}`,
+    );
+  }
+}
 
 export async function atomicCheckAndInsertPlan(
   userId: string,
-  planData: {
-    topic: string;
-    skillLevel: 'beginner' | 'intermediate' | 'advanced';
-    weeklyHours: number;
-    learningStyle: 'reading' | 'video' | 'practice' | 'mixed';
+  planData: Readonly<PlanGenerationCoreFields> & {
     visibility: 'private';
     origin: 'ai' | 'manual' | 'template';
-    startDate?: string | null;
-    deadlineDate?: string | null;
   },
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<{ id: string }> {
   return dbClient.transaction(async (tx) => {
     const user = await selectUserSubscriptionTierForUpdate(tx, userId);
@@ -75,7 +125,7 @@ export async function atomicCheckAndInsertPlan(
 export async function markPlanGenerationSuccess(
   planId: string,
   dbClient: PlanWriteClient,
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
 ): Promise<void> {
   const timestamp = now();
 
@@ -93,7 +143,7 @@ export async function markPlanGenerationSuccess(
   if (updated.length === 0) {
     logger.warn(
       { planId },
-      'markPlanGenerationSuccess: no rows updated — plan may have been deleted'
+      'markPlanGenerationSuccess: no rows updated — plan may have been deleted',
     );
   }
 }
@@ -101,7 +151,7 @@ export async function markPlanGenerationSuccess(
 export async function markPlanGenerationFailure(
   planId: string,
   dbClient: PlanWriteClient,
-  now: () => Date = () => new Date()
+  now: () => Date = () => new Date(),
 ): Promise<void> {
   const timestamp = now();
 
@@ -118,7 +168,7 @@ export async function markPlanGenerationFailure(
   if (updated.length === 0) {
     logger.warn(
       { planId },
-      'markPlanGenerationFailure: no rows updated — plan may have been deleted'
+      'markPlanGenerationFailure: no rows updated — plan may have been deleted',
     );
   }
 }
@@ -126,10 +176,10 @@ export async function markPlanGenerationFailure(
 export async function findRecentDuplicatePlan(
   userId: string,
   normalizedTopic: string,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<string | null> {
   const windowStart = new Date(
-    Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000
+    Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000,
   );
 
   const [row] = await dbClient
@@ -140,8 +190,8 @@ export async function findRecentDuplicatePlan(
         eq(learningPlans.userId, userId),
         sql`lower(${learningPlans.topic}) = lower(${normalizedTopic})`,
         gte(learningPlans.createdAt, windowStart),
-        sql`${learningPlans.generationStatus} IN ('generating', 'ready')`
-      )
+        sql`${learningPlans.generationStatus} IN ('generating', 'ready')`,
+      ),
     )
     .limit(1);
 
@@ -150,7 +200,7 @@ export async function findRecentDuplicatePlan(
 
 export async function findCappedPlanWithoutModules(
   userDbId: string,
-  db: DbClient
+  db: DbClient,
 ): Promise<string | null> {
   const [row] = await db
     .select({ planId: generationAttempts.planId })
@@ -163,12 +213,12 @@ export async function findCappedPlanWithoutModules(
           db
             .select({ planId: modules.planId })
             .from(modules)
-            .where(eq(modules.planId, generationAttempts.planId))
-        )
-      )
+            .where(eq(modules.planId, generationAttempts.planId)),
+        ),
+      ),
     )
     .groupBy(generationAttempts.planId)
-    .having(gte(count(generationAttempts.id), getAttemptCap()))
+    .having(gte(count(generationAttempts.id), getGenerationAttemptCap()))
     .limit(1);
 
   return row?.planId ?? null;

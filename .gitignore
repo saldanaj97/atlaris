@@ -13,12 +13,13 @@
 # testing
 /coverage
 .testcontainers-env.json
+/tests/.testcontainers-env.*.json
 /tests/test-results/*
 /tests/results/
 
 # next.js
 /.next/
-/test-dist/next-smoke-*/
+.test-dist/*
 /out/
 
 # production
@@ -53,11 +54,7 @@ jscpd-report/
 
 # ide rules
 .cursor/*
-.claude/*
 .opencode/*
 
-# local Copilot hook logs
-.github/hooks/logs/
-
-# CocoIndex Code (ccc)
-/.cocoindex_code/
+screenshots/
+.fallow/

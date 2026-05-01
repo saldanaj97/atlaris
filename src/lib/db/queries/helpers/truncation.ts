@@ -6,7 +6,7 @@ type TruncationResult = {
 
 export function truncateToLength(
   input: string | null | undefined,
-  maxLength: number
+  maxLength: number,
 ): TruncationResult {
   if (maxLength <= 0) {
     throw new Error('maxLength must be greater than zero');

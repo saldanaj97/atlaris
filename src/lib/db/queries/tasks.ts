@@ -5,45 +5,52 @@ import type {
   DbTask,
   DbTaskProgress,
   TasksDbClient,
-  TasksTransaction,
 } from '@/lib/db/queries/types/tasks.types';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-function selectOwnedTaskIdsForUser(
-  tx: TasksTransaction,
-  userId: string,
-  taskScope: SQL
-) {
-  return tx
-    .select({ id: tasks.id })
-    .from(tasks)
-    .innerJoin(modules, eq(tasks.moduleId, modules.id))
-    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), taskScope));
+interface TaskProgressBatchScope {
+  planId?: string;
+  moduleId?: string;
+  now?: Date;
 }
 
-/**
- * Retrieves all tasks in a specific learning plan for a user.
- * @param userId - The ID of the user.
- * @param planId - The ID of the learning plan.
- * @param dbClient - Optional TasksDbClient used for transactions/internal testing.
- * @returns A promise that resolves to an array of tasks.
- */
-export async function getAllTasksInPlan(
-  userId: string,
-  planId: string,
-  dbClient?: TasksDbClient
-): Promise<DbTask[]> {
-  const client = dbClient ?? getDb();
+interface TaskProgressWriteOptions {
+  now?: Date;
+}
 
-  const rows = await client
+type OwnedTaskSelectClient = Pick<TasksDbClient, 'select'>;
+
+function ownedTaskScopeForUser(userId: string, taskScope: SQL) {
+  return and(eq(learningPlans.userId, userId), taskScope);
+}
+
+function selectOwnedTaskRowsForUser(
+  tx: OwnedTaskSelectClient,
+  userId: string,
+  taskScope: SQL,
+) {
+  return tx
     .select({ task: tasks })
     .from(tasks)
     .innerJoin(modules, eq(tasks.moduleId, modules.id))
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
-    .where(and(eq(learningPlans.userId, userId), eq(learningPlans.id, planId)));
+    .where(ownedTaskScopeForUser(userId, taskScope));
+}
+
+export async function getAllTasksInPlan(
+  userId: string,
+  planId: string,
+  dbClient?: TasksDbClient,
+): Promise<DbTask[]> {
+  const client = dbClient ?? getDb();
+
+  const rows = await selectOwnedTaskRowsForUser(
+    client,
+    userId,
+    eq(learningPlans.id, planId),
+  );
   return rows.map((row) => row.task);
 }
 
@@ -62,15 +69,16 @@ async function setTaskProgress(
   userId: string,
   taskId: string,
   status: ProgressStatus,
-  dbClient?: TasksDbClient
+  dbClient?: TasksDbClient,
+  options: TaskProgressWriteOptions = {},
 ): Promise<DbTaskProgress> {
   const client = dbClient ?? getDb();
 
   return await client.transaction(async (tx) => {
-    const [taskRow] = await selectOwnedTaskIdsForUser(
+    const [taskRow] = await selectOwnedTaskRowsForUser(
       tx,
       userId,
-      eq(tasks.id, taskId)
+      eq(tasks.id, taskId),
     )
       .limit(1)
       .for('update');
@@ -79,8 +87,8 @@ async function setTaskProgress(
       throw new Error('Task not found or access denied');
     }
 
-    const now = new Date();
-    const completedAt = status === 'completed' ? now : null;
+    const timestamp = options.now ?? sql<Date>`now()`;
+    const completedAt = status === 'completed' ? timestamp : null;
 
     const [progress] = await tx
       .insert(taskProgress)
@@ -89,21 +97,21 @@ async function setTaskProgress(
         userId,
         status,
         completedAt,
-        updatedAt: now,
+        updatedAt: timestamp,
       })
       .onConflictDoUpdate({
         target: [taskProgress.taskId, taskProgress.userId],
         set: {
           status,
-          completedAt,
-          updatedAt: now,
+          completedAt: sql`excluded.completed_at`,
+          updatedAt: sql`excluded.updated_at`,
         },
       })
       .returning();
 
     if (!progress) {
       throw new Error(
-        'Failed to update task progress: operation returned no rows'
+        'Failed to update task progress: operation returned no rows',
       );
     }
 
@@ -114,31 +122,44 @@ async function setTaskProgress(
 /**
  * Batch updates task progress for multiple tasks in a single transaction.
  * Validates ownership for all tasks via a single query, then bulk upserts.
- * Falls back to single-update for single-item batches.
+ * Falls back to the single-update path only when no explicit plan/module scope is required.
  */
 export async function setTaskProgressBatch(
   userId: string,
   updates: Array<{ taskId: string; status: ProgressStatus }>,
-  dbClient?: TasksDbClient
+  dbClient?: TasksDbClient,
+  scope: TaskProgressBatchScope = {},
 ): Promise<DbTaskProgress[]> {
   if (updates.length === 0) return [];
-  if (updates.length === 1) {
+  if (
+    updates.length === 1 &&
+    scope.planId === undefined &&
+    scope.moduleId === undefined
+  ) {
     const result = await setTaskProgress(
       userId,
       updates[0].taskId,
       updates[0].status,
-      dbClient
+      dbClient,
+      { now: scope.now },
     );
     return [result];
   }
 
   const client = dbClient ?? getDb();
   const taskIds = updates.map((u) => u.taskId);
+  const scopeConditions: SQL[] = [inArray(tasks.id, taskIds)];
+  if (scope.planId !== undefined) {
+    scopeConditions.push(eq(learningPlans.id, scope.planId));
+  }
+  if (scope.moduleId !== undefined) {
+    scopeConditions.push(eq(modules.id, scope.moduleId));
+  }
   const duplicateIds = Array.from(
     taskIds.reduce((counts, taskId) => {
       counts.set(taskId, (counts.get(taskId) ?? 0) + 1);
       return counts;
-    }, new Map<string, number>())
+    }, new Map<string, number>()),
   )
     .filter(([_taskId, count]) => count > 1)
     .map(([taskId]) => taskId);
@@ -148,25 +169,25 @@ export async function setTaskProgressBatch(
   }
 
   return await client.transaction(async (tx) => {
-    const ownedTasks = await selectOwnedTaskIdsForUser(
+    const ownedTasks = await selectOwnedTaskRowsForUser(
       tx,
       userId,
-      inArray(tasks.id, taskIds)
+      and(...scopeConditions)!,
     ).for('update');
 
-    const ownedIds = new Set(ownedTasks.map((t) => t.id));
+    const ownedIds = new Set(ownedTasks.map((row) => row.task.id));
     const missingIds = taskIds.filter((id) => !ownedIds.has(id));
     if (missingIds.length > 0) {
-      throw new Error('One or more tasks not found or access denied');
+      throw new Error('One or more tasks not found.');
     }
 
-    const now = new Date();
+    const timestamp = scope.now ?? sql<Date>`now()`;
     const values = updates.map((u) => ({
       taskId: u.taskId,
       userId,
       status: u.status,
-      completedAt: u.status === 'completed' ? now : null,
-      updatedAt: now,
+      completedAt: u.status === 'completed' ? timestamp : null,
+      updatedAt: timestamp,
     }));
 
     const results = await tx

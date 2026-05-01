@@ -20,13 +20,13 @@ export class PlanPersistenceAdapter implements PlanPersistencePort {
 
   async atomicInsertPlan(
     userId: string,
-    planData: PlanInsertData
+    planData: PlanInsertData,
   ): Promise<AtomicInsertResult> {
     try {
       const result = await atomicCheckAndInsertPlan(
         userId,
         planData,
-        this.dbClient
+        this.dbClient,
       );
       return { success: true, id: result.id };
     } catch (error) {
@@ -46,7 +46,7 @@ export class PlanPersistenceAdapter implements PlanPersistencePort {
 
   async findRecentDuplicatePlan(
     userId: string,
-    normalizedTopic: string
+    normalizedTopic: string,
   ): Promise<string | null> {
     return findRecentDuplicatePlan(userId, normalizedTopic, this.dbClient);
   }

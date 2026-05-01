@@ -32,7 +32,7 @@ export const DEFAULT_SCHEDULE_TIMEZONE = 'UTC';
  */
 export function resolveScheduleTimezone(
   _userId: string,
-  _db: DbClient | null
+  _db: DbClient | null,
 ): string {
   return DEFAULT_SCHEDULE_TIMEZONE;
 }
@@ -52,7 +52,7 @@ class ScheduleFetchError extends Error {
   constructor(
     code: ScheduleFetchErrorCode,
     message: string,
-    options?: { cause?: unknown }
+    options?: { cause?: unknown },
   ) {
     super(message, options);
     this.name = 'ScheduleFetchError';
@@ -69,7 +69,7 @@ class ScheduleFetchError extends Error {
  * @returns The ScheduleJson representing the plan's schedule.
  */
 export async function getPlanSchedule(
-  params: GetPlanScheduleParams
+  params: GetPlanScheduleParams,
 ): Promise<ScheduleJson> {
   const { planId, userId, dbClient: db } = params;
 
@@ -89,7 +89,7 @@ export async function getPlanSchedule(
   if (!plan) {
     throw new ScheduleFetchError(
       SCHEDULE_FETCH_ERROR_CODE.PLAN_NOT_FOUND_OR_ACCESS_DENIED,
-      'Plan not found or access denied'
+      'Plan not found or access denied',
     );
   }
 
@@ -121,7 +121,7 @@ export async function getPlanSchedule(
   }> = moduleTaskRows
     .filter(
       (
-        row
+        row,
       ): row is typeof row & {
         taskId: string;
         taskTitle: string;
@@ -133,7 +133,7 @@ export async function getPlanSchedule(
         row.taskTitle !== null &&
         row.taskEstimatedMinutes !== null &&
         row.taskOrder !== null &&
-        row.taskModuleId !== null
+        row.taskModuleId !== null,
     )
     .map((row) => ({
       id: row.taskId,
@@ -148,7 +148,7 @@ export async function getPlanSchedule(
   if (plan.weeklyHours <= 0) {
     throw new ScheduleFetchError(
       SCHEDULE_FETCH_ERROR_CODE.INVALID_WEEKLY_HOURS,
-      'Plan weekly hours must be greater than zero to generate a schedule'
+      'Plan weekly hours must be greater than zero to generate a schedule',
     );
   }
   const inputs: ScheduleInputs = {
@@ -181,7 +181,7 @@ export async function getPlanSchedule(
     throw new ScheduleFetchError(
       SCHEDULE_FETCH_ERROR_CODE.SCHEDULE_GENERATION_FAILED,
       err instanceof Error ? err.message : 'Failed to generate schedule',
-      { cause: err }
+      { cause: err },
     );
   }
 
@@ -196,7 +196,7 @@ export async function getPlanSchedule(
       startDate: inputs.startDate,
       deadline: inputs.deadline,
     },
-    db
+    db,
   );
 
   return schedule;

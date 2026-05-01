@@ -87,27 +87,21 @@
           "name": "oauth_state_tokens_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\"oauth_state_tokens\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
         "oauth_state_tokens_select": {
           "name": "oauth_state_tokens_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"oauth_state_tokens\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
         "oauth_state_tokens_delete": {
           "name": "oauth_state_tokens_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"oauth_state_tokens\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         }
       },
@@ -316,12 +310,8 @@
           "name": "job_queue_plan_id_learning_plans_id_fk",
           "tableFrom": "job_queue",
           "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -329,12 +319,8 @@
           "name": "job_queue_user_id_users_id_fk",
           "tableFrom": "job_queue",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -346,18 +332,14 @@
           "name": "job_queue_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
         },
         "job_queue_insert_own": {
           "name": "job_queue_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\"job_queue\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )"
         }
       },
@@ -504,12 +486,8 @@
           "name": "generation_attempts_plan_id_learning_plans_id_fk",
           "tableFrom": "generation_attempts",
           "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -521,27 +499,21 @@
           "name": "generation_attempts_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "generation_attempts_insert": {
           "name": "generation_attempts_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "generation_attempts_update": {
           "name": "generation_attempts_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"generation_attempts\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
@@ -549,9 +521,7 @@
           "name": "generation_attempts_delete_deny",
           "as": "RESTRICTIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "false"
         }
       },
@@ -761,12 +731,8 @@
           "name": "learning_plans_user_id_users_id_fk",
           "tableFrom": "learning_plans",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -778,27 +744,21 @@
           "name": "learning_plans_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "learning_plans_insert": {
           "name": "learning_plans_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "learning_plans_update": {
           "name": "learning_plans_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
@@ -806,9 +766,7 @@
           "name": "learning_plans_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
@@ -900,12 +858,8 @@
           "name": "plan_schedules_plan_id_learning_plans_id_fk",
           "tableFrom": "plan_schedules",
           "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -917,27 +871,21 @@
           "name": "plan_schedules_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "plan_schedules_insert": {
           "name": "plan_schedules_insert",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "plan_schedules_update": {
           "name": "plan_schedules_update",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
@@ -945,9 +893,7 @@
           "name": "plan_schedules_delete",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"plan_schedules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         }
       },
@@ -1014,9 +960,7 @@
         "stripe_webhook_events_event_id_unique": {
           "name": "stripe_webhook_events_event_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "event_id"
-          ]
+          "columns": ["event_id"]
         }
       },
       "policies": {},
@@ -1122,12 +1066,8 @@
           "name": "modules_plan_id_learning_plans_id_fk",
           "tableFrom": "modules",
           "tableTo": "learning_plans",
-          "columnsFrom": [
-            "plan_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plan_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1137,10 +1077,7 @@
         "modules_plan_id_order_unique": {
           "name": "modules_plan_id_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "plan_id",
-            "order"
-          ]
+          "columns": ["plan_id", "order"]
         }
       },
       "policies": {
@@ -1148,27 +1085,21 @@
           "name": "modules_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "modules_insert_own_plan": {
           "name": "modules_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
         "modules_update_own_plan": {
           "name": "modules_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         },
@@ -1176,9 +1107,7 @@
           "name": "modules_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  "
         }
       },
@@ -1295,9 +1224,7 @@
         "resources_url_unique": {
           "name": "resources_url_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "url"
-          ]
+          "columns": ["url"]
         }
       },
       "policies": {
@@ -1305,9 +1232,7 @@
           "name": "resources_select_auth",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "true"
         }
       },
@@ -1437,12 +1362,8 @@
           "name": "task_progress_task_id_tasks_id_fk",
           "tableFrom": "task_progress",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1450,12 +1371,8 @@
           "name": "task_progress_user_id_users_id_fk",
           "tableFrom": "task_progress",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1465,10 +1382,7 @@
         "task_progress_task_id_user_id_unique": {
           "name": "task_progress_task_id_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id",
-            "user_id"
-          ]
+          "columns": ["task_id", "user_id"]
         }
       },
       "policies": {
@@ -1476,27 +1390,21 @@
           "name": "task_progress_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "task_progress_insert_own": {
           "name": "task_progress_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n          (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n          AND (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n        "
         },
         "task_progress_update_own": {
           "name": "task_progress_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n        (\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_progress\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  )\n      "
         },
@@ -1504,9 +1412,7 @@
           "name": "task_progress_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"task_progress\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
@@ -1593,12 +1499,8 @@
           "name": "task_resources_task_id_tasks_id_fk",
           "tableFrom": "task_resources",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1606,12 +1508,8 @@
           "name": "task_resources_resource_id_resources_id_fk",
           "tableFrom": "task_resources",
           "tableTo": "resources",
-          "columnsFrom": [
-            "resource_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resource_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1621,10 +1519,7 @@
         "task_resources_task_id_resource_id_unique": {
           "name": "task_resources_task_id_resource_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "task_id",
-            "resource_id"
-          ]
+          "columns": ["task_id", "resource_id"]
         }
       },
       "policies": {
@@ -1632,27 +1527,21 @@
           "name": "task_resources_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_insert_own_plan": {
           "name": "task_resources_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
         "task_resources_update_own_plan": {
           "name": "task_resources_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  ",
           "withCheck": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         },
@@ -1660,9 +1549,7 @@
           "name": "task_resources_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND (\n    \"learning_plans\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  )\n    )\n  "
         }
       },
@@ -1780,12 +1667,8 @@
           "name": "tasks_module_id_modules_id_fk",
           "tableFrom": "tasks",
           "tableTo": "modules",
-          "columnsFrom": [
-            "module_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["module_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1795,10 +1678,7 @@
         "tasks_module_id_order_unique": {
           "name": "tasks_module_id_order_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "module_id",
-            "order"
-          ]
+          "columns": ["module_id", "order"]
         }
       },
       "policies": {
@@ -1806,27 +1686,21 @@
           "name": "tasks_select_own_plan",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
         "tasks_insert_own_plan": {
           "name": "tasks_insert_own_plan",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
         "tasks_update_own_plan": {
           "name": "tasks_update_own_plan",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    ",
           "withCheck": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         },
@@ -1834,9 +1708,7 @@
           "name": "tasks_delete_own_plan",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"user_id\" IN (\n        SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n      )\n    )\n  )\n      )\n    "
         }
       },
@@ -1990,12 +1862,8 @@
           "name": "ai_usage_events_user_id_users_id_fk",
           "tableFrom": "ai_usage_events",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2007,18 +1875,14 @@
           "name": "ai_usage_events_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "ai_usage_events_insert_own": {
           "name": "ai_usage_events_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    \"ai_usage_events\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
@@ -2133,12 +1997,8 @@
           "name": "usage_metrics_user_id_users_id_fk",
           "tableFrom": "usage_metrics",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2148,10 +2008,7 @@
         "usage_metrics_user_id_month_unique": {
           "name": "usage_metrics_user_id_month_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "month"
-          ]
+          "columns": ["user_id", "month"]
         }
       },
       "policies": {
@@ -2159,27 +2016,21 @@
           "name": "usage_metrics_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "usage_metrics_insert_own": {
           "name": "usage_metrics_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
         "usage_metrics_update_own": {
           "name": "usage_metrics_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  ",
           "withCheck": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         },
@@ -2187,9 +2038,7 @@
           "name": "usage_metrics_delete_own",
           "as": "PERMISSIVE",
           "for": "DELETE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\n    \"usage_metrics\".\"user_id\" IN (\n      SELECT id FROM \"users\" WHERE \"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'\n    )\n  "
         }
       },
@@ -2318,30 +2167,22 @@
         "users_auth_user_id_unique": {
           "name": "users_auth_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "auth_user_id"
-          ]
+          "columns": ["auth_user_id"]
         },
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "users_stripe_customer_id_unique": {
           "name": "users_stripe_customer_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "stripe_customer_id"
-          ]
+          "columns": ["stripe_customer_id"]
         },
         "users_stripe_subscription_id_unique": {
           "name": "users_stripe_subscription_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "stripe_subscription_id"
-          ]
+          "columns": ["stripe_subscription_id"]
         }
       },
       "policies": {
@@ -2349,27 +2190,21 @@
           "name": "users_select_own",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
         "users_insert_own": {
           "name": "users_insert_own",
           "as": "PERMISSIVE",
           "for": "INSERT",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         },
         "users_update_own": {
           "name": "users_update_own",
           "as": "PERMISSIVE",
           "for": "UPDATE",
-          "to": [
-            "authenticated"
-          ],
+          "to": ["authenticated"],
           "using": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'",
           "withCheck": "\"users\".\"auth_user_id\" = current_setting('request.jwt.claims', true)::json->>'sub'"
         }
@@ -2382,49 +2217,27 @@
     "public.generation_status": {
       "name": "generation_status",
       "schema": "public",
-      "values": [
-        "generating",
-        "pending_retry",
-        "ready",
-        "failed"
-      ]
+      "values": ["generating", "pending_retry", "ready", "failed"]
     },
     "public.job_status": {
       "name": "job_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "processing",
-        "completed",
-        "failed"
-      ]
+      "values": ["pending", "processing", "completed", "failed"]
     },
     "public.job_type": {
       "name": "job_type",
       "schema": "public",
-      "values": [
-        "plan_regeneration"
-      ]
+      "values": ["plan_regeneration"]
     },
     "public.learning_style": {
       "name": "learning_style",
       "schema": "public",
-      "values": [
-        "reading",
-        "video",
-        "practice",
-        "mixed"
-      ]
+      "values": ["reading", "video", "practice", "mixed"]
     },
     "public.plan_origin": {
       "name": "plan_origin",
       "schema": "public",
-      "values": [
-        "ai",
-        "template",
-        "manual",
-        "pdf"
-      ]
+      "values": ["ai", "template", "manual", "pdf"]
     },
     "public.preferred_ai_model": {
       "name": "preferred_ai_model",
@@ -2448,50 +2261,27 @@
     "public.progress_status": {
       "name": "progress_status",
       "schema": "public",
-      "values": [
-        "not_started",
-        "in_progress",
-        "completed"
-      ]
+      "values": ["not_started", "in_progress", "completed"]
     },
     "public.resource_type": {
       "name": "resource_type",
       "schema": "public",
-      "values": [
-        "video",
-        "article",
-        "course",
-        "doc",
-        "other"
-      ]
+      "values": ["video", "article", "course", "doc", "other"]
     },
     "public.skill_level": {
       "name": "skill_level",
       "schema": "public",
-      "values": [
-        "beginner",
-        "intermediate",
-        "advanced"
-      ]
+      "values": ["beginner", "intermediate", "advanced"]
     },
     "public.subscription_status": {
       "name": "subscription_status",
       "schema": "public",
-      "values": [
-        "active",
-        "canceled",
-        "past_due",
-        "trialing"
-      ]
+      "values": ["active", "canceled", "past_due", "trialing"]
     },
     "public.subscription_tier": {
       "name": "subscription_tier",
       "schema": "public",
-      "values": [
-        "free",
-        "starter",
-        "pro"
-      ]
+      "values": ["free", "starter", "pro"]
     }
   },
   "schemas": {},

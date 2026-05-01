@@ -11,10 +11,10 @@ import { resolveModelForTier } from '@/features/ai/model-resolver';
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;
 const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
-  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL
+  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
 )?.id;
 
 if (
@@ -28,7 +28,7 @@ if (
 const stubProviderGetter = vi.fn((_modelId: string) => ({
   generate: vi.fn(async () => {
     throw new Error(
-      'Provider generate should not be called in model resolution tests'
+      'Provider generate should not be called in model resolution tests',
     );
   }),
 }));
@@ -43,7 +43,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
   describe('Model override query param parsing', () => {
     it('extracts model ID from query param', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`
+        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
@@ -57,7 +57,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
 
     it('handles URL-encoded model IDs', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`
+        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
@@ -65,7 +65,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
 
     it('handles model param with other query params', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(FREE_PERSISTABLE_MODEL)}&hours=10`
+        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(FREE_PERSISTABLE_MODEL)}&hours=10`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_PERSISTABLE_MODEL);
@@ -116,7 +116,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'free',
         FREE_QUERY_OVERRIDE_MODEL,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
@@ -126,7 +126,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'pro',
         FREE_QUERY_OVERRIDE_MODEL,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
@@ -136,7 +136,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'pro',
         PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(PRO_PERSISTABLE_MODEL);
     });
@@ -146,7 +146,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'free',
         PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
@@ -156,7 +156,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'starter',
         PRO_PERSISTABLE_MODEL,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
@@ -166,7 +166,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'pro',
         'invalid/model-id',
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
@@ -176,7 +176,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'free',
         null,
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
@@ -186,7 +186,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         'pro',
         '',
         stubProviderGetter,
-        stubLogger
+        stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
@@ -217,7 +217,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID'])
+          expect.arrayContaining(['Invalid model ID']),
         );
       }
     });
@@ -241,7 +241,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID'])
+          expect.arrayContaining(['Invalid model ID']),
         );
       }
     });
@@ -271,7 +271,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.flatten().formErrors.join(' ')).toContain(
-          'Unrecognized key'
+          'Unrecognized key',
         );
       }
     });

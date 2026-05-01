@@ -10,7 +10,7 @@ const PROVISIONING_LOCK_KEY_2 = 11;
 const DEFAULT_TESTCONTAINERS_ENV_FILE = join(
   __dirname,
   '..',
-  '.testcontainers-env.json'
+  '.testcontainers-env.json',
 );
 
 type TestDbRuntimeState = {
@@ -52,7 +52,7 @@ export function getWorkerDbName(workerId: string | undefined): string {
 
 export function createDatabaseUrl(
   connectionUrl: string,
-  dbName: string
+  dbName: string,
 ): string {
   const url = new URL(connectionUrl);
   url.pathname = `/${dbName}`;
@@ -75,7 +75,7 @@ export function readTestDbRuntimeState(): TestDbRuntimeState | null {
 }
 
 export function buildTestDbRuntimeState(
-  containerUrl: string
+  containerUrl: string,
 ): TestDbRuntimeState {
   return {
     ALLOW_DB_TRUNCATE: 'true',
@@ -88,7 +88,7 @@ export function buildTestDbRuntimeState(
 
 export async function ensureDatabaseExists(
   adminConnectionUrl: string,
-  dbName: string
+  dbName: string,
 ): Promise<void> {
   await withProvisioningLock(adminConnectionUrl, async (sql) => {
     const exists = await databaseExists(sql, dbName);
@@ -106,7 +106,7 @@ export async function ensureTemplateDatabase({
   await withProvisioningLock(adminConnectionUrl, async (sql) => {
     await dropDatabaseIfExistsWithClient(sql, templateDbName);
     await sql.unsafe(
-      `CREATE DATABASE ${quoteIdentifier(templateDbName)} TEMPLATE ${quoteIdentifier(baseDbName)}`
+      `CREATE DATABASE ${quoteIdentifier(templateDbName)} TEMPLATE ${quoteIdentifier(baseDbName)}`,
     );
   });
 }
@@ -119,14 +119,14 @@ export async function recreateWorkerDatabaseFromTemplate({
   await withProvisioningLock(adminConnectionUrl, async (sql) => {
     await dropDatabaseIfExistsWithClient(sql, workerDbName);
     await sql.unsafe(
-      `CREATE DATABASE ${quoteIdentifier(workerDbName)} TEMPLATE ${quoteIdentifier(templateDbName)}`
+      `CREATE DATABASE ${quoteIdentifier(workerDbName)} TEMPLATE ${quoteIdentifier(templateDbName)}`,
     );
   });
 }
 
 export async function workerDatabaseExists(
   adminConnectionUrl: string,
-  workerDbName: string
+  workerDbName: string,
 ): Promise<boolean> {
   return await withProvisioningLock(adminConnectionUrl, async (sql) => {
     return await databaseExists(sql, workerDbName);
@@ -139,7 +139,7 @@ export function shouldLogTestDbDebug(): boolean {
 
 async function withProvisioningLock<T>(
   adminConnectionUrl: string,
-  fn: (sql: Sql) => Promise<T>
+  fn: (sql: Sql) => Promise<T>,
 ): Promise<T> {
   const sql = postgres(adminConnectionUrl, { max: 1 });
 
@@ -169,11 +169,11 @@ async function databaseExists(sql: Sql, dbName: string): Promise<boolean> {
 
 async function dropDatabaseIfExistsWithClient(
   sql: Sql,
-  dbName: string
+  dbName: string,
 ): Promise<void> {
   if (!dbName.startsWith(`${TEST_DB_PREFIX}_`)) {
     throw new Error(
-      `Refusing to drop database "${dbName}": only ${TEST_DB_PREFIX}_* databases may be dropped here.`
+      `Refusing to drop database "${dbName}": only ${TEST_DB_PREFIX}_* databases may be dropped here.`,
     );
   }
 
@@ -184,7 +184,7 @@ async function dropDatabaseIfExistsWithClient(
 
   if (currentDatabase === dbName) {
     throw new Error(
-      `Refusing to drop database ${dbName} while connected to it.`
+      `Refusing to drop database ${dbName} while connected to it.`,
     );
   }
 

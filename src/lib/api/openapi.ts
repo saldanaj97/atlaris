@@ -13,7 +13,7 @@ extendZodWithOpenApi(z);
 
 const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);
 const LEARNING_STYLE_ENUM = z.enum(
-  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
+  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]],
 );
 
 const errorResponseSchema = z

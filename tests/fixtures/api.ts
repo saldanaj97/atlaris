@@ -3,7 +3,7 @@
  */
 export function createAuthRequest(
   path: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Request {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return new Request(`http://localhost/api/auth${normalizedPath}`, options);

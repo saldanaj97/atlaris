@@ -57,7 +57,7 @@ export function shouldRetryJob(params: {
 export function getRetryDelay(attemptNumber: number): number {
   const delaySeconds = Math.min(
     JOB_RETRY_MAX_DELAY_SECONDS,
-    JOB_RETRY_BASE_SECONDS ** attemptNumber
+    JOB_RETRY_BASE_SECONDS ** attemptNumber,
   );
   return delaySeconds * 1000;
 }
@@ -71,7 +71,7 @@ export function getRetryDelay(attemptNumber: number): number {
  */
 export function computeEffectiveMaxAttempts(
   baseMax: number,
-  retryableOverride?: boolean
+  retryableOverride?: boolean,
 ): number {
   if (retryableOverride === false) return 1; // One attempt, no retries
   return baseMax;

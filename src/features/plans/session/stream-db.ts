@@ -34,7 +34,7 @@ export async function createStreamDbClient(authUserId: string): Promise<{
     normalizedAuthUserId,
     {
       idleTimeout: RLS_IDLE_TIMEOUT_SECONDS,
-    }
+    },
   );
 
   return {

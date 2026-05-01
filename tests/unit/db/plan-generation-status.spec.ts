@@ -17,7 +17,7 @@ describe('plan-generation-status helpers', () => {
 
     it('sets generationStatus to generating', () => {
       expect(PLAN_GENERATING_INSERT_DEFAULTS.generationStatus).toBe(
-        'generating'
+        'generating',
       );
     });
 

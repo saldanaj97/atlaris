@@ -50,7 +50,7 @@ describe('Concurrency - provider stall timeout classification', () => {
         timeoutConfig: { baseMs: 100, extensionMs: 0 },
         clock: () => Date.now(),
         dbClient: db,
-      }
+      },
     );
 
     expect(result.status).toBe('failure');

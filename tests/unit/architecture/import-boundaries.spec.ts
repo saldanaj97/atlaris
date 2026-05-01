@@ -59,7 +59,7 @@ function resolvesToAppLayer(fromFile: string, specifier: string): boolean {
 
 function resolvesToPlansQueriesModule(
   fromFile: string,
-  specifier: string
+  specifier: string,
 ): boolean {
   if (specifier === PLANS_QUERIES_MODULE) {
     return true;
@@ -92,7 +92,7 @@ function parseImports(sourceText: string, fileName: string): ParsedImport[] {
     sourceText,
     ts.ScriptTarget.Latest,
     true,
-    fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
 
   const results: ParsedImport[] = [];
@@ -155,8 +155,8 @@ describe('import boundary helpers', () => {
     expect(
       resolvesToPlansQueriesModule(
         join(APP_ROOT, 'api/v1/plans/route.ts'),
-        '../../../../lib/db/queries/plans'
-      )
+        '../../../../lib/db/queries/plans',
+      ),
     ).toBe(true);
   });
 
@@ -164,8 +164,8 @@ describe('import boundary helpers', () => {
     expect(
       parseImports(
         "export { getLearningPlanDetailRows } from '@/lib/db/queries/plans';",
-        join(APP_ROOT, 'plans/reexports.ts')
-      )
+        join(APP_ROOT, 'plans/reexports.ts'),
+      ),
     ).toEqual([
       {
         specifier: '@/lib/db/queries/plans',
@@ -190,7 +190,7 @@ describe('import boundaries (Slice B)', () => {
       for (const imp of imports) {
         if (resolvesToAppLayer(filePath, imp.specifier)) {
           violations.push(
-            `${relFile}: forbidden import of app layer from features (${imp.specifier})`
+            `${relFile}: forbidden import of app layer from features (${imp.specifier})`,
           );
         }
       }
@@ -214,14 +214,14 @@ describe('import boundaries (Slice B)', () => {
         }
         if (imp.isNamespace || imp.isExportAll) {
           violations.push(
-            `${relFile}: namespace/export-all dependency on plans queries module is not allowed in app (${imp.specifier})`
+            `${relFile}: namespace/export-all dependency on plans queries module is not allowed in app (${imp.specifier})`,
           );
           continue;
         }
         for (const name of imp.named) {
           if (BLOCKED_PLAN_READ_EXPORTS.has(name)) {
             violations.push(
-              `${relFile}: forbidden direct import of ${name} from ${imp.specifier}`
+              `${relFile}: forbidden direct import of ${name} from ${imp.specifier}`,
             );
           }
         }

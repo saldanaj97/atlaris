@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getModuleDetail } from '@/lib/db/queries/modules';
+import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
@@ -28,8 +28,8 @@ describe('Module Queries', () => {
     planId = plan.id;
   });
 
-  describe('getModuleDetail', () => {
-    it('should retrieve module with its tasks', async () => {
+  describe('getModuleDetailRows', () => {
+    it('loads module row, metrics, ordered tasks for current module plan scope', async () => {
       const module = await createTestModule({
         planId,
         title: 'Test Module',
@@ -52,28 +52,42 @@ describe('Module Queries', () => {
         estimatedMinutes: 45,
       });
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
+      expect(result?.plan.id).toBe(planId);
       expect(result?.module.id).toBe(module.id);
       expect(result?.module.title).toBe('Test Module');
-      expect(result?.module.tasks).toHaveLength(2);
+      expect(result?.taskRows).toHaveLength(2);
 
-      const taskTitles = result?.module.tasks.map((t) => t.title) ?? [];
+      const taskTitles = result?.taskRows.map((t) => t.title) ?? [];
       expect(taskTitles).toContain('Task 1');
       expect(taskTitles).toContain('Task 2');
+      expect(result?.moduleMetricsRows.some((r) => r.id === module.id)).toBe(
+        true,
+      );
     });
 
     it('should return null for non-existent module', async () => {
-      const result = await getModuleDetail(
+      const result = await getModuleDetailRows(
+        planId,
         '00000000-0000-0000-0000-000000000000',
-        userId
+        userId,
       );
 
       expect(result).toBeNull();
     });
 
-    it('should retrieve module with no tasks', async () => {
+    it('returns null when module is not under planId', async () => {
+      const otherPlan = await createTestPlan({ userId });
+      const module = await createTestModule({ planId, title: 'Scoped' });
+
+      expect(
+        await getModuleDetailRows(otherPlan.id, module.id, userId),
+      ).toBeNull();
+    });
+
+    it('loads empty tasks with metrics array', async () => {
       const module = await createTestModule({
         planId,
         title: 'Empty Module',
@@ -81,14 +95,16 @@ describe('Module Queries', () => {
         estimatedMinutes: 0,
       });
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.title).toBe('Empty Module');
-      expect(result?.module.tasks).toHaveLength(0);
+      expect(result?.taskRows).toHaveLength(0);
+      expect(result?.progressRows).toEqual([]);
+      expect(result?.resourceRows).toEqual([]);
     });
 
-    it('should preserve task order in results', async () => {
+    it('preserves ascending task.order in taskRows', async () => {
       const module = await createTestModule({
         planId,
         title: 'Ordered Tasks Module',
@@ -118,18 +134,13 @@ describe('Module Queries', () => {
         estimatedMinutes: 60,
       });
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
-      expect(result?.module.tasks).toHaveLength(3);
-
-      const taskOrders = result?.module.tasks.map((t) => t.order) ?? [];
-      expect(taskOrders).toContain(1);
-      expect(taskOrders).toContain(2);
-      expect(taskOrders).toContain(3);
+      expect(result?.taskRows.map((t) => t.order)).toEqual([1, 2, 3]);
     });
 
-    it('should return all task details correctly', async () => {
+    it('returns taskRows only for requested module id', async () => {
       const module = await createTestModule({
         planId,
         title: 'Detailed Module',
@@ -144,22 +155,22 @@ describe('Module Queries', () => {
         estimatedMinutes: 90,
       });
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
-      expect(result?.module.tasks).toHaveLength(1);
-      const fetchedTask = result?.module.tasks[0];
+      expect(result?.taskRows).toHaveLength(1);
+      const fetchedTask = result?.taskRows[0];
       expect(fetchedTask).not.toBeUndefined();
       expect(fetchedTask?.id).toBe(task.id);
       expect(fetchedTask?.title).toBe('Detailed Task');
       expect(fetchedTask?.description).toBe(
-        'This is a detailed task description'
+        'This is a detailed task description',
       );
       expect(fetchedTask?.estimatedMinutes).toBe(90);
       expect(fetchedTask?.order).toBe(1);
     });
 
-    it('should not return tasks from different modules', async () => {
+    it('does not mix tasks from sibling modules', async () => {
       const module1 = await createTestModule({
         planId,
         order: 1,
@@ -189,14 +200,14 @@ describe('Module Queries', () => {
         estimatedMinutes: 30,
       });
 
-      const result = await getModuleDetail(module1.id, userId);
+      const result = await getModuleDetailRows(planId, module1.id, userId);
 
       expect(result).not.toBeNull();
-      expect(result?.module.tasks).toHaveLength(1);
-      expect(result?.module.tasks[0].title).toBe('Module 1 Task');
+      expect(result?.taskRows).toHaveLength(1);
+      expect(result?.taskRows[0].title).toBe('Module 1 Task');
     });
 
-    it('should handle modules with many tasks', async () => {
+    it('handles many tasks', async () => {
       const module = await createTestModule({
         planId,
         title: 'Large Module',
@@ -212,23 +223,22 @@ describe('Module Queries', () => {
             title: `Task ${i + 1}`,
             description: `Description for task ${i + 1}`,
             estimatedMinutes: 60,
-          })
-        )
+          }),
+        ),
       );
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.id).toBe(module.id);
       expect(result?.module.title).toBe('Large Module');
-      expect(result?.module.tasks).toHaveLength(10);
+      expect(result?.taskRows).toHaveLength(10);
 
-      const taskIds = result?.module.tasks.map((t) => t.id) ?? [];
-      const uniqueTaskIds = new Set(taskIds);
-      expect(uniqueTaskIds.size).toBe(10);
+      const taskIds = result?.taskRows.map((t) => t.id) ?? [];
+      expect(new Set(taskIds).size).toBe(10);
     });
 
-    it('should include module metadata fields', async () => {
+    it('includes module metadata fields', async () => {
       const module = await createTestModule({
         planId,
         order: 5,
@@ -243,7 +253,7 @@ describe('Module Queries', () => {
         description: 'Task description',
       });
 
-      const result = await getModuleDetail(module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId);
 
       expect(result).not.toBeNull();
       expect(result?.module.order).toBe(5);
@@ -258,7 +268,7 @@ describe('Module Queries', () => {
         title: 'Private Module',
       });
 
-      const result = await getModuleDetail(module.id, attackerId);
+      const result = await getModuleDetailRows(planId, module.id, attackerId);
 
       expect(result).toBeNull();
     });

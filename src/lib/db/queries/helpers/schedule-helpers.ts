@@ -12,7 +12,7 @@ import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
  * @throws {Error} If `scheduleJson` validation fails
  */
 export function mapDbRowToScheduleCacheRow(
-  dbRow: typeof planSchedules.$inferSelect
+  dbRow: typeof planSchedules.$inferSelect,
 ): ScheduleCacheRow {
   // Validate scheduleJson at the data boundary
   const validatedScheduleJson = scheduleJsonSchema.parse(dbRow.scheduleJson);

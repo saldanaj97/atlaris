@@ -56,7 +56,7 @@ function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
  * All values are strings suitable for `process.env`.
  */
 export function buildAnonModeLayer(
-  state: SmokeStatePayload
+  state: SmokeStatePayload,
 ): Record<string, string> {
   return {
     ...baseSmokeLayer(state),
@@ -75,7 +75,7 @@ export function buildAnonModeLayer(
  * Env layer for auth smoke: seeded local product-testing user + local billing/AI mocks.
  */
 export function buildAuthModeLayer(
-  state: SmokeStatePayload
+  state: SmokeStatePayload,
 ): Record<string, string> {
   return {
     ...baseSmokeLayer(state),
@@ -97,7 +97,7 @@ export function buildAuthModeLayer(
  */
 /** Mutates `env` in place. Caller should pass a copy if original must be preserved. */
 function stripConflictingNoColor(
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): void {
   if (env.FORCE_COLOR !== undefined && env.NO_COLOR !== undefined) {
     delete env.NO_COLOR;
@@ -110,7 +110,7 @@ function stripConflictingNoColor(
  */
 export function mergeSmokeProcessEnv(
   base: NodeJS.ProcessEnv,
-  layer: Record<string, string>
+  layer: Record<string, string>,
 ): NodeJS.ProcessEnv {
   const merged = { ...base } as Record<string, string | undefined>;
   for (const key of SMOKE_CONTROLLED_ENV_KEYS) {

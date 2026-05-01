@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { makeAttemptReservation } from '@tests/fixtures/attempts';
+import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
 
-import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
-
 // ─── Helpers ─────────────────────────────────────────────────────
 
 function createMockPorts(
-  overrides?: Partial<PlanLifecycleServicePorts>
+  overrides?: Partial<PlanLifecycleServicePorts>,
 ): PlanLifecycleServicePorts {
+  const reservation = makeAttemptReservation();
   return {
     planPersistence: {
       atomicInsertPlan: async () => ({
@@ -47,15 +49,27 @@ function createMockPorts(
           missingFields: [],
         },
         durationMs: 1000,
+        reservation,
+        extendedTimeout: false,
       }),
     },
-    usageRecording: {
-      recordUsage: async () => {},
-    },
-    jobQueue: {
-      enqueueJob: async () => 'job-123',
-      completeJob: async () => {},
-      failJob: async () => {},
+    generationFinalization: {
+      finalizeSuccess: vi.fn().mockResolvedValue({
+        id: reservation.attemptId,
+        planId: 'plan-gen-001',
+        status: 'success' as const,
+        classification: null,
+        durationMs: 1000,
+        modulesCount: 0,
+        tasksCount: 0,
+        truncatedTopic: false,
+        truncatedNotes: false,
+        normalizedEffort: false,
+        promptHash: reservation.promptHash,
+        metadata: null,
+        createdAt: new Date(),
+      }),
+      finalizeFailure: vi.fn().mockResolvedValue(undefined),
     },
     ...overrides,
   };
@@ -362,17 +376,33 @@ describe('PlanLifecycleService', () => {
       },
     };
 
-    it('passes partial usage with missing fields through to usage recording on success', async () => {
-      const recordUsageSpy = vi.fn().mockResolvedValue(undefined);
+    it('passes partial usage with missing fields through to finalizeSuccess on success', async () => {
+      const finalizeSuccessSpy = vi.fn().mockResolvedValue({
+        id: makeAttemptReservation().attemptId,
+        planId: 'plan-gen-001',
+        status: 'success' as const,
+        classification: null,
+        durationMs: 250,
+        modulesCount: 0,
+        tasksCount: 0,
+        truncatedTopic: false,
+        truncatedNotes: false,
+        normalizedEffort: false,
+        promptHash: 'ph',
+        metadata: null,
+        createdAt: new Date(),
+      });
       const partialUsage = makeCanonicalUsage({
         provider: 'unknown',
         isPartial: true,
         missingFields: ['provider'],
         providerCostMicrousd: null,
       });
+      const reservation = makeAttemptReservation();
       ports = createMockPorts({
-        usageRecording: {
-          recordUsage: recordUsageSpy,
+        generationFinalization: {
+          finalizeSuccess: finalizeSuccessSpy,
+          finalizeFailure: vi.fn().mockResolvedValue(undefined),
         },
         generation: {
           runGeneration: async () => ({
@@ -381,6 +411,8 @@ describe('PlanLifecycleService', () => {
             metadata: {},
             usage: partialUsage,
             durationMs: 250,
+            reservation,
+            extendedTimeout: false,
           }),
         },
       });
@@ -388,15 +420,22 @@ describe('PlanLifecycleService', () => {
 
       await service.processGenerationAttempt(validGenerationInput);
 
-      expect(recordUsageSpy).toHaveBeenCalledWith({
+      expect(finalizeSuccessSpy).toHaveBeenCalledWith({
+        planId: 'plan-gen-001',
         userId: 'user-abc',
+        attemptId: reservation.attemptId,
+        preparation: reservation,
+        modules: [],
+        providerMetadata: {},
         usage: partialUsage,
-        kind: 'plan',
+        durationMs: 250,
+        extendedTimeout: false,
+        usageKind: 'plan',
       });
     });
 
     it('records partial permanent-failure usage when generation returns missing token fields', async () => {
-      const recordUsageSpy = vi.fn().mockResolvedValue(undefined);
+      const finalizeFailureSpy = vi.fn().mockResolvedValue(undefined);
       const partialUsage = makeCanonicalUsage({
         inputTokens: 0,
         outputTokens: 0,
@@ -404,9 +443,25 @@ describe('PlanLifecycleService', () => {
         isPartial: true,
         missingFields: ['inputTokens', 'outputTokens'],
       });
+      const reservation = makeAttemptReservation();
       ports = createMockPorts({
-        usageRecording: {
-          recordUsage: recordUsageSpy,
+        generationFinalization: {
+          finalizeSuccess: vi.fn().mockResolvedValue({
+            id: reservation.attemptId,
+            planId: 'plan-gen-001',
+            status: 'success' as const,
+            classification: null,
+            durationMs: 200,
+            modulesCount: 0,
+            tasksCount: 0,
+            truncatedTopic: false,
+            truncatedNotes: false,
+            normalizedEffort: false,
+            promptHash: reservation.promptHash,
+            metadata: null,
+            createdAt: new Date(),
+          }),
+          finalizeFailure: finalizeFailureSpy,
         },
         generation: {
           runGeneration: async () => ({
@@ -416,6 +471,9 @@ describe('PlanLifecycleService', () => {
             metadata: {},
             usage: partialUsage,
             durationMs: 200,
+            reservation,
+            timedOut: false,
+            extendedTimeout: false,
           }),
         },
       });
@@ -425,11 +483,41 @@ describe('PlanLifecycleService', () => {
         await service.processGenerationAttempt(validGenerationInput);
 
       expect(result.status).toBe('permanent_failure');
-      expect(recordUsageSpy).toHaveBeenCalledWith({
-        userId: 'user-abc',
-        usage: partialUsage,
-        kind: 'plan',
+      expect(finalizeFailureSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'reserved_attempt',
+          userId: 'user-abc',
+          usage: partialUsage,
+          usageKind: 'plan',
+          retryable: false,
+        }),
+      );
+    });
+
+    it('throws when a permanent failure lacks reservation context', async () => {
+      const finalizeFailureSpy = vi.fn().mockResolvedValue(undefined);
+      ports = createMockPorts({
+        generationFinalization: {
+          finalizeSuccess: vi.fn(),
+          finalizeFailure: finalizeFailureSpy,
+        },
+        generation: {
+          runGeneration: async () => ({
+            status: 'failure',
+            classification: 'validation',
+            error: new Error('invalid generation state'),
+            durationMs: 200,
+          }),
+        },
       });
+      service = new PlanLifecycleService(ports);
+
+      await expect(
+        service.processGenerationAttempt(validGenerationInput),
+      ).rejects.toThrow(
+        'Generation failure for plan plan-gen-001 did not include reservation context.',
+      );
+      expect(finalizeFailureSpy).not.toHaveBeenCalled();
     });
   });
 });

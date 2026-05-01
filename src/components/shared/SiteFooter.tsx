@@ -2,12 +2,12 @@ import Link from 'next/link';
 
 export default function SiteFooter() {
   return (
-    <footer className="border-border border-t px-4 py-8 sm:px-6 lg:px-8">
+    <footer className="border-t border-border px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
         {/* Brand */}
         <div className="flex items-center gap-2">
           <AtlarisLogoSmall />
-          <span className="text-foreground text-sm font-semibold">Atlaris</span>
+          <span className="text-sm font-semibold text-foreground">Atlaris</span>
         </div>
 
         {/* Links */}
@@ -16,7 +16,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href="/about"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring text-sm transition-colors focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 About
               </Link>
@@ -24,7 +24,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href="/pricing"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring text-sm transition-colors focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
               >
                 Pricing
               </Link>
@@ -33,7 +33,7 @@ export default function SiteFooter() {
         </nav>
 
         {/* Copyright */}
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>

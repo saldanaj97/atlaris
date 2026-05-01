@@ -1,12 +1,14 @@
-import { and, eq, sql } from 'drizzle-orm';
 import { ValidationError } from '@/lib/api/errors';
 import { getDb } from '@/lib/db/runtime';
 import { learningPlans, usageMetrics } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { and, eq, sql } from 'drizzle-orm';
 import { UsageMetricsLoadError } from './errors';
-import { type DbClient, resolveUserTier } from './tier';
-import { TIER_LIMITS } from './tier-limits';
+import { resolveUserTier } from './tier';
+
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Usage type for incrementing counters
 type UsageType = 'plan' | 'regeneration' | 'export';
@@ -41,7 +43,7 @@ export function getCurrentMonth(now?: Date): string {
 async function getOrCreateUsageMetrics(
   userId: string,
   month: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient = getDb(),
 ) {
   const [created] = await dbClient
     .insert(usageMetrics)
@@ -80,7 +82,7 @@ async function getOrCreateUsageMetrics(
 export async function incrementUsage(
   userId: string,
   type: UsageType,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient = getDb(),
 ): Promise<void> {
   const month = getCurrentMonth();
 
@@ -124,7 +126,7 @@ export async function getUsageSummaryForTier(args: {
   if (limits === undefined) {
     logger.info(
       { userId, tier },
-      '[getUsageSummaryForTier] audit: invalid subscription tier for usage limits'
+      '[getUsageSummaryForTier] audit: invalid subscription tier for usage limits',
     );
     throw new ValidationError('Invalid subscription tier for usage limits', {
       userId,
@@ -140,8 +142,8 @@ export async function getUsageSummaryForTier(args: {
     .where(
       and(
         eq(learningPlans.userId, userId),
-        eq(learningPlans.isQuotaEligible, true)
-      )
+        eq(learningPlans.isQuotaEligible, true),
+      ),
     );
 
   return {
@@ -166,7 +168,7 @@ export async function getUsageSummaryForTier(args: {
  */
 export async function getUsageSummary(
   userId: string,
-  dbClient: DbClient = getDb()
+  dbClient: DbClient = getDb(),
 ): Promise<UsageSummary> {
   const tier = await resolveUserTier(userId, dbClient);
   return getUsageSummaryForTier({ userId, tier, dbClient });
@@ -175,7 +177,7 @@ export async function getUsageSummary(
 export async function ensureUsageMetricsExist(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
-  month: string
+  month: string,
 ): Promise<void> {
   await tx
     .insert(usageMetrics)
@@ -195,12 +197,16 @@ export async function incrementUsageInTx(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string,
-  type: 'regeneration' | 'export'
+  type: 'plan' | 'regeneration' | 'export',
 ): Promise<void> {
+  await ensureUsageMetricsExist(tx, userId, month);
+
   const updateObj =
-    type === 'regeneration'
-      ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-      : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+    type === 'plan'
+      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
+      : type === 'regeneration'
+        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
+        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
 
   await tx
     .update(usageMetrics)

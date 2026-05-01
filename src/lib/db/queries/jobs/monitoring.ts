@@ -16,7 +16,7 @@ import { jobQueueSelect, normalizeMutationCount } from './shared';
  */
 export async function getFailedJobs(
   limit: number,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job[]> {
   const client = dbClient ?? getDb();
 
@@ -32,7 +32,7 @@ export async function getFailedJobs(
     .orderBy(
       desc(jobQueue.completedAt),
       desc(jobQueue.createdAt),
-      desc(jobQueue.id)
+      desc(jobQueue.id),
     )
     .limit(boundedLimit);
 
@@ -44,7 +44,7 @@ export async function getFailedJobs(
  */
 export async function getJobStats(
   since: Date,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<JobStats> {
   const client = dbClient ?? getDb();
 
@@ -59,7 +59,7 @@ export async function getJobStats(
           when ${and(
             eq(jobQueue.status, 'completed'),
             isNotNull(jobQueue.startedAt),
-            isNotNull(jobQueue.completedAt)
+            isNotNull(jobQueue.completedAt),
           )}
           then extract(epoch from (${jobQueue.completedAt} - ${jobQueue.startedAt})) * 1000
           else null
@@ -95,7 +95,7 @@ export async function getJobStats(
  */
 export async function cleanupOldJobs(
   olderThan: Date,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<number> {
   const client = dbClient ?? getDb();
 
@@ -105,8 +105,8 @@ export async function cleanupOldJobs(
       and(
         or(eq(jobQueue.status, 'completed'), eq(jobQueue.status, 'failed')),
         isNotNull(jobQueue.completedAt),
-        lt(jobQueue.completedAt, olderThan)
-      )
+        lt(jobQueue.completedAt, olderThan),
+      ),
     );
 
   return normalizeMutationCount(result);
@@ -118,7 +118,7 @@ export async function cleanupOldJobs(
 export async function getActiveRegenerationJob(
   planId: string,
   userId: string,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<{ id: string } | null> {
   const client = dbClient ?? getDb();
 
@@ -139,7 +139,7 @@ export async function countUserJobsSince(
   userId: string,
   type: JobType,
   since: Date,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<number> {
   const client = dbClient ?? getDb();
 
@@ -150,8 +150,8 @@ export async function countUserJobsSince(
       and(
         eq(jobQueue.userId, userId),
         eq(jobQueue.jobType, type),
-        gte(jobQueue.createdAt, since)
-      )
+        gte(jobQueue.createdAt, since),
+      ),
     );
 
   return row?.value ?? 0;

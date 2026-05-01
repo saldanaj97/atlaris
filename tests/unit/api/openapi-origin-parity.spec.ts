@@ -42,7 +42,7 @@ describe('OpenAPI origin enum parity with DB planOrigin', () => {
   it('DB planOrigin enum does not include pdf', () => {
     expect(planOrigin.enumValues).not.toContain('pdf');
     expect([...planOrigin.enumValues].sort()).toEqual(
-      ['ai', 'manual', 'template'].sort()
+      ['ai', 'manual', 'template'].sort(),
     );
   });
 

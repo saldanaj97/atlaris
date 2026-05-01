@@ -50,7 +50,7 @@ export function detectJsonBodyPresence(req: Request): boolean {
 
 export async function parseJsonBody(
   req: Request,
-  options: ParseJsonBodyOptions
+  options: ParseJsonBodyOptions,
 ): Promise<unknown> {
   const detectBody = options.detectBody ?? detectJsonBodyPresence;
 

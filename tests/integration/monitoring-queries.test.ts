@@ -340,7 +340,7 @@ describe('Monitoring Queries', () => {
       const oldJobs = remainingJobs.filter(
         (j) =>
           j.createdAt < oneWeekAgo &&
-          (j.status === 'completed' || j.status === 'failed')
+          (j.status === 'completed' || j.status === 'failed'),
       );
       expect(oldJobs).toHaveLength(0);
     });

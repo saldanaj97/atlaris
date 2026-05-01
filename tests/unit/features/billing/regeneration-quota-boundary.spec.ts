@@ -1,3 +1,5 @@
+import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { createId } from '@tests/fixtures/ids';
 import { describe, expect, it, vi } from 'vitest';
 import type {
   MeteredReservationToken,
@@ -8,12 +10,14 @@ import {
   type RegenerationQuotaWorkResult,
   runRegenerationQuotaReserved,
 } from '@/features/billing/regeneration-quota-boundary';
-import type { DbClient } from '@/lib/db/types';
 
-const fakeDb = {} as DbClient;
+const fakeDb = makeDbClient();
+const userId = createId('user');
+const planId = createId('plan');
+const jobId = createId('job');
 
 const baseToken: MeteredReservationToken = {
-  userId: 'user-1',
+  userId,
   month: '2026-04',
   meter: 'regeneration',
   limit: 5,
@@ -21,14 +25,14 @@ const baseToken: MeteredReservationToken = {
 };
 
 function buildDeps(
-  overrides: Partial<RegenerationQuotaBoundaryDeps> = {}
+  overrides: Partial<RegenerationQuotaBoundaryDeps> = {},
 ): RegenerationQuotaBoundaryDeps {
   return {
     reserve: vi.fn(
       async (): Promise<ReserveMeteredResult> => ({
         ok: true,
         token: baseToken,
-      })
+      }),
     ),
     compensate: vi.fn(async () => undefined),
     reportReconciliation: vi.fn(),
@@ -45,13 +49,13 @@ describe('runRegenerationQuotaReserved', () => {
           ok: false,
           currentCount: 5,
           limit: 5,
-        })
+        }),
       ),
     });
 
     const result = await runRegenerationQuotaReserved(
-      { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-      deps
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
     );
 
     expect(result).toEqual({ ok: false, currentCount: 5, limit: 5 });
@@ -65,19 +69,19 @@ describe('runRegenerationQuotaReserved', () => {
     const work = vi.fn(
       async (): Promise<RegenerationQuotaWorkResult<{ jobId: string }>> => ({
         disposition: 'consumed',
-        value: { jobId: 'job-1' },
-      })
+        value: { jobId },
+      }),
     );
 
     const result = await runRegenerationQuotaReserved(
-      { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-      deps
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
     );
 
     expect(result).toEqual({
       ok: true,
       consumed: true,
-      value: { jobId: 'job-1' },
+      value: { jobId },
     });
     expect(work).toHaveBeenCalledTimes(1);
     expect(deps.compensate).not.toHaveBeenCalled();
@@ -89,15 +93,15 @@ describe('runRegenerationQuotaReserved', () => {
     const work = vi.fn(
       async (): Promise<RegenerationQuotaWorkResult<{ jobId: string }>> => ({
         disposition: 'revert',
-        value: { jobId: 'job-1' },
+        value: { jobId },
         reason: 'enqueue_deduplicated',
-        jobId: 'job-1',
-      })
+        jobId,
+      }),
     );
 
     const result = await runRegenerationQuotaReserved(
-      { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-      deps
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
     );
 
     expect(work).toHaveBeenCalledTimes(1);
@@ -107,7 +111,7 @@ describe('runRegenerationQuotaReserved', () => {
     expect(result).toEqual({
       ok: true,
       consumed: false,
-      value: { jobId: 'job-1' },
+      value: { jobId },
       reconciliationRequired: false,
     });
   });
@@ -121,9 +125,9 @@ describe('runRegenerationQuotaReserved', () => {
 
     await expect(
       runRegenerationQuotaReserved(
-        { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-        deps
-      )
+        { userId, planId, dbClient: fakeDb, work },
+        deps,
+      ),
     ).rejects.toBe(error);
 
     expect(work).toHaveBeenCalledTimes(1);
@@ -142,27 +146,27 @@ describe('runRegenerationQuotaReserved', () => {
     const work = vi.fn(
       async (): Promise<RegenerationQuotaWorkResult<{ jobId: string }>> => ({
         disposition: 'revert',
-        value: { jobId: 'job-1' },
+        value: { jobId },
         reason: 'enqueue_deduplicated',
-        jobId: 'job-1',
-      })
+        jobId,
+      }),
     );
 
     const result = await runRegenerationQuotaReserved(
-      { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-      deps
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
     );
 
     expect(work).toHaveBeenCalledTimes(1);
     expect(deps.reportReconciliation).toHaveBeenCalledTimes(1);
     expect(deps.reportReconciliation).toHaveBeenCalledWith(
-      { planId: 'plan-1', userId: 'user-1', jobId: 'job-1' },
-      compensateError
+      { planId, userId, jobId },
+      compensateError,
     );
     expect(result).toEqual({
       ok: true,
       consumed: false,
-      value: { jobId: 'job-1' },
+      value: { jobId },
       reconciliationRequired: true,
     });
   });
@@ -181,16 +185,16 @@ describe('runRegenerationQuotaReserved', () => {
 
     await expect(
       runRegenerationQuotaReserved(
-        { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-        deps
-      )
+        { userId, planId, dbClient: fakeDb, work },
+        deps,
+      ),
     ).rejects.toBe(workError);
 
     expect(work).toHaveBeenCalledTimes(1);
     expect(deps.reportReconciliation).toHaveBeenCalledTimes(1);
     expect(deps.reportReconciliation).toHaveBeenCalledWith(
-      { planId: 'plan-1', userId: 'user-1' },
-      compensateError
+      { planId, userId },
+      compensateError,
     );
   });
 
@@ -205,9 +209,9 @@ describe('runRegenerationQuotaReserved', () => {
 
     await expect(
       runRegenerationQuotaReserved(
-        { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-        deps
-      )
+        { userId, planId, dbClient: fakeDb, work },
+        deps,
+      ),
     ).rejects.toBe(reserveError);
 
     expect(work).not.toHaveBeenCalled();
@@ -234,9 +238,9 @@ describe('runRegenerationQuotaReserved', () => {
 
     await expect(
       runRegenerationQuotaReserved(
-        { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-        deps
-      )
+        { userId, planId, dbClient: fakeDb, work },
+        deps,
+      ),
     ).rejects.toBe(workError);
 
     expect(reportReconciliation).toHaveBeenCalledTimes(1);
@@ -257,22 +261,22 @@ describe('runRegenerationQuotaReserved', () => {
     const work = vi.fn(
       async (): Promise<RegenerationQuotaWorkResult<{ jobId: string }>> => ({
         disposition: 'revert',
-        value: { jobId: 'job-1' },
+        value: { jobId },
         reason: 'enqueue_deduplicated',
-        jobId: 'job-1',
-      })
+        jobId,
+      }),
     );
 
     const result = await runRegenerationQuotaReserved(
-      { userId: 'user-1', planId: 'plan-1', dbClient: fakeDb, work },
-      deps
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
     );
 
     expect(reportReconciliation).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       ok: true,
       consumed: false,
-      value: { jobId: 'job-1' },
+      value: { jobId },
       reconciliationRequired: true,
     });
   });

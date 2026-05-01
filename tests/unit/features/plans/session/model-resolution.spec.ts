@@ -7,10 +7,10 @@ import { logger } from '@/lib/logging/logger';
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;
 const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
-  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL
+  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
 )?.id;
 
 if (
@@ -64,7 +64,7 @@ describe('resolveStreamModelResolution', () => {
         suppliedModel: 'invalid/model-id',
         reason: expect.stringMatching(/invalid_model|tier_denied/),
       }),
-      'Invalid or tier-denied model override supplied; ignoring query override'
+      'Invalid or tier-denied model override supplied; ignoring query override',
     );
   });
 
@@ -91,7 +91,7 @@ describe('resolveStreamModelResolution', () => {
         suppliedModel: 'invalid/model-id',
         reason: expect.stringMatching(/invalid_model|tier_denied/),
       }),
-      'Invalid or tier-denied model override supplied; ignoring query override'
+      'Invalid or tier-denied model override supplied; ignoring query override',
     );
   });
 

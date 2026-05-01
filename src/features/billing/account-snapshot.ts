@@ -1,5 +1,4 @@
-import { eq } from 'drizzle-orm';
-import { canOpenBillingPortalForUser } from '@/features/billing/stripe-commerce';
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import {
   getUsageSummaryForTier,
   type UsageSummary,
@@ -11,6 +10,7 @@ import { getDb } from '@/lib/db/runtime';
 import { users } from '@/lib/db/schema';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { eq } from 'drizzle-orm';
 
 export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {
@@ -23,9 +23,9 @@ export class BillingSnapshotNotFoundError extends AppError {
   }
 }
 
-export type BillingAccountProjection = 'full' | 'subscription';
+type BillingAccountProjection = 'full' | 'subscription';
 
-export type BillingSubscriptionSnapshot = {
+type BillingSubscriptionSnapshot = {
   tier: SubscriptionTier;
   subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'trialing' | null;
   subscriptionPeriodEnd: Date | null;
@@ -35,7 +35,7 @@ export type BillingSubscriptionSnapshot = {
   canOpenBillingPortal: boolean;
 };
 
-export type BillingAccountSnapshot = BillingSubscriptionSnapshot & {
+type BillingAccountSnapshot = BillingSubscriptionSnapshot & {
   usage: UsageSummary;
 };
 
@@ -49,7 +49,7 @@ type BillingRowSelect = {
 };
 
 function toSubscriptionSnapshot(
-  billingRow: BillingRowSelect
+  billingRow: BillingRowSelect,
 ): BillingSubscriptionSnapshot {
   return {
     tier: billingRow.tier,
@@ -84,7 +84,7 @@ type BillingSubscriptionInput = Pick<
  * `getBillingAccountSnapshot({ projection: 'subscription' })`.
  */
 export function deriveBillingSubscriptionSnapshot(
-  user: BillingSubscriptionInput
+  user: BillingSubscriptionInput,
 ): BillingSubscriptionSnapshot {
   return toSubscriptionSnapshot({
     tier: user.subscriptionTier,
@@ -103,13 +103,13 @@ type SnapshotArgsBase = {
 };
 
 export async function getBillingAccountSnapshot(
-  args: SnapshotArgsBase & { projection?: 'full' }
+  args: SnapshotArgsBase & { projection?: 'full' },
 ): Promise<BillingAccountSnapshot>;
 export async function getBillingAccountSnapshot(
-  args: SnapshotArgsBase & { projection: 'subscription' }
+  args: SnapshotArgsBase & { projection: 'subscription' },
 ): Promise<BillingSubscriptionSnapshot>;
 export async function getBillingAccountSnapshot(
-  args: SnapshotArgsBase & { projection?: BillingAccountProjection }
+  args: SnapshotArgsBase & { projection?: BillingAccountProjection },
 ): Promise<BillingAccountSnapshot | BillingSubscriptionSnapshot> {
   const {
     userId,

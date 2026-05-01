@@ -42,7 +42,7 @@ function createIdempotentPostgresCleanup(
   sql: Sql,
   options: {
     onConnectionCloseError: (error: unknown) => void;
-  }
+  },
 ): () => Promise<void> {
   let isCleanedUp = false;
   return async () => {
@@ -94,7 +94,7 @@ type RlsClientResult = {
  */
 export async function createAuthenticatedRlsClient(
   authUserId: string,
-  options?: { idleTimeout?: number }
+  options?: { idleTimeout?: number },
 ): Promise<RlsClientResult> {
   const jwtClaims = JSON.stringify({ sub: authUserId });
 
@@ -126,7 +126,7 @@ export async function createAuthenticatedRlsClient(
     onConnectionCloseError: (error) => {
       logger.warn(
         { error, authUserId },
-        'Failed to close RLS database connection'
+        'Failed to close RLS database connection',
       );
     },
   });
@@ -193,7 +193,7 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
     onConnectionCloseError: (error) => {
       logger.warn(
         { error },
-        'Failed to close anonymous RLS database connection'
+        'Failed to close anonymous RLS database connection',
       );
     },
   });

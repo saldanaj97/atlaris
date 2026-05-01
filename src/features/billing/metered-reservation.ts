@@ -11,20 +11,20 @@
  * meters should add their own boundary instead of reaching into this file.
  */
 
-import { and, eq, sql } from 'drizzle-orm';
 import { usageMetrics, users } from '@/lib/db/schema';
 import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { and, eq, sql } from 'drizzle-orm';
 import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';
-import { TIER_LIMITS } from './tier-limits';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
   incrementUsageInTx,
 } from './usage-metrics';
 
-export type MeterKind = 'regeneration' | 'export';
+type MeterKind = 'regeneration' | 'export';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -42,7 +42,7 @@ type MeterConfig = {
   incrementInTx: (
     tx: BillingTx,
     userId: string,
-    month: string
+    month: string,
   ) => Promise<void>;
   readColumn: (metrics: UsageMetricsRow) => number;
   decrementSql: () => ReturnType<typeof sql>;
@@ -97,7 +97,7 @@ export type ReserveMeteredResult =
 
 export async function selectUserSubscriptionTierForUpdate(
   tx: BillingTx,
-  userId: string
+  userId: string,
 ): Promise<{ subscriptionTier: SubscriptionTier }> {
   const [user] = await tx
     .select({ subscriptionTier: users.subscriptionTier })
@@ -114,7 +114,7 @@ export async function selectUserSubscriptionTierForUpdate(
 async function lockUsageMetricsForMonth(
   tx: BillingTx,
   userId: string,
-  month: string
+  month: string,
 ) {
   await ensureUsageMetricsExist(tx, userId, month);
   const [metrics] = await tx
@@ -158,7 +158,7 @@ type ReserveLogEvent =
 export async function reserveMeteredUsage(
   params: { userId: string; meter: MeterKind },
   dbClient: DbClient,
-  options: ReserveMeteredUsageOptions = {}
+  options: ReserveMeteredUsageOptions = {},
 ): Promise<ReserveMeteredResult> {
   const { userId, meter } = params;
   const config = METER_CONFIG[meter];
@@ -213,7 +213,7 @@ export async function reserveMeteredUsage(
  */
 export async function compensateMeteredReservation(
   token: MeteredReservationToken,
-  dbClient: DbClient
+  dbClient: DbClient,
 ): Promise<void> {
   const config = METER_CONFIG[token.meter];
 
@@ -226,8 +226,8 @@ export async function compensateMeteredReservation(
     .where(
       and(
         eq(usageMetrics.userId, token.userId),
-        eq(usageMetrics.month, token.month)
-      )
+        eq(usageMetrics.month, token.month),
+      ),
     )
     .returning({ value: usageMetrics[config.column] });
 
@@ -239,7 +239,7 @@ export async function compensateMeteredReservation(
         meter: token.meter,
         action: 'compensateMeteredReservation',
       },
-      'No usage metrics found to decrement'
+      'No usage metrics found to decrement',
     );
     return;
   }
@@ -252,6 +252,6 @@ export async function compensateMeteredReservation(
       action: 'compensateMeteredReservation',
       newCount: updated.value,
     },
-    'Metered usage reservation compensated'
+    'Metered usage reservation compensated',
   );
 }

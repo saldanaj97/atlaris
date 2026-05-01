@@ -13,7 +13,7 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ProfileForm } from '@/app/settings/profile/components/ProfileForm';
+import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 
 import { buildProfile } from '../../../fixtures/profile';
 
@@ -25,7 +25,7 @@ function mockFetchSuccess(data: unknown = MOCK_PROFILE): void {
     vi.fn().mockResolvedValue({
       ok: true,
       json: async () => data,
-    })
+    }),
   );
 }
 
@@ -34,7 +34,7 @@ function mockFetchFailure(
   body: Record<string, unknown> = {
     error: 'Server error',
     code: 'INTERNAL_ERROR',
-  }
+  },
 ): void {
   vi.stubGlobal(
     'fetch',
@@ -44,7 +44,7 @@ function mockFetchFailure(
       headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => body,
       text: async () => JSON.stringify(body),
-    })
+    }),
   );
 }
 
@@ -87,7 +87,7 @@ describe('ProfileForm', () => {
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
     expect(
-      screen.getByText(MOCK_PROFILE.subscriptionStatus)
+      screen.getByText(MOCK_PROFILE.subscriptionStatus),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -95,8 +95,8 @@ describe('ProfileForm', () => {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
-        })
-      )
+        }),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe('ProfileForm', () => {
 
     // Save button only renders when the name has been changed
     expect(
-      screen.queryByRole('button', { name: /save changes/i })
+      screen.queryByRole('button', { name: /save changes/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -203,7 +203,7 @@ describe('ProfileForm', () => {
     // Save button should disappear after successful save (name is no longer dirty)
     await waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: /save changes/i })
+        screen.queryByRole('button', { name: /save changes/i }),
       ).not.toBeInTheDocument();
     });
   });

@@ -43,7 +43,7 @@ describe('generation integration - rate limit classification', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: getDb() }
+      { provider: mock.provider, dbClient: getDb() },
     );
 
     expect(result.status).toBe('failure');

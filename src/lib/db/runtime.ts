@@ -5,7 +5,7 @@ import { db as serviceDb } from '@/lib/db/service-role';
 export class MissingRequestDbContextError extends Error {
   constructor() {
     super(
-      'Missing request-scoped database context. Request handlers must run inside withAuth/withRequestContext. Use service-role db explicitly in workers/background jobs.'
+      'Missing request-scoped database context. Request handlers must run inside withAuth/withRequestContext. Use service-role db explicitly in workers/background jobs.',
     );
     this.name = 'MissingRequestDbContextError';
   }

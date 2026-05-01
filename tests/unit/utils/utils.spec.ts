@@ -57,7 +57,7 @@ describe('cn (className utility)', () => {
       ['array-class'],
       { 'object-class': true },
       undefined,
-      'final-class'
+      'final-class',
     );
     expect(result).toContain('base-class');
     expect(result).toContain('array-class');
