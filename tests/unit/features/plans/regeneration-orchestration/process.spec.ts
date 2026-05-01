@@ -9,12 +9,6 @@ import {
 } from '@/features/plans/regeneration-orchestration/process';
 import type { DbClient } from '@/lib/db/types';
 
-type ProcessDepsOverrides = {
-  [K in keyof RegenerationOrchestrationDeps]?: K extends 'queue'
-    ? Partial<RegenerationOrchestrationDeps['queue']>
-    : RegenerationOrchestrationDeps[K];
-};
-
 const planRow = {
   id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
   userId: 'user-1',
@@ -32,14 +26,6 @@ const planRow = {
   createdAt: new Date(),
   updatedAt: new Date(),
 };
-
-function makeLifecycleServiceMock(
-  processGenerationAttempt: RegenerationOrchestrationDeps['lifecycle']['service']['processGenerationAttempt'] = vi.fn(),
-): RegenerationOrchestrationDeps['lifecycle']['service'] {
-  return {
-    processGenerationAttempt,
-  } as unknown as RegenerationOrchestrationDeps['lifecycle']['service'];
-}
 
 function makeJob(overrides: Partial<Job> & { data?: Job['data'] } = {}): Job {
   const planId =
@@ -65,6 +51,27 @@ function makeJob(overrides: Partial<Job> & { data?: Job['data'] } = {}): Job {
     data: overrides.data ?? { planId },
   };
 }
+
+function makeLifecycleServiceMock(
+  processGenerationAttempt: RegenerationOrchestrationDeps['lifecycle']['service']['processGenerationAttempt'] = vi.fn(),
+): RegenerationOrchestrationDeps['lifecycle']['service'] {
+  return {
+    processGenerationAttempt,
+  } as unknown as RegenerationOrchestrationDeps['lifecycle']['service'];
+}
+
+type ProcessDepsOverrides = {
+  dbClient?: RegenerationOrchestrationDeps['dbClient'];
+  queue?: Partial<RegenerationOrchestrationDeps['queue']>;
+  quota?: Partial<RegenerationOrchestrationDeps['quota']>;
+  plans?: Partial<RegenerationOrchestrationDeps['plans']>;
+  tier?: Partial<RegenerationOrchestrationDeps['tier']>;
+  priority?: Partial<RegenerationOrchestrationDeps['priority']>;
+  lifecycle?: Partial<RegenerationOrchestrationDeps['lifecycle']>;
+  inlineDrain?: Partial<RegenerationOrchestrationDeps['inlineDrain']>;
+  rateLimit?: Partial<RegenerationOrchestrationDeps['rateLimit']>;
+  logger?: Partial<RegenerationOrchestrationDeps['logger']>;
+};
 
 function buildProcessDeps(
   overrides: ProcessDepsOverrides = {},
@@ -96,19 +103,13 @@ function buildProcessDeps(
     lifecycle: {
       service: makeLifecycleServiceMock(),
     },
-    retry: {
-      decideJobRetry: vi.fn(() => ({
-        shouldRetry: true as const,
-        delayMs: 1_000,
-        reason: 'retry',
-      })),
-    },
     inlineDrain: {
       tryRegister: vi.fn(),
       drain: vi.fn(),
     },
     rateLimit: { check: vi.fn() },
     logger: {
+      debug: vi.fn(),
       info: vi.fn(),
       error: vi.fn(),
       warn: vi.fn(),
@@ -117,14 +118,13 @@ function buildProcessDeps(
 
   return {
     ...base,
-    dbClient: (overrides.dbClient ?? base.dbClient) as DbClient,
+    dbClient: overrides.dbClient ?? base.dbClient,
     queue: { ...base.queue, ...overrides.queue },
     quota: { ...base.quota, ...overrides.quota },
     plans: { ...base.plans, ...overrides.plans },
     tier: { ...base.tier, ...overrides.tier },
     priority: { ...base.priority, ...overrides.priority },
     lifecycle: { ...base.lifecycle, ...overrides.lifecycle },
-    retry: { ...base.retry, ...overrides.retry },
     inlineDrain: { ...base.inlineDrain, ...overrides.inlineDrain },
     rateLimit: { ...base.rateLimit, ...overrides.rateLimit },
     logger: { ...base.logger, ...overrides.logger },
@@ -368,8 +368,13 @@ describe('processPlanRegenerationJob', () => {
     });
   });
 
-  it('retryable_failure with attempts left fails retryable and logs', async () => {
-    const failJob = vi.fn(async () => null);
+  it('retryable_failure returns willRetry true from the persisted queue row', async () => {
+    const failedQueueRow = makeJob({
+      status: 'pending',
+      attempts: 1,
+      maxAttempts: 3,
+    });
+    const failJob = vi.fn(async () => failedQueueRow);
     const processAttempt = vi.fn().mockResolvedValue({
       status: 'retryable_failure',
       classification: 'timeout',
@@ -377,13 +382,6 @@ describe('processPlanRegenerationJob', () => {
     });
     const deps = buildProcessDeps({
       queue: { failJob },
-      retry: {
-        decideJobRetry: vi.fn(() => ({
-          shouldRetry: true as const,
-          delayMs: 1_000,
-          reason: 'Retryable - attempt 1/3',
-        })),
-      },
       lifecycle: {
         service: makeLifecycleServiceMock(processAttempt),
       },
@@ -396,29 +394,50 @@ describe('processPlanRegenerationJob', () => {
       planId: planRow.id,
       willRetry: true,
     });
-    expect(deps.retry.decideJobRetry).toHaveBeenCalledWith({
-      attemptNumber: 1,
-      maxAttempts: 3,
-      retryable: true,
-    });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
       'Plan regeneration failed (timeout).',
       { retryable: true },
     );
-    expect(deps.logger.info).toHaveBeenCalledWith(
+    const infoContext = vi.mocked(deps.logger.info).mock.calls[0]?.[0];
+    expect(infoContext).toEqual(
       expect.objectContaining({
         jobId: job.id,
+        planId: planRow.id,
         classification: 'timeout',
-        retryDecision: 'Retryable - attempt 1/3',
+        message: 'Plan regeneration failed (timeout).',
+        queueStatus: 'pending',
+        attemptNumber: 1,
+        maxAttempts: 3,
+        willRetry: true,
+      }),
+    );
+    expect(infoContext).not.toHaveProperty('error');
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      expect.any(Object),
+      'Regeneration job retryable failure — queue outcome applied',
+    );
+    expect(deps.logger.debug).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: job.id,
+        planId: planRow.id,
+        classification: 'timeout',
+        message: 'Plan regeneration failed (timeout).',
         error: expect.any(Error),
       }),
-      'Regeneration job retryable failure — retry decision applied',
+      'Regeneration job retryable failure diagnostic',
     );
   });
 
-  it('retryable_failure at cap fails non-retryable', async () => {
-    const failJob = vi.fn(async () => null);
+  it('retryable_failure returns willRetry false from the persisted queue row', async () => {
+    const failedQueueRow = makeJob({
+      status: 'failed',
+      attempts: 3,
+      maxAttempts: 3,
+      error: 'Plan regeneration failed (timeout).',
+      completedAt: new Date('2026-04-30T12:00:00.000Z'),
+    });
+    const failJob = vi.fn(async () => failedQueueRow);
     const processAttempt = vi.fn().mockResolvedValue({
       status: 'retryable_failure',
       classification: 'timeout',
@@ -426,12 +445,6 @@ describe('processPlanRegenerationJob', () => {
     });
     const deps = buildProcessDeps({
       queue: { failJob },
-      retry: {
-        decideJobRetry: vi.fn(() => ({
-          shouldRetry: false as const,
-          reason: 'Attempt cap reached (3/3)',
-        })),
-      },
       lifecycle: {
         service: makeLifecycleServiceMock(processAttempt),
       },
@@ -442,15 +455,20 @@ describe('processPlanRegenerationJob', () => {
       kind: 'retryable-failure',
       willRetry: false,
     });
-    expect(deps.retry.decideJobRetry).toHaveBeenCalledWith({
-      attemptNumber: 3,
-      maxAttempts: 3,
-      retryable: true,
-    });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
       'Plan regeneration failed (timeout).',
       { retryable: true },
+    );
+    expect(deps.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Plan regeneration failed (timeout).',
+        queueStatus: 'failed',
+        attemptNumber: 3,
+        maxAttempts: 3,
+        willRetry: false,
+      }),
+      'Regeneration job retryable failure — queue outcome applied',
     );
   });
 

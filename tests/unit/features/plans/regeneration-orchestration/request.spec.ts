@@ -40,9 +40,13 @@ function deferred<T = void>() {
 }
 
 type RequestDepsOverrides = {
-  [K in keyof RegenerationOrchestrationDeps]?: K extends 'queue'
-    ? Partial<RegenerationOrchestrationDeps['queue']>
-    : RegenerationOrchestrationDeps[K];
+  dbClient?: RegenerationOrchestrationDeps['dbClient'];
+  queue?: Partial<RegenerationOrchestrationDeps['queue']>;
+  quota?: Partial<RegenerationOrchestrationDeps['quota']>;
+  plans?: Partial<RegenerationOrchestrationDeps['plans']>;
+  inlineDrain?: Partial<RegenerationOrchestrationDeps['inlineDrain']>;
+  rateLimit?: Partial<RegenerationOrchestrationDeps['rateLimit']>;
+  logger?: Partial<RegenerationOrchestrationDeps['logger']>;
 };
 
 function buildDeps(
@@ -98,9 +102,6 @@ function buildDeps(
     lifecycle: {
       service: {} as RegenerationOrchestrationDeps['lifecycle']['service'],
     },
-    retry: {
-      decideJobRetry: vi.fn(),
-    },
     inlineDrain: {
       tryRegister,
       drain,
@@ -113,6 +114,7 @@ function buildDeps(
       })),
     },
     logger: {
+      debug: vi.fn(),
       info: vi.fn(),
       error: vi.fn(),
       warn: vi.fn(),
@@ -121,15 +123,13 @@ function buildDeps(
 
   return {
     ...base,
-    dbClient: (overrides.dbClient ??
-      base.dbClient) as RegenerationOrchestrationDeps['dbClient'],
+    dbClient: overrides.dbClient ?? base.dbClient,
     queue: { ...base.queue, ...overrides.queue },
     quota: { ...base.quota, ...overrides.quota },
     plans: { ...base.plans, ...overrides.plans },
     tier: { ...base.tier, ...overrides.tier },
     priority: { ...base.priority, ...overrides.priority },
     lifecycle: { ...base.lifecycle, ...overrides.lifecycle },
-    retry: { ...base.retry, ...overrides.retry },
     inlineDrain: { ...base.inlineDrain, ...overrides.inlineDrain },
     rateLimit: { ...base.rateLimit, ...overrides.rateLimit },
     logger: { ...base.logger, ...overrides.logger },

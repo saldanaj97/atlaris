@@ -188,35 +188,42 @@ async function applyRetryableFailure(
   result: RetryableFailureResult,
 ): Promise<ProcessPlanRegenerationJobResult> {
   const { job, plan, deps } = context;
-  const decision = deps.retry.decideJobRetry({
-    attemptNumber: job.attempts + 1,
-    maxAttempts: job.maxAttempts,
-    retryable: true,
-  });
-
-  deps.logger.info(
-    {
-      jobId: job.id,
-      classification: result.classification,
-      retryDecision: decision.reason,
-      error: result.error,
-    },
-    'Regeneration job retryable failure — retry decision applied',
+  const failureMessage = buildSanitizedGenerationFailureMessage(
+    result.classification,
   );
 
-  await deps.queue.failJob(
-    job.id,
-    buildSanitizedGenerationFailureMessage(result.classification),
+  const failedJob = await deps.queue.failJob(job.id, failureMessage, {
+    retryable: true,
+  });
+  const willRetry = failedJob?.status === 'pending';
+  const retryLogContext = {
+    jobId: job.id,
+    planId: plan.id,
+    classification: result.classification,
+    message: failureMessage,
+    queueStatus: failedJob?.status ?? null,
+    attemptNumber: failedJob?.attempts ?? job.attempts + 1,
+    maxAttempts: failedJob?.maxAttempts ?? job.maxAttempts,
+    willRetry,
+  };
+
+  deps.logger.info(
+    retryLogContext,
+    'Regeneration job retryable failure — queue outcome applied',
+  );
+  deps.logger.debug(
     {
-      retryable: true,
+      ...retryLogContext,
+      error: result.error,
     },
+    'Regeneration job retryable failure diagnostic',
   );
 
   return {
     kind: 'retryable-failure',
     jobId: job.id,
     planId: plan.id,
-    willRetry: decision.shouldRetry,
+    willRetry,
   };
 }
 
