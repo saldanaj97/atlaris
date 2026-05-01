@@ -4,7 +4,7 @@
 
 **Agent memory:** Recurring preferences and durable workspace facts live in [`docs/agent-context/learnings.md`](docs/agent-context/learnings.md). Read that file whenever you read or apply this file.
 
-We will primarily be utilizing the `.plans/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
+We will primarily be utilizing the `.agents/plans/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
 
 ## 1. Plan Mode Default
 
@@ -22,7 +22,7 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 
 ## 3. Self-Improvement Loop
 
-- After ANY corrections whether from our agent or the user: update `.plans/lessons.md` with the pattern
+- After ANY corrections whether from our agent or the user: update `.agents/plans/lessons.md` with the pattern
 - Write rules and lessons for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
@@ -49,37 +49,6 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 - Regularly run tests after changes to maintain code quality and reliability (prefer explicit scoped commands like `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted spec file)
 - Before considering any implementation complete, always run `pnpm test:changed` and `pnpm check:full` as the final validation baseline to catch regressions outside the immediately edited files.
 
-# Task Management
-
-1. PRD Creation: For any non-trivial task or new feature implementation, first create a PRD in `.plans/<nextTaskNumber-taskName>/todos.md` outlining the plan with checkable items using the `prd-to-issue` skill.
-
-2. Task Creation: Create a `.plans/<nextTaskNumber-taskName>/todos.md` file with checkable items using any of the following (in order of preference):
-   - `.plans/<nextTaskNumber-taskName>/prd.md`file
-   - `gh issue view <issue-number>`
-   - `prd-to-issue` skill.
-
-   This task list should be detailed enough to guide the planning process without ambiguity, but not so detailed that it is overwhelming.
-
-3. Plan Creation: Create a plan file `.plans/<nextTaskNumber-taskName>/plan.md` outlining the plan using the high level tasks from the `.plans/<nextTaskNumber-taskName>/todos.md` file. This is where we want plenty of detail to reduce ambiguity and room for error by properly guiding the implementation.
-   Make sure to use the general format for each step/phase/slice in a plan:
-   1. Step X.0 — Fetch issue, confirm/add ACs
-   2. Steps X.1–X.N — Implementation
-   3. Validation Steps — Type check, lint, tests
-   4. Issue Verification & Closure — Walk through each AC with concrete verification commands, then close the issues and/or any subtasks.
-
-4. Verify Plan: Check in the plan before starting implementation to get feedback from the user and/or other agents.
-
-5. Track Progress: Mark items complete as you go. Do not wait until the end to update progress. Make sure:
-   - If you deviate from the original plan, update the the main PRD file and the todos with the new plan and add a note about why you deviated to for future reference.
-   - If you get stuck or skip a task, update the todos with where you got stuck and what you tried so far. This will help others understand the context if they need to step in to help.
-   - Mark the issue as done or complete within github as well when you finish the task to keep everything in sync and up to date.
-
-6. Explain Changes: High-level summary at each step
-
-7. Document Results: Add review section to the relevant `.plans/<nextTaskNumber-taskName>/todos.md`
-
-8. Capture Lessons: Update `docs/agent-context/lessons.md` if corrections or learnings are discovered.
-
 # Core Principles
 
 - Simplicity First: Make every change as simple as possible. Impact minimal code. Strive for elegant solutions, but balance with pragmatism. Don't over-engineer simple fixes.
@@ -105,6 +74,7 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 ### Environment
 
 `.env.local` is not committed. Cloud setup creates it dynamically from source constants in `src/lib/config/local-product-testing.ts`. Key flags:
+
 - `LOCAL_PRODUCT_TESTING=true` + `DEV_AUTH_USER_ID` = seeded local user (bypasses Neon Auth)
 - `STRIPE_LOCAL_MODE=true` = in-process Stripe mock
 - `AI_PROVIDER=mock` = mock AI generation
