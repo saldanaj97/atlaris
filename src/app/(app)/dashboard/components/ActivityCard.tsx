@@ -55,6 +55,41 @@ const typeConfig: Record<
   },
 };
 
+function ActivityCardMetadata({
+  metadata,
+}: {
+  metadata: NonNullable<ActivityItem['metadata']>;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {metadata.duration && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          {metadata.duration}
+        </span>
+      )}
+      {metadata.progress !== undefined && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Target className="h-3 w-3" />
+          {metadata.progress}% complete
+        </span>
+      )}
+      {metadata.platform && (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Check className="h-3 w-3" />
+          {metadata.platform}
+        </span>
+      )}
+      {metadata.streakCount && (
+        <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+          <Zap className="h-3 w-3" />
+          {metadata.streakCount} days
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ActivityCard({ activity }: { activity: ActivityItem }) {
   const config = typeConfig[activity.type];
   const Icon = config.icon;
@@ -106,32 +141,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
 
           {/* Metadata */}
           {activity.metadata && (
-            <div className="flex flex-wrap items-center gap-3">
-              {activity.metadata.duration && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {activity.metadata.duration}
-                </span>
-              )}
-              {activity.metadata.progress !== undefined && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Target className="h-3 w-3" />
-                  {activity.metadata.progress}% complete
-                </span>
-              )}
-              {activity.metadata.platform && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Check className="h-3 w-3" />
-                  {activity.metadata.platform}
-                </span>
-              )}
-              {activity.metadata.streakCount && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                  <Zap className="h-3 w-3" />
-                  {activity.metadata.streakCount} days
-                </span>
-              )}
-            </div>
+            <ActivityCardMetadata metadata={activity.metadata} />
           )}
         </div>
       </div>

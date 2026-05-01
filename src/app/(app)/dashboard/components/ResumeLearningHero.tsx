@@ -22,6 +22,85 @@ function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function resumeHeroSupportingCopy(params: {
+  completedModules: number;
+  moduleCount: number;
+  topic: string | null | undefined;
+}): string {
+  const { completedModules, moduleCount, topic } = params;
+  const topicLower = (topic ?? 'your topic').toLowerCase();
+  if (completedModules === 0) {
+    return `Start your journey with ${moduleCount} modules covering ${topicLower}.`;
+  }
+  if (completedModules === moduleCount) {
+    return `Congratulations! You've completed all ${moduleCount} modules.`;
+  }
+  return `${completedModules} of ${moduleCount} modules complete. Keep going!`;
+}
+
+interface HeroCircularProgressProps {
+  progressPercent: number;
+  size?: number;
+  strokeWidth?: number;
+}
+
+function HeroCircularProgress({
+  progressPercent,
+  size = 64,
+  strokeWidth = 6,
+}: HeroCircularProgressProps) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progressPercent / 100);
+  return (
+    <div
+      className="relative flex-shrink-0"
+      style={{ width: size, height: size }}
+      role="progressbar"
+      aria-valuenow={progressPercent}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Plan progress: ${progressPercent}% complete`}
+    >
+      <svg
+        className="rotate-[-90deg]"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden="true"
+      >
+        <title>Progress indicator</title>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth={strokeWidth}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="white"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-300"
+        />
+      </svg>
+      <span
+        className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white"
+        aria-hidden="true"
+      >
+        {progressPercent}%
+      </span>
+    </div>
+  );
+}
+
 /**
  * ResumeLearningHero component displays a hero card for the user's most recent learning plan.
  *
@@ -62,12 +141,6 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   );
   const nextModuleTitle = nextModule?.title ?? 'Getting Started';
 
-  const size = 64;
-  const strokeWidth = 6;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progressPercent / 100);
-
   return (
     <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg">
       {/* Top row: label (left) and circular progress (right) */}
@@ -75,52 +148,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         <p className="text-xs font-medium tracking-wider text-white/70 uppercase">
           Most Recent Plan
         </p>
-        {/* Circular progress with number in the middle */}
-        <div
-          className="relative flex-shrink-0"
-          style={{ width: size, height: size }}
-          role="progressbar"
-          aria-valuenow={progressPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`Plan progress: ${progressPercent}% complete`}
-        >
-          <svg
-            className="rotate-[-90deg]"
-            width={size}
-            height={size}
-            viewBox={`0 0 ${size} ${size}`}
-            aria-hidden="true"
-          >
-            <title>Progress indicator</title>
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="rgba(255,255,255,0.2)"
-              strokeWidth={strokeWidth}
-            />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke="white"
-              strokeWidth={strokeWidth}
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              className="transition-all duration-300"
-            />
-          </svg>
-          <span
-            className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white"
-            aria-hidden="true"
-          >
-            {progressPercent}%
-          </span>
-        </div>
+        <HeroCircularProgress progressPercent={progressPercent} />
       </div>
 
       {/* Bottom row: badges + title + description (left), Up Next + Continue (right) */}
@@ -146,11 +174,11 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
             {plan.plan.topic}
           </h2>
           <p className="text-sm text-white/80">
-            {plan.completedModules === 0
-              ? `Start your journey with ${moduleCount} modules covering ${(plan.plan.topic ?? 'your topic').toLowerCase()}.`
-              : plan.completedModules === moduleCount
-                ? `Congratulations! You've completed all ${moduleCount} modules.`
-                : `${plan.completedModules} of ${moduleCount} modules complete. Keep going!`}
+            {resumeHeroSupportingCopy({
+              completedModules: plan.completedModules,
+              moduleCount,
+              topic: plan.plan.topic,
+            })}
           </p>
         </div>
 

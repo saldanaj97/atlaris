@@ -25,6 +25,7 @@ import type {
   ModuleDetailNavItem,
 } from '@/features/plans/read-projection/types';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
+import { cn } from '@/lib/utils';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface ModuleHeaderProps {
@@ -48,6 +49,86 @@ const MODULE_GRADIENTS = [
   'from-primary via-primary-dark to-accent',
   'from-chart-2 via-primary to-accent',
 ];
+
+function ModuleRoundNavLink({
+  planId,
+  targetModuleId,
+  direction,
+}: {
+  planId: string;
+  targetModuleId: string | null;
+  direction: 'previous' | 'next';
+}) {
+  const Icon = direction === 'previous' ? ArrowLeft : ArrowRight;
+  const ariaLabel =
+    direction === 'previous' ? 'Previous module' : 'Next module';
+  if (!targetModuleId) {
+    return (
+      <span className="cursor-not-allowed rounded-full bg-white/10 p-2 text-white/40">
+        <Icon className="h-4 w-4" />
+      </span>
+    );
+  }
+  return (
+    <Link
+      href={`/plans/${planId}/modules/${targetModuleId}`}
+      className="rounded-full bg-white/25 p-2 text-white transition hover:bg-white/35"
+      aria-label={ariaLabel}
+    >
+      <Icon className="h-4 w-4" />
+    </Link>
+  );
+}
+
+function ModuleSwitcherMenuItem({
+  planId,
+  moduleId,
+  item,
+}: {
+  planId: string;
+  moduleId: string;
+  item: ModuleDetailNavItem;
+}) {
+  const isCurrent = item.id === moduleId;
+
+  if (item.isLocked) {
+    return (
+      <DropdownMenuItem asChild disabled className="opacity-50">
+        <Link
+          href="#"
+          className="pointer-events-none flex items-center gap-2 text-stone-400 dark:text-stone-500"
+          onClick={(e) => e.preventDefault()}
+          aria-disabled
+        >
+          <Lock className="h-4 w-4 flex-shrink-0 text-stone-400 dark:text-stone-500" />
+          <span className="truncate">{item.title}</span>
+        </Link>
+      </DropdownMenuItem>
+    );
+  }
+
+  const linkClassName = cn(
+    'flex items-center gap-2',
+    isCurrent && 'bg-primary/20 text-primary',
+  );
+
+  return (
+    <DropdownMenuItem asChild>
+      <Link
+        href={`/plans/${planId}/modules/${item.id}`}
+        className={linkClassName}
+      >
+        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
+          {item.order}
+        </span>
+        <span className="truncate">{item.title}</span>
+        {isCurrent && (
+          <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-primary" />
+        )}
+      </Link>
+    </DropdownMenuItem>
+  );
+}
 
 /**
  * Glassmorphism hero header for the module detail page.
@@ -103,44 +184,14 @@ export function ModuleHeader({
                 align="start"
                 className="max-h-80 w-64 overflow-y-auto"
               >
-                {allModules.map((m) => {
-                  const isCurrent = m.id === module.id;
-                  const isLocked = m.isLocked;
-
-                  return (
-                    <DropdownMenuItem
-                      key={m.id}
-                      asChild
-                      disabled={isLocked}
-                      className={isLocked ? 'opacity-50' : ''}
-                    >
-                      <Link
-                        href={
-                          isLocked ? '#' : `/plans/${planId}/modules/${m.id}`
-                        }
-                        className={`flex items-center gap-2 ${
-                          isCurrent ? 'bg-primary/20 text-primary' : ''
-                        } ${isLocked ? 'pointer-events-none text-stone-400 dark:text-stone-500' : ''}`}
-                        onClick={
-                          isLocked ? (e) => e.preventDefault() : undefined
-                        }
-                        aria-disabled={isLocked}
-                      >
-                        {isLocked ? (
-                          <Lock className="h-4 w-4 flex-shrink-0 text-stone-400 dark:text-stone-500" />
-                        ) : (
-                          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
-                            {m.order}
-                          </span>
-                        )}
-                        <span className="truncate">{m.title}</span>
-                        {isCurrent && !isLocked && (
-                          <CheckCircle2 className="ml-auto h-4 w-4 flex-shrink-0 text-primary" />
-                        )}
-                      </Link>
-                    </DropdownMenuItem>
-                  );
-                })}
+                {allModules.map((m) => (
+                  <ModuleSwitcherMenuItem
+                    key={m.id}
+                    planId={planId}
+                    moduleId={module.id}
+                    item={m}
+                  />
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </li>
@@ -165,32 +216,16 @@ export function ModuleHeader({
 
             {/* Module Navigation */}
             <div className="flex gap-2">
-              {previousModuleId ? (
-                <Link
-                  href={`/plans/${planId}/modules/${previousModuleId}`}
-                  className="rounded-full bg-white/25 p-2 text-white transition hover:bg-white/35"
-                  aria-label="Previous module"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              ) : (
-                <span className="cursor-not-allowed rounded-full bg-white/10 p-2 text-white/40">
-                  <ArrowLeft className="h-4 w-4" />
-                </span>
-              )}
-              {nextModuleId ? (
-                <Link
-                  href={`/plans/${planId}/modules/${nextModuleId}`}
-                  className="rounded-full bg-white/25 p-2 text-white transition hover:bg-white/35"
-                  aria-label="Next module"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              ) : (
-                <span className="cursor-not-allowed rounded-full bg-white/10 p-2 text-white/40">
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              )}
+              <ModuleRoundNavLink
+                planId={planId}
+                targetModuleId={previousModuleId}
+                direction="previous"
+              />
+              <ModuleRoundNavLink
+                planId={planId}
+                targetModuleId={nextModuleId}
+                direction="next"
+              />
             </div>
           </div>
 
