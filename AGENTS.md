@@ -89,3 +89,31 @@ We will primarily be utilizing the `.plans/` directory to organize prds, plans, 
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test:changed` and `pnpm check:full`.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+**Atlaris** is a single Next.js 16 app (Turbopack) with PostgreSQL 17, mock AI, and local Stripe mode. See `README.md` and `docs/development/commands.md` for all standard commands.
+
+### Starting services
+
+1. **PostgreSQL 17** on port **54331** — `pg_ctlcluster 17 main start` (already configured; data dir `/var/lib/postgresql/17/main`).
+2. **Docker daemon** — `dockerd &>/var/log/dockerd.log &` (needed for integration/security tests via Testcontainers).
+3. **Next.js dev server** — `pnpm dev` (Turbopack, port 3000).
+
+### Environment
+
+`.env.local` is not committed. Cloud setup creates it dynamically from source constants in `src/lib/config/local-product-testing.ts`. Key flags:
+- `LOCAL_PRODUCT_TESTING=true` + `DEV_AUTH_USER_ID` = seeded local user (bypasses Neon Auth)
+- `STRIPE_LOCAL_MODE=true` = in-process Stripe mock
+- `AI_PROVIDER=mock` = mock AI generation
+- `ENABLE_SENTRY=false` = no Sentry telemetry
+
+### Gotchas
+
+- The `pnpm db:dev:*` scripts assume macOS Homebrew. On Linux Cloud VMs, use `pg_ctlcluster 17 main start/stop` directly and the bootstrap script `pnpm db:dev:bootstrap` (which works cross-platform).
+- `pnpm check:type` uses `tsgo` (from `@typescript/native-preview`), not `tsc`. Keep that devDep installed.
+- Integration/security tests need Docker running. Unit tests do not.
+- `pnpm.onlyBuiltDependencies` in `package.json` must include `esbuild`, `@sentry/cli`, `sharp`, etc. for native binaries to build during `pnpm install`.
+- The `env.spec.ts` unit tests may show failures when `AI_PROVIDER` or other env vars are set in `.env.local`; this is expected — those tests validate default parsing behavior and use `vi.stubEnv` internally.
