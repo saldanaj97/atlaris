@@ -68,9 +68,34 @@ function defaultDeps(): BillingCatalogReadDeps {
   };
 }
 
+function defaultLogger(): BillingCatalogLogger {
+  return {
+    error: (meta, message) => appLogger.error(meta, message),
+    warn: (meta, message) => appLogger.warn(meta, message),
+    info: (meta, message) => appLogger.info(meta, message),
+  };
+}
+
+const unusedLocalStripeClient: BillingCatalogStripeClient = {
+  retrievePrice: async () => {
+    throw new Error('Local billing catalog read does not use Stripe prices');
+  },
+  retrieveProduct: async () => {
+    throw new Error('Local billing catalog read does not use Stripe products');
+  },
+};
+
 function mergeDeps(
   partial?: Partial<BillingCatalogReadDeps>,
 ): BillingCatalogReadDeps {
+  if (partial?.localMode === true) {
+    return {
+      localMode: true,
+      stripe: partial.stripe ?? unusedLocalStripeClient,
+      logger: partial.logger ?? defaultLogger(),
+    };
+  }
+
   if (
     partial?.stripe != null &&
     partial.logger != null &&

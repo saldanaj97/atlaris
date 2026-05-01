@@ -61,6 +61,20 @@ describe('readBillingCatalogTierData', () => {
     });
   });
 
+  it('local mode does not require injected Stripe deps', async () => {
+    const map = await readBillingCatalogTierData(
+      {
+        interval: 'monthly',
+        starterId: LOCAL_PRICE_IDS.starterMonthly,
+        proId: LOCAL_PRICE_IDS.proMonthly,
+      },
+      { localMode: true },
+    );
+
+    expect(map.get('starter')?.amount).toBe('$12');
+    expect(map.get('pro')?.amount).toBe('$29');
+  });
+
   it('local mode omits tier on unknown price id', async () => {
     const logger = baseLogger();
     const stripe = emptyStripe();
