@@ -18,6 +18,74 @@ type RunnerHelpOptions = {
   environment?: string[];
 };
 
+type RunnerFlagSink = {
+  watch: boolean;
+  changed: boolean;
+  helpRequested: boolean;
+  extraArgs: string[];
+};
+
+const RUNNER_KNOWN_ARG_HANDLERS: Record<
+  string,
+  (sink: RunnerFlagSink) => void
+> = {
+  '--watch': (sink) => {
+    sink.watch = true;
+  },
+  '-w': (sink) => {
+    sink.watch = true;
+  },
+  '--changed': (sink) => {
+    sink.changed = true;
+  },
+  '-c': (sink) => {
+    sink.changed = true;
+  },
+  '--help': (sink) => {
+    sink.helpRequested = true;
+  },
+  '-h': (sink) => {
+    sink.helpRequested = true;
+  },
+};
+
+function splitOptionalTestPath(
+  args: string[],
+  defaultTestPath: string,
+): { testPath: string; flagArgs: string[] } {
+  if (args[0] && !args[0].startsWith('-')) {
+    return { testPath: args[0], flagArgs: args.slice(1) };
+  }
+  return { testPath: defaultTestPath, flagArgs: args };
+}
+
+function collectRunnerFlags(
+  flagArgs: string[],
+): Omit<ParsedRunnerArgs, 'testPath'> {
+  const sink: RunnerFlagSink = {
+    watch: false,
+    changed: false,
+    helpRequested: false,
+    extraArgs: [],
+  };
+
+  for (const arg of flagArgs) {
+    const handler = RUNNER_KNOWN_ARG_HANDLERS[arg];
+    if (handler) {
+      handler(sink);
+    } else {
+      sink.extraArgs.push(arg);
+    }
+  }
+
+  return {
+    watch: sink.watch,
+    changed: sink.changed,
+    helpRequested: sink.helpRequested,
+    extraArgs: sink.extraArgs,
+  };
+}
+
 /**
  * Shared argv parser for the unit/integration/security vitest runners.
  * Each runner only differs in `defaultTestPath`, `printHelp` text, and
@@ -27,40 +95,8 @@ export function parseRunnerArgs(
   args: string[],
   { defaultTestPath }: ParseRunnerArgsOptions,
 ): ParsedRunnerArgs {
-  let testPath = defaultTestPath;
-  let remainingArgs = args;
-
-  if (remainingArgs[0] && !remainingArgs[0].startsWith('-')) {
-    testPath = remainingArgs[0];
-    remainingArgs = remainingArgs.slice(1);
-  }
-
-  let watch = false;
-  let changed = false;
-  let helpRequested = false;
-  const extraArgs: string[] = [];
-
-  for (const arg of remainingArgs) {
-    switch (arg) {
-      case '--watch':
-      case '-w':
-        watch = true;
-        break;
-      case '--changed':
-      case '-c':
-        changed = true;
-        break;
-      case '--help':
-      case '-h':
-        helpRequested = true;
-        break;
-      default:
-        extraArgs.push(arg);
-        break;
-    }
-  }
-
-  return { testPath, watch, changed, extraArgs, helpRequested };
+  const { testPath, flagArgs } = splitOptionalTestPath(args, defaultTestPath);
+  return { testPath, ...collectRunnerFlags(flagArgs) };
 }
 
 export function printVitestRunnerHelp({

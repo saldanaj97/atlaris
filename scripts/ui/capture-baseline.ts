@@ -34,6 +34,7 @@ import {
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
 import { assertSeededSmokeUserPresent } from '@tests/helpers/smoke/verify-seed';
+import { parseCaptureBaselineArgs } from './capture-baseline-args';
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 1000 },
@@ -99,40 +100,6 @@ type CaptureRouteScreenshotInput = {
 const SERVER_START_TIMEOUT_MS = 180_000;
 const CAPTURE_GOTO_TIMEOUT_MS = 120_000;
 const POLL_MS = 500;
-
-function parseArgs(argv: string[]): {
-  outDir: string;
-  anonBase: string | null;
-  authBase: string | null;
-  help: boolean;
-} {
-  const args = argv[0] === '--' ? argv.slice(1) : argv;
-  let outDir = `screenshots/frontend-baseline-${new Date().toISOString().slice(0, 10)}`;
-  let anonBase: string | null = null;
-  let authBase: string | null = null;
-  let help = false;
-
-  for (const raw of args) {
-    if (raw === '--help' || raw === '-h') {
-      help = true;
-      continue;
-    }
-    if (raw.startsWith('--out=')) {
-      outDir = raw.slice('--out='.length);
-      continue;
-    }
-    if (raw.startsWith('--anon-base=')) {
-      anonBase = raw.slice('--anon-base='.length).replace(/\/$/, '');
-      continue;
-    }
-    if (raw.startsWith('--auth-base=')) {
-      authBase = raw.slice('--auth-base='.length).replace(/\/$/, '');
-      continue;
-    }
-  }
-
-  return { outDir, anonBase, authBase, help };
-}
 
 function printHelp(): void {
   console.log(
@@ -350,63 +317,71 @@ async function captureRouteScreenshot({
   return entry;
 }
 
-async function main(): Promise<void> {
-  const { outDir, anonBase, authBase, help } = parseArgs(process.argv.slice(2));
-  if (help) {
-    printHelp();
+type BaselineInfraHandles = {
+  container: StartedPostgreSqlContainer | null;
+  stateFilePath: string | null;
+  tempDir: string | null;
+  anonChild: ChildProcess | null;
+  authChild: ChildProcess | null;
+};
+
+function createEmptyBaselineInfraHandles(): BaselineInfraHandles {
+  return {
+    container: null,
+    stateFilePath: null,
+    tempDir: null,
+    anonChild: null,
+    authChild: null,
+  };
+}
+
+async function startBaselineInfraIfNeeded(
+  skipInfra: boolean,
+  anonUrl: string,
+  authUrl: string,
+  handles: BaselineInfraHandles,
+): Promise<void> {
+  if (!skipInfra) {
+    handles.tempDir = createSmokeStateTempDir();
+    handles.container = await startSmokePostgresContainer();
+    const connectionUrl = handles.container.getConnectionUri();
+    await prepareSmokeDatabase(connectionUrl);
+    handles.stateFilePath = writeSmokeStateFile(
+      handles.tempDir,
+      buildSmokeStatePayload(connectionUrl),
+    );
+    process.env[SMOKE_STATE_FILE_ENV] = handles.stateFilePath;
+    await assertSeededSmokeUserPresent(connectionUrl);
+
+    console.log('[baseline] Starting Next dev (anon + auth)…');
+    handles.anonChild = spawnNextDev('anon', handles.stateFilePath);
+    handles.authChild = spawnNextDev('auth', handles.stateFilePath);
+
+    await waitForHttpOk(anonUrl, SERVER_START_TIMEOUT_MS);
+    await waitForHttpOk(authUrl, SERVER_START_TIMEOUT_MS);
+    console.log('[baseline] Servers ready.');
     return;
   }
 
-  const skipInfra = anonBase !== null && authBase !== null;
-  const skipInfraPartial = (anonBase !== null) !== (authBase !== null);
-  if (skipInfraPartial) {
-    console.error('Provide both --anon-base= and --auth-base= or neither.');
-    process.exitCode = 1;
-    return;
-  }
+  console.log('[baseline] Using existing servers (no infra).');
+  await waitForHttpOk(anonUrl, 30_000);
+  await waitForHttpOk(authUrl, 30_000);
+}
 
-  const resolvedOut = resolve(process.cwd(), outDir);
-  mkdirSync(resolvedOut, { recursive: true });
-
-  let container: StartedPostgreSqlContainer | null = null;
-  let stateFilePath: string | null = null;
-  let tempDir: string | null = null;
-  let anonChild: ChildProcess | null = null;
-  let authChild: ChildProcess | null = null;
-
-  const anonUrl = skipInfra ? anonBase! : smokeAnonAppUrl();
-  const authUrl = skipInfra ? authBase! : smokeAuthAppUrl();
-
-  const manifestEntries: CaptureManifestEntry[] = [];
+async function captureAllBaselineScreenshots({
+  anonUrl,
+  authUrl,
+  resolvedOut,
+}: {
+  anonUrl: string;
+  authUrl: string;
+  resolvedOut: string;
+}): Promise<CaptureManifestEntry[]> {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
 
   try {
-    if (!skipInfra) {
-      tempDir = createSmokeStateTempDir();
-      container = await startSmokePostgresContainer();
-      const connectionUrl = container.getConnectionUri();
-      await prepareSmokeDatabase(connectionUrl);
-      stateFilePath = writeSmokeStateFile(
-        tempDir,
-        buildSmokeStatePayload(connectionUrl),
-      );
-      process.env[SMOKE_STATE_FILE_ENV] = stateFilePath;
-      await assertSeededSmokeUserPresent(connectionUrl);
-
-      console.log('[baseline] Starting Next dev (anon + auth)…');
-      anonChild = spawnNextDev('anon', stateFilePath);
-      authChild = spawnNextDev('auth', stateFilePath);
-
-      await waitForHttpOk(anonUrl, SERVER_START_TIMEOUT_MS);
-      await waitForHttpOk(authUrl, SERVER_START_TIMEOUT_MS);
-      console.log('[baseline] Servers ready.');
-    } else {
-      console.log('[baseline] Using existing servers (no infra).');
-      await waitForHttpOk(anonUrl, 30_000);
-      await waitForHttpOk(authUrl, 30_000);
-    }
-
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
+    const manifestEntries: CaptureManifestEntry[] = [];
 
     for (const vp of VIEWPORTS) {
       for (const variant of VARIANTS) {
@@ -440,51 +415,117 @@ async function main(): Promise<void> {
       }
     }
 
-    await browser.close();
-
-    validateViewportDimensionsDistinct(manifestEntries);
-
-    const failed = manifestEntries.filter((e) => e.status === 'error');
-    const manifest = {
-      generatedAt: new Date().toISOString(),
-      outDir: resolvedOut,
-      viewports: VIEWPORTS,
-      variants: VARIANTS,
-      anonBase: anonUrl,
-      authBase: authUrl,
-      skipInfra,
-      captures: manifestEntries,
-    };
-    writeFileSync(
-      join(resolvedOut, 'manifest.json'),
-      `${JSON.stringify(manifest, null, 2)}\n`,
-      'utf8',
-    );
-
-    console.log(
-      `[baseline] Wrote ${manifestEntries.length} entries under ${resolvedOut}`,
-    );
-    if (failed.length > 0) {
-      console.error('[baseline] Failures:');
-      for (const f of failed) {
-        console.error(`  ${f.file}: ${f.error}`);
-      }
-      process.exitCode = 1;
-    }
+    return manifestEntries;
   } finally {
-    killProcessGroupBestEffort(anonChild);
-    killProcessGroupBestEffort(authChild);
-    await stopSmokePostgresContainer(container);
-    if (stateFilePath !== null) {
-      cleanupSmokeStateFile(stateFilePath);
+    await browser.close();
+  }
+}
+
+function writeBaselineManifestOrThrow({
+  manifestEntries,
+  resolvedOut,
+  anonUrl,
+  authUrl,
+  skipInfra,
+}: {
+  manifestEntries: CaptureManifestEntry[];
+  resolvedOut: string;
+  anonUrl: string;
+  authUrl: string;
+  skipInfra: boolean;
+}): void {
+  validateViewportDimensionsDistinct(manifestEntries);
+
+  const failed = manifestEntries.filter((e) => e.status === 'error');
+  const manifest = {
+    generatedAt: new Date().toISOString(),
+    outDir: resolvedOut,
+    viewports: VIEWPORTS,
+    variants: VARIANTS,
+    anonBase: anonUrl,
+    authBase: authUrl,
+    skipInfra,
+    captures: manifestEntries,
+  };
+  writeFileSync(
+    join(resolvedOut, 'manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    'utf8',
+  );
+
+  console.log(
+    `[baseline] Wrote ${manifestEntries.length} entries under ${resolvedOut}`,
+  );
+  if (failed.length > 0) {
+    console.error('[baseline] Failures:');
+    for (const f of failed) {
+      console.error(`  ${f.file}: ${f.error}`);
     }
-    if (tempDir !== null) {
-      try {
-        rmSync(tempDir, { recursive: true, force: true });
-      } catch {
-        // ignore
-      }
+    process.exitCode = 1;
+  }
+}
+
+async function cleanupBaselineInfra(
+  handles: BaselineInfraHandles,
+): Promise<void> {
+  killProcessGroupBestEffort(handles.anonChild);
+  killProcessGroupBestEffort(handles.authChild);
+  await stopSmokePostgresContainer(handles.container);
+  if (handles.stateFilePath !== null) {
+    cleanupSmokeStateFile(handles.stateFilePath);
+  }
+  if (handles.tempDir !== null) {
+    try {
+      rmSync(handles.tempDir, { recursive: true, force: true });
+    } catch {
+      // ignore
     }
+  }
+}
+
+async function main(): Promise<void> {
+  const { outDir, anonBase, authBase, help } = parseCaptureBaselineArgs(
+    process.argv.slice(2),
+  );
+  if (help) {
+    printHelp();
+    return;
+  }
+
+  const skipInfra = anonBase !== null && authBase !== null;
+  const skipInfraPartial = (anonBase !== null) !== (authBase !== null);
+  if (skipInfraPartial) {
+    console.error('Provide both --anon-base= and --auth-base= or neither.');
+    process.exitCode = 1;
+    return;
+  }
+
+  const resolvedOut = resolve(process.cwd(), outDir);
+  mkdirSync(resolvedOut, { recursive: true });
+
+  const handles = createEmptyBaselineInfraHandles();
+
+  const anonUrl = skipInfra ? anonBase! : smokeAnonAppUrl();
+  const authUrl = skipInfra ? authBase! : smokeAuthAppUrl();
+
+  try {
+    await startBaselineInfraIfNeeded(skipInfra, anonUrl, authUrl, handles);
+
+    const manifestEntries = await captureAllBaselineScreenshots({
+      anonUrl,
+      authUrl,
+      resolvedOut,
+    });
+
+    writeBaselineManifestOrThrow({
+      manifestEntries,
+      resolvedOut,
+      anonUrl,
+      authUrl,
+      skipInfra,
+    });
+  } finally {
+    await cleanupBaselineInfra(handles);
   }
 }
 
