@@ -102,6 +102,15 @@
     "vitest": "^4.1.4"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@sentry/cli",
+      "core-js",
+      "cpu-features",
+      "esbuild",
+      "protobufjs",
+      "sharp",
+      "ssh2"
+    ],
     "overrides": {
       "minimatch": "^10.2.3",
       "tar": "^7.5.8",
