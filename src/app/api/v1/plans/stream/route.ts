@@ -97,7 +97,10 @@ export function createStreamHandler(deps?: {
     async ({ req, actor, db, correlationId }) => {
       const authUserId = actor.authUserId;
 
-      routeLogger.info({ authUserId }, 'Plan stream handler entered');
+      routeLogger.info(
+        { authUserId, correlationId },
+        'Plan stream handler entered',
+      );
 
       const parsedBody = await parseJsonBody(req, {
         mode: 'required',
@@ -112,7 +115,7 @@ export function createStreamHandler(deps?: {
       const payloadLogResult = tryBuildPayloadLog(parsedBody);
       if (payloadLogResult.ok) {
         routeLogger.info(
-          { authUserId, payload: payloadLogResult.payloadLog },
+          { authUserId, correlationId, payload: payloadLogResult.payloadLog },
           'Plan stream request payload received',
         );
       } else {
@@ -120,6 +123,7 @@ export function createStreamHandler(deps?: {
         routeLogger.warn(
           {
             authUserId,
+            correlationId,
             error: serializeErrorForLog(error),
             payload: fallback,
           },
@@ -166,7 +170,7 @@ export function createStreamHandler(deps?: {
         getPlanGenerationRateLimitHeaders(rateLimit);
 
       routeLogger.info(
-        { authUserId },
+        { authUserId, correlationId },
         'Delegating plan stream request to generation session',
       );
 
