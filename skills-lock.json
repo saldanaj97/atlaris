@@ -1,11 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "neon-postgres": {
-      "source": "neondatabase/agent-skills",
-      "sourceType": "github",
-      "computedHash": "c44cf3bc64e834680c67640f09b5baf61af8cf2b1028ffd0759807f373578b5c"
-    },
     "openrouter-typescript-sdk": {
       "source": "OpenRouterTeam/agent-skills",
       "sourceType": "github",
@@ -20,16 +15,6 @@
       "source": "getsentry/sentry-agent-skills",
       "sourceType": "github",
       "computedHash": "6bbb2bce22fa8fc3e0385dbe06fe5a26770b2f91f66ad8e78d80c1df3d4b2e05"
-    },
-    "sentry-react-sdk": {
-      "source": "getsentry/sentry-agent-skills",
-      "sourceType": "github",
-      "computedHash": "adeb2b14aa923976f0f7d4ffad7177f5f38d97d74ea0caadead521f6d17500f9"
-    },
-    "sentry-setup-ai-monitoring": {
-      "source": "getsentry/sentry-agent-skills",
-      "sourceType": "github",
-      "computedHash": "91959d0839b0399b395c2a6200c457b99571050481a44894559cb2a5f3d8c165"
     }
   }
 }

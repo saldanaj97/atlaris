@@ -29,5 +29,6 @@ yarn-error.log*
 .DS_Store
 /.cocoindex_code/
 
-# Environment files
+# Environment files - only commit example
 .env*
+!.env.example
