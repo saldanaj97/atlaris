@@ -6,8 +6,11 @@ import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { users } from '@/lib/db/schema';
 import { db } from '@/lib/db/service-role';
+import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+
+assertLocalIntegrationDatabaseUrl();
 
 type ApiModelResponse = {
   id: string;
@@ -17,11 +20,6 @@ type ApiModelResponse = {
   tier: string;
   contextWindow: number;
 };
-
-// Prevent tests from running against production database
-if (process.env.DATABASE_URL?.includes('neon.tech')) {
-  throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
-}
 
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;

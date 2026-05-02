@@ -1,8 +1,8 @@
 # Local PostgreSQL for development
 
-Use a **local Postgres 17** instance when Neon compute quota blocks migrations, when you need **offline** work, or when you want to **dry-run** schema changes (`pnpm db:generate` → `pnpm db:migrate`) before pushing to CI or Neon.
+Use a **local Postgres 17** instance when remote database limits block migrations, when you need **offline** work, or when you want to **dry-run** schema changes (`pnpm db:generate` → `pnpm db:migrate`) before pushing to CI or Supabase.
 
-Neon Auth (`NEON_AUTH_*`, cookies) remains **cloud**; a local DB only replaces the **database** connection.
+Clerk Auth remains **hosted**; a local DB only replaces the **database** connection.
 
 ### Local product testing
 
@@ -16,7 +16,7 @@ After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODU
 4. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
 5. Integrations: verify the settings page shows Google Calendar as an explicit `Coming Soon` placeholder rather than a live provider flow.
 6. AI: set `MOCK_AI_SCENARIO` to exercise failure paths (mock provider).
-7. Real Neon Auth sessions, real third-party OAuth, and hosted Stripe remain staging; see [environment.md](./environment.md) for boundaries.
+7. Real Clerk sessions, real third-party OAuth, and hosted Stripe remain staging; see [environment.md](./environment.md) for boundaries.
 
 ## Ports and local services
 
@@ -104,19 +104,13 @@ For local dev, set all three to the **same** string.
 | Reset dev DB         | `pnpm db:dev:reset`     |
 | First-time bootstrap | `pnpm db:dev:bootstrap` |
 
-`bootstrap-local-db` refuses non-localhost hosts so it cannot accidentally run against Neon if misconfigured.
+`bootstrap-local-db` refuses non-localhost hosts so it cannot accidentally run against a remote database if misconfigured.
 
-## Neon quota vs migration SQL
+## Hosted Postgres (e.g. Supabase): migrations
 
-If `pnpm db:migrate` against Neon fails with **compute-time quota** errors, that is Neon billing/limits, not necessarily bad SQL. Use local Postgres above to apply and test migrations, then retry Neon when quota allows.
+Use a **direct** (non-pooler) connection string for DDL when your provider recommends it—`drizzle.config.ts` prefers `DATABASE_URL_NON_POOLING` → `DATABASE_URL_UNPOOLED` → `DATABASE_URL`.
 
-## Optional: Neon Local (not the default)
-
-Official **Neon Local** (`neondatabase/neon_local`) still talks to **Neon cloud** and needs API keys; it does **not** replace a fully offline Postgres for migration dry-runs. The default local path is native Postgres on `localhost:54331`.
-
-### Future: serverless proxy
-
-If the app later uses `@neondatabase/serverless` against a local HTTP proxy, that would be a separate change (see `src/lib/db/neon-config.ts`).
+If `pnpm db:migrate` fails due to **provider limits**, timeouts, or pooler incompatibility, apply and validate the migration chain against **local Postgres** first, then retry against the hosted instance when the limit clears or with a session/direct URL.
 
 ## Integration tests and `atlaris_dev`
 
@@ -132,15 +126,15 @@ If you force integration tests against a non-test database, truncation will fail
 
 ---
 
-## Neon (production): migrations when quota allows
+## Hosted database: operational migration checklist
 
-This is **operational** and gated on Neon availability; it is independent of Workstream 1 above.
+Use this when applying Drizzle migrations to **staging or production** Postgres (e.g. Supabase).
 
 ### Pre-flight
 
-1. Confirm the correct **Neon project and branch** in the dashboard — wrong `DATABASE_URL` is the main risk.
+1. Confirm the correct **project and database** in the provider dashboard — wrong `DATABASE_URL` is the main risk.
 2. Apply the migration chain **locally** first (`pnpm db:migrate` against `atlaris_dev`) so you know the SQL applies cleanly.
-3. On Neon, inspect the journal:
+3. On the target database, inspect the Drizzle journal:
 
    ```sql
    SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 5;
@@ -150,7 +144,7 @@ This is **operational** and gated on Neon availability; it is independent of Wor
 
 ### Apply
 
-With `.env.local` pointing at Neon (prefer non-pooling URL for DDL if you provide one):
+With `.env.local` (or inline env) pointing at the hosted instance (prefer a **direct** URL for DDL when available):
 
 ```bash
 pnpm db:migrate

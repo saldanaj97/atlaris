@@ -1,7 +1,7 @@
 /**
  * RLS (Row Level Security) Policy Verification Tests
  *
- * These tests exercise the Neon/Postgres RLS policies by running queries
+ * These tests exercise Postgres RLS policies by running queries
  * through the RLS-enforced Drizzle client that mimics request handling.
  *
  * IMPORTANT: These are SECURITY tests, not business logic tests.

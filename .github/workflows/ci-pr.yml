@@ -214,8 +214,6 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         env:
-          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
-          NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
           # `next build` runs with NODE_ENV=production and prerenders /pricing,
           # which evaluates `stripeEnv.pricing.*` in `src/lib/config/env/billing.ts`.
           # The localMode escape hatch is refused under NODE_ENV=production, so the

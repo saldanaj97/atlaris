@@ -1,5 +1,6 @@
 'use client';
 
+import { UserButton } from '@clerk/nextjs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,7 +9,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { UserButton } from '@neondatabase/auth/react';
 import Link from 'next/link';
 import type { ReactElement } from 'react';
 
@@ -36,7 +36,13 @@ export default function AuthControls({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="relative inline-flex">
-              <UserButton size="icon" />
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'size-9',
+                  },
+                }}
+              />
               {tier && tier !== 'free' && (
                 <Badge
                   variant={tierVariants[tier]}

@@ -48,6 +48,78 @@ describe('auth helpers', () => {
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
   });
 
+  it('requireCurrentUserRecord returns an existing user row', async () => {
+    const user = buildUserFixture({
+      id: 'user_existing',
+      authUserId: 'auth_existing',
+      email: 'existing@example.com',
+    });
+
+    setTestUser('auth_existing');
+    mockGetUserByAuthId.mockResolvedValue(user);
+
+    await expect(requireCurrentUserRecord()).resolves.toEqual(user);
+    expect(mockCreateUser).not.toHaveBeenCalled();
+  });
+
+  it('requireCurrentUserRecord provisions a missing user from Clerk session data', async () => {
+    const created = buildUserFixture({
+      id: 'user_created',
+      authUserId: 'auth_created',
+      email: 'created@example.com',
+      name: 'Created User',
+    });
+
+    setTestUser('auth_created');
+    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'auth_created',
+          email: 'created@example.com',
+          name: 'Created User',
+        },
+      },
+    });
+    mockCreateUser.mockResolvedValue(created);
+
+    await expect(requireCurrentUserRecord()).resolves.toEqual(created);
+    expect(mockCreateUser).toHaveBeenCalledWith(
+      {
+        authUserId: 'auth_created',
+        email: 'created@example.com',
+        name: 'Created User',
+      },
+      undefined,
+    );
+  });
+
+  it('requireCurrentUserRecord fails closed when Clerk user data is unavailable', async () => {
+    setTestUser('auth_missing_user');
+    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue({ data: null });
+
+    await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
+    expect(mockCreateUser).not.toHaveBeenCalled();
+  });
+
+  it('requireCurrentUserRecord fails closed when the Clerk user has no email', async () => {
+    setTestUser('auth_missing_email');
+    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'auth_missing_email',
+          email: null,
+          name: 'Missing Email',
+        },
+      },
+    });
+
+    await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
+    expect(mockCreateUser).not.toHaveBeenCalled();
+  });
+
   it('withServerComponentContext installs request context in test mode', async () => {
     const user = buildUserFixture({
       id: 'user_1',

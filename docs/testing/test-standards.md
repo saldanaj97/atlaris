@@ -182,12 +182,9 @@ if (process.env.NODE_ENV !== 'test') {
   throw new Error('Tests must run with NODE_ENV=test');
 }
 
-if (
-  process.env.DATABASE_URL?.includes('prod') ||
-  process.env.DATABASE_URL?.includes('neon.tech')
-) {
-  throw new Error('Refusing to run tests against a remote database');
-}
+import { assertLocalIntegrationDatabaseUrl } from '@tests/helpers/assert-local-database-url';
+
+assertLocalIntegrationDatabaseUrl();
 ```
 
 ### Integration test assertions

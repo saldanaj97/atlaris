@@ -27,7 +27,7 @@ type Environment = 'production' | 'development' | 'test';
  *
  * NOTE: We intentionally read `process.env.NODE_ENV` directly instead of
  * importing from `@/lib/config/env`. That module eagerly validates
- * server-only secrets (e.g. NEON_AUTH_*) at import time, which would
+ * server-only secrets (e.g. CLERK_SECRET_KEY) at import time, which would
  * throw in client bundles and Sentry edge/instrumentation configs that
  * load before the full server environment is available.
  */

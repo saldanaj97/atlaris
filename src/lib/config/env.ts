@@ -8,9 +8,9 @@ export {
 
 export { appEnv, createAppEnv } from '@/lib/config/env/app';
 export {
-  createNeonAuthEnv,
+  clerkAuthEnv,
+  createClerkAuthEnv,
   devAuthEnv,
-  neonAuthEnv,
 } from '@/lib/config/env/auth';
 export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';

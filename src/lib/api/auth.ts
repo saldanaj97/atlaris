@@ -21,7 +21,7 @@ type MaybePromise<T> = T | Promise<T>;
 /**
  * Returns the effective auth user id for the current request.
  * In development or test (Vitest), if DEV_AUTH_USER_ID is set, that value is returned
- * (allowing you to bypass real Neon auth provisioning while seeding a deterministic user).
+ * (allowing you to bypass real Clerk auth provisioning while seeding a deterministic user).
  */
 export async function getEffectiveAuthUserId(options?: {
   strict?: boolean;
@@ -43,7 +43,7 @@ export async function getEffectiveAuthUserId(options?: {
 }
 
 /**
- * Returns the auth user id from the actual Neon session, ignoring
+ * Returns the auth user id from the actual Clerk session, ignoring
  * DEV_AUTH_USER_ID overrides. This is intended for security-sensitive flows
  * (e.g. OAuth callbacks) where we must validate the currently authenticated
  * end user rather than a test/development override.

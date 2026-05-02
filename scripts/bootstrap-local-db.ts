@@ -1,6 +1,6 @@
 /**
  * Bootstrap local Postgres (extensions, roles, auth.jwt, migrations, RLS grants).
- * Refuses non-localhost DATABASE_URL to avoid accidental runs against Neon/production.
+ * Refuses non-localhost DATABASE_URL to avoid accidental runs against remote/production databases.
  *
  * Usage: pnpm db:dev:bootstrap
  * Optional: DATABASE_URL=postgresql://... pnpm db:dev:bootstrap

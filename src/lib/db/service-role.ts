@@ -40,11 +40,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
 import { databaseEnv } from '@/lib/config/env';
 
-import { configureLocalNeon } from './neon-config';
 import * as schema from './schema';
-
-// Configure Neon for local Docker development if enabled
-configureLocalNeon();
 
 type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 

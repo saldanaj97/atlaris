@@ -75,7 +75,7 @@ We will primarily be utilizing the `.agents/plans/` directory to organize prds, 
 
 `.env.local` is not committed. Cloud setup creates it dynamically from source constants in `src/lib/config/local-product-testing.ts`. Key flags:
 
-- `LOCAL_PRODUCT_TESTING=true` + `DEV_AUTH_USER_ID` = seeded local user (bypasses Neon Auth)
+- `LOCAL_PRODUCT_TESTING=true` + `DEV_AUTH_USER_ID` = seeded local user (bypasses Clerk for local dev)
 - `STRIPE_LOCAL_MODE=true` = in-process Stripe mock
 - `AI_PROVIDER=mock` = mock AI generation
 - `ENABLE_SENTRY=false` = no Sentry telemetry

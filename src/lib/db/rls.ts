@@ -1,5 +1,5 @@
 /**
- * RLS-enforced Drizzle client for Neon
+ * RLS-enforced Drizzle client for PostgreSQL
  *
  * This module provides RLS-enforced database clients using SET ROLE to switch
  * to non-privileged database roles, combined with session variables for access control.
@@ -18,9 +18,9 @@
  * - Connections have idle_timeout: 20s as a safety net if cleanup is missed
  * - Always use try/finally pattern to ensure cleanup is called even on errors
  *
- * NEON RLS ARCHITECTURE (SET ROLE + Session Variable Approach):
+ * RLS ARCHITECTURE (SET ROLE + Session Variable Approach):
  * - Connect with DATABASE_URL (owner role with BYPASSRLS privilege)
- * - Use SET ROLE to switch to 'authenticated' or 'anonymous' roles (no BYPASSRLS)
+ * - Use SET ROLE to switch to 'authenticated' or 'anon' roles (no BYPASSRLS)
  * - Set session variable request.jwt.claims using set_config() with parameterized values
  * - RLS policies (without FORCE) + roles without BYPASSRLS ensure policies are enforced
  *
@@ -140,7 +140,7 @@ export async function createAuthenticatedRlsClient(
 /**
  * Creates an RLS-enforced database client for anonymous users.
  *
- * Uses SET ROLE to switch to the anonymous role, then sets session variables
+ * Uses SET ROLE to switch to the anon role, then sets session variables
  * to null to indicate anonymous access.
  *
  * Note: Current product policy keeps user-facing app data authenticated-only.
@@ -167,7 +167,7 @@ export async function createAuthenticatedRlsClient(
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
   // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
   // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
-  // We use SET ROLE to switch to anonymous role which lacks BYPASSRLS.
+  // We use SET ROLE to switch to anon role which lacks BYPASSRLS.
   // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
   const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
   const sql: Sql = postgres(connectionUrl, {
@@ -176,9 +176,9 @@ export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
     connect_timeout: 10,
   });
 
-  // Switch to anonymous role (without BYPASSRLS privilege)
+  // Switch to anon role (without BYPASSRLS privilege)
   // CRITICAL: Must await to ensure role is switched before setting session variable
-  await sql.unsafe('SET ROLE anonymous');
+  await sql.unsafe('SET ROLE anon');
 
   // Set search_path after SET ROLE (role switch may reset it)
   await sql.unsafe('SET search_path = public');

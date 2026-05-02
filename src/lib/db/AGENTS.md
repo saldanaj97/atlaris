@@ -4,7 +4,7 @@
 
 ## Overview
 
-Drizzle ORM + Neon PostgreSQL with Row Level Security (RLS). Two client types: RLS-enforced (default) and service-role (bypass). User-facing policies are explicitly scoped to `authenticated` (never implicit `PUBLIC`).
+Drizzle ORM + PostgreSQL with Row Level Security (RLS). Two client types: RLS-enforced (default) and service-role (bypass). User-facing policies are explicitly scoped to `authenticated` (never implicit `PUBLIC`).
 
 ## Client Selection (CRITICAL)
 
@@ -48,7 +48,7 @@ Full architecture: `docs/architecture/auth-and-data-layer.md` (from repo root)
 db/
 ├── runtime.ts       # getDb() - context-aware client selector
 ├── service-role.ts  # Bypasses RLS (tests/workers only)
-├── rls.ts           # RLS client factory (authenticated/anonymous)
+├── rls.ts           # RLS client factory (authenticated/anon)
 ├── schema/
 │   ├── tables/      # Table definitions (plans.ts, users.ts, etc.)
 │   ├── constants.ts # Shared numeric/string limits (single source of truth)
@@ -67,7 +67,7 @@ db/
 
 ```typescript
 // rls.ts creates clients that:
-// 1. Switch to role: authenticated OR anonymous
+// 1. Switch to role: authenticated OR anon
 // 2. Set session variable: request.jwt.claims = {"sub": "<authUserId>"} (or null for anon)
 //    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
 // 3. Execute queries (RLS filters by request.jwt.claims->>'sub')

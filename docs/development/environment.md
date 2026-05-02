@@ -14,7 +14,7 @@ Prefer the exported grouped configs instead of raw keys:
 
 - `appEnv` - Runtime mode, app URL, maintenance mode
 - `databaseEnv` - Database connection settings
-- `neonAuthEnv` - Neon Auth base URL and cookie secret
+- `clerkAuthEnv` - Clerk publishable and secret keys
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `stripeEnv` - Stripe keys and `localMode` when `STRIPE_LOCAL_MODE=true`
@@ -37,18 +37,18 @@ If you need a new variable:
 
 ### Auth Variables
 
-The application uses Neon Auth and Better Auth integration rather than Clerk-era token templates.
+The application uses Clerk Auth for UI, route protection, and server session reads.
 
 Key auth-related server variables include:
 
-| Variable                  | Purpose                                                                                    | Required |
-| ------------------------- | ------------------------------------------------------------------------------------------ | -------- |
-| `NEON_AUTH_BASE_URL`      | Server auth endpoint base URL                                                              | Yes      |
-| `NEON_AUTH_COOKIE_SECRET` | Cookie signing / encryption secret                                                         | Yes      |
-| `LOCAL_PRODUCT_TESTING`   | Enables the local product-testing workflow (must be off in production)                     | No       |
-| `DEV_AUTH_USER_ID`        | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
-| `DEV_AUTH_USER_EMAIL`     | Optional dev/test display email                                                            | No       |
-| `DEV_AUTH_USER_NAME`      | Optional dev/test display name                                                             | No       |
+| Variable                            | Purpose                                                                                    | Required |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ | -------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                         | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                    | Yes      |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in production)                     | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                            | No       |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                             | No       |
 
 ### Local product testing (development / test)
 

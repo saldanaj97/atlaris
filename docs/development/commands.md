@@ -43,7 +43,7 @@ pnpm db:push          # Push schema directly to database
 
 ### Local dev database (native Postgres)
 
-See [local-database.md](./local-database.md) for ports, env vars, and Neon vs local.
+See [local-database.md](./local-database.md) for ports, env vars, and local vs hosted Postgres.
 
 ```bash
 pnpm db:dev:start     # Start/check local PostgreSQL 17 (atlaris_dev on localhost:54331)
@@ -86,7 +86,7 @@ pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full
 
 ## Local API Testing Guidance
 
-- Prefer testing authenticated flows through the application UI so Neon Auth session cookies are established naturally.
+- Prefer testing authenticated flows through the application UI so Clerk session cookies are established naturally.
 - For targeted backend verification, prefer unit or integration tests over ad-hoc curl scripts.
 - If you use local auth overrides such as `DEV_AUTH_USER_ID`, make sure the referenced user already exists in the database before invoking authenticated routes.
 - With `LOCAL_PRODUCT_TESTING=true`, you can seed the canonical user via `pnpm db:dev:bootstrap` and exercise local-safe billing and AI flows without using hosted providers. See [environment.md](./environment.md) and [local-database.md](./local-database.md).

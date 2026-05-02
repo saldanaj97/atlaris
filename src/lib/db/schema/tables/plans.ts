@@ -64,7 +64,7 @@ export const learningPlans = pgTable(
       table.generationStatus,
     ),
 
-    // RLS Policies (session-variable-based for Neon)
+    // RLS Policies (session-variable-based provider identity)
     // Note: Learning plans are private-only product data.
     // Service-role operations use bypass client from @/lib/db/service-role.
 

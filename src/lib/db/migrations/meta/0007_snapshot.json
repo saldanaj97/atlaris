@@ -1218,7 +1218,7 @@
           "name": "learning_plans_select",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anonymous"],
+          "to": ["anon"],
           "using": "\"learning_plans\".\"visibility\" = 'public'"
         },
         "learning_plans_select_own": {
@@ -1608,7 +1608,7 @@
           "name": "modules_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anonymous"],
+          "to": ["anon"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "modules_select_public_auth": {
@@ -1765,7 +1765,7 @@
           "name": "resources_select_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anonymous"],
+          "to": ["anon"],
           "using": "true"
         },
         "resources_select_auth": {
@@ -2042,7 +2042,7 @@
           "name": "task_resources_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anonymous"],
+          "to": ["anon"],
           "using": "\n    EXISTS (\n      SELECT 1 FROM \"tasks\"\n      JOIN \"modules\" ON \"modules\".\"id\" = \"tasks\".\"module_id\"\n      JOIN \"learning_plans\" ON \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      WHERE \"tasks\".\"id\" = \"task_resources\".\"task_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  "
         },
         "task_resources_select_public_auth": {
@@ -2215,7 +2215,7 @@
           "name": "tasks_select_public_anon",
           "as": "PERMISSIVE",
           "for": "SELECT",
-          "to": ["anonymous"],
+          "to": ["anon"],
           "using": "\n      EXISTS (\n        SELECT 1 FROM \"modules\"\n        WHERE \"modules\".\"id\" = \"tasks\".\"module_id\"\n        AND (\n    EXISTS (\n      SELECT 1 FROM \"learning_plans\"\n      WHERE \"learning_plans\".\"id\" = \"modules\".\"plan_id\"\n      AND \"learning_plans\".\"visibility\" = 'public'\n    )\n  )\n      )\n    "
         },
         "tasks_select_public_auth": {

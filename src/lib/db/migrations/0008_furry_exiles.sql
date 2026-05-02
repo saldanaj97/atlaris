@@ -1,4 +1,4 @@
--- Remove obsolete public/anonymous read policies only.
+-- Remove obsolete public/anon read policies only.
 -- Tenant-isolated authenticated policies (e.g., *_select_own_plan) remain in place.
 DROP POLICY "learning_plans_select_own" ON "learning_plans";--> statement-breakpoint
 DROP POLICY "modules_select_public_anon" ON "modules";--> statement-breakpoint

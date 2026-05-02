@@ -1,5 +1,5 @@
 /**
- * Shared Neon-like bootstrap for Postgres used by Testcontainers and
+ * Shared Supabase-like bootstrap for Postgres used by Testcontainers and
  * `scripts/bootstrap-local-db.ts`. Keep in sync with migration + privilege rules.
  */
 import postgres from 'postgres';
@@ -20,17 +20,15 @@ export async function bootstrapDatabase(connectionUrl: string): Promise<void> {
 
     await sql.unsafe(`
       DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     `);
 
     await sql`CREATE SCHEMA IF NOT EXISTS auth`;
     await sql.unsafe(AUTH_JWT_BOOTSTRAP_SQL);
 
-    await sql`GRANT USAGE ON SCHEMA public TO authenticated, anonymous`;
-    await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anonymous`;
+    await sql`GRANT USAGE ON SCHEMA public TO authenticated, anon`;
+    await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anon`;
   } finally {
     await sql.end();
   }
@@ -47,14 +45,14 @@ export async function grantRlsPermissions(
 
   try {
     await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated`;
-    await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous`;
-    await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous`;
+    await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon`;
+    await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon`;
 
     await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
-      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anonymous;
+      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`
@@ -84,7 +82,7 @@ export async function grantRlsPermissions(
       from information_schema.table_privileges
       where table_schema = 'public'
         and table_name = 'job_queue'
-        and grantee in ('authenticated', 'anonymous')
+        and grantee in ('authenticated', 'anon')
         and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
       order by grantee, privilege_type
     `;
@@ -93,7 +91,7 @@ export async function grantRlsPermissions(
         .map((r) => `${r.grantee}:${r.privilege_type}`)
         .join(', ');
       throw new Error(
-        `Bootstrap: job_queue write grants for authenticated/anonymous expected [], got [${got}]. Sync grantRlsPermissions with src/lib/db/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
+        `Bootstrap: job_queue write grants for authenticated/anon expected [], got [${got}]. Sync grantRlsPermissions with src/lib/db/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
       );
     }
 
@@ -103,11 +101,11 @@ export async function grantRlsPermissions(
     `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT ON TABLES TO anonymous
+        GRANT SELECT ON TABLES TO anon
     `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous
+        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anon
     `;
 
     await sql`ALTER ROLE postgres BYPASSRLS`;

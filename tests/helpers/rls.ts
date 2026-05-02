@@ -4,7 +4,7 @@
  * This module provides test utilities for creating database clients with different
  * auth contexts to verify RLS policies work correctly.
  *
- * NEON RLS ARCHITECTURE (Session Variable Approach):
+ * RLS ARCHITECTURE (Session Variable Approach):
  * - All clients use the same database URL (owner role)
  * - RLS ensures policies apply via session variables
  * - Session variables differentiate between users:
@@ -36,14 +36,14 @@ function trackCleanup(cleanup: CleanupCallback): void {
 /**
  * Creates an RLS-enforced database client for an anonymous user.
  *
- * Uses the anonymous database role which provides very restricted access.
+ * Uses the Supabase-native anon database role which provides very restricted access.
  * RLS policies will see null for the user ID.
  * In current product policy, app data should remain inaccessible to this role.
  *
  * Note: The underlying connection will be closed automatically via idle_timeout.
  * For long-running tests, consider calling cleanup() from the full result.
  *
- * @returns Promise resolving to Drizzle database client with RLS enforcement (anonymous)
+ * @returns Promise resolving to Drizzle database client with RLS enforcement (anon)
  */
 export async function createAnonRlsDb(): Promise<DbInstance> {
   const result = await createAnonymousRlsClient();

@@ -31,7 +31,7 @@ Defined in `src/lib/db/enums.ts`:
 ## Key constraints
 
 - **Primary keys:** UUID on all user-facing tables
-- **User identity:** `users.auth_user_id` is unique and maps the Neon auth identity to the internal `users.id`
+- **User identity:** `users.auth_user_id` is unique and maps the Clerk auth identity to the internal `users.id`
 - **Email uniqueness:** `users.email` is unique
 - **Ownership integrity:** foreign keys generally cascade on delete
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
@@ -40,8 +40,8 @@ Defined in `src/lib/db/enums.ts`:
 
 RLS is enforced through request-scoped Postgres session state:
 
-- request handlers create authenticated or anonymous RLS clients in `src/lib/db/rls.ts`
-- `request.jwt.claims` carries the Neon auth `sub`
+- request handlers create authenticated or anon-role RLS clients in `src/lib/db/rls.ts`
+- `request.jwt.claims` carries the Clerk auth `sub`
 - user-facing policies are explicitly scoped to `authenticated`
 - service-role access is reserved for tests, workers, migrations, and other system flows
 

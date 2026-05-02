@@ -2,13 +2,13 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
-**Last Updated:** March 2026
+**Last Updated:** May 2026
 
 ## Overview
 
 Every database query in a user-facing context runs through a **three-layer security chain**:
 
-1. **Auth Layer** — Resolves the authenticated user from the Neon Auth session cookie
+1. **Auth Layer** — Resolves the authenticated user from the Clerk session cookie
 2. **RLS Client** — Creates a Postgres connection scoped to that user (`SET ROLE authenticated` + `request.jwt.claims`)
 3. **RLS Policies** — Postgres row-level security policies filter every query by the user's `sub` claim
 
@@ -79,10 +79,10 @@ When a server action boundary wraps an action whose successful return type can b
 
 There are two user IDs in the system:
 
-| ID           | Type     | Source        | Example                             | Used For                     |
-| ------------ | -------- | ------------- | ----------------------------------- | ---------------------------- |
-| `authUserId` | External | Neon Auth     | `9f3a7b2e-...` (auth provider UUID) | RLS claims, session identity |
-| `user.id`    | Internal | `users` table | `a1b2c3d4-...` (app DB UUID)        | Foreign keys, ownership      |
+| ID           | Type     | Source        | Example                      | Used For                     |
+| ------------ | -------- | ------------- | ---------------------------- | ---------------------------- |
+| `authUserId` | External | Clerk Auth    | `user_...` (Clerk user id)   | RLS claims, session identity |
+| `user.id`    | Internal | `users` table | `a1b2c3d4-...` (app DB UUID) | Foreign keys, ownership      |
 
 **Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` is the full `DbUser`. In server actions/components, the callback receives the full `DbUser`.
 
@@ -92,7 +92,7 @@ There are two user IDs in the system:
 getEffectiveAuthUserId()
 ├── Test mode (VITEST_WORKER_ID set) → DEV_AUTH_USER_ID env var
 ├── Development (NODE_ENV=development) → DEV_AUTH_USER_ID if set, else session
-└── Production → auth.getSession() → session.user.id (Neon Auth cookie)
+└── Production → Clerk auth() / currentUser() → Clerk user id
 ```
 
 The `DEV_AUTH_USER_ID` override is **impossible in production** — it's gated by `NODE_ENV` which is a process-level environment variable, not a request parameter.
@@ -189,7 +189,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | RLS client factory    | `src/lib/db/rls.ts`               |
 | DB client resolver    | `src/lib/db/runtime.ts`           |
 | Service-role client   | `src/lib/db/service-role.ts`      |
-| Neon Auth config      | `src/lib/auth/server.ts`          |
+| Clerk Auth config     | `src/lib/auth/server.ts`          |
 | Quota / usage logic   | `src/lib/stripe/usage.ts`         |
 | RLS policies (schema) | `src/lib/db/schema/tables/*.ts`   |
 | Query modules         | `src/lib/db/queries/*.ts`         |

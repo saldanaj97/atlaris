@@ -41,7 +41,7 @@ export const users = pgTable(
     ...timestampFields,
   },
   (table) => [
-    // RLS Policies (session-variable-based for Neon)
+    // RLS Policies (session-variable-based provider identity)
     //
     // These policies enforce tenant isolation by checking the JWT claims
     // session variable set by createRlsClient() from @/lib/db/rls.

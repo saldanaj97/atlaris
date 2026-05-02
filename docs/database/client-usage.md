@@ -12,7 +12,7 @@ import { getDb } from '@/lib/db/runtime';
 
 - **Use in**: API routes, server actions, request handlers
 - **Behavior**: Respects Row Level Security, enforces tenant isolation
-- **Runtime model**: `src/lib/db/rls.ts` switches role (`SET ROLE authenticated|anonymous`) and sets `request.jwt.claims`
+- **Runtime model**: `src/lib/db/rls.ts` switches role (`SET ROLE authenticated|anon`) and sets `request.jwt.claims`
 - **Location**: `src/lib/db/runtime.ts`
 
 ### 2. Service-Role Client (Bypass)

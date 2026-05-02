@@ -187,7 +187,7 @@ ALTER POLICY "generation_attempts_insert" ON "generation_attempts" TO authentica
       )
     )
   );--> statement-breakpoint
-ALTER POLICY "learning_plans_select" ON "learning_plans" TO anonymous USING ("learning_plans"."visibility" = 'public');--> statement-breakpoint
+ALTER POLICY "learning_plans_select" ON "learning_plans" TO anon USING ("learning_plans"."visibility" = 'public');--> statement-breakpoint
 ALTER POLICY "learning_plans_insert" ON "learning_plans" TO authenticated WITH CHECK (
     "learning_plans"."user_id" IN (
       SELECT id FROM "users" WHERE "users"."clerk_user_id" = current_setting('request.jwt.claims', true)::json->>'sub'
@@ -295,7 +295,7 @@ ALTER POLICY "plan_schedules_delete" ON "plan_schedules" TO authenticated USING 
       )
     )
   );--> statement-breakpoint
-ALTER POLICY "modules_select_public_anon" ON "modules" TO anonymous USING (
+ALTER POLICY "modules_select_public_anon" ON "modules" TO anon USING (
     EXISTS (
       SELECT 1 FROM "learning_plans"
       WHERE "learning_plans"."id" = "modules"."plan_id"
@@ -353,7 +353,7 @@ ALTER POLICY "modules_delete_own_plan" ON "modules" TO authenticated USING (
       )
     )
   );--> statement-breakpoint
-ALTER POLICY "resources_select_anon" ON "resources" TO anonymous USING (true);--> statement-breakpoint
+ALTER POLICY "resources_select_anon" ON "resources" TO anon USING (true);--> statement-breakpoint
 ALTER POLICY "resources_select_auth" ON "resources" TO authenticated USING (true);--> statement-breakpoint
 ALTER POLICY "task_progress_select_own" ON "task_progress" TO authenticated USING (
     "task_progress"."user_id" IN (
@@ -431,7 +431,7 @@ ALTER POLICY "task_progress_delete_own" ON "task_progress" TO authenticated USIN
       SELECT id FROM "users" WHERE "users"."clerk_user_id" = current_setting('request.jwt.claims', true)::json->>'sub'
     )
   );--> statement-breakpoint
-ALTER POLICY "task_resources_select_public_anon" ON "task_resources" TO anonymous USING (
+ALTER POLICY "task_resources_select_public_anon" ON "task_resources" TO anon USING (
     EXISTS (
       SELECT 1 FROM "tasks"
       JOIN "modules" ON "modules"."id" = "tasks"."module_id"
@@ -513,7 +513,7 @@ ALTER POLICY "task_resources_delete_own_plan" ON "task_resources" TO authenticat
   )
     )
   );--> statement-breakpoint
-ALTER POLICY "tasks_select_public_anon" ON "tasks" TO anonymous USING (
+ALTER POLICY "tasks_select_public_anon" ON "tasks" TO anon USING (
       EXISTS (
         SELECT 1 FROM "modules"
         WHERE "modules"."id" = "tasks"."module_id"

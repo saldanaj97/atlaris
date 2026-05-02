@@ -4,7 +4,7 @@
  * without calling `reapplyJwtClaimsInTransaction`.
  *
  * This validates behavior against **Testcontainers Postgres** (integration test
- * runtime). Neon serverless or other poolers may differ; production may still
+ * runtime). Connection poolers or hosted Postgres may differ; production may still
  * require the re-apply workaround until verified there.
  */
 

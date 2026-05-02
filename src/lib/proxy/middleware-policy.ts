@@ -1,5 +1,3 @@
-import { NextRequest } from 'next/server';
-
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/api',
@@ -10,10 +8,6 @@ const PROTECTED_PREFIXES = [
 ] as const;
 
 export function isProtectedRoute(pathname: string): boolean {
-  // Auth API routes must NOT be protected (they handle sign-in/sign-up)
-  if (pathname.startsWith('/api/auth/')) {
-    return false;
-  }
   // Stripe webhooks bypass all checks
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
     return false;
@@ -35,7 +29,7 @@ export function resolveMaintenanceRedirectPath(
   return null;
 }
 
-export function shouldBypassNeonAuthMiddleware(input: {
+export function shouldBypassClerkMiddleware(input: {
   isDevelopment: boolean;
   devAuthUserId: string | undefined;
   localProductTestingEnabled: boolean;
@@ -53,20 +47,4 @@ export function shouldBypassNeonAuthMiddleware(input: {
     !input.pathname.startsWith('/api/');
 
   return devBypass || localProductTestingPageBypass;
-}
-
-/**
- * Neon Auth middleware only checks session cache for GET; normalize so
- * session validation works for POST and other methods.
- */
-export function toGetRequestForSessionValidation(
-  request: NextRequest,
-): NextRequest {
-  if (request.method === 'GET') {
-    return request;
-  }
-  return new NextRequest(request.url, {
-    method: 'GET',
-    headers: request.headers,
-  });
 }

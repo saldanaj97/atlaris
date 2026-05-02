@@ -1,15 +1,12 @@
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
-  shouldBypassNeonAuthMiddleware,
-  toGetRequestForSessionValidation,
+  shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
-
-const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
 
 // Next.js injects inline bootstrap scripts today, so keep unsafe-inline until
 // we migrate this middleware to a nonce-based CSP. unsafe-eval is only needed
@@ -90,76 +87,65 @@ const nextWithCorrelationId = (request: NextRequest): NextResponse => {
   return withSecurityHeaders(response);
 };
 
-export default async function proxy(
-  request: NextRequest,
-): Promise<NextResponse> {
-  const { pathname } = request.nextUrl;
+const proxy = clerkMiddleware(
+  async (auth, request: NextRequest) => {
+    const { pathname } = request.nextUrl;
 
-  // Stripe webhooks bypass all checks including maintenance mode
-  if (pathname.startsWith('/api/v1/stripe/webhook')) {
-    return nextWithCorrelationId(request);
-  }
-
-  // Maintenance mode
-  const maintenanceTarget = resolveMaintenanceRedirectPath(
-    appEnv.maintenanceMode,
-    pathname,
-  );
-
-  if (maintenanceTarget !== null) {
-    return withCorrelationId(
-      request,
-      NextResponse.redirect(new URL(maintenanceTarget, request.url)),
-    );
-  }
-
-  // Auth protection — delegate to Neon Auth middleware for session
-  // validation, token refresh, and OAuth callback handling
-  if (isProtectedRoute(pathname)) {
-    // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
-    // API routes. The Neon Auth middleware does not use this override and would
-    // redirect with 307 even when the route handler would accept the dev user.
-    // Route handlers still run withAuth and use getEffectiveAuthUserId.
-    // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
-    // shell and server components match the seeded local identity.
-    if (
-      shouldBypassNeonAuthMiddleware({
-        isDevelopment: appEnv.isDevelopment,
-        devAuthUserId: devAuthEnv.userId,
-        localProductTestingEnabled: localProductTestingEnv.enabled,
-        pathname,
-      })
-    ) {
-      console.debug('[dev_auth_bypass]', {
-        event: 'dev_auth_bypass',
-        userId: devAuthEnv.userId,
-        pathname,
-        correlationId: getCorrelationId(request),
-      });
+    // Stripe webhooks bypass all checks including maintenance mode
+    if (pathname.startsWith('/api/v1/stripe/webhook')) {
       return nextWithCorrelationId(request);
     }
 
-    const correlationId = getCorrelationId(request);
-
-    // Neon Auth middleware forwards the original request method to the
-    // upstream /get-session endpoint and only checks the session cache
-    // for GET requests. Server actions (POST) and other non-GET methods
-    // cause /get-session to fail, resulting in a false redirect to sign-in.
-    // Normalise to GET so session validation works for all methods.
-    const authRequest = toGetRequestForSessionValidation(request);
-
-    const authResponse = await authMiddleware(authRequest);
-
-    authResponse.headers.set('x-correlation-id', correlationId);
-    authResponse.headers.set(
-      'x-middleware-request-x-correlation-id',
-      correlationId,
+    // Maintenance mode
+    const maintenanceTarget = resolveMaintenanceRedirectPath(
+      appEnv.maintenanceMode,
+      pathname,
     );
-    return withSecurityHeaders(authResponse);
-  }
 
-  return nextWithCorrelationId(request);
-}
+    if (maintenanceTarget !== null) {
+      return withCorrelationId(
+        request,
+        NextResponse.redirect(new URL(maintenanceTarget, request.url)),
+      );
+    }
+
+    // Auth protection
+    if (isProtectedRoute(pathname)) {
+      // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
+      // API routes. Clerk does not use this override and would redirect even when
+      // the route handler would accept the dev user. Route handlers still run
+      // withAuth and use getEffectiveAuthUserId.
+      // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
+      // shell and server components match the seeded local identity.
+      if (
+        shouldBypassClerkMiddleware({
+          isDevelopment: appEnv.isDevelopment,
+          devAuthUserId: devAuthEnv.userId,
+          localProductTestingEnabled: localProductTestingEnv.enabled,
+          pathname,
+        })
+      ) {
+        console.debug('[dev_auth_bypass]', {
+          event: 'dev_auth_bypass',
+          userId: devAuthEnv.userId,
+          pathname,
+          correlationId: getCorrelationId(request),
+        });
+        return nextWithCorrelationId(request);
+      }
+
+      await auth.protect();
+    }
+
+    return nextWithCorrelationId(request);
+  },
+  {
+    signInUrl: '/auth/sign-in',
+    signUpUrl: '/auth/sign-up',
+  },
+);
+
+export default proxy;
 
 export const config = {
   matcher: [

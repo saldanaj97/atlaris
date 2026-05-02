@@ -64,17 +64,16 @@ shows that session-scoped `request.jwt.claims` (set with `set_config(..., false)
 including with `pg_advisory_xact_lock`, RLS `SELECT`s, and nested transactions
 (savepoints), **for Testcontainers Postgres** used in CI/local integration runs.
 
-Neon serverless or other poolers are not covered by that test; keep the
+Hosted Postgres behind a pooler or edge driver is not fully covered by that test; keep the
 re-apply pattern until production behavior is verified or explicitly safe.
 
-**Follow-up:** Run the same claim-visibility scenarios against the live Neon dev
-branch (a one-off script connecting with `DATABASE_URL_UNPOOLED`, setting
+**Follow-up:** Run the same claim-visibility scenarios against the **staging** database
+(a one-off script connecting with `DATABASE_URL_UNPOOLED`, setting
 `SET ROLE authenticated` + `set_config('request.jwt.claims', ..., false)`, then
 reading claims inside `dbClient.transaction()` without re-applying). If all
 pass, remove the ceremony (`prepareRlsTransactionContext` /
-`reapplyJwtClaimsInTransaction` at call sites). If any fail, mark this item as
-"confirmed required on Neon" and close permanently. Blocked on Neon compute
-quota as of 2026-03-24.
+`reapplyJwtClaimsInTransaction` at call sites). If any fail, keep the re-apply pattern
+and document the failing pooler/driver as the reason.
 
 ## ~~Missing DB-level task title hardening~~ _(resolved)_
 

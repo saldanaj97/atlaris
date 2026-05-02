@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import AuthControls from '@/components/shared/AuthControls';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
-vi.mock('@neondatabase/auth/react', () => ({
+vi.mock('@clerk/nextjs', () => ({
   UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
 }));
 

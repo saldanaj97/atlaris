@@ -2,14 +2,14 @@
 
 [![codecov](https://codecov.io/gh/saldanaj97/atlaris/branch/main/graph/badge.svg)](https://app.codecov.io/gh/saldanaj97/atlaris)
 
-AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, Neon RLS, Neon Auth, Stripe, and OpenRouter.
+AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, PostgreSQL RLS, Clerk Auth migration support, Stripe, and OpenRouter.
 
 ## What the app does
 
 - Creates structured learning plans with ordered modules and tasks
 - Streams AI generation progress to the client over SSE
 - Tracks generation attempts, failure classifications, and retryability
-- Enforces tenant isolation with Neon Row Level Security (RLS)
+- Enforces tenant isolation with PostgreSQL Row Level Security (RLS)
 - Supports Google Calendar OAuth token storage and disconnect flows
 - Applies usage limits, rate limiting, and subscription gating server-side
 
@@ -17,8 +17,8 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 
 - **Framework:** Next.js 16.2.4 + React 19
 - **Language:** TypeScript (strict mode)
-- **Database:** PostgreSQL on Neon via Drizzle ORM
-- **Auth:** `@neondatabase/auth` + `better-auth`
+- **Database:** PostgreSQL via Drizzle ORM
+- **Auth:** Clerk for UI, route protection, and server session reads
 - **AI:** OpenRouter via `@openrouter/sdk` and the Vercel AI SDK
 - **Payments:** Stripe
 - **Testing:** Vitest + Testing Library + Testcontainers
@@ -110,7 +110,7 @@ Integration tests normally rely on Testcontainers. If you intentionally want to 
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `neonAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation

@@ -1,6 +1,6 @@
 # Pre-Launch Security & Abuse-Resistance Audit Checklist (24 Areas)
 
-> **Stack context**: Next.js 16 + React 19 + Neon Auth + Stripe billing + Neon (Postgres + RLS) + OpenRouter AI
+> **Stack context**: Next.js 16 + React 19 + Clerk Auth + Stripe billing + Supabase Postgres + RLS + OpenRouter AI
 
 ---
 
@@ -22,7 +22,7 @@
 - [ ] Parameterized queries everywhere—no string interpolation in SQL.
 - [ ] Connection pooling configured with appropriate limits (prevent connection exhaustion DoS).
 - [ ] Database credentials rotated and not hardcoded anywhere.
-- [ ] Neon branch isolation: ensure preview branches can't access production data.
+- [ ] Preview/staging isolation: ensure preview databases cannot read or mutate production data.
 - [ ] Query timeouts configured to prevent long-running query abuse.
 - [ ] Audit any raw SQL for injection vectors (especially in search/filter endpoints).
 
@@ -30,12 +30,12 @@
 
 ## SECTION B: Authentication & Authorization
 
-### 3) Authentication patterns (Neon Auth)
+### 3) Authentication patterns (Clerk Auth)
 
 - [ ] Verify protected routes/actions use the shared auth wrappers from `@/lib/api/auth`.
 - [ ] Confirm `getEffectiveAuthUserId()` and `requireUser()` are only used in appropriate contexts.
 - [ ] Ensure security-sensitive flows use `getAuthUserId()` when dev overrides must be ignored.
-- [ ] Verify Neon Auth session cookies are validated server-side, not only in the browser.
+- [ ] Verify Clerk session cookies are validated server-side, not only in the browser.
 - [ ] Confirm development auth overrides (`DEV_AUTH_USER_ID`) cannot affect production.
 - [ ] Test that signed-out users cannot access protected API routes directly.
 - [ ] Verify auth failures degrade gracefully in Server Components and fail closed in API routes.

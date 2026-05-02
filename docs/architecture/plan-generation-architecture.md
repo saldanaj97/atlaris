@@ -11,7 +11,7 @@ The stream route creates the plan record, runs generation, and emits SSE events 
 
 At runtime, the pipeline combines:
 
-- Neon Auth for user identity
+- Clerk Auth for user identity
 - request-scoped RLS database access via `getDb()`
 - OpenRouter-backed streaming model generation
 - strict parsing and pacing before persistence
@@ -40,7 +40,7 @@ User submits create form
 
 - API routes use the shared auth wrappers in `@/lib/api/auth`
 - request handlers use `getDb()` from `@/lib/db/runtime`
-- the underlying RLS client sets `request.jwt.claims.sub` to the authenticated Neon auth user id
+- the underlying RLS client sets `request.jwt.claims.sub` to the authenticated Clerk user id
 - ownership checks then resolve the internal `users.id` row associated with that auth subject
 
 This separation between external auth identity and internal app user row is not optional. It is the basis for RLS ownership checks across plans, attempts, usage, and integration data.

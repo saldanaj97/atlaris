@@ -13,7 +13,7 @@ The authenticated request scope lifecycle has six stages. In production, all six
    getEffectiveAuthUserId() → resolves authUserId
    - Vitest: returns DEV_AUTH_USER_ID
    - Dev with override: returns DEV_AUTH_USER_ID
-   - Production: reads Neon Auth session
+   - Production: reads Clerk session
 
 2. User-record provisioning
    ensureUserRecord(authUserId, dbClient?) → DbUser
@@ -106,7 +106,7 @@ The **right** wrapper depends on the calling context (API route vs. server compo
 **Where:** `auth.ts:69-109`, `context.ts:8-11`
 
 Two identity concepts coexist:
-- `authUserId` = external identity from Neon Auth (string, stored as `users.auth_user_id`)
+- `authUserId` = external identity from Clerk (string, stored as `users.auth_user_id`)
 - `user.id` = internal DB primary key (string UUID)
 
 These are unified at the `ensureUserRecord` boundary: `authUserId` goes in, `DbUser` comes out. The request context stores both (`userId` = authUserId, `user.id` = internal id).

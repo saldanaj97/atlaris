@@ -30,14 +30,6 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
 
-// Neon Auth defaults for tests
-if (!process.env.NEON_AUTH_BASE_URL) {
-  process.env.NEON_AUTH_BASE_URL = 'https://auth.test.neon.local';
-}
-if (!process.env.NEON_AUTH_COOKIE_SECRET) {
-  process.env.NEON_AUTH_COOKIE_SECRET = 'test_neon_auth_cookie_secret';
-}
-
 // Avoid fire-and-forget inline regeneration drains racing DB-backed tests unless a spec opts in.
 if (process.env.REGENERATION_INLINE_PROCESSING === undefined) {
   process.env.REGENERATION_INLINE_PROCESSING = 'false';

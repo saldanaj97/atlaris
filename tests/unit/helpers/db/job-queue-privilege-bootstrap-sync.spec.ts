@@ -1,5 +1,5 @@
 /**
- * Intentional readFileSync: ensure integration/bootstrap paths keep anonymous +
+ * Intentional readFileSync: ensure integration/bootstrap paths keep anon +
  * authenticated job_queue write revokes aligned (migration 0028/0029 parity).
  */
 import { readFileSync } from 'node:fs';
@@ -13,10 +13,9 @@ const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 describe('job_queue privilege bootstrap sync', () => {
   const revokeAuthenticated =
     /REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated/;
-  const revokeAnonymous =
-    /REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anonymous/;
+  const revokeAnon = /REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon/;
 
-  it('mirrors authenticated + anonymous revokes in grantRlsPermissions and rls-bootstrap', () => {
+  it('mirrors authenticated + anon revokes in grantRlsPermissions and rls-bootstrap', () => {
     const bootstrap = readFileSync(
       resolve(TEST_DIR, '../../../helpers/db/bootstrap.ts'),
       'utf8',
@@ -27,8 +26,8 @@ describe('job_queue privilege bootstrap sync', () => {
     );
 
     expect(bootstrap).toMatch(revokeAuthenticated);
-    expect(bootstrap).toMatch(revokeAnonymous);
+    expect(bootstrap).toMatch(revokeAnon);
     expect(rlsBootstrap).toMatch(revokeAuthenticated);
-    expect(rlsBootstrap).toMatch(revokeAnonymous);
+    expect(rlsBootstrap).toMatch(revokeAnon);
   });
 });

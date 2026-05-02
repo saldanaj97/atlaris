@@ -4,9 +4,9 @@ import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
   aiEnv,
   appEnv,
+  createClerkAuthEnv,
   createAiEnvFacets,
   createAppEnv,
-  createNeonAuthEnv,
   createServerEnvAccess,
   EnvValidationError,
   optionalEnv,
@@ -71,36 +71,25 @@ describe('Environment Configuration', () => {
     });
   });
 
-  describe('createNeonAuthEnv (pure)', () => {
-    it('parses valid non-production config', () => {
-      const parsed = createNeonAuthEnv({
-        NODE_ENV: 'development',
-        NEON_AUTH_BASE_URL: 'http://localhost:9999',
-        NEON_AUTH_COOKIE_SECRET: 'x'.repeat(32),
+  describe('createClerkAuthEnv (pure)', () => {
+    it('parses valid Clerk config', () => {
+      const parsed = createClerkAuthEnv({
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_example',
+        CLERK_SECRET_KEY: 'sk_test_example',
       });
 
-      expect(parsed.baseUrl).toBe('http://localhost:9999');
-    });
-
-    it('rejects http base URL in production', () => {
-      expect(() =>
-        createNeonAuthEnv({
-          NODE_ENV: 'production',
-          NEON_AUTH_BASE_URL: 'http://localhost:9999',
-          NEON_AUTH_COOKIE_SECRET: 'x'.repeat(32),
-        }),
-      ).toThrow(EnvValidationError);
+      expect(parsed.publishableKey).toBe('pk_test_example');
+      expect(parsed.secretKey).toBe('sk_test_example');
     });
 
     it('aggregates known validation issues into one error', () => {
       expect(() =>
-        createNeonAuthEnv({
-          NODE_ENV: 'production',
-          NEON_AUTH_BASE_URL: 'http://localhost:9999',
-          NEON_AUTH_COOKIE_SECRET: 'short-secret',
+        createClerkAuthEnv({
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'bad-public-key',
+          CLERK_SECRET_KEY: 'bad-secret-key',
         }),
       ).toThrow(
-        /NEON_AUTH_BASE_URL: NEON_AUTH_BASE_URL must use https in production; NEON_AUTH_COOKIE_SECRET: NEON_AUTH_COOKIE_SECRET must be at least 32 characters in production/,
+        /NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_test_ or pk_live_; CLERK_SECRET_KEY: CLERK_SECRET_KEY must start with sk_test_ or sk_live_/,
       );
     });
   });

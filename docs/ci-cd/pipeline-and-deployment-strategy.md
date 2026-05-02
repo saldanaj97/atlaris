@@ -17,8 +17,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Open PRs into `develop` (or `main` only for true hotfixes).
 - PRs run CI checks (including migration drift checks).
 - Vercel handles preview deployments natively for non-`main` branches.
-- Neon/Vercel integration provisions per-branch preview databases.
-- Schema diffs are posted back to PRs after successful preview deployments.
+- Preview databases are provisioned per your Vercel/hosted-Postgres setup (e.g. Supabase); wire `DATABASE_URL` for each preview environment there.
 - Merging to `develop` deploys staging.
 - Merging to `main` runs production DB migrations first, then deploys production app from GitHub Actions.
 
@@ -26,12 +25,12 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ## Environments and ownership
 
-| Environment | Source              | Owner                     | Notes                                                  |
-| ----------- | ------------------- | ------------------------- | ------------------------------------------------------ |
-| Local       | Your feature branch | You                       | `pnpm dev`                                             |
-| Preview     | PR branch           | Vercel + Neon integration | Auto preview deploy via Vercel git integration         |
-| Staging     | `develop`           | Vercel                    | Integration baseline                                   |
-| Production  | `main`              | GitHub Actions + Vercel   | Migrate first in GH Action, then deploy via Vercel CLI |
+| Environment | Source              | Owner                      | Notes                                                  |
+| ----------- | ------------------- | -------------------------- | ------------------------------------------------------ |
+| Local       | Your feature branch | You                        | `pnpm dev`                                             |
+| Preview     | PR branch           | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration         |
+| Staging     | `develop`           | Vercel                     | Integration baseline                                   |
+| Production  | `main`              | GitHub Actions + Vercel    | Migrate first in GH Action, then deploy via Vercel CLI |
 
 ---
 
@@ -44,23 +43,12 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Includes: migration drift check (`pnpm db:generate` must produce no uncommitted changes)
 - Skips docs-only changes (`docs/**`, `**/*.md`, etc.)
 
-### 2) `.github/workflows/preview-schema-diff.yml`
-
-- Trigger: `deployment_status`
-- Runs only when deployment status is `success` and environment contains `Preview`
-- Purpose: post schema diff comment after preview deploy has completed and migrations were applied
-- Behavior:
-  - Resolves PR by deployment branch
-  - Compares Neon branch `preview/<git-branch>` using `neondatabase/schema-diff-action@v1`
-  - Reposts a PR comment with diff when present (keeps latest at bottom)
-  - Deletes stale comment when diff is empty
-
-### 3) `.github/workflows/ci-trunk.yml`
+### 2) `.github/workflows/ci-trunk.yml`
 
 - Trigger: push to `develop` or `main` (plus merge queue)
 - Runs: heavier integration and e2e/smoke validations on trunk branches
 
-### 4) `.github/workflows/deploy-production-migrations.yml`
+### 3) `.github/workflows/deploy-production-migrations.yml`
 
 - Trigger: push to `main` (or manual dispatch)
 - Purpose: apply production migrations first, then deploy production app
@@ -77,9 +65,8 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 1. You push to a feature branch and open a PR to `develop`.
 2. `ci-pr.yml` validates code quality, tests, and migration drift.
 3. Vercel creates/updates a preview deployment automatically.
-4. Neon/Vercel integration provisions preview DB branch env vars for that deployment.
-5. Preview build command runs migrations for preview (`pnpm db:migrate`) before `next build`.
-6. `preview-schema-diff.yml` runs on successful preview deployment and comments schema diff on PR.
+4. Configure preview `DATABASE_URL` (and non-pooling variants if used) in Vercel or your Postgres host so the preview build targets the right database.
+5. Preview build command runs migrations for preview (`pnpm db:migrate`) before `next build` when you wire it that way in Vercel.
 
 ---
 
@@ -104,9 +91,6 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### GitHub secrets
 
-- `NEON_API_KEY` (used by `preview-schema-diff.yml`)
-- `NEON_PROJECT_ID` (used by `preview-schema-diff.yml`)
-- `NEON_PROD_DATABASE_NAME` (optional override for schema diff DB; fallback is `neondb`)
 - `DATABASE_URL_PROD` (used by production migration workflow)
 - `DATABASE_URL_PROD_NON_POOLING` (used by production migration workflow)
 - `VERCEL_TOKEN` (used by production deploy workflow)
@@ -125,18 +109,13 @@ Set preview deployment behavior so non-`main` branches get preview deployments.
 
 If production is deployed by GitHub Actions workflow, disable direct auto-production deploy from Vercel git push to avoid race conditions.
 
-Neon integration should use preview branch naming `preview/<git-branch>` and auto-clean obsolete branches.
-
 ---
 
 ## How to reason about failures quickly
 
-### Preview deployed but no schema diff comment
+### Preview build fails on `pnpm db:migrate`
 
-- Check if deployment environment name contains `Preview`
-- Confirm `preview-schema-diff.yml` ran on `deployment_status`
-- Confirm `NEON_API_KEY` and `NEON_PROJECT_ID` are set
-- Confirm branch name resolves to `preview/<git-branch>` in Neon
+- Confirm preview `DATABASE_URL` / `DATABASE_URL_NON_POOLING` in Vercel (or host) match the intended preview database and use a **direct** URL for DDL if the pooler rejects migrations.
 
 ### PR fails migration drift check
 
@@ -167,6 +146,5 @@ Neon integration should use preview branch naming `preview/<git-branch>` and aut
 - `docs/context/ci/branching-strategy.md`
 - `docs/rules/ci/development-workflow.md`
 - `.github/workflows/ci-pr.yml`
-- `.github/workflows/preview-schema-diff.yml`
 - `.github/workflows/ci-trunk.yml`
 - `.github/workflows/deploy-production-migrations.yml`

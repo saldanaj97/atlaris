@@ -80,13 +80,13 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 ### Font stacks (runtime)
 
-| Layer                            | Family                                                | Notes                                                                                                                   |
-| -------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Body (default)**               | **Work Sans** (Next font on `<body>` in `layout.tsx`) | Default UI copy and elements that inherit without a heading rule.                                                       |
-| **Theme / Tailwind `font-sans`** | **Geist** first in `--font-sans`                      | Components and utilities that use `font-sans`; marketing utilities that set heading families explicitly.                |
-| **Serif**                        | `--font-serif` → Source Serif 4                       | Theme token; use sparingly.                                                                                             |
-| **Mono**                         | `--font-mono` → JetBrains Mono                        | Code, IDs, technical strings.                                                                                           |
-| **Neon Auth UI**                 | Bundled with `@neondatabase/auth/ui/tailwind`         | May define font variables consumed in `globals.css`—keep auth UI inside Neon components to avoid fighting their styles. |
+| Layer                            | Family                                                | Notes                                                                                                    |
+| -------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **Body (default)**               | **Work Sans** (Next font on `<body>` in `layout.tsx`) | Default UI copy and elements that inherit without a heading rule.                                        |
+| **Theme / Tailwind `font-sans`** | **Geist** first in `--font-sans`                      | Components and utilities that use `font-sans`; marketing utilities that set heading families explicitly. |
+| **Serif**                        | `--font-serif` → Source Serif 4                       | Theme token; use sparingly.                                                                              |
+| **Mono**                         | `--font-mono` → JetBrains Mono                        | Code, IDs, technical strings.                                                                            |
+| **Clerk Auth UI**                | Clerk components inherit the root app fonts           | Keep auth pages under the shared auth layout and avoid provider-specific global CSS imports.             |
 
 **Consistency:** For new screens, treat **Work Sans** as the default UI face and **Geist** (via `font-sans` or marketing classes) for display/marketing headlines. Avoid introducing a third sans unless the root layout is intentionally updated.
 

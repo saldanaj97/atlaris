@@ -1,7 +1,7 @@
 /**
  * Local product-testing mode — explicit contract for development and automated tests only.
  *
- * **Not** hosted auth/session parity: staging remains the source of truth for real Neon Auth
+ * **Not** hosted auth/session parity: staging remains the source of truth for real Clerk Auth
  * and OAuth. This mode coordinates seeded DB users with `DEV_AUTH_USER_ID` as a local
  * identity selector (writable planning under `.agents/plans/`; `.cursor/plans/` read-only for attached exports).
  *
