@@ -61,8 +61,6 @@ jobs:
               - '.prettierignore'
               - 'prettier.config.mjs'
               - '.husky/**'
-              - '.pre-commit-config.yaml'
-              - 'scripts/lint-changed.sh'
               - '.github/workflows/**'
 
   lint-and-type-check:

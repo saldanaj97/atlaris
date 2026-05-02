@@ -3,7 +3,7 @@
  *
  * **Not** hosted auth/session parity: staging remains the source of truth for real Neon Auth
  * and OAuth. This mode coordinates seeded DB users with `DEV_AUTH_USER_ID` as a local
- * identity selector (see PRD `.plans/local-high-fidelity-mocks/prd.md`).
+ * identity selector (writable planning under `.agents/plans/`; `.cursor/plans/` read-only for attached exports).
  *
  * ## Config precedence (how this relates to other env vars)
  *

@@ -8,11 +8,11 @@
 
 **Impact:** Without the full audit, ESLint enforcement (#271) would have failed after completing all 9 original issues because 13 violations would still exist.
 
-## 2026-04-05: Planning path drift from `prds/` to `.plans/`
+## 2026-04-05: Planning path drift from `prds/` / stale `.plans/` to canonical `.agents/plans/`
 
-**Context:** A planning task initially created a new workspace under `prds/` because older learnings and docs still referenced that path, while the root `AGENTS.md` had already moved the canonical location to `.plans/`.
+**Context:** A planning task initially created a new workspace under `prds/` because older learnings and docs still referenced that path, while `AGENTS.md` had moved the canonical writable location to **`.agents/plans/`** (historically some docs said `.plans/`).
 
-**Rule:** Before creating or updating planning artifacts, verify the canonical planning directory in the live root `AGENTS.md`. In this repo, use `.plans/`, not `prds/`.
+**Rule:** Before creating or updating planning artifacts, verify the canonical directory in live root **`AGENTS.md`**. Writable repo planning lives under **`.agents/plans/`** — not `prds/`, not legacy `.plans/`. **`.cursor/plans/`** stays Cursor-native / read-only for attached exports.
 
 **Impact:** Following stale path references creates duplicate planning trees, confuses future updates, and undermines the workflow the repo is explicitly trying to standardize.
 

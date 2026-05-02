@@ -46,9 +46,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# jscpd (ad-hoc duplication reports)
-jscpd-report/
-
 # git worktrees
 .worktrees/
 

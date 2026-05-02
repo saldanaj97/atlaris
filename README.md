@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/saldanaj97/atlaris/branch/main/graph/badge.svg)](https://app.codecov.io/gh/saldanaj97/atlaris)
 
-AI-assisted learning plan generator built with Next.js 16, React 19, TypeScript, Drizzle, Neon RLS, Neon Auth, Stripe, and OpenRouter.
+AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, Neon RLS, Neon Auth, Stripe, and OpenRouter.
 
 ## What the app does
 
@@ -15,7 +15,7 @@ AI-assisted learning plan generator built with Next.js 16, React 19, TypeScript,
 
 ## Core stack
 
-- **Framework:** Next.js 16.1.6 + React 19
+- **Framework:** Next.js 16.2.4 + React 19
 - **Language:** TypeScript (strict mode)
 - **Database:** PostgreSQL on Neon via Drizzle ORM
 - **Auth:** `@neondatabase/auth` + `better-auth`
@@ -44,27 +44,19 @@ Open `http://localhost:3000` in your browser.
 
 ## Common commands
 
+Quickstart:
+
 ```bash
-pnpm dev
-pnpm dev:full
-pnpm build
-pnpm check:full
-pnpm check:lint
-pnpm check:lint:ci
-pnpm check:type
-pnpm test
-pnpm test:changed
-pnpm test:unit:changed
-pnpm test:unit:watch
-pnpm test:integration:changed
-pnpm test:integration
-pnpm test:security
-pnpm test:smoke
-pnpm test:all
-pnpm db:generate
-pnpm db:migrate
-pnpm db:push
+pnpm install
+pnpm dev              # Turbopack app only
+pnpm dev:full        # local DB + app
+pnpm check:full      # lint + type-check (runs check:lint + check:type)
+pnpm test            # lightweight changed bundle (same as test:changed)
 ```
+
+Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
+
+On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + Prettier on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
 
 ## Project structure
 
@@ -124,7 +116,7 @@ Integration tests normally rely on Testcontainers. If you intentionally want to 
 ## Related documentation
 
 - `AGENTS.md`
-- `docs/context/architecture/auth-and-data-layer.md`
-- `docs/context/architecture/plan-generation-architecture.md`
-- `docs/rules/api/error-contract.md`
-- `docs/rules/database/schema-overview.md`
+- `docs/architecture/auth-and-data-layer.md`
+- `docs/architecture/plan-generation-architecture.md`
+- `docs/api/error-contract.md`
+- `docs/database/schema-overview.md`

@@ -11,7 +11,6 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
 pnpm dev:full         # Start local dev Postgres, then run the Next.js dev server
-pnpm dev:stripe       # Stripe webhook listener for local testing
 ```
 
 ## Build & Production
@@ -26,17 +25,13 @@ pnpm start            # Start production server
 ### Linting & Formatting
 
 ```bash
-pnpm check:full         # Run repo-wide read-only quality checks in parallel (lint + type + format)
+pnpm check:full         # Lint + TypeScript checks in parallel (check:lint + check:type)
 pnpm check:lint         # Oxlint: lint source, script, and test code
 pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
-pnpm check:lint:fix     # Oxlint: apply safe lint fixes
-pnpm check:lint:changed # Oxlint only files changed vs base branch (see scripts/lint-changed.sh)
-pnpm check:format       # Prettier formatter only (writes files)
-pnpm check:format:check # Prettier read-only format check
 pnpm check:type         # TypeScript type checking only
 ```
 
-Local Git hooks run through Husky in `.husky/`. Pre-commit runs Oxlint and Prettier on staged files, then runs `ggshield` when it is installed.
+Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus Prettier on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run Prettier explicitly, for example `pnpm exec prettier . --write --ignore-unknown`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts --fix --max-warnings=0`.
 
 ## Database (Drizzle)
 
@@ -68,7 +63,7 @@ pnpm test                     # Run changed unit + integration tests
 pnpm test:changed             # Explicit alias for the changed unit + integration bundle
 pnpm test:unit                # Run all unit tests
 pnpm test:unit:changed        # Run unit tests for changed files only
-pnpm test:unit:watch          # Run unit tests in watch mode
+pnpm exec tsx scripts/tests/run.ts unit --watch # Unit tests watch mode (no dedicated package.json alias)
 pnpm test:integration:changed # Run integration tests for changed files
 pnpm test:integration         # Run the full integration suite (heavier; use sparingly)
 pnpm test:security            # Run RLS policy tests

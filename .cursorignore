@@ -19,7 +19,6 @@ next-env.d.ts
 /coverage
 /tests/test-results/*
 /tests/results/
-jscpd-report/
 
 # Logs & Misc Noise
 *.log*
