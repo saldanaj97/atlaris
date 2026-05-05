@@ -5,7 +5,7 @@
 import { eq, sql } from 'drizzle-orm';
 
 import { resolveUserTier } from '@/features/billing/tier';
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 

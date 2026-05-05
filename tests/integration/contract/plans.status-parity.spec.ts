@@ -1,10 +1,10 @@
-import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
-import { describe, expect, it } from 'vitest';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { learningPlans, modules } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { learningPlans, modules } from '@supabase/schema';
+import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

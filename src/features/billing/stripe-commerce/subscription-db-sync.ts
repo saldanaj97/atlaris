@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { getStripe } from '@/features/billing/client';
 import { mapStripeSubscriptionStatus } from '@/features/billing/stripe-commerce/subscription-status';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';

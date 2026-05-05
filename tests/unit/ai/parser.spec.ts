@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ParserError, parseGenerationStream } from '@/features/ai/parser';
 import type { ParserCallbacks } from '@/features/ai/types/parser.types';
-import { MAX_TITLE_LENGTH } from '@/lib/db/schema/constants';
+import { MAX_TITLE_LENGTH } from '@supabase/schema/constants';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 // Helper to create async iterable from string chunks

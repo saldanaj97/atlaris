@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getRequestContext } from '@/lib/api/context';
 import { ConflictError } from '@/lib/api/errors';
 import {
@@ -9,7 +8,8 @@ import {
   clearAllUserRateLimiters,
   USER_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/user-rate-limit';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { db as serviceDb } from '@supabase/service-role';
 import { buildUserFixture } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 

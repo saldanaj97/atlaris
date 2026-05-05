@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import {
   learningPlans,
@@ -7,8 +6,9 @@ import {
   taskResources,
   tasks,
   users,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 describe('End-to-End Schedule Flow', () => {
   let testUserId: string;

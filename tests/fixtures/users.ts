@@ -7,8 +7,8 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;

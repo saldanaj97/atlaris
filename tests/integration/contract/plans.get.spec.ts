@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { GET } from '@/app/api/v1/plans/[planId]/route';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { learningPlans, modules, tasks } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

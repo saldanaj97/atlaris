@@ -31,7 +31,7 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
-import { generationAttempts } from '@/lib/db/schema';
+import { generationAttempts } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,

@@ -1,4 +1,4 @@
-import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
 
 import {
   createAdminDatabaseUrl,

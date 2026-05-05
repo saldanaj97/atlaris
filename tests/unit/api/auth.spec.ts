@@ -7,7 +7,7 @@ import {
 } from '@/lib/api/auth';
 import { getRequestContext } from '@/lib/api/context';
 import { AuthError } from '@/lib/api/errors';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { db as serviceDb } from '@supabase/service-role';
 import { buildUserFixture } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 

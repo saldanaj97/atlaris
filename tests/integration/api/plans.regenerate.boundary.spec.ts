@@ -9,9 +9,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
-import { jobQueue, usageMetrics } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { jobQueue, usageMetrics } from '@supabase/schema';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { db } from '@supabase/service-role';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 

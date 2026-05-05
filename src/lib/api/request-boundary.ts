@@ -14,8 +14,8 @@ import type {
 } from '@/lib/api/types/auth.types';
 import type { UserRateLimitCategory } from '@/lib/api/user-rate-limit';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
+import { getDb } from '@supabase/runtime';
 
 export type RequestScope = Readonly<{
   actor: DbUser;

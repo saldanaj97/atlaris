@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
 import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
   getFailedJobs,
   getJobStats,
 } from '@/lib/db/queries/jobs';
-import { jobQueue } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { jobQueue } from '@supabase/schema';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 import { ensureUser } from '../helpers/db';
 
 describe('Monitoring Queries', () => {

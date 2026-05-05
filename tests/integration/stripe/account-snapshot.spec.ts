@@ -1,14 +1,14 @@
-import { randomUUID } from 'node:crypto';
-import { createTestPlan } from '@tests/fixtures/plans';
-import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
 import {
   BillingSnapshotNotFoundError,
   getBillingAccountSnapshot,
 } from '@/features/billing/account-snapshot';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { createTestPlan } from '@tests/fixtures/plans';
+import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 import { ensureUser } from '../../helpers/db';
 import { markUserAsSubscribed } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

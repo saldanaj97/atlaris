@@ -8,6 +8,7 @@ import {
   createAiEnvFacets,
   createAppEnv,
   createServerEnvAccess,
+  createSupabasePublicEnv,
   EnvValidationError,
   optionalEnv,
   parseEnvNumber,
@@ -90,6 +91,29 @@ describe('Environment Configuration', () => {
         }),
       ).toThrow(
         /NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_test_ or pk_live_; CLERK_SECRET_KEY: CLERK_SECRET_KEY must start with sk_test_ or sk_live_/,
+      );
+    });
+  });
+
+  describe('createSupabasePublicEnv (pure)', () => {
+    it('parses valid Supabase public config', () => {
+      const parsed = createSupabasePublicEnv({
+        NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+      });
+
+      expect(parsed.url).toBe('https://example.supabase.co');
+      expect(parsed.publishableKey).toBe('sb_publishable_example');
+    });
+
+    it('reports invalid Supabase URL with the env key', () => {
+      expect(() =>
+        createSupabasePublicEnv({
+          NEXT_PUBLIC_SUPABASE_URL: 'not-a-url',
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+        }),
+      ).toThrow(
+        /NEXT_PUBLIC_SUPABASE_URL: NEXT_PUBLIC_SUPABASE_URL must be a valid URL/,
       );
     });
   });

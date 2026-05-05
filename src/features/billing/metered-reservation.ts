@@ -11,7 +11,7 @@
  * meters should add their own boundary instead of reaching into this file.
  */
 
-import { usageMetrics, users } from '@/lib/db/schema';
+import { usageMetrics, users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';

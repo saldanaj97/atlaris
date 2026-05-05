@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UserNotFoundError } from './errors';

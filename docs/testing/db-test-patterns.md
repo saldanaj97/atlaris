@@ -158,7 +158,7 @@ import { createId } from '@tests/fixtures/ids';
 ```typescript
 // src/lib/db/queries/types/attempts.types.ts
 export type AttemptsDbClient = ReturnType<
-  typeof import('@/lib/db/runtime').getDb
+  typeof import('@supabase/runtime').getDb
 >;
 ```
 
@@ -216,10 +216,10 @@ interface NormalizedTaskData {
 
 **File:** `tests/unit/setup.ts`
 
-The project globally mocks `@/lib/db/service-role` to prevent accidental real database access in unit tests. This is a **safety net**, not the primary mocking strategy — prefer injecting mock clients via function parameters (see [test-standards.md §3](./test-standards.md#prefer-dependency-injection-over-module-mocking)).
+The project globally mocks `@supabase/service-role` to prevent accidental real database access in unit tests. This is a **safety net**, not the primary mocking strategy — prefer injecting mock clients via function parameters (see [test-standards.md §3](./test-standards.md#prefer-dependency-injection-over-module-mocking)).
 
 ```typescript
-vi.mock('@/lib/db/service-role', () => ({
+vi.mock('@supabase/service-role', () => ({
   client: { end: vi.fn() },
   db: {
     select: vi.fn(),
@@ -484,7 +484,7 @@ describe('deletePlan', () => {
 | Inject mocks         | Pass mock `dbClient` to query helpers instead of relying on module mocks                  |
 | Validate SQL         | Capture where clauses, inspect via `PgDialect.sqlToQuery()`                               |
 | Test data            | `buildUserFixture()`, `createTestPlan()`, `createId()`                                    |
-| Safety net           | `tests/unit/setup.ts` globally mocks `@/lib/db/service-role`                              |
+| Safety net           | `tests/unit/setup.ts` globally mocks `@supabase/service-role`                             |
 | Transactions         | Override `transaction` mock per-test with a `mockTx` that has the operations you need     |
 
 ---

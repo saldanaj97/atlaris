@@ -1,13 +1,13 @@
-import type { InferSelectModel } from 'drizzle-orm';
 import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.types';
 import type {
   Module,
   ModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import type { LightweightPlanListRow } from '@/lib/db/queries/types/plans.types';
+import type { InferSelectModel } from 'drizzle-orm';
 
-type DbEnumsModule = typeof import('@/lib/db/enums');
-type DbSchemaModule = typeof import('@/lib/db/schema');
+type DbEnumsModule = typeof import('../../../supabase/enums');
+type DbSchemaModule = typeof import('@supabase/schema');
 
 export type SkillLevel = DbEnumsModule['skillLevel']['enumValues'][number];
 export type LearningStyle =

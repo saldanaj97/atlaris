@@ -5,7 +5,7 @@ import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
 const migration0027Sql = readFileSync(
-  resolve(process.cwd(), 'src/lib/db/migrations/0027_windy_agent_zero.sql'),
+  resolve(process.cwd(), 'supabase/migrations/0027_windy_agent_zero.sql'),
   'utf8',
 );
 

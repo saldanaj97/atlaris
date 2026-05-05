@@ -127,7 +127,7 @@ withAuth / requestBoundary (or withServerActionContext / withServerComponentCont
 
 ### What the Postgres policies check
 
-Every RLS policy in `src/lib/db/schema/tables/` extracts the user from session claims:
+Every RLS policy in `supabase/schema/tables/` extracts the user from session claims:
 
 ```sql
 -- Helper used by all policies (defined in schema/tables/common.ts)
@@ -142,9 +142,9 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
 | Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
-| Tests / integration tests    | `db` from `@/lib/db/service-role`  | Bypasses RLS for test data setup                       |
-| Workers / background jobs    | `db` from `@/lib/db/service-role`  | No user session exists                                 |
-| Stripe webhooks              | `db` from `@/lib/db/service-role`  | System-originated, no user session, signature-verified |
+| Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
+| Workers / background jobs    | `db` from `@supabase/service-role` | No user session exists                                 |
+| Stripe webhooks              | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
 
@@ -164,7 +164,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
 
-4. **Service-role usage is restricted.** Do not import `@/lib/db/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
+4. **Service-role usage is restricted.** Do not import `@supabase/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
 
@@ -174,7 +174,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Call `getDb()` outside an auth wrapper                       | Use `withAuth` or `requestBoundary` (or the legacy shims)                          |
 | Pass user ID from request body to query functions            | Always use `ctx.user` / `actor` from the boundary callback                         |
-| Import `@/lib/db/service-role` in API routes                 | Use `getDb()` which returns the RLS-scoped client                                  |
+| Import `@supabase/service-role` in API routes                | Use `getDb()` which returns the RLS-scoped client                                  |
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
@@ -186,10 +186,10 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Auth + legacy shims   | `src/lib/api/auth.ts`             |
 | Request boundary      | `src/lib/api/request-boundary.ts` |
 | Request context       | `src/lib/api/context.ts`          |
-| RLS client factory    | `src/lib/db/rls.ts`               |
-| DB client resolver    | `src/lib/db/runtime.ts`           |
-| Service-role client   | `src/lib/db/service-role.ts`      |
+| RLS client factory    | `supabase/rls.ts`                 |
+| DB client resolver    | `supabase/runtime.ts`             |
+| Service-role client   | `supabase/service-role.ts`        |
 | Clerk Auth config     | `src/lib/auth/server.ts`          |
 | Quota / usage logic   | `src/lib/stripe/usage.ts`         |
-| RLS policies (schema) | `src/lib/db/schema/tables/*.ts`   |
+| RLS policies (schema) | `supabase/schema/tables/*.ts`     |
 | Query modules         | `src/lib/db/queries/*.ts`         |

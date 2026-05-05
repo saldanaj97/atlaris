@@ -14,7 +14,7 @@ import type {
 import {
   MAX_MODULE_TITLE_LENGTH,
   MAX_TASK_TITLE_LENGTH,
-} from '@/lib/db/schema/constants';
+} from '@supabase/schema/constants';
 
 export class ParserError extends Error {
   constructor(

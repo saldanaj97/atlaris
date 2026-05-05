@@ -7,7 +7,7 @@
  * USAGE:
  * - Request handlers: Use createAuthenticatedRlsClient() with the authenticated user ID
  * - Anonymous sessions: Use createAnonymousRlsClient() only for explicit public endpoints or RLS security tests
- * - Workers/background jobs: Use the service-role client from @/lib/db/service-role
+ * - Workers/background jobs: Use the service-role client from @supabase/service-role
  * - Tests: Use helper functions from tests/helpers/rls.ts
  *
  * CONNECTION LIFECYCLE:
@@ -29,14 +29,15 @@
  * This allows a single connection pool while maintaining RLS security.
  * Note: In test environments, BYPASSRLS allows tests to access tables directly.
  */
-
-import { drizzle } from 'drizzle-orm/postgres-js';
-import type { Sql } from 'postgres';
 import postgres from 'postgres';
-import { databaseEnv } from '@/lib/config/env';
-import type { DbClient } from '@/lib/db/types';
-import { logger } from '@/lib/logging/logger';
 import * as schema from './schema';
+
+import { databaseEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+import { drizzle } from 'drizzle-orm/postgres-js';
+
+import type { DbClient } from '@/lib/db/types';
+import type { Sql } from 'postgres';
 
 function createIdempotentPostgresCleanup(
   sql: Sql,

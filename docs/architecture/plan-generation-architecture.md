@@ -39,7 +39,7 @@ User submits create form
 ## Request boundary and auth
 
 - API routes use the shared auth wrappers in `@/lib/api/auth`
-- request handlers use `getDb()` from `@/lib/db/runtime`
+- request handlers use `getDb()` from `@supabase/runtime`
 - the underlying RLS client sets `request.jwt.claims.sub` to the authenticated Clerk user id
 - ownership checks then resolve the internal `users.id` row associated with that auth subject
 
@@ -80,9 +80,9 @@ This separation between external auth identity and internal app user row is not 
 | -------------------------------- | ---------------------------------------------- |
 | `src/lib/db/queries/attempts.ts` | Reserve/finalize attempts atomically           |
 | `src/lib/db/queries/plans.ts`    | Plan CRUD and access helpers                   |
-| `src/lib/db/runtime.ts`          | Request-scoped DB accessor                     |
-| `src/lib/db/rls.ts`              | RLS client construction and session state      |
-| `src/lib/db/service-role.ts`     | Service-role database client for tests/workers |
+| `supabase/runtime.ts`            | Request-scoped DB accessor                     |
+| `supabase/rls.ts`                | RLS client construction and session state      |
+| `supabase/service-role.ts`       | Service-role database client for tests/workers |
 
 ## Lifecycle
 
@@ -174,7 +174,7 @@ See `docs/rules/database/schema-overview.md` for the current schema view.
 
 - request handlers must use `getDb()`
 - tests, workers, and system jobs may use the service-role client when appropriate
-- RLS session state is configured in `src/lib/db/rls.ts`
+- RLS session state is configured in `supabase/rls.ts`
 - policies check the current auth subject from `request.jwt.claims`
 - `users.auth_user_id` maps the auth identity to the internal app user row used by ownership relations
 
@@ -192,4 +192,4 @@ If someone imports the service-role DB into a request handler, they are not bein
 - `docs/rules/api/rate-limiting.md`
 - `docs/rules/database/schema-overview.md`
 - `src/lib/ai/AGENTS.md`
-- `src/lib/db/AGENTS.md`
+- `supabase/AGENTS.md`

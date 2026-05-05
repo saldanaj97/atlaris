@@ -2,7 +2,7 @@ import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 // Use the store function directly (not PlanPersistenceAdapter) so failure
 // updates run on the same transaction handle as SELECT … FOR UPDATE.
 import { markPlanGenerationFailure } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 

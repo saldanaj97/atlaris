@@ -5,9 +5,9 @@ import { ValidationError } from '@/lib/api/errors';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { resourceType } from '@/lib/db/enums';
-import { resources } from '@/lib/db/schema';
+import { resources } from '@supabase/schema';
 import { PAGINATION_MAX_LIMIT } from '@/shared/constants/pagination';
+import { resourceType } from '../../../../../supabase/enums';
 
 const DEFAULT_RESOURCES_LIMIT = 50;
 

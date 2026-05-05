@@ -11,7 +11,7 @@
 import { eq, type SQLWrapper, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 import {

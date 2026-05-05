@@ -2,8 +2,8 @@ import { desc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts, learningPlans } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';

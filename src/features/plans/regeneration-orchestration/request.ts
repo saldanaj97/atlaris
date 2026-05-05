@@ -1,6 +1,6 @@
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 import {
   createDefaultRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDeps,

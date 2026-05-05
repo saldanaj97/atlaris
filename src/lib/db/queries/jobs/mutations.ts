@@ -1,4 +1,3 @@
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -10,8 +9,8 @@ import type {
   JobEnqueueResult,
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
-import { getDb } from '@/lib/db/runtime';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue } from '@supabase/schema';
+import { decideJobRetry } from '@/shared/retry-policy';
 import {
   JOB_TYPES,
   type Job,
@@ -19,7 +18,8 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import { decideJobRetry } from '@/shared/retry-policy';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
 import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 
 /**

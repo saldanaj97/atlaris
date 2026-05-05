@@ -11,8 +11,8 @@ import {
 } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/stream/route';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 
 vi.mock('@/lib/auth/server', () => ({

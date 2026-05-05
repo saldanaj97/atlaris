@@ -1,9 +1,9 @@
 import { ValidationError } from '@/lib/api/errors';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, usageMetrics } from '@/lib/db/schema';
+import { learningPlans, usageMetrics } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { and, eq, sql } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
 import { UsageMetricsLoadError } from './errors';
 import { resolveUserTier } from './tier';
 

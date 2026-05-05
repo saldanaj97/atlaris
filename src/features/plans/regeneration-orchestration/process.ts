@@ -1,10 +1,10 @@
 import { JOB_TYPES } from '@/features/jobs/types';
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
 import { buildPlanGenerationInputFields } from '@/features/plans/generation-input';
-import { learningPlans } from '@/lib/db/schema';
-import { db as serviceRoleDb } from '@/lib/db/service-role';
+import { learningPlans } from '@supabase/schema';
 import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { eq } from 'drizzle-orm';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { createDefaultRegenerationOrchestrationDeps } from './deps';
 import { planRegenerationJobPayloadSchema } from './schema';
 

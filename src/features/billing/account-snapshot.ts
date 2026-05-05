@@ -6,11 +6,11 @@ import {
 import { getCorrelationId } from '@/lib/api/context';
 import { AppError } from '@/lib/api/errors';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { eq } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
 
 export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {

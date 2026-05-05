@@ -23,7 +23,7 @@
  * ═══════════════════════════════════════════════════════════════════════
  * FOR REQUEST HANDLERS:
  * ═══════════════════════════════════════════════════════════════════════
- * Use getDb() from @/lib/db/runtime instead - it automatically returns
+ * Use getDb() from @supabase/runtime instead - it automatically returns
  * the correct RLS-enforced client based on request context.
  *
  * Or import RLS clients directly from @/lib/db:
@@ -36,9 +36,9 @@
  * If you're seeing an ESLint error, you're using the wrong client!
  */
 
+import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
-import { databaseEnv } from '@/lib/config/env';
 
 import * as schema from './schema';
 
@@ -48,7 +48,7 @@ type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 // Connects as the DB owner (BYPASSRLS), so policies are not enforced and there is
 // no tenant isolation. Reserved for workers doing cross-tenant work, schema
 // migrations, and test setup that spans multiple users.
-// See @/lib/db/rls.ts for the RLS-enforced client.
+// See @supabase/rls for the RLS-enforced client.
 //
 // Lazy init: postgres client + drizzle are constructed on first access so Next.js
 // build-time imports of API routes don't require DATABASE_URL to be present.
@@ -113,7 +113,7 @@ export function isServiceRoleDbClient(client: unknown): boolean {
 
 /**
  * Service role database client - BYPASSES RLS (lazily initialized).
- * Use getDb() from @/lib/db/runtime in request handlers instead.
+ * Use getDb() from @supabase/runtime in request handlers instead.
  */
 export const db: ServiceRoleDb = new Proxy(
   serviceRoleProxyTarget,

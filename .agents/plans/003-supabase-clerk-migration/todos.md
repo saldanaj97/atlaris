@@ -2,14 +2,14 @@
 
 ## Acceptance Criteria
 
-- [ ] App uses Supabase Postgres for runtime and migrations.
+- [x] App uses Supabase Postgres for runtime and migrations.
 - [ ] App uses Clerk for sign-in, sign-up, session reads, user button, and route protection.
 - [x] Neon Auth packages, env vars, UI imports, CSS imports, and docs references are removed or intentionally archived.
-- [ ] Existing request-boundary contract remains stable for API routes, server components, and server actions.
-- [ ] RLS still fails closed and isolates rows by `users.auth_user_id`.
-- [ ] Fresh Supabase database can run the migration chain.
-- [ ] Local product testing remains documented and usable.
-- [ ] Final validation passes: `pnpm test:changed` and `pnpm check:full`.
+- [x] Existing request-boundary contract remains stable for API routes, server components, and server actions.
+- [x] RLS still fails closed and isolates rows by `users.auth_user_id`.
+- [x] Fresh Supabase database can run the migration chain.
+- [x] Local product testing remains documented and usable.
+- [x] Final validation passes: `pnpm test:changed` and `pnpm check:full`.
 
 ## Tasks
 
@@ -59,9 +59,12 @@
 
 - [x] Run Supabase migration with direct/session connection URL.
 - [x] Verify `drizzle.__drizzle_migrations`.
-- [ ] Smoke local app against Supabase.
+- [x] Replace Homebrew/local PostgreSQL dev scripts with Supabase CLI local stack commands.
+- [x] Move Drizzle migration output and CI drift checks to `supabase/migrations`.
+- [x] Seed deterministic local product-testing user through `supabase/seed.sql`.
+- [x] Smoke local app against Supabase.
 - [ ] Update deployment env vars after local smoke passes.
-- [ ] Confirm no Neon runtime imports remain.
+- [x] Confirm no Neon runtime imports remain.
 
 ### Optional Later - Clerk FDW Reconciliation
 
@@ -71,13 +74,13 @@
 
 ### Phase 6 - Validation
 
-- [ ] Run auth boundary unit tests.
+- [x] Run auth boundary unit tests.
 - [ ] Run proxy/middleware policy unit tests.
-- [ ] Run RLS/security tests.
-- [ ] Run targeted API/server component auth tests.
+- [x] Run RLS/security tests.
+- [x] Run targeted API/server component auth tests.
 - [ ] Run manual auth smoke.
-- [ ] Run `pnpm test:changed`.
-- [ ] Run `pnpm check:full`.
+- [x] Run `pnpm test:changed`.
+- [x] Run `pnpm check:full`.
 
 ## Review
 
@@ -94,3 +97,6 @@
 - Phase 3 replaced Neon server auth with Clerk server helpers, removed the legacy `/api/auth/[...path]` route, removed Neon Auth packages/env config, and kept local seeded-user bypass behavior for development/test.
 - Phase 4 keeps the existing `request.jwt.claims.sub` RLS contract, switches concrete unauthenticated DB role usage from `anonymous` to Supabase-native `anon`, and updates bootstrap/CI grants to match Supabase role names.
 - Phase 4 fresh migration-chain verification passed against the repo's disposable PostgreSQL/Testcontainers path. Actual fresh Supabase project verification remains unchecked until `DATABASE_URL_NON_POOLING` points at the target Supabase database.
+- Local dev DB cutover replaced Homebrew/Postgres 54331 scripts with Supabase CLI commands, made `supabase/migrations` the Drizzle migration output, added `supabase/seed.sql`, and kept Testcontainers as the automated integration/security isolation path.
+- Local Supabase reset passed through migration `0030` and applied `supabase/seed.sql`; `pnpm db:dev:seed`, targeted env/DB guard tests, `pnpm test:security`, `pnpm test:changed`, and `pnpm check:full` passed.
+- Local runtime smoke started `pnpm dev` against Supabase local and loaded `/dashboard` with the seeded dev-auth user (`200`). `/api/health` returned `404` because that route is not present.

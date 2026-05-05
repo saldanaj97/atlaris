@@ -11,12 +11,12 @@ import {
   MAX_MODULE_TITLE_LENGTH,
   MAX_RESOURCE_TITLE_LENGTH,
   MAX_TASK_TITLE_LENGTH,
-} from '@/lib/db/schema/constants';
+} from '@supabase/schema/constants';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 
 function findMigrationSqlForTitleConstraints(): string {
-  const migrationsDir = join(TEST_DIR, '../../../src/lib/db/migrations');
+  const migrationsDir = join(TEST_DIR, '../../../supabase/migrations');
   let files: string[];
   try {
     files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));

@@ -21,8 +21,8 @@
 import {
   createAnonymousRlsClient,
   createAuthenticatedRlsClient,
-} from '@/lib/db/rls';
-import { db } from '@/lib/db/service-role';
+} from '../../supabase/rls';
+import { db } from '@supabase/service-role';
 
 type DbInstance = typeof db;
 type CleanupCallback = () => Promise<void>;

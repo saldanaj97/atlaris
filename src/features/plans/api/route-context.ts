@@ -1,8 +1,8 @@
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import type { OwnedPlanRecord } from '@/lib/db/queries/helpers/plans-helpers';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
+import { getDb } from '@supabase/runtime';
 
 export type PlansDbClient = DbClient;
 

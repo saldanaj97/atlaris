@@ -96,9 +96,9 @@ jobs:
           DATABASE_URL: postgresql://placeholder@localhost/placeholder
         run: |
           pnpm db:generate
-          if ! git diff --quiet -- src/lib/db/migrations/; then
+          if ! git diff --quiet -- supabase/migrations/; then
             echo "::error::Migration files are out of sync with schema. Run 'pnpm db:generate' locally and commit generated files."
-            git status --short src/lib/db/migrations/
+            git status --short supabase/migrations/
             exit 1
           fi
       - name: Run Oxlint checks

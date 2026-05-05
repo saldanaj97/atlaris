@@ -1,14 +1,14 @@
-import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
 import {
   activeRegenerationJobWhere,
   clampLimit,
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
 import type { JobStats, JobsDbClient } from '@/lib/db/queries/types/jobs.types';
-import { getDb } from '@/lib/db/runtime';
-import { jobQueue } from '@/lib/db/schema';
-import { MAX_JOB_MONITORING_ROWS } from '@/lib/db/schema/constants';
+import { jobQueue } from '@supabase/schema';
+import { MAX_JOB_MONITORING_ROWS } from '@supabase/schema/constants';
 import type { Job, JobType } from '@/shared/types/jobs.types';
+import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
 import { jobQueueSelect, normalizeMutationCount } from './shared';
 
 /**

@@ -7,23 +7,23 @@
 ### 1. RLS-Enforced Client (Default)
 
 ```typescript
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 ```
 
 - **Use in**: API routes, server actions, request handlers
 - **Behavior**: Respects Row Level Security, enforces tenant isolation
-- **Runtime model**: `src/lib/db/rls.ts` switches role (`SET ROLE authenticated|anon`) and sets `request.jwt.claims`
-- **Location**: `src/lib/db/runtime.ts`
+- **Runtime model**: `supabase/rls.ts` switches role (`SET ROLE authenticated|anon`) and sets `request.jwt.claims`
+- **Location**: `supabase/runtime.ts`
 
 ### 2. Service-Role Client (Bypass)
 
 ```typescript
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 ```
 
 - **Use in**: Tests, internal operations, migrations, seeding
 - **Behavior**: Bypasses RLS completely
-- **Location**: `src/lib/db/service-role.ts`
+- **Location**: `supabase/service-role.ts`
 
 ## Usage Rules
 
@@ -37,11 +37,11 @@ import { db } from '@/lib/db/service-role';
 
 ### Request Handlers (API Routes, Server Actions)
 
-**MUST use `getDb()` from `@/lib/db/runtime`.**
+**MUST use `getDb()` from `@supabase/runtime`.**
 
 ```typescript
 // ✅ Correct
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 
 export async function GET() {
   const db = getDb();
@@ -52,7 +52,7 @@ export async function GET() {
 
 ```typescript
 // ❌ Wrong - bypasses security
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 
 export async function GET() {
   const plans = await db.select().from(learningPlans);
@@ -62,10 +62,10 @@ export async function GET() {
 
 ### Tests
 
-**Use `db` from `@/lib/db/service-role` for business logic tests.**
+**Use `db` from `@supabase/service-role` for business logic tests.**
 
 ```typescript
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 
 describe('Plan creation', () => {
   it('creates a plan', async () => {
@@ -88,7 +88,7 @@ Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity,
 
 ## Lint enforcement
 
-Do not import `@/lib/db/service-role` from request-layer paths (see `src/lib/db/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Oxlint plus review until equivalent rules land in `.oxlintrc.json`.
+Do not import `@supabase/service-role` from request-layer paths (see `supabase/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Oxlint plus review until equivalent rules land in `.oxlintrc.json`.
 
 - `src/app/api/**`
 - `src/lib/api/**`
@@ -96,6 +96,6 @@ Do not import `@/lib/db/service-role` from request-layer paths (see `src/lib/db/
 
 ## Related Documentation
 
-- `src/lib/db/service-role.ts` - Detailed usage documentation in comments
-- `src/lib/db/rls.ts` - RLS client factory documentation
+- `supabase/service-role.ts` - Detailed usage documentation in comments
+- `supabase/rls.ts` - RLS client factory documentation
 - [docs/testing/testing.md](../testing/testing.md) - Testing with different clients

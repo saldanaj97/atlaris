@@ -1,9 +1,9 @@
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { learningPlans, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@supabase/runtime';
+import { db } from '@supabase/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 

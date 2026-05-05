@@ -1,5 +1,3 @@
-import { sql } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
 import { ensureUser } from '@/../tests/helpers/db';
 import {
   getCurrentMonth,
@@ -8,8 +6,10 @@ import {
   incrementUsage,
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
-import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { learningPlans, usageMetrics, users } from '@supabase/schema';
+import { sql } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 describe('Usage Tracking', () => {
   describe('checkPlanLimit', () => {

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 export async function ensureUser({
   authUserId,

@@ -6,7 +6,7 @@ import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import { learningPlans, modules, tasks } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import type {
   ScheduleInputs,

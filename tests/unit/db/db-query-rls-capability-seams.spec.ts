@@ -1,6 +1,6 @@
 /**
  * Lightweight guardrails: high-risk modules stay aligned with DB/RLS seams documented in
- * src/lib/db/AGENTS.md (architecture tests, not behavioral coverage).
+ * supabase/AGENTS.md (architecture tests, not behavioral coverage).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -22,8 +22,8 @@ describe('DB query RLS capability seams', () => {
       resolve(SRC_ROOT, 'lib/db/queries/attempts.ts'),
       'utf8',
     );
-    expect(attempts).not.toContain(`from '@/lib/db/runtime'`);
-    expect(attempts).not.toContain(`from "@/lib/db/runtime"`);
+    expect(attempts).not.toContain(`from "@supabase/runtime"`);
+    expect(attempts).not.toContain(`from "@supabase/runtime"`);
     const withoutComments = stripLineAndBlockComments(attempts);
     expect(withoutComments).not.toMatch(/\bdbClient\s*=\s*getDb\s*\(\)/);
   });
@@ -49,8 +49,8 @@ describe('DB query RLS capability seams', () => {
     );
     expect(metrics).toContain(`db as serviceRoleDb`);
     expect(metrics).toContain(`dbClient: typeof serviceRoleDb = serviceRoleDb`);
-    expect(metrics).not.toContain(`from '@/lib/db/runtime'`);
-    expect(metrics).not.toContain(`from "@/lib/db/runtime"`);
+    expect(metrics).not.toContain(`from "@supabase/runtime"`);
+    expect(metrics).not.toContain(`from "@supabase/runtime"`);
     const withoutComments = stripLineAndBlockComments(metrics);
     expect(withoutComments).not.toMatch(/\bdbClient\s*=\s*getDb\s*\(\)/);
   });

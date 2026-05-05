@@ -1,14 +1,14 @@
-import { randomUUID } from 'node:crypto';
-import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 import {
   createFailedAttemptsInDb,
   getDurableWindowSeedCount,

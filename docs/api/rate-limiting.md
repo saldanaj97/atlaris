@@ -85,7 +85,7 @@ Plan generation has an additional database-backed rate limit:
 
 ```typescript
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 
 // Inside handler, after user-based rate limit passes
 await checkPlanGenerationRateLimit(actor.id, db); // Uses generation_attempts count in durable window

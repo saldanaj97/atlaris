@@ -138,7 +138,7 @@ If you changed DB schema:
 
 ```bash
 pnpm db:generate
-git add src/lib/db/migrations
+git add supabase/migrations
 git commit -m "feat: ..."
 ```
 
@@ -176,9 +176,9 @@ git commit -m "feat: ..."
 
 Migration-related changes include:
 
-- `src/lib/db/schema/**`
-- `src/lib/db/migrations/**`
-- `src/lib/db/enums.ts`
+- `supabase/schema/**`
+- `supabase/migrations/**`
+- `supabase/enums.ts`
 - `drizzle.config.ts`
 
 ---

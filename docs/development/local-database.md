@@ -1,169 +1,121 @@
-# Local PostgreSQL for development
+# Local Supabase for development
 
-Use a **local Postgres 17** instance when remote database limits block migrations, when you need **offline** work, or when you want to **dry-run** schema changes (`pnpm db:generate` → `pnpm db:migrate`) before pushing to CI or Supabase.
+Use the **Supabase CLI local stack** for long-lived local development. This keeps local database behavior closer to hosted Supabase than a standalone Postgres service while preserving Drizzle ORM and committed SQL migrations.
 
-Clerk Auth remains **hosted**; a local DB only replaces the **database** connection.
+Clerk Auth remains hosted. Supabase local replaces the database and local Supabase services only.
 
-### Local product testing
+## Local product testing
 
-After `pnpm db:dev:bootstrap`, a deterministic user row exists. Set `LOCAL_PRODUCT_TESTING=true` and `DEV_AUTH_USER_ID=00000000-0000-4000-8000-000000000001` (same as `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`) so server-side local identity matches that row. See [environment.md](./environment.md) and `src/lib/config/local-product-testing.ts` for precedence vs `AI_*` and Stripe envs.
+`supabase db reset` applies committed migrations and then runs `supabase/seed.sql`, which inserts the deterministic local product-testing user. Set:
 
-### Manual smoke checklist (local product testing)
+```env
+LOCAL_PRODUCT_TESTING=true
+DEV_AUTH_USER_ID=00000000-0000-4000-8000-000000000001
+```
 
-1. `pnpm db:dev:start` then `pnpm db:dev:bootstrap`.
-2. `.env.local`: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id, optional `STRIPE_LOCAL_MODE=true`, `STRIPE_SECRET_KEY` optional when local Stripe mode is on.
-3. `pnpm dev` — open protected routes (e.g. dashboard); header should show authenticated nav for the seeded user.
-4. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
-5. Integrations: verify the settings page shows Google Calendar as an explicit `Coming Soon` placeholder rather than a live provider flow.
-6. AI: set `MOCK_AI_SCENARIO` to exercise failure paths (mock provider).
-7. Real Clerk sessions, real third-party OAuth, and hosted Stripe remain staging; see [environment.md](./environment.md) for boundaries.
+That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`. Use `pnpm db:dev:seed` only when you need to re-run the seed without resetting the database.
+
+## Manual smoke checklist
+
+1. `pnpm db:dev:start`
+2. `pnpm db:dev:reset`
+3. Copy local Supabase URL and keys from `supabase status` into `.env.local`.
+4. Set local product-testing flags as needed: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id, optional `STRIPE_LOCAL_MODE=true`.
+5. `pnpm dev` — open protected routes such as dashboard; header should show authenticated nav for the seeded user.
+6. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
+7. AI: use the mock provider for local-safe plan-generation flows.
+8. Real Clerk sessions, real third-party OAuth, and hosted Stripe remain staging/production concerns; see [environment.md](./environment.md).
 
 ## Ports and local services
 
-| Port  | Service                   | Database name  | Purpose                         |
-| ----- | ------------------------- | -------------- | ------------------------------- |
-| 54330 | `docker-compose.test.yml` | `atlaris_test` | Manual / CI-style test Postgres |
-| 54331 | Homebrew PostgreSQL 17    | `atlaris_dev`  | Long-lived local **dev** DB     |
+| Port   | Service                      | Purpose                         |
+| ------ | ---------------------------- | ------------------------------- |
+| 54321  | Supabase API                 | Local Data/Auth API URL         |
+| 54322  | Supabase Postgres            | Local development database      |
+| 54323  | Supabase Studio              | Local database UI               |
+| 54324  | Supabase email testing inbox | Local auth email monitor        |
+| 54330  | `docker-compose.test.yml`    | Manual / CI-style tests         |
+| random | Testcontainers PostgreSQL 17 | Automated integration/RLS tests |
+
+Automated integration/security tests still use isolated Testcontainers, not the long-lived Supabase local database.
 
 ## Quick start
 
-1. Install and configure PostgreSQL 17 once:
+1. Install dependencies:
 
    ```bash
-   brew install postgresql@17
-   brew services start postgresql@17
-
-   PG17_BIN="$(brew --prefix postgresql@17)/bin"
-   "$PG17_BIN"/psql postgres -c "ALTER SYSTEM SET listen_addresses = 'localhost';"
-   "$PG17_BIN"/psql postgres -c "ALTER SYSTEM SET port = '54331';"
-   brew services restart postgresql@17
-
-   "$PG17_BIN"/psql -p 54331 postgres <<'SQL'
-   DO $$
-   BEGIN
-     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
-       CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';
-     ELSE
-       ALTER ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres';
-     END IF;
-   END
-   $$;
-
-   SELECT 'CREATE DATABASE atlaris_dev OWNER postgres'
-   WHERE NOT EXISTS (
-     SELECT FROM pg_database WHERE datname = 'atlaris_dev'
-   )\gexec
-   SQL
+   pnpm install
    ```
 
-2. Start Postgres for development:
+2. Start Supabase local:
 
    ```bash
    pnpm db:dev:start
    ```
 
-3. Bootstrap once (extensions, roles, `auth.jwt`, migrations, RLS grants):
+3. Reset the local DB from migrations and seed:
 
    ```bash
-   pnpm db:dev:bootstrap
+   pnpm db:dev:reset
    ```
 
-   Default URL: `postgresql://postgres:postgres@localhost:54331/atlaris_dev`. Override with `DATABASE_URL` if needed.
-
-4. Point the app at local Postgres (same value for all three — see [Drizzle URL order](#drizzle-migration-url-order)):
+4. Configure local app env from `supabase status`:
 
    ```env
-   DATABASE_URL=postgresql://postgres:postgres@localhost:54331/atlaris_dev
-   DATABASE_URL_NON_POOLING=postgresql://postgres:postgres@localhost:54331/atlaris_dev
-   DATABASE_URL_UNPOOLED=postgresql://postgres:postgres@localhost:54331/atlaris_dev
+   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon/publishable key from supabase status>
+   SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase status>
    ```
 
-5. Run migrations anytime with `pnpm db:migrate` (uses `.env.local` via `drizzle.config.ts`).
+   If a command still needs `DATABASE_URL_NON_POOLING` or `DATABASE_URL_UNPOOLED`, set them to the same local `DATABASE_URL`.
 
-### Clean slate
+5. Start the app:
+
+   ```bash
+   pnpm dev
+   ```
+
+## Clean slate
 
 ```bash
-pnpm db:dev:reset   # drops and recreates atlaris_dev
-pnpm db:dev:bootstrap
+pnpm db:dev:reset
 ```
 
-## Drizzle migration URL order
+`supabase db reset` recreates the local database from `supabase/migrations` and then applies `supabase/seed.sql`.
 
-`drizzle.config.ts` prefers direct connections for DDL:
+## Drizzle and migration ownership
 
-`DATABASE_URL_NON_POOLING` → `DATABASE_URL_UNPOOLED` → `DATABASE_URL`.
+Drizzle schema/types remain in the repo, but committed migration files live under `supabase/migrations`.
 
-For local dev, set all three to the **same** string.
+`drizzle.config.ts` prefers direct connection URLs for DDL:
+
+`DATABASE_URL_NON_POOLING` -> `DATABASE_URL_UNPOOLED` -> `DATABASE_URL`.
+
+For local Supabase, `DATABASE_URL` alone is enough unless you are running a command that explicitly requires the aliases.
 
 ## Scripts
 
-| Script               | Command                 |
-| -------------------- | ----------------------- |
-| Start dev DB         | `pnpm db:dev:start`     |
-| Stop dev DB          | `pnpm db:dev:stop`      |
-| Reset dev DB         | `pnpm db:dev:reset`     |
-| First-time bootstrap | `pnpm db:dev:bootstrap` |
+| Script            | Command                 |
+| ----------------- | ----------------------- |
+| Start Supabase    | `pnpm db:dev:start`     |
+| Stop Supabase     | `pnpm db:dev:stop`      |
+| Reset DB + seed   | `pnpm db:dev:reset`     |
+| Re-run seed only  | `pnpm db:dev:seed`      |
+| Legacy seed alias | `pnpm db:dev:bootstrap` |
 
-`bootstrap-local-db` refuses non-localhost hosts so it cannot accidentally run against a remote database if misconfigured.
+`pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
 
-## Hosted Postgres (e.g. Supabase): migrations
+## Hosted Supabase migrations
 
-Use a **direct** (non-pooler) connection string for DDL when your provider recommends it—`drizzle.config.ts` prefers `DATABASE_URL_NON_POOLING` → `DATABASE_URL_UNPOOLED` → `DATABASE_URL`.
+Use a direct/session connection string for DDL when Supabase recommends it. `drizzle.config.ts` still falls back from `DATABASE_URL_NON_POOLING` to `DATABASE_URL_UNPOOLED` to `DATABASE_URL`.
 
-If `pnpm db:migrate` fails due to **provider limits**, timeouts, or pooler incompatibility, apply and validate the migration chain against **local Postgres** first, then retry against the hosted instance when the limit clears or with a session/direct URL.
-
-## Integration tests and `atlaris_dev`
-
-`tests/helpers/db/truncate.ts` only allows truncating databases whose name matches `/(^|_)(test|tests)$/`. **`atlaris_dev` does not match** — so `truncateAll()` refuses to wipe the dev DB. That is intentional: you should not point integration tests at your long-lived dev database.
-
-If you force integration tests against a non-test database, truncation will fail unless `ALLOW_DB_TRUNCATE=true` (still dangerous).
+Hosted deployment and migration workflows are separate from the local-dev stack. Do not point local reset/seed commands at hosted databases.
 
 ## Troubleshooting
 
-- **Connection refused** — Run `pnpm db:dev:start` and ensure PostgreSQL 17 is running on port **54331**.
-- **Port conflict** — Stop another Postgres on 54331 or update your local PostgreSQL 17 port configuration.
-- **`pnpm db:dev:bootstrap` rejects host** — `DATABASE_URL` points at a non-localhost host; use a local URL or unset `DATABASE_URL` to use the default.
-
----
-
-## Hosted database: operational migration checklist
-
-Use this when applying Drizzle migrations to **staging or production** Postgres (e.g. Supabase).
-
-### Pre-flight
-
-1. Confirm the correct **project and database** in the provider dashboard — wrong `DATABASE_URL` is the main risk.
-2. Apply the migration chain **locally** first (`pnpm db:migrate` against `atlaris_dev`) so you know the SQL applies cleanly.
-3. On the target database, inspect the Drizzle journal:
-
-   ```sql
-   SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 5;
-   ```
-
-   Confirm the latest applied tag matches expectations (e.g. `0022` before adding `0023_…`).
-
-### Apply
-
-With `.env.local` (or inline env) pointing at the hosted instance (prefer a **direct** URL for DDL when available):
-
-```bash
-pnpm db:migrate
-```
-
-### Verify (example: Phase 3 / `ai_usage_events`)
-
-- Journal contains `0023_phase3_ai_usage_provider_cost` **exactly once**.
-- Table `ai_usage_events` has nullable `provider_cost_microusd bigint`, nullable `model_pricing_snapshot` jsonb, and CHECK `ai_usage_events_provider_cost_microusd_nonneg`.
-
-### Rollback (only if needed)
-
-Drizzle Kit does **not** roll back migrations automatically. For nullable additive columns, manual SQL is:
-
-```sql
-ALTER TABLE ai_usage_events DROP CONSTRAINT IF EXISTS ai_usage_events_provider_cost_microusd_nonneg;
-ALTER TABLE ai_usage_events DROP COLUMN IF EXISTS model_pricing_snapshot;
-ALTER TABLE ai_usage_events DROP COLUMN IF EXISTS provider_cost_microusd;
-DELETE FROM drizzle.__drizzle_migrations WHERE tag = '0023_phase3_ai_usage_provider_cost';
-```
-
-Close the GitHub issue only after operational verification matches the product checklist (write paths, partial gating, RLS, etc.).
+- **Supabase CLI not found** — Run `pnpm install`; the project keeps `supabase` as a dev dependency.
+- **Port conflict** — Stop the process using the relevant Supabase local port, or adjust `supabase/config.toml`.
+- **Connection refused** — Run `pnpm db:dev:start`; confirm `supabase status` reports Postgres on `127.0.0.1:54322`.
+- **Missing seed user** — Run `pnpm db:dev:seed` or `pnpm db:dev:reset`.
+- **Integration tests should not use Supabase local** — Leave Testcontainers enabled unless you are intentionally debugging with `SKIP_TESTCONTAINERS=true`.

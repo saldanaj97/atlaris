@@ -44,10 +44,10 @@ export const users = pgTable(
     // RLS Policies (session-variable-based provider identity)
     //
     // These policies enforce tenant isolation by checking the JWT claims
-    // session variable set by createRlsClient() from @/lib/db/rls.
+    // session variable set by createRlsClient() from @supabase/rls.
     //
     // Note: Service-role operations (workers, background jobs) use the
-    // bypass client from @/lib/db/service-role which has RLS disabled.
+    // bypass client from @supabase/service-role which has RLS disabled.
 
     // Users can read only their own data
     pgPolicy('users_select_own', {

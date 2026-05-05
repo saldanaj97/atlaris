@@ -1,6 +1,6 @@
+import { learningPlans } from '@supabase/schema';
 import { describe, expect, it } from 'vitest';
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 

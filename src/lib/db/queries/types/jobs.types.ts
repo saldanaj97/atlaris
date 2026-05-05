@@ -2,7 +2,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import type { DbClient } from '@/lib/db/types';
 import type { JobErrorHistoryEntry } from '@/shared/types/jobs.types';
 
-type DbSchemaModule = typeof import('@/lib/db/schema');
+type DbSchemaModule = typeof import('@supabase/schema');
 
 /**
  * Database row type inferred from Drizzle schema.

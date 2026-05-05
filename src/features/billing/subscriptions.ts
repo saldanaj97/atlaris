@@ -1,9 +1,9 @@
-import { eq, sql } from 'drizzle-orm';
-import type Stripe from 'stripe';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import { eq, sql } from 'drizzle-orm';
+import type Stripe from 'stripe';
+import { getDb } from '@supabase/runtime';
 import { getStripe } from './client';
 
 const CUSTOMER_PROVISION_LOCK_KEY = 2;

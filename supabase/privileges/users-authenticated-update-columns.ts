@@ -1,7 +1,7 @@
 /**
  * PostgreSQL column names the `authenticated` role may UPDATE on `public.users`.
  *
- * Must stay aligned with `src/lib/db/migrations/0018_harden_users_update_columns.sql`.
+ * Must stay aligned with `supabase/migrations/0018_harden_users_update_columns.sql`.
  * Consumed by Testcontainers (`tests/setup/testcontainers.ts`) and
  * `tests/helpers/db/rls-bootstrap.ts` when mirroring production grants in ephemeral DBs.
  */

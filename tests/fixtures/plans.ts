@@ -6,9 +6,9 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { learningPlans } from '@supabase/schema';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
+import { db } from '@supabase/service-role';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type LearningPlanInsert = InferInsertModel<typeof learningPlans>;

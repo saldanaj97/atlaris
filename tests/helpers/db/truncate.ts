@@ -15,8 +15,8 @@ import {
   tasks,
   usageMetrics,
   users,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 function assertSafeToTruncate() {
   const url = process.env.DATABASE_URL;

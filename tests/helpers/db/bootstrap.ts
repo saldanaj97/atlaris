@@ -1,10 +1,10 @@
 /**
- * Shared Supabase-like bootstrap for Postgres used by Testcontainers and
- * `scripts/bootstrap-local-db.ts`. Keep in sync with migration + privilege rules.
+ * Shared Supabase-like bootstrap for isolated Testcontainers Postgres.
+ * Keep in sync with migration + privilege rules.
  */
 import postgres from 'postgres';
 
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '@/lib/db/privileges/users-authenticated-update-columns';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 
@@ -71,7 +71,7 @@ export async function grantRlsPermissions(
       grantedSorted.some((c, i) => c !== expectedSorted[i])
     ) {
       throw new Error(
-        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with src/lib/db/migrations/0018_harden_users_update_columns.sql and src/lib/db/privileges/users-authenticated-update-columns.ts.`,
+        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with supabase/migrations/0018_harden_users_update_columns.sql and supabase/privileges/users-authenticated-update-columns.ts.`,
       );
     }
 
@@ -91,7 +91,7 @@ export async function grantRlsPermissions(
         .map((r) => `${r.grantee}:${r.privilege_type}`)
         .join(', ');
       throw new Error(
-        `Bootstrap: job_queue write grants for authenticated/anon expected [], got [${got}]. Sync grantRlsPermissions with src/lib/db/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
+        `Bootstrap: job_queue write grants for authenticated/anon expected [], got [${got}]. Sync grantRlsPermissions with supabase/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
       );
     }
 

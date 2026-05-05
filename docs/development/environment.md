@@ -13,7 +13,7 @@ Guidelines for environment variables and logging in this project.
 Prefer the exported grouped configs instead of raw keys:
 
 - `appEnv` - Runtime mode, app URL, maintenance mode
-- `databaseEnv` - Database connection settings
+- `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
@@ -59,6 +59,19 @@ Key auth-related server variables include:
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
+
+### Local Supabase database
+
+Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
+
+| Variable                               | Local default / source                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `DATABASE_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
+| `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321`                                                 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key from `supabase status`                            |
+| `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
+
+Only add `DATABASE_URL_NON_POOLING` or `DATABASE_URL_UNPOOLED` locally when a command requires those aliases; set them to the same local `DATABASE_URL`.
 
 ## Logging
 

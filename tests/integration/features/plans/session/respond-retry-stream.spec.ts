@@ -11,7 +11,6 @@ import {
 } from '@/features/plans/session/plan-generation-session';
 import * as streamCleanup from '@/features/plans/session/stream-cleanup';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
-import { db } from '@/lib/db/service-role';
 import { ensureUser } from '@tests/helpers/db';
 import {
   findStreamingEvent,
@@ -19,6 +18,7 @@ import {
 } from '@tests/helpers/streaming';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { describe, expect, it, vi } from 'vitest';
+import { db } from '@supabase/service-role';
 
 const SUCCESS_ATTEMPT_RESULT: GenerationAttemptResult = {
   status: 'generation_success',

@@ -18,6 +18,13 @@ export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv } from '@/lib/config/env/observability';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export {
+  createSupabaseEnv,
+  createSupabasePublicEnv,
+  optionalSupabaseServiceRoleKey,
+  supabaseEnv,
+  type SupabasePublicEnv,
+} from '@/lib/config/env/supabase';
+export {
   createServerEnvAccess,
   EnvValidationError,
   getSmokeStateFileEnv,

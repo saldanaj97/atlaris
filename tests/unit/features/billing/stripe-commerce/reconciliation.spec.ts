@@ -18,7 +18,7 @@ import {
   applyVerifiedEvent,
   type StripeReconciliationDeps,
 } from '@/features/billing/stripe-commerce/reconciliation';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import { createLogger } from '@/lib/logging/logger';
 
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {

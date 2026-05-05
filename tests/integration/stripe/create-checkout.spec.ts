@@ -6,11 +6,11 @@ import {
 } from '@/app/api/v1/stripe/create-checkout/route';
 import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@supabase/service-role';
 
 const createTestBoundary = (stripe: ReturnType<typeof makeStripeMock>) =>
   createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) });

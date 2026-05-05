@@ -4,7 +4,7 @@ import type {
   JobQueueRow,
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue } from '@supabase/schema';
 import type { Job } from '@/shared/types/jobs.types';
 
 export const jobQueueSelect = {

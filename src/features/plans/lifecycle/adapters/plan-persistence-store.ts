@@ -13,7 +13,7 @@ import {
 } from '@/features/plans/errors';
 import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 

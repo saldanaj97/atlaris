@@ -1,13 +1,13 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
-import { MissingRequestDbContextError } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
 import {
   safeStringifyUnknown,
   unknownThrownCore,
 } from '@/lib/errors/normalize-unknown';
 import { logger } from '@/lib/logging/logger';
+import { MissingRequestDbContextError } from '@supabase/runtime';
 
 /** Programming / wiring mistakes: surface instead of masking as persistence noise. */
 function shouldSurfaceMarkFailureError(markErr: unknown): boolean {

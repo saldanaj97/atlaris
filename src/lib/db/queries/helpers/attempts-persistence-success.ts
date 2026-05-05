@@ -10,7 +10,7 @@ import type {
   NormalizedModuleData,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
-import { generationAttempts, modules, tasks } from '@/lib/db/schema';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 
 type TaskInsertValue = {

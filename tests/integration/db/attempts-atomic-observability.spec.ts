@@ -1,7 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { asc, eq } from 'drizzle-orm';
-import type { MockInstance } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -12,8 +8,12 @@ import {
   learningPlans,
   modules,
   tasks,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { asc, eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@supabase/service-role';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 import {

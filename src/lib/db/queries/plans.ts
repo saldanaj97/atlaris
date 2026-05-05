@@ -3,7 +3,6 @@
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
 
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   fetchModuleTaskMetricsRows,
@@ -18,13 +17,12 @@ import type {
   PlanProgressStatusRow,
   PlanSummaryTaskRow,
 } from '@/lib/db/queries/types/plans.types';
-import { getDb } from '@/lib/db/runtime';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
-} from '@/lib/db/schema';
+} from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import {
   assertValidPaginationOptions,
@@ -37,6 +35,8 @@ import type {
   Task,
   TaskProgress,
 } from '@/shared/types/db.types';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
 
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 

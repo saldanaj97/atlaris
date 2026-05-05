@@ -23,8 +23,8 @@ if (!databaseUrl) {
 }
 
 export default {
-  schema: ['./src/lib/db/schema/index.ts', './src/lib/db/enums.ts'],
-  out: './src/lib/db/migrations',
+  schema: ['./supabase/schema/index.ts', './supabase/enums.ts'],
+  out: './supabase/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: databaseUrl,

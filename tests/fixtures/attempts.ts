@@ -7,8 +7,8 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { PLAN_GENERATION_LIMIT } from '@/features/ai/generation-policy';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 type CreateFailedAttemptParams = {
   planId: string;

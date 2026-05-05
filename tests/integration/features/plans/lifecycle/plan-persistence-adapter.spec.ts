@@ -1,11 +1,11 @@
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import { ensureUser } from '@tests/helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 
 const planPayload = {
   topic: 'Adapter integration topic',

@@ -1,13 +1,13 @@
-import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';

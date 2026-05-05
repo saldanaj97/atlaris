@@ -3,7 +3,7 @@ import { afterAll, afterEach } from 'vitest';
 import {
   isClientInitialized,
   resetServiceRoleClientForTests,
-} from '@/lib/db/service-role';
+} from '@supabase/service-role';
 
 afterEach(() => {
   cleanup();

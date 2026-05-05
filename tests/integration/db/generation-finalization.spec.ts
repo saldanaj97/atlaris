@@ -1,6 +1,4 @@
-import { randomUUID } from 'node:crypto';
-import { and, asc, eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import {
   commitPlanGenerationFailure,
   commitPlanGenerationSuccess,
@@ -13,10 +11,12 @@ import {
   modules,
   tasks,
   usageMetrics,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { getCurrentMonth } from '@/features/billing/usage-metrics';
+} from '@supabase/schema';
 import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
+import { and, asc, eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';

@@ -8,12 +8,12 @@ import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gatew
 import { replaySyntheticSubscriptionCreated } from '@/features/billing/stripe-commerce/reconciliation';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
-import { db as serviceRoleDb } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
 import type { createLogger } from '@/lib/logging/logger';
 import { logger } from '@/lib/logging/logger';
 import type Stripe from 'stripe';
+import { getDb } from '@supabase/runtime';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 type AppLogger = ReturnType<typeof createLogger>;
 

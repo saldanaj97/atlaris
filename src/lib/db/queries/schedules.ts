@@ -5,7 +5,7 @@ import {
   mapDbRowToScheduleCacheRow,
 } from '@/lib/db/queries/helpers/schedule-helpers';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
-import { planSchedules } from '@/lib/db/schema';
+import { planSchedules } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';

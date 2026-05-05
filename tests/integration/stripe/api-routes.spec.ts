@@ -6,8 +6,7 @@ import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
 import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
 import {
   makeStripeInvoice,
   makeStripeMock,
@@ -16,6 +15,7 @@ import {
 import { sql } from 'drizzle-orm';
 import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@supabase/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import {

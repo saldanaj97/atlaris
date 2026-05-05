@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resources } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { resources } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

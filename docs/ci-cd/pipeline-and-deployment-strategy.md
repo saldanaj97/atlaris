@@ -120,7 +120,7 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 ### PR fails migration drift check
 
 - Run `pnpm db:generate` locally
-- Commit generated files under `src/lib/db/migrations/`
+- Commit generated files under `supabase/migrations/`
 - Push again
 
 ### Production deploy blocked

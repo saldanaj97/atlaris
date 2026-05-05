@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
 import { PgDialect } from 'drizzle-orm/pg-core';
+import { describe, expect, it, vi } from 'vitest';
 
-import { db as serviceDb, isServiceRoleDbClient } from '@/lib/db/service-role';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
+import { isServiceRoleDbClient, db as serviceDb } from '@supabase/service-role';
 
 describe('prepareRlsTransactionContext', () => {
   it('service-role client: no replay, no claims query', async () => {

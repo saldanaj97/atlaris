@@ -1,6 +1,6 @@
 /**
  * `CREATE OR REPLACE FUNCTION auth.jwt()` — required by RLS policies that read
- * JWT claims from `request.jwt.claims` (see `src/lib/db/schema` policies).
+ * JWT claims from `request.jwt.claims` (see `supabase/schema` policies).
  * Ephemeral and integration test databases must install this to mirror production.
  */
 export const AUTH_JWT_BOOTSTRAP_SQL = `

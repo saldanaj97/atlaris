@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { planOrigin } from '@/lib/db/enums';
+import { planOrigin } from '../../../supabase/enums';
 
 /**
  * Verifies every OpenAPI schema exposing an origin enum stays in sync with the

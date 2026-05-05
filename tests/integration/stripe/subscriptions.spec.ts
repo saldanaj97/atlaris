@@ -1,4 +1,13 @@
 import {
+  applyPaymentFailed,
+  applySubscriptionDeleted,
+  applySubscriptionSync,
+  type TransitionDeps,
+} from '@/features/billing/stripe-commerce/reconciliation';
+import { createCustomer } from '@/features/billing/subscriptions';
+import { users } from '@supabase/schema';
+import { createLogger } from '@/lib/logging/logger';
+import {
   makeStripeInvoice,
   makeStripeMock,
   makeStripeSubscription,
@@ -6,16 +15,7 @@ import {
 import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  applyPaymentFailed,
-  applySubscriptionDeleted,
-  applySubscriptionSync,
-  type TransitionDeps,
-} from '@/features/billing/stripe-commerce/reconciliation';
-import { createCustomer } from '@/features/billing/subscriptions';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { createLogger } from '@/lib/logging/logger';
+import { db } from '@supabase/service-role';
 import { ensureUser } from '../../helpers/db';
 import {
   buildStripeCustomerId,

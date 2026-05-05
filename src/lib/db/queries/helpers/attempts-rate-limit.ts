@@ -3,7 +3,7 @@ import type {
   UserGenerationAttemptsSinceParams,
   UserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import { PLAN_GENERATION_WINDOW_MS } from '@/shared/constants/generation';
 
 function userAttemptsSincePredicate(

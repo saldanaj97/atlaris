@@ -1,11 +1,14 @@
+import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
+import { aiUsageEvents, learningPlans } from '@supabase/schema';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import { aiUsageEvents, learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { canonicalUsageToRecordParams, recordUsage } from '@/lib/db/usage';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { db } from '@supabase/service-role';
+import {
+  canonicalUsageToRecordParams,
+  recordUsage,
+} from '../../../supabase/usage';
 
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

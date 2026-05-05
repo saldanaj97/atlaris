@@ -1,6 +1,6 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
-type DbSchemaModule = typeof import('@/lib/db/schema');
+type DbSchemaModule = typeof import('@supabase/schema');
 
 /** Select model for resources table. */
 export type Resource = InferSelectModel<DbSchemaModule['resources']>;

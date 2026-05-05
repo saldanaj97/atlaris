@@ -1,6 +1,6 @@
 import { getRequestContext } from '@/lib/api/context';
 import { appEnv } from '@/lib/config/env';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { db as serviceDb } from './service-role';
 
 export class MissingRequestDbContextError extends Error {
   constructor() {

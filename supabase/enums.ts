@@ -1,6 +1,5 @@
-import { pgEnum } from 'drizzle-orm/pg-core';
-
 import { JOB_TYPE_VALUES } from '@/shared/constants/jobs';
+import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const skillLevel = pgEnum('skill_level', [
   'beginner',

@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '@/lib/db/privileges/users-authenticated-update-columns';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -34,7 +34,7 @@ describe('authenticated users UPDATE allowlist sync', () => {
     const migrationContents = readFileSync(
       resolve(
         TEST_DIR,
-        '../../../src/lib/db/migrations/0018_harden_users_update_columns.sql',
+        '../../../supabase/migrations/0018_harden_users_update_columns.sql',
       ),
       'utf8',
     );

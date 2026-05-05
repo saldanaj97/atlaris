@@ -17,7 +17,7 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 
 - **Framework:** Next.js 16.2.4 + React 19
 - **Language:** TypeScript (strict mode)
-- **Database:** PostgreSQL via Drizzle ORM
+- **Database:** Supabase local Postgres / hosted Supabase Postgres via Drizzle ORM
 - **Auth:** Clerk for UI, route protection, and server session reads
 - **AI:** OpenRouter via `@openrouter/sdk` and the Vercel AI SDK
 - **Payments:** Stripe
@@ -32,13 +32,13 @@ pnpm install
 pnpm dev
 ```
 
-If you want to bring up the native local dev database and app together:
+If you want to bring up the Supabase local stack and app together:
 
 ```bash
 pnpm dev:full
 ```
 
-Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the local PostgreSQL 17 service directly, and `pnpm db:dev:reset` if you want to recreate `atlaris_dev`.
+Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the Supabase local stack, and `pnpm db:dev:reset` to recreate the local Supabase database from committed migrations and seed data.
 
 Open `http://localhost:3000` in your browser.
 
@@ -70,16 +70,22 @@ src/
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers
 │   ├── auth/      # Auth server/client wiring
 │   ├── config/    # Typed environment access
-│   ├── db/        # Schema, queries, RLS/service-role clients, migrations
+│   ├── db/        # Query modules and shared DB types
 │   ├── integrations/ # OAuth token/state utilities
 │   ├── logging/   # Server/client logging helpers
 │   └── ...
 └── types/         # Shared application types
+supabase/
+├── schema/        # Drizzle schema, relations, and policy definitions
+├── migrations/    # Committed DB migrations
+├── rls.ts         # RLS client factory
+├── runtime.ts     # Request-scoped DB resolver
+└── service-role.ts # Service-role DB client for tests/workers
 ```
 
 ## Security model
 
-- Request handlers use `getDb()` from `@/lib/db/runtime` inside auth wrappers
+- Request handlers use `getDb()` from `@supabase/runtime` inside auth wrappers
 - Tests, workers, and migrations use the service-role client only where appropriate
 - RLS policies are explicitly scoped to `authenticated`
 - OAuth state tokens are hashed before persistence

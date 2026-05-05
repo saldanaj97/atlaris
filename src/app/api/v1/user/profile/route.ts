@@ -5,7 +5,7 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 
 type UserProfileResponse = Pick<

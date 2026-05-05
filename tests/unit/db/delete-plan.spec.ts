@@ -2,7 +2,7 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deletePlan } from '@/lib/db/queries/plans';
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 
 import { createId } from '../../fixtures/ids';
 import { createTestPlan } from '../../fixtures/owned-plan-record';

@@ -1,20 +1,5 @@
 'use server';
 
-/**
- * RLS enforcement note:
- * - RLS policies exist and are tested, but request/server actions currently use
- *   the service-role Drizzle client via getDb() unless a request-scoped RLS client
- *   is injected into the request context.
- * - Until an RLS-capable Drizzle client is available and wired, request-layer code
- *   must validate ownership in queries (e.g. batch updates via `applyTaskProgressUpdates`).
- *
- * Source of truth:
- * - src/lib/db/runtime.ts — getDb() returns the request-scoped DB when present,
- *   otherwise the service-role DB.
- * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
- */
-
-import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import {
   applyTaskProgressUpdates,
@@ -22,9 +7,11 @@ import {
 } from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
-import type { ProgressStatus } from '@/shared/types/db.types';
 import { revalidatePath } from 'next/cache';
 import { planError, planSuccess } from './helpers';
+
+import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface BatchUpdateTaskProgressInput {
   planId: string;
@@ -34,6 +21,18 @@ interface BatchUpdateTaskProgressInput {
 /**
  * Server action to batch update multiple task progress records from the plan overview page.
  * Delegates validation, scope checks, persistence, and path selection to `applyTaskProgressUpdates`.
+ *
+ * RLS enforcement note:
+ * - RLS policies exist and are tested, but request/server actions currently use
+ *   the service-role Drizzle client via getDb() unless a request-scoped RLS client
+ *   is injected into the request context.
+ * - Until an RLS-capable Drizzle client is available and wired, request-layer code
+ *   must validate ownership in queries (e.g. batch updates via `applyTaskProgressUpdates`).
+ *
+ * Source of truth:
+ * - supabase/runtime.ts — getDb() returns the request-scoped DB when present,
+ *   otherwise the service-role DB.
+ * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
  */
 export async function batchUpdateTaskProgressAction({
   planId,

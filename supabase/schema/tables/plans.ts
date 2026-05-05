@@ -66,7 +66,7 @@ export const learningPlans = pgTable(
 
     // RLS Policies (session-variable-based provider identity)
     // Note: Learning plans are private-only product data.
-    // Service-role operations use bypass client from @/lib/db/service-role.
+    // Service-role operations use bypass client from @supabase/service-role.
 
     // Users can read only their own plans
     pgPolicy('learning_plans_select', {

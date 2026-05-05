@@ -18,7 +18,10 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-import { canonicalUsageToRecordParams, recordUsageInTx } from '@/lib/db/usage';
+import {
+  canonicalUsageToRecordParams,
+  recordUsageInTx,
+} from '../../../../../supabase/usage';
 
 import type {
   AttemptsDbClient,

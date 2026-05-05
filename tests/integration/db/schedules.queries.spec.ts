@@ -1,15 +1,15 @@
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
   validatePlanOwnership,
 } from '@/lib/db/queries/schedules';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
-import { db } from '@/lib/db/service-role';
 import type { ScheduleJson } from '@/shared/types/scheduling.types';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 function buildScheduleJson(
   overrides: Partial<ScheduleJson> = {},

@@ -10,9 +10,9 @@ import {
 import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
 import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, modules, tasks } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
+import { db } from '@supabase/service-role';
 
 // Minimal mock attempt record returned by the generationAttempts update
 const mockAttemptRecord = {

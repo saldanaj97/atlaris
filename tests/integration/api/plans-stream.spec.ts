@@ -3,8 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
 import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import {

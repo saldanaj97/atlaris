@@ -5,8 +5,8 @@
 
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
-import { modules, tasks } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { modules, tasks } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 type ModuleRow = InferSelectModel<typeof modules>;
 type ModuleInsert = InferInsertModel<typeof modules>;

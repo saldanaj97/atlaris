@@ -8,18 +8,18 @@ Drizzle ORM + PostgreSQL with Row Level Security (RLS). Two client types: RLS-en
 
 ## Client Selection (CRITICAL)
 
-| Context                    | Client       | Import                            |
-| -------------------------- | ------------ | --------------------------------- |
-| API routes, server actions | RLS-enforced | `getDb()` from `@/lib/db/runtime` |
-| Tests, workers, migrations | Service-role | `db` from `@/lib/db/service-role` |
+| Context                    | Client       | Import                             |
+| -------------------------- | ------------ | ---------------------------------- |
+| API routes, server actions | RLS-enforced | `getDb()` from `@supabase/runtime` |
+| Tests, workers, migrations | Service-role | `db` from `@supabase/service-role` |
 
 ```typescript
 // REQUEST HANDLERS - always use this:
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 const db = getDb();
 
 // TESTS/WORKERS ONLY:
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 ```
 
 **Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
@@ -60,7 +60,7 @@ db/
 │   ├── attempts.ts  # Generation attempt tracking
 │   └── ...
 ├── enums.ts         # PostgreSQL enum definitions
-└── migrations/      # Drizzle migrations
+└── migrations/      # Drizzle migrations consumed by Supabase local/hosted DBs
 ```
 
 ## RLS Architecture
@@ -83,11 +83,11 @@ try {
 
 ## Schema Constants
 
-All numeric limits, string length caps, and other DB-layer constants **must** live in `src/lib/db/schema/constants.ts`. Never hardcode these values inline in table definitions, query helpers, or application code.
+All numeric limits, string length caps, and other DB-layer constants **must** live in `supabase/schema/constants.ts`. Never hardcode these values inline in table definitions, query helpers, or application code.
 
 ```typescript
 // CORRECT — import from the single source of truth:
-import { MAX_RESOURCE_TITLE_LENGTH } from '@/lib/db/schema/constants';
+import { MAX_RESOURCE_TITLE_LENGTH } from '@supabase/schema/constants';
 
 // WRONG — do NOT do this:
 const MAX_TITLE = 500; // local magic number
@@ -167,7 +167,7 @@ pnpm db:push       # Push schema directly (dev only)
 ## Anti-Patterns
 
 - Defining DB-related numeric/string limits outside `schema/constants.ts` (hardcoded magic numbers)
-- Importing `@/lib/db/service-role` in API routes
+- Importing `@supabase/service-role` in API routes
 - Omitting `to` in `pgPolicy(...)` (defaults to insecure `PUBLIC` scope)
 - Forgetting `cleanup()` after RLS client use
 - Direct SQL without parameterization

@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { POST as POST_DRAIN } from '@/app/api/internal/jobs/regeneration/process/route';
 import { POST as POST_REGENERATE } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { jobQueue, learningPlans, modules } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { jobQueue, learningPlans, modules } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 import { createPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';

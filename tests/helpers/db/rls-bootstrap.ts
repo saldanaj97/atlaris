@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '@/lib/db/privileges/users-authenticated-update-columns';
-import { db } from '@/lib/db/service-role';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/users-authenticated-update-columns';
+import { db } from '@supabase/service-role';
 
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 

@@ -24,7 +24,7 @@ import {
   insertJobRecord,
 } from '@/lib/db/queries/jobs';
 import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 
 type FailJobOptions = {
   retryable?: boolean;

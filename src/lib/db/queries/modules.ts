@@ -10,8 +10,8 @@ import type {
   TaskProgress,
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
+import { learningPlans, modules, tasks } from '@supabase/schema';
+import { getDb } from '@supabase/runtime';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 

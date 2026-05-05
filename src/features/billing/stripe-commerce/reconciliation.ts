@@ -21,9 +21,6 @@
  * Public `StripeCommerceBoundary` unchanged; this module is internal to `stripe-commerce/`.
  */
 
-import { randomUUID } from 'node:crypto';
-import { eq, inArray } from 'drizzle-orm';
-import type Stripe from 'stripe';
 import type { CommerceSubscriptionSnapshot } from '@/features/billing/stripe-commerce/dtos';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import {
@@ -31,10 +28,13 @@ import {
   syncSubscriptionToDb,
 } from '@/features/billing/stripe-commerce/subscription-db-sync';
 import { createCustomer } from '@/features/billing/subscriptions';
-import type { users } from '@/lib/db/schema';
-import { stripeWebhookEvents } from '@/lib/db/schema';
-import { db as serviceRoleDb } from '@/lib/db/service-role';
+import type { users } from '@supabase/schema';
+import { stripeWebhookEvents } from '@supabase/schema';
 import type { createLogger } from '@/lib/logging/logger';
+import { eq, inArray } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import type Stripe from 'stripe';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 type Logger = ReturnType<typeof createLogger>;
 type ServiceRoleDb = typeof serviceRoleDb;

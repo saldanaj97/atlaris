@@ -15,6 +15,7 @@ if (!process.env.CI) {
 // Shared alias configuration for test projects
 const srcRoot = fileURLToPath(new URL('./src', import.meta.url));
 const testsRoot = fileURLToPath(new URL('./tests', import.meta.url));
+const supabaseRoot = fileURLToPath(new URL('./supabase', import.meta.url));
 const authServerMockPath = fileURLToPath(
   new URL('./tests/mocks/shared/auth-server.ts', import.meta.url),
 );
@@ -24,6 +25,8 @@ const testAliases = {
   '@/': path.join(srcRoot, path.sep),
   '@tests': testsRoot,
   '@tests/': path.join(testsRoot, path.sep),
+  '@supabase': supabaseRoot,
+  '@supabase/': path.join(supabaseRoot, path.sep),
   'next/headers': 'next/headers.js',
 } as const;
 

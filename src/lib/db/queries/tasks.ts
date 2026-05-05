@@ -6,9 +6,9 @@ import type {
   DbTaskProgress,
   TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans, modules, taskProgress, tasks } from '@/lib/db/schema';
+import { learningPlans, modules, taskProgress, tasks } from '@supabase/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import { getDb } from '@supabase/runtime';
 
 interface TaskProgressBatchScope {
   planId?: string;

@@ -9,7 +9,7 @@ import type {
 } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-type DbSchemaModule = typeof import('@/lib/db/schema');
+type DbSchemaModule = typeof import('@supabase/schema');
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.

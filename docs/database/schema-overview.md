@@ -13,7 +13,7 @@ users 1—* oauth_state_tokens
 
 ## Enums
 
-Defined in `src/lib/db/enums.ts`:
+Defined in `supabase/enums.ts`:
 
 | Enum                  | Values                                           |
 | --------------------- | ------------------------------------------------ |
@@ -40,7 +40,7 @@ Defined in `src/lib/db/enums.ts`:
 
 RLS is enforced through request-scoped Postgres session state:
 
-- request handlers create authenticated or anon-role RLS clients in `src/lib/db/rls.ts`
+- request handlers create authenticated or anon-role RLS clients in `supabase/rls.ts`
 - `request.jwt.claims` carries the Clerk auth `sub`
 - user-facing policies are explicitly scoped to `authenticated`
 - service-role access is reserved for tests, workers, migrations, and other system flows
@@ -61,17 +61,17 @@ RLS is enforced through request-scoped Postgres session state:
 
 ## Code locations
 
-| Concern          | Location                         |
-| ---------------- | -------------------------------- |
-| Schema tables    | `src/lib/db/schema/tables/`      |
-| Enum definitions | `src/lib/db/enums.ts`            |
-| Relations        | `src/lib/db/schema/relations.ts` |
-| Query modules    | `src/lib/db/queries/`            |
-| Usage tracking   | `src/lib/db/usage.ts`            |
-| Migrations       | `src/lib/db/migrations/`         |
-| Request DB       | `src/lib/db/runtime.ts`          |
-| RLS client       | `src/lib/db/rls.ts`              |
-| Service-role DB  | `src/lib/db/service-role.ts`     |
+| Concern          | Location                       |
+| ---------------- | ------------------------------ |
+| Schema tables    | `supabase/schema/tables/`      |
+| Enum definitions | `supabase/enums.ts`            |
+| Relations        | `supabase/schema/relations.ts` |
+| Query modules    | `src/lib/db/queries/`          |
+| Usage tracking   | `supabase/usage.ts`            |
+| Migrations       | `supabase/migrations/`         |
+| Request DB       | `supabase/runtime.ts`          |
+| RLS client       | `supabase/rls.ts`              |
+| Service-role DB  | `supabase/service-role.ts`     |
 
 ## Implemented feature coverage
 

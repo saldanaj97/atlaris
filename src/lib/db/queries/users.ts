@@ -1,14 +1,14 @@
-import { eq } from 'drizzle-orm';
 import { getRequestContext } from '@/lib/api/context';
-import type { PreferredAiModel } from '@/lib/db/enums';
 import type {
   CreateUserData,
   DbUser,
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import { isValidModelId } from '@/shared/constants/ai-models';
+import { eq } from 'drizzle-orm';
+import type { PreferredAiModel } from '../../../../supabase/enums';
+import { getDb } from '@supabase/runtime';
 
 const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
 const SUBSCRIPTION_STATUSES = new Set([

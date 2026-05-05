@@ -1,5 +1,5 @@
 import type { drizzle } from 'drizzle-orm/postgres-js';
-import type * as schema from '@/lib/db/schema';
+import type * as schema from '@supabase/schema';
 
 export type DbClient = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 

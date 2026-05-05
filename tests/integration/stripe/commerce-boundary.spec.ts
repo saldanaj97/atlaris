@@ -2,15 +2,15 @@ import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { ValidationError } from '@/lib/api/errors';
-import { getDb } from '@/lib/db/runtime';
-import { stripeWebhookEvents, users } from '@/lib/db/schema';
-import { db as serviceRoleDb } from '@/lib/db/service-role';
+import { stripeWebhookEvents, users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import { createId } from '@tests/fixtures/ids';
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getDb } from '@supabase/runtime';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

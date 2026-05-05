@@ -1,11 +1,3 @@
-import { createId } from '@tests/fixtures/ids';
-import { createTestModule, createTestTask } from '@tests/fixtures/modules';
-import { buildTestPlanInsert } from '@tests/fixtures/plans';
-import { clearTestUser, setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db';
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
 import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
 import { GET as GET_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
@@ -14,9 +6,17 @@ import {
   generationAttempts,
   learningPlans,
   taskProgress,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
+import { createId } from '@tests/fixtures/ids';
+import { createTestModule, createTestTask } from '@tests/fixtures/modules';
+import { buildTestPlanInsert } from '@tests/fixtures/plans';
+import { clearTestUser, setTestUser } from '@tests/helpers/auth';
+import { ensureUser } from '@tests/helpers/db';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+import { db } from '@supabase/service-role';
 
 vi.mock('@/lib/auth/server', () => ({
   auth: { getSession: vi.fn() },

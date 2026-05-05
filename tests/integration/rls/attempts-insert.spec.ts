@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';

@@ -3,7 +3,7 @@ import type {
   ErrorHistoryEntry,
   JobQueueRow,
 } from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue } from '@supabase/schema';
 import {
   JOB_TYPES,
   type Job,

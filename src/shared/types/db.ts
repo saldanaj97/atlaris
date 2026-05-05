@@ -1,4 +1,8 @@
-import { learningStyle, progressStatus, skillLevel } from '@/lib/db/enums';
+import {
+  learningStyle,
+  progressStatus,
+  skillLevel,
+} from '../../../supabase/enums';
 
 // Enum values
 export const SKILL_LEVELS = skillLevel.enumValues;

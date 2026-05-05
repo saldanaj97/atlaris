@@ -9,9 +9,9 @@ import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import type { RlsClient } from '@/lib/db/rls';
-import { getDb } from '@/lib/db/runtime';
 import type { DbClient } from '@/lib/db/types';
+import type { RlsClient } from '../../../supabase/rls';
+import { getDb } from '@supabase/runtime';
 import { AuthError } from './errors';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
@@ -123,7 +123,8 @@ async function runWithAuthenticatedContext<T>(
   fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
   req?: Request,
 ): Promise<T> {
-  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { createAuthenticatedRlsClient } =
+    await import('../../../supabase/rls');
   const { db: rlsDb, cleanup } = await createAuthenticatedRlsClient(authUserId);
 
   const requestContext = createRequestContext(req, {
