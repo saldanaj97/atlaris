@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/app/ThemeProvider';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import './globals.css';
 
 const workSans = Work_Sans({
@@ -53,21 +54,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appContent = (
+    <ThemeProvider>
+      {children}
+      <Toaster />
+    </ThemeProvider>
+  );
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
-        <ClerkProvider
-          afterSignOutUrl="/"
-          signInUrl="/auth/sign-in"
-          signUpUrl="/auth/sign-up"
-        >
-          <ThemeProvider>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </ClerkProvider>
+        {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
+        {shouldUseClerkUi() ? (
+          <ClerkProvider
+            afterSignOutUrl="/"
+            signInUrl="/auth/sign-in"
+            signUpUrl="/auth/sign-up"
+          >
+            {appContent}
+          </ClerkProvider>
+        ) : (
+          appContent
+        )}
       </body>
     </html>
   );

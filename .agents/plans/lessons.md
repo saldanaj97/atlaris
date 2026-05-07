@@ -79,3 +79,19 @@
 **Rule:** In Vitest, create shared mock handles with `vi.hoisted()` before `vi.mock()` factories, and keep route-style boundary APIs constrained to `Response`-returning callbacks so the public handler type stays honest.
 
 **Impact:** This avoids mock-hoist crashes and typecheck failures that only appear once the module graph is loaded the same way Vitest and `tsgo` see it.
+
+## 2026-05-06: Smoke env isolation must own every inherited failure knob
+
+**Context:** Auth smoke set `MOCK_AI_SCENARIO=success`, but inherited `MOCK_GENERATION_FAILURE_RATE` could still make the mock provider randomly fail during the broad launch-blocker flow.
+
+**Rule:** When a smoke launcher claims deterministic local mocks, include all related env controls in the mode layer and clear or pin them there. Do not let parent-shell failure rates, delays, or auth flags leak into browser smoke.
+
+**Impact:** This keeps smoke failures tied to app behavior instead of inherited local shell state.
+
+## 2026-05-06: Billing-owned user fields need service-role writes
+
+**Context:** Local billing checkout failed under smoke because customer provisioning tried to update `users.stripe_customer_id` through the authenticated request DB. Column privileges correctly block authenticated users from writing billing-owned fields.
+
+**Rule:** Keep tenant-scoped reads under request auth/RLS, but write billing-owned user columns through the existing service-role boundary dependency. Do not add test-only bypasses for system-owned billing mutations.
+
+**Impact:** This preserves the security boundary while allowing checkout and local billing smoke to exercise the real route path.

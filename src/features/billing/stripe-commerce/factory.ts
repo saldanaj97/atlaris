@@ -2,6 +2,7 @@ import { getStripe } from '@/features/billing/client';
 import {
   DefaultStripeCommerceBoundary,
   type StripeCommerceBoundaryDeps,
+  type StripeCommercePrivilegedDbDeps,
 } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
@@ -23,6 +24,16 @@ type ExecuteLocalSubscriptionReplayOverrides = Partial<{
   users: typeof users;
   logger: AppLogger;
 }>;
+
+function createStripeCommercePrivilegedDbDeps(
+  db: typeof serviceRoleDb,
+): StripeCommercePrivilegedDbDeps {
+  // Both logical deps reuse serviceRoleDb today; separate names preserve a future physical split.
+  return {
+    customerProvisioningDb: db,
+    webhookEventDb: db,
+  };
+}
 
 let commerceBoundarySingleton: StripeCommerceBoundary | null = null;
 
@@ -53,7 +64,10 @@ export function createStripeCommerceBoundary(
     gateway,
     localMode: options.localMode ?? stripeEnv.localMode,
     getDb: options.getDb ?? getDb,
-    serviceRoleDb: options.serviceRoleDb ?? serviceRoleDb,
+    // privilegedDb uses serviceRoleDb via createStripeCommercePrivilegedDbDeps because getDb is RLS request-scoped and system flows lack user JWT context.
+    privilegedDb:
+      options.privilegedDb ??
+      createStripeCommercePrivilegedDbDeps(serviceRoleDb),
     users: options.users ?? users,
     webhookSecret: options.webhookSecret ?? stripeEnv.webhookSecret ?? null,
     webhookDevMode: options.webhookDevMode ?? stripeEnv.webhookDevMode,

@@ -3,7 +3,10 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getShellAuthUserId } from '@/lib/auth/local-identity';
+import {
+  getShellAuthUserId,
+  shouldUseClerkUi,
+} from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -37,6 +40,19 @@ import MobileHeader from './nav/MobileHeader';
 export default async function SiteHeader() {
   const { session } = await getSessionSafe();
   const authUserId = getShellAuthUserId(session?.user?.id);
+  let showClerkUserButton = false;
+  try {
+    // Local product-testing auth has no Clerk session, so it uses the account link fallback.
+    showClerkUserButton = shouldUseClerkUi();
+  } catch (err) {
+    logger.warn(
+      {
+        err,
+        source: 'SiteHeader.shouldUseClerkUi',
+      },
+      'Clerk UI eligibility check failed; header renders account link fallback',
+    );
+  }
   const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
   // Fetch tier only for authenticated users
@@ -67,11 +83,13 @@ export default async function SiteHeader() {
           navItems={navItems}
           tier={tier}
           isAuthenticated={Boolean(authUserId)}
+          showClerkUserButton={showClerkUserButton}
         />
         <DesktopHeader
           navItems={navItems}
           tier={tier}
           isAuthenticated={Boolean(authUserId)}
+          showClerkUserButton={showClerkUserButton}
         />
       </div>
     </header>

@@ -19,6 +19,7 @@ interface DesktopHeaderProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
+  showClerkUserButton: boolean;
 }
 
 /**
@@ -30,6 +31,7 @@ export default function DesktopHeader({
   navItems,
   tier,
   isAuthenticated,
+  showClerkUserButton,
 }: DesktopHeaderProps): JSX.Element {
   const pathname = usePathname();
   const isPricingPage = pathname === ROUTES.PRICING;
@@ -84,6 +86,7 @@ export default function DesktopHeader({
         <AuthControls
           isAuthenticated={isAuthenticated}
           tier={isAuthenticated ? tier : undefined}
+          showClerkUserButton={showClerkUserButton}
         />
       </div>
     </div>

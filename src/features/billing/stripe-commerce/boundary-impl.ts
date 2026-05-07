@@ -33,11 +33,16 @@ const devWebhookEventSchema = z.object({ type: z.string() });
 
 type ServiceRoleDb = typeof serviceRoleDb;
 
+export type StripeCommercePrivilegedDbDeps = {
+  customerProvisioningDb: ServiceRoleDb;
+  webhookEventDb: ServiceRoleDb;
+};
+
 export type StripeCommerceBoundaryDeps = {
   gateway: StripeGateway;
   localMode: boolean;
   getDb: () => DbClient;
-  serviceRoleDb: ServiceRoleDb;
+  privilegedDb: StripeCommercePrivilegedDbDeps;
   users: typeof users;
   webhookSecret: string | null;
   webhookDevMode: boolean;
@@ -71,7 +76,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       input.actor.userId,
       input.actor.email,
       stripe,
-      this.deps.getDb(),
+      this.deps.privilegedDb.customerProvisioningDb,
     );
 
     const successResolved = resolveRedirectUrl(
@@ -305,7 +310,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       gateway,
       logger,
       users: this.deps.users,
-      db: this.deps.serviceRoleDb,
+      db: this.deps.privilegedDb.webhookEventDb,
     });
 
     return {

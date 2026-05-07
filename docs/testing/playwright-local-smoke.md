@@ -19,6 +19,7 @@ For **UI audit / marketing vs product screenshot baselines**, use [UI baseline c
 pnpm test:smoke
 pnpm test:smoke -- --project smoke-anon
 pnpm test:smoke -- --project smoke-auth
+pnpm test:smoke -- --project smoke-clerk
 ```
 
 Low-level smoke debugging stays available without extra package scripts:
@@ -42,9 +43,10 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 - `tests/helpers/smoke/`
   - owns shared smoke runtime modules: DB prep, container lifecycle, mode env config, state files, and seed verification
 - `playwright.config.ts`
-  - defines the `smoke-anon` and `smoke-auth` projects
+  - defines the `smoke-anon`, `smoke-auth`, and `smoke-clerk` projects
   - starts both app servers on separate ports
   - keeps the local runner serial with `workers: 1` for stability on resource-constrained machines
+  - writes traces, screenshots, and other artifacts under `tests/test-results/playwright/artifacts`
 - `tests/playwright/smoke`
   - owns committed browser smoke specs only
 
@@ -56,11 +58,25 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - `STRIPE_LOCAL_MODE=false`
   - app server on `http://127.0.0.1:3100`
 - `smoke-auth`
-  - seeded local smoke user id
+  - uses the seeded local smoke user id
   - `LOCAL_PRODUCT_TESTING=true`
   - `STRIPE_LOCAL_MODE=true`
   - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
+
+`smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
+product launch blockers against local auth, local billing, mock AI, and disposable
+Postgres.
+
+Clerk auth parity is isolated in `smoke-clerk`. It runs against the anonymous
+server and skips unless a real Clerk test user is configured. Prefer a
+`+clerk_test` email address, then run:
+
+```bash
+CLERK_E2E_USER_EMAIL='e2e+clerk_test@example.com' pnpm test:smoke -- --project smoke-clerk
+```
+
+The helper path is `clerk.signIn({ page, emailAddress })`, which uses Clerk’s Backend API token flow when `CLERK_SECRET_KEY` is available and bypasses verification/MFA prompts.
 
 Do not start smoke servers manually for normal runs. Let Playwright own them.
 

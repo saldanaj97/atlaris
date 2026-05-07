@@ -87,7 +87,7 @@ pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full
 
 ## Local API Testing Guidance
 
-- Prefer testing authenticated flows through the application UI so Clerk session cookies are established naturally.
+- Prefer local product-testing auth for broad authenticated smoke flows. Use Clerk's `@clerk/testing` helper with `emailAddress` only for the focused `smoke-clerk` parity project when `CLERK_SECRET_KEY` is available.
 - For targeted backend verification, prefer unit or integration tests over ad-hoc curl scripts.
 - If you use local auth overrides such as `DEV_AUTH_USER_ID`, make sure the referenced user already exists in the database before invoking authenticated routes.
 - With `LOCAL_PRODUCT_TESTING=true`, `supabase db reset` seeds the canonical user from `supabase/seed.sql`; use `pnpm db:dev:seed` if you need to re-run only the seed. See [environment.md](./environment.md) and [local-database.md](./local-database.md).

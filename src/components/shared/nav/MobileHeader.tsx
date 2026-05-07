@@ -22,6 +22,7 @@ interface MobileHeaderProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
+  showClerkUserButton: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export default function MobileHeader({
   navItems,
   tier,
   isAuthenticated,
+  showClerkUserButton,
 }: MobileHeaderProps): JSX.Element {
   const pathname = usePathname();
   const isPricingPage = pathname === ROUTES.PRICING;
@@ -84,6 +86,7 @@ export default function MobileHeader({
           <AuthControls
             isAuthenticated={isAuthenticated}
             tier={isAuthenticated ? tier : undefined}
+            showClerkUserButton={showClerkUserButton}
           />
         </div>
       </div>
