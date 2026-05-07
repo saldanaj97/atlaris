@@ -11,7 +11,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (
-    predicate: (model: (typeof AVAILABLE_MODELS)[number]) => boolean
+    predicate: (model: (typeof AVAILABLE_MODELS)[number]) => boolean,
   ): string => {
     const model = AVAILABLE_MODELS.find(predicate);
     if (!model) {
@@ -37,21 +37,21 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   const resolveWithMockProvider = (
     userTier: SubscriptionTier,
-    requestedModel?: string | null
+    requestedModel?: string | null,
   ): { result: ModelResolution } => {
     const provider = createMockProvider();
     const providerGetter = () => provider;
     const result = resolveModelForTier(
       userTier,
       requestedModel,
-      providerGetter
+      providerGetter,
     );
     return { result };
   };
 
   const expectResolution = (
     result: ModelResolution,
-    expected: ResolutionExpectation
+    expected: ResolutionExpectation,
   ): void => {
     expect(result.modelId).toBe(expected.modelId);
     expect(result.fallback).toBe(expected.fallback);
@@ -194,15 +194,18 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     it.each([
       ["empty string ''", ''],
       ['null', null],
-    ] as const)('treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model', (_label, edgeValue) => {
-      const { result } = resolveWithMockProvider('pro', edgeValue);
+    ] as const)(
+      'treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model',
+      (_label, edgeValue) => {
+        const { result } = resolveWithMockProvider('pro', edgeValue);
 
-      expectResolution(result, {
-        modelId: AI_DEFAULT_MODEL,
-        fallback: true,
-        fallbackReason: 'invalid_model',
-      });
-    });
+        expectResolution(result, {
+          modelId: AI_DEFAULT_MODEL,
+          fallback: true,
+          fallbackReason: 'invalid_model',
+        });
+      },
+    );
   });
 
   describe('Provider factory errors', () => {
@@ -218,10 +221,10 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       }
       expect(thrown).toBeInstanceOf(ModelResolutionError);
       expect((thrown as ModelResolutionError).code).toBe(
-        'PROVIDER_INIT_FAILED'
+        'PROVIDER_INIT_FAILED',
       );
       expect((thrown as ModelResolutionError).message).toBe(
-        'Provider initialization failed.'
+        'Provider initialization failed.',
       );
     });
 
@@ -237,10 +240,10 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       }
       expect(thrown).toBeInstanceOf(ModelResolutionError);
       expect((thrown as ModelResolutionError).code).toBe(
-        'PROVIDER_INIT_FAILED'
+        'PROVIDER_INIT_FAILED',
       );
       expect((thrown as ModelResolutionError).message).toBe(
-        'Provider initialization failed.'
+        'Provider initialization failed.',
       );
     });
   });

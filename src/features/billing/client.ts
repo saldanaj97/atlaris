@@ -27,7 +27,8 @@ export function getStripe(): Stripe {
     } catch (err) {
       if (err instanceof EnvValidationError) {
         throw new Error(
-          'STRIPE_SECRET_KEY is not set in environment variables'
+          'STRIPE_SECRET_KEY is not set in environment variables',
+          { cause: err },
         );
       }
       throw err;

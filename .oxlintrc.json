@@ -1,0 +1,69 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "plugins": [
+    "eslint",
+    "typescript",
+    "import",
+    "react",
+    "jsx-a11y",
+    "nextjs",
+    "vitest",
+    "oxc"
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "settings": {
+    "next": {
+      "rootDir": "."
+    }
+  },
+  "rules": {
+    "eslint/no-await-in-loop": "off",
+    "eslint/no-constant-binary-expression": "off",
+    "eslint/no-underscore-dangle": "off",
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "eslint/no-shadow": "off",
+    "import/namespace": "off",
+    "import/no-named-as-default": "off",
+    "import/no-unassigned-import": "off",
+    "jest/no-conditional-expect": "off",
+    "jest/no-standalone-expect": "off",
+    "jest/require-to-throw-message": "off",
+    "jest/valid-expect": "off",
+    "nextjs/no-assign-module-variable": "off",
+    "oxc/no-map-spread": "off",
+    "react/react-in-jsx-scope": "off",
+    "vitest/no-conditional-expect": "off",
+    "vitest/require-mock-type-parameters": "off",
+    "vitest/valid-expect": "off"
+  },
+  "ignorePatterns": [
+    ".next/**",
+    ".test-dist/**",
+    "coverage/**",
+    "node_modules/**",
+    "next-env.d.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["tests/**/*.{ts,tsx}"],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
+}

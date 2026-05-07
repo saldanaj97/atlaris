@@ -13,7 +13,7 @@ const PRO_PERSISTABLE_MODELS = getPersistableModelsForTier('pro');
 const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;
 const SECOND_FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[1]?.id ?? FREE_MODEL_ID;
 const PRO_ONLY_MODEL_ID = PRO_PERSISTABLE_MODELS.find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 
 if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_ONLY_MODEL_ID) {
@@ -22,13 +22,12 @@ if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_ONLY_MODEL_ID) {
 
 describe('model-preferences', () => {
   describe('isPersistableModelId', () => {
-    it.each([
-      FREE_MODEL_ID,
-      SECOND_FREE_MODEL_ID,
-      PRO_ONLY_MODEL_ID,
-    ])('accepts persistable enum-listed id %s', (id) => {
-      expect(isPersistableModelId(id)).toBe(true);
-    });
+    it.each([FREE_MODEL_ID, SECOND_FREE_MODEL_ID, PRO_ONLY_MODEL_ID])(
+      'accepts persistable enum-listed id %s',
+      (id) => {
+        expect(isPersistableModelId(id)).toBe(true);
+      },
+    );
 
     it.each([
       '',
@@ -54,7 +53,7 @@ describe('model-preferences', () => {
       const freeModels = getPersistableModelsForTier('free');
       const starterModels = getPersistableModelsForTier('starter');
       expect(starterModels.map((m) => m.id).sort()).toEqual(
-        freeModels.map((m) => m.id).sort()
+        freeModels.map((m) => m.id).sort(),
       );
     });
 

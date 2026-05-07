@@ -58,33 +58,33 @@ describe('assertSafeToTruncate (via truncateAll)', () => {
   it('rejects ambiguous middle-of-name test matches that look production-adjacent', async () => {
     process.env.DATABASE_URL = 'postgres://host/myapp_test_archive';
     await expect(truncateAll()).rejects.toThrow(
-      /Refusing to truncate non-test database "myapp_test_archive"/
+      /Refusing to truncate non-test database "myapp_test_archive"/,
     );
 
     process.env.DATABASE_URL = 'postgres://host/prod_tests_data';
     await expect(truncateAll()).rejects.toThrow(
-      /Refusing to truncate non-test database "prod_tests_data"/
+      /Refusing to truncate non-test database "prod_tests_data"/,
     );
   });
 
   it('throws specific message for a non-test DB name', async () => {
     process.env.DATABASE_URL = 'postgres://host/myapp_prod';
     await expect(truncateAll()).rejects.toThrow(
-      'Refusing to truncate non-test database "myapp_prod"'
+      'Refusing to truncate non-test database "myapp_prod"',
     );
   });
 
   it('throws for a malformed DATABASE_URL', async () => {
     process.env.DATABASE_URL = 'not-a-valid-url';
     await expect(truncateAll()).rejects.toThrow(
-      'invalid DATABASE_URL for safety'
+      'invalid DATABASE_URL for safety',
     );
   });
 
   it('non-test DB error is NOT swallowed into the generic invalid-URL message (regression)', async () => {
     process.env.DATABASE_URL = 'postgres://host/myapp_prod';
     await expect(truncateAll()).rejects.toThrow(
-      /Refusing to truncate non-test database/
+      /Refusing to truncate non-test database/,
     );
     await expect(truncateAll()).rejects.not.toThrow(/invalid DATABASE_URL/);
   });

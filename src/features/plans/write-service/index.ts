@@ -1,4 +1,4 @@
-import type { PlanDbClient } from '@/features/plans/read-service';
+import type { PlanDbClient } from '@/features/plans/read-projection/types';
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { deletePlan } from '@/lib/db/queries/plans';
 
@@ -14,7 +14,7 @@ export async function removePlanForWrite(params: {
   const result = await deletePlan(
     params.planId,
     params.userId,
-    params.dbClient
+    params.dbClient,
   );
 
   if (result.success) {
@@ -27,7 +27,7 @@ export async function removePlanForWrite(params: {
 
   if (result.reason === 'currently_generating') {
     throw new ConflictError(
-      'Cannot delete a plan that is currently generating.'
+      'Cannot delete a plan that is currently generating.',
     );
   }
 

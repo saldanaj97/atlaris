@@ -8,10 +8,10 @@ vi.mock('@/features/plans/lifecycle/adapters/plan-persistence-store', () => ({
   markPlanGenerationSuccess: vi.fn(),
 }));
 
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { PlanLimitReachedError } from '@/features/plans/errors';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import * as persistenceStore from '@/features/plans/lifecycle/adapters/plan-persistence-store';
-import type { DbClient } from '@/lib/db/types';
 
 const planData = {
   topic: 't',
@@ -23,7 +23,7 @@ const planData = {
 } as const;
 
 describe('PlanPersistenceAdapter', () => {
-  const fakeDb = {} as DbClient;
+  const fakeDb = makeDbClient();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,7 +31,7 @@ describe('PlanPersistenceAdapter', () => {
 
   it('atomicInsertPlan returns failure when store throws PlanLimitReachedError', async () => {
     vi.mocked(persistenceStore.atomicCheckAndInsertPlan).mockRejectedValue(
-      new PlanLimitReachedError()
+      new PlanLimitReachedError(),
     );
     const adapter = new PlanPersistenceAdapter(fakeDb);
     const result = await adapter.atomicInsertPlan('user-1', planData);
@@ -46,7 +46,7 @@ describe('PlanPersistenceAdapter', () => {
     vi.mocked(persistenceStore.atomicCheckAndInsertPlan).mockRejectedValue(err);
     const adapter = new PlanPersistenceAdapter(fakeDb);
     await expect(adapter.atomicInsertPlan('user-1', planData)).rejects.toThrow(
-      err
+      err,
     );
   });
 

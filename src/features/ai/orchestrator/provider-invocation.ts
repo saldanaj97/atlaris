@@ -8,7 +8,7 @@ export async function generateWithInstrumentation(
   options: {
     signal: AbortSignal;
     timeoutMs: number;
-  }
+  },
 ): Promise<Awaited<ReturnType<AiPlanGenerationProvider['generate']>>> {
   return Sentry.startSpan(
     {
@@ -28,17 +28,17 @@ export async function generateWithInstrumentation(
       if (metadata.usage?.promptTokens != null) {
         span.setAttribute(
           'gen_ai.usage.input_tokens',
-          metadata.usage.promptTokens
+          metadata.usage.promptTokens,
         );
       }
       if (metadata.usage?.completionTokens != null) {
         span.setAttribute(
           'gen_ai.usage.output_tokens',
-          metadata.usage.completionTokens
+          metadata.usage.completionTokens,
         );
       }
 
       return result;
-    }
+    },
   );
 }

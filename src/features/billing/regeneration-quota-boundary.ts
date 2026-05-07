@@ -25,15 +25,15 @@ import {
  * happen to the reservation that the boundary just took out.
  *
  * @property disposition - `'consumed'` keeps the reservation; `'revert'` triggers compensation in the same month bucket.
- * @property value - Forwarded back to the caller in the success result.
+ * @property value - Forwarded back to the caller in the success result (`consumed` vs `revert` may use different shapes).
  * @property reason - Free-form revert tag for telemetry (e.g. `'enqueue_deduplicated'`).
  * @property jobId - Job id correlated with the revert, when one exists.
  */
-export type RegenerationQuotaWorkResult<T> =
-  | { disposition: 'consumed'; value: T }
+export type RegenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
+  | { disposition: 'consumed'; value: TConsumed }
   | {
       disposition: 'revert';
-      value: T;
+      value: TReverted;
       reason?: string;
       jobId?: string;
     };
@@ -45,21 +45,21 @@ export type RegenerationQuotaWorkResult<T> =
  * - `ok: true, consumed: true` means the reservation stuck and the route should accept the request.
  * - `ok: true, consumed: false` means the reservation was reverted; route should map to 409 (or its caller-defined conflict). `reconciliationRequired` is true when the compensation step itself failed.
  */
-type RegenerationQuotaResult<T> =
-  | { ok: true; consumed: true; value: T }
+type RegenerationQuotaResult<TConsumed, TReverted = TConsumed> =
+  | { ok: true; consumed: true; value: TConsumed }
   | {
       ok: true;
       consumed: false;
-      value: T;
+      value: TReverted;
       reconciliationRequired: boolean;
     }
   | { ok: false; currentCount: number; limit: number };
 
-type RegenerationQuotaBoundaryArgs<T> = {
+type RegenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
   userId: string;
   planId: string;
   dbClient: DbClient;
-  work: () => Promise<RegenerationQuotaWorkResult<T>>;
+  work: () => Promise<RegenerationQuotaWorkResult<TConsumed, TReverted>>;
 };
 
 /**
@@ -91,15 +91,15 @@ type CompensationLogContext = {
 export type RegenerationQuotaBoundaryDeps = {
   reserve: (
     userId: string,
-    dbClient: DbClient
+    dbClient: DbClient,
   ) => Promise<ReserveMeteredResult>;
   compensate: (
     token: MeteredReservationToken,
-    dbClient: DbClient
+    dbClient: DbClient,
   ) => Promise<void>;
   reportReconciliation: (
     context: ReconciliationContext,
-    error: unknown
+    error: unknown,
   ) => void;
 };
 
@@ -119,10 +119,13 @@ const DEFAULT_DEPS: RegenerationQuotaBoundaryDeps = {
   reportReconciliation: recordBillingReconciliationRequired,
 };
 
-export async function runRegenerationQuotaReserved<T>(
-  args: RegenerationQuotaBoundaryArgs<T>,
-  deps: RegenerationQuotaBoundaryDeps = DEFAULT_DEPS
-): Promise<RegenerationQuotaResult<T>> {
+export async function runRegenerationQuotaReserved<
+  TConsumed,
+  TReverted = TConsumed,
+>(
+  args: RegenerationQuotaBoundaryArgs<TConsumed, TReverted>,
+  deps: RegenerationQuotaBoundaryDeps = DEFAULT_DEPS,
+): Promise<RegenerationQuotaResult<TConsumed, TReverted>> {
   const { userId, planId, dbClient, work } = args;
 
   const reservation = await deps.reserve(userId, dbClient);
@@ -136,7 +139,7 @@ export async function runRegenerationQuotaReserved<T>(
 
   const { token } = reservation;
 
-  let workResult: RegenerationQuotaWorkResult<T>;
+  let workResult: RegenerationQuotaWorkResult<TConsumed, TReverted>;
   try {
     workResult = await work();
   } catch (workError) {
@@ -191,12 +194,12 @@ async function safelyCompensate(args: SafeCompensateArgs): Promise<boolean> {
     try {
       args.deps.reportReconciliation(
         args.reconciliationContext,
-        compensateError
+        compensateError,
       );
     } catch (reportError) {
       logger.error(
         { ...args.logContext, reportError },
-        'Failed to report billing reconciliation alert'
+        'Failed to report billing reconciliation alert',
       );
     }
     logger.error(
@@ -204,7 +207,7 @@ async function safelyCompensate(args: SafeCompensateArgs): Promise<boolean> {
         ...args.logContext,
         compensateError,
       },
-      'Failed to compensate regeneration usage reservation'
+      'Failed to compensate regeneration usage reservation',
     );
     return true;
   }

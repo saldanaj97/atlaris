@@ -70,7 +70,7 @@
 
 - Initial authenticated `/pricing` run failed with a 500 and blocked the billing flow
 - Root cause: pricing page used `getCurrentUserRecordSafe()` instead of `withServerComponentContext()`
-- Fix applied in [`src/app/pricing/page.tsx`](/Users/juansaldana/Dev/Projects/atlaris/src/app/pricing/page.tsx)
+- Fix applied in [`src/app/pricing/page.tsx`](../../src/app/pricing/page.tsx)
 - After fix:
   - `/pricing` rendered correctly in auth mode
   - Portal eligibility message showed correctly before checkout
@@ -89,7 +89,7 @@
 - Route: `/pricing`
 - Symptom: 500 error and Next.js error overlay during auth-mode pricing visit
 - Cause: inconsistent async server-component auth path on pricing page
-- Fix: replaced `getCurrentUserRecordSafe()` with `withServerComponentContext((currentUser) => currentUser)` in [`src/app/pricing/page.tsx`](/Users/juansaldana/Dev/Projects/atlaris/src/app/pricing/page.tsx)
+- Fix: replaced `getCurrentUserRecordSafe()` with `withServerComponentContext((currentUser) => currentUser)` in [`src/app/pricing/page.tsx`](../../src/app/pricing/page.tsx)
 - Status: Fixed and reverified
 
 ### 2. Plans page accessibility issue warning

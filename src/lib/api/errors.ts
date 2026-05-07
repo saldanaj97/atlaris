@@ -3,7 +3,7 @@
 import { getCorrelationId } from '@/lib/api/context';
 import { jsonError } from '@/lib/api/response';
 import { createLogger, logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 function hasStringCode(value: unknown): value is { code: string } {
   if (typeof value !== 'object' || value === null) {
@@ -25,11 +25,11 @@ export class AppError extends Error {
       headers?: Record<string, string>;
       logMeta?: Record<string, unknown>;
       cause?: unknown;
-    } = {}
+    } = {},
   ) {
     super(
       message,
-      options.cause != null ? { cause: options.cause } : undefined
+      options.cause != null ? { cause: options.cause } : undefined,
     );
     this.name = this.constructor.name;
   }
@@ -75,7 +75,7 @@ export class NotFoundError extends AppError {
   constructor(
     message = 'Not Found',
     details?: unknown,
-    logMeta?: Record<string, unknown>
+    logMeta?: Record<string, unknown>,
   ) {
     super(message, { status: 404, code: 'NOT_FOUND', details, logMeta });
   }
@@ -85,7 +85,7 @@ export class ValidationError extends AppError {
   constructor(
     message = 'Validation Failed',
     details?: unknown,
-    logMeta?: Record<string, unknown>
+    logMeta?: Record<string, unknown>,
   ) {
     super(message, {
       status: 400,
@@ -99,7 +99,12 @@ export class ValidationError extends AppError {
 
 export class ConflictError extends AppError {
   constructor(message = 'Conflict', details?: unknown) {
-    super(message, { status: 409, code: 'CONFLICT', details });
+    super(message, {
+      status: 409,
+      code: 'CONFLICT',
+      details,
+      classification: 'conflict',
+    });
   }
 }
 
@@ -107,7 +112,7 @@ export class ServiceUnavailableError extends AppError {
   constructor(
     message = 'Service unavailable',
     details?: unknown,
-    logMeta?: Record<string, unknown>
+    logMeta?: Record<string, unknown>,
   ) {
     super(message, {
       status: 503,
@@ -138,7 +143,7 @@ export class RateLimitError extends AppError {
   constructor(
     message = 'Too Many Requests',
     details?: RateLimitErrorDetails,
-    options?: RateLimitErrorOptions
+    options?: RateLimitErrorOptions,
   ) {
     super(message, {
       status: 429,
@@ -157,7 +162,7 @@ export class RateLimitError extends AppError {
 export class AttemptCapExceededError extends AppError {
   constructor(
     message = 'Maximum generation attempts exceeded',
-    details?: unknown
+    details?: unknown,
   ) {
     super(message, {
       status: 429,
@@ -195,7 +200,7 @@ function redactStackTrace(stack: string | undefined): string | undefined {
   // Strip absolute prefixes while keeping relative app/build paths.
   return normalizedStack.replace(
     /(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
-    '$1'
+    '$1',
   );
 }
 

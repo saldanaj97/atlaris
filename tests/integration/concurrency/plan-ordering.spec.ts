@@ -1,6 +1,6 @@
+import { learningPlans } from '@supabase/schema';
 import { describe, expect, it } from 'vitest';
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -35,8 +35,8 @@ describe('Concurrency - plan creation ordering', () => {
           .returning({
             id: learningPlans.id,
             createdAt: learningPlans.createdAt,
-          })
-      )
+          }),
+      ),
     );
 
     const flat = results.map((r) => r[0]);
@@ -44,12 +44,12 @@ describe('Concurrency - plan creation ordering', () => {
     expect(ids.size).toBe(insertCount);
 
     const sorted = [...flat].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
     );
     // At least not reverse-sorted (in pathological cases timestamps could be equal) so we just
     // assert the final element timestamp is >= first.
     expect(
-      sorted[sorted.length - 1].createdAt.getTime()
+      sorted[sorted.length - 1].createdAt.getTime(),
     ).toBeGreaterThanOrEqual(sorted[0].createdAt.getTime());
   });
 });

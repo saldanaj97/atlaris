@@ -1,7 +1,7 @@
+import { learningPlans } from '@supabase/schema';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -61,7 +61,7 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${ownerPlanId}/status`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
     const response = await GET(request);
     expect(response.status).toBe(200);
@@ -88,7 +88,7 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${otherPlan.id}/status`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
     const response = await GET(request);
     expect(response.status).toBe(404);

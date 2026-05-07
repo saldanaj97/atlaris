@@ -1,6 +1,3 @@
-import { ensureUser } from '@tests/helpers/db';
-import { and, eq, lt } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
@@ -14,10 +11,38 @@ import {
   type JobType,
   type PlanRegenerationJobData,
 } from '@/features/jobs/types';
-import { jobQueue, learningPlans, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { jobQueue, learningPlans, users } from '@supabase/schema';
+import {
+  JOB_RETRY_BASE_SECONDS,
+  JOB_RETRY_MAX_DELAY_SECONDS,
+} from '@/shared/constants/retry-policy';
+import { ensureUser } from '@tests/helpers/db';
+import { and, eq, lt } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
+
+function nominalRetryBackoffMs(attempt: number): number {
+  const n = Math.max(1, Math.trunc(attempt));
+  return (
+    Math.min(
+      JOB_RETRY_MAX_DELAY_SECONDS,
+      JOB_RETRY_BASE_SECONDS * 2 ** (n - 1),
+    ) * 1000
+  );
+}
+
+function expectScheduledDelayNearNominal(
+  deltaMs: number,
+  attempt: number,
+): void {
+  const nominal = nominalRetryBackoffMs(attempt);
+  const low = Math.floor(nominal * 0.75) - 2;
+  const high = Math.ceil(nominal * 1.25) + 2;
+  expect(deltaMs).toBeGreaterThanOrEqual(low);
+  expect(deltaMs).toBeLessThanOrEqual(high);
+}
 
 type InsertedPlan = typeof learningPlans.$inferSelect;
 
@@ -29,7 +54,7 @@ type PlanFixture = {
 
 function buildPlanRegenerationPayload(
   plan: InsertedPlan,
-  data: Partial<PlanRegenerationJobData> = {}
+  data: Partial<PlanRegenerationJobData> = {},
 ): PlanRegenerationJobData {
   return {
     planId: plan.id,
@@ -57,7 +82,7 @@ async function createPlanFixture(key: string): Promise<PlanFixture> {
 
 async function createPlanForUser(
   userId: string,
-  key: string
+  key: string,
 ): Promise<InsertedPlan> {
   const [plan] = await db
     .insert(learningPlans)
@@ -118,7 +143,7 @@ describe('Job queue service', () => {
         firstUserId,
         buildPlanRegenerationPayload(firstPlan, {
           overrides: { topic: 'job-1' },
-        })
+        }),
       ),
       enqueueJob(
         JOB_TYPE,
@@ -126,7 +151,7 @@ describe('Job queue service', () => {
         secondUserId,
         buildPlanRegenerationPayload(secondPlan, {
           overrides: { topic: 'job-2' },
-        })
+        }),
       ),
     ]);
 
@@ -175,7 +200,7 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(lowPlan, {
         overrides: { topic: 'low-order' },
       }),
-      0
+      0,
     );
     const midA = await enqueueJob(
       JOB_TYPE,
@@ -184,7 +209,7 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(midAPlan, {
         overrides: { topic: 'mid-a-order' },
       }),
-      5
+      5,
     );
     const midB = await enqueueJob(
       JOB_TYPE,
@@ -193,7 +218,7 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(midBPlan, {
         overrides: { topic: 'mid-b-order' },
       }),
-      5
+      5,
     );
     const high = await enqueueJob(
       JOB_TYPE,
@@ -202,7 +227,7 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(highPlan, {
         overrides: { topic: 'high-order' },
       }),
-      10
+      10,
     );
 
     const processed: string[] = [];
@@ -304,7 +329,7 @@ describe('Job queue service', () => {
           deadlineDate: null,
         },
       }),
-      freePriority
+      freePriority,
     );
 
     const paidJobId = await enqueueJob(
@@ -322,7 +347,7 @@ describe('Job queue service', () => {
           deadlineDate: null,
         },
       }),
-      paidPriority
+      paidPriority,
     );
 
     // Get next job - should be paid+priority despite being enqueued second
@@ -346,7 +371,7 @@ describe('Job queue service', () => {
       userId,
       buildPlanRegenerationPayload(plan, {
         overrides: { topic: 'retry-topic' },
-      })
+      }),
     );
 
     await getNextJob([JOB_TYPE]);
@@ -362,9 +387,10 @@ describe('Job queue service', () => {
     if (!firstRetryRow) {
       throw new Error('Expected first retry row');
     }
-    expect(
-      firstRetryRow.scheduledFor.getTime() - firstRetryRow.updatedAt.getTime()
-    ).toBe(2_000);
+    expectScheduledDelayNearNominal(
+      firstRetryRow.scheduledFor.getTime() - firstRetryRow.updatedAt.getTime(),
+      1,
+    );
 
     await getNextJob([JOB_TYPE]);
     const second = await failJob(jobId, 'still failing');
@@ -377,9 +403,11 @@ describe('Job queue service', () => {
     if (!secondRetryRow) {
       throw new Error('Expected second retry row');
     }
-    expect(
-      secondRetryRow.scheduledFor.getTime() - secondRetryRow.updatedAt.getTime()
-    ).toBe(4_000);
+    expectScheduledDelayNearNominal(
+      secondRetryRow.scheduledFor.getTime() -
+        secondRetryRow.updatedAt.getTime(),
+      2,
+    );
 
     await getNextJob([JOB_TYPE]);
     const terminal = await failJob(jobId, 'fatal error');
@@ -387,6 +415,55 @@ describe('Job queue service', () => {
     expect(terminal?.attempts).toBe(3);
     expect(terminal?.error).toBe('fatal error');
     expect(terminal?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('fails terminal on first failure when retryable is false', async () => {
+    const { plan, userId } = await createPlanFixture('no-retry');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'no-retry-topic' },
+      }),
+    );
+
+    await getNextJob([JOB_TYPE]);
+    const result = await failJob(jobId, 'non-retryable error', {
+      retryable: false,
+    });
+    expect(result?.status).toBe('failed');
+    expect(result?.attempts).toBe(1);
+    expect(result?.error).toBe('non-retryable error');
+    expect(result?.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('respects custom maxAttempts for terminal retry cap', async () => {
+    const { plan, userId } = await createPlanFixture('max-two');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan, {
+        overrides: { topic: 'max-two-topic' },
+      }),
+    );
+
+    await db
+      .update(jobQueue)
+      .set({ maxAttempts: 2 })
+      .where(eq(jobQueue.id, jobId));
+
+    await getNextJob([JOB_TYPE]);
+    const first = await failJob(jobId, 'first');
+    expect(first?.status).toBe('pending');
+    expect(first?.attempts).toBe(1);
+
+    await getNextJob([JOB_TYPE]);
+    const terminal = await failJob(jobId, 'second');
+    expect(terminal?.status).toBe('failed');
+    expect(terminal?.attempts).toBe(2);
+    expect(terminal?.error).toBe('second');
   });
 
   it('completes jobs and preserves attempt counter', async () => {
@@ -397,7 +474,7 @@ describe('Job queue service', () => {
       userId,
       buildPlanRegenerationPayload(plan, {
         overrides: { topic: 'complete-topic' },
-      })
+      }),
     );
 
     await getNextJob([JOB_TYPE]);
@@ -433,7 +510,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-1' } })
+      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-1' } }),
     );
     const jobOlder = await enqueueJob(
       JOB_TYPE,
@@ -441,7 +518,7 @@ describe('Job queue service', () => {
       userId,
       buildPlanRegenerationPayload(olderPlan, {
         overrides: { topic: 'window-2' },
-      })
+      }),
     );
     const jobOldest = await enqueueJob(
       JOB_TYPE,
@@ -449,7 +526,7 @@ describe('Job queue service', () => {
       userId,
       buildPlanRegenerationPayload(oldestPlan, {
         overrides: { topic: 'window-3' },
-      })
+      }),
     );
 
     const now = new Date();
@@ -483,7 +560,7 @@ describe('Job queue service', () => {
     const crossUser = await getUserJobCount(
       otherUser.userId,
       JOB_TYPE,
-      oneMinuteAgo
+      oneMinuteAgo,
     );
     expect(crossUser).toBe(0);
 
@@ -494,8 +571,8 @@ describe('Job queue service', () => {
       .where(
         and(
           eq(jobQueue.userId, userId),
-          lt(jobQueue.createdAt, threeMinutesAgo)
-        )
+          lt(jobQueue.createdAt, threeMinutesAgo),
+        ),
       );
     expect(otherRows.map((row) => row.id)).toContain(jobOldest);
   });
@@ -507,7 +584,7 @@ describe('Job queue service', () => {
     ] satisfies readonly string[];
 
     await expect(getNextJob([...invalidTypes] as JobType[])).rejects.toThrow(
-      'Invalid job type'
+      'Invalid job type',
     );
   });
 });

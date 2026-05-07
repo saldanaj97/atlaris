@@ -4,7 +4,4 @@ export {
   stripePriceFieldsSchema,
   stripeProductFieldsSchema,
 } from './stripe.schemas';
-export type {
-  StripePriceFields,
-  StripeProductFields,
-} from './stripe.types';
+export type { StripePriceFields, StripeProductFields } from './stripe.types';

@@ -36,7 +36,7 @@ function defaultFormatError(maxRequests: number, windowMs: number): string {
  * @returns An object with check / remaining / reset / clear helpers.
  */
 export function createSlidingWindowLimiter(
-  config: SlidingWindowConfig
+  config: SlidingWindowConfig,
 ): SlidingWindowLimiter {
   const {
     maxRequests,

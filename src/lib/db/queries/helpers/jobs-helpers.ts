@@ -3,7 +3,7 @@ import type {
   ErrorHistoryEntry,
   JobQueueRow,
 } from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue } from '@supabase/schema';
 import {
   JOB_TYPES,
   type Job,
@@ -13,7 +13,7 @@ import {
 } from '@/shared/types/jobs.types';
 
 const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
-  new Set(Object.values(JOB_TYPES) as JobType[])
+  new Set(Object.values(JOB_TYPES) as JobType[]),
 );
 
 /**
@@ -32,7 +32,7 @@ export function activeRegenerationJobWhere(planId: string, userId: string) {
     eq(jobQueue.planId, planId),
     eq(jobQueue.userId, userId),
     eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-    or(eq(jobQueue.status, 'pending'), eq(jobQueue.status, 'processing'))
+    or(eq(jobQueue.status, 'pending'), eq(jobQueue.status, 'processing')),
   );
 }
 
@@ -49,11 +49,19 @@ function isValidJobType(value: string): value is JobType {
  * Uses type inference from Drizzle schema for the input type.
  */
 export function mapRowToJob(row: JobQueueRow): Job {
-  const jobType = row.jobType;
+  const jobType = assertJobTypeForRow(row.jobType);
+
+  return mapValidatedRowToJob(row, jobType);
+}
+
+function assertJobTypeForRow(jobType: string): JobType {
   if (!isValidJobType(jobType)) {
     throw new Error(`Invalid job type in database: ${String(jobType)}`);
   }
+  return jobType;
+}
 
+function mapValidatedRowToJob(row: JobQueueRow, jobType: JobType): Job {
   return {
     id: row.id,
     type: jobType,
@@ -74,10 +82,10 @@ export function mapRowToJob(row: JobQueueRow): Job {
 }
 
 export function assertValidJobTypes(
-  values: readonly unknown[]
+  values: readonly unknown[],
 ): asserts values is JobType[] {
   const allValid = values.every(
-    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType)
+    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType),
   );
   if (!allValid) {
     throw new Error('Invalid job type(s) received');
@@ -101,7 +109,7 @@ function isErrorHistoryArray(value: unknown): value is ErrorHistoryEntry[] {
       isRecord(item) &&
       typeof item.attempt === 'number' &&
       typeof item.error === 'string' &&
-      typeof item.timestamp === 'string'
+      typeof item.timestamp === 'string',
   );
 }
 
@@ -111,13 +119,10 @@ function isErrorHistoryArray(value: unknown): value is ErrorHistoryEntry[] {
  */
 export function appendErrorHistoryEntry(
   payload: unknown,
-  entry: ErrorHistoryEntry
+  entry: ErrorHistoryEntry,
 ): Record<string, unknown> {
   const base = isRecord(payload) ? payload : {};
-
-  const existingHistory = isErrorHistoryArray(base.errorHistory)
-    ? [...base.errorHistory]
-    : [];
+  const existingHistory = copyErrorHistoryFromPayload(base);
 
   existingHistory.push(entry);
 
@@ -125,4 +130,10 @@ export function appendErrorHistoryEntry(
     ...base,
     errorHistory: existingHistory,
   };
+}
+
+function copyErrorHistoryFromPayload(
+  base: Record<string, unknown>,
+): ErrorHistoryEntry[] {
+  return isErrorHistoryArray(base.errorHistory) ? [...base.errorHistory] : [];
 }

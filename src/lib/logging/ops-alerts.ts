@@ -15,7 +15,7 @@ type BillingReconciliationContext = {
 
 export function recordBillingReconciliationRequired(
   context: BillingReconciliationContext,
-  error: unknown
+  error: unknown,
 ): void {
   Sentry.withScope((scope) => {
     scope.setTag('billing_reconciliation', 'required');

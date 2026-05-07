@@ -4,10 +4,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
+
+assertLocalIntegrationDatabaseUrl();
 
 type ApiModelResponse = {
   id: string;
@@ -18,16 +21,11 @@ type ApiModelResponse = {
   contextWindow: number;
 };
 
-// Prevent tests from running against production database
-if (process.env.DATABASE_URL?.includes('neon.tech')) {
-  throw new Error('DO NOT RUN TESTS AGAINST REMOTE DB');
-}
-
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;
 const SECOND_FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[1]?.id ?? FREE_MODEL_ID;
 const PRO_MODEL_ID = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id)
+  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 
 if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_MODEL_ID) {
@@ -72,7 +70,7 @@ describe('GET /api/v1/user/preferences', () => {
     const data = expectJsonObject(await response.json());
     const availableModels = expectModelArray(data.availableModels);
     expect(availableModels.length).toBe(
-      getPersistableModelsForTier('free').length
+      getPersistableModelsForTier('free').length,
     );
     expect(availableModels.some((m) => m.id === 'openrouter/free')).toBe(false);
   });
@@ -213,7 +211,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ preferredAiModel: null }),
-      }
+      },
     );
     const clearResponse = await PATCH(clearRequest);
     expect(clearResponse.status).toBe(200);
@@ -245,7 +243,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         body: JSON.stringify({
           preferredAiModel: SECOND_FREE_MODEL_ID,
         }),
-      }
+      },
     );
 
     const patchResponse = await PATCH(patchRequest);
@@ -271,7 +269,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         body: JSON.stringify({
           preferredAiModel: resetModel,
         }),
-      }
+      },
     );
 
     const resetResponse = await PATCH(resetRequest);
@@ -291,7 +289,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         body: JSON.stringify({
           preferredAiModel: SECOND_FREE_MODEL_ID,
         }),
-      }
+      },
     );
 
     const firstResponse = await PATCH(firstRequest);
@@ -310,7 +308,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         body: JSON.stringify({
           preferredAiModel: FREE_MODEL_ID,
         }),
-      }
+      },
     );
 
     const secondResponse = await PATCH(secondRequest);
@@ -478,7 +476,7 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
         body: JSON.stringify({
           preferredAiModel: PRO_MODEL_ID,
         }),
-      }
+      },
     );
     const patchResponse = await PATCH(patchRequest);
     expect(patchResponse.status).toBe(200);

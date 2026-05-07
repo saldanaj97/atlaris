@@ -15,7 +15,7 @@ const SAMPLE_INPUT = createGenerationInput({
 });
 
 async function collectStream(
-  stream: AsyncIterable<string> | ReadableStream<string>
+  stream: AsyncIterable<string> | ReadableStream<string>,
 ) {
   const source =
     stream instanceof ReadableStream
@@ -57,7 +57,7 @@ describe('Mock AI provider', () => {
   it('rejects with rate limit error when scenario is rate_limit', async () => {
     const mock = createMockProvider({ scenario: 'rate_limit' });
     await expect(mock.provider.generate(SAMPLE_INPUT)).rejects.toBeInstanceOf(
-      ProviderRateLimitError
+      ProviderRateLimitError,
     );
     expect(mock.invocationCount).toBe(1);
   });
@@ -65,7 +65,7 @@ describe('Mock AI provider', () => {
   it('rejects with provider error when scenario is error', async () => {
     const mock = createMockProvider({ scenario: 'error' });
     await expect(mock.provider.generate(SAMPLE_INPUT)).rejects.toBeInstanceOf(
-      ProviderError
+      ProviderError,
     );
     expect(mock.invocationCount).toBe(1);
   });

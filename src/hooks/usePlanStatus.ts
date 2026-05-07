@@ -17,7 +17,7 @@ function isRetriableFromResponse(status: number): boolean {
 class RetriableError extends Error {
   constructor(
     message: string,
-    public readonly isRetriable: boolean
+    public readonly isRetriable: boolean,
   ) {
     super(message);
     this.name = 'RetriableError';
@@ -36,7 +36,7 @@ interface UsePlanStatusReturn {
 export function usePlanStatus(
   planId: string,
   initialStatus: PlanStatus,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
 ): UsePlanStatusReturn {
   const [status, setStatus] = useState<PlanStatus>(initialStatus);
   const [attempts, setAttempts] = useState<number>(0);
@@ -65,7 +65,7 @@ export function usePlanStatus(
       if (!response.ok) {
         const parsed = await parseApiErrorResponse(
           response,
-          `Failed to fetch plan status: ${response.status}`
+          `Failed to fetch plan status: ${response.status}`,
         );
         const retriable = isRetriableFromResponse(response.status);
         throw new RetriableError(parsed.error, retriable);
@@ -119,7 +119,7 @@ export function usePlanStatus(
       if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
         clientLogger.error(
           'Failed to poll plan status: max retries exhausted',
-          err
+          err,
         );
         setPollingError(message);
         setIsPolling(false);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -50,7 +50,7 @@ describe('Concurrency - provider stall timeout classification', () => {
         timeoutConfig: { baseMs: 100, extensionMs: 0 },
         clock: () => Date.now(),
         dbClient: db,
-      }
+      },
     );
 
     expect(result.status).toBe('failure');

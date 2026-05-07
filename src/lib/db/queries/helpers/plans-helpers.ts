@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 
-import { getDb } from '@/lib/db/runtime';
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
+import { getDb } from '@supabase/runtime';
 
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 
@@ -32,11 +32,11 @@ interface LockedOwnedPlanQueryParams {
 
 function ownedPlanWhere(
   planId: string,
-  ownerUserId: string
+  ownerUserId: string,
 ): ReturnType<typeof and> {
   return and(
     eq(learningPlans.id, planId),
-    eq(learningPlans.userId, ownerUserId)
+    eq(learningPlans.userId, ownerUserId),
   );
 }
 

@@ -44,8 +44,8 @@ describe('useStreamingPlanGeneration', () => {
         new Response(toStream(chunks), {
           status: 200,
           headers: { 'Content-Type': 'text/event-stream' },
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
@@ -78,8 +78,8 @@ describe('useStreamingPlanGeneration', () => {
         new Response(toStream(chunks), {
           status: 200,
           headers: { 'Content-Type': 'text/event-stream' },
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
@@ -108,8 +108,8 @@ describe('useStreamingPlanGeneration', () => {
         new Response(toStream(chunks), {
           status: 200,
           headers: { 'Content-Type': 'text/event-stream' },
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
@@ -150,8 +150,8 @@ describe('useStreamingPlanGeneration', () => {
         new Response(toStream(chunks), {
           status: 200,
           headers: { 'Content-Type': 'text/event-stream' },
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
@@ -163,7 +163,7 @@ describe('useStreamingPlanGeneration', () => {
           onPlanIdReady: (id) => {
             notifiedPlanId = id;
           },
-        })
+        }),
       ).rejects.toThrow('boom');
     });
 
@@ -184,16 +184,16 @@ describe('useStreamingPlanGeneration', () => {
           {
             status: 429,
             headers: { 'Content-Type': 'application/json' },
-          }
-        )
-      )
+          },
+        ),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
 
     await act(async () => {
       await expect(
-        result.current.startGeneration(basePayload)
+        result.current.startGeneration(basePayload),
       ).rejects.toMatchObject({
         message: 'Rate limit exceeded. Please wait and retry.',
         code: 'RATE_LIMITED',
@@ -216,15 +216,15 @@ describe('useStreamingPlanGeneration', () => {
         new Response('<html>sign-in</html>', {
           status: 200,
           headers: { 'Content-Type': 'text/html' },
-        })
-      )
+        }),
+      ),
     );
 
     const { result } = renderHook(() => useStreamingPlanGeneration());
 
     await act(async () => {
       await expect(
-        result.current.startGeneration(basePayload)
+        result.current.startGeneration(basePayload),
       ).rejects.toMatchObject({
         message: 'Unexpected server response. Please try again.',
         code: 'INVALID_STREAM_RESPONSE',

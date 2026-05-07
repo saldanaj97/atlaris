@@ -24,7 +24,7 @@ type AdaptiveTimeoutController = {
 };
 
 export function createAdaptiveTimeout(
-  config: Partial<AdaptiveTimeoutConfig> = {}
+  config: Partial<AdaptiveTimeoutConfig> = {},
 ): AdaptiveTimeoutController {
   const merged = {
     ...DEFAULT_CONFIG,
@@ -49,7 +49,7 @@ export function createAdaptiveTimeout(
         timedOut = true;
         controller.abort();
       },
-      Math.max(0, delayMs)
+      Math.max(0, delayMs),
     );
   };
 

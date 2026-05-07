@@ -254,7 +254,7 @@ describe('AI Prompt Builder', () => {
       const prompt = buildUserPrompt(params);
 
       expect(prompt).toContain(
-        'Topic: Advanced React Hooks and State Management with TypeScript'
+        'Topic: Advanced React Hooks and State Management with TypeScript',
       );
     });
 

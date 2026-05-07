@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getPlanDetailForRead,
   listLightweightPlansForApi,
-} from '@/features/plans/read-service';
+} from '@/features/plans/read-projection/service';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { createTestPlan } from '../../fixtures/plans';
 import { createTestUser } from '../../fixtures/users';
@@ -97,11 +97,14 @@ describe('Plan Queries - Tenant Scoping', () => {
   describe('pagination validation', () => {
     it('rejects invalid lightweight summary pagination instead of silently clamping', async () => {
       await expect(
-        listLightweightPlansForApi({ userId: ownerId, options: { limit: 0 } })
+        listLightweightPlansForApi({ userId: ownerId, options: { limit: 0 } }),
       ).rejects.toThrow('limit must be an integer greater than or equal to 1');
 
       await expect(
-        listLightweightPlansForApi({ userId: ownerId, options: { offset: -1 } })
+        listLightweightPlansForApi({
+          userId: ownerId,
+          options: { offset: -1 },
+        }),
       ).rejects.toThrow('offset must be an integer greater than or equal to 0');
     });
   });

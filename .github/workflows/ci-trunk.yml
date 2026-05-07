@@ -67,8 +67,6 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
 
-
-
   e2e-tests:
     name: E2E / Smoke Tests
     if: needs.changes.outputs.e2e == 'true'
@@ -135,9 +133,8 @@ jobs:
           # Defensive bootstrap (idempotent)
           psql -h localhost -p 5432 -U postgres -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<'SQL'
           CREATE EXTENSION IF NOT EXISTS pgcrypto;
-          DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
           CREATE SCHEMA IF NOT EXISTS auth;
           CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb
           LANGUAGE sql
@@ -170,13 +167,14 @@ jobs:
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
           REVOKE UPDATE ON "users" FROM authenticated;
           GRANT UPDATE (name, preferred_ai_model, updated_at) ON "users" TO authenticated;
+          REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
           SQL
 
-          # Grant read-only permissions to anonymous role
+          # Grant read-only permissions to anon role
           psql -h localhost -p 5432 -U postgres -d "${{ env.DB_NAME }}" -v ON_ERROR_STOP=1 <<'SQL'
-          GRANT USAGE ON SCHEMA public TO anonymous;
-          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
-          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anonymous;
+          GRANT USAGE ON SCHEMA public TO anon;
+          GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
           SQL
       - name: Restore Vitest cache
         uses: actions/cache/restore@v4

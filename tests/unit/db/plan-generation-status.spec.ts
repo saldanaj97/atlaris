@@ -4,7 +4,7 @@ import {
   PLAN_GENERATING_INSERT_DEFAULTS,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 
 describe('plan-generation-status helpers', () => {
   describe('PLAN_GENERATING_INSERT_DEFAULTS', () => {
@@ -17,7 +17,7 @@ describe('plan-generation-status helpers', () => {
 
     it('sets generationStatus to generating', () => {
       expect(PLAN_GENERATING_INSERT_DEFAULTS.generationStatus).toBe(
-        'generating'
+        'generating',
       );
     });
 

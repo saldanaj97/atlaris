@@ -88,20 +88,20 @@ describe('normalize-unknown', () => {
     it('coerces symbols and functions', () => {
       expect(coerceUnknownToMessage(Symbol.for('token'))).toBe('Symbol(token)');
       expect(coerceUnknownToMessage(function namedFn() {})).toBe(
-        '[Function: namedFn]'
+        '[Function: namedFn]',
       );
     });
 
     it('prefers message fields on object values', () => {
       expect(
-        coerceUnknownToMessage({ message: 'object-message', extra: true })
+        coerceUnknownToMessage({ message: 'object-message', extra: true }),
       ).toBe('object-message');
     });
 
     it('serializes other non-primitive values', () => {
       expect(coerceUnknownToMessage(['a', 1])).toBe('["a",1]');
       expect(coerceUnknownToMessage({ nested: { ok: true } })).toBe(
-        '{"nested":{"ok":true}}'
+        '{"nested":{"ok":true}}',
       );
     });
   });

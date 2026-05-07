@@ -49,26 +49,27 @@ const defaultOnSave = vi
   .mockResolvedValue(undefined);
 
 async function selectFirstFreeModel(
-  user: ReturnType<typeof userEvent.setup>
+  user: ReturnType<typeof userEvent.setup>,
 ): Promise<void> {
   await user.click(
-    screen.getByRole('combobox', { name: /preferred ai model/i })
+    screen.getByRole('combobox', { name: /preferred ai model/i }),
   );
   await user.click(
-    screen.getByRole('option', { name: new RegExp(FIRST_FREE_MODEL.name, 'i') })
+    screen.getByRole('option', {
+      name: new RegExp(FIRST_FREE_MODEL.name, 'i'),
+    }),
   );
 }
 
-let ModelSelector: typeof import('@/app/settings/ai/components/model-selector').ModelSelector;
+let ModelSelector: typeof import('@/app/(app)/settings/ai/components/model-selector').ModelSelector;
 
 // Mock scrollIntoView which is not available in jsdom
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ModelSelector', () => {
   beforeAll(async () => {
-    ({ ModelSelector } = await import(
-      '@/app/settings/ai/components/model-selector'
-    ));
+    ({ ModelSelector } =
+      await import('@/app/(app)/settings/ai/components/model-selector'));
   });
 
   beforeEach(() => {
@@ -88,12 +89,12 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: /save preferences/i })
+        screen.getByRole('button', { name: /save preferences/i }),
       ).toBeDisabled();
     });
 
@@ -104,7 +105,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -117,7 +118,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // Should show model details - use getAllBy for elements that may appear multiple times
@@ -136,7 +137,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(screen.getByText(/unlock premium models/i)).toBeInTheDocument();
@@ -152,11 +153,11 @@ describe('ModelSelector', () => {
           userTier="pro"
           availableModels={MODELS_BY_TIER.pro}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(
-        screen.queryByText(/unlock premium models/i)
+        screen.queryByText(/unlock premium models/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -169,11 +170,11 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(
-        screen.getByText(FIRST_FREE_MODEL.description)
+        screen.getByText(FIRST_FREE_MODEL.description),
       ).toBeInTheDocument();
     });
 
@@ -184,7 +185,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // The model name appears multiple times (trigger and card)
@@ -201,7 +202,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       const saveButton = screen.getByRole('button', {
@@ -217,7 +218,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       const saveButton = screen.getByRole('button', {
@@ -234,7 +235,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       const saveButton = screen.getByRole('button', {
@@ -261,7 +262,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await selectFirstFreeModel(user);
@@ -288,11 +289,11 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await user.click(
-        screen.getByRole('button', { name: /use tier default/i })
+        screen.getByRole('button', { name: /use tier default/i }),
       );
 
       await waitFor(() => {
@@ -312,7 +313,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await selectFirstFreeModel(user);
@@ -323,7 +324,7 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/preferences saved successfully/i)
+          screen.getByText(/preferences saved successfully/i),
         ).toBeInTheDocument();
       });
 
@@ -332,7 +333,7 @@ describe('ModelSelector', () => {
 
     it('shows saving state while save is in progress', async () => {
       const mockOnSave = vi.fn<(modelId: string | null) => Promise<void>>(
-        () => new Promise<void>((resolve) => setTimeout(resolve, 100))
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       );
       const user = userEvent.setup();
 
@@ -342,7 +343,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await selectFirstFreeModel(user);
@@ -369,7 +370,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await selectFirstFreeModel(user);
@@ -381,7 +382,7 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/preferences saved successfully/i)
+          screen.getByText(/preferences saved successfully/i),
         ).toBeInTheDocument();
       });
     });
@@ -398,7 +399,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={mockOnSave}
-        />
+        />,
       );
 
       await selectFirstFreeModel(user);
@@ -410,7 +411,7 @@ describe('ModelSelector', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/failed to save preferences/i)
+          screen.getByText(/failed to save preferences/i),
         ).toBeInTheDocument();
       });
     });
@@ -424,7 +425,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
@@ -437,13 +438,13 @@ describe('ModelSelector', () => {
           userTier="pro"
           availableModels={MODELS_BY_TIER.pro}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       expect(screen.getByLabelText(/preferred ai model/i)).toBeInTheDocument();
       // Pro users should not see upgrade prompt
       expect(
-        screen.queryByText(/unlock premium models/i)
+        screen.queryByText(/unlock premium models/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -456,7 +457,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // The selected model card should show a FREE badge
@@ -473,7 +474,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // Check for context window display (should show as "XK tokens")
@@ -491,7 +492,7 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // Free models should show "Free" for costs
@@ -506,15 +507,15 @@ describe('ModelSelector', () => {
           userTier="free"
           availableModels={MODELS_BY_TIER.free}
           onSave={defaultOnSave}
-        />
+        />,
       );
 
       // Should show provider name (e.g. "by OpenRouter")
       expect(
         screen.getByText(
           (_content, element) =>
-            element?.textContent?.trim() === `by ${FIRST_FREE_MODEL.provider}`
-        )
+            element?.textContent?.trim() === `by ${FIRST_FREE_MODEL.provider}`,
+        ),
       ).toBeInTheDocument();
     });
   });

@@ -5,7 +5,7 @@
 
 export function omitCircularFields(
   value: unknown,
-  seen: WeakSet<object> = new WeakSet<object>()
+  seen: WeakSet<object> = new WeakSet<object>(),
 ): unknown {
   if (typeof value === 'bigint') {
     return value.toString();

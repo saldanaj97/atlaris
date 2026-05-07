@@ -88,6 +88,34 @@ describe('users queries optimization', () => {
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
 
+  it('ignores context user when not a valid DbUser', async () => {
+    mockedGetRequestContext.mockReturnValue({
+      correlationId: 'cid-1',
+      user: {
+        authUserId: 'auth-partial',
+        id: 'internal-partial-only',
+      },
+    });
+
+    const rows = [{ id: 'full-user', authUserId: 'auth-partial' }];
+    const dbClient = makeDbClient({
+      select: (() => ({
+        from: () => ({
+          where: () => Promise.resolve(rows),
+        }),
+      })) as unknown as DbClient['select'],
+    });
+    mockedGetDb.mockReturnValue(dbClient);
+
+    const user = await getUserByAuthId('auth-partial', undefined, {
+      getRequestContext: mockedGetRequestContext,
+      getDb: mockedGetDb,
+    });
+
+    expect(user?.id).toBe('full-user');
+    expect(mockedGetDb).toHaveBeenCalledTimes(1);
+  });
+
   it('uses injected getDb when createUser has no explicit client', async () => {
     const returning = vi.fn().mockResolvedValue([
       {
@@ -101,7 +129,7 @@ describe('users queries optimization', () => {
     const insert = vi.fn().mockReturnValue({ values });
 
     mockedGetDb.mockReturnValue(
-      makeDbClient({ insert: insert as unknown as DbClient['insert'] })
+      makeDbClient({ insert: insert as unknown as DbClient['insert'] }),
     );
 
     const user = await createUser(
@@ -111,7 +139,7 @@ describe('users queries optimization', () => {
         name: 'User Four',
       },
       undefined,
-      { getDb: mockedGetDb }
+      { getDb: mockedGetDb },
     );
 
     expect(user?.id).toBe('internal-user-4');
@@ -132,14 +160,14 @@ describe('users queries optimization', () => {
     const update = vi.fn().mockReturnValue({ set });
 
     mockedGetDb.mockReturnValue(
-      makeDbClient({ update: update as unknown as DbClient['update'] })
+      makeDbClient({ update: update as unknown as DbClient['update'] }),
     );
 
     const user = await updateUserPreferredAiModel(
       'internal-user-5',
       'google/gemini-2.0-flash-exp:free',
       undefined,
-      { getDb: mockedGetDb }
+      { getDb: mockedGetDb },
     );
 
     expect(user?.id).toBe('internal-user-5');

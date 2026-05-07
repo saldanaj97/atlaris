@@ -5,11 +5,11 @@
  * concurrent requests from bypassing the plan limit.
  */
 
+import { learningPlans, users } from '@supabase/schema';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { learningPlans, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 
 describe('Plan Limit Race Condition Prevention (T200)', () => {
   let testUserId: string;
@@ -40,7 +40,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: (error as Error).message }))
+      }).catch((error) => ({ error: (error as Error).message })),
     );
 
     const results = await Promise.all(promises);
@@ -114,7 +114,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'practice',
         visibility: 'private',
         origin: 'ai',
-      })
+      }),
     );
 
     const results = await Promise.all(promises);
@@ -150,7 +150,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'video',
         visibility: 'private',
         origin: 'ai',
-      }).catch((error) => ({ error: (error as Error).message }))
+      }).catch((error) => ({ error: (error as Error).message })),
     );
 
     const results = await Promise.all(promises);
@@ -230,7 +230,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
         learningStyle: 'mixed',
         visibility: 'private',
         origin: 'ai',
-      })
+      }),
     ).rejects.toThrow('Plan limit reached');
 
     // Verify we still have exactly 3 plans (not 4)

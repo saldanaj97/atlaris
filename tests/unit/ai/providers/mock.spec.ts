@@ -15,7 +15,7 @@ const SAMPLE_INPUT = createGenerationInput({
 });
 
 async function collectStream(
-  stream: AsyncIterable<string> | ReadableStream<string>
+  stream: AsyncIterable<string> | ReadableStream<string>,
 ): Promise<string> {
   const source =
     stream instanceof ReadableStream
@@ -155,7 +155,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       });
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
-        'Mock provider simulated failure'
+        'Mock provider simulated failure',
       );
     });
 
@@ -251,7 +251,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
         const taskTotal = module.tasks.reduce(
           (sum: number, task: { estimated_minutes: number }) =>
             sum + task.estimated_minutes,
-          0
+          0,
         );
 
         // Module time should be at least the sum of tasks, with reasonable buffer

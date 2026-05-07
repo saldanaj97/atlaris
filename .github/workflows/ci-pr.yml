@@ -36,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      source: ${{ steps.filter.outputs.source }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,14 +44,24 @@ jobs:
         id: filter
         with:
           filters: |
+            source:
+              - 'src/**'
+              - 'tests/**'
+              - 'scripts/**'
             code:
               - 'src/**'
               - 'tests/**'
+              - 'scripts/**'
               - 'vitest.config.ts'
               - 'tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'drizzle.config.ts'
+              - '.oxlintrc.json'
+              - '.prettierignore'
+              - 'prettier.config.mjs'
+              - '.husky/**'
+              - '.github/workflows/**'
 
   lint-and-type-check:
     name: Lint & type check
@@ -85,13 +96,20 @@ jobs:
           DATABASE_URL: postgresql://placeholder@localhost/placeholder
         run: |
           pnpm db:generate
-          if ! git diff --quiet -- src/lib/db/migrations/; then
+          if ! git diff --quiet -- supabase/migrations/; then
             echo "::error::Migration files are out of sync with schema. Run 'pnpm db:generate' locally and commit generated files."
-            git status --short src/lib/db/migrations/
+            git status --short supabase/migrations/
             exit 1
           fi
-      - name: Run full lint and type check
-        run: pnpm check:full
+      - name: Run Oxlint checks
+        run: |
+          if [ "${{ needs.changes.outputs.source }}" = "true" ]; then
+            pnpm check:lint:ci
+          else
+            pnpm check:lint
+          fi
+      - name: Run type check
+        run: pnpm check:type
 
   vulnerability-scan:
     name: Security Audit
@@ -196,8 +214,6 @@ jobs:
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
         env:
-          NEON_AUTH_BASE_URL: ${{ secrets.NEON_AUTH_BASE_URL }}
-          NEON_AUTH_COOKIE_SECRET: ${{ secrets.NEON_AUTH_COOKIE_SECRET }}
           # `next build` runs with NODE_ENV=production and prerenders /pricing,
           # which evaluates `stripeEnv.pricing.*` in `src/lib/config/env/billing.ts`.
           # The localMode escape hatch is refused under NODE_ENV=production, so the
@@ -622,7 +638,16 @@ jobs:
 
   all-checks-pr:
     name: All Checks Passed (PR)
-    needs: [changes, lint-and-type-check, vulnerability-scan, build, unit-tests, integration-light, security-tests]
+    needs:
+      [
+        changes,
+        lint-and-type-check,
+        vulnerability-scan,
+        build,
+        unit-tests,
+        integration-light,
+        security-tests,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:

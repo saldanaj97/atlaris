@@ -22,11 +22,11 @@ export function addDaysToDate(isoDate: string, days: number): string {
  */
 export function getWeekBoundaries(
   anchorDate: string,
-  weekNumber: number
+  weekNumber: number,
 ): { startDate: string; endDate: string } {
   if (!Number.isInteger(weekNumber) || weekNumber < 1) {
     throw new RangeError(
-      `weekNumber must be an integer >= 1, received ${weekNumber}`
+      `weekNumber must be an integer >= 1, received ${weekNumber}`,
     );
   }
 

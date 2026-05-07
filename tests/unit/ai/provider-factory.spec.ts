@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function withServerWindowHiddenAsync<T>(
-  run: () => Promise<T>
+  run: () => Promise<T>,
 ): Promise<T> {
   const originalWindow = globalThis.window;
   delete (globalThis as Record<string, unknown>).window;
@@ -222,7 +222,7 @@ describe('AI Provider Factory', () => {
     it('returns MockGenerationProvider in test environment by default', async () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free'
+        'google/gemini-2.0-flash-exp:free',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -233,7 +233,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'anthropic/claude-haiku-4.5'
+        'anthropic/claude-haiku-4.5',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -244,7 +244,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free'
+        'google/gemini-2.0-flash-exp:free',
       );
 
       expect(provider.constructor.name).toBe('RouterGenerationProvider');
@@ -255,11 +255,11 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider1 = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free'
+        'google/gemini-2.0-flash-exp:free',
       );
       const provider2 = getGenerationProviderWithModel('invalid/model-id');
       const provider3 = getGenerationProviderWithModel(
-        'anthropic/claude-haiku-4.5'
+        'anthropic/claude-haiku-4.5',
       );
 
       expect(provider1.constructor.name).toBe('RouterGenerationProvider');
@@ -273,7 +273,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free'
+        'google/gemini-2.0-flash-exp:free',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -284,7 +284,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       expect(() => getGenerationProviderWithModel('')).toThrow(
-        'modelId must be a non-empty string'
+        'modelId must be a non-empty string',
       );
     });
   });

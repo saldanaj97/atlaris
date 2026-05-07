@@ -209,7 +209,7 @@ describe('User Rate Limiting', () => {
       }
 
       expect(() => checkUserRateLimit('user_123', 'read')).toThrow(
-        RateLimitError
+        RateLimitError,
       );
     });
 
@@ -219,7 +219,7 @@ describe('User Rate Limiting', () => {
         checkUserRateLimit('user_123', 'billing');
       }
       expect(() => checkUserRateLimit('user_123', 'billing')).toThrow(
-        RateLimitError
+        RateLimitError,
       );
 
       expect(() => checkUserRateLimit('user_123', 'read')).not.toThrow();
@@ -233,7 +233,7 @@ describe('User Rate Limiting', () => {
       }
 
       expect(() => checkUserRateLimit('user_123', 'billing')).toThrow(
-        RateLimitError
+        RateLimitError,
       );
       expect(() => checkUserRateLimit('user_123', 'mutation')).not.toThrow();
       expect(() => checkUserRateLimit('user_123', 'read')).not.toThrow();
@@ -247,7 +247,7 @@ describe('User Rate Limiting', () => {
 
       expect(headers['X-RateLimit-Limit']).toBe(String(readConfig.maxRequests));
       expect(headers['X-RateLimit-Remaining']).toBe(
-        String(readConfig.maxRequests)
+        String(readConfig.maxRequests),
       );
       expect(headers['X-RateLimit-Reset']).toBeDefined();
     });
@@ -280,10 +280,10 @@ describe('User Rate Limiting', () => {
       let mutationHeaders = getUserRateLimitHeaders('user_123', 'mutation');
 
       expect(parseInt(readHeaders['X-RateLimit-Remaining'], 10)).toBeLessThan(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests
+        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
       );
       expect(
-        parseInt(mutationHeaders['X-RateLimit-Remaining'], 10)
+        parseInt(mutationHeaders['X-RateLimit-Remaining'], 10),
       ).toBeLessThan(USER_RATE_LIMIT_CONFIGS.mutation.maxRequests);
 
       resetUserRateLimits('user_123');
@@ -292,10 +292,10 @@ describe('User Rate Limiting', () => {
       mutationHeaders = getUserRateLimitHeaders('user_123', 'mutation');
 
       expect(parseInt(readHeaders['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests
+        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
       );
       expect(parseInt(mutationHeaders['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests
+        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
       );
     });
 
@@ -309,10 +309,10 @@ describe('User Rate Limiting', () => {
       const user456Headers = getUserRateLimitHeaders('user_456', 'read');
 
       expect(parseInt(user123Headers['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests
+        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
       );
       expect(parseInt(user456Headers['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests - 1
+        USER_RATE_LIMIT_CONFIGS.read.maxRequests - 1,
       );
     });
   });
@@ -331,10 +331,10 @@ describe('User Rate Limiting', () => {
       const aiLimit = USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests;
 
       expect(aiLimit).toBeLessThanOrEqual(
-        USER_RATE_LIMIT_CONFIGS.integration.maxRequests
+        USER_RATE_LIMIT_CONFIGS.integration.maxRequests,
       );
       expect(aiLimit).toBeLessThan(
-        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests
+        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
       );
       expect(aiLimit).toBeLessThan(USER_RATE_LIMIT_CONFIGS.read.maxRequests);
     });
@@ -343,22 +343,22 @@ describe('User Rate Limiting', () => {
       const readLimit = USER_RATE_LIMIT_CONFIGS.read.maxRequests;
 
       expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests
+        USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests,
       );
       expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.integration.maxRequests
+        USER_RATE_LIMIT_CONFIGS.integration.maxRequests,
       );
       expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests
+        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
       );
       expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.billing.maxRequests
+        USER_RATE_LIMIT_CONFIGS.billing.maxRequests,
       );
     });
 
     it('all configs have valid maxRequests and windowMs', () => {
       for (const [_category, config] of Object.entries(
-        USER_RATE_LIMIT_CONFIGS
+        USER_RATE_LIMIT_CONFIGS,
       )) {
         expect(config.maxRequests).toBeGreaterThan(0);
         expect(config.windowMs).toBeGreaterThan(0);

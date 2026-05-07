@@ -12,7 +12,7 @@ import {
 } from '@/lib/config/local-product-testing';
 
 export async function seedLocalProductTestingUser(
-  connectionUrl: string
+  connectionUrl: string,
 ): Promise<void> {
   const sql = postgres(connectionUrl, { max: 1 });
 

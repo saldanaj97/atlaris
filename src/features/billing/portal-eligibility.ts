@@ -16,7 +16,7 @@ type BillingPortalEligibleUser = BillingPortalUser & {
  * checkout initialization.
  */
 export function canOpenBillingPortalForUser(
-  user: BillingPortalUser | null | undefined
+  user: BillingPortalUser | null | undefined,
 ): user is BillingPortalEligibleUser {
   return Boolean(user?.stripeCustomerId && user.subscriptionStatus);
 }

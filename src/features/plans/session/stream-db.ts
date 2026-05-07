@@ -1,6 +1,6 @@
 import { appEnv } from '@/lib/config/env';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 
 // Streamed plan generation can legitimately hold the dedicated RLS connection
 // open for a few minutes while AI output is produced and persisted.
@@ -29,12 +29,13 @@ export async function createStreamDbClient(authUserId: string): Promise<{
     };
   }
 
-  const { createAuthenticatedRlsClient } = await import('@/lib/db/rls');
+  const { createAuthenticatedRlsClient } =
+    await import('../../../../supabase/rls');
   const { db, cleanup } = await createAuthenticatedRlsClient(
     normalizedAuthUserId,
     {
       idleTimeout: RLS_IDLE_TIMEOUT_SECONDS,
-    }
+    },
   );
 
   return {

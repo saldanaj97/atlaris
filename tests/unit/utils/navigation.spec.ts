@@ -8,7 +8,7 @@ describe('Navigation', () => {
   describe('authenticatedNavItems', () => {
     it('should contain Dashboard nav item', () => {
       const dashboardItem = authenticatedNavItems.find(
-        (item) => item.label === 'Dashboard'
+        (item) => item.label === 'Dashboard',
       );
       expect(dashboardItem).toBeDefined();
       expect(dashboardItem?.href).toBe('/dashboard');
@@ -16,7 +16,7 @@ describe('Navigation', () => {
 
     it('should contain Analytics nav item with dropdown', () => {
       const analyticsItem = authenticatedNavItems.find(
-        (item) => item.label === 'Analytics'
+        (item) => item.label === 'Analytics',
       );
       expect(analyticsItem).toBeDefined();
       expect(analyticsItem?.href).toBe('/analytics');
@@ -34,7 +34,7 @@ describe('Navigation', () => {
 
     it('should contain Settings nav item without dropdown', () => {
       const settingsItem = authenticatedNavItems.find(
-        (item) => item.label === 'Settings'
+        (item) => item.label === 'Settings',
       );
       expect(settingsItem).toBeDefined();
       expect(settingsItem?.href).toBe('/settings');
@@ -43,7 +43,7 @@ describe('Navigation', () => {
 
     it('should contain Plans nav item', () => {
       const plansItem = authenticatedNavItems.find(
-        (item) => item.label === 'Plans'
+        (item) => item.label === 'Plans',
       );
       expect(plansItem).toBeDefined();
       expect(plansItem?.href).toBe('/plans');
@@ -65,7 +65,7 @@ describe('Navigation', () => {
 
     it('should have dropdown only on Analytics item', () => {
       const dropdownItems = authenticatedNavItems.filter(
-        (item) => item.dropdown
+        (item) => item.dropdown,
       );
       expect(dropdownItems.length).toBe(1);
       expect(dropdownItems.map((item) => item.label)).toContain('Analytics');
@@ -92,7 +92,7 @@ describe('Navigation', () => {
   describe('unauthenticatedNavItems', () => {
     it('should contain Home nav item', () => {
       const homeItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Home'
+        (item) => item.label === 'Home',
       );
       expect(homeItem).toBeDefined();
       expect(homeItem?.href).toBe('/');
@@ -100,7 +100,7 @@ describe('Navigation', () => {
 
     it('should contain Pricing nav item', () => {
       const pricingItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Pricing'
+        (item) => item.label === 'Pricing',
       );
       expect(pricingItem).toBeDefined();
       expect(pricingItem?.href).toBe('/pricing');
@@ -108,7 +108,7 @@ describe('Navigation', () => {
 
     it('should contain About nav item', () => {
       const aboutItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'About'
+        (item) => item.label === 'About',
       );
       expect(aboutItem).toBeDefined();
       expect(aboutItem?.href).toBe('/about');
@@ -120,13 +120,13 @@ describe('Navigation', () => {
 
     it('should not have Dashboard, Analytics, or Settings nav items', () => {
       const dashboardItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Dashboard'
+        (item) => item.label === 'Dashboard',
       );
       const analyticsItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Analytics'
+        (item) => item.label === 'Analytics',
       );
       const settingsItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Settings'
+        (item) => item.label === 'Settings',
       );
       expect(dashboardItem).toBeUndefined();
       expect(analyticsItem).toBeUndefined();
@@ -141,7 +141,7 @@ describe('Navigation', () => {
 
     it('should not have dropdown on any items', () => {
       const dropdownItems = unauthenticatedNavItems.filter(
-        (item) => item.dropdown
+        (item) => item.dropdown,
       );
       expect(dropdownItems.length).toBe(0);
     });
@@ -186,37 +186,37 @@ describe('Navigation', () => {
 
     it('should have authenticated-only navigation items', () => {
       const authDashboard = authenticatedNavItems.find(
-        (item) => item.label === 'Dashboard'
+        (item) => item.label === 'Dashboard',
       );
       const unauthDashboard = unauthenticatedNavItems.find(
-        (item) => item.label === 'Dashboard'
+        (item) => item.label === 'Dashboard',
       );
       expect(authDashboard).toBeDefined();
       expect(unauthDashboard).toBeUndefined();
 
       const authAnalytics = authenticatedNavItems.find(
-        (item) => item.label === 'Analytics'
+        (item) => item.label === 'Analytics',
       );
       const unauthAnalytics = unauthenticatedNavItems.find(
-        (item) => item.label === 'Analytics'
+        (item) => item.label === 'Analytics',
       );
       expect(authAnalytics).toBeDefined();
       expect(unauthAnalytics).toBeUndefined();
 
       const authSettings = authenticatedNavItems.find(
-        (item) => item.label === 'Settings'
+        (item) => item.label === 'Settings',
       );
       const unauthSettings = unauthenticatedNavItems.find(
-        (item) => item.label === 'Settings'
+        (item) => item.label === 'Settings',
       );
       expect(authSettings).toBeDefined();
       expect(unauthSettings).toBeUndefined();
 
       const authPlans = authenticatedNavItems.find(
-        (item) => item.label === 'Plans'
+        (item) => item.label === 'Plans',
       );
       const unauthPlans = unauthenticatedNavItems.find(
-        (item) => item.label === 'Plans'
+        (item) => item.label === 'Plans',
       );
       expect(authPlans).toBeDefined();
       expect(unauthPlans).toBeUndefined();
@@ -224,19 +224,19 @@ describe('Navigation', () => {
 
     it('should have Pricing and About only for unauthenticated users', () => {
       const authPricing = authenticatedNavItems.find(
-        (item) => item.label === 'Pricing'
+        (item) => item.label === 'Pricing',
       );
       const unauthPricing = unauthenticatedNavItems.find(
-        (item) => item.label === 'Pricing'
+        (item) => item.label === 'Pricing',
       );
       expect(authPricing).toBeUndefined();
       expect(unauthPricing).toBeDefined();
 
       const authAbout = authenticatedNavItems.find(
-        (item) => item.label === 'About'
+        (item) => item.label === 'About',
       );
       const unauthAbout = unauthenticatedNavItems.find(
-        (item) => item.label === 'About'
+        (item) => item.label === 'About',
       );
       expect(authAbout).toBeUndefined();
       expect(unauthAbout).toBeDefined();

@@ -1,16 +1,28 @@
-import { randomUUID } from 'node:crypto';
-import { desc, eq } from 'drizzle-orm';
+import { setTestUser } from '@tests/helpers/auth';
+import { ensureUser } from '@tests/helpers/db';
+import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
+import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
+import { RateLimitError } from '@/lib/api/errors';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
-import { generationAttempts, jobQueue, usageMetrics } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
-import { createPlan } from '../../fixtures/plans';
-import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+
+vi.mock(
+  '@/features/plans/regeneration-orchestration/request',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/plans/regeneration-orchestration/request')
+      >();
+    return {
+      ...actual,
+      requestPlanRegeneration: vi.fn(),
+    };
+  },
+);
+
+const mockRequestPlanRegeneration = vi.mocked(requestPlanRegeneration);
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -31,9 +43,10 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
   beforeEach(async () => {
     clearAllUserRateLimiters();
+    mockRequestPlanRegeneration.mockReset();
   });
 
-  it('enqueues regeneration with priority', async () => {
+  it('maps enqueued boundary result to 202 with rate limit headers', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
@@ -41,303 +54,186 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       subscriptionTier: 'pro',
     });
 
-    const plan = await createPlan(userId);
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'enqueued',
+      jobId: 'job-1',
+      planId,
+      status: 'pending',
+      inlineDrainScheduled: false,
+      planGenerationRateLimit: {
+        remaining: 9,
+        limit: 10,
+        reset: 1_700_000_000,
+      },
+    });
 
-    const { request, context } = await createRequest(plan.id, {
+    const { request, context } = await createRequest(planId, {
       overrides: { topic: 'interview prep' },
     });
 
     const res = await POST(request, context);
     expect(res.status).toBe(202);
     expect(res.headers.get('X-RateLimit-Remaining')).toEqual(
-      expect.any(String)
+      expect.any(String),
     );
 
     const body = await res.json();
     expect(body.status).toBe('pending');
-    expect(body.planId).toBe(plan.id);
-    expect(body.generationId).toBeUndefined();
-
-    // Verify job was enqueued
-    const jobs = await db
-      .select()
-      .from(jobQueue)
-      .where(eq(jobQueue.planId, plan.id))
-      .orderBy(desc(jobQueue.createdAt))
-      .limit(1);
-    const job = jobs[0];
-
-    expect(job).toBeDefined();
-    expect(job?.jobType).toBe('plan_regeneration');
-    expect(['pending', 'processing']).toContain(job?.status);
-    expect(job?.planId).toBe(plan.id);
-    expect(job?.userId).toBe(userId);
-  });
-
-  it('does not create or renumber generation attempts when regeneration is only queued', async () => {
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: authEmail,
-      subscriptionTier: 'pro',
-    });
-
-    const plan = await createPlan(userId, {
-      generationStatus: 'failed',
-      isQuotaEligible: false,
-    });
-
-    await db.insert(generationAttempts).values({
-      planId: plan.id,
-      status: 'failure',
-      classification: 'timeout',
-      durationMs: 1_000,
-      modulesCount: 0,
-      tasksCount: 0,
-      promptHash: `regen-existing-attempt-${randomUUID()}`,
-    });
-
-    const { request, context } = await createRequest(plan.id, {
-      overrides: { topic: 'queue only' },
-    });
-
-    const res = await POST(request, context);
-    expect(res.status).toBe(202);
-
-    const jobs = await db
-      .select()
-      .from(jobQueue)
-      .where(eq(jobQueue.planId, plan.id))
-      .orderBy(desc(jobQueue.createdAt))
-      .limit(1);
-    const job = jobs[0];
-
-    expect(job).toBeDefined();
-    expect(job?.jobType).toBe('plan_regeneration');
-    expect(['pending', 'processing']).toContain(job?.status);
-    expect(job?.planId).toBe(plan.id);
-    expect(job?.userId).toBe(userId);
-
-    const attempts = await db
-      .select({
-        status: generationAttempts.status,
-        classification: generationAttempts.classification,
-      })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, plan.id))
-      .orderBy(desc(generationAttempts.createdAt));
-
-    expect(attempts).toHaveLength(1);
-    expect(attempts[0]).toMatchObject({
-      status: 'failure',
-      classification: 'timeout',
-    });
-  });
-
-  it('rejects regeneration for non-existent plan', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
-    const fakePlanId = '00000000-0000-0000-0000-000000000000';
-    const { request, context } = await createRequest(fakePlanId, {
-      overrides: { topic: 'interview prep' },
-    });
-
-    const res = await POST(request, context);
-    expect(res.status).toBe(404);
-
-    const body = await res.json();
-    expect(body.error).toBe('Learning plan not found.');
-  });
-
-  it('rejects regeneration for plan owned by different user', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
-    // Create another user and their plan
-    const otherAuthUserId = buildTestAuthUserId('api-regen-other');
-    const otherUserId = await ensureUser({
-      authUserId: otherAuthUserId,
-      email: buildTestEmail(otherAuthUserId),
-    });
-
-    const otherPlan = await createPlan(otherUserId);
-
-    // Try to regenerate the other user's plan
-    const { request, context } = await createRequest(otherPlan.id, {
-      overrides: { topic: 'interview prep' },
-    });
-
-    const res = await POST(request, context);
-    expect(res.status).toBe(404);
-
-    const body = await res.json();
-    expect(body.error).toBe('Learning plan not found.');
-  });
-
-  it('returns 400 with invalid JSON message when body is not JSON', async () => {
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: authEmail,
-      subscriptionTier: 'pro',
-    });
-
-    const plan = await createPlan(userId);
-
-    const request = new Request(`${BASE_URL}/${plan.id}/regenerate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{ not json',
-    });
-    const context = { params: Promise.resolve({ planId: plan.id }) };
-
-    const res = await POST(request, context);
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBe('Invalid JSON in request body.');
-  });
-
-  describe('invalid overrides schema', () => {
-    it('rejects topic that is too short', async () => {
-      setTestUser(authUserId);
-      const userId = await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
-      const plan = await createPlan(userId);
-
-      const { request, context } = await createRequest(plan.id, {
-        overrides: { topic: 'ab' }, // Too short (< 3 chars)
-      });
-
-      const res = await POST(request, context);
-      expect(res.status).toBe(400);
-
-      const body = await res.json();
-      expect(body.error).toBe('Invalid overrides.');
-    });
-
-    it('rejects invalid weeklyHours', async () => {
-      setTestUser(authUserId);
-      const userId = await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
-      const plan = await createPlan(userId);
-
-      const { request, context } = await createRequest(plan.id, {
-        overrides: { weeklyHours: -5 }, // Negative hours
-      });
-
-      const res = await POST(request, context);
-      expect(res.status).toBe(400);
-
-      const body = await res.json();
-      expect(body.error).toBe('Invalid overrides.');
-    });
-
-    it('rejects invalid skillLevel', async () => {
-      setTestUser(authUserId);
-      const userId = await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
-      const plan = await createPlan(userId);
-
-      const { request, context } = await createRequest(plan.id, {
-        overrides: { skillLevel: 'expert' }, // Invalid enum value
-      });
-
-      const res = await POST(request, context);
-      expect(res.status).toBe(400);
-
-      const body = await res.json();
-      expect(body.error).toBe('Invalid overrides.');
-    });
-
-    it('rejects extra fields in overrides', async () => {
-      setTestUser(authUserId);
-      const userId = await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
-      const plan = await createPlan(userId);
-
-      const { request, context } = await createRequest(plan.id, {
-        overrides: { topic: 'new topic', extraField: 'not allowed' },
-      });
-
-      const res = await POST(request, context);
-      expect(res.status).toBe(400);
-
-      const body = await res.json();
-      expect(body.error).toBe('Invalid overrides.');
-    });
-  });
-
-  it('rejects regeneration when quota limit exceeded', async () => {
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: authEmail,
-      subscriptionTier: 'free', // Free tier has 5 regenerations/month
-    });
-
-    const plan = await createPlan(userId);
-
-    // Use up all 5 regenerations by directly updating usage metrics
-    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
-    await db
-      .insert(usageMetrics)
-      .values({
+    expect(body.planId).toBe(planId);
+    expect(body.jobId).toBe('job-1');
+    expect(mockRequestPlanRegeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
         userId,
-        month,
-        plansGenerated: 0,
-        regenerationsUsed: 5, // Max for free tier
-        exportsUsed: 0,
-      })
-      .onConflictDoUpdate({
-        target: [usageMetrics.userId, usageMetrics.month],
-        set: { regenerationsUsed: 5 },
-      });
+        planId,
+        overrides: { topic: 'interview prep' },
+        inlineProcessingEnabled: expect.any(Boolean),
+      }),
+    );
+  });
 
-    const { request, context } = await createRequest(plan.id, {
+  it('maps plan-not-found to 404', async () => {
+    setTestUser(authUserId);
+    await ensureUser({
+      authUserId,
+      email: authEmail,
+    });
+
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({ kind: 'plan-not-found' });
+
+    const { request, context } = await createRequest(planId, {
       overrides: { topic: 'interview prep' },
     });
 
     const res = await POST(request, context);
-    expect(res.status).toBe(429); // Too Many Requests
+    expect(res.status).toBe(404);
 
     const body = await res.json();
-    expect(body.error).toMatch(/regeneration limit|quota/i);
+    expect(body.error).toBe('Learning plan not found.');
   });
 
-  it('returns 429 when durable generation window limit is exceeded', async () => {
+  it('maps queue-disabled to 503', async () => {
     setTestUser(authUserId);
-    const userId = await ensureUser({
+    await ensureUser({
       authUserId,
       email: authEmail,
-      subscriptionTier: 'pro',
     });
 
-    const plan = await createPlan(userId);
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({ kind: 'queue-disabled' });
 
-    await seedFailedAttemptsForDurableWindow(plan.id, {
-      promptHashPrefix: 'regen-rate-limit',
+    const { request, context } = await createRequest(planId, {
+      overrides: { topic: 'interview prep' },
     });
 
-    const { request, context } = await createRequest(plan.id, {
+    const res = await POST(request, context);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe(
+      'Plan regeneration is temporarily disabled while queue workers are unavailable.',
+    );
+  });
+
+  it('maps active-job-conflict to 409 with job id', async () => {
+    setTestUser(authUserId);
+    await ensureUser({
+      authUserId,
+      email: authEmail,
+    });
+
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'active-job-conflict',
+      existingJobId: 'existing-job',
+    });
+
+    const { request, context } = await createRequest(planId, {
+      overrides: { topic: 'interview prep' },
+    });
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('REGENERATION_ALREADY_QUEUED');
+    expect(body.details?.jobId).toBe('existing-job');
+  });
+
+  it('maps queue-dedupe-conflict with reconciliation flag', async () => {
+    setTestUser(authUserId);
+    await ensureUser({
+      authUserId,
+      email: authEmail,
+    });
+
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'queue-dedupe-conflict',
+      existingJobId: 'dup',
+      reconciliationRequired: true,
+    });
+
+    const { request, context } = await createRequest(planId, {
+      overrides: { topic: 'interview prep' },
+    });
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.details?.reconciliationRequired).toBe(true);
+    expect(body.details?.jobId).toBe('dup');
+  });
+
+  it('maps quota-denied to 429', async () => {
+    setTestUser(authUserId);
+    await ensureUser({
+      authUserId,
+      email: authEmail,
+    });
+
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'quota-denied',
+      currentCount: 5,
+      limit: 5,
+      reason: 'Regeneration quota exceeded for your subscription tier.',
+    });
+
+    const { request, context } = await createRequest(planId, {
+      overrides: { topic: 'interview prep' },
+    });
+
+    const res = await POST(request, context);
+    expect(res.status).toBe(429);
+
+    const body = await res.json();
+    // Matches RateLimitError message in route for `quota-denied` (requestPlanRegeneration).
+    expect(body.error).toBe(
+      'Regeneration quota exceeded for your subscription tier.',
+    );
+  });
+
+  it('propagates RateLimitError from boundary as 429', async () => {
+    setTestUser(authUserId);
+    await ensureUser({
+      authUserId,
+      email: authEmail,
+    });
+
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockRejectedValue(
+      new RateLimitError(
+        `Rate limit exceeded. Maximum 5 plan generation requests allowed per 60 minutes.`,
+        {
+          retryAfter: 120,
+          remaining: 0,
+          limit: 5,
+          reset: 1_700_000_000,
+        },
+      ),
+    );
+
+    const { request, context } = await createRequest(planId, {
       overrides: { topic: 'blocked by durable limit' },
     });
 
@@ -350,63 +246,110 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     expect(typeof body.retryAfter).toBe('number');
   });
 
-  it('returns conflict when regeneration is already queued for same plan', async () => {
+  it('returns 400 with invalid JSON message when body is not JSON', async () => {
     setTestUser(authUserId);
-    const userId = await ensureUser({
+    await ensureUser({
       authUserId,
       email: authEmail,
       subscriptionTier: 'pro',
     });
 
-    const plan = await createPlan(userId);
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
-    const firstRequestPromise = createRequest(plan.id, {
-      overrides: { topic: 'interview prep 1' },
-    }).then(({ request, context }) => POST(request, context));
+    const request = new Request(`${BASE_URL}/${planId}/regenerate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{ not json',
+    });
+    const context = { params: Promise.resolve({ planId }) };
 
-    await vi.waitFor(
-      async () => {
-        const jobs = await db
-          .select()
-          .from(jobQueue)
-          .where(eq(jobQueue.planId, plan.id));
+    const res = await POST(request, context);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('Invalid JSON in request body.');
+    expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
+  });
 
-        expect(jobs.length).toBeGreaterThan(0);
-      },
-      { timeout: 5_000 }
-    );
+  describe('invalid overrides schema', () => {
+    it('rejects topic that is too short', async () => {
+      setTestUser(authUserId);
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+      });
 
-    const res2 = await createRequest(plan.id, {
-      overrides: { topic: 'interview prep 2' },
-    }).then(({ request, context }) => POST(request, context));
-    const res1 = await firstRequestPromise;
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
-    // First request queues the job.
-    expect(res1.status).toBe(202);
+      const { request, context } = await createRequest(planId, {
+        overrides: { topic: 'ab' },
+      });
 
-    // Second request should now be rejected as duplicate active regeneration.
-    expect(res2.status).toBe(409);
-    const secondBody = await res2.json();
-    expect(secondBody.code).toBe('REGENERATION_ALREADY_QUEUED');
-    expect(secondBody.details?.jobId).toEqual(expect.any(String));
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
 
-    // Verify only one active regeneration job was created
-    const jobs = await db
-      .select()
-      .from(jobQueue)
-      .where(eq(jobQueue.planId, plan.id))
-      .orderBy(desc(jobQueue.createdAt));
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+      expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
+    });
 
-    expect(jobs).toHaveLength(1);
-    expect(jobs[0]?.jobType).toBe('plan_regeneration');
-    expect(['pending', 'processing']).toContain(jobs[0]?.status);
+    it('rejects invalid weeklyHours', async () => {
+      setTestUser(authUserId);
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+      });
 
-    // The single job's payload should contain overrides from whichever request won the race
-    type RegenerationPayload = { overrides?: { topic?: string } };
-    const payload = jobs[0]?.payload as RegenerationPayload | undefined;
-    expect(payload?.overrides?.topic).toBeDefined();
-    expect(['interview prep 1', 'interview prep 2']).toContain(
-      payload?.overrides?.topic
-    );
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { weeklyHours: -5 },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('rejects invalid skillLevel', async () => {
+      setTestUser(authUserId);
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+      });
+
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { skillLevel: 'expert' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('rejects extra fields in overrides', async () => {
+      setTestUser(authUserId);
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+      });
+
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { topic: 'new topic', extraField: 'not allowed' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe('Invalid overrides.');
+    });
   });
 });

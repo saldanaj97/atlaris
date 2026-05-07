@@ -29,7 +29,7 @@ import {
  * after logging.
  */
 export function normalizeToCanonicalUsage(
-  metadata: ProviderMetadata | undefined
+  metadata: ProviderMetadata | undefined,
 ): CanonicalAIUsage {
   const missingFields: CanonicalUsageMissingField[] = [];
 
@@ -58,7 +58,7 @@ export function normalizeToCanonicalUsage(
     estimatedCostCents = computeCostCents(
       resolvedModel,
       resolvedInputTokens,
-      resolvedOutputTokens
+      resolvedOutputTokens,
     );
   } catch (error) {
     if (error instanceof UnknownModelError) {
@@ -69,7 +69,7 @@ export function normalizeToCanonicalUsage(
           modelId: resolvedModel,
           provider: resolvedProvider,
         },
-        `Unknown model "${resolvedModel}" — recording 0 estimated cost`
+        `Unknown model "${resolvedModel}" — recording 0 estimated cost`,
       );
     } else {
       throw error;
@@ -107,7 +107,7 @@ export function normalizeToCanonicalUsage(
     throw new IncompleteUsageError(
       `Incomplete AI usage data: missing [${missingFields.join(', ')}] from ${resolvedProvider}/${resolvedModel}`,
       canonical,
-      missingFields
+      missingFields,
     );
   }
 
@@ -122,7 +122,7 @@ export function normalizeToCanonicalUsage(
  * proceed, but missing fields are surfaced via structured logs and Sentry.
  */
 export function safeNormalizeUsage(
-  metadata: ProviderMetadata | undefined
+  metadata: ProviderMetadata | undefined,
 ): CanonicalAIUsage {
   try {
     return normalizeToCanonicalUsage(metadata);
@@ -135,7 +135,7 @@ export function safeNormalizeUsage(
           missingFields: error.missingFields,
           partialUsage: error.partialUsage,
         },
-        error.message
+        error.message,
       );
       Sentry.captureException(error, {
         level: 'warning',

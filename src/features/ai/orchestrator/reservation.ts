@@ -8,7 +8,7 @@ import type {
 } from '@/features/ai/types/orchestrator.types';
 import type { AttemptRejection } from '@/lib/db/queries/types/attempts.types';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 const RESERVATION_REJECTION_DETAILS: Record<
   AttemptRejection['reason'],
@@ -42,7 +42,7 @@ export function createReservationRejectionResult(
   reservation: AttemptRejection,
   attemptClockStart: number,
   clock: () => number,
-  nowFn: () => Date
+  nowFn: () => Date,
 ): GenerationFailureResult {
   const durationMs = Math.max(0, clock() - attemptClockStart);
   const rejectionDetails = RESERVATION_REJECTION_DETAILS[reservation.reason];
@@ -67,7 +67,7 @@ export function createReservationRejectionResult(
       reservationCurrentStatus: reservation.currentStatus,
       attemptId: 'synthetic:no-db-row',
     },
-    'Generation reservation rejected before attempt row creation'
+    'Generation reservation rejected before attempt row creation',
   );
 
   return createFailureResult({
@@ -77,5 +77,6 @@ export function createReservationRejectionResult(
     extendedTimeout: false,
     timedOut: false,
     attempt,
+    reservationRejectionReason: reservation.reason,
   });
 }

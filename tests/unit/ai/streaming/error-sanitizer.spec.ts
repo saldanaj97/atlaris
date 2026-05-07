@@ -24,7 +24,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
 
     expect(result.code).toBe('RATE_LIMITED');
     expect(result.message).toBe(
-      'Too many requests. Please wait a moment and try again.'
+      'Too many requests. Please wait a moment and try again.',
     );
     expect(result.retryable).toBe(true);
   });
@@ -35,7 +35,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
 
     expect(result.code).toBe('GENERATION_FAILED');
     expect(result.message).toBe(
-      'Plan generation encountered an error. Please try again.'
+      'Plan generation encountered an error. Please try again.',
     );
     expect(result.retryable).toBe(true);
   });
@@ -46,7 +46,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
 
     expect(result.code).toBe('INVALID_OUTPUT');
     expect(result.message).toBe(
-      'Plan generation produced invalid output. Please try with different parameters.'
+      'Plan generation produced invalid output. Please try with different parameters.',
     );
     expect(result.retryable).toBe(false);
   });
@@ -57,7 +57,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
 
     expect(result.code).toBe('ATTEMPTS_EXHAUSTED');
     expect(result.message).toBe(
-      'Maximum generation attempts reached. Please create a new plan.'
+      'Maximum generation attempts reached. Please create a new plan.',
     );
     expect(result.retryable).toBe(false);
   });
@@ -68,7 +68,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
 
     expect(result.code).toBe('GENERATION_FAILED');
     expect(result.message).toBe(
-      'An unexpected error occurred during plan generation.'
+      'An unexpected error occurred during plan generation.',
     );
     expect(result.retryable).toBe(true);
   });
@@ -81,7 +81,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
     expect(result.message).not.toContain('API_KEY');
     expect(result.message).not.toContain('secret123');
     expect(result.message).toBe(
-      'Plan generation encountered an error. Please try again.'
+      'Plan generation encountered an error. Please try again.',
     );
   });
 
@@ -94,7 +94,7 @@ describe('SSE error sanitizer (Task 3 - Phase 2)', () => {
     expect(result.message).not.toContain('/app/lib/db.ts');
     expect(result.message).not.toContain('Database query failed');
     expect(result.message).toBe(
-      'Plan generation encountered an error. Please try again.'
+      'Plan generation encountered an error. Please try again.',
     );
   });
 

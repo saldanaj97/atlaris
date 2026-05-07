@@ -31,13 +31,16 @@ export type OpenPortalInput = {
   returnUrl?: string;
 };
 
+/**
+ * Webhook HTTP boundary input after route-level transport checks. `signatureHeader` is
+ * required; `DefaultStripeCommerceBoundary.acceptWebhook` verifies it through StripeGateway
+ * before applying verified events.
+ */
 export type AcceptWebhookInput = {
   rawBody: string;
-  signatureHeader: string | null;
+  signatureHeader: string;
   contentLength?: number | null;
   logger: import('@/lib/logging/logger').Logger;
-  /** Optional Stripe client for subscription resync paths (tests inject mocks). */
-  stripe?: import('stripe').default;
 };
 
 /**

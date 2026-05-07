@@ -151,7 +151,7 @@ describe('throwPlanCreationFailureError', () => {
         classification: 'timeout',
         error: 'timed out',
       },
-      'Plan creation failure'
+      'Plan creation failure',
     );
   });
 

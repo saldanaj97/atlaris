@@ -5,7 +5,7 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 const CATALOG_MODEL_OPENAI_GPT4O = 'openai/gpt-4o' as const;
 
 export function makeCanonicalUsage(
-  overrides?: Partial<CanonicalAIUsage>
+  overrides?: Partial<CanonicalAIUsage>,
 ): CanonicalAIUsage {
   return {
     inputTokens: 100,
@@ -26,7 +26,7 @@ export function makeCanonicalUsage(
  * provider USD cost (for entry-point tests that exercise snapshot + microusd).
  */
 export function makeOpenRouterGpt4oProviderMetadata(
-  overrides?: Partial<ProviderMetadata>
+  overrides?: Partial<ProviderMetadata>,
 ): ProviderMetadata {
   const { usage: usageOverrides, ...restOverrides } = overrides ?? {};
 

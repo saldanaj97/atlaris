@@ -58,7 +58,7 @@ export class IncompleteUsageError extends Error {
   constructor(
     message: string,
     partialUsage: CanonicalAIUsage,
-    missingFields: readonly CanonicalUsageMissingField[]
+    missingFields: readonly CanonicalUsageMissingField[],
   ) {
     super(message);
     Object.setPrototypeOf(this, IncompleteUsageError.prototype);

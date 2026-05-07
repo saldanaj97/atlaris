@@ -38,7 +38,7 @@ describe('smoke mode-config', () => {
   it('buildAuthModeLayer sets seeded auth id and local mocks', () => {
     const layer = buildAuthModeLayer(FAKE_STATE);
     expect(layer.DEV_AUTH_USER_ID).toBe(
-      LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID
+      LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
     );
     expect(layer.LOCAL_PRODUCT_TESTING).toBe('true');
     expect(layer.ENABLE_SENTRY).toBe('false');
@@ -47,6 +47,8 @@ describe('smoke mode-config', () => {
     expect(layer.AI_PROVIDER).toBe('');
     expect(layer.AI_USE_MOCK).toBe('true');
     expect(layer.MOCK_AI_SCENARIO).toBe('success');
+    expect(layer.MOCK_GENERATION_DELAY_MS).toBe('0');
+    expect(layer.MOCK_GENERATION_FAILURE_RATE).toBe('0');
     expect(layer.PORT).toBe(String(SMOKE_AUTH_PORT));
     expect(layer.APP_URL).toBe(smokeAuthAppUrl());
   });
@@ -82,6 +84,8 @@ describe('smoke mode-config', () => {
       DEV_AUTH_USER_ID: 'should-not-survive',
       ENABLE_SENTRY: 'true',
       MOCK_AI_SCENARIO: 'timeout',
+      MOCK_GENERATION_DELAY_MS: '7000',
+      MOCK_GENERATION_FAILURE_RATE: '1',
       NEXT_PUBLIC_ENABLE_SENTRY: 'true',
       NODE_ENV: 'test',
       STRIPE_LOCAL_MODE: 'true',
@@ -96,6 +100,21 @@ describe('smoke mode-config', () => {
     expect(merged.AI_PROVIDER).toBe('');
     expect(merged.AI_USE_MOCK).toBe('false');
     expect(merged.MOCK_AI_SCENARIO).toBe('success');
+    expect(merged.MOCK_GENERATION_DELAY_MS).toBe('0');
+    expect(merged.MOCK_GENERATION_FAILURE_RATE).toBe('0');
+  });
+
+  it('mergeSmokeProcessEnv preserves unrelated parent MOCK_* controls', () => {
+    const base: NodeJS.ProcessEnv = {
+      MOCK_AI_SCENARIO: 'timeout',
+      MOCK_FUTURE_FAILURE_MODE: 'enabled',
+      NODE_ENV: 'test',
+    };
+
+    const merged = mergeSmokeProcessEnv(base, buildAuthModeLayer(FAKE_STATE));
+
+    expect(merged.MOCK_AI_SCENARIO).toBe('success');
+    expect(merged.MOCK_FUTURE_FAILURE_MODE).toBe('enabled');
   });
 
   it('parseSmokeAppMode accepts anon', () => {
@@ -108,7 +127,7 @@ describe('smoke mode-config', () => {
 
   it('parseSmokeAppMode throws when mode is invalid', () => {
     expect(() => parseSmokeAppMode(['--mode=invalid'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 
@@ -122,13 +141,13 @@ describe('smoke mode-config', () => {
 
   it('parseSmokeAppMode rejects space-separated mode flags', () => {
     expect(() => parseSmokeAppMode(['--mode', 'anon'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 
   it('parseSmokeAppMode treats flag names as case-sensitive', () => {
     expect(() => parseSmokeAppMode(['--MODE=anon'])).toThrow(
-      INVALID_MODE_ERROR
+      INVALID_MODE_ERROR,
     );
   });
 

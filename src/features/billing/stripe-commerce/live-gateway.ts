@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-class-member
 import Stripe from 'stripe';
 import type { CommerceWebhookEvent } from '@/features/billing/stripe-commerce/dtos';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
@@ -52,7 +53,7 @@ export class LiveStripeGateway implements StripeGateway {
       input.rawBody,
       input.signature,
       input.secret,
-      input.toleranceSeconds ?? 300
+      input.toleranceSeconds ?? 300,
     );
     return { stripeEvent: event };
   }
@@ -63,7 +64,7 @@ export class LiveStripeGateway implements StripeGateway {
   }) {
     const subscription = await this.stripe.subscriptions.retrieve(
       input.subscriptionId,
-      { timeout: input.timeoutMs ?? 10_000 }
+      { timeout: input.timeoutMs ?? 10_000 },
     );
     return stripeSubscriptionToCommerceSnapshot(subscription);
   }

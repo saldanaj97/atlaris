@@ -9,7 +9,7 @@ import type {
 } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-type DbSchemaModule = typeof import('@/lib/db/schema');
+type DbSchemaModule = typeof import('@supabase/schema');
 
 /**
  * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
@@ -192,6 +192,17 @@ export interface FinalizeSuccessPersistenceParams {
   finishedAt: Date;
   dbClient: AttemptsDbClient;
 }
+
+/**
+ * Same as {@link FinalizeSuccessPersistenceParams} but for an existing
+ * transaction (no `dbClient`). The caller must have already applied RLS/JWT
+ * claims to the transaction; use persistSuccessfulAttempt or
+ * commitPlanGenerationSuccess when claim setup should be handled for you.
+ */
+export type FinalizeSuccessPersistenceInTxParams = Omit<
+  FinalizeSuccessPersistenceParams,
+  'dbClient'
+>;
 
 export interface UserGenerationAttemptsSinceParams {
   userId: string;

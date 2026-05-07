@@ -61,7 +61,7 @@ type StartGenerationOptions = {
 
 type StartGeneration = (
   input: CreateLearningPlanInput,
-  options?: StartGenerationOptions
+  options?: StartGenerationOptions,
 ) => Promise<PlanGenerationResult>;
 
 export interface UseStreamingPlanGenerationResult {
@@ -75,7 +75,7 @@ export function useStreamingPlanGeneration(): UseStreamingPlanGenerationResult {
 
   const startGeneration = useCallback<StartGeneration>(
     (input, options) => startSession({ kind: 'create', input }, options),
-    [startSession]
+    [startSession],
   );
 
   return {

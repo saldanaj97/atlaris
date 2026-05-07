@@ -112,7 +112,7 @@ describe('parseJsonBody', () => {
       parseJsonBody(req, {
         mode: 'required',
         onMalformedJson: () => new Error('should not run'),
-      })
+      }),
     ).resolves.toEqual({ a: 1 });
   });
 
@@ -122,7 +122,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn((_err: unknown) => new Error('should not run'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).resolves.toBeUndefined();
     expect(factory).not.toHaveBeenCalled();
   });
@@ -133,7 +133,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('should not run'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).resolves.toBeNull();
     expect(factory).not.toHaveBeenCalled();
   });
@@ -145,7 +145,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('from factory'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).rejects.toThrow('from factory');
     expect(factory).toHaveBeenCalledWith(syntaxErr);
   });
@@ -157,7 +157,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('wrapped'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).rejects.toThrow('wrapped');
     expect(factory).toHaveBeenCalledWith(typeErr);
   });
@@ -170,7 +170,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('should not run'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).rejects.toBe(abort);
     expect(factory).not.toHaveBeenCalled();
   });
@@ -185,7 +185,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('should not run'));
     await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
     ).rejects.toBe(abort);
     expect(factory).not.toHaveBeenCalled();
   });
@@ -201,7 +201,7 @@ describe('parseJsonBody', () => {
         mode: 'optional',
         onMalformedJson: factory,
         fallback: {},
-      })
+      }),
     ).resolves.toEqual({});
     expect(factory).not.toHaveBeenCalled();
   });
@@ -214,7 +214,7 @@ describe('parseJsonBody', () => {
     });
     const factory = vi.fn(() => new Error('malformed'));
     await expect(
-      parseJsonBody(req, { mode: 'optional', onMalformedJson: factory })
+      parseJsonBody(req, { mode: 'optional', onMalformedJson: factory }),
     ).rejects.toThrow('malformed');
     expect(factory).toHaveBeenCalledWith(syntaxErr);
   });
@@ -230,7 +230,7 @@ describe('parseJsonBody', () => {
         mode: 'optional',
         onMalformedJson: factory,
         fallback: {},
-      })
+      }),
     ).rejects.toThrow('read failed');
     expect(factory).not.toHaveBeenCalled();
   });
@@ -244,7 +244,7 @@ describe('parseJsonBody', () => {
       parseJsonBody(req, {
         mode: 'optional',
         onMalformedJson: () => new Error('x'),
-      })
+      }),
     ).resolves.toEqual({});
   });
 
@@ -261,7 +261,7 @@ describe('parseJsonBody', () => {
         mode: 'optional',
         onMalformedJson: factory,
         fallback: {},
-      })
+      }),
     ).rejects.toBe(typeErr);
     expect(factory).not.toHaveBeenCalled();
   });

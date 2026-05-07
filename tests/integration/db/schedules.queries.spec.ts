@@ -1,18 +1,18 @@
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getPlanScheduleCache,
   upsertPlanScheduleCache,
   validatePlanOwnership,
 } from '@/lib/db/queries/schedules';
 import type { UpsertPlanScheduleCachePayload } from '@/lib/db/queries/types/schedule.types';
-import { db } from '@/lib/db/service-role';
 import type { ScheduleJson } from '@/shared/types/scheduling.types';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 function buildScheduleJson(
-  overrides: Partial<ScheduleJson> = {}
+  overrides: Partial<ScheduleJson> = {},
 ): ScheduleJson {
   return {
     weeks: [
@@ -44,7 +44,7 @@ function buildScheduleJson(
 }
 
 function buildSchedulePayload(
-  overrides: Partial<UpsertPlanScheduleCachePayload> = {}
+  overrides: Partial<UpsertPlanScheduleCachePayload> = {},
 ): UpsertPlanScheduleCachePayload {
   return {
     scheduleJson: buildScheduleJson(),
@@ -82,13 +82,13 @@ describe('Schedule Queries', () => {
   describe('validatePlanOwnership', () => {
     it('passes for the owner', async () => {
       await expect(
-        validatePlanOwnership(planId, ownerId, db)
+        validatePlanOwnership(planId, ownerId, db),
       ).resolves.toBeUndefined();
     });
 
     it('throws when plan is not owned by the user', async () => {
       await expect(
-        validatePlanOwnership(planId, unauthorizedUserId, db)
+        validatePlanOwnership(planId, unauthorizedUserId, db),
       ).rejects.toThrow('Plan not found or access denied');
     });
   });
@@ -118,7 +118,7 @@ describe('Schedule Queries', () => {
 
     it('throws when user does not own the plan', async () => {
       await expect(
-        getPlanScheduleCache(planId, unauthorizedUserId, db)
+        getPlanScheduleCache(planId, unauthorizedUserId, db),
       ).rejects.toThrow('Plan not found or access denied');
     });
   });
@@ -146,7 +146,7 @@ describe('Schedule Queries', () => {
         planId,
         ownerId,
         buildSchedulePayload(),
-        db
+        db,
       );
 
       const updatedPayload = buildSchedulePayload({
@@ -195,8 +195,8 @@ describe('Schedule Queries', () => {
           planId,
           unauthorizedUserId,
           buildSchedulePayload(),
-          db
-        )
+          db,
+        ),
       ).rejects.toThrow('Plan not found or access denied');
     });
   });

@@ -24,7 +24,7 @@ export class UsageMetricsLockError extends AppError {
   constructor(
     userId?: string,
     month?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super('Failed to lock usage metrics', {
       status: 503,
@@ -42,7 +42,7 @@ export class UsageMetricsLoadError extends AppError {
   constructor(
     userId?: string,
     month?: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super('Failed to load usage metrics', {
       status: 500,

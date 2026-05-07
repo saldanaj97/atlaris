@@ -1,13 +1,13 @@
-import { desc, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { desc, eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -97,7 +97,7 @@ describe('generation integration - capped attempts', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(result.status).toBe('failure');
@@ -113,7 +113,7 @@ describe('generation integration - capped attempts', () => {
     // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
     expect(attempts).toHaveLength(3);
     expect(
-      attempts.some((attempt) => attempt.classification === 'capped')
+      attempts.some((attempt) => attempt.classification === 'capped'),
     ).toBe(false);
     // Runtime narrowing for discriminated union before accessing result.attempt.
     if (result.status !== 'failure') {

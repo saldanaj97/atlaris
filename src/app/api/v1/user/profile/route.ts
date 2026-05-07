@@ -1,14 +1,11 @@
 import { eq, sql } from 'drizzle-orm';
 import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
-import { requireInternalUserByAuthId } from '@/features/plans/api/route-context';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
 import { AppError, ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 
 type UserProfileResponse = Pick<
@@ -33,18 +30,20 @@ function toUserProfileResponse(user: DbUser): UserProfileResponse {
 }
 
 // GET /api/v1/user/profile, PUT /api/v1/user/profile
-export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ userId }) => {
-    const db = getDb();
-    const user = await requireInternalUserByAuthId(userId, db);
-
-    logger.info({ action: 'profile.read', userId }, 'Profile read');
-    return json(toUserProfileResponse(user));
-  })
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ actor }) => {
+    logger.info(
+      { action: 'profile.read', userId: actor.authUserId },
+      'Profile read',
+    );
+    return json(toUserProfileResponse(actor));
+  },
 );
 
-export const PUT = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async ({ req, userId }) => {
+export const PUT = requestBoundary.route(
+  { rateLimit: 'mutation' },
+  async ({ req, actor, db }) => {
     const body = await parseJsonBody(req, {
       mode: 'required',
       onMalformedJson: () =>
@@ -55,11 +54,10 @@ export const PUT = withErrorBoundary(
     if (!parsed.success) {
       throw new ValidationError(
         'Invalid profile payload',
-        parsed.error.flatten()
+        parsed.error.flatten(),
       );
     }
 
-    const db = getDb();
     // updatedAt must use the DB clock (sql`now()`), not `new Date()`, so it shares
     // the same clock as defaultNow() on insert. Otherwise Node-vs-Postgres clock
     // skew can let updatedAt land at or before createdAt under concurrent load
@@ -70,21 +68,32 @@ export const PUT = withErrorBoundary(
         name: parsed.data.name,
         updatedAt: sql<Date>`now()`,
       })
-      .where(eq(users.authUserId, userId))
+      .where(eq(users.authUserId, actor.authUserId))
       .returning();
 
     const updatedUser = updatedRows[0];
     if (!updatedUser) {
+      logger.error(
+        {
+          action: 'profile.update',
+          authUserId: actor.authUserId,
+          internalUserId: actor.id,
+        },
+        'Profile update affected no rows; authenticated user missing from database',
+      );
       throw new AppError(
         'Authenticated user record missing despite provisioning.',
         {
           status: 500,
           code: 'INTERNAL_ERROR',
-        }
+        },
       );
     }
 
-    logger.info({ action: 'profile.update', userId }, 'Profile updated');
+    logger.info(
+      { action: 'profile.update', userId: actor.authUserId },
+      'Profile updated',
+    );
     return json(toUserProfileResponse(updatedUser));
-  })
+  },
 );

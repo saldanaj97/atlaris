@@ -16,11 +16,11 @@ vi.mock('next/navigation', async (orig) => {
 });
 
 // Mock child components to simplify the test
-vi.mock('@/app/plans/[id]/components/ExportButtons', () => ({
+vi.mock('@/app/(app)/plans/[id]/components/ExportButtons', () => ({
   ExportButtons: () => <div data-testid="export-buttons">Export</div>,
 }));
 
-vi.mock('@/app/plans/[id]/components/PlanPendingState', () => ({
+vi.mock('@/app/(app)/plans/[id]/components/PlanPendingState', () => ({
   PlanPendingState: () => (
     <div data-testid="plan-pending-state">Plan is generating...</div>
   ),
@@ -33,11 +33,14 @@ vi.mock('@/components/ui/button', () => ({
 }));
 
 async function renderPlanDetails(plan: ClientPlanDetail) {
-  (globalThis as any).React = React;
-  const { PlanDetails } = await import(
-    '@/app/plans/[id]/components/PlanDetails'
-  );
-  return render(<PlanDetails plan={plan} />);
+  vi.stubGlobal('React', React);
+  try {
+    const { PlanDetails } =
+      await import('@/app/(app)/plans/[id]/components/PlanDetails');
+    return render(<PlanDetails plan={plan} />);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 }
 
 function createMockPlan(): ClientPlanDetail {
@@ -135,7 +138,7 @@ describe('Plan Details View', () => {
     await renderPlanDetails(plan);
 
     expect(
-      screen.getByRole('heading', { name: /Test Learning Topic/i })
+      screen.getByRole('heading', { name: /Test Learning Topic/i }),
     ).toBeInTheDocument();
   });
 
@@ -144,7 +147,7 @@ describe('Plan Details View', () => {
     await renderPlanDetails(plan);
 
     expect(
-      screen.getByRole('heading', { name: /learning modules/i })
+      screen.getByRole('heading', { name: /learning modules/i }),
     ).toBeInTheDocument();
   });
 

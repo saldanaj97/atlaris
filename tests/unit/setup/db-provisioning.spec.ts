@@ -30,21 +30,21 @@ describe('db provisioning helpers', () => {
       'postgresql://postgres:secret@127.0.0.1:5432/atlaris_runtime?sslmode=disable';
 
     expect(createDatabaseUrl(containerUrl, 'atlaris_test_w1')).toBe(
-      'postgresql://postgres:secret@127.0.0.1:5432/atlaris_test_w1?sslmode=disable'
+      'postgresql://postgres:secret@127.0.0.1:5432/atlaris_test_w1?sslmode=disable',
     );
     expect(createAdminDatabaseUrl(containerUrl)).toBe(
-      'postgresql://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable'
+      'postgresql://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable',
     );
   });
 
   it('uses a per-run runtime-state file when configured', () => {
     vi.stubEnv(
       'TESTCONTAINERS_ENV_FILE',
-      '/tmp/testcontainers-env.integration-run.json'
+      '/tmp/testcontainers-env.integration-run.json',
     );
 
     expect(getTestcontainersEnvFile()).toBe(
-      '/tmp/testcontainers-env.integration-run.json'
+      '/tmp/testcontainers-env.integration-run.json',
     );
   });
 });

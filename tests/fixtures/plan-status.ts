@@ -14,7 +14,7 @@ interface PlanStatusResponseData {
  * Defaults to a minimal pending response for plan-123.
  */
 export function createPlanStatusResponse(
-  overrides?: Partial<PlanStatusResponseData>
+  overrides?: Partial<PlanStatusResponseData>,
 ): PlanStatusResponseData {
   return {
     planId: 'plan-123',

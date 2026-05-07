@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '@/lib/db/privileges/users-authenticated-update-columns';
-import { db } from '@/lib/db/service-role';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/users-authenticated-update-columns';
+import { db } from '@supabase/service-role';
 
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 
@@ -13,10 +13,10 @@ import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
  * even when RLS policies allow it, because the role itself lacks table permissions.
  */
 export async function ensureRlsRolesAndPermissions() {
-  // Create authenticated and anonymous roles if they don't exist
+  // Create authenticated and anon roles if they don't exist
   await db.execute(sql`
     DO $$ BEGIN
-      CREATE ROLE anonymous NOLOGIN;
+      CREATE ROLE anon NOLOGIN;
     EXCEPTION WHEN duplicate_object THEN
       NULL;
     END $$;
@@ -39,11 +39,11 @@ export async function ensureRlsRolesAndPermissions() {
 
   // Grant schema access to RLS roles
   await db.execute(sql`
-    GRANT USAGE ON SCHEMA public TO authenticated, anonymous;
+    GRANT USAGE ON SCHEMA public TO authenticated, anon;
   `);
 
   await db.execute(sql`
-    GRANT USAGE ON SCHEMA auth TO authenticated, anonymous;
+    GRANT USAGE ON SCHEMA auth TO authenticated, anon;
   `);
 
   // Grant table permissions to authenticated role
@@ -53,19 +53,22 @@ export async function ensureRlsRolesAndPermissions() {
 
   // Restrict authenticated role to user-editable columns on users table.
   // Matches migration 0018 and @/lib/db/privileges/users-authenticated-update-columns.
+  // Harden `job_queue` to match 0028: no role writes from clients (service role for workers only).
   await db.execute(sql`
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
   `);
 
-  // Grant read-only permissions to anonymous role
+  // Grant read-only permissions to anon role
   await db.execute(sql`
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
   `);
 
   // Grant permissions on sequences (for auto-increment IDs)
   await db.execute(sql`
-    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon;
   `);
 
   // Grant default permissions for future tables
@@ -76,12 +79,12 @@ export async function ensureRlsRolesAndPermissions() {
 
   await db.execute(sql`
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT ON TABLES TO anonymous;
+    GRANT SELECT ON TABLES TO anon;
   `);
 
   await db.execute(sql`
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous;
+    GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anon;
   `);
 
   // Repair critical authenticated ownership policies for test databases.

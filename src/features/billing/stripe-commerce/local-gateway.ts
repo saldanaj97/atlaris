@@ -1,11 +1,53 @@
 import Stripe from 'stripe';
-import { tierFromLocalPriceId } from '@/features/billing/local-catalog';
+import { localCatalogEntryFromPriceId } from '@/features/billing/local-catalog';
 import { appEnv } from '@/lib/config/env';
 
 let localStripeMock: Stripe | null = null;
 
+const LOCAL_TIER_PRODUCT_NAMES: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+};
+
+function localTierToProductName(tier: string): string {
+  const mapped = LOCAL_TIER_PRODUCT_NAMES[tier];
+  if (mapped) {
+    return mapped;
+  }
+  if (tier.length === 0) {
+    return 'Paid';
+  }
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
 function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** Stripe-shaped local price for tests and in-process mock `prices.retrieve`. */
+export function buildMockLocalStripePrice(priceId: string): Stripe.Price {
+  const entry = localCatalogEntryFromPriceId(priceId);
+  if (!entry) {
+    throw new Stripe.errors.StripeInvalidRequestError({
+      type: 'invalid_request_error',
+      message: `No such price: ${priceId}`,
+    });
+  }
+  const { tier } = entry;
+  const productId = `prod_local_${tier}`;
+  return {
+    id: priceId,
+    object: 'price',
+    active: true,
+    currency: entry.currency,
+    product: {
+      id: productId,
+      object: 'product',
+      name: localTierToProductName(tier),
+      metadata: { tier },
+    },
+    unit_amount: entry.unitAmount,
+  } as unknown as Stripe.Price;
 }
 
 function buildLocalStripeMock(baseUrl: string): Stripe {
@@ -13,7 +55,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
 
   const customers = {
     create: async (
-      params: Stripe.CustomerCreateParams
+      params: Stripe.CustomerCreateParams,
     ): Promise<Stripe.Customer> => {
       const meta = params.metadata;
       const userId =
@@ -30,7 +72,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   const checkout = {
     sessions: {
       create: async (
-        params: Stripe.Checkout.SessionCreateParams
+        params: Stripe.Checkout.SessionCreateParams,
       ): Promise<Stripe.Checkout.Session> => {
         const lineItem = params.line_items?.[0];
         const priceId =
@@ -51,7 +93,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
           }
         }
         const url = `${normalizedBase}/api/v1/stripe/local/complete-checkout?price_id=${encodeURIComponent(
-          priceId
+          priceId,
         )}&session_id=${encodeURIComponent(sessionId)}&next=${encodeURIComponent(nextPath)}`;
         return {
           id: sessionId,
@@ -78,30 +120,8 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
   const prices = {
     retrieve: async (
       priceId: string,
-      _params?: Stripe.PriceRetrieveParams
-    ): Promise<Stripe.Price> => {
-      const tier = tierFromLocalPriceId(priceId);
-      if (!tier) {
-        throw new Stripe.errors.StripeInvalidRequestError({
-          type: 'invalid_request_error',
-          message: `No such price: ${priceId}`,
-        });
-      }
-      const productId = `prod_local_${tier}`;
-      return {
-        id: priceId,
-        object: 'price',
-        active: true,
-        currency: 'usd',
-        product: {
-          id: productId,
-          object: 'product',
-          name: tier === 'starter' ? 'Starter' : 'Pro',
-          metadata: { tier },
-        },
-        unit_amount: tier === 'starter' ? 1200 : 2900,
-      } as unknown as Stripe.Price;
-    },
+      _params?: Stripe.PriceRetrieveParams,
+    ): Promise<Stripe.Price> => buildMockLocalStripePrice(priceId),
   };
 
   const subscriptions = {
@@ -126,7 +146,7 @@ function buildLocalStripeMock(baseUrl: string): Stripe {
       }) as unknown as Stripe.Subscription,
     update: async (
       id: string,
-      _params: Stripe.SubscriptionUpdateParams
+      _params: Stripe.SubscriptionUpdateParams,
     ): Promise<Stripe.Subscription> =>
       ({
         id,

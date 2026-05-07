@@ -5,7 +5,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import SubscribeButton from '@/app/pricing/components/SubscribeButton';
+import SubscribeButton from '@/app/(marketing)/pricing/components/SubscribeButton';
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 
 describe('SubscribeButton', () => {
@@ -32,7 +32,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" />);
 
     expect(
-      screen.getByRole('button', { name: /subscribe/i })
+      screen.getByRole('button', { name: /subscribe/i }),
     ).toBeInTheDocument();
   });
 
@@ -40,7 +40,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton priceId="price_123" label="Upgrade Now" />);
 
     expect(
-      screen.getByRole('button', { name: /upgrade now/i })
+      screen.getByRole('button', { name: /upgrade now/i }),
     ).toBeInTheDocument();
   });
 
@@ -71,7 +71,7 @@ describe('SubscribeButton', () => {
             successUrl: undefined,
             cancelUrl: undefined,
           }),
-        })
+        }),
       );
     });
   });
@@ -90,7 +90,7 @@ describe('SubscribeButton', () => {
         priceId="price_123"
         successUrl="/success"
         cancelUrl="/cancel"
-      />
+      />,
     );
 
     const button = screen.getByRole('button');
@@ -109,7 +109,7 @@ describe('SubscribeButton', () => {
             successUrl: '/success',
             cancelUrl: '/cancel',
           }),
-        })
+        }),
       );
     });
   });
@@ -189,7 +189,7 @@ describe('SubscribeButton', () => {
 
     await waitFor(() => {
       expect(window.location.href).toBe(
-        'https://stripe.com/checkout/session_123'
+        'https://stripe.com/checkout/session_123',
       );
     });
   });

@@ -23,7 +23,7 @@ export function isValidRedirectUrl(url: string | undefined): boolean {
  */
 export function resolveRedirectUrl(
   url: string | undefined,
-  defaultPath: string
+  defaultPath: string,
 ): string {
   const baseUrl = appEnv.url;
 

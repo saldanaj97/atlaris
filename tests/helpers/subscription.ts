@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { db } from '@supabase/service-role';
 
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 
@@ -16,7 +16,7 @@ interface MarkUserAsSubscribedOptions {
 
 export async function markUserAsSubscribed(
   userId: string,
-  options: MarkUserAsSubscribedOptions = {}
+  options: MarkUserAsSubscribedOptions = {},
 ): Promise<{
   stripeCustomerId: string;
   stripeSubscriptionId: string;

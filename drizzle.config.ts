@@ -18,13 +18,13 @@ const databaseUrl =
 
 if (!databaseUrl) {
   throw new Error(
-    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations'
+    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations',
   );
 }
 
 export default {
-  schema: ['./src/lib/db/schema/index.ts', './src/lib/db/enums.ts'],
-  out: './src/lib/db/migrations',
+  schema: ['./supabase/schema/index.ts', './supabase/enums.ts'],
+  out: './supabase/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: databaseUrl,

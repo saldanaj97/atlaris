@@ -117,7 +117,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -154,7 +154,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -178,7 +178,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -200,7 +200,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -223,7 +223,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -243,7 +243,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -259,7 +259,7 @@ describe('normalizeToCanonicalUsage', () => {
 
   it('throws IncompleteUsageError when metadata is undefined', () => {
     expect(() => normalizeToCanonicalUsage(undefined)).toThrow(
-      IncompleteUsageError
+      IncompleteUsageError,
     );
 
     try {
@@ -298,7 +298,7 @@ describe('normalizeToCanonicalUsage', () => {
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toEqual(
-        expect.arrayContaining(['provider', 'model', 'outputTokens'])
+        expect.arrayContaining(['provider', 'model', 'outputTokens']),
       );
       expect(usageError.missingFields).toHaveLength(3);
     }

@@ -1,0 +1,44 @@
+import { ArrowRight } from 'lucide-react';
+
+import Link from 'next/link';
+import type { JSX } from 'react';
+import { useId } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+
+/**
+ * Bottom call-to-action section.
+ */
+export function CtaSection(): JSX.Element {
+  const headingId = useId();
+
+  return (
+    <section
+      className="relative overflow-hidden py-24 lg:py-32"
+      aria-labelledby={headingId}
+    >
+      <div className="relative z-10 mx-auto max-w-screen-xl px-6 text-center">
+        <Card className="mx-auto max-w-3xl rounded-3xl border border-white/50 bg-white/40 p-12 shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-card/40">
+          <h2 id={headingId} className="marketing-h2 mb-2 text-foreground">
+            Ready to Start <span className="gradient-text">Learning</span>?
+          </h2>
+          <p className="marketing-subtitle mx-auto mb-8 max-w-xl text-muted-foreground">
+            Create your first AI-powered learning plan in minutes — completely
+            free.
+          </p>
+          <Button
+            asChild
+            variant="default"
+            className="group h-auto rounded-2xl px-8 py-4 font-semibold shadow-lg transition hover:shadow-xl"
+          >
+            <Link href="/plans/new">
+              Get Started
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </Button>
+        </Card>
+      </div>
+    </section>
+  );
+}

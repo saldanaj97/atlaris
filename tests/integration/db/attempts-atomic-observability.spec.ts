@@ -1,7 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { asc, eq } from 'drizzle-orm';
-import type { MockInstance } from 'vitest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -12,8 +8,12 @@ import {
   learningPlans,
   modules,
   tasks,
-} from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+} from '@supabase/schema';
+import { asc, eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { db } from '@supabase/service-role';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 import {
@@ -138,7 +138,7 @@ describe('Atomic attempt observability', () => {
         planId,
         attemptId: attempt.id,
         correlationId: null,
-      })
+      }),
     );
   });
 
@@ -255,7 +255,7 @@ describe('Atomic attempt observability', () => {
       'Fresh Module 2',
     ]);
     expect(
-      persistedModules.some((module) => module.title === 'Stale Module')
+      persistedModules.some((module) => module.title === 'Stale Module'),
     ).toBe(false);
     expect(persistedTasks).toHaveLength(3);
     expect(persistedTasks.map((task) => task.title)).toEqual([
@@ -264,7 +264,7 @@ describe('Atomic attempt observability', () => {
       'Fresh Task 3',
     ]);
     expect(persistedTasks.some((task) => task.title === 'Stale Task')).toBe(
-      false
+      false,
     );
   });
 
@@ -309,7 +309,7 @@ describe('Atomic attempt observability', () => {
         classification: 'timeout',
         timedOut: true,
         correlationId: null,
-      })
+      }),
     );
   });
 
@@ -345,7 +345,7 @@ describe('Atomic attempt observability', () => {
         planId,
         classification: 'validation',
         correlationId: null,
-      })
+      }),
     );
   });
 });

@@ -1,10 +1,22 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
+import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
+import type { DbClient } from '@/lib/db/types';
 import {
   safeStringifyUnknown,
   unknownThrownCore,
 } from '@/lib/errors/normalize-unknown';
 import { logger } from '@/lib/logging/logger';
+import { MissingRequestDbContextError } from '@supabase/runtime';
+
+/** Programming / wiring mistakes: surface instead of masking as persistence noise. */
+function shouldSurfaceMarkFailureError(markErr: unknown): boolean {
+  return (
+    markErr instanceof TypeError ||
+    markErr instanceof ReferenceError ||
+    markErr instanceof MissingRequestDbContextError
+  );
+}
 
 function maybeExtractCause(value: unknown): ErrorLike['cause'] | undefined {
   if (
@@ -30,18 +42,46 @@ export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
   persistence: PlanGenerationStatusPort,
-  deps?: SafeMarkPlanFailedDeps
+  deps?: SafeMarkPlanFailedDeps,
 ): Promise<void> {
   const errorLogger = deps?.logger ?? logger;
 
   try {
     await persistence.markGenerationFailure(planId);
   } catch (markErr) {
+    if (shouldSurfaceMarkFailureError(markErr)) {
+      throw markErr;
+    }
     errorLogger.error(
-      { error: markErr, planId, userId },
-      'Failed to mark plan as failed after generation error.'
+      {
+        error: markErr,
+        planId,
+        userId,
+        context: 'markGenerationFailure-after-generation-error',
+      },
+      'Failed to mark plan as failed after generation error (persistence path).',
     );
   }
+}
+
+/**
+ * `safeMarkPlanFailedWithDbClient` builds the `PlanPersistenceAdapter` used by
+ * `safeMarkPlanFailed`. Request handlers should pass the RLS-enforced
+ * `DbClient` returned by `getDb()`, while workers/tests may pass a service-role
+ * or test client matching their execution context.
+ */
+export async function safeMarkPlanFailedWithDbClient(
+  planId: string,
+  userId: string,
+  dbClient: DbClient,
+  deps?: SafeMarkPlanFailedDeps,
+): Promise<void> {
+  await safeMarkPlanFailed(
+    planId,
+    userId,
+    new PlanPersistenceAdapter(dbClient),
+    deps,
+  );
 }
 
 function assignFallbackCause(errorLike: ErrorLike, cause: unknown): void {
@@ -51,46 +91,58 @@ function assignFallbackCause(errorLike: ErrorLike, cause: unknown): void {
   }
 }
 
-/** ErrorLike shape for SSE fallback when the thrown value is not already typed. */
-export function toFallbackErrorLike(error: unknown): ErrorLike {
-  const core = unknownThrownCore(error);
-
-  if (typeof error === 'object' && error !== null) {
-    const objectError = error as Record<string, unknown>;
-    const errorLike: ErrorLike = {
-      name: core.name ?? 'UnknownGenerationError',
-      message:
-        typeof objectError.message === 'string' &&
-        objectError.message.length > 0
-          ? objectError.message
-          : safeStringifyUnknown(error),
-      ...(typeof core.stack === 'string' ? { stack: core.stack } : {}),
-    };
-
-    if (typeof objectError.status === 'number') {
-      errorLike.status = objectError.status;
-    }
-    if (typeof objectError.statusCode === 'number') {
-      errorLike.statusCode = objectError.statusCode;
-    }
-    if ('response' in objectError) {
-      const response = objectError.response;
-      if (response === null) {
-        errorLike.response = null;
-      } else if (typeof response === 'object' && response !== null) {
-        const responseRecord = response as Record<string, unknown>;
-        errorLike.response =
-          typeof responseRecord.status === 'number'
-            ? { status: responseRecord.status }
-            : {};
-      }
-    }
-
-    assignFallbackCause(errorLike, core.cause);
-
-    return errorLike;
+function assignHttpFieldsFromObject(
+  errorLike: ErrorLike,
+  objectError: Record<string, unknown>,
+): void {
+  if (typeof objectError.status === 'number') {
+    errorLike.status = objectError.status;
   }
+  if (typeof objectError.statusCode === 'number') {
+    errorLike.statusCode = objectError.statusCode;
+  }
+}
 
+function assignResponseSummaryIfPresent(
+  errorLike: ErrorLike,
+  objectError: Record<string, unknown>,
+): void {
+  if (!('response' in objectError)) {
+    return;
+  }
+  const response = objectError.response;
+  if (response === null) {
+    errorLike.response = null;
+  } else if (typeof response === 'object' && response !== null) {
+    const responseRecord = response as Record<string, unknown>;
+    errorLike.response =
+      typeof responseRecord.status === 'number'
+        ? { status: responseRecord.status }
+        : {};
+  }
+}
+
+function fallbackErrorLikeFromThrownObject(error: object): ErrorLike {
+  const core = unknownThrownCore(error);
+  const objectError = error as Record<string, unknown>;
+  const errorLike: ErrorLike = {
+    name: core.name ?? 'UnknownGenerationError',
+    message:
+      typeof objectError.message === 'string' && objectError.message.length > 0
+        ? objectError.message
+        : safeStringifyUnknown(error),
+    ...(typeof core.stack === 'string' ? { stack: core.stack } : {}),
+  };
+
+  assignHttpFieldsFromObject(errorLike, objectError);
+  assignResponseSummaryIfPresent(errorLike, objectError);
+  assignFallbackCause(errorLike, core.cause);
+
+  return errorLike;
+}
+
+function fallbackErrorLikeFromThrownNonObject(error: unknown): ErrorLike {
+  const core = unknownThrownCore(error);
   const errorLike: ErrorLike = {
     name: core.name ?? 'UnknownGenerationError',
     message: core.primaryMessage,
@@ -103,4 +155,13 @@ export function toFallbackErrorLike(error: unknown): ErrorLike {
   assignFallbackCause(errorLike, core.cause);
 
   return errorLike;
+}
+
+/** ErrorLike shape for SSE fallback when the thrown value is not already typed. */
+export function toFallbackErrorLike(error: unknown): ErrorLike {
+  if (typeof error === 'object' && error !== null) {
+    return fallbackErrorLikeFromThrownObject(error);
+  }
+
+  return fallbackErrorLikeFromThrownNonObject(error);
 }

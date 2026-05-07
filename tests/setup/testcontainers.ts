@@ -7,27 +7,27 @@
  *   - Creates a test database with extensions and RLS roles
  *   - Sets DATABASE_URL / DATABASE_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
- *   - Applies the schema via `pnpm db:migrate` (migration chain matches production)
+ *   - Applies `supabase/migrations` via `pnpm db:migrate` (migration chain matches production)
  *
  * To skip Testcontainers (e.g. in CI where a sidecar DB already exists)
  * set SKIP_TESTCONTAINERS=true.
  */
 
-import { execSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from '@testcontainers/postgresql';
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   bootstrapDatabase,
   grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
 import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
-import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
 
 import {
   buildTestDbRuntimeState,
@@ -46,7 +46,7 @@ const testcontainersEnvFile =
   join(
     __dirname,
     '..',
-    `.testcontainers-env.${process.pid}.${randomUUID()}.json`
+    `.testcontainers-env.${process.pid}.${randomUUID()}.json`,
   );
 
 // Each Vitest process needs its own runtime-state file. A fixed shared path lets

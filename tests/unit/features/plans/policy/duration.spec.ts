@@ -13,7 +13,7 @@ describe('calculateTotalWeeks', () => {
         deadlineDate: null,
         today: new Date('2025-01-15T12:00:00Z'),
         defaultWeeks: 4,
-      })
+      }),
     ).toBe(4);
   });
 
@@ -23,7 +23,7 @@ describe('calculateTotalWeeks', () => {
         startDate: '2025-01-01',
         deadlineDate: '2025-01-22',
         today: new Date('2025-01-01T12:00:00Z'),
-      })
+      }),
     ).toBe(3);
   });
 
@@ -33,7 +33,7 @@ describe('calculateTotalWeeks', () => {
         startDate: '2025-01-01',
         deadlineDate: '2025-01-01',
         today: new Date('2025-01-01T12:00:00Z'),
-      })
+      }),
     ).toBe(1);
   });
 });

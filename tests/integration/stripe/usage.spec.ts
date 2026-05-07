@@ -1,14 +1,15 @@
-import { sql } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
 import { ensureUser } from '@/../tests/helpers/db';
 import {
+  getCurrentMonth,
   getUsageSummary,
   getUsageSummaryForTier,
   incrementUsage,
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
-import { learningPlans, usageMetrics, users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { learningPlans, usageMetrics, users } from '@supabase/schema';
+import { sql } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+import { db } from '@supabase/service-role';
 
 describe('Usage Tracking', () => {
   describe('checkPlanLimit', () => {
@@ -222,7 +223,7 @@ describe('Usage Tracking', () => {
         email: 'increment.regen@example.com',
       });
 
-      const month = new Date().toISOString().slice(0, 7);
+      const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
         month,
@@ -246,7 +247,7 @@ describe('Usage Tracking', () => {
         email: 'increment.export@example.com',
       });
 
-      const month = new Date().toISOString().slice(0, 7);
+      const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
         month,
@@ -270,7 +271,7 @@ describe('Usage Tracking', () => {
         email: 'increment.timestamp@example.com',
       });
 
-      const month = new Date().toISOString().slice(0, 7);
+      const month = getCurrentMonth();
       const initialTime = new Date(Date.now() - 1000); // 1 second ago
       await db.insert(usageMetrics).values({
         userId,
@@ -290,7 +291,7 @@ describe('Usage Tracking', () => {
         .from(usageMetrics)
         .where(sql`user_id = ${userId} AND month = ${month}`);
       expect(after[0]?.updatedAt.getTime()).toBeGreaterThan(
-        initialTime.getTime()
+        initialTime.getTime(),
       );
     });
   });
@@ -400,7 +401,7 @@ describe('Usage Tracking', () => {
       ]);
 
       // Use some regenerations and exports
-      const month = new Date().toISOString().slice(0, 7);
+      const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
         month,
@@ -454,7 +455,7 @@ describe('Usage Tracking', () => {
       await db.insert(learningPlans).values(plans);
 
       // Use some regenerations and exports
-      const month = new Date().toISOString().slice(0, 7);
+      const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
         month,

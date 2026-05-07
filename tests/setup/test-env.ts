@@ -1,4 +1,4 @@
-import { resetServiceRoleClientForTests } from '@/lib/db/service-role';
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
 
 import {
   createAdminDatabaseUrl,
@@ -30,14 +30,6 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
 
-// Neon Auth defaults for tests
-if (!process.env.NEON_AUTH_BASE_URL) {
-  process.env.NEON_AUTH_BASE_URL = 'https://auth.test.neon.local';
-}
-if (!process.env.NEON_AUTH_COOKIE_SECRET) {
-  process.env.NEON_AUTH_COOKIE_SECRET = 'test_neon_auth_cookie_secret';
-}
-
 // Avoid fire-and-forget inline regeneration drains racing DB-backed tests unless a spec opts in.
 if (process.env.REGENERATION_INLINE_PROCESSING === undefined) {
   process.env.REGENERATION_INLINE_PROCESSING = 'false';
@@ -52,16 +44,16 @@ async function setupWorkerDatabaseEnv(): Promise<void> {
   const workerId = normalizeWorkerId(process.env.VITEST_POOL_ID);
   const workerDbName = getWorkerDbName(workerId);
   const adminConnectionUrl = createAdminDatabaseUrl(
-    runtimeState.TEST_DB_CONTAINER_URL
+    runtimeState.TEST_DB_CONTAINER_URL,
   );
   const workerConnectionUrl = createDatabaseUrl(
     runtimeState.TEST_DB_CONTAINER_URL,
-    workerDbName
+    workerDbName,
   );
 
   const workerDbAlreadyExists = await workerDatabaseExists(
     adminConnectionUrl,
-    workerDbName
+    workerDbName,
   );
 
   if (!workerDbAlreadyExists) {
@@ -83,7 +75,7 @@ async function setupWorkerDatabaseEnv(): Promise<void> {
 
   if (shouldLogTestDbDebug()) {
     console.log(
-      `[Test DB] worker ${workerId} -> ${workerDbName}${workerDbAlreadyExists ? ' (reused)' : ' (created)'}`
+      `[Test DB] worker ${workerId} -> ${workerDbName}${workerDbAlreadyExists ? ' (reused)' : ' (created)'}`,
     );
   }
 }

@@ -14,7 +14,7 @@ import {
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
-import { logger } from '@/lib/logging/logger';
+import { type Logger, logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export type ModelResolution = {
@@ -31,9 +31,9 @@ type ModelValidationResult =
 type ProviderGetter = typeof getGenerationProviderWithModel;
 
 type ModelResolverLogger = {
-  error(obj: object, msg?: string): void;
-  warn(obj: object, msg?: string): void;
-  info(obj: object, msg?: string): void;
+  error: Logger['error'];
+  warn: Logger['warn'];
+  info: Logger['info'];
 };
 
 /**
@@ -41,7 +41,7 @@ type ModelResolverLogger = {
  */
 export function validateModelForTier(
   userTier: SubscriptionTier,
-  requestedModel: string
+  requestedModel: string,
 ): ModelValidationResult {
   if (!isValidModelId(requestedModel)) {
     return { valid: false, reason: 'invalid_model' };
@@ -65,7 +65,7 @@ function getProviderSafe(
   modelIdToUse: string,
   requestedModel: string | undefined | null,
   providerGetter: ProviderGetter,
-  requestLogger: ModelResolverLogger
+  requestLogger: ModelResolverLogger,
 ): AiPlanGenerationProvider {
   try {
     // Always use the model-specific provider factory so default-model fallback
@@ -83,7 +83,7 @@ function getProviderSafe(
         requestedModel: requestedModel ?? 'default',
         factory: factoryName,
       },
-      'Provider factory failed'
+      'Provider factory failed',
     );
     throw new ModelResolutionError('Provider initialization failed.', {
       code: 'PROVIDER_INIT_FAILED',
@@ -109,7 +109,7 @@ export function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel?: string | null,
   providerGetter: ProviderGetter = getGenerationProviderWithModel,
-  requestLogger: ModelResolverLogger = logger
+  requestLogger: ModelResolverLogger = logger,
 ): ModelResolution {
   const defaultModelForTier = getDefaultModelForTier(userTier);
 
@@ -123,7 +123,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         providerGetter,
-        requestLogger
+        requestLogger,
       ),
       fallback: true,
       fallbackReason: 'not_specified',
@@ -134,7 +134,7 @@ export function resolveModelForTier(
   if (requestedModel === null || requestedModel === '') {
     requestLogger.warn(
       { requestedModel, userTier },
-      'Invalid model requested, falling back to default'
+      'Invalid model requested, falling back to default',
     );
     return {
       modelId: defaultModelForTier,
@@ -142,7 +142,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         providerGetter,
-        requestLogger
+        requestLogger,
       ),
       fallback: true,
       fallbackReason: 'invalid_model',
@@ -154,7 +154,7 @@ export function resolveModelForTier(
   if (!validation.valid) {
     requestLogger.warn(
       { requestedModel, userTier, reason: validation.reason },
-      'Invalid or tier-denied model, falling back to default'
+      'Invalid or tier-denied model, falling back to default',
     );
     return {
       modelId: defaultModelForTier,
@@ -162,7 +162,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         providerGetter,
-        requestLogger
+        requestLogger,
       ),
       fallback: true,
       fallbackReason: validation.reason,
@@ -175,7 +175,7 @@ export function resolveModelForTier(
       requestedModel,
       requestedModel,
       providerGetter,
-      requestLogger
+      requestLogger,
     ),
     fallback: false,
   };

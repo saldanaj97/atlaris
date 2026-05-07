@@ -21,6 +21,8 @@ const SMOKE_CONTROLLED_ENV_KEYS = [
   'DEV_AUTH_USER_ID',
   'LOCAL_PRODUCT_TESTING',
   'MOCK_AI_SCENARIO',
+  'MOCK_GENERATION_DELAY_MS',
+  'MOCK_GENERATION_FAILURE_RATE',
   'MOCK_GENERATION_SEED',
   'NODE_ENV',
   'NEXT_PUBLIC_ENABLE_SENTRY',
@@ -30,6 +32,7 @@ const SMOKE_CONTROLLED_ENV_KEYS = [
   'AI_PROVIDER',
   'AI_USE_MOCK',
 ] as const;
+const SMOKE_CONTROLLED_ENV_KEY_SET = new Set<string>(SMOKE_CONTROLLED_ENV_KEYS);
 
 export function smokeAnonAppUrl(): string {
   return `http://127.0.0.1:${SMOKE_ANON_PORT}`;
@@ -47,6 +50,8 @@ function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
     ENABLE_SENTRY: 'false',
     NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     MOCK_AI_SCENARIO: 'success',
+    MOCK_GENERATION_DELAY_MS: '0',
+    MOCK_GENERATION_FAILURE_RATE: '0',
     NODE_ENV: 'development',
   };
 }
@@ -56,7 +61,7 @@ function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
  * All values are strings suitable for `process.env`.
  */
 export function buildAnonModeLayer(
-  state: SmokeStatePayload
+  state: SmokeStatePayload,
 ): Record<string, string> {
   return {
     ...baseSmokeLayer(state),
@@ -75,7 +80,7 @@ export function buildAnonModeLayer(
  * Env layer for auth smoke: seeded local product-testing user + local billing/AI mocks.
  */
 export function buildAuthModeLayer(
-  state: SmokeStatePayload
+  state: SmokeStatePayload,
 ): Record<string, string> {
   return {
     ...baseSmokeLayer(state),
@@ -97,7 +102,7 @@ export function buildAuthModeLayer(
  */
 /** Mutates `env` in place. Caller should pass a copy if original must be preserved. */
 function stripConflictingNoColor(
-  env: Record<string, string | undefined>
+  env: Record<string, string | undefined>,
 ): void {
   if (env.FORCE_COLOR !== undefined && env.NO_COLOR !== undefined) {
     delete env.NO_COLOR;
@@ -110,11 +115,13 @@ function stripConflictingNoColor(
  */
 export function mergeSmokeProcessEnv(
   base: NodeJS.ProcessEnv,
-  layer: Record<string, string>
+  layer: Record<string, string>,
 ): NodeJS.ProcessEnv {
   const merged = { ...base } as Record<string, string | undefined>;
-  for (const key of SMOKE_CONTROLLED_ENV_KEYS) {
-    delete merged[key];
+  for (const key of Object.keys(merged)) {
+    if (SMOKE_CONTROLLED_ENV_KEY_SET.has(key)) {
+      delete merged[key];
+    }
   }
   Object.assign(merged, layer);
   merged.NODE_ENV = 'development';

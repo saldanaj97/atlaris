@@ -13,8 +13,8 @@ Guidelines for environment variables and logging in this project.
 Prefer the exported grouped configs instead of raw keys:
 
 - `appEnv` - Runtime mode, app URL, maintenance mode
-- `databaseEnv` - Database connection settings
-- `neonAuthEnv` - Neon Auth base URL and cookie secret
+- `databaseEnv` - Database connection settings for Supabase Postgres
+- `clerkAuthEnv` - Clerk publishable and secret keys
 - `stripeEnv` - Stripe API keys and settings
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `stripeEnv` - Stripe keys and `localMode` when `STRIPE_LOCAL_MODE=true`
@@ -37,28 +37,41 @@ If you need a new variable:
 
 ### Auth Variables
 
-The application uses Neon Auth and Better Auth integration rather than Clerk-era token templates.
+The application uses Clerk Auth for UI, route protection, and server session reads.
 
 Key auth-related server variables include:
 
-| Variable                  | Purpose                            | Required |
-| ------------------------- | ---------------------------------- | -------- |
-| `NEON_AUTH_BASE_URL`      | Server auth endpoint base URL      | Yes      |
-| `NEON_AUTH_COOKIE_SECRET` | Cookie signing / encryption secret | Yes      |
-| `LOCAL_PRODUCT_TESTING`   | Enables the local product-testing workflow (must be off in production) | No |
-| `DEV_AUTH_USER_ID`        | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
-| `DEV_AUTH_USER_EMAIL`     | Optional dev/test display email    | No       |
-| `DEV_AUTH_USER_NAME`      | Optional dev/test display name     | No       |
+| Variable                            | Purpose                                                                                    | Required |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ | -------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                         | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                    | Yes      |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in production)                     | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                            | No       |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                             | No       |
 
 ### Local product testing (development / test)
 
-| Variable                    | Purpose                                                                 |
-| --------------------------- | ----------------------------------------------------------------------- |
-| `LOCAL_PRODUCT_TESTING`     | Master flag for the seeded-user + mocks workflow (forbidden in production) |
-| `STRIPE_LOCAL_MODE`         | Use local billing catalog + in-process Stripe mock (forbidden in production) |
-| `MOCK_AI_SCENARIO`          | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
+| Variable                | Purpose                                                                           |
+| ----------------------- | --------------------------------------------------------------------------------- |
+| `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in production)        |
+| `STRIPE_LOCAL_MODE`     | Use local billing catalog + in-process Stripe mock (forbidden in production)      |
+| `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
+
+### Local Supabase database
+
+Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
+
+| Variable                               | Local default / source                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| `DATABASE_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
+| `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321`                                                 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key from `supabase status`                            |
+| `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
+
+Only add `DATABASE_URL_NON_POOLING` or `DATABASE_URL_UNPOOLED` locally when a command requires those aliases; set them to the same local `DATABASE_URL`.
 
 ## Logging
 

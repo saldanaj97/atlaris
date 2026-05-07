@@ -4,10 +4,10 @@ import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 export const SKILL_LEVEL_ENUM = z.enum(
-  SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]
+  SKILL_LEVELS as [SkillLevel, ...SkillLevel[]],
 );
 export const LEARNING_STYLE_ENUM = z.enum(
-  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]]
+  LEARNING_STYLES as [LearningStyle, ...LearningStyle[]],
 );
 
 export const weeklyHoursSchema = z

@@ -6,10 +6,10 @@
 import { getModelsForTier } from '@/features/ai/ai-models';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import type { AvailableModel } from '@/features/ai/types/model.types';
-import { preferredAiModel } from '@/lib/db/enums';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { preferredAiModel } from '../../../supabase/enums';
 
 const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 
@@ -35,7 +35,7 @@ export function isPersistableModelId(modelId: string): boolean {
  * with persistable enum values. `openrouter/free` is never listed here.
  */
 export function getPersistableModelsForTier(
-  tier: SubscriptionTier
+  tier: SubscriptionTier,
 ): AvailableModel[] {
   return getModelsForTier(tier).filter((m) => isPersistableModelId(m.id));
 }
@@ -48,19 +48,19 @@ export function getPersistableModelsForTier(
  */
 export function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
-  savedPreferredAiModel: string | null | undefined
+  savedPreferredAiModel: string | null | undefined,
 ): string | null {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
     logger.debug(
       { tier, savedPreferredAiModel },
-      'No saved preferred AI model available for settings resolution'
+      'No saved preferred AI model available for settings resolution',
     );
     return null;
   }
   if (!isPersistableModelId(savedPreferredAiModel)) {
     logger.debug(
       { tier, savedPreferredAiModel },
-      'Saved preferred AI model is not persistable for settings resolution'
+      'Saved preferred AI model is not persistable for settings resolution',
     );
     return null;
   }
@@ -68,7 +68,7 @@ export function resolveSavedPreferenceForSettings(
   if (!validation.valid) {
     logger.debug(
       { tier, savedPreferredAiModel, reason: validation.reason },
-      'Saved preferred AI model is not allowed for current tier in settings resolution'
+      'Saved preferred AI model is not allowed for current tier in settings resolution',
     );
     return null;
   }

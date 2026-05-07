@@ -12,7 +12,7 @@ interface ProfileFixture {
 }
 
 export function buildProfile(
-  overrides: Partial<ProfileFixture> = {}
+  overrides: Partial<ProfileFixture> = {},
 ): ProfileFixture {
   return {
     id: crypto.randomUUID(),

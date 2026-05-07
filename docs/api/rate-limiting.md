@@ -46,26 +46,25 @@ Located in `src/lib/api/rate-limit.ts`.
 
 ## Usage in API Routes
 
-### Using `withAuthAndRateLimit` (Recommended)
+### Using `requestBoundary.route` (Recommended)
 
-For most endpoints, use the combined middleware:
+For authenticated API routes, use the request boundary with an explicit rate-limit option:
 
 ```typescript
-import { withAuthAndRateLimit } from '@/lib/api/auth';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { requestBoundary } from '@/lib/api/request-boundary';
 
-// Single handler
-export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, userId, params }) => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor, db }) => {
     // Handler code
-  })
+  },
 );
 
-// Multiple methods
-export const POST = withErrorBoundary(
-  withAuthAndRateLimit('mutation', async ({ req, userId }) => {
+export const POST = requestBoundary.route(
+  { rateLimit: 'mutation' },
+  async ({ req, actor }) => {
     // Handler code
-  })
+  },
 );
 ```
 
@@ -86,16 +85,15 @@ Plan generation has an additional database-backed rate limit:
 
 ```typescript
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
-import { getDb } from '@/lib/db/runtime';
+import { getDb } from '@supabase/runtime';
 
 // Inside handler, after user-based rate limit passes
-const db = getDb();
-await checkPlanGenerationRateLimit(user.id, db); // Uses generation_attempts count in durable window
+await checkPlanGenerationRateLimit(actor.id, db); // Uses generation_attempts count in durable window
 ```
 
 ## Response Headers
 
-All endpoints using `withAuthAndRateLimit` automatically include rate limit headers on every response (not just 429 errors):
+All endpoints using `requestBoundary.route({ rateLimit })` automatically include rate limit headers on every response (not just 429 errors):
 
 | Header                  | Description                              |
 | ----------------------- | ---------------------------------------- |
@@ -215,6 +213,7 @@ For strict global rate limiting across multiple server instances, the `createUse
 
 - `src/lib/api/user-rate-limit.ts` - User-based rate limiting module
 - `src/lib/api/rate-limit.ts` - Plan generation rate limiting
-- `src/lib/api/auth.ts` - `withAuthAndRateLimit` middleware
+- `src/lib/api/request-boundary.ts` - request-boundary route helper
+- `src/lib/api/route-wrappers.ts` - shared error boundary and user rate-limit wrapper/header logic
 - `src/lib/api/errors.ts` - `RateLimitError` class
 - `tests/unit/api/user-rate-limit.spec.ts` - Unit tests

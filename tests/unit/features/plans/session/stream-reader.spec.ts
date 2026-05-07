@@ -24,7 +24,7 @@ describe('consumePlanGenerationSseStream', () => {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data:')) return null;
       return JSON.parse(
-        trimmed.slice('data:'.length).trim()
+        trimmed.slice('data:'.length).trim(),
       ) as PlanGenerationSessionEvent;
     };
 
@@ -55,7 +55,7 @@ describe('consumePlanGenerationSseStream', () => {
       const trimmed = l.trim();
       if (!trimmed.startsWith('data:')) return null;
       return JSON.parse(
-        trimmed.slice('data:'.length).trim()
+        trimmed.slice('data:'.length).trim(),
       ) as PlanGenerationSessionEvent;
     };
 
@@ -77,7 +77,7 @@ describe('consumePlanGenerationSseStream', () => {
       const trimmed = l.trim();
       if (!trimmed.startsWith('data:')) return null;
       return JSON.parse(
-        trimmed.slice('data:'.length).trim()
+        trimmed.slice('data:'.length).trim(),
       ) as PlanGenerationSessionEvent;
     };
 
@@ -96,7 +96,7 @@ describe('consumePlanGenerationSseStream', () => {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data:')) return null;
       return JSON.parse(
-        trimmed.slice('data:'.length).trim()
+        trimmed.slice('data:'.length).trim(),
       ) as PlanGenerationSessionEvent;
     };
     const boom = new Error('read failed');
@@ -105,8 +105,8 @@ describe('consumePlanGenerationSseStream', () => {
       start(controller) {
         controller.enqueue(
           encoder.encode(
-            'data: {"type":"plan_start","data":{"planId":"p5","attemptNumber":1,"topic":"t","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":null}}\n\n'
-          )
+            'data: {"type":"plan_start","data":{"planId":"p5","attemptNumber":1,"topic":"t","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":null}}\n\n',
+          ),
         );
       },
       pull() {
@@ -120,7 +120,7 @@ describe('consumePlanGenerationSseStream', () => {
         parseLine,
         onEvent,
         shouldStop: () => false,
-      })
+      }),
     ).rejects.toThrow('read failed');
 
     expect(onEvent).toHaveBeenCalledTimes(1);
@@ -135,7 +135,7 @@ describe('consumePlanGenerationSseStream', () => {
       const trimmed = line.trim();
       if (!trimmed.startsWith('data:')) return null;
       return JSON.parse(
-        trimmed.slice('data:'.length).trim()
+        trimmed.slice('data:'.length).trim(),
       ) as PlanGenerationSessionEvent;
     };
 

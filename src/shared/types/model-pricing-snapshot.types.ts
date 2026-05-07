@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Explains how app-estimated `cost_cents` was derived from the local catalog.
  */
 
-export const ModelPricingSnapshotV1Schema = z
+const ModelPricingSnapshotV1Schema = z
   .object({
     version: z.literal(1),
     source: z.literal('local_catalog'),

@@ -44,8 +44,8 @@ describe('buildModelPricingSnapshot', () => {
         baseComplete({
           isPartial: true,
           missingFields: ['model'],
-        })
-      )
+        }),
+      ),
     ).toBeNull();
   });
 
@@ -54,8 +54,8 @@ describe('buildModelPricingSnapshot', () => {
       buildModelPricingSnapshot(
         baseComplete({
           model: AI_DEFAULT_MODEL,
-        })
-      )
+        }),
+      ),
     ).toBeNull();
   });
 
@@ -64,8 +64,8 @@ describe('buildModelPricingSnapshot', () => {
       buildModelPricingSnapshot(
         baseComplete({
           model: 'unknown/unknown-model-xyz',
-        })
-      )
+        }),
+      ),
     ).toBeNull();
   });
 
@@ -99,7 +99,7 @@ describe('buildModelPricingSnapshot', () => {
         outputTokens: 200,
         inputCostUsdPerMillion: 2.5,
         outputCostUsdPerMillion: 10,
-      })
+      }),
     ).toBeNull();
 
     expect(
@@ -113,7 +113,7 @@ describe('buildModelPricingSnapshot', () => {
         inputCostUsdPerMillion: 2.5,
         outputCostUsdPerMillion: 10,
         extra: true,
-      })
+      }),
     ).toBeNull();
   });
 });

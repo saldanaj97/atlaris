@@ -1,26 +1,34 @@
-import { type SQLWrapper, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { isServiceRoleDbClient } from '@supabase/service-role';
 
+/**
+ * Session snapshot for replaying `request.jwt.claims` on the connection Drizzle uses inside `transaction()`.
+ * `requiresJwtClaimReplay` is false for service-role (`isServiceRoleDbClient(dbClient)`). Otherwise `prepareRlsTransactionContext`
+ * runs `current_setting('request.jwt.claims', true)`; `requestJwtClaims` stays null when unset or empty so `reapplyJwtClaimsInTransaction` is a no-op.
+ */
 export type RlsTransactionContext = {
-  shouldNormalizeRlsContext: boolean;
+  requiresJwtClaimReplay: boolean;
   requestJwtClaims: string | null;
 };
 
+type RlsClaimsClient = Pick<AttemptsDbClient, 'execute'>;
+
 /**
- * Reads JWT claims from the session when using an RLS client (not service role),
- * so they can be re-applied inside a transaction.
+ * When caller uses request-scoped RLS client (not `serviceDb`), reads JWT claims from the session
+ * so {@link reapplyJwtClaimsInTransaction} can restore them inside `transaction(...)`.
+ * Service-role skips capture (RLS bypass); empty/null claims skip replay.
  */
 export async function prepareRlsTransactionContext(
-  dbClient: AttemptsDbClient
+  dbClient: RlsClaimsClient,
 ): Promise<RlsTransactionContext> {
-  const shouldNormalizeRlsContext = dbClient !== serviceDb;
+  const requiresJwtClaimReplay = !isServiceRoleDbClient(dbClient);
   let requestJwtClaims: string | null = null;
 
-  if (shouldNormalizeRlsContext) {
+  if (requiresJwtClaimReplay) {
     const claimsRows = await dbClient.execute<{ claims: string | null }>(
-      sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+      sql`SELECT current_setting('request.jwt.claims', true) AS claims`,
     );
     const rawClaims = claimsRows[0]?.claims;
     if (typeof rawClaims === 'string' && rawClaims.length > 0) {
@@ -28,23 +36,19 @@ export async function prepareRlsTransactionContext(
     }
   }
 
-  return { shouldNormalizeRlsContext, requestJwtClaims };
+  return { requiresJwtClaimReplay, requestJwtClaims };
 }
 
-type TxExecute = {
-  execute: (query: string | SQLWrapper) => PromiseLike<unknown>;
-};
-
 /**
- * Re-applies captured JWT claims inside a transaction (matches reserve/finalize behavior).
+ * Restores captured JWT claims on the transaction connection (`set_config(..., true)` = transaction-local).
  */
 export async function reapplyJwtClaimsInTransaction(
-  tx: TxExecute,
-  ctx: RlsTransactionContext
+  tx: RlsClaimsClient,
+  ctx: RlsTransactionContext,
 ): Promise<void> {
-  if (ctx.shouldNormalizeRlsContext && ctx.requestJwtClaims !== null) {
+  if (ctx.requiresJwtClaimReplay && ctx.requestJwtClaims !== null) {
     await tx.execute(
-      sql`SELECT set_config('request.jwt.claims', ${ctx.requestJwtClaims}, true)`
+      sql`SELECT set_config('request.jwt.claims', ${ctx.requestJwtClaims}, true)`,
     );
   }
 }

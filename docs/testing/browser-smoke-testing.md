@@ -4,7 +4,7 @@ This file is no longer the source of truth for committed browser smoke coverage.
 
 ## Current Workflow
 
-Use [playwright-local-smoke.md](/Users/juansaldana/Dev/Projects/atlaris/docs/testing/playwright-local-smoke.md) for the real local smoke architecture, commands, and ownership.
+Use [playwright-local-smoke.md](./playwright-local-smoke.md) for the real local smoke architecture, commands, and ownership.
 
 ## Why This File Still Exists
 
@@ -12,7 +12,7 @@ Before the committed Playwright smoke lane existed, this repo used manual localh
 
 Historical references that still matter:
 
-- [smoke-test-results-2026-04-01.md](/Users/juansaldana/Dev/Projects/atlaris/docs/testing/smoke-test-results-2026-04-01.md)
+- [smoke-test-results-2026-04-01.md](./smoke-test-results-2026-04-01.md)
 - the old manual route checklist and exploratory notes that informed the current Playwright coverage
 
 ## What To Do Now

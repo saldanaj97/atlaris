@@ -17,5 +17,3 @@ export const PlanStatusResponseSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
-
-export type PlanStatusResponse = z.infer<typeof PlanStatusResponseSchema>;

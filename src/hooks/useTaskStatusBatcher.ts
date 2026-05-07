@@ -49,7 +49,7 @@ export function useTaskStatusBatcher({
   queue: (
     taskId: string,
     nextStatus: ProgressStatus,
-    previousStatus: ProgressStatus
+    previousStatus: ProgressStatus,
   ) => Promise<void>;
 } {
   const pendingRef = useRef<Map<string, PendingUpdate>>(new Map());
@@ -83,7 +83,7 @@ export function useTaskStatusBatcher({
     pending.clear();
 
     const updates: TaskStatusUpdate[] = Array.from(snapshot.entries()).map(
-      ([taskId, { targetStatus }]) => ({ taskId, status: targetStatus })
+      ([taskId, { targetStatus }]) => ({ taskId, status: targetStatus }),
     );
 
     try {
@@ -109,7 +109,7 @@ export function useTaskStatusBatcher({
     (
       taskId: string,
       nextStatus: ProgressStatus,
-      previousStatus: ProgressStatus
+      previousStatus: ProgressStatus,
     ): Promise<void> => {
       return new Promise<void>((resolve, reject) => {
         const pending = pendingRef.current;
@@ -159,7 +159,7 @@ export function useTaskStatusBatcher({
         }
       });
     },
-    [clearScheduledFlush, debounceMs, flush, maxWaitMs]
+    [clearScheduledFlush, debounceMs, flush, maxWaitMs],
   );
 
   useEffect(() => {

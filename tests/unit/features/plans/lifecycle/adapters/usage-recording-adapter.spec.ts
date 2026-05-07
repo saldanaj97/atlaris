@@ -1,9 +1,9 @@
-import { makeOpenRouterGpt4oProviderMetadata } from '@tests/fixtures/canonical-usage.factory';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import { UsageRecordingAdapter } from '@/features/plans/lifecycle/adapters/usage-recording-adapter';
 import type { DbClient } from '@/lib/db/types';
-import type { RecordUsageParams } from '@/lib/db/usage';
+import { makeOpenRouterGpt4oProviderMetadata } from '@tests/fixtures/canonical-usage.factory';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RecordUsageParams } from '../../../../../../supabase/usage';
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),

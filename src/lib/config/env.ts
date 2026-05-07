@@ -6,20 +6,24 @@ export {
   openRouterEnv,
 } from '@/lib/config/env/ai';
 
+export { appEnv, createAppEnv } from '@/lib/config/env/app';
 export {
-  appEnv,
-  createAppEnv,
-} from '@/lib/config/env/app';
-export {
-  createNeonAuthEnv,
+  clerkAuthEnv,
+  createClerkAuthEnv,
   devAuthEnv,
-  neonAuthEnv,
 } from '@/lib/config/env/auth';
 export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv } from '@/lib/config/env/observability';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
+export {
+  createSupabaseEnv,
+  createSupabasePublicEnv,
+  optionalSupabaseServiceRoleKey,
+  supabaseEnv,
+  type SupabasePublicEnv,
+} from '@/lib/config/env/supabase';
 export {
   createServerEnvAccess,
   EnvValidationError,

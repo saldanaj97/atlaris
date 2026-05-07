@@ -182,12 +182,9 @@ if (process.env.NODE_ENV !== 'test') {
   throw new Error('Tests must run with NODE_ENV=test');
 }
 
-if (
-  process.env.DATABASE_URL?.includes('prod') ||
-  process.env.DATABASE_URL?.includes('neon.tech')
-) {
-  throw new Error('Refusing to run tests against a remote database');
-}
+import { assertLocalIntegrationDatabaseUrl } from '@tests/helpers/assert-local-database-url';
+
+assertLocalIntegrationDatabaseUrl();
 ```
 
 ### Integration test assertions
@@ -254,7 +251,7 @@ E2E tests are expensive and flaky by default. Keep them few and meaningful.
 
 This repo’s committed browser smoke lane uses Playwright plus a disposable Postgres owned by `scripts/tests/smoke/run.ts`.
 
-Canonical reference: [playwright-local-smoke.md](/Users/juansaldana/Dev/Projects/atlaris/docs/testing/playwright-local-smoke.md)
+Canonical reference: [playwright-local-smoke.md](./playwright-local-smoke.md)
 
 - Run browser smoke through `pnpm test:smoke`, not raw `playwright test`, unless you are intentionally debugging with a valid `SMOKE_STATE_FILE`.
 - Do not mutate `.env.local` for smoke tests. Anon/auth mode comes from `scripts/tests/smoke/start-app.ts`.
@@ -305,7 +302,7 @@ expect(screen.getByRole('navigation', { name: /footer/i })).toBeInTheDocument();
 // Test behavior - does it do what it should?
 expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute(
   'href',
-  '/privacy'
+  '/privacy',
 );
 ```
 

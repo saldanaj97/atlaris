@@ -72,14 +72,14 @@ We use two protected branches that serve as anchors for all development:
 ### Deployment Mechanism
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
-- **Preview DB**: Neon/Vercel integration creates isolated preview branches.
+- **Preview DB**: isolated preview Postgres per your Vercel + provider setup (set `DATABASE_URL` for preview).
 - **Production**: `.github/workflows/deploy-production-migrations.yml` applies DB migrations first, then deploys app to Vercel production.
 
 ---
 
 ## CI Workflows Explained
 
-We use 4 core GitHub Actions workflows plus a schema diff workflow:
+We use 3 core GitHub Actions workflows:
 
 ### 1. `ci-pr.yml` - PR Validation
 
@@ -87,7 +87,7 @@ We use 4 core GitHub Actions workflows plus a schema diff workflow:
 
 **What it runs:**
 
-- Lint (Biome)
+- Lint (Oxlint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
 - Migration drift check (`pnpm db:generate` must not change committed migration files)
@@ -108,19 +108,7 @@ We use 4 core GitHub Actions workflows plus a schema diff workflow:
 
 **Purpose:** Comprehensive validation after merge.
 
-### 3. `preview-schema-diff.yml` - Schema Diff After Preview Deployment
-
-**Triggers:** `deployment_status` when Vercel preview deployment succeeds
-
-**What it does:**
-
-- Resolves PR from deployment ref
-- Runs `neondatabase/schema-diff-action@v1` against `preview/<git-branch>`
-- Reposts schema diff comment on PR when diff exists
-
-**Purpose:** Show DB schema delta against real preview database state.
-
-### 4. `deploy-production-migrations.yml` - Production Release Workflow
+### 3. `deploy-production-migrations.yml` - Production Release Workflow
 
 **Triggers:** Push to `main`, or `workflow_dispatch`
 
@@ -131,10 +119,6 @@ We use 4 core GitHub Actions workflows plus a schema diff workflow:
 - Deploys production app via Vercel CLI only after migration stage is successful (or skipped)
 
 **Purpose:** Prevent app deploy-before-migration race conditions.
-
-### 5. Preview Cleanup (Integration-managed)
-
-Preview Neon branches are cleaned automatically by Neon/Vercel integration when git branches are deleted.
 
 ---
 
@@ -154,7 +138,7 @@ If you changed DB schema:
 
 ```bash
 pnpm db:generate
-git add src/lib/db/migrations
+git add supabase/migrations
 git commit -m "feat: ..."
 ```
 
@@ -192,9 +176,9 @@ git commit -m "feat: ..."
 
 Migration-related changes include:
 
-- `src/lib/db/schema/**`
-- `src/lib/db/migrations/**`
-- `src/lib/db/enums.ts`
+- `supabase/schema/**`
+- `supabase/migrations/**`
+- `supabase/enums.ts`
 - `drizzle.config.ts`
 
 ---
@@ -211,7 +195,7 @@ Run `pnpm db:generate` locally, commit generated files, push again.
 
 ### How do I test against a real DB before merge?
 
-Use the Vercel preview deployment URL; Neon integration provisions an isolated preview DB branch.
+Use the Vercel preview deployment URL; ensure preview environment variables point at an isolated preview database.
 
 ---
 
@@ -219,6 +203,5 @@ Use the Vercel preview deployment URL; Neon integration provisions an isolated p
 
 - `.github/workflows/ci-pr.yml` - PR validation
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
-- `.github/workflows/preview-schema-diff.yml` - Schema diff comments after preview deploys
 - `.github/workflows/deploy-production-migrations.yml` - Production migration + deploy workflow
 - `docs/rules/ci/development-workflow.md` - Rules for agents/automation

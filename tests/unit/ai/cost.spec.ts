@@ -18,7 +18,7 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 describe('computeCostCents', () => {
   it('throws for unknown model', () => {
     expect(() => computeCostCents('unknown-model', 1000, 500)).toThrow(
-      /Unknown model "unknown-model"/
+      /Unknown model "unknown-model"/,
     );
   });
 
@@ -28,7 +28,7 @@ describe('computeCostCents', () => {
 
   it('returns 0 for free models', () => {
     expect(
-      computeCostCents('google/gemini-2.0-flash-exp:free', 100_000, 50_000)
+      computeCostCents('google/gemini-2.0-flash-exp:free', 100_000, 50_000),
     ).toBe(0);
   });
 
@@ -52,7 +52,7 @@ describe('computeCostCents', () => {
     const input = 123_456;
     const output = 78_901;
     const results = Array.from({ length: 100 }, () =>
-      computeCostCents(model, input, output)
+      computeCostCents(model, input, output),
     );
     const unique = new Set(results);
     expect(unique.size).toBe(1);
@@ -60,7 +60,7 @@ describe('computeCostCents', () => {
 
   it('computes cost for every paid model in the registry', () => {
     const paidModels = AVAILABLE_MODELS.filter(
-      (m) => m.inputCostPerMillion > 0 || m.outputCostPerMillion > 0
+      (m) => m.inputCostPerMillion > 0 || m.outputCostPerMillion > 0,
     );
     expect(paidModels.length).toBeGreaterThan(0);
     for (const model of paidModels) {
@@ -103,7 +103,7 @@ describe('calculateCostFromUsage', () => {
       missingFields: [],
     };
     expect(() => calculateCostFromUsage(usage)).toThrow(
-      /Unknown model "totally-unknown-model"/
+      /Unknown model "totally-unknown-model"/,
     );
   });
 
@@ -155,13 +155,13 @@ describe('getOutputTokenCeiling', () => {
     const model = getModelById('openrouter/free');
     expect(model?.maxOutputTokens).toBeUndefined();
     expect(getOutputTokenCeiling('openrouter/free')).toBe(
-      DEFAULT_OUTPUT_TOKEN_CEILING
+      DEFAULT_OUTPUT_TOKEN_CEILING,
     );
   });
 
   it('returns DEFAULT_OUTPUT_TOKEN_CEILING for unknown models', () => {
     expect(getOutputTokenCeiling('nonexistent/model')).toBe(
-      DEFAULT_OUTPUT_TOKEN_CEILING
+      DEFAULT_OUTPUT_TOKEN_CEILING,
     );
   });
 
@@ -175,7 +175,7 @@ describe('getOutputTokenCeiling', () => {
 
   it('respects each model-specific ceiling', () => {
     const modelsWithCeilings = AVAILABLE_MODELS.filter(
-      (m) => m.maxOutputTokens != null
+      (m) => m.maxOutputTokens != null,
     );
     expect(modelsWithCeilings.length).toBeGreaterThan(0);
     for (const model of modelsWithCeilings) {
@@ -198,7 +198,7 @@ describe('tier consistency', () => {
       const proCounterpart = proTierModels.find((m) => m.id === freeModel.id);
       if (!proCounterpart) {
         throw new Error(
-          `Free-tier model "${freeModel.id}" has no pro-tier counterpart`
+          `Free-tier model "${freeModel.id}" has no pro-tier counterpart`,
         );
       }
 

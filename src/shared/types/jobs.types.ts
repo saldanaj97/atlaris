@@ -5,7 +5,7 @@ export const JOB_TYPES = JOB_TYPE_MAP;
 
 export type JobType = JobTypeValue;
 
-export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface JobErrorHistoryEntry {
   attempt: number;
@@ -26,14 +26,14 @@ export interface PlanRegenerationJobData {
   }>;
 }
 
-export interface PlanRegenerationJobResult {
+interface PlanRegenerationJobResult {
   planId: string;
   modulesCount: number;
   tasksCount: number;
   durationMs: number;
 }
 
-export type PlanRegenerationJobPayload = PlanRegenerationJobData & {
+type PlanRegenerationJobPayload = PlanRegenerationJobData & {
   errorHistory?: JobErrorHistoryEntry[];
 };
 

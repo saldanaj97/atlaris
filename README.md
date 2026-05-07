@@ -2,23 +2,23 @@
 
 [![codecov](https://codecov.io/gh/saldanaj97/atlaris/branch/main/graph/badge.svg)](https://app.codecov.io/gh/saldanaj97/atlaris)
 
-AI-assisted learning plan generator built with Next.js 16, React 19, TypeScript, Drizzle, Neon RLS, Neon Auth, Stripe, and OpenRouter.
+AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, PostgreSQL RLS, Clerk Auth migration support, Stripe, and OpenRouter.
 
 ## What the app does
 
 - Creates structured learning plans with ordered modules and tasks
 - Streams AI generation progress to the client over SSE
 - Tracks generation attempts, failure classifications, and retryability
-- Enforces tenant isolation with Neon Row Level Security (RLS)
+- Enforces tenant isolation with PostgreSQL Row Level Security (RLS)
 - Supports Google Calendar OAuth token storage and disconnect flows
 - Applies usage limits, rate limiting, and subscription gating server-side
 
 ## Core stack
 
-- **Framework:** Next.js 16.1.6 + React 19
+- **Framework:** Next.js 16.2.4 + React 19
 - **Language:** TypeScript (strict mode)
-- **Database:** PostgreSQL on Neon via Drizzle ORM
-- **Auth:** `@neondatabase/auth` + `better-auth`
+- **Database:** Supabase local Postgres / hosted Supabase Postgres via Drizzle ORM
+- **Auth:** Clerk for UI, route protection, and server session reads
 - **AI:** OpenRouter via `@openrouter/sdk` and the Vercel AI SDK
 - **Payments:** Stripe
 - **Testing:** Vitest + Testing Library + Testcontainers
@@ -32,38 +32,31 @@ pnpm install
 pnpm dev
 ```
 
-If you want to bring up the native local dev database and app together:
+If you want to bring up the Supabase local stack and app together:
 
 ```bash
 pnpm dev:full
 ```
 
-Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the local PostgreSQL 17 service directly, and `pnpm db:dev:reset` if you want to recreate `atlaris_dev`.
+Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the Supabase local stack, and `pnpm db:dev:reset` to recreate the local Supabase database from committed migrations and seed data.
 
 Open `http://localhost:3000` in your browser.
 
 ## Common commands
 
+Quickstart:
+
 ```bash
-pnpm dev
-pnpm dev:full
-pnpm build
-pnpm check:full
-pnpm check:lint
-pnpm check:type
-pnpm test
-pnpm test:changed
-pnpm test:unit:changed
-pnpm test:unit:watch
-pnpm test:integration:changed
-pnpm test:integration
-pnpm test:security
-pnpm test:smoke
-pnpm test:all
-pnpm db:generate
-pnpm db:migrate
-pnpm db:push
+pnpm install
+pnpm dev              # Turbopack app only
+pnpm dev:full        # local DB + app
+pnpm check:full      # lint + type-check (runs check:lint + check:type)
+pnpm test            # lightweight changed bundle (same as test:changed)
 ```
+
+Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
+
+On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + Prettier on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
 
 ## Project structure
 
@@ -77,16 +70,22 @@ src/
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers
 │   ├── auth/      # Auth server/client wiring
 │   ├── config/    # Typed environment access
-│   ├── db/        # Schema, queries, RLS/service-role clients, migrations
+│   ├── db/        # Query modules and shared DB types
 │   ├── integrations/ # OAuth token/state utilities
 │   ├── logging/   # Server/client logging helpers
 │   └── ...
 └── types/         # Shared application types
+supabase/
+├── schema/        # Drizzle schema, relations, and policy definitions
+├── migrations/    # Committed DB migrations
+├── rls.ts         # RLS client factory
+├── runtime.ts     # Request-scoped DB resolver
+└── service-role.ts # Service-role DB client for tests/workers
 ```
 
 ## Security model
 
-- Request handlers use `getDb()` from `@/lib/db/runtime` inside auth wrappers
+- Request handlers use `getDb()` from `@supabase/runtime` inside auth wrappers
 - Tests, workers, and migrations use the service-role client only where appropriate
 - RLS policies are explicitly scoped to `authenticated`
 - OAuth state tokens are hashed before persistence
@@ -117,13 +116,13 @@ Integration tests normally rely on Testcontainers. If you intentionally want to 
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `neonAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation
 
 - `AGENTS.md`
-- `docs/context/architecture/auth-and-data-layer.md`
-- `docs/context/architecture/plan-generation-architecture.md`
-- `docs/rules/api/error-contract.md`
-- `docs/rules/database/schema-overview.md`
+- `docs/architecture/auth-and-data-layer.md`
+- `docs/architecture/plan-generation-architecture.md`
+- `docs/api/error-contract.md`
+- `docs/database/schema-overview.md`

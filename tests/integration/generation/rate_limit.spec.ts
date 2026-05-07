@@ -1,9 +1,9 @@
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { getDb } from '@/lib/db/runtime';
-import { generationAttempts, learningPlans } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { getDb } from '@supabase/runtime';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { createMockProvider } from '../../helpers/mockProvider';
@@ -43,7 +43,7 @@ describe('generation integration - rate limit classification', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: getDb() }
+      { provider: mock.provider, dbClient: getDb() },
     );
 
     expect(result.status).toBe('failure');

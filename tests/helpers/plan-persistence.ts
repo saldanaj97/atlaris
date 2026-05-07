@@ -6,7 +6,7 @@ import type { DbClient } from '@/lib/db/types';
 export async function atomicInsertPlanOrThrow(
   db: DbClient,
   userId: string,
-  planData: PlanInsertData
+  planData: PlanInsertData,
 ): Promise<{ id: string }> {
   const adapter = new PlanPersistenceAdapter(db);
   const result = await adapter.atomicInsertPlan(userId, planData);

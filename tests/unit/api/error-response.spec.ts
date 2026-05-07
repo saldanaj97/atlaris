@@ -32,7 +32,7 @@ describe('error-response', () => {
           details: { feature: 'plan' },
           retryAfter: 60,
         },
-        { status: 429, fallbackMessage: 'Fallback' }
+        { status: 429, fallbackMessage: 'Fallback' },
       );
 
       expect(result).toEqual({
@@ -55,7 +55,7 @@ describe('error-response', () => {
             code: 'LEGACY_CODE',
           },
         },
-        { status: 400, fallbackMessage: 'Fallback' }
+        { status: 400, fallbackMessage: 'Fallback' },
       );
 
       expect(result).toEqual({
@@ -71,13 +71,29 @@ describe('error-response', () => {
           code: 'CONFLICT',
           classification: 'conflict',
         },
-        { status: 409, fallbackMessage: 'Fallback' }
+        { status: 409, fallbackMessage: 'Fallback' },
       );
 
       expect(result).toEqual({
         error: 'Generation already in progress',
         code: 'CONFLICT',
         classification: 'conflict',
+      });
+    });
+
+    it('strips invalid classification while preserving valid fields', () => {
+      const result = normalizeApiErrorResponse(
+        {
+          error: 'Proxy failure',
+          code: 'UPSTREAM',
+          classification: 'not_real',
+        },
+        { status: 500, fallbackMessage: 'Fallback' },
+      );
+
+      expect(result).toEqual({
+        error: 'Proxy failure',
+        code: 'UPSTREAM',
       });
     });
 
@@ -151,7 +167,7 @@ describe('error-response', () => {
         {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
 
       const result = await parseApiErrorResponse(response, 'Fallback');
@@ -170,7 +186,7 @@ describe('error-response', () => {
 
       const result = await parseApiErrorResponse(
         response,
-        'Unable to process request.'
+        'Unable to process request.',
       );
 
       expect(result).toEqual({

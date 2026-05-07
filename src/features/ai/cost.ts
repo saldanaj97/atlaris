@@ -33,7 +33,7 @@ export const DEFAULT_OUTPUT_TOKEN_CEILING = 32_768;
 export class UnknownModelError extends Error {
   constructor(public readonly modelId: string) {
     super(
-      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`
+      `Unknown model "${modelId}" in computeCostCents — cannot determine pricing.`,
     );
     this.name = 'UnknownModelError';
   }
@@ -49,7 +49,7 @@ export class UnknownModelError extends Error {
 export function computeCostCents(
   modelId: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
 ): number {
   if (
     !Number.isFinite(inputTokens) ||
@@ -58,7 +58,7 @@ export function computeCostCents(
     outputTokens < 0
   ) {
     throw new Error(
-      `Invalid token counts: inputTokens=${inputTokens}, outputTokens=${outputTokens}. Values must be finite and >= 0.`
+      `Invalid token counts: inputTokens=${inputTokens}, outputTokens=${outputTokens}. Values must be finite and >= 0.`,
     );
   }
 
@@ -102,7 +102,7 @@ export function getOutputTokenCeiling(modelId: string): number {
   if (!model) {
     logger.warn(
       { modelId },
-      'Unknown model in getOutputTokenCeiling — falling back to DEFAULT_OUTPUT_TOKEN_CEILING'
+      'Unknown model in getOutputTokenCeiling — falling back to DEFAULT_OUTPUT_TOKEN_CEILING',
     );
     return DEFAULT_OUTPUT_TOKEN_CEILING;
   }

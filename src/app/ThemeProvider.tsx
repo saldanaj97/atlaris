@@ -2,6 +2,7 @@
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import type { ReactNode } from 'react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 interface ThemeProviderProps {
   children: ReactNode;
@@ -24,7 +25,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <TooltipProvider>{children}</TooltipProvider>
     </NextThemesProvider>
   );
 }

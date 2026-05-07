@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "ignorePatterns": ["**/*.generated.ts", "**/*.d.ts", "src/components/ui/**"],
+  "ignoreDependencies": [
+    "@openrouter/__mocks__",
+    "@sentry/__mocks__",
+    "@better-auth/passkey",
+    "@radix-ui/react-accordion",
+    "@radix-ui/react-dialog",
+    "@radix-ui/react-dropdown-menu",
+    "@radix-ui/react-hover-card",
+    "@radix-ui/react-label",
+    "@radix-ui/react-progress",
+    "@radix-ui/react-slot",
+    "@radix-ui/react-tabs",
+    "@radix-ui/react-tooltip",
+    "babel-plugin-react-compiler",
+    "class-variance-authority",
+    "radix-ui"
+  ],
+  "ignoreExports": [
+    {
+      "file": "src/lib/db/service-role.ts",
+      "exports": ["SERVICE_ROLE_DB_MARKER"]
+    }
+  ],
+  "usedClassMembers": [
+    {
+      "implements": "GenerationFinalizationPort",
+      "members": ["finalizeSuccess", "finalizeFailure"]
+    }
+  ],
+  "rules": {
+    "unused-dependencies": "warn"
+  }
+}

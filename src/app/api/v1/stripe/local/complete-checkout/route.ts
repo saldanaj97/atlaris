@@ -1,23 +1,17 @@
-import { NextResponse } from 'next/server';
 import { isValidRedirectUrl } from '@/app/api/v1/stripe/_shared/redirect';
 import {
   isLocalPriceId,
   tierFromLocalPriceId,
 } from '@/features/billing/local-catalog';
 import {
-  getBillingStripeClient,
+  executeLocalSubscriptionReplay,
   isLocalStripeCompletionRouteEnabled,
-} from '@/features/billing/stripe-commerce';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import { replayLocalSubscriptionCreated } from '@/features/billing/stripe-commerce/local-checkout-replay';
+} from '@/features/billing/stripe-commerce/factory';
 import type { PlainHandler } from '@/lib/api/auth';
-import { withAuth } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { appEnv } from '@/lib/config/env';
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
-import { logger } from '@/lib/logging/logger';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,8 +20,8 @@ export const dynamic = 'force-dynamic';
  * Finishes local Stripe checkout by applying a synthetic subscription.created
  * event through the same webhook dedupe + processor path as production.
  */
-export const GET: PlainHandler = withErrorBoundary(
-  withAuth(async ({ req, user }) => {
+export const GET: PlainHandler = requestBoundary.route(
+  async ({ req, actor }) => {
     if (!isLocalStripeCompletionRouteEnabled()) {
       return new NextResponse('Not found', { status: 404 });
     }
@@ -38,7 +32,7 @@ export const GET: PlainHandler = withErrorBoundary(
 
     if (!priceId || !isLocalPriceId(priceId)) {
       throw new ValidationError(
-        'Invalid or missing price_id for local checkout'
+        'Invalid or missing price_id for local checkout',
       );
     }
 
@@ -50,17 +44,11 @@ export const GET: PlainHandler = withErrorBoundary(
       throw new ValidationError('Invalid redirect target');
     }
 
-    const gateway = new LiveStripeGateway(getBillingStripeClient());
-
-    await replayLocalSubscriptionCreated({
-      user: { id: user.id, email: user.email },
+    await executeLocalSubscriptionReplay({
+      user: { id: actor.id, email: actor.email },
       priceId,
-      gateway,
-      serviceRoleDb: db,
-      users,
-      logger,
     });
 
     return NextResponse.redirect(new URL(nextPath, appEnv.url));
-  })
+  },
 );

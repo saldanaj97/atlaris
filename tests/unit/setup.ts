@@ -10,8 +10,9 @@ if (!process.env.NODE_ENV) {
 
 // Prevent unit tests from importing a real DB client.
 // This avoids requiring DATABASE_URL in unit test runs and catches accidental DB usage.
-vi.mock('@/lib/db/service-role', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/db/service-role')>();
+vi.mock('@supabase/service-role', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@supabase/service-role')>();
 
   const crud = {
     select: vi.fn(),
@@ -21,20 +22,26 @@ vi.mock('@/lib/db/service-role', async (importOriginal) => {
     execute: vi.fn(),
   };
 
+  let db: Record<PropertyKey, unknown>;
+  const transaction = vi.fn(
+    (fn: (tx: Record<PropertyKey, unknown>) => Promise<unknown>) => fn(db),
+  );
+
+  db = {
+    [actual.SERVICE_ROLE_DB_MARKER]: true,
+    ...crud,
+    transaction,
+    query: {
+      learningPlans: {
+        findFirst: vi.fn(),
+      },
+    },
+  };
+
   return {
     ...actual,
     client: { end: vi.fn() },
-    db: {
-      ...crud,
-      transaction: vi.fn((fn: (tx: typeof crud) => Promise<unknown>) =>
-        fn({ ...crud })
-      ),
-      query: {
-        learningPlans: {
-          findFirst: vi.fn(),
-        },
-      },
-    },
+    db,
     serviceRoleDb: {
       select: vi.fn(),
       insert: vi.fn(),

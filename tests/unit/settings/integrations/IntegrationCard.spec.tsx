@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { IntegrationCard } from '@/app/settings/integrations/components/IntegrationCard';
+import { IntegrationCard } from '@/app/(app)/settings/integrations/components/IntegrationCard';
 
 const baseProps = {
   name: 'Google Calendar',
@@ -13,14 +13,14 @@ const baseProps = {
 describe('IntegrationCard', () => {
   it('renders name, description, icon, and features', () => {
     render(
-      <IntegrationCard {...baseProps} status="available" onConnect={vi.fn()} />
+      <IntegrationCard {...baseProps} status="available" onConnect={vi.fn()} />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(within(card).getByText('Google Calendar')).toBeInTheDocument();
     expect(
-      within(card).getByText('Sync your learning schedule.')
+      within(card).getByText('Sync your learning schedule.'),
     ).toBeInTheDocument();
     expect(within(card).getByText('📅')).toBeInTheDocument();
     expect(within(card).getByText('Auto-sync')).toBeInTheDocument();
@@ -29,16 +29,16 @@ describe('IntegrationCard', () => {
 
   it('shows an available badge and connect button', () => {
     render(
-      <IntegrationCard {...baseProps} status="available" onConnect={vi.fn()} />
+      <IntegrationCard {...baseProps} status="available" onConnect={vi.fn()} />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(card).getByRole('status', { name: 'Available' })
+      within(card).getByRole('status', { name: 'Available' }),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole('button', { name: 'Connect' })
+      within(card).getByRole('button', { name: 'Connect' }),
     ).toBeInTheDocument();
   });
 
@@ -48,10 +48,10 @@ describe('IntegrationCard', () => {
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(card).getByRole('status', { name: 'Coming Soon' })
+      within(card).getByRole('status', { name: 'Coming Soon' }),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole('button', { name: 'Coming Soon' })
+      within(card).getByRole('button', { name: 'Coming Soon' }),
     ).toBeDisabled();
   });
 
@@ -61,16 +61,16 @@ describe('IntegrationCard', () => {
         {...baseProps}
         status="connected"
         onDisconnect={vi.fn()}
-      />
+      />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(card).getByRole('status', { name: 'Connected' })
+      within(card).getByRole('status', { name: 'Connected' }),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole('button', { name: 'Disconnect' })
+      within(card).getByRole('button', { name: 'Disconnect' }),
     ).toBeInTheDocument();
   });
 
@@ -83,7 +83,7 @@ describe('IntegrationCard', () => {
         {...baseProps}
         status="available"
         onConnect={onConnect}
-      />
+      />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
@@ -102,7 +102,7 @@ describe('IntegrationCard', () => {
         {...baseProps}
         status="connected"
         onDisconnect={onDisconnect}
-      />
+      />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
@@ -119,13 +119,13 @@ describe('IntegrationCard', () => {
         status="available"
         onConnect={vi.fn()}
         loading={true}
-      />
+      />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(card).getByRole('button', { name: 'Connecting…' })
+      within(card).getByRole('button', { name: 'Connecting…' }),
     ).toBeDisabled();
   });
 
@@ -136,13 +136,13 @@ describe('IntegrationCard', () => {
         status="connected"
         onDisconnect={vi.fn()}
         loading={true}
-      />
+      />,
     );
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
 
     expect(
-      within(card).getByRole('button', { name: 'Disconnecting…' })
+      within(card).getByRole('button', { name: 'Disconnecting…' }),
     ).toBeDisabled();
   });
 

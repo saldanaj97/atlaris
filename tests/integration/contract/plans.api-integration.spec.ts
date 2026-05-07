@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
-import { generationAttempts, learningPlans, modules } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
@@ -98,7 +98,7 @@ describe('Phase 4: API Integration', () => {
       const statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('failed');
       expect(statusPayload.latestError).toBe(
-        'Plan generation timed out. Please try again.'
+        'Plan generation timed out. Please try again.',
       );
     });
   });

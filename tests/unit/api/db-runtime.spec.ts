@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { getDb, MissingRequestDbContextError } from '@/lib/db/runtime';
-import { db as serviceDb } from '@/lib/db/service-role';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getDb, MissingRequestDbContextError } from '@supabase/runtime';
+import { db as serviceDb } from '@supabase/service-role';
 import { makeDbClient } from '../../fixtures/db-mocks';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
@@ -56,7 +56,7 @@ describe('getDb runtime safety', () => {
       createRequestContext(new Request('http://localhost/runtime-test'), {
         db: requestDb,
       }),
-      () => getDb()
+      () => getDb(),
     );
 
     expect(resolvedDb).toBe(requestDb);

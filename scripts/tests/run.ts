@@ -1,3 +1,4 @@
+import { parseAllCommandOptions } from './shared/all-command-options';
 import { logError, logInfo, logStep, logWarn } from './shared/log';
 import { runCommand, runVitest } from './shared/vitest-runner';
 import { runIntegrationCommand } from './integration/runner';
@@ -8,12 +9,16 @@ function printHelp(): void {
   console.log('Usage: tsx scripts/tests/run.ts <command> [options]');
   console.log('');
   console.log('Commands:');
-  console.log('  changed                  Run changed unit + integration tests');
+  console.log(
+    '  changed                  Run changed unit + integration tests',
+  );
   console.log('  unit [test-path]         Run unit tests');
   console.log('  integration [test-path]  Run integration tests');
   console.log('  security [test-path]     Run security tests');
   console.log('  smoke [-- ...args]       Run smoke tests');
-  console.log('  all                      Run lint, typecheck, unit, integration, and security tests');
+  console.log(
+    '  all                      Run lint, typecheck, unit, integration, and security tests',
+  );
   console.log('');
   console.log('changed options:');
   console.log('  --help, -h               Show this help message');
@@ -27,16 +32,12 @@ function printHelp(): void {
   console.log('Examples:');
   console.log('  tsx scripts/tests/run.ts changed');
   console.log('  tsx scripts/tests/run.ts unit --changed');
-  console.log('  tsx scripts/tests/run.ts integration tests/integration/foo.spec.ts');
+  console.log(
+    '  tsx scripts/tests/run.ts integration tests/integration/foo.spec.ts',
+  );
   console.log('  tsx scripts/tests/run.ts smoke -- --project smoke-auth');
   console.log('  tsx scripts/tests/run.ts all --with-e2e');
 }
-
-type AllCommandOptions = {
-  withE2E: boolean;
-  skipLint: boolean;
-  skipTypecheck: boolean;
-};
 
 function printBanner(title: string): void {
   console.log('');
@@ -57,7 +58,7 @@ async function runNamedStep(
   label: string,
   task: () => Promise<number>,
   passedSuites: string[],
-  failedSuites: string[]
+  failedSuites: string[],
 ): Promise<void> {
   try {
     const exitCode = await task();
@@ -77,41 +78,31 @@ async function runNamedStep(
   }
 }
 
-function parseAllOptions(args: string[]): AllCommandOptions | null {
-  const options: AllCommandOptions = {
-    withE2E: false,
-    skipLint: false,
-    skipTypecheck: false,
-  };
-
-  for (const arg of args) {
-    switch (arg) {
-      case '--with-e2e':
-        options.withE2E = true;
-        break;
-      case '--skip-lint':
-        options.skipLint = true;
-        break;
-      case '--skip-typecheck':
-        options.skipTypecheck = true;
-        break;
-      case '--help':
-      case '-h':
-        printHelp();
-        return null;
-      default:
-        throw new Error(`Unknown argument: ${arg}`);
-    }
+function printSuiteSummary(
+  passedSuites: string[],
+  failedSuites: string[],
+  successMessage: string,
+): number {
+  if (passedSuites.length > 0) {
+    console.log(`Passed: ${passedSuites.join(' ')}`);
   }
 
-  return options;
+  if (failedSuites.length > 0) {
+    console.log(`Failed: ${failedSuites.join(' ')}`);
+    return 1;
+  }
+
+  logInfo(successMessage);
+  return 0;
 }
 
 async function runAllCommand(args: string[]): Promise<number> {
-  const options = parseAllOptions(args);
-  if (options === null) {
+  const parsed = parseAllCommandOptions(args);
+  if (parsed.kind === 'help') {
+    printHelp();
     return 0;
   }
+  const options = parsed.options;
 
   const passedSuites: string[] = [];
   const failedSuites: string[] = [];
@@ -124,7 +115,7 @@ async function runAllCommand(args: string[]): Promise<number> {
       'lint',
       async () => await runCommand({ command: 'pnpm', args: ['check:lint'] }),
       passedSuites,
-      failedSuites
+      failedSuites,
     );
   } else {
     logWarn('Skipping lint (--skip-lint)');
@@ -136,21 +127,26 @@ async function runAllCommand(args: string[]): Promise<number> {
       'type-check',
       async () => await runCommand({ command: 'pnpm', args: ['check:type'] }),
       passedSuites,
-      failedSuites
+      failedSuites,
     );
   } else {
     logWarn('Skipping type check (--skip-typecheck)');
   }
 
   logStep('Running unit tests...');
-  await runNamedStep('unit', async () => await runUnitCommand([]), passedSuites, failedSuites);
+  await runNamedStep(
+    'unit',
+    async () => await runUnitCommand([]),
+    passedSuites,
+    failedSuites,
+  );
 
   logStep('Running integration tests...');
   await runNamedStep(
     'integration',
     async () => await runIntegrationCommand([]),
     passedSuites,
-    failedSuites
+    failedSuites,
   );
 
   logStep('Running RLS security tests...');
@@ -158,7 +154,7 @@ async function runAllCommand(args: string[]): Promise<number> {
     'security/rls',
     async () => await runSecurityCommand([]),
     passedSuites,
-    failedSuites
+    failedSuites,
   );
 
   if (options.withE2E) {
@@ -171,7 +167,7 @@ async function runAllCommand(args: string[]): Promise<number> {
           testPath: 'tests/e2e',
         }),
       passedSuites,
-      failedSuites
+      failedSuites,
     );
   } else {
     logWarn('Skipping E2E tests (use --with-e2e to include)');
@@ -179,17 +175,11 @@ async function runAllCommand(args: string[]): Promise<number> {
 
   printBanner('TEST SUITE SUMMARY');
 
-  if (passedSuites.length > 0) {
-    console.log(`Passed: ${passedSuites.join(' ')}`);
-  }
-
-  if (failedSuites.length > 0) {
-    console.log(`Failed: ${failedSuites.join(' ')}`);
-    return 1;
-  }
-
-  logInfo('All test suites passed!');
-  return 0;
+  return printSuiteSummary(
+    passedSuites,
+    failedSuites,
+    'All test suites passed!',
+  );
 }
 
 async function runChangedCommand(args: string[]): Promise<number> {
@@ -212,7 +202,7 @@ async function runChangedCommand(args: string[]): Promise<number> {
     'unit:changed',
     async () => await runUnitCommand(['--changed']),
     passedSuites,
-    failedSuites
+    failedSuites,
   );
 
   logStep('Running changed integration tests...');
@@ -220,23 +210,29 @@ async function runChangedCommand(args: string[]): Promise<number> {
     'integration:changed',
     async () => await runIntegrationCommand(['--changed']),
     passedSuites,
-    failedSuites
+    failedSuites,
   );
 
   printBanner('CHANGED TEST SUMMARY');
 
-  if (passedSuites.length > 0) {
-    console.log(`Passed: ${passedSuites.join(' ')}`);
-  }
-
-  if (failedSuites.length > 0) {
-    console.log(`Failed: ${failedSuites.join(' ')}`);
-    return 1;
-  }
-
-  logInfo('Changed test bundle passed!');
-  return 0;
+  return printSuiteSummary(
+    passedSuites,
+    failedSuites,
+    'Changed test bundle passed!',
+  );
 }
+
+const TEST_RUN_MAIN_HANDLERS: Record<
+  string,
+  (args: string[]) => Promise<number>
+> = {
+  changed: runChangedCommand,
+  unit: runUnitCommand,
+  integration: runIntegrationCommand,
+  security: runSecurityCommand,
+  smoke: runSmokeCommand,
+  all: runAllCommand,
+};
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
@@ -248,30 +244,13 @@ async function main(): Promise<void> {
 
   let exitCode = 0;
 
-  switch (command) {
-    case 'changed':
-      exitCode = await runChangedCommand(args);
-      break;
-    case 'unit':
-      exitCode = await runUnitCommand(args);
-      break;
-    case 'integration':
-      exitCode = await runIntegrationCommand(args);
-      break;
-    case 'security':
-      exitCode = await runSecurityCommand(args);
-      break;
-    case 'smoke':
-      exitCode = await runSmokeCommand(args);
-      break;
-    case 'all':
-      exitCode = await runAllCommand(args);
-      break;
-    default:
-      logError(`Unknown command: ${command}`);
-      printHelp();
-      exitCode = 1;
-      break;
+  const dispatch = TEST_RUN_MAIN_HANDLERS[command];
+  if (dispatch) {
+    exitCode = await dispatch(args);
+  } else {
+    logError(`Unknown command: ${command}`);
+    printHelp();
+    exitCode = 1;
   }
 
   if (exitCode !== 0) {

@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { generationAttempts } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
@@ -62,7 +62,7 @@ describe('RLS attempt insertion', () => {
             learningStyle: 'reading',
           },
         },
-        { provider: mock.provider, dbClient: rlsDb }
+        { provider: mock.provider, dbClient: rlsDb },
       );
     } catch (e) {
       error = e;
@@ -83,11 +83,11 @@ describe('RLS attempt insertion', () => {
       (err.cause as { code?: string })?.code === '42501';
     const hasPermissionMessage =
       /permission denied|row[- ]level security|not found or inaccessible/i.test(
-        combinedMsg
+        combinedMsg,
       );
     expect(
       hasPermissionCode || hasPermissionMessage,
-      `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`
+      `Expected RLS/permission-denied error but got: ${msg}${causeMsg ? ` (cause: ${causeMsg})` : ''}`,
     ).toBe(true);
 
     const attempts = await db
@@ -129,7 +129,7 @@ describe('RLS attempt insertion', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: rlsDb }
+      { provider: mock.provider, dbClient: rlsDb },
     );
 
     expect(result.status).toBe('success');

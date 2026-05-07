@@ -7,8 +7,8 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { users } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;
@@ -25,7 +25,7 @@ const DEFAULT_SUBSCRIPTION_LIFECYCLE: SubscriptionLifecycleFields = {
 };
 
 function resolveSubscriptionLifecycle(
-  overrides: Partial<SubscriptionLifecycleFields> = {}
+  overrides: Partial<SubscriptionLifecycleFields> = {},
 ): SubscriptionLifecycleFields {
   return {
     subscriptionStatus:
@@ -55,7 +55,7 @@ type CreateTestUserParams = Partial<
  * @returns The created user row
  */
 export async function createTestUser(
-  overrides: CreateTestUserParams = {}
+  overrides: CreateTestUserParams = {},
 ): Promise<UserRow> {
   const baseAuthUserId = `auth_test_${nanoid(12)}`;
   const baseEmail = `test-${nanoid(12)}@example.test`;

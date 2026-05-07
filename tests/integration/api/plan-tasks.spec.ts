@@ -1,7 +1,7 @@
+import { learningPlans, modules, tasks } from '@supabase/schema';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { learningPlans, modules, tasks } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db';
 
@@ -89,7 +89,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -108,7 +108,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/plans/00000000-0000-0000-0000-000000000000/tasks',
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -129,7 +129,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -148,7 +148,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -168,7 +168,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -194,7 +194,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${emptyPlan.id}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);
@@ -237,7 +237,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' }
+      { method: 'GET' },
     );
 
     const response = await GET(request);

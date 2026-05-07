@@ -4,10 +4,11 @@ import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
   aiEnv,
   appEnv,
+  createClerkAuthEnv,
   createAiEnvFacets,
   createAppEnv,
-  createNeonAuthEnv,
   createServerEnvAccess,
+  createSupabasePublicEnv,
   EnvValidationError,
   optionalEnv,
   parseEnvNumber,
@@ -39,7 +40,7 @@ describe('Environment Configuration', () => {
 
     it('throws EnvValidationError for invalid NODE_ENV', () => {
       expect(() => parseNodeEnv({ NODE_ENV: 'staging' })).toThrow(
-        EnvValidationError
+        EnvValidationError,
       );
     });
   });
@@ -71,36 +72,48 @@ describe('Environment Configuration', () => {
     });
   });
 
-  describe('createNeonAuthEnv (pure)', () => {
-    it('parses valid non-production config', () => {
-      const parsed = createNeonAuthEnv({
-        NODE_ENV: 'development',
-        NEON_AUTH_BASE_URL: 'http://localhost:9999',
-        NEON_AUTH_COOKIE_SECRET: 'x'.repeat(32),
+  describe('createClerkAuthEnv (pure)', () => {
+    it('parses valid Clerk config', () => {
+      const parsed = createClerkAuthEnv({
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_example',
+        CLERK_SECRET_KEY: 'sk_test_example',
       });
 
-      expect(parsed.baseUrl).toBe('http://localhost:9999');
-    });
-
-    it('rejects http base URL in production', () => {
-      expect(() =>
-        createNeonAuthEnv({
-          NODE_ENV: 'production',
-          NEON_AUTH_BASE_URL: 'http://localhost:9999',
-          NEON_AUTH_COOKIE_SECRET: 'x'.repeat(32),
-        })
-      ).toThrow(EnvValidationError);
+      expect(parsed.publishableKey).toBe('pk_test_example');
+      expect(parsed.secretKey).toBe('sk_test_example');
     });
 
     it('aggregates known validation issues into one error', () => {
       expect(() =>
-        createNeonAuthEnv({
-          NODE_ENV: 'production',
-          NEON_AUTH_BASE_URL: 'http://localhost:9999',
-          NEON_AUTH_COOKIE_SECRET: 'short-secret',
-        })
+        createClerkAuthEnv({
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'bad-public-key',
+          CLERK_SECRET_KEY: 'bad-secret-key',
+        }),
       ).toThrow(
-        /NEON_AUTH_BASE_URL: NEON_AUTH_BASE_URL must use https in production; NEON_AUTH_COOKIE_SECRET: NEON_AUTH_COOKIE_SECRET must be at least 32 characters in production/
+        /NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_test_ or pk_live_; CLERK_SECRET_KEY: CLERK_SECRET_KEY must start with sk_test_ or sk_live_/,
+      );
+    });
+  });
+
+  describe('createSupabasePublicEnv (pure)', () => {
+    it('parses valid Supabase public config', () => {
+      const parsed = createSupabasePublicEnv({
+        NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+      });
+
+      expect(parsed.url).toBe('https://example.supabase.co');
+      expect(parsed.publishableKey).toBe('sb_publishable_example');
+    });
+
+    it('reports invalid Supabase URL with the env key', () => {
+      expect(() =>
+        createSupabasePublicEnv({
+          NEXT_PUBLIC_SUPABASE_URL: 'not-a-url',
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_example',
+        }),
+      ).toThrow(
+        /NEXT_PUBLIC_SUPABASE_URL: NEXT_PUBLIC_SUPABASE_URL must be a valid URL/,
       );
     });
   });
@@ -122,13 +135,26 @@ describe('Environment Configuration', () => {
       expect(aiEnv.useMock).toBe(false);
     });
 
+    it.each([
+      ['true', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
+      const env = { AI_USE_MOCK: value } as const;
+      const access = createServerEnvAccess(() => env);
+      const { aiEnv } = createAiEnvFacets(access);
+
+      expect(aiEnv.useMock).toBe(expected);
+    });
+
     it('rejects malformed AI_USE_MOCK values', () => {
       const env = { AI_USE_MOCK: 'maybe' } as const;
       const access = createServerEnvAccess(() => env);
       const { aiEnv } = createAiEnvFacets(access);
 
       expect(() => aiEnv.useMock).toThrow(
-        /AI_USE_MOCK must be one of: true, false, 1, 0/
+        /AI_USE_MOCK must be one of: true, false, 1, 0/,
       );
     });
 
@@ -182,7 +208,7 @@ describe('Environment Configuration', () => {
     it('should throw EnvValidationError for missing environment variable', () => {
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -191,7 +217,7 @@ describe('Environment Configuration', () => {
 
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -200,7 +226,7 @@ describe('Environment Configuration', () => {
 
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(EnvValidationError);
       expect(() => requireEnv('REQUIRED_VAR')).toThrow(
-        'Missing required environment variable: REQUIRED_VAR'
+        'Missing required environment variable: REQUIRED_VAR',
       );
     });
 
@@ -386,7 +412,7 @@ describe('Environment Configuration', () => {
 
         expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
         expect(() => aiEnv.defaultModel).toThrow(
-          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/
+          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/,
         );
       });
     });
@@ -437,7 +463,7 @@ describe('Environment Configuration', () => {
         vi.stubEnv('AI_USE_MOCK', 'sometimes');
 
         expect(() => aiEnv.useMock).toThrow(
-          /AI_USE_MOCK must be one of: true, false, 1, 0/
+          /AI_USE_MOCK must be one of: true, false, 1, 0/,
         );
       });
     });

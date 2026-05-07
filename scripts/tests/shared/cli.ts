@@ -1,4 +1,4 @@
-export interface ParsedRunnerArgs {
+interface ParsedRunnerArgs {
   testPath: string;
   watch: boolean;
   changed: boolean;
@@ -7,8 +7,83 @@ export interface ParsedRunnerArgs {
   helpRequested: boolean;
 }
 
-export interface ParseRunnerArgsOptions {
+interface ParseRunnerArgsOptions {
   defaultTestPath: string;
+}
+
+type RunnerHelpOptions = {
+  command: string;
+  defaultTestPath: string;
+  examples: string[];
+  environment?: string[];
+};
+
+type RunnerFlagSink = {
+  watch: boolean;
+  changed: boolean;
+  helpRequested: boolean;
+  extraArgs: string[];
+};
+
+const RUNNER_KNOWN_ARG_HANDLERS: Record<
+  string,
+  (sink: RunnerFlagSink) => void
+> = {
+  '--watch': (sink) => {
+    sink.watch = true;
+  },
+  '-w': (sink) => {
+    sink.watch = true;
+  },
+  '--changed': (sink) => {
+    sink.changed = true;
+  },
+  '-c': (sink) => {
+    sink.changed = true;
+  },
+  '--help': (sink) => {
+    sink.helpRequested = true;
+  },
+  '-h': (sink) => {
+    sink.helpRequested = true;
+  },
+};
+
+function splitOptionalTestPath(
+  args: string[],
+  defaultTestPath: string,
+): { testPath: string; flagArgs: string[] } {
+  if (args[0] && !args[0].startsWith('-')) {
+    return { testPath: args[0], flagArgs: args.slice(1) };
+  }
+  return { testPath: defaultTestPath, flagArgs: args };
+}
+
+function collectRunnerFlags(
+  flagArgs: string[],
+): Omit<ParsedRunnerArgs, 'testPath'> {
+  const sink: RunnerFlagSink = {
+    watch: false,
+    changed: false,
+    helpRequested: false,
+    extraArgs: [],
+  };
+
+  for (const arg of flagArgs) {
+    const handler = RUNNER_KNOWN_ARG_HANDLERS[arg];
+    if (handler) {
+      handler(sink);
+    } else {
+      sink.extraArgs.push(arg);
+    }
+  }
+
+  return {
+    watch: sink.watch,
+    changed: sink.changed,
+    helpRequested: sink.helpRequested,
+    extraArgs: sink.extraArgs,
+  };
 }
 
 /**
@@ -18,40 +93,45 @@ export interface ParseRunnerArgsOptions {
  */
 export function parseRunnerArgs(
   args: string[],
-  { defaultTestPath }: ParseRunnerArgsOptions
+  { defaultTestPath }: ParseRunnerArgsOptions,
 ): ParsedRunnerArgs {
-  let testPath = defaultTestPath;
-  let remainingArgs = args;
+  const { testPath, flagArgs } = splitOptionalTestPath(args, defaultTestPath);
+  return { testPath, ...collectRunnerFlags(flagArgs) };
+}
 
-  if (remainingArgs[0] && !remainingArgs[0].startsWith('-')) {
-    testPath = remainingArgs[0];
-    remainingArgs = remainingArgs.slice(1);
-  }
+export function printVitestRunnerHelp({
+  command,
+  defaultTestPath,
+  environment = [],
+  examples,
+}: RunnerHelpOptions): void {
+  console.log(
+    `Usage: tsx scripts/tests/run.ts ${command} [test-path] [OPTIONS]`,
+  );
+  console.log('');
+  console.log('Arguments:');
+  console.log(
+    `  test-path           Path to test file or directory (default: ${defaultTestPath})`,
+  );
+  console.log('');
+  console.log('Options:');
+  console.log(
+    '  --changed, -c       Run only tests related to uncommitted changes',
+  );
+  console.log('  --watch, -w         Run in watch mode');
+  console.log('  --help, -h          Show this help message');
 
-  let watch = false;
-  let changed = false;
-  let helpRequested = false;
-  const extraArgs: string[] = [];
-
-  for (const arg of remainingArgs) {
-    switch (arg) {
-      case '--watch':
-      case '-w':
-        watch = true;
-        break;
-      case '--changed':
-      case '-c':
-        changed = true;
-        break;
-      case '--help':
-      case '-h':
-        helpRequested = true;
-        break;
-      default:
-        extraArgs.push(arg);
-        break;
+  if (environment.length > 0) {
+    console.log('');
+    console.log('Environment:');
+    for (const line of environment) {
+      console.log(line);
     }
   }
 
-  return { testPath, watch, changed, extraArgs, helpRequested };
+  console.log('');
+  console.log('Examples:');
+  for (const example of examples) {
+    console.log(example);
+  }
 }

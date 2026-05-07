@@ -67,7 +67,7 @@ describe('thrown normalization helpers', () => {
         getLoggableErrorDetails({
           message: 'm',
           stack: 's',
-        })
+        }),
       ).toEqual({ errorMessage: 'm', errorStack: 's' });
     });
 
@@ -98,7 +98,7 @@ describe('thrown normalization helpers', () => {
       const obj: Record<string, unknown> = { a: 1 };
       obj.self = obj;
       expect(getLoggableErrorDetails(obj).errorMessage).toBe(
-        '{"a":1,"self":"[Circular]"}'
+        '{"a":1,"self":"[Circular]"}',
       );
     });
   });

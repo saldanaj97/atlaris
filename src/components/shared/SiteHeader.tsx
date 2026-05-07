@@ -1,12 +1,15 @@
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getShellAuthUserId } from '@/lib/auth/local-identity';
+import {
+  getShellAuthUserId,
+  shouldUseClerkUi,
+} from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import DesktopHeader from './nav/DesktopHeader';
 import MobileHeader from './nav/MobileHeader';
 
@@ -17,7 +20,7 @@ import MobileHeader from './nav/MobileHeader';
  * - Resolve whether a user is signed in (server-side)
  * - Select appropriate nav items based on auth state
  * - Fetch user's subscription tier for display
- * - Render MobileHeader (mobile/tablet) and DesktopHeader (desktop)
+ * - Render MobileHeader (viewports below `md`) and DesktopHeader (`md` and up)
  *
  *
  * **Architecture:**
@@ -28,7 +31,7 @@ import MobileHeader from './nav/MobileHeader';
  * distinct purposes:
  *
  * - **Header components** (DesktopHeader, MobileHeader): Layout containers that
- *   position brand, navigation, and auth controls. Handle responsive visibility.
+ *   position brand, navigation, and auth controls. Handle responsive visibility (`md` breakpoint).
  *
  * - **Navigation components** (DesktopNavigation, MobileNavigation): Render the
  *   actual nav links with their specific interaction patterns (dropdowns vs sheets).
@@ -37,6 +40,19 @@ import MobileHeader from './nav/MobileHeader';
 export default async function SiteHeader() {
   const { session } = await getSessionSafe();
   const authUserId = getShellAuthUserId(session?.user?.id);
+  let showClerkUserButton = false;
+  try {
+    // Local product-testing auth has no Clerk session, so it uses the account link fallback.
+    showClerkUserButton = shouldUseClerkUi();
+  } catch (err) {
+    logger.warn(
+      {
+        err,
+        source: 'SiteHeader.shouldUseClerkUi',
+      },
+      'Clerk UI eligibility check failed; header renders account link fallback',
+    );
+  }
   const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
 
   // Fetch tier only for authenticated users
@@ -44,14 +60,18 @@ export default async function SiteHeader() {
   if (authUserId) {
     try {
       const result = await requestBoundary.component(
-        ({ actor }) => actor.subscriptionTier
+        ({ actor }) => actor.subscriptionTier,
       );
       tier = result ?? undefined;
     } catch (err) {
-      // Non-critical: tier badge is hidden gracefully on failure
+      // Non-critical for shell render: tier badge omitted; log for ops visibility.
       logger.warn(
-        { err },
-        'Failed to fetch subscription tier; tier badge will be hidden'
+        {
+          err,
+          authUserId,
+          source: 'SiteHeader.subscriptionTier',
+        },
+        'Subscription tier fetch failed; header renders without tier badge',
       );
     }
   }
@@ -63,11 +83,13 @@ export default async function SiteHeader() {
           navItems={navItems}
           tier={tier}
           isAuthenticated={Boolean(authUserId)}
+          showClerkUserButton={showClerkUserButton}
         />
         <DesktopHeader
           navItems={navItems}
           tier={tier}
           isAuthenticated={Boolean(authUserId)}
+          showClerkUserButton={showClerkUserButton}
         />
       </div>
     </header>

@@ -4,58 +4,43 @@ import {
   EnvValidationError,
   getProcessEnvSource,
   getServerOptional,
-  isProdRuntimeEnv,
   requireEnvFrom,
 } from '@/lib/config/env/shared';
 
-const NEON_AUTH_COOKIE_SECRET_MIN_LENGTH = 32;
-const NEON_AUTH_ENV_KEY_BY_PATH = {
-  baseUrl: 'NEON_AUTH_BASE_URL',
-  cookieSecret: 'NEON_AUTH_COOKIE_SECRET',
+const CLERK_PUBLISHABLE_KEY_PATTERN = /^pk_(test|live)_[A-Za-z0-9_-]+/;
+const CLERK_SECRET_KEY_PATTERN = /^sk_(test|live)_[A-Za-z0-9_-]+/;
+
+const CLERK_AUTH_ENV_KEY_BY_PATH = {
+  publishableKey: 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+  secretKey: 'CLERK_SECRET_KEY',
 } as const;
 
-const neonAuthFields = z.object({
-  baseUrl: z.string().url(),
-  cookieSecret: z.string(),
+const clerkAuthFields = z.object({
+  publishableKey: z.string().regex(CLERK_PUBLISHABLE_KEY_PATTERN, {
+    message:
+      'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_test_ or pk_live_',
+  }),
+  secretKey: z.string().regex(CLERK_SECRET_KEY_PATTERN, {
+    message: 'CLERK_SECRET_KEY must start with sk_test_ or sk_live_',
+  }),
 });
 
-type NeonAuthEnv = z.infer<typeof neonAuthFields>;
+type ClerkAuthEnv = z.infer<typeof clerkAuthFields>;
 
 /**
- * Parse Neon Auth config from an explicit env source (unit tests; no process mutation).
+ * Parse Clerk Auth config from an explicit env source (unit tests; no process mutation).
  */
-export function createNeonAuthEnv(env: EnvSource): NeonAuthEnv {
-  const schema = neonAuthFields.superRefine((value, ctx) => {
-    if (isProdRuntimeEnv(env) && !value.baseUrl.startsWith('https://')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['baseUrl'],
-        message: 'NEON_AUTH_BASE_URL must use https in production',
-      });
-    }
-
-    if (
-      isProdRuntimeEnv(env) &&
-      value.cookieSecret.length < NEON_AUTH_COOKIE_SECRET_MIN_LENGTH
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['cookieSecret'],
-        message: `NEON_AUTH_COOKIE_SECRET must be at least ${NEON_AUTH_COOKIE_SECRET_MIN_LENGTH} characters in production`,
-      });
-    }
-  });
-
-  const parsed = schema.safeParse({
-    baseUrl: requireEnvFrom(env, 'NEON_AUTH_BASE_URL'),
-    cookieSecret: requireEnvFrom(env, 'NEON_AUTH_COOKIE_SECRET'),
+export function createClerkAuthEnv(env: EnvSource): ClerkAuthEnv {
+  const parsed = clerkAuthFields.safeParse({
+    publishableKey: requireEnvFrom(env, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'),
+    secretKey: requireEnvFrom(env, 'CLERK_SECRET_KEY'),
   });
   if (!parsed.success) {
     const issues = parsed.error.issues.map((issue) => {
       const envKey =
         issue.path.length === 1
-          ? NEON_AUTH_ENV_KEY_BY_PATH[
-              issue.path[0] as keyof typeof NEON_AUTH_ENV_KEY_BY_PATH
+          ? CLERK_AUTH_ENV_KEY_BY_PATH[
+              issue.path[0] as keyof typeof CLERK_AUTH_ENV_KEY_BY_PATH
             ]
           : undefined;
       return {
@@ -69,30 +54,30 @@ export function createNeonAuthEnv(env: EnvSource): NeonAuthEnv {
     throw new EnvValidationError(
       issues.length > 0
         ? issues.map((issue) => issue.message).join('; ')
-        : 'Invalid Neon auth config',
-      envKeys.length === 1 ? envKeys[0] : undefined
+        : 'Invalid Clerk auth config',
+      envKeys.length === 1 ? envKeys[0] : undefined,
     );
   }
   return parsed.data;
 }
 
-let neonAuthLazy: NeonAuthEnv | undefined;
+let clerkAuthLazy: ClerkAuthEnv | undefined;
 
-function loadNeonAuthFromProcess(): NeonAuthEnv {
-  if (neonAuthLazy) {
-    return neonAuthLazy;
+function loadClerkAuthFromProcess(): ClerkAuthEnv {
+  if (clerkAuthLazy) {
+    return clerkAuthLazy;
   }
-  neonAuthLazy = createNeonAuthEnv(getProcessEnvSource());
-  return neonAuthLazy;
+  clerkAuthLazy = createClerkAuthEnv(getProcessEnvSource());
+  return clerkAuthLazy;
 }
 
-/** Lazy Neon auth config; validates on first property read. */
-export const neonAuthEnv = {
-  get baseUrl() {
-    return loadNeonAuthFromProcess().baseUrl;
+/** Lazy Clerk auth config; validates on first property read. */
+export const clerkAuthEnv = {
+  get publishableKey() {
+    return loadClerkAuthFromProcess().publishableKey;
   },
-  get cookieSecret() {
-    return loadNeonAuthFromProcess().cookieSecret;
+  get secretKey() {
+    return loadClerkAuthFromProcess().secretKey;
   },
 } as const;
 

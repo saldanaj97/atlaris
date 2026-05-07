@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
 
 type LearningPlanInsert = typeof learningPlans.$inferInsert;
@@ -40,7 +40,7 @@ type PlanStatusUpdateClient = Pick<DbClient, 'update'>;
  */
 export async function setLearningPlanGenerating(
   tx: PlanStatusUpdateClient,
-  params: { planId: string; updatedAt: Date }
+  params: { planId: string; updatedAt: Date },
 ): Promise<void> {
   await tx
     .update(learningPlans)

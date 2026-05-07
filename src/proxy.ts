@@ -1,9 +1,12 @@
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { auth } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-
-const authMiddleware = auth.middleware({ loginUrl: '/auth/sign-in' });
+import {
+  isProtectedRoute,
+  resolveMaintenanceRedirectPath,
+  shouldBypassClerkMiddleware,
+} from '@/lib/proxy/middleware-policy';
 
 // Next.js injects inline bootstrap scripts today, so keep unsafe-inline until
 // we migrate this middleware to a nonce-based CSP. unsafe-eval is only needed
@@ -26,27 +29,6 @@ const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-const PROTECTED_PREFIXES = [
-  '/dashboard',
-  '/api',
-  '/plans',
-  '/account',
-  '/settings',
-  '/analytics',
-];
-
-function isProtectedRoute(pathname: string): boolean {
-  // Auth API routes must NOT be protected (they handle sign-in/sign-up)
-  if (pathname.startsWith('/api/auth/')) {
-    return false;
-  }
-  // Stripe webhooks bypass all checks
-  if (pathname.startsWith('/api/v1/stripe/webhook')) {
-    return false;
-  }
-  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-}
-
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const CORRELATION_ID_MAX_LENGTH = 64;
 
@@ -64,9 +46,29 @@ const getCorrelationId = (request: NextRequest): string => {
   return sanitized ?? crypto.randomUUID();
 };
 
+const withSecurityHeaders = (response: NextResponse): NextResponse => {
+  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=()',
+  );
+
+  if (appEnv.isProduction) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload',
+    );
+  }
+
+  return response;
+};
+
 const withCorrelationId = (
   request: NextRequest,
-  response: NextResponse
+  response: NextResponse,
 ): NextResponse => {
   const correlationId = getCorrelationId(request);
   response.headers.set('x-correlation-id', correlationId);
@@ -85,110 +87,65 @@ const nextWithCorrelationId = (request: NextRequest): NextResponse => {
   return withSecurityHeaders(response);
 };
 
-const withSecurityHeaders = (response: NextResponse): NextResponse => {
-  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()'
-  );
+const proxy = clerkMiddleware(
+  async (auth, request: NextRequest) => {
+    const { pathname } = request.nextUrl;
 
-  if (appEnv.isProduction) {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload'
-    );
-  }
-
-  return response;
-};
-
-export default async function proxy(
-  request: NextRequest
-): Promise<NextResponse> {
-  const { pathname } = request.nextUrl;
-
-  // Stripe webhooks bypass all checks including maintenance mode
-  if (pathname.startsWith('/api/v1/stripe/webhook')) {
-    return nextWithCorrelationId(request);
-  }
-
-  // Maintenance mode
-  const isMaintenanceMode = appEnv.maintenanceMode;
-  const isMaintenancePage = pathname === '/maintenance';
-
-  if (isMaintenanceMode && !isMaintenancePage) {
-    return withCorrelationId(
-      request,
-      NextResponse.redirect(new URL('/maintenance', request.url))
-    );
-  }
-  if (!isMaintenanceMode && isMaintenancePage) {
-    return withCorrelationId(
-      request,
-      NextResponse.redirect(new URL('/', request.url))
-    );
-  }
-
-  // Auth protection — delegate to Neon Auth middleware for session
-  // validation, token refresh, and OAuth callback handling
-  if (isProtectedRoute(pathname)) {
-    // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
-    // API routes. The Neon Auth middleware does not use this override and would
-    // redirect with 307 even when the route handler would accept the dev user.
-    // Route handlers still run withAuth and use getEffectiveAuthUserId.
-    // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
-    // shell and server components match the seeded local identity.
-    const devBypass =
-      appEnv.isDevelopment &&
-      devAuthEnv.userId !== undefined &&
-      pathname.startsWith('/api/');
-
-    const localProductTestingPageBypass =
-      appEnv.isDevelopment &&
-      devAuthEnv.userId !== undefined &&
-      localProductTestingEnv.enabled &&
-      !pathname.startsWith('/api/');
-
-    if (devBypass || localProductTestingPageBypass) {
-      console.debug('[dev_auth_bypass]', {
-        event: 'dev_auth_bypass',
-        userId: devAuthEnv.userId,
-        pathname,
-        correlationId: getCorrelationId(request),
-      });
+    // Stripe webhooks bypass all checks including maintenance mode
+    if (pathname.startsWith('/api/v1/stripe/webhook')) {
       return nextWithCorrelationId(request);
     }
 
-    const correlationId = getCorrelationId(request);
-
-    // Neon Auth middleware forwards the original request method to the
-    // upstream /get-session endpoint and only checks the session cache
-    // for GET requests. Server actions (POST) and other non-GET methods
-    // cause /get-session to fail, resulting in a false redirect to sign-in.
-    // Normalise to GET so session validation works for all methods.
-    const authRequest =
-      request.method !== 'GET'
-        ? new NextRequest(request.url, {
-            method: 'GET',
-            headers: request.headers,
-          })
-        : request;
-
-    const authResponse = await authMiddleware(authRequest);
-
-    authResponse.headers.set('x-correlation-id', correlationId);
-    authResponse.headers.set(
-      'x-middleware-request-x-correlation-id',
-      correlationId
+    // Maintenance mode
+    const maintenanceTarget = resolveMaintenanceRedirectPath(
+      appEnv.maintenanceMode,
+      pathname,
     );
-    return withSecurityHeaders(authResponse);
-  }
 
-  return nextWithCorrelationId(request);
-}
+    if (maintenanceTarget !== null) {
+      return withCorrelationId(
+        request,
+        NextResponse.redirect(new URL(maintenanceTarget, request.url)),
+      );
+    }
+
+    // Auth protection
+    if (isProtectedRoute(pathname)) {
+      // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
+      // API routes. Clerk does not use this override and would redirect even when
+      // the route handler would accept the dev user. Route handlers still run
+      // withAuth and use getEffectiveAuthUserId.
+      // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
+      // shell and server components match the seeded local identity.
+      if (
+        shouldBypassClerkMiddleware({
+          isDevelopment: appEnv.isDevelopment,
+          devAuthUserId: devAuthEnv.userId,
+          localProductTestingEnabled: localProductTestingEnv.enabled,
+          pathname,
+        })
+      ) {
+        console.debug('[dev_auth_bypass]', {
+          event: 'dev_auth_bypass',
+          userId: devAuthEnv.userId,
+          pathname,
+          correlationId: getCorrelationId(request),
+        });
+        return nextWithCorrelationId(request);
+      }
+
+      await auth.protect();
+    }
+
+    return nextWithCorrelationId(request);
+  },
+  {
+    signInUrl: '/auth/sign-in',
+    signUpUrl: '/auth/sign-up',
+  },
+);
+
+export default proxy;
 
 export const config = {
   matcher: [

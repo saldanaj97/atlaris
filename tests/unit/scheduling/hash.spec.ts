@@ -2,6 +2,32 @@ import { describe, expect, it } from 'vitest';
 import { computeInputsHash } from '@/features/scheduling/hash';
 import type { ScheduleInputs } from '@/shared/types/scheduling.types';
 
+function createTwoTaskScheduleInputs(): ScheduleInputs {
+  return {
+    planId: 'plan-123',
+    tasks: [
+      {
+        id: 'task-1',
+        title: 'Task 1',
+        estimatedMinutes: 60,
+        order: 1,
+        moduleId: 'mod-1',
+      },
+      {
+        id: 'task-2',
+        title: 'Task 2',
+        estimatedMinutes: 60,
+        order: 2,
+        moduleId: 'mod-1',
+      },
+    ],
+    startDate: '2025-02-01',
+    deadline: '2025-03-01',
+    weeklyHours: 10,
+    timezone: 'America/New_York',
+  };
+}
+
 describe('computeInputsHash', () => {
   it('should produce same hash for identical inputs', () => {
     const inputs: ScheduleInputs = {
@@ -29,29 +55,7 @@ describe('computeInputsHash', () => {
   });
 
   it('should produce same hash when input array order changes but task.order remains the same', () => {
-    const inputs1: ScheduleInputs = {
-      planId: 'plan-123',
-      tasks: [
-        {
-          id: 'task-1',
-          title: 'Task 1',
-          estimatedMinutes: 60,
-          order: 1,
-          moduleId: 'mod-1',
-        },
-        {
-          id: 'task-2',
-          title: 'Task 2',
-          estimatedMinutes: 60,
-          order: 2,
-          moduleId: 'mod-1',
-        },
-      ],
-      startDate: '2025-02-01',
-      deadline: '2025-03-01',
-      weeklyHours: 10,
-      timezone: 'America/New_York',
-    };
+    const inputs1 = createTwoTaskScheduleInputs();
 
     const inputs2: ScheduleInputs = {
       ...inputs1,
@@ -65,29 +69,7 @@ describe('computeInputsHash', () => {
   });
 
   it('should produce different hash when task.order values change', () => {
-    const inputs1: ScheduleInputs = {
-      planId: 'plan-123',
-      tasks: [
-        {
-          id: 'task-1',
-          title: 'Task 1',
-          estimatedMinutes: 60,
-          order: 1,
-          moduleId: 'mod-1',
-        },
-        {
-          id: 'task-2',
-          title: 'Task 2',
-          estimatedMinutes: 60,
-          order: 2,
-          moduleId: 'mod-1',
-        },
-      ],
-      startDate: '2025-02-01',
-      deadline: '2025-03-01',
-      weeklyHours: 10,
-      timezone: 'America/New_York',
-    };
+    const inputs1 = createTwoTaskScheduleInputs();
 
     const inputs2: ScheduleInputs = {
       ...inputs1,

@@ -22,7 +22,7 @@ export type GenerationOptions = {
 export type AiPlanGenerationProvider = {
   generate(
     input: GenerationInput,
-    options?: GenerationOptions
+    options?: GenerationOptions,
   ): Promise<ProviderGenerateResult>;
 };
 

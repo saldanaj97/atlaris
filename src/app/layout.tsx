@@ -1,22 +1,10 @@
-import { NeonAuthUIProvider } from '@neondatabase/auth/react';
+import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
-import type { ComponentProps } from 'react';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/app/ThemeProvider';
-import SiteFooter from '@/components/shared/SiteFooter';
-import SiteHeader from '@/components/shared/SiteHeader';
-import { authClient } from '@/lib/auth/client';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import './globals.css';
-
-// `@neondatabase/auth` (alpha) bundles types from `better-auth@1.4.6` while we
-// run the patched `~1.4.22` (closes GHSA two-factor cookie-cache bypass). The
-// runtime API is identical inside the 1.4.x line; only the static type for
-// `useActiveMember` shifted from a function to a nanostores atom. Cast at the
-// boundary so the type system doesn't block a security patch we want shipped.
-type NeonAuthUIProviderAuthClient = ComponentProps<
-  typeof NeonAuthUIProvider
->['authClient'];
 
 const workSans = Work_Sans({
   subsets: ['latin'],
@@ -66,29 +54,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appContent = (
+    <ThemeProvider>
+      {children}
+      <Toaster />
+    </ThemeProvider>
+  );
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
-        <NeonAuthUIProvider
-          authClient={authClient as unknown as NeonAuthUIProviderAuthClient}
-          redirectTo="/dashboard"
-          emailOTP
-          social={{ providers: ['google'] }}
-          account={{
-            basePath: '/settings',
-            fields: ['image', 'name'],
-            viewPaths: { SETTINGS: 'profile' },
-          }}
-        >
-          <ThemeProvider>
-            <SiteHeader />
-            <main className="flex-1 pt-16">{children}</main>
-            <Toaster />
-            <SiteFooter />
-          </ThemeProvider>
-        </NeonAuthUIProvider>
+        {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
+        {shouldUseClerkUi() ? (
+          <ClerkProvider
+            afterSignOutUrl="/"
+            signInUrl="/auth/sign-in"
+            signUpUrl="/auth/sign-up"
+          >
+            {appContent}
+          </ClerkProvider>
+        ) : (
+          appContent
+        )}
       </body>
     </html>
   );

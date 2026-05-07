@@ -1,4 +1,5 @@
 import type {
+  AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
   FinalizeFailureParams,
@@ -7,7 +8,7 @@ import type {
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { ParsedModule } from './parser.types';
 import type {
   AiPlanGenerationProvider,
@@ -22,16 +23,16 @@ export type GenerationAttemptContext = {
   input: GenerationInput;
 };
 
-export type ReserveAttemptSlotOperation = (
-  params: ReserveAttemptSlotParams
+type ReserveAttemptSlotOperation = (
+  params: ReserveAttemptSlotParams,
 ) => Promise<ReserveAttemptResult>;
 
-export type FinalizeAttemptSuccessOperation = (
-  params: FinalizeSuccessParams
+type FinalizeAttemptSuccessOperation = (
+  params: FinalizeSuccessParams,
 ) => Promise<GenerationAttemptRecord>;
 
-export type FinalizeAttemptFailureOperation = (
-  params: FinalizeFailureParams
+type FinalizeAttemptFailureOperation = (
+  params: FinalizeFailureParams,
 ) => Promise<GenerationAttemptRecord>;
 
 export interface AttemptOperations {
@@ -51,9 +52,12 @@ export type RunGenerationOptions = {
   now?: () => Date;
   signal?: AbortSignal;
   reservation?: AttemptReservation;
+  allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
+  requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
+  onAttemptReserved?: (reservation: AttemptReservation) => void;
 };
 
-export type GenerationSuccessResult = {
+type GenerationSuccessResult = {
   status: 'success';
   classification: null;
   modules: ParsedModule[];
@@ -79,8 +83,45 @@ export type GenerationFailureResult = {
   extendedTimeout: boolean;
   timedOut: boolean;
   attempt: GenerationAttemptRecordForResponse;
+  /** Present when failure came from `reserveAttemptSlot` rejection (no in-progress row). */
+  reservationRejectionReason?: AttemptRejection['reason'];
 };
 
 export type GenerationResult =
   | GenerationSuccessResult
   | GenerationFailureResult;
+
+/** Unfinalized success after provider + parse + pace (no DB finalize yet). */
+export type GenerationExecutionSuccess = {
+  readonly kind: 'success';
+  readonly reservation: AttemptReservation;
+  readonly modules: ParsedModule[];
+  readonly rawText: string;
+  readonly metadata: ProviderMetadata;
+  readonly durationMs: number;
+  readonly extendedTimeout: boolean;
+};
+
+/** Unfinalized failure when an in_progress attempt row exists. */
+export type GenerationExecutionFailureReserved = {
+  readonly kind: 'failure_reserved';
+  readonly reservation: AttemptReservation;
+  readonly classification: FailureClassification;
+  readonly error: Error;
+  readonly metadata?: ProviderMetadata;
+  readonly rawText?: string;
+  readonly durationMs: number;
+  readonly extendedTimeout: boolean;
+  readonly timedOut: boolean;
+};
+
+/** Immediate failure (no attempt row) from reserveAttemptSlot rejection. */
+export type GenerationExecutionFailureRejected = {
+  readonly kind: 'failure_rejected';
+  readonly result: GenerationFailureResult;
+};
+
+export type GenerationExecutionResult =
+  | GenerationExecutionSuccess
+  | GenerationExecutionFailureReserved
+  | GenerationExecutionFailureRejected;

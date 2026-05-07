@@ -119,7 +119,7 @@ describe('distributeTasksToSessions', () => {
     const schedule = distributeTasksToSessions(inputs);
 
     expect(schedule.weeks[0].days[0].sessions[0]?.moduleName).toBe(
-      'Foundations'
+      'Foundations',
     );
   });
 
@@ -168,7 +168,7 @@ describe('distributeTasksToSessions', () => {
     };
 
     expect(() => distributeTasksToSessions(inputs)).toThrow(
-      'weeklyHours must be greater than 0'
+      'weeklyHours must be greater than 0',
     );
   });
 
@@ -191,7 +191,7 @@ describe('distributeTasksToSessions', () => {
     };
 
     expect(() => distributeTasksToSessions(inputs)).toThrow(
-      'weeklyHours must be greater than 0'
+      'weeklyHours must be greater than 0',
     );
   });
 
@@ -214,7 +214,7 @@ describe('distributeTasksToSessions', () => {
     };
 
     expect(() => distributeTasksToSessions(inputs)).toThrow(
-      'has invalid estimatedMinutes: must be non-negative'
+      'has invalid estimatedMinutes: must be non-negative',
     );
   });
 
@@ -266,11 +266,11 @@ describe('distributeTasksToSessions', () => {
             daySum +
             day.sessions.reduce(
               (sessionSum, session) => sessionSum + session.estimatedMinutes,
-              0
+              0,
             ),
-          0
+          0,
         ),
-      0
+      0,
     );
     expect(totalAllocatedMinutes).toBe(1800);
   });
@@ -306,7 +306,7 @@ describe('distributeTasksToSessions', () => {
     expect(schedule.totalWeeks).toBe(1);
     // Should only include task-2 in sessions (task-1 with 0 minutes is skipped)
     const allTaskIds = schedule.weeks.flatMap((week) =>
-      week.days.flatMap((day) => day.sessions.map((s) => s.taskId))
+      week.days.flatMap((day) => day.sessions.map((s) => s.taskId)),
     );
     expect(allTaskIds).not.toContain('task-1');
     expect(allTaskIds).toContain('task-2');

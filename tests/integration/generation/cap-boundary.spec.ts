@@ -1,8 +1,8 @@
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
 import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts, modules, tasks } from '@/lib/db/schema';
-import { db } from '@/lib/db/service-role';
+import { db } from '@supabase/service-role';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
@@ -48,7 +48,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(thirdAttempt.status).toBe('success');
@@ -89,7 +89,7 @@ describe('generation integration - attempt cap boundary', () => {
           learningStyle: 'mixed',
         },
       },
-      { provider: mock.provider, dbClient: db }
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(fourthAttempt.status).toBe('failure');
@@ -105,7 +105,7 @@ describe('generation integration - attempt cap boundary', () => {
     // Cap rejection is synthetic; no fourth attempt row is persisted.
     expect(cappedAttempts).toHaveLength(3);
     expect(
-      cappedAttempts.some((attempt) => attempt.classification === 'capped')
+      cappedAttempts.some((attempt) => attempt.classification === 'capped'),
     ).toBe(false);
     expect(fourthAttempt.attempt.id).toBeNull();
   });

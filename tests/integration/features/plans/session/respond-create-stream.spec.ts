@@ -1,22 +1,25 @@
+import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import * as streamCleanup from '@/features/plans/session/stream-cleanup';
+import { createPlanGenerationSessionBoundary } from '@/features/plans/session/plan-generation-session';
 import {
+  findStreamingEvent,
   readStreamingResponse,
-  type StreamingEvent,
 } from '@tests/helpers/streaming';
 import { buildTestAuthUserId } from '@tests/helpers/testIds';
 import { describe, expect, it, vi } from 'vitest';
-import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
   CreatePlanResult,
   GenerationAttemptResult,
-  PlanLifecycleService,
   ProcessGenerationInput,
-} from '@/features/plans/lifecycle';
-import {
-  createPlanGenerationSessionBoundary,
-  type RespondCreateStreamArgs,
-} from '@/features/plans/session/plan-generation-session';
+} from '@/features/plans/lifecycle/types';
+import type { RespondCreateStreamArgs } from '@/features/plans/session/plan-generation-session';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptReservation,
+  AttemptsDbClient,
+} from '@/lib/db/queries/types/attempts.types';
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
@@ -69,6 +72,24 @@ const BASE_BODY: CreateLearningPlanInput = {
   origin: 'ai',
 };
 
+function fakeReservation(attemptNumber: number): AttemptReservation {
+  return {
+    reserved: true,
+    attemptId: `fake-attempt-${attemptNumber}`,
+    attemptNumber,
+    startedAt: new Date(),
+    sanitized: {
+      topic: {
+        value: BASE_BODY.topic,
+        truncated: false,
+        originalLength: BASE_BODY.topic.length,
+      },
+      notes: { value: undefined, truncated: false },
+    },
+    promptHash: `fake-hash-${attemptNumber}`,
+  };
+}
+
 interface FakeLifecycleHandle {
   service: PlanLifecycleService;
   createPlan: ReturnType<typeof vi.fn>;
@@ -78,12 +99,19 @@ interface FakeLifecycleHandle {
 function buildFakeLifecycle({
   createResult = SUCCESS_CREATE_RESULT,
   process,
+  reserveAttemptNumber = 1,
 }: {
   createResult?: CreatePlanResult;
   process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>;
+  reserveAttemptNumber?: number;
 }): FakeLifecycleHandle {
   const createPlan = vi.fn().mockResolvedValue(createResult);
-  const processGenerationAttempt = vi.fn(process);
+  const processGenerationAttempt = vi.fn(
+    async (input: ProcessGenerationInput) => {
+      input.onAttemptReserved?.(fakeReservation(reserveAttemptNumber));
+      return process(input);
+    },
+  );
 
   const service = {
     createPlan,
@@ -94,7 +122,7 @@ function buildFakeLifecycle({
 }
 
 function buildCreateRequest(
-  overrides: { signal?: AbortSignal; url?: string } = {}
+  overrides: { signal?: AbortSignal; url?: string } = {},
 ): Request {
   return new Request(overrides.url ?? 'http://localhost/api/v1/plans/stream', {
     method: 'POST',
@@ -105,7 +133,7 @@ function buildCreateRequest(
 }
 
 function buildArgs(
-  args: Partial<RespondCreateStreamArgs> & { req: Request; authUserId: string }
+  args: Partial<RespondCreateStreamArgs> & { req: Request; authUserId: string },
 ): RespondCreateStreamArgs {
   return {
     internalUserId: 'internal-user-id',
@@ -113,13 +141,6 @@ function buildArgs(
     savedPreferredAiModel: null,
     ...args,
   };
-}
-
-function findEvent(
-  events: StreamingEvent[],
-  type: string
-): StreamingEvent | undefined {
-  return events.find((event) => event.type === type);
 }
 
 describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
@@ -136,7 +157,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const req = buildCreateRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId })
+      buildArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
@@ -153,14 +174,14 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
       'complete',
     ]);
 
-    const planStart = findEvent(events, 'plan_start');
+    const planStart = findStreamingEvent(events, 'plan_start');
     expect(planStart?.data).toMatchObject({
       planId: SUCCESS_CREATE_RESULT.planId,
       attemptNumber: 1,
       topic: 'Boundary Topic',
     });
 
-    const complete = findEvent(events, 'complete');
+    const complete = findStreamingEvent(events, 'complete');
     expect(complete?.data).toMatchObject({
       planId: SUCCESS_CREATE_RESULT.planId,
       modulesCount: 1,
@@ -175,7 +196,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
         status: 'retryable_failure',
         classification: 'provider_error',
         error: new Error(
-          'OpenRouter upstream failure: api_key=sk-live-secret-value'
+          'OpenRouter upstream failure: api_key=sk-live-secret-value',
         ),
       }),
     });
@@ -187,17 +208,17 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const req = buildCreateRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId })
+      buildArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    const planStart = findEvent(events, 'plan_start');
-    const errorEvent = findEvent(events, 'error');
+    const planStart = findStreamingEvent(events, 'plan_start');
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(planStart).toBeDefined();
     expect(errorEvent).toBeDefined();
-    expect(findEvent(events, 'complete')).toBeUndefined();
+    expect(findStreamingEvent(events, 'complete')).toBeUndefined();
 
     const errorData = errorEvent?.data ?? {};
     expect(errorData).toMatchObject({
@@ -208,6 +229,38 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const message = String(errorData.message ?? '');
     expect(message).not.toContain('api_key');
     expect(message).not.toContain('sk-live-secret-value');
+    expect(errorData).not.toHaveProperty('requestId');
+  });
+
+  it('includes requestId on handled error SSE when requestId is supplied', async () => {
+    const fake = buildFakeLifecycle({
+      process: async () => ({
+        status: 'retryable_failure',
+        classification: 'provider_error',
+        error: new Error('upstream'),
+      }),
+    });
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const authUserId = buildTestAuthUserId('boundary-create-reqid');
+    const req = buildCreateRequest();
+
+    const response = await boundary.respondCreateStream(
+      buildArgs({
+        req,
+        authUserId,
+        requestId: 'corr-boundary-create-1',
+      }),
+    );
+
+    const events = await readStreamingResponse(response);
+    const errorEvent = findStreamingEvent(events, 'error');
+    expect(errorEvent?.data).toMatchObject({
+      requestId: 'corr-boundary-create-1',
+      code: 'GENERATION_FAILED',
+    });
   });
 
   it('emits permanent failure error code without retryable flag', async () => {
@@ -226,11 +279,11 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const req = buildCreateRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId })
+      buildArgs({ req, authUserId }),
     );
 
     const events = await readStreamingResponse(response);
-    const errorEvent = findEvent(events, 'error');
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(errorEvent?.data).toMatchObject({
       code: 'INVALID_OUTPUT',
       classification: 'validation',
@@ -239,6 +292,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('emits fallback error event when generation throws an unhandled error', async () => {
+    const markSpy = vi
+      .spyOn(streamCleanup, 'safeMarkPlanFailedWithDbClient')
+      .mockResolvedValue(undefined);
+
     const fake = buildFakeLifecycle({
       process: async () => {
         throw new Error('boundary unhandled boom');
@@ -252,18 +309,29 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const req = buildCreateRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId })
+      buildArgs({
+        req,
+        authUserId,
+        requestId: 'corr-boundary-create-unhandled',
+      }),
     );
 
     const events = await readStreamingResponse(response);
-    const planStart = findEvent(events, 'plan_start');
-    const errorEvent = findEvent(events, 'error');
+    const planStart = findStreamingEvent(events, 'plan_start');
+    const errorEvent = findStreamingEvent(events, 'error');
     expect(planStart).toBeDefined();
     expect(errorEvent).toBeDefined();
-    expect(findEvent(events, 'complete')).toBeUndefined();
+    expect(findStreamingEvent(events, 'complete')).toBeUndefined();
     expect(errorEvent?.data).toMatchObject({
       classification: 'provider_error',
+      requestId: 'corr-boundary-create-unhandled',
     });
+    expect(markSpy).toHaveBeenCalledWith(
+      SUCCESS_CREATE_RESULT.planId,
+      'internal-user-id',
+      expect.anything(),
+    );
+    markSpy.mockRestore();
   });
 
   it('suppresses terminal SSE events when the client disconnects mid-stream', async () => {
@@ -282,15 +350,15 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     const req = buildCreateRequest({ signal: controller.signal });
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId })
+      buildArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
-    expect(findEvent(events, 'plan_start')).toBeDefined();
-    expect(findEvent(events, 'complete')).toBeUndefined();
-    expect(findEvent(events, 'error')).toBeUndefined();
+    expect(findStreamingEvent(events, 'plan_start')).toBeDefined();
+    expect(findStreamingEvent(events, 'complete')).toBeUndefined();
+    expect(findStreamingEvent(events, 'error')).toBeUndefined();
   });
 
   it('passes responseHeaders through to the streaming Response', async () => {
@@ -312,7 +380,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
           'X-RateLimit-Limit': '7',
           'X-Custom-Test': 'boundary',
         },
-      })
+      }),
     );
 
     expect(response.headers.get('X-RateLimit-Limit')).toBe('7');
@@ -344,7 +412,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
         req,
         authUserId,
         savedPreferredAiModel: null,
-      })
+      }),
     );
 
     await readStreamingResponse(response);
@@ -376,7 +444,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
         req,
         authUserId,
         savedPreferredAiModel: null,
-      })
+      }),
     );
 
     await readStreamingResponse(response);
@@ -405,7 +473,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
         req,
         authUserId,
         savedPreferredAiModel: VALID_PRO_MODEL,
-      })
+      }),
     );
 
     await readStreamingResponse(response);
@@ -429,15 +497,15 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
     const responses = await Promise.all([
       boundary.respondCreateStream(
-        buildArgs({ req: buildCreateRequest(), authUserId })
+        buildArgs({ req: buildCreateRequest(), authUserId }),
       ),
       boundary.respondCreateStream(
-        buildArgs({ req: buildCreateRequest(), authUserId })
+        buildArgs({ req: buildCreateRequest(), authUserId }),
       ),
     ]);
 
     await Promise.all(
-      responses.map((response) => readStreamingResponse(response))
+      responses.map((response) => readStreamingResponse(response)),
     );
 
     expect(createLifecycleService).toHaveBeenCalledTimes(2);

@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from '@/features/billing/tier-limits';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 export const PRIORITY_TOPICS = [
   // seed examples; business can tune this list
   'interview prep',

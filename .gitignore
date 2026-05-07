@@ -13,12 +13,13 @@
 # testing
 /coverage
 .testcontainers-env.json
+/tests/.testcontainers-env.*.json
 /tests/test-results/*
 /tests/results/
 
 # next.js
 /.next/
-/test-dist/next-smoke-*/
+.test-dist/*
 /out/
 
 # production
@@ -41,23 +42,19 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase
+supabase/.temp
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# jscpd (ad-hoc duplication reports)
-jscpd-report/
 
 # git worktrees
 .worktrees/
 
 # ide rules
 .cursor/*
-.claude/*
 .opencode/*
 
-# local Copilot hook logs
-.github/hooks/logs/
-
-# CocoIndex Code (ccc)
-/.cocoindex_code/
+screenshots/
+.fallow/

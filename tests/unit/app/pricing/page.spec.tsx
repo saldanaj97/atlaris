@@ -2,14 +2,12 @@ import { render, screen } from '@testing-library/react';
 import { createStripeTierMap } from '@tests/fixtures/pricing';
 import { buildUserFixture } from '@tests/fixtures/users';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { fetchStripeTierData } from '@/app/pricing/components/stripe-pricing';
-
-type FetchStripeTierDataArgs = Parameters<typeof fetchStripeTierData>[0];
+import type { ReadBillingCatalogInput } from '@/features/billing/catalog-read';
 type PricingPageUser = ReturnType<typeof buildUserFixture>;
 
 const mocks = vi.hoisted(() => ({
   requestBoundaryComponentMock: vi.fn(),
-  fetchStripeTierDataMock: vi.fn(),
+  readBillingCatalogTierDataMock: vi.fn(),
   pricingGridMock: vi.fn(),
   pricingMissingStripeNoticeMock: vi.fn(),
   manageSubscriptionButtonMock: vi.fn(),
@@ -34,15 +32,15 @@ vi.mock('@/features/billing/account-snapshot', () => ({
     mocks.deriveBillingSubscriptionSnapshotMock,
 }));
 
-vi.mock('@/app/pricing/components/stripe-pricing', () => ({
-  fetchStripeTierData: mocks.fetchStripeTierDataMock,
+vi.mock('@/features/billing/catalog-read', () => ({
+  readBillingCatalogTierData: mocks.readBillingCatalogTierDataMock,
 }));
 
 vi.mock('@/lib/logging/logger', () => ({
   logger: mocks.loggerMock,
 }));
 
-vi.mock('@/app/pricing/components/pricing-config', () => ({
+vi.mock('@/app/(marketing)/pricing/components/pricing-config', () => ({
   MONTHLY_TIER_CONFIGS: [
     { key: 'free' },
     { key: 'starter', priceId: 'price_starter_monthly' },
@@ -55,10 +53,10 @@ vi.mock('@/app/pricing/components/pricing-config', () => ({
   ],
 }));
 
-vi.mock('@/app/pricing/components/PricingGrid', () => ({
+vi.mock('@/app/(marketing)/pricing/components/PricingGrid', () => ({
   PricingGrid: (props: {
     subscribeLabel: string;
-    stripeData: ReadonlyMap<string, unknown>;
+    tierDisplayMap: ReadonlyMap<string, unknown>;
   }) => {
     mocks.pricingGridMock(props);
     return (
@@ -71,30 +69,37 @@ vi.mock('@/app/pricing/components/PricingGrid', () => ({
   },
 }));
 
-vi.mock('@/app/pricing/components/PricingMissingStripeNotice', () => ({
-  PricingMissingStripeNotice: () => {
-    mocks.pricingMissingStripeNoticeMock();
-    return <div>Missing Stripe pricing data</div>;
-  },
-}));
+vi.mock(
+  '@/app/(marketing)/pricing/components/PricingMissingStripeNotice',
+  () => ({
+    PricingMissingStripeNotice: () => {
+      mocks.pricingMissingStripeNoticeMock();
+      return <div>Missing Stripe pricing data</div>;
+    },
+  }),
+);
 
-vi.mock('@/components/billing/ManageSubscriptionButton', () => ({
-  default: (props: { canOpenBillingPortal: boolean }) => {
-    mocks.manageSubscriptionButtonMock(props);
-    return (
-      <div
-        data-testid="manage-subscription-button"
-        data-can-open-billing-portal={String(props.canOpenBillingPortal)}
-      />
-    );
-  },
-}));
+vi.mock(
+  '@/app/(app)/settings/billing/components/ManageSubscriptionButton',
+  () => ({
+    default: (props: { canOpenBillingPortal: boolean }) => {
+      mocks.manageSubscriptionButtonMock(props);
+      return (
+        <div
+          data-testid="manage-subscription-button"
+          data-can-open-billing-portal={String(props.canOpenBillingPortal)}
+        />
+      );
+    },
+  }),
+);
 
 async function renderPricingPage(): Promise<void> {
-  // Reset the module cache before dynamically importing '@/app/pricing/page'
+  // Reset the module cache before dynamically importing '@/app/(marketing)/pricing/page'
   // so each render picks up the fresh mock graph for this test.
   vi.resetModules();
-  const { default: PricingPage } = await import('@/app/pricing/page');
+  const { default: PricingPage } =
+    await import('@/app/(marketing)/pricing/page');
   render(await PricingPage());
 }
 
@@ -107,7 +112,7 @@ function subscriptionSnapshotFromUser(user: PricingPageUser) {
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     canOpenBillingPortal: Boolean(
-      user.stripeCustomerId && user.subscriptionStatus
+      user.stripeCustomerId && user.subscriptionStatus,
     ),
   };
 }
@@ -122,22 +127,22 @@ function mockAuthenticatedUser(user: PricingPageUser): void {
         dbClient: {} as never,
       },
       correlationId: 'test-correlation-id',
-    })
+    }),
   );
   mocks.deriveBillingSubscriptionSnapshotMock.mockImplementation(
-    (input: PricingPageUser) => subscriptionSnapshotFromUser(input)
+    (input: PricingPageUser) => subscriptionSnapshotFromUser(input),
   );
 }
 
 function mockStripeTierData(
   monthlyStripeData = createStripeTierMap(['starter', 'pro']),
-  yearlyStripeData = createStripeTierMap(['starter', 'pro'])
+  yearlyStripeData = createStripeTierMap(['starter', 'pro']),
 ): void {
-  mocks.fetchStripeTierDataMock
-    .mockImplementationOnce(async (_priceIds: FetchStripeTierDataArgs) => {
+  mocks.readBillingCatalogTierDataMock
+    .mockImplementationOnce(async (_input: ReadBillingCatalogInput) => {
       return monthlyStripeData;
     })
-    .mockImplementationOnce(async (_priceIds: FetchStripeTierDataArgs) => {
+    .mockImplementationOnce(async (_input: ReadBillingCatalogInput) => {
       return yearlyStripeData;
     });
 }
@@ -165,34 +170,36 @@ describe('PricingPage', () => {
 
     expect(mocks.requestBoundaryComponentMock).toHaveBeenCalledTimes(1);
     expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
-      user
+      user,
     );
-    expect(mocks.fetchStripeTierDataMock).toHaveBeenCalledTimes(2);
-    expect(mocks.fetchStripeTierDataMock).toHaveBeenNthCalledWith(1, {
+    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenCalledTimes(2);
+    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenNthCalledWith(1, {
+      interval: 'monthly',
       proId: 'price_pro_monthly',
       starterId: 'price_starter_monthly',
     });
-    expect(mocks.fetchStripeTierDataMock).toHaveBeenNthCalledWith(2, {
+    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenNthCalledWith(2, {
+      interval: 'yearly',
       proId: 'price_pro_yearly',
       starterId: 'price_starter_yearly',
     });
     expect(
-      screen.getByRole('heading', { name: /invest in your growth/i })
+      screen.getByRole('heading', { name: /invest in your growth/i }),
     ).toBeVisible();
     expect(screen.getByTestId('pricing-grid-subscribe-monthly')).toBeVisible();
     expect(
-      screen.queryByText('Missing Stripe pricing data')
+      screen.queryByText('Missing Stripe pricing data'),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
       'data-can-open-billing-portal',
-      'true'
+      'true',
     );
     expect(mocks.pricingGridMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        stripeData: monthlyStripeData,
+        tierDisplayMap: monthlyStripeData,
         subscribeLabel: 'Subscribe monthly',
-      })
+      }),
     );
     expect(mocks.pricingGridMock).toHaveBeenCalledTimes(1);
     expect(mocks.loggerMock.warn).not.toHaveBeenCalled();
@@ -203,7 +210,7 @@ describe('PricingPage', () => {
     const user = buildUserFixture();
 
     mockAuthenticatedUser(user);
-    mocks.fetchStripeTierDataMock
+    mocks.readBillingCatalogTierDataMock
       .mockResolvedValueOnce(new Map())
       .mockResolvedValueOnce(createStripeTierMap(['starter']));
 
@@ -218,41 +225,41 @@ describe('PricingPage', () => {
         yearlyLoadedTierKeys: ['starter'],
         yearlyMissingTierKeys: ['pro'],
       }),
-      expect.stringContaining('Incomplete Stripe pricing data detected')
+      expect.stringContaining('Incomplete Stripe pricing data detected'),
     );
     expect(mocks.pricingGridMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        stripeData: new Map(),
-      })
+        tierDisplayMap: new Map(),
+      }),
     );
     expect(mocks.pricingGridMock).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    undefined,
-    null,
-  ] as const)('disables the billing portal when stripeCustomerId is %s', async (stripeCustomerId) => {
-    const user = buildUserFixture({
-      stripeCustomerId,
-      subscriptionStatus: 'active',
-    });
+  it.each([undefined, null] as const)(
+    'disables the billing portal when stripeCustomerId is %s',
+    async (stripeCustomerId) => {
+      const user = buildUserFixture({
+        stripeCustomerId,
+        subscriptionStatus: 'active',
+      });
 
-    mockAuthenticatedUser(user);
-    mockStripeTierData();
+      mockAuthenticatedUser(user);
+      mockStripeTierData();
 
-    await renderPricingPage();
+      await renderPricingPage();
 
-    expect(mocks.requestBoundaryComponentMock).toHaveBeenCalledTimes(1);
-    expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
-      user
-    );
-    expect(mocks.fetchStripeTierDataMock).toHaveBeenCalledTimes(2);
-    expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
-      'data-can-open-billing-portal',
-      'false'
-    );
-  });
+      expect(mocks.requestBoundaryComponentMock).toHaveBeenCalledTimes(1);
+      expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
+        user,
+      );
+      expect(mocks.readBillingCatalogTierDataMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
+        'data-can-open-billing-portal',
+        'false',
+      );
+    },
+  );
 
   it('does not call deriveBillingSubscriptionSnapshot when the user is anonymous', async () => {
     mocks.requestBoundaryComponentMock.mockResolvedValue(null);
@@ -262,38 +269,37 @@ describe('PricingPage', () => {
 
     expect(mocks.deriveBillingSubscriptionSnapshotMock).not.toHaveBeenCalled();
     expect(
-      screen.getByRole('heading', { name: /invest in your growth/i })
+      screen.getByRole('heading', { name: /invest in your growth/i }),
     ).toBeVisible();
     expect(screen.getByTestId('pricing-grid-subscribe-monthly')).toBeVisible();
     expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
       'data-can-open-billing-portal',
-      'false'
+      'false',
     );
   });
 
-  it.each([
-    ['trialing'],
-    ['canceled'],
-    ['past_due'],
-  ] as const)('keeps billing portal access enabled for %s subscriptions', async (subscriptionStatus) => {
-    const user = buildUserFixture({
-      stripeCustomerId: 'cus_local_test',
-      subscriptionStatus,
-    });
+  it.each([['trialing'], ['canceled'], ['past_due']] as const)(
+    'keeps billing portal access enabled for %s subscriptions',
+    async (subscriptionStatus) => {
+      const user = buildUserFixture({
+        stripeCustomerId: 'cus_local_test',
+        subscriptionStatus,
+      });
 
-    mockAuthenticatedUser(user);
-    mockStripeTierData();
+      mockAuthenticatedUser(user);
+      mockStripeTierData();
 
-    await renderPricingPage();
+      await renderPricingPage();
 
-    expect(
-      screen.queryByText(
-        'Billing portal is available after your first subscription checkout.'
-      )
-    ).not.toBeInTheDocument();
-    expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
-      'data-can-open-billing-portal',
-      'true'
-    );
-  });
+      expect(
+        screen.queryByText(
+          'Billing portal is available after your first subscription checkout.',
+        ),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
+        'data-can-open-billing-portal',
+        'true',
+      );
+    },
+  );
 });

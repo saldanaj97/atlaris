@@ -1,5 +1,5 @@
 import type { PgErrorShape } from '@/lib/db/queries/types/schedule.types';
-import type { planSchedules } from '@/lib/db/schema';
+import type { planSchedules } from '@supabase/schema';
 import { scheduleJsonSchema } from '@/shared/schemas/scheduling.schemas';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
 
@@ -12,7 +12,7 @@ import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
  * @throws {Error} If `scheduleJson` validation fails
  */
 export function mapDbRowToScheduleCacheRow(
-  dbRow: typeof planSchedules.$inferSelect
+  dbRow: typeof planSchedules.$inferSelect,
 ): ScheduleCacheRow {
   // Validate scheduleJson at the data boundary
   const validatedScheduleJson = scheduleJsonSchema.parse(dbRow.scheduleJson);
@@ -44,9 +44,15 @@ export function isPlanOwnershipWriteError(error: unknown): boolean {
     return true;
   }
 
+  if (typeof dbError.message !== 'string') {
+    return false;
+  }
+  return isPlanOwnershipWriteMessage(dbError.message);
+}
+
+function isPlanOwnershipWriteMessage(message: string): boolean {
   return (
-    typeof dbError.message === 'string' &&
-    (dbError.message.includes('row-level security') ||
-      dbError.message.includes('foreign key constraint'))
+    message.includes('row-level security') ||
+    message.includes('foreign key constraint')
   );
 }

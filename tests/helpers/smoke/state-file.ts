@@ -35,7 +35,7 @@ export interface SmokeStateFileDeps {
     writeFileSync: (
       filePath: string,
       data: string,
-      encoding: BufferEncoding
+      encoding: BufferEncoding,
     ) => void;
   };
   tempDirParent: string;
@@ -54,7 +54,7 @@ const DEFAULT_DEPS: SmokeStateFileDeps = {
 };
 
 function resolveDeps(
-  overrides: Partial<SmokeStateFileDeps> = {}
+  overrides: Partial<SmokeStateFileDeps> = {},
 ): SmokeStateFileDeps {
   return {
     ...DEFAULT_DEPS,
@@ -71,7 +71,7 @@ function validatePayload(raw: unknown): SmokeStatePayload {
 }
 
 export function buildSmokeStatePayload(
-  connectionUrl: string
+  connectionUrl: string,
 ): SmokeStatePayload {
   return {
     DATABASE_URL: connectionUrl,
@@ -86,7 +86,7 @@ export function buildSmokeStatePayload(
 export function writeSmokeStateFile(
   dir: string,
   payload: SmokeStatePayload,
-  deps?: Partial<SmokeStateFileDeps>
+  deps?: Partial<SmokeStateFileDeps>,
 ): string {
   const resolvedDeps = resolveDeps(deps);
   const filePath = join(dir, `smoke-state-${resolvedDeps.createId()}.json`);
@@ -96,7 +96,7 @@ export function writeSmokeStateFile(
 
 export function readSmokeStateFromPath(
   filePath: string,
-  deps?: Partial<SmokeStateFileDeps>
+  deps?: Partial<SmokeStateFileDeps>,
 ): SmokeStatePayload {
   const resolvedDeps = resolveDeps(deps);
   let raw: string;
@@ -104,7 +104,9 @@ export function readSmokeStateFromPath(
     raw = resolvedDeps.fs.readFileSync(filePath, 'utf8');
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    throw new Error(`Smoke state file: cannot read "${filePath}": ${message}`);
+    throw new Error(`Smoke state file: cannot read "${filePath}": ${message}`, {
+      cause: cause,
+    });
   }
   let parsed: unknown;
   try {
@@ -119,24 +121,24 @@ export function readSmokeStateFromEnv(): SmokeStatePayload {
   const filePath = getSmokeStateFileEnv();
   if (filePath === undefined || filePath.trim() === '') {
     throw new Error(
-      `Smoke state: ${SMOKE_STATE_FILE_ENV} is not set or is empty`
+      `Smoke state: ${SMOKE_STATE_FILE_ENV} is not set or is empty`,
     );
   }
   return readSmokeStateFromPath(filePath);
 }
 
 export function createSmokeStateTempDir(
-  deps?: Partial<SmokeStateFileDeps>
+  deps?: Partial<SmokeStateFileDeps>,
 ): string {
   const resolvedDeps = resolveDeps(deps);
   return resolvedDeps.fs.mkdtempSync(
-    join(resolvedDeps.tempDirParent, 'atlaris-smoke-')
+    join(resolvedDeps.tempDirParent, 'atlaris-smoke-'),
   );
 }
 
 export function cleanupSmokeStateFile(
   filePath: string,
-  deps?: Partial<SmokeStateFileDeps>
+  deps?: Partial<SmokeStateFileDeps>,
 ): void {
   const resolvedDeps = resolveDeps(deps);
   try {

@@ -52,7 +52,7 @@
    - `src/lib/config/env/shared.ts` — `EnvValidationError`, normalize helpers, runtime/cache helpers, `optionalEnv`, `requireEnv`, `parseEnvNumber`, `toBoolean`, server-only accessors.
    - `src/lib/config/env/app.ts` — `appEnv`
    - `src/lib/config/env/database.ts` — `databaseEnv`
-   - `src/lib/config/env/auth.ts` — `neonAuthEnv`, `googleOAuthEnv`, `oauthEncryptionEnv`, `devAuthEnv`
+   - `src/lib/config/env/auth.ts` — `clerkAuthEnv`, `googleOAuthEnv`, `oauthEncryptionEnv`, `devAuthEnv`
    - `src/lib/config/env/billing.ts` — `stripeEnv`
    - `src/lib/config/env/ai.ts` — `aiEnv`, `aiTimeoutEnv`, `openRouterEnv`, `attemptsEnv`, `ATTEMPT_CAP`
    - `src/lib/config/env/security.ts` — `avScannerEnv`

@@ -19,6 +19,6 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
   }
   const obj = db as Record<string, unknown>;
   return ATTEMPTS_DB_METHODS.every(
-    (method) => typeof obj[method] === 'function'
+    (method) => typeof obj[method] === 'function',
   );
 }

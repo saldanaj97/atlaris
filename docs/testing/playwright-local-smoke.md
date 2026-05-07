@@ -11,12 +11,15 @@ This repo’s committed browser smoke lane exists to prove the launch-blocker fl
 
 Use it for narrow, high-signal browser confidence. Do not turn it into a broad matrix suite.
 
+For **UI audit / marketing vs product screenshot baselines**, use [UI baseline capture](./ui-baseline-capture.md) instead (`pnpm ui:capture-baseline`).
+
 ## Command Surface
 
 ```bash
 pnpm test:smoke
 pnpm test:smoke -- --project smoke-anon
 pnpm test:smoke -- --project smoke-auth
+pnpm test:smoke -- --project smoke-clerk
 ```
 
 Low-level smoke debugging stays available without extra package scripts:
@@ -31,7 +34,7 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 
 - `scripts/tests/smoke/run.ts`
   - starts and tears down the disposable Postgres container
-  - runs migrations, grants, and local smoke seeding
+  - runs migrations (via `drizzle-kit` CLI invoked with Node — does not require `pnpm` on `PATH` for the migration subprocess), grants, and local smoke seeding
   - writes `SMOKE_STATE_FILE`
   - invokes Playwright
 - `scripts/tests/smoke/start-app.ts`
@@ -40,9 +43,10 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 - `tests/helpers/smoke/`
   - owns shared smoke runtime modules: DB prep, container lifecycle, mode env config, state files, and seed verification
 - `playwright.config.ts`
-  - defines the `smoke-anon` and `smoke-auth` projects
+  - defines the `smoke-anon`, `smoke-auth`, and `smoke-clerk` projects
   - starts both app servers on separate ports
   - keeps the local runner serial with `workers: 1` for stability on resource-constrained machines
+  - writes traces, screenshots, and other artifacts under `tests/test-results/playwright/artifacts`
 - `tests/playwright/smoke`
   - owns committed browser smoke specs only
 
@@ -54,11 +58,25 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - `STRIPE_LOCAL_MODE=false`
   - app server on `http://127.0.0.1:3100`
 - `smoke-auth`
-  - seeded local smoke user id
+  - uses the seeded local smoke user id
   - `LOCAL_PRODUCT_TESTING=true`
   - `STRIPE_LOCAL_MODE=true`
   - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
+
+`smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
+product launch blockers against local auth, local billing, mock AI, and disposable
+Postgres.
+
+Clerk auth parity is isolated in `smoke-clerk`. It runs against the anonymous
+server and skips unless a real Clerk test user is configured. Prefer a
+`+clerk_test` email address, then run:
+
+```bash
+CLERK_E2E_USER_EMAIL='e2e+clerk_test@example.com' pnpm test:smoke -- --project smoke-clerk
+```
+
+The helper path is `clerk.signIn({ page, emailAddress })`, which uses Clerk’s Backend API token flow when `CLERK_SECRET_KEY` is available and bypasses verification/MFA prompts.
 
 Do not start smoke servers manually for normal runs. Let Playwright own them.
 
@@ -92,7 +110,7 @@ Do not start smoke servers manually for normal runs. Let Playwright own them.
 1. Decide whether the flow is truly launch-blocker or regression-prone enough for smoke.
 2. Keep it independent of unrelated prior auth mutations.
 3. Reuse helpers in `tests/playwright/smoke/fixtures.ts` or `tests/playwright/smoke/helpers/` when they simplify behavior without hiding intent.
-4. Update the PRD tracker in `.plans/playwright-local-smoke/` with what changed and how it was verified.
+4. Update **`tracker.md`** under [`.agents/plans/playwright-local-smoke/`](../../.agents/plans/playwright-local-smoke/) with what changed and how it was verified (create folder/file if missing).
 
 ## Debugging
 

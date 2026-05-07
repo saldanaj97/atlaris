@@ -43,7 +43,7 @@ function shouldUseMock(): boolean {
  * @returns An instance implementing `AiPlanGenerationProvider`
  */
 export function getGenerationProviderWithModel(
-  modelId: string
+  modelId: string,
 ): AiPlanGenerationProvider {
   if (!modelId) {
     throw new Error('modelId must be a non-empty string');
@@ -52,7 +52,7 @@ export function getGenerationProviderWithModel(
   if (shouldUseMock()) {
     logger.debug(
       { source: 'provider-factory', requestedModel: modelId },
-      'Mock provider active — requested modelId will not be used'
+      'Mock provider active — requested modelId will not be used',
     );
     return new MockGenerationProvider({
       deterministicSeed: parseMockSeed(),

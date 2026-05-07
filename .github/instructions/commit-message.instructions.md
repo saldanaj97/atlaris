@@ -6,9 +6,11 @@ applyTo: '.github/**/*'
 # Commit Message Instructions
 
 ## Purpose
+
 Clear, consistent commit messages improve project maintainability and collaboration. This guide outlines a structured format to ensure all commits are informative and standardized.
 
 # Rules
+
 Make sure unless specified otherwise, to only stage and commit files that were discussed and modified as part of the task at hand. Do not include unrelated files or changes in the commit.
 
 ## Commit Types
@@ -20,7 +22,6 @@ Make sure unless specified otherwise, to only stage and commit files that were d
 - **refactor**: Code change that neither fixes a bug nor adds a feature
 - **test**: Adding or updating tests
 - **chore**: Changes to build process, dependencies, or auxiliary tools
-
 
 ## Format
 
@@ -41,11 +42,13 @@ Changes:
 ## Structure Breakdown
 
 ### 1. Subject Line
+
 - **Type**: Use conventional commit types (feat, fix, docs, style, refactor, test, chore)
 - **Summary**: Imperative mood, no period, max 50 characters
 - **Example**: `feat: implement Phase 4 API integration for async plan generation`
 
 ### 2. Body (Detailed Description)
+
 - Leave one blank line after subject
 - Explain **what** changed and **why** (not how)
 - Wrap at 72 characters per line
@@ -53,6 +56,7 @@ Changes:
 - Focus on the impact and reasoning
 
 ### 3. Changes Section
+
 - Label with `Changes:`
 - Use bullet points (-)
 - List key modifications made to existing functionality

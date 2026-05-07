@@ -7,7 +7,7 @@ describe('API error redaction', () => {
   it('redacts unexpected provider errors to a generic payload', async () => {
     const providerError = new ProviderError(
       'provider_error',
-      'Sensitive provider failure – do not leak'
+      'Sensitive provider failure – do not leak',
     );
 
     const response = toErrorResponse(providerError);
@@ -24,7 +24,7 @@ describe('API error redaction', () => {
 
   it('preserves standardized metadata for known AppError instances', async () => {
     const response = toErrorResponse(
-      new AttemptCapExceededError('attempt cap reached')
+      new AttemptCapExceededError('attempt cap reached'),
     );
 
     expect(response.status).toBe(429);

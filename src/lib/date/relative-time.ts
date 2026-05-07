@@ -31,6 +31,58 @@ type RelativePastOptions = {
   invalidLabel?: string;
 };
 
+type PastDelta = {
+  minutes: number;
+  hours: number;
+  days: number;
+};
+
+function getClampedPastDelta(targetDate: Date, reference: Date): PastDelta {
+  return {
+    minutes: Math.max(0, differenceInMinutes(reference, targetDate)),
+    hours: Math.max(0, differenceInHours(reference, targetDate)),
+    days: Math.max(0, differenceInDays(reference, targetDate)),
+  };
+}
+
+function formatCompactPastDelta(delta: PastDelta): string {
+  if (delta.minutes < 60) {
+    return delta.minutes <= 1 ? 'Just now' : `${delta.minutes}m ago`;
+  }
+  if (delta.hours < 24) {
+    return `${delta.hours}h ago`;
+  }
+  if (delta.days === 1) return 'Yesterday';
+  if (delta.days < 7) return `${delta.days} days ago`;
+  if (delta.days < 30) return `${Math.floor(delta.days / 7)}w ago`;
+  return `${Math.floor(delta.days / 30)}mo ago`;
+}
+
+function pluralizePastUnit(
+  value: number,
+  unit: 'minute' | 'hour' | 'day' | 'week' | 'month',
+) {
+  return `${value} ${unit}${value === 1 ? '' : 's'} ago`;
+}
+
+/**
+ * Verbose style keeps the legacy precise one-minute label; compact style fuzzes
+ * one minute into "Just now" for denser plan-card copy.
+ */
+function formatVerbosePastDelta(delta: PastDelta): string {
+  if (delta.minutes < 1) return 'Just now';
+  if (delta.minutes < 60) return pluralizePastUnit(delta.minutes, 'minute');
+  if (delta.hours < 24) return pluralizePastUnit(delta.hours, 'hour');
+  if (delta.days === 1) return 'Yesterday';
+  if (delta.days < 7) return pluralizePastUnit(delta.days, 'day');
+  if (delta.days < 30) {
+    return pluralizePastUnit(Math.floor(delta.days / 7), 'week');
+  }
+
+  const months = Math.floor(delta.days / 30);
+  return pluralizePastUnit(months, 'month');
+}
+
 /**
  * Past-only relative time (plan cards: compact; dashboard activity: verbose).
  *
@@ -39,49 +91,17 @@ type RelativePastOptions = {
  */
 export function formatRelativePast(
   date: ValidDateInput,
-  options: RelativePastOptions
+  options: RelativePastOptions,
 ): string {
   const targetDate = toValidDate(date);
   const reference = toValidDate(options.referenceDate);
   const invalid = options.invalidLabel ?? 'Recently';
   if (!targetDate || !reference) return invalid;
 
-  const rawMinutes = differenceInMinutes(reference, targetDate);
-  const rawHours = differenceInHours(reference, targetDate);
-  const rawDays = differenceInDays(reference, targetDate);
-
-  const diffMinutes = Math.max(0, rawMinutes);
-  const diffHours = Math.max(0, rawHours);
-  const diffDays = Math.max(0, rawDays);
-
-  if (options.style === 'compact') {
-    if (diffMinutes < 60) {
-      return diffMinutes <= 1 ? 'Just now' : `${diffMinutes}m ago`;
-    }
-    if (diffHours < 24) {
-      return diffHours === 1 ? '1 hour ago' : `${diffHours}h ago`;
-    }
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-    return `${Math.floor(diffDays / 30)}mo ago`;
-  }
-
-  if (diffMinutes < 1) return 'Just now';
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
-  }
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  }
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-  }
-  const months = Math.floor(diffDays / 30);
-  return `${months} month${months === 1 ? '' : 's'} ago`;
+  const delta = getClampedPastDelta(targetDate, reference);
+  return options.style === 'compact'
+    ? formatCompactPastDelta(delta)
+    : formatVerbosePastDelta(delta);
 }
 
 /**
@@ -89,7 +109,7 @@ export function formatRelativePast(
  */
 export function formatScheduledEventRelative(
   date: Date,
-  referenceDate: Date
+  referenceDate: Date,
 ): string {
   const targetDate = toValidDate(date);
   const reference = toValidDate(referenceDate);

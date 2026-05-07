@@ -9,7 +9,7 @@ const BASE_DATE = new Date('2025-01-01T00:00:00.000Z');
  * Keeps OwnedPlanRecord defaults centralized so query-shape changes stay in one place.
  */
 export function createTestPlan(
-  overrides: Partial<OwnedPlanRecord> = {}
+  overrides: Partial<OwnedPlanRecord> = {},
 ): OwnedPlanRecord {
   return {
     id: createId('plan'),

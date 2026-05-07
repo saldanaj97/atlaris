@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getActivityRelativeLabel } from '@/app/dashboard/components/activity-utils';
-import { getPlanLastActivityRelative } from '@/app/plans/components/plan-utils';
+import { getActivityRelativeLabel } from '@/app/(app)/dashboard/components/activity-utils';
+import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
   formatRelativePast,
   formatScheduledEventRelative,
@@ -13,6 +13,7 @@ describe('relative-time', () => {
   it.each([
     ['2025-06-15T11:59:00.000Z', 'Just now'],
     ['2025-06-15T11:55:00.000Z', '5m ago'],
+    ['2025-06-15T11:00:00.000Z', '1h ago'],
     ['2025-06-15T10:00:00.000Z', '2h ago'],
     ['2025-06-14T12:00:00.000Z', 'Yesterday'],
     ['2025-06-10T12:00:00.000Z', '5 days ago'],
@@ -21,7 +22,7 @@ describe('relative-time', () => {
       formatRelativePast(new Date(input), {
         referenceDate: ref,
         style: 'compact',
-      })
+      }),
     ).toBe(expected);
   });
 
@@ -35,7 +36,7 @@ describe('relative-time', () => {
       formatRelativePast(new Date(input), {
         referenceDate: ref,
         style: 'verbose',
-      })
+      }),
     ).toBe(expected);
   });
 
@@ -45,14 +46,14 @@ describe('relative-time', () => {
         referenceDate: ref,
         style: 'compact',
         invalidLabel: 'Recently',
-      })
+      }),
     ).toBe('Recently');
     expect(
       formatRelativePast(new Date('2025-06-15T11:00:00.000Z'), {
         referenceDate: null,
         style: 'compact',
         invalidLabel: 'Recently',
-      })
+      }),
     ).toBe('Recently');
   });
 
@@ -70,27 +71,27 @@ describe('relative-time', () => {
   it('formatScheduledEventRelative matches dashboard scheduled-event phrasing', () => {
     const tomorrow = new Date('2025-06-16T14:30:00.000Z');
     expect(formatScheduledEventRelative(tomorrow, ref)).toMatch(
-      /^Tomorrow at /
+      /^Tomorrow at /,
     );
     expect(
-      formatScheduledEventRelative(new Date('2025-06-23T12:00:00.000Z'), ref)
+      formatScheduledEventRelative(new Date('2025-06-23T12:00:00.000Z'), ref),
     ).toBe(
       new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',
-      }).format(new Date('2025-06-23T12:00:00.000Z'))
+      }).format(new Date('2025-06-23T12:00:00.000Z')),
     );
   });
 
   it('supports deterministic now injection in dashboard and plan helpers', () => {
     expect(
-      getActivityRelativeLabel(new Date('2025-06-15T12:30:00.000Z'), ref)
+      getActivityRelativeLabel(new Date('2025-06-15T12:30:00.000Z'), ref),
     ).toBe('In 30 min');
     expect(
       getPlanLastActivityRelative(
         '2025-06-15T11:55:00.000Z',
-        '2025-06-15T12:00:00.000Z'
-      )
+        '2025-06-15T12:00:00.000Z',
+      ),
     ).toBe('5m ago');
   });
 
@@ -102,7 +103,7 @@ describe('relative-time', () => {
   it('clamps future dates to non-negative deltas (legacy plan-card behavior)', () => {
     const future = new Date('2025-06-15T14:00:00.000Z');
     expect(
-      formatRelativePast(future, { referenceDate: ref, style: 'compact' })
+      formatRelativePast(future, { referenceDate: ref, style: 'compact' }),
     ).toBe('Just now');
   });
 });

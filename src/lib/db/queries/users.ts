@@ -1,14 +1,14 @@
-import { eq } from 'drizzle-orm';
 import { getRequestContext } from '@/lib/api/context';
-import type { PreferredAiModel } from '@/lib/db/enums';
 import type {
   CreateUserData,
   DbUser,
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
-import { getDb } from '@/lib/db/runtime';
-import { users } from '@/lib/db/schema';
+import { users } from '@supabase/schema';
 import { isValidModelId } from '@/shared/constants/ai-models';
+import { eq } from 'drizzle-orm';
+import type { PreferredAiModel } from '../../../../supabase/enums';
+import { getDb } from '@supabase/runtime';
 
 const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
 const SUBSCRIPTION_STATUSES = new Set([
@@ -31,9 +31,32 @@ function isOptionalDate(value: unknown): value is Date | null {
 }
 
 function isOptionalPreferredAiModel(
-  value: unknown
+  value: unknown,
 ): value is PreferredAiModel | null {
   return value === null || (typeof value === 'string' && isValidModelId(value));
+}
+
+function hasCoreIdentityFields(maybeUser: Partial<DbUser>): boolean {
+  return (
+    typeof maybeUser.id === 'string' &&
+    typeof maybeUser.authUserId === 'string' &&
+    typeof maybeUser.email === 'string'
+  );
+}
+
+function hasValidSubscriptionTier(maybeUser: Partial<DbUser>): boolean {
+  return (
+    typeof maybeUser.subscriptionTier === 'string' &&
+    SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier)
+  );
+}
+
+function hasValidSubscriptionStatus(maybeUser: Partial<DbUser>): boolean {
+  return (
+    maybeUser.subscriptionStatus === null ||
+    (typeof maybeUser.subscriptionStatus === 'string' &&
+      SUBSCRIPTION_STATUSES.has(maybeUser.subscriptionStatus))
+  );
 }
 
 function isDbUser(user: unknown): user is DbUser {
@@ -44,23 +67,33 @@ function isDbUser(user: unknown): user is DbUser {
   const maybeUser = user as Partial<DbUser>;
 
   return (
-    typeof maybeUser.id === 'string' &&
-    typeof maybeUser.authUserId === 'string' &&
-    typeof maybeUser.email === 'string' &&
-    typeof maybeUser.subscriptionTier === 'string' &&
-    SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier) &&
+    hasCoreIdentityFields(maybeUser) &&
+    hasValidSubscriptionTier(maybeUser) &&
     typeof maybeUser.monthlyExportCount === 'number' &&
     maybeUser.createdAt instanceof Date &&
     maybeUser.updatedAt instanceof Date &&
     isOptionalString(maybeUser.name) &&
     isOptionalString(maybeUser.stripeCustomerId) &&
     isOptionalString(maybeUser.stripeSubscriptionId) &&
-    (maybeUser.subscriptionStatus === null ||
-      (typeof maybeUser.subscriptionStatus === 'string' &&
-        SUBSCRIPTION_STATUSES.has(maybeUser.subscriptionStatus))) &&
+    hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
     isOptionalPreferredAiModel(maybeUser.preferredAiModel)
   );
+}
+
+function matchingContextDbUser(
+  contextUser: unknown,
+  authUserId: string,
+): DbUser | undefined {
+  if (
+    !contextUser ||
+    typeof contextUser !== 'object' ||
+    !('authUserId' in contextUser) ||
+    (contextUser as { authUserId: string }).authUserId !== authUserId
+  ) {
+    return undefined;
+  }
+  return isDbUser(contextUser) ? contextUser : undefined;
 }
 
 interface GetUserByAuthIdDeps extends UsersQueryDeps {
@@ -92,12 +125,13 @@ const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
 export async function getUserByAuthId(
   authUserId: string,
   dbClient?: UsersDbClient,
-  deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps
+  deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps,
 ): Promise<DbUser | undefined> {
   if (dbClient === undefined) {
     const contextUser = deps.getRequestContext()?.user;
-    if (contextUser?.authUserId === authUserId && isDbUser(contextUser)) {
-      return contextUser;
+    const cached = matchingContextDbUser(contextUser, authUserId);
+    if (cached !== undefined) {
+      return cached;
     }
   }
 
@@ -120,7 +154,7 @@ export async function getUserByAuthId(
 export async function createUser(
   userData: CreateUserData,
   dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps
+  deps: UsersQueryDeps = defaultUsersQueryDeps,
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? deps.getDb();
 
@@ -146,7 +180,7 @@ export async function updateUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
   dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps
+  deps: UsersQueryDeps = defaultUsersQueryDeps,
 ): Promise<DbUser | undefined> {
   const client = dbClient ?? deps.getDb();
 

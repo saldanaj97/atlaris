@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ScheduleWeekList } from '@/app/plans/[id]/components/ScheduleWeekList';
+import { ScheduleWeekList } from '@/app/(app)/plans/[id]/components/ScheduleWeekList';
 import type { ScheduleJson } from '@/shared/types/scheduling.types';
 
 describe('ScheduleWeekList', () => {

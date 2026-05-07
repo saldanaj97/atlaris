@@ -18,19 +18,18 @@ describe('normalizeUsage (OpenRouter cost)', () => {
     expect(u.providerReportedCostUsd).toBe(0.001);
   });
 
-  it.each([
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    Number.NEGATIVE_INFINITY,
-  ])('throws when usage.cost is %s', (cost) => {
-    expect(() =>
-      normalizeUsage({
-        promptTokens: 1,
-        completionTokens: 2,
-        cost,
-      })
-    ).toThrow(ProviderInvalidResponseError);
-  });
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'throws when usage.cost is %s',
+    (cost) => {
+      expect(() =>
+        normalizeUsage({
+          promptTokens: 1,
+          completionTokens: 2,
+          cost,
+        }),
+      ).toThrow(ProviderInvalidResponseError);
+    },
+  );
 
   it('ignores non-object usage values', () => {
     expect(normalizeUsage(1 as never)).toEqual({
@@ -46,7 +45,7 @@ describe('normalizeUsage (OpenRouter cost)', () => {
         promptTokens: 1,
         completionTokens: 2,
         cost: -1,
-      })
+      }),
     ).toThrow(ProviderInvalidResponseError);
   });
 });
@@ -58,7 +57,7 @@ describe('isUsageShape (OpenRouter cost)', () => {
         promptTokens: 1,
         completionTokens: 2,
         totalTokens: 3,
-      })
+      }),
     ).toBe(true);
   });
 
@@ -69,24 +68,23 @@ describe('isUsageShape (OpenRouter cost)', () => {
         completionTokens: 2,
         totalTokens: 3,
         cost: 0,
-      })
+      }),
     ).toBe(true);
   });
 
-  it.each([
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    Number.NEGATIVE_INFINITY,
-  ])('rejects non-finite cost %s', (cost) => {
-    expect(
-      isUsageShape({
-        promptTokens: 1,
-        completionTokens: 2,
-        totalTokens: 3,
-        cost,
-      })
-    ).toBe(false);
-  });
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects non-finite cost %s',
+    (cost) => {
+      expect(
+        isUsageShape({
+          promptTokens: 1,
+          completionTokens: 2,
+          totalTokens: 3,
+          cost,
+        }),
+      ).toBe(false);
+    },
+  );
 
   it('rejects negative cost', () => {
     expect(
@@ -95,7 +93,7 @@ describe('isUsageShape (OpenRouter cost)', () => {
         completionTokens: 2,
         totalTokens: 3,
         cost: -0.001,
-      })
+      }),
     ).toBe(false);
   });
 });
@@ -111,23 +109,22 @@ describe('validateNonStreamingResponse (usage.cost)', () => {
     ],
   };
 
-  it.each([
-    Number.NaN,
-    Number.POSITIVE_INFINITY,
-    Number.NEGATIVE_INFINITY,
-  ])('rejects non-finite usage.cost %s before normalizeUsage', (cost) => {
-    expect(() =>
-      validateNonStreamingResponse({
-        ...baseResponse,
-        usage: {
-          promptTokens: 1,
-          completionTokens: 2,
-          totalTokens: 3,
-          cost,
-        },
-      })
-    ).toThrow(ProviderInvalidResponseError);
-  });
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects non-finite usage.cost %s before normalizeUsage',
+    (cost) => {
+      expect(() =>
+        validateNonStreamingResponse({
+          ...baseResponse,
+          usage: {
+            promptTokens: 1,
+            completionTokens: 2,
+            totalTokens: 3,
+            cost,
+          },
+        }),
+      ).toThrow(ProviderInvalidResponseError);
+    },
+  );
 
   it('rejects negative usage.cost before normalizeUsage', () => {
     expect(() =>
@@ -139,7 +136,7 @@ describe('validateNonStreamingResponse (usage.cost)', () => {
           totalTokens: 3,
           cost: -1,
         },
-      })
+      }),
     ).toThrow(ProviderInvalidResponseError);
   });
 });

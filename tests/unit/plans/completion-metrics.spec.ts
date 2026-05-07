@@ -6,22 +6,22 @@ import {
   computeCompletionMetricsFromNestedModules,
   computeTaskRowCompletionMetrics,
   countCompletedModulesFromFlatTasks,
-} from '@/features/plans/read-models/completion-metrics';
-import { buildPlanSummaries } from '@/features/plans/read-models/summary';
+} from '@/features/plans/read-projection/completion-metrics';
+import { buildPlanSummaries } from '@/features/plans/read-projection/summary-projection';
 
 type SummaryTaskRow = {
   id: string;
   moduleId: string;
   planId: string;
-  estimatedMinutes: number | null;
+  estimatedMinutes: number;
 };
 
 function buildTaskRow(
   overrides: Partial<SummaryTaskRow> &
-    Pick<SummaryTaskRow, 'id' | 'moduleId' | 'planId'>
+    Pick<SummaryTaskRow, 'id' | 'moduleId' | 'planId'>,
 ): SummaryTaskRow {
   return {
-    estimatedMinutes: null,
+    estimatedMinutes: 0,
     ...overrides,
   };
 }

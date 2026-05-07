@@ -25,7 +25,7 @@ export async function startSmokePostgresContainer(): Promise<StartedPostgreSqlCo
 }
 
 export async function stopSmokePostgresContainer(
-  container: StartedPostgreSqlContainer | null
+  container: StartedPostgreSqlContainer | null,
 ): Promise<void> {
   if (!container) {
     return;

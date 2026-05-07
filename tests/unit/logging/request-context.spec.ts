@@ -17,15 +17,15 @@ vi.mock('@/lib/logging/logger', () => {
 
 import {
   attachRequestIdHeader,
-  createRequestContext,
+  createLoggingRequestContext,
   REQUEST_ID_HEADER,
 } from '@/lib/logging/request-context';
 
-describe('createRequestContext', () => {
+describe('createLoggingRequestContext', () => {
   it('reuses the incoming request ID header when present', () => {
     const headers = new Headers([[REQUEST_ID_HEADER, 'req-123']]);
 
-    const context = createRequestContext({ headers });
+    const context = createLoggingRequestContext({ headers });
 
     expect(context.requestId).toBe('req-123');
   });
@@ -33,7 +33,7 @@ describe('createRequestContext', () => {
   it('generates a new request ID when header is missing', () => {
     const headers = new Headers();
 
-    const context = createRequestContext({ headers });
+    const context = createLoggingRequestContext({ headers });
 
     expect(context.requestId).toMatch(/^[0-9a-f-]{36}$/i);
   });

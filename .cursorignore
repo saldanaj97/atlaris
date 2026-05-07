@@ -19,7 +19,6 @@ next-env.d.ts
 /coverage
 /tests/test-results/*
 /tests/results/
-jscpd-report/
 
 # Logs & Misc Noise
 *.log*
@@ -29,5 +28,6 @@ yarn-error.log*
 .DS_Store
 /.cocoindex_code/
 
-# Environment files
+# Environment files - only commit example
 .env*
+!.env.example

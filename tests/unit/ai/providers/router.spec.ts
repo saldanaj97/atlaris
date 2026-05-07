@@ -329,7 +329,7 @@ describe('RouterGenerationProvider', () => {
       });
 
       await expect(provider.generate(mockInput)).rejects.toThrow(
-        'OpenRouter returned no text content'
+        'OpenRouter returned no text content',
       );
       expect(mockSend).toHaveBeenCalledTimes(1);
     });

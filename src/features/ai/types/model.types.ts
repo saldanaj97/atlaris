@@ -3,7 +3,7 @@
  * splits between `free`-accessible and `pro`-only tiers, regardless of how
  * many subscription tiers the billing surface defines.
  */
-export type ModelTier = 'free' | 'pro';
+type ModelTier = 'free' | 'pro';
 
 /**
  * Metadata for an available AI model.

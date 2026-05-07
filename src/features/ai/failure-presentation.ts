@@ -1,4 +1,4 @@
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 type FailurePresentationClassification = FailureClassification | 'unknown';
 
@@ -57,13 +57,13 @@ const FAILURE_PRESENTATIONS: Record<
 };
 
 export function getFailurePresentation(
-  classification: FailurePresentationClassification
+  classification: FailurePresentationClassification,
 ): FailurePresentation {
   return FAILURE_PRESENTATIONS[classification] ?? DEFAULT_FAILURE_PRESENTATION;
 }
 
 export function classificationToUserMessage(
-  classification: FailurePresentationClassification
+  classification: FailurePresentationClassification,
 ): string {
   return getFailurePresentation(classification).message;
 }

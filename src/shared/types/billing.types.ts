@@ -1,6 +1,6 @@
 export type SubscriptionTier = 'free' | 'starter' | 'pro';
 
-export type TierLimitConfig = {
+type TierLimitConfig = {
   maxActivePlans: number;
   monthlyRegenerations: number;
   monthlyExports: number;

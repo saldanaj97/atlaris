@@ -1,0 +1,19 @@
+import { SignUp } from '@clerk/nextjs';
+import type { Metadata } from 'next';
+import type { JSX } from 'react';
+
+import { PageShell } from '@/components/ui/page-shell';
+
+export const metadata: Metadata = {
+  title: 'Create Account | Atlaris',
+  description:
+    'Create your Atlaris account to turn learning goals into structured schedules.',
+};
+
+export default function SignUpPage(): JSX.Element {
+  return (
+    <PageShell className="flex flex-col items-center justify-center gap-6">
+      <SignUp fallbackRedirectUrl="/dashboard" signInUrl="/auth/sign-in" />
+    </PageShell>
+  );
+}

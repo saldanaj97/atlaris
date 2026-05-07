@@ -66,7 +66,7 @@ jobs:
           fi
 
           run_migrations="false"
-          if printf '%s\n' "$files" | grep -Eq '^(src/lib/db/schema/|src/lib/db/migrations/|src/lib/db/enums\.ts$|drizzle\.config\.ts$|\.github/workflows/deploy-production-migrations\.yml$)'; then
+          if printf '%s\n' "$files" | grep -Eq '^(supabase/schema/|supabase/migrations/|supabase/enums\.ts$|drizzle\.config\.ts$|\.github/workflows/deploy-production-migrations\.yml$)'; then
             run_migrations="true"
           fi
 

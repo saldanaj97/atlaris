@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { canonicalUsageToRecordParams } from '@/lib/db/usage';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { canonicalUsageToRecordParams } from '../../../supabase/usage';
 
 function makeCanonicalUsage(
-  overrides?: Partial<CanonicalAIUsage>
+  overrides?: Partial<CanonicalAIUsage>,
 ): CanonicalAIUsage {
   return {
     inputTokens: 100,
@@ -28,7 +28,7 @@ describe('canonicalUsageToRecordParams', () => {
         isPartial: true,
         missingFields: ['provider'],
       }),
-      'user-1'
+      'user-1',
     );
 
     expect(params.providerCostMicrousd).toBeUndefined();

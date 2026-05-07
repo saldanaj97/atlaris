@@ -11,6 +11,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { NavItem } from '@/features/navigation';
 import { trackEvent } from '@/lib/analytics';
 
@@ -29,21 +34,25 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      {/* Hamburger trigger */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setOpen(true)}
-        className="text-muted-foreground h-9 w-9 rounded-xl bg-white/40 shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
-        aria-label="Open menu"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setOpen(true)}
+            className="rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Menu</TooltipContent>
+      </Tooltip>
 
       {/* Sheet content sliding from left */}
       <SheetContent
         side="left"
-        className="dark:bg-card/90 w-72 border-r border-white/40 bg-white/80 p-0 backdrop-blur-xl dark:border-white/10"
+        className="w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55"
       >
         <SheetHeader className="p-6">
           <BrandLogo size="sm" onClick={() => setOpen(false)} />
@@ -92,13 +101,13 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-primary text-white shadow-md'
-                      : 'text-muted-foreground hover:text-primary dark:hover:text-primary hover:bg-white/60 dark:hover:bg-white/10'
+                      : 'text-muted-foreground hover:bg-white/60 hover:text-primary dark:hover:bg-white/10 dark:hover:text-primary'
                   }`}
                 >
                   {item.label}
                 </Link>
                 {item.dropdown && (
-                  <div className="border-primary/20 dark:border-primary/30 ml-4 flex flex-col gap-1 border-l pl-4">
+                  <div className="ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30">
                     {item.dropdown.map((subItem) => {
                       const isSubActive = pathname === subItem.href;
                       return (

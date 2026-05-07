@@ -1,11 +1,9 @@
 import { classificationToUserMessage } from '@/features/ai/failure-presentation';
 import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
-import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-service';
-import { withAuthAndRateLimit } from '@/lib/api/auth';
+import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-projection/service';
 import { NotFoundError } from '@/lib/api/errors';
-import { withErrorBoundary } from '@/lib/api/middleware';
+import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { getDb } from '@/lib/db/runtime';
 import { logger } from '@/lib/logging/logger';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
@@ -17,17 +15,20 @@ import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
  * instead of the legacy job_queue table.
  */
 
-export const GET = withErrorBoundary(
-  withAuthAndRateLimit('read', async ({ req, user }): Promise<Response> => {
+export const GET = requestBoundary.route(
+  { rateLimit: 'read' },
+  async ({ req, actor, db, correlationId }): Promise<Response> => {
     const planId = requirePlanIdFromRequest(req, 'second-to-last');
-    const dbClient = getDb();
 
-    logger.debug({ planId, userId: user.id }, 'Plan status request received');
+    logger.debug(
+      { planId, userId: actor.id, correlationId },
+      'Plan status request received',
+    );
 
     const statusSnapshot = await getPlanGenerationStatusSnapshot({
       planId,
-      userId: user.id,
-      dbClient,
+      userId: actor.id,
+      dbClient: db,
     });
 
     if (!statusSnapshot) {
@@ -37,28 +38,30 @@ export const GET = withErrorBoundary(
     logger.debug(
       {
         planId,
-        userId: user.id,
+        userId: actor.id,
+        correlationId,
         status: statusSnapshot.status,
         attempts: statusSnapshot.attempts,
       },
-      'Plan status response'
+      'Plan status response',
     );
 
     let latestError: string | null = null;
     if (statusSnapshot.status === 'failed') {
       latestError = classificationToUserMessage(
-        statusSnapshot.latestClassification ?? 'unknown'
+        statusSnapshot.latestClassification ?? 'unknown',
       );
       logger.warn(
         {
           planId,
-          userId: user.id,
+          userId: actor.id,
+          correlationId,
           status: statusSnapshot.status,
           attempts: statusSnapshot.attempts,
           classification: statusSnapshot.latestClassification,
           latestError,
         },
-        'Plan generation failed'
+        'Plan generation failed',
       );
     }
 
@@ -74,5 +77,5 @@ export const GET = withErrorBoundary(
     return json(body, {
       headers: { 'Cache-Control': 'max-age=1, stale-while-revalidate=2' },
     });
-  })
+  },
 );

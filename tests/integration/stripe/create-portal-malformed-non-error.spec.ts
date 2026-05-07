@@ -11,12 +11,12 @@ import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 type ParseJsonBody = (
   req: Request,
-  options: ParseJsonBodyOptions
+  options: ParseJsonBodyOptions,
 ) => Promise<unknown>;
 
 const defaultParseJsonBodyImplementation = async (
   _req: Request,
-  options: ParseJsonBodyOptions
+  options: ParseJsonBodyOptions,
 ): Promise<unknown> => {
   throw options.onMalformedJson('boom');
 };
@@ -35,7 +35,7 @@ function createMockStripe() {
 
 describe('create-portal malformed JSON factory (non-Error err)', () => {
   const mockParseJsonBody = vi.fn<ParseJsonBody>(
-    defaultParseJsonBodyImplementation
+    defaultParseJsonBodyImplementation,
   );
 
   beforeEach(() => {
@@ -71,7 +71,7 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
-      }
+      },
     );
 
     const response = await portalPOST(request);
@@ -86,7 +86,7 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
         message: 'Malformed JSON body',
         parseError: 'boom',
       }),
-      'API error'
+      'API error',
     );
   });
 
@@ -94,10 +94,10 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
     mockParseJsonBody.mockImplementationOnce(
       async (
         _req: Request,
-        options: ParseJsonBodyOptions
+        options: ParseJsonBodyOptions,
       ): Promise<unknown> => {
         throw options.onMalformedJson(42);
-      }
+      },
     );
 
     const authUserId = buildTestAuthUserId('portal-non-error-num');
@@ -120,7 +120,7 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
-      }
+      },
     );
 
     const response = await portalPOST(request);
@@ -130,7 +130,7 @@ describe('create-portal malformed JSON factory (non-Error err)', () => {
       expect.objectContaining({
         parseError: '42',
       }),
-      'API error'
+      'API error',
     );
   });
 });

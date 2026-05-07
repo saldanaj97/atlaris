@@ -4,14 +4,14 @@
  * without calling `reapplyJwtClaimsInTransaction`.
  *
  * This validates behavior against **Testcontainers Postgres** (integration test
- * runtime). Neon serverless or other poolers may differ; production may still
+ * runtime). Connection poolers or hosted Postgres may differ; production may still
  * require the re-apply workaround until verified there.
  */
 
 import { eq, type SQLWrapper, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { learningPlans } from '@/lib/db/schema';
+import { learningPlans } from '@supabase/schema';
 import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db';
 import {
@@ -47,7 +47,7 @@ function isJwtClaimsRowArray(value: unknown): value is JwtClaimsRow[] {
  */
 async function readJwtClaims(executor: ClaimsExecutor): Promise<string | null> {
   const result = await executor.execute(
-    sql`SELECT current_setting('request.jwt.claims', true) AS claims`
+    sql`SELECT current_setting('request.jwt.claims', true) AS claims`,
   );
   if (!isJwtClaimsRowArray(result)) {
     return null;
@@ -62,10 +62,10 @@ async function readJwtClaims(executor: ClaimsExecutor): Promise<string | null> {
 function logClaimComparison(
   scenario: string,
   expected: string,
-  actual: string | null
+  actual: string | null,
 ): void {
   console.info(
-    `${LOG_PREFIX} ${scenario} — expected: ${expected} | read: ${actual === null ? '(null)' : actual}`
+    `${LOG_PREFIX} ${scenario} — expected: ${expected} | read: ${actual === null ? '(null)' : actual}`,
   );
 }
 
@@ -112,7 +112,7 @@ describe('RLS JWT claim transaction stability — Testcontainers Postgres', () =
   it('JWT claims remain visible after pg_advisory_xact_lock inside transaction', async () => {
     const actual = await rlsDb.transaction(async (tx) => {
       await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(1, hashtext(${internalUserId}))`
+        sql`SELECT pg_advisory_xact_lock(1, hashtext(${internalUserId}))`,
       );
       return readJwtClaims(tx);
     });

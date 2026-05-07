@@ -12,7 +12,7 @@ export class PlanLimitReachedError extends AppError {
   constructor(
     currentCount?: number,
     limit?: number,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super('Plan limit reached for current subscription tier.', {
       status: 403,

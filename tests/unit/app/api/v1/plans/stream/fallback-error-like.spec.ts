@@ -50,4 +50,34 @@ describe('toFallbackErrorLike', () => {
     const like = toFallbackErrorLike(obj);
     expect(like.message).toBe('{"a":1,"self":"[Circular]"}');
   });
+
+  it('copies numeric status and statusCode from plain objects', () => {
+    const like = toFallbackErrorLike({
+      message: 'x',
+      status: 503,
+      statusCode: 503,
+    });
+    expect(like.status).toBe(503);
+    expect(like.statusCode).toBe(503);
+  });
+
+  it('maps response null and response body status for SSE-shaped errors', () => {
+    const withNull = toFallbackErrorLike({
+      message: 'n',
+      response: null,
+    });
+    expect(withNull.response).toBeNull();
+
+    const withBody = toFallbackErrorLike({
+      message: 'b',
+      response: { status: 418 },
+    });
+    expect(withBody.response).toEqual({ status: 418 });
+
+    const withBodyNoStatus = toFallbackErrorLike({
+      message: 'c',
+      response: { headers: {} },
+    });
+    expect(withBodyNoStatus.response).toEqual({});
+  });
 });

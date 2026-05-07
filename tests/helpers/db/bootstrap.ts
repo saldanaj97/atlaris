@@ -1,10 +1,10 @@
 /**
- * Shared Neon-like bootstrap for Postgres used by Testcontainers and
- * `scripts/bootstrap-local-db.ts`. Keep in sync with migration + privilege rules.
+ * Shared Supabase-like bootstrap for isolated Testcontainers Postgres.
+ * Keep in sync with migration + privilege rules.
  */
 import postgres from 'postgres';
 
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '@/lib/db/privileges/users-authenticated-update-columns';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 
@@ -20,17 +20,15 @@ export async function bootstrapDatabase(connectionUrl: string): Promise<void> {
 
     await sql.unsafe(`
       DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE anonymous NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE service_role NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-      DO $$ BEGIN CREATE ROLE neondb_owner NOINHERIT NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     `);
 
     await sql`CREATE SCHEMA IF NOT EXISTS auth`;
     await sql.unsafe(AUTH_JWT_BOOTSTRAP_SQL);
 
-    await sql`GRANT USAGE ON SCHEMA public TO authenticated, anonymous`;
-    await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anonymous`;
+    await sql`GRANT USAGE ON SCHEMA public TO authenticated, anon`;
+    await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anon`;
   } finally {
     await sql.end();
   }
@@ -41,18 +39,20 @@ export async function bootstrapDatabase(connectionUrl: string): Promise<void> {
  * (tables now exist).
  */
 export async function grantRlsPermissions(
-  connectionUrl: string
+  connectionUrl: string,
 ): Promise<void> {
   const sql = postgres(connectionUrl, { max: 1 });
 
   try {
     await sql`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated`;
-    await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anonymous`;
-    await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anonymous`;
+    await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon`;
+    await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon`;
 
     await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`
@@ -71,7 +71,27 @@ export async function grantRlsPermissions(
       grantedSorted.some((c, i) => c !== expectedSorted[i])
     ) {
       throw new Error(
-        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with src/lib/db/migrations/0018_harden_users_update_columns.sql and src/lib/db/privileges/users-authenticated-update-columns.ts.`
+        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with supabase/migrations/0018_harden_users_update_columns.sql and supabase/privileges/users-authenticated-update-columns.ts.`,
+      );
+    }
+
+    const jobQueueWriteGrants = await sql<
+      { grantee: string; privilege_type: string }[]
+    >`
+      select grantee::text, privilege_type::text
+      from information_schema.table_privileges
+      where table_schema = 'public'
+        and table_name = 'job_queue'
+        and grantee in ('authenticated', 'anon')
+        and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+      order by grantee, privilege_type
+    `;
+    if (jobQueueWriteGrants.length > 0) {
+      const got = jobQueueWriteGrants
+        .map((r) => `${r.grantee}:${r.privilege_type}`)
+        .join(', ');
+      throw new Error(
+        `Bootstrap: job_queue write grants for authenticated/anon expected [], got [${got}]. Sync grantRlsPermissions with supabase/migrations/0028_harden_job_queue_service_role_writes.sql and 0029_harden_job_queue_anonymous.sql.`,
       );
     }
 
@@ -81,11 +101,11 @@ export async function grantRlsPermissions(
     `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT ON TABLES TO anonymous
+        GRANT SELECT ON TABLES TO anon
     `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anonymous
+        GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anon
     `;
 
     await sql`ALTER ROLE postgres BYPASSRLS`;

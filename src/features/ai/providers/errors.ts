@@ -10,7 +10,7 @@ export class ProviderError extends Error {
   constructor(
     public readonly kind: ProviderErrorKind,
     message: string,
-    options?: ProviderErrorOptions
+    options?: ProviderErrorOptions,
   ) {
     super(message, options);
     this.name = 'ProviderError';
@@ -21,7 +21,7 @@ export class ProviderError extends Error {
 export class ProviderRateLimitError extends ProviderError {
   constructor(
     message = 'AI provider rate limit exceeded',
-    options?: ProviderErrorOptions
+    options?: ProviderErrorOptions,
   ) {
     super('rate_limit', message, options);
     this.name = 'ProviderRateLimitError';
@@ -31,7 +31,7 @@ export class ProviderRateLimitError extends ProviderError {
 export class ProviderTimeoutError extends ProviderError {
   constructor(
     message = 'AI provider timed out',
-    options?: ProviderErrorOptions
+    options?: ProviderErrorOptions,
   ) {
     super('timeout', message, options);
     this.name = 'ProviderTimeoutError';
@@ -41,7 +41,7 @@ export class ProviderTimeoutError extends ProviderError {
 export class ProviderInvalidResponseError extends ProviderError {
   constructor(
     message = 'AI provider returned an invalid response',
-    options?: ProviderErrorOptions
+    options?: ProviderErrorOptions,
   ) {
     super('invalid_response', message, options);
     this.name = 'ProviderInvalidResponseError';

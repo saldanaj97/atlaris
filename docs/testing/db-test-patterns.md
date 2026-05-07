@@ -158,7 +158,7 @@ import { createId } from '@tests/fixtures/ids';
 ```typescript
 // src/lib/db/queries/types/attempts.types.ts
 export type AttemptsDbClient = ReturnType<
-  typeof import('@/lib/db/runtime').getDb
+  typeof import('@supabase/runtime').getDb
 >;
 ```
 
@@ -216,10 +216,10 @@ interface NormalizedTaskData {
 
 **File:** `tests/unit/setup.ts`
 
-The project globally mocks `@/lib/db/service-role` to prevent accidental real database access in unit tests. This is a **safety net**, not the primary mocking strategy — prefer injecting mock clients via function parameters (see [test-standards.md §3](./test-standards.md#prefer-dependency-injection-over-module-mocking)).
+The project globally mocks `@supabase/service-role` to prevent accidental real database access in unit tests. This is a **safety net**, not the primary mocking strategy — prefer injecting mock clients via function parameters (see [test-standards.md §3](./test-standards.md#prefer-dependency-injection-over-module-mocking)).
 
 ```typescript
-vi.mock('@/lib/db/service-role', () => ({
+vi.mock('@supabase/service-role', () => ({
   client: { end: vi.fn() },
   db: {
     select: vi.fn(),
@@ -314,7 +314,7 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
 
 ```typescript
 export function createTestPlan(
-  overrides: Partial<OwnedPlanRecord> = {}
+  overrides: Partial<OwnedPlanRecord> = {},
 ): OwnedPlanRecord {
   return {
     id: createId('plan'),
@@ -365,7 +365,7 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
   if (db == null || typeof db !== 'object') return false;
   const obj = db as Record<string, unknown>;
   return ATTEMPTS_DB_METHODS.every(
-    (method) => typeof obj[method] === 'function'
+    (method) => typeof obj[method] === 'function',
   );
 }
 ```
@@ -374,7 +374,7 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
 
 ```typescript
 export async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams
+  params: FinalizeSuccessPersistenceParams,
 ): Promise<GenerationAttemptRecord> {
   return dbClient.transaction(async (tx) => {
     await tx.delete(modules).where(eq(modules.planId, planId));
@@ -484,7 +484,7 @@ describe('deletePlan', () => {
 | Inject mocks         | Pass mock `dbClient` to query helpers instead of relying on module mocks                  |
 | Validate SQL         | Capture where clauses, inspect via `PgDialect.sqlToQuery()`                               |
 | Test data            | `buildUserFixture()`, `createTestPlan()`, `createId()`                                    |
-| Safety net           | `tests/unit/setup.ts` globally mocks `@/lib/db/service-role`                              |
+| Safety net           | `tests/unit/setup.ts` globally mocks `@supabase/service-role`                             |
 | Transactions         | Override `transaction` mock per-test with a `mockTx` that has the operations you need     |
 
 ---

@@ -5,7 +5,7 @@ function isNonEmptyString(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function getAllowedCheckoutPriceIds(): string[] {
+export function getAllowedCheckoutPriceIds(): string[] {
   const pricingValues = [
     stripeEnv.pricing.starterMonthly,
     stripeEnv.pricing.proMonthly,
@@ -26,7 +26,7 @@ function getAllowedCheckoutPriceIds(): string[] {
           proYearly: stripeEnv.pricing.proYearly,
         },
       },
-      'Stripe pricing misconfigured: no valid checkout price IDs'
+      'Stripe pricing misconfigured: no valid checkout price IDs',
     );
     throw new Error('Stripe pricing misconfigured: no valid price IDs');
   }

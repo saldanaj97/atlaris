@@ -29,14 +29,14 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
   const fallback = (namespace: string, method: string) =>
     vi.fn().mockImplementation(() => {
       throw new Error(
-        `makeStripeMock: ${namespace}.${method}() called but no implementation was provided. Pass it in the partial argument.`
+        `makeStripeMock: ${namespace}.${method}() called but no implementation was provided. Pass it in the partial argument.`,
       );
     });
 
   const buildNamespace = <T>(
     name: string,
     overrides: Partial<T> | undefined,
-    methods: ReadonlyArray<keyof T & string>
+    methods: ReadonlyArray<keyof T & string>,
   ): T => {
     const base = {} as Record<string, unknown>;
     for (const method of methods) {
@@ -50,7 +50,7 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
   const customers = buildNamespace<Stripe['customers']>(
     'customers',
     partial.customers as Partial<Stripe['customers']> | undefined,
-    ['create', 'update', 'retrieve', 'del'] as const
+    ['create', 'update', 'retrieve', 'del'] as const,
   );
   const checkout = {
     sessions: buildNamespace<Stripe['checkout']['sessions']>(
@@ -60,7 +60,7 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
           | { sessions?: Partial<Stripe['checkout']['sessions']> }
           | undefined
       )?.sessions,
-      ['create', 'retrieve', 'list', 'expire'] as const
+      ['create', 'retrieve', 'list', 'expire'] as const,
     ),
   } as Stripe['checkout'];
   const billingPortal = {
@@ -71,18 +71,18 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
           | { sessions?: Partial<Stripe['billingPortal']['sessions']> }
           | undefined
       )?.sessions,
-      ['create'] as const
+      ['create'] as const,
     ),
   } as Stripe['billingPortal'];
   const prices = buildNamespace<Stripe['prices']>(
     'prices',
     partial.prices as Partial<Stripe['prices']> | undefined,
-    ['create', 'retrieve', 'list', 'update'] as const
+    ['create', 'retrieve', 'list', 'update'] as const,
   );
   const subscriptions = buildNamespace<Stripe['subscriptions']>(
     'subscriptions',
     partial.subscriptions as Partial<Stripe['subscriptions']> | undefined,
-    ['create', 'retrieve', 'update', 'cancel', 'list'] as const
+    ['create', 'retrieve', 'update', 'cancel', 'list'] as const,
   );
 
   return {
@@ -96,13 +96,15 @@ export function makeStripeMock(partial: DeepPartial<LocalStripe> = {}): Stripe {
 
 /**
  * Build a partial Stripe.Subscription object that satisfies the type plus the
- * `current_period_end` field that lives on the wire but is missing from the
- * SDK's pinned typings (see src/features/billing/account-transitions.ts).
+ * `current_period_end` field. The project pins SDK typings for compatibility,
+ * so tests keep this wire field explicit until the pinned type includes it.
+ *
+ * @see {@link ../../src/features/billing/stripe-commerce/reconciliation}
  */
 export function makeStripeSubscription(
   partial: DeepPartial<Stripe.Subscription> & {
     current_period_end?: number;
-  } = {}
+  } = {},
 ): Stripe.Subscription & { current_period_end?: number } {
   return {
     id: partial.id ?? 'sub_test',
@@ -120,7 +122,7 @@ export function makeStripeSubscription(
  * Build a partial Stripe.Invoice object suitable for webhook test fixtures.
  */
 export function makeStripeInvoice(
-  partial: DeepPartial<Stripe.Invoice> = {}
+  partial: DeepPartial<Stripe.Invoice> = {},
 ): Stripe.Invoice {
   return {
     id: partial.id ?? 'in_test',

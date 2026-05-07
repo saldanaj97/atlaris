@@ -1,4 +1,3 @@
-import { and, desc, eq, inArray, lte } from 'drizzle-orm';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -10,8 +9,8 @@ import type {
   JobEnqueueResult,
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
-import { getDb } from '@/lib/db/runtime';
-import { jobQueue } from '@/lib/db/schema';
+import { jobQueue } from '@supabase/schema';
+import { decideJobRetry } from '@/shared/retry-policy';
 import {
   JOB_TYPES,
   type Job,
@@ -19,12 +18,9 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import {
-  computeShouldRetry,
-  getRetryDelaySeconds,
-  jobQueueSelect,
-  runJobMutationIfEditable,
-} from './shared';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { getDb } from '@supabase/runtime';
+import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 
 /**
  * Inserts a new job into the queue. For plan regeneration jobs with a planId,
@@ -50,7 +46,7 @@ export async function insertJobRecord(
     data: JobPayload;
     priority: number;
   },
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<JobEnqueueResult> {
   const client = dbClient ?? getDb();
 
@@ -109,7 +105,7 @@ export async function insertJobRecord(
  */
 export async function claimNextPendingJob(
   types: JobType[],
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -127,8 +123,8 @@ export async function claimNextPendingJob(
         and(
           eq(jobQueue.status, 'pending'),
           inArray(jobQueue.jobType, types),
-          lte(jobQueue.scheduledFor, startTime)
-        )
+          lte(jobQueue.scheduledFor, sql<Date>`now()`),
+        ),
       )
       .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
       .limit(1)
@@ -159,7 +155,7 @@ export async function claimNextPendingJob(
 export async function completeJobRecord(
   jobId: string,
   result: JobResult,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -189,23 +185,18 @@ export async function failJobRecord(
   jobId: string,
   error: string,
   retryable?: boolean,
-  dbClient?: JobsDbClient
+  dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
   return runJobMutationIfEditable(client, jobId, async (tx, current) => {
     const nextAttempts = current.attempts + 1;
     const now = new Date();
-    const shouldRetry = computeShouldRetry(
+    const decision = decideJobRetry({
+      attemptNumber: nextAttempts,
+      maxAttempts: current.maxAttempts,
       retryable,
-      nextAttempts,
-      current.maxAttempts
-    );
-
-    const retryDelaySeconds = getRetryDelaySeconds(nextAttempts);
-    const scheduledForRetry = new Date(
-      now.getTime() + retryDelaySeconds * 1000
-    );
+    });
 
     const payloadWithHistory = appendErrorHistoryEntry(current.payload, {
       attempt: nextAttempts,
@@ -213,7 +204,7 @@ export async function failJobRecord(
       timestamp: now.toISOString(),
     });
 
-    const updatePayload = shouldRetry
+    const updatePayload = decision.shouldRetry
       ? {
           attempts: nextAttempts,
           status: 'pending' as const,
@@ -221,7 +212,7 @@ export async function failJobRecord(
           result: null,
           completedAt: null,
           startedAt: null,
-          scheduledFor: scheduledForRetry,
+          scheduledFor: new Date(now.getTime() + decision.delayMs),
           updatedAt: now,
           payload: payloadWithHistory,
         }

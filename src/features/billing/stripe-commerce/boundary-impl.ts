@@ -1,26 +1,26 @@
-import Stripe from 'stripe';
-import { z } from 'zod';
+// fallow-ignore-file unused-class-member
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
+import { applyVerifiedEvent } from '@/features/billing/stripe-commerce/reconciliation';
+import {
+  isValidRedirectUrl,
+  resolveRedirectUrl,
+} from '@/features/billing/stripe-commerce/redirect';
 import type {
   AcceptWebhookInput,
   BeginCheckoutInput,
   OpenPortalInput,
   StripeCommerceBoundary,
   StripeWebhookResponse,
-} from '@/features/billing/stripe-commerce';
-import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
-import {
-  isValidRedirectUrl,
-  resolveRedirectUrl,
-} from '@/features/billing/stripe-commerce/redirect';
-import { handleStripeWebhookDedupeAndApply } from '@/features/billing/stripe-webhook-processor';
+} from '@/features/billing/stripe-commerce/types';
 import { createCustomer } from '@/features/billing/subscriptions';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
-import type { users } from '@/lib/db/schema';
-import type { db as serviceRoleDb } from '@/lib/db/service-role';
+import type { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
+import Stripe from 'stripe';
+import { z } from 'zod';
+import type { db as serviceRoleDb } from '@supabase/service-role';
 
 const DEFAULT_CHECKOUT_SUCCESS =
   '/settings/billing?session_id={CHECKOUT_SESSION_ID}';
@@ -33,11 +33,16 @@ const devWebhookEventSchema = z.object({ type: z.string() });
 
 type ServiceRoleDb = typeof serviceRoleDb;
 
+export type StripeCommercePrivilegedDbDeps = {
+  customerProvisioningDb: ServiceRoleDb;
+  webhookEventDb: ServiceRoleDb;
+};
+
 export type StripeCommerceBoundaryDeps = {
   gateway: StripeGateway;
   localMode: boolean;
   getDb: () => DbClient;
-  serviceRoleDb: ServiceRoleDb;
+  privilegedDb: StripeCommercePrivilegedDbDeps;
   users: typeof users;
   webhookSecret: string | null;
   webhookDevMode: boolean;
@@ -49,20 +54,20 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
   constructor(private readonly deps: StripeCommerceBoundaryDeps) {}
 
   async beginCheckout(
-    input: BeginCheckoutInput
+    input: BeginCheckoutInput,
   ): Promise<{ sessionUrl: string }> {
     const { priceId, successUrl, cancelUrl } = input;
     assertCheckoutPriceAllowed(this.deps.localMode, priceId);
 
     if (!isValidRedirectUrl(successUrl)) {
       throw new ValidationError(
-        'successUrl must be a relative path or same-origin URL'
+        'successUrl must be a relative path or same-origin URL',
       );
     }
 
     if (!isValidRedirectUrl(cancelUrl)) {
       throw new ValidationError(
-        'cancelUrl must be a relative path or same-origin URL'
+        'cancelUrl must be a relative path or same-origin URL',
       );
     }
 
@@ -71,16 +76,16 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       input.actor.userId,
       input.actor.email,
       stripe,
-      this.deps.getDb()
+      this.deps.privilegedDb.customerProvisioningDb,
     );
 
     const successResolved = resolveRedirectUrl(
       successUrl,
-      DEFAULT_CHECKOUT_SUCCESS
+      DEFAULT_CHECKOUT_SUCCESS,
     );
     const cancelResolved = resolveRedirectUrl(
       cancelUrl,
-      DEFAULT_CHECKOUT_CANCEL
+      DEFAULT_CHECKOUT_CANCEL,
     );
 
     let sessionUrl: string | null = null;
@@ -118,7 +123,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
             stripeType,
             stripeCode,
           },
-        }
+        },
       );
     }
 
@@ -143,7 +148,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       })
     ) {
       throw new ValidationError(
-        'Billing portal is available after your first subscription checkout'
+        'Billing portal is available after your first subscription checkout',
       );
     }
 
@@ -151,19 +156,19 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       throw new ValidationError(
         'returnUrl must be a relative path or same-origin URL',
         undefined,
-        { userId: actor.userId, returnUrl: input.returnUrl }
+        { userId: actor.userId, returnUrl: input.returnUrl },
       );
     }
 
     const resolvedReturnUrl = resolveRedirectUrl(
       input.returnUrl,
-      DEFAULT_PORTAL_RETURN
+      DEFAULT_PORTAL_RETURN,
     );
 
     const stripeCustomerId = actor.stripeCustomerId;
     if (!stripeCustomerId) {
       throw new ValidationError(
-        'Billing portal is available after your first subscription checkout'
+        'Billing portal is available after your first subscription checkout',
       );
     }
 
@@ -207,15 +212,9 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
   }
 
   async acceptWebhook(
-    input: AcceptWebhookInput
+    input: AcceptWebhookInput,
   ): Promise<StripeWebhookResponse> {
-    const {
-      rawBody,
-      signatureHeader,
-      contentLength,
-      logger,
-      stripe: stripeOverride,
-    } = input;
+    const { rawBody, signatureHeader, contentLength, logger } = input;
 
     if (contentLength !== undefined && contentLength !== null) {
       if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_BYTES) {
@@ -224,7 +223,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
             contentLength,
             maxBytes: WEBHOOK_MAX_BYTES,
           },
-          'Stripe webhook payload too large (content-length)'
+          'Stripe webhook payload too large (content-length)',
         );
         return { status: 413, body: 'payload too large' };
       }
@@ -234,7 +233,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
     if (bodySize > WEBHOOK_MAX_BYTES) {
       logger.warn(
         { bodySize, maxBytes: WEBHOOK_MAX_BYTES },
-        'Stripe webhook payload too large'
+        'Stripe webhook payload too large',
       );
       return { status: 413, body: 'payload too large' };
     }
@@ -265,7 +264,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
     } else {
       if (!allowDevPayloads) {
         logger.error(
-          'Stripe webhook misconfigured: missing secret outside development'
+          'Stripe webhook misconfigured: missing secret outside development',
         );
         return { status: 500, body: 'webhook misconfigured' };
       }
@@ -284,7 +283,7 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
 
       logger.info(
         { type: devParseResult.data.type },
-        'Stripe webhook dev mode event received (noop)'
+        'Stripe webhook dev mode event received (noop)',
       );
       return { status: 200, body: 'ok' };
     }
@@ -298,22 +297,20 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
           eventLivemode: event.livemode,
           expectLive,
         },
-        'Stripe webhook livemode mismatch'
+        'Stripe webhook livemode mismatch',
       );
       return { status: 200, body: 'ok' };
     }
 
-    const gateway = stripeOverride
-      ? new LiveStripeGateway(stripeOverride)
-      : this.deps.gateway;
+    const gateway = this.deps.gateway;
     const stripe = gateway.getStripeClient();
 
-    const dedupeResult = await handleStripeWebhookDedupeAndApply(event, {
+    const dedupeResult = await applyVerifiedEvent(event, {
       stripe,
       gateway,
       logger,
       users: this.deps.users,
-      db: this.deps.serviceRoleDb,
+      db: this.deps.privilegedDb.webhookEventDb,
     });
 
     return {

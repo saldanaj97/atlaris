@@ -12,7 +12,7 @@ import { getFailurePresentation } from '@/features/ai/failure-presentation';
 import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
 import { logger } from '@/lib/logging/logger';
 
-import type { FailureClassification } from '@/shared/types/client.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 export type ErrorLike = {
   name?: string;
@@ -84,7 +84,7 @@ function stringifyUnknownError(value: StringifyErrorValue): string {
 export function sanitizeSseError(
   error: GenerationError,
   classification: FailureClassification | 'unknown',
-  context?: { planId?: string; userId?: string }
+  context?: { planId?: string; userId?: string },
 ): SanitizedSseError {
   // Log the full error details server-side
   logger.error(
@@ -96,7 +96,7 @@ export function sanitizeSseError(
       classification,
       ...(context ? { context } : {}),
     },
-    'Generation error (sanitized for client)'
+    'Generation error (sanitized for client)',
   );
 
   return getFailurePresentation(classification) as SanitizedSseError;

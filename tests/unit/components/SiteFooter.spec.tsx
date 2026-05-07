@@ -26,7 +26,7 @@ describe('SiteFooter', () => {
 
     const currentYear = new Date().getFullYear();
     expect(
-      screen.getByText(new RegExp(`© ${currentYear} Atlaris`, 'i'))
+      screen.getByText(new RegExp(`© ${currentYear} Atlaris`, 'i')),
     ).toBeInTheDocument();
     expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
   });
@@ -55,7 +55,7 @@ describe('SiteFooter', () => {
 
     // Navigation links
     expect(
-      screen.getByRole('navigation', { name: /footer/i })
+      screen.getByRole('navigation', { name: /footer/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /about/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /pricing/i })).toBeInTheDocument();
@@ -69,11 +69,11 @@ describe('SiteFooter', () => {
 
     expect(screen.getByRole('link', { name: /about/i })).toHaveAttribute(
       'href',
-      '/about'
+      '/about',
     );
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute(
       'href',
-      '/pricing'
+      '/pricing',
     );
   });
 
@@ -91,7 +91,7 @@ describe('SiteFooter', () => {
 
     const currentYear = new Date().getFullYear();
     expect(
-      screen.getByText(new RegExp(`© ${currentYear} Atlaris`))
+      screen.getByText(new RegExp(`© ${currentYear} Atlaris`)),
     ).toBeInTheDocument();
   });
 

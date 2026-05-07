@@ -108,7 +108,7 @@ export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
  * @returns A rate limiter object with check, remaining, reset, and clear methods
  */
 export function createUserRateLimiter(
-  config: UserRateLimitConfig
+  config: UserRateLimitConfig,
 ): SlidingWindowLimiter {
   return createSlidingWindowLimiter({
     maxRequests: config.maxRequests,
@@ -160,7 +160,7 @@ function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
  */
 export function checkUserRateLimit(
   userId: string,
-  category: UserRateLimitCategory
+  category: UserRateLimitCategory,
 ): void {
   const limiter = getRateLimiter(category);
   limiter.check(userId);
@@ -175,7 +175,7 @@ export function checkUserRateLimit(
  */
 export function getUserRateLimitHeaders(
   userId: string,
-  category: UserRateLimitCategory
+  category: UserRateLimitCategory,
 ): Record<string, string> {
   const limiter = getRateLimiter(category);
   const config = USER_RATE_LIMIT_CONFIGS[category];

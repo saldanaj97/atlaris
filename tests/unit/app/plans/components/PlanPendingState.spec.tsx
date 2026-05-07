@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { createTestPlanDetail } from '@tests/fixtures/plans';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PlanPendingState } from '@/app/plans/[id]/components/PlanPendingState';
+import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 
 const {
@@ -70,17 +70,17 @@ describe('PlanPendingState', () => {
 
   it('renders a fallback failed message when no error details are available', () => {
     render(
-      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />
+      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
     );
 
     expect(screen.getByText('Generation Failed')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Generation failed before it finished. You can try again.'
-      )
+        'Generation failed before it finished. You can try again.',
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /retry generation/i })
+      screen.getByRole('button', { name: /retry generation/i }),
     ).toBeInTheDocument();
   });
 
@@ -93,15 +93,15 @@ describe('PlanPendingState', () => {
     });
 
     render(
-      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />
+      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
     );
 
     expect(screen.getByText('interrupted')).toBeInTheDocument();
     expect(screen.getByText('Generation interrupted')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Generation was interrupted before it finished. You can try again.'
-      )
+        'Generation was interrupted before it finished. You can try again.',
+      ),
     ).toBeInTheDocument();
   });
 });

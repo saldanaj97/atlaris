@@ -15,7 +15,7 @@ const PAGINATION_MINIMUMS = {
   offset: 0,
 } as const;
 
-export type PaginationField = keyof typeof PAGINATION_DEFAULTS;
+type PaginationField = keyof typeof PAGINATION_DEFAULTS;
 export type PaginationOptions = Partial<Record<PaginationField, number>>;
 
 export function getPaginationDefault(field: PaginationField): number {
@@ -24,20 +24,20 @@ export function getPaginationDefault(field: PaginationField): number {
 
 function isValidPaginationValue(
   field: PaginationField,
-  value: number
+  value: number,
 ): boolean {
   return Number.isInteger(value) && value >= PAGINATION_MINIMUMS[field];
 }
 
 export function assertValidPaginationOptions(
-  options?: PaginationOptions
+  options?: PaginationOptions,
 ): void {
   if (
     options?.limit !== undefined &&
     !isValidPaginationValue('limit', options.limit)
   ) {
     throw new RangeError(
-      `limit must be an integer greater than or equal to ${PAGINATION_MINIMUMS.limit}`
+      `limit must be an integer greater than or equal to ${PAGINATION_MINIMUMS.limit}`,
     );
   }
 
@@ -46,7 +46,7 @@ export function assertValidPaginationOptions(
     !isValidPaginationValue('offset', options.offset)
   ) {
     throw new RangeError(
-      `offset must be an integer greater than or equal to ${PAGINATION_MINIMUMS.offset}`
+      `offset must be an integer greater than or equal to ${PAGINATION_MINIMUMS.offset}`,
     );
   }
 }
