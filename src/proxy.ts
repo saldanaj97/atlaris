@@ -1,7 +1,9 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { maintenanceMode } from '@/flags';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
@@ -97,8 +99,12 @@ const proxy = clerkMiddleware(
     }
 
     // Maintenance mode
-    const maintenanceTarget = resolveMaintenanceRedirectPath(
+    const effectiveMaintenanceMode = await resolveEffectiveMaintenanceMode(
       appEnv.maintenanceMode,
+      { resolveMaintenanceFlag: maintenanceMode },
+    );
+    const maintenanceTarget = resolveMaintenanceRedirectPath(
+      effectiveMaintenanceMode,
       pathname,
     );
 

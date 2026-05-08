@@ -9,7 +9,7 @@ import {
 export const localProductTestingEnv = {
   /**
    * When true, the app is intended to run the local product-testing workflow (seeded users,
-   * mocks per PRD). Always false in production (startup throws if misconfigured).
+   * mocks per PRD). Hosted deploys throw if this is enabled.
    */
   get enabled(): boolean {
     return toBoolean(getServerOptional('LOCAL_PRODUCT_TESTING'), false);
