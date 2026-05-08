@@ -1,36 +1,35 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { maintenanceMode } from '@/flags';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 
-vi.mock('@/flags', () => ({
-  maintenanceMode: vi.fn(),
-}));
-
-const mockedMaintenanceMode = vi.mocked(maintenanceMode);
-
 describe('resolveEffectiveMaintenanceMode', () => {
-  beforeEach(() => {
-    mockedMaintenanceMode.mockReset();
-  });
-
   it('returns true without evaluating the flag when env maintenance mode is enabled', async () => {
-    await expect(resolveEffectiveMaintenanceMode(true)).resolves.toBe(true);
+    const resolveMaintenanceFlag = vi.fn();
 
-    expect(mockedMaintenanceMode).not.toHaveBeenCalled();
+    await expect(
+      resolveEffectiveMaintenanceMode(true, { resolveMaintenanceFlag }),
+    ).resolves.toBe(true);
+
+    expect(resolveMaintenanceFlag).not.toHaveBeenCalled();
   });
 
   it('returns the flag value when env maintenance mode is disabled', async () => {
-    mockedMaintenanceMode.mockResolvedValue(true);
+    const resolveMaintenanceFlag = vi.fn().mockResolvedValue(true);
 
-    await expect(resolveEffectiveMaintenanceMode(false)).resolves.toBe(true);
+    await expect(
+      resolveEffectiveMaintenanceMode(false, { resolveMaintenanceFlag }),
+    ).resolves.toBe(true);
 
-    expect(mockedMaintenanceMode).toHaveBeenCalledOnce();
+    expect(resolveMaintenanceFlag).toHaveBeenCalledOnce();
   });
 
   it('fails open when flag evaluation fails and env maintenance mode is disabled', async () => {
-    mockedMaintenanceMode.mockRejectedValue(new Error('flags unavailable'));
+    const resolveMaintenanceFlag = vi
+      .fn()
+      .mockRejectedValue(new Error('flags unavailable'));
 
-    await expect(resolveEffectiveMaintenanceMode(false)).resolves.toBe(false);
+    await expect(
+      resolveEffectiveMaintenanceMode(false, { resolveMaintenanceFlag }),
+    ).resolves.toBe(false);
   });
 });

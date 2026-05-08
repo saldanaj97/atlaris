@@ -21,7 +21,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
 - `devAuthEnv` - Development auth overrides
-- `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (development/test only; refused in production)
+- `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `loggingEnv` - Logging configuration
@@ -45,7 +45,7 @@ Key auth-related server variables include:
 | ----------------------------------- | ------------------------------------------------------------------------------------------ | -------- |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                         | Yes      |
 | `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                    | Yes      |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in production)                     | No       |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys)                 | No       |
 | `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                            | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                             | No       |
@@ -54,8 +54,8 @@ Key auth-related server variables include:
 
 | Variable                | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
-| `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in production)        |
-| `STRIPE_LOCAL_MODE`     | Use local billing catalog + in-process Stripe mock (forbidden in production)      |
+| `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |
+| `STRIPE_LOCAL_MODE`     | Use local billing catalog + in-process Stripe mock (forbidden in hosted deploys)  |
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.

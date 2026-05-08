@@ -10,6 +10,7 @@ import {
   createServerEnvAccess,
   createSupabasePublicEnv,
   EnvValidationError,
+  assertHostedDeployForbiddenFlags,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
@@ -92,6 +93,36 @@ describe('Environment Configuration', () => {
       ).toThrow(
         /NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must start with pk_test_ or pk_live_; CLERK_SECRET_KEY: CLERK_SECRET_KEY must start with sk_test_ or sk_live_/,
       );
+    });
+  });
+
+  describe('hosted deploy forbidden flags', () => {
+    it('allows local production preview builds to keep local product-testing flags in .env.local', () => {
+      expect(() =>
+        assertHostedDeployForbiddenFlags({
+          NODE_ENV: 'production',
+          LOCAL_PRODUCT_TESTING: 'true',
+          STRIPE_LOCAL_MODE: 'true',
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects local-only flags in hosted deploy environments', () => {
+      expect(() =>
+        assertHostedDeployForbiddenFlags({
+          NODE_ENV: 'production',
+          VERCEL: '1',
+          LOCAL_PRODUCT_TESTING: 'true',
+        }),
+      ).toThrow(/LOCAL_PRODUCT_TESTING cannot be enabled in production/);
+
+      expect(() =>
+        assertHostedDeployForbiddenFlags({
+          NODE_ENV: 'production',
+          VERCEL: '1',
+          STRIPE_LOCAL_MODE: 'true',
+        }),
+      ).toThrow(/STRIPE_LOCAL_MODE cannot be enabled in production/);
     });
   });
 

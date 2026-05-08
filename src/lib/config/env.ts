@@ -25,6 +25,7 @@ export {
   type SupabasePublicEnv,
 } from '@/lib/config/env/supabase';
 export {
+  assertHostedDeployForbiddenFlags,
   createServerEnvAccess,
   EnvValidationError,
   getSmokeStateFileEnv,

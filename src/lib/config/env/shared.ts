@@ -262,9 +262,16 @@ export function getServerOptional(key: string): string | undefined {
   return defaultServerEnvAccess.getServerOptional(key);
 }
 
-function assertProdForbiddenFlags(): void {
-  const env = getProcessEnvSource();
-  if (!isProdRuntimeEnv(env)) {
+const HOSTED_DEPLOY_ENV_KEYS = ['VERCEL'] as const;
+
+function isHostedDeployEnv(env: EnvSource): boolean {
+  return HOSTED_DEPLOY_ENV_KEYS.some((key) =>
+    toBoolean(optionalEnvFrom(env, key), false),
+  );
+}
+
+export function assertHostedDeployForbiddenFlags(env: EnvSource): void {
+  if (!isHostedDeployEnv(env)) {
     return;
   }
   const localProductTestingEnvEnabled = toBoolean(
@@ -289,7 +296,7 @@ function assertProdForbiddenFlags(): void {
   }
 }
 
-assertProdForbiddenFlags();
+assertHostedDeployForbiddenFlags(getProcessEnvSource());
 
 export function getSmokeStateFileEnv(): string | undefined {
   return getServerOptional('SMOKE_STATE_FILE');
