@@ -7,6 +7,7 @@ import {
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
+import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 
 // Next.js injects inline bootstrap scripts today, so keep unsafe-inline until
 // we migrate this middleware to a nonce-based CSP. unsafe-eval is only needed
@@ -97,8 +98,11 @@ const proxy = clerkMiddleware(
     }
 
     // Maintenance mode
-    const maintenanceTarget = resolveMaintenanceRedirectPath(
+    const effectiveMaintenanceMode = await resolveEffectiveMaintenanceMode(
       appEnv.maintenanceMode,
+    );
+    const maintenanceTarget = resolveMaintenanceRedirectPath(
+      effectiveMaintenanceMode,
       pathname,
     );
 
