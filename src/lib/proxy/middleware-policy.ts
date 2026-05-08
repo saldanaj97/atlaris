@@ -7,6 +7,8 @@ const PROTECTED_PREFIXES = [
   '/analytics',
 ] as const;
 
+const MAINTENANCE_MODE_BYPASS_PREFIXES = ['/.well-known/vercel/flags'] as const;
+
 export function isProtectedRoute(pathname: string): boolean {
   // Stripe webhooks bypass all checks
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
@@ -20,6 +22,14 @@ export function resolveMaintenanceRedirectPath(
   maintenanceMode: boolean,
   pathname: string,
 ): '/maintenance' | '/' | null {
+  if (
+    MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
+      pathname.startsWith(prefix),
+    )
+  ) {
+    return null;
+  }
+
   if (maintenanceMode && pathname !== '/maintenance') {
     return '/maintenance';
   }
