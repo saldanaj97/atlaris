@@ -1,11 +1,21 @@
 const CLERK_FRONTEND_API_SRC = 'https://*.clerk.accounts.dev';
 const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
 
-export function createContentSecurityPolicy(input: {
-  isDevelopment: boolean;
-  nonce?: string;
-}): string {
-  const nonceSource = input.nonce ? `'nonce-${input.nonce}'` : null;
+export type CreateContentSecurityPolicyInput =
+  | { isDevelopment: true; nonce?: string }
+  | { isDevelopment: false; nonce: string };
+
+export function createContentSecurityPolicy(
+  input: CreateContentSecurityPolicyInput,
+): string {
+  if (!input.isDevelopment) {
+    if (typeof input.nonce !== 'string' || input.nonce.length === 0) {
+      throw new Error(
+        'createContentSecurityPolicy: production requires non-empty nonce',
+      );
+    }
+  }
+
   const scriptSrc = input.isDevelopment
     ? [
         "'self'",
@@ -16,7 +26,7 @@ export function createContentSecurityPolicy(input: {
       ]
     : [
         "'self'",
-        ...(nonceSource ? [nonceSource] : []),
+        `'nonce-${input.nonce}'`,
         CLERK_FRONTEND_API_SRC,
         CLOUDFLARE_CHALLENGES_SRC,
       ];

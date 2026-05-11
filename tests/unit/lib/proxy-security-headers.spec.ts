@@ -30,4 +30,13 @@ describe('proxy security headers', () => {
     expect(csp).toContain("'unsafe-inline'");
     expect(csp).toContain('https://*.clerk.accounts.dev');
   });
+
+  it('rejects production CSP without nonce', () => {
+    expect(() =>
+      createContentSecurityPolicy({
+        isDevelopment: false,
+        nonce: '',
+      }),
+    ).toThrow(/production requires non-empty nonce/);
+  });
 });
