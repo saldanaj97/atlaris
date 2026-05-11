@@ -7,7 +7,6 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { type NavItem, ROUTES } from '@/features/navigation';
-import { trackEvent } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { Plus } from 'lucide-react';
@@ -62,18 +61,7 @@ export default function DesktopHeader({
           className="gap-1.5 text-muted-foreground hover:text-foreground"
           asChild
         >
-          <Link
-            href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}
-            onClick={() => {
-              if (isAuthenticated) {
-                trackEvent({
-                  event: 'cta_click',
-                  label: 'New Plan',
-                  location: 'nav',
-                });
-              }
-            }}
-          >
+          <Link href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}>
             <Plus className="h-3.5 w-3.5" />
             <span>New Plan</span>
           </Link>

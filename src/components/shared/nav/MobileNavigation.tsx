@@ -17,7 +17,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import type { NavItem } from '@/features/navigation';
-import { trackEvent } from '@/lib/analytics';
 
 import BrandLogo from '../BrandLogo';
 
@@ -73,11 +72,6 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
             <Link
               href="/plans/new"
               onClick={() => {
-                trackEvent({
-                  event: 'cta_click',
-                  label: 'Create New Plan',
-                  location: 'nav',
-                });
                 setOpen(false);
               }}
             >
