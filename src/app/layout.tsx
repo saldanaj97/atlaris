@@ -1,11 +1,9 @@
 import { ThemeProvider } from '@/app/ThemeProvider';
+import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
-import type { ComponentProps } from 'react';
 import { Toaster } from 'sonner';
 import './globals.css';
 
@@ -52,28 +50,6 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://atlaris.app'),
 };
 
-type SpeedInsightsBeforeSend = NonNullable<
-  ComponentProps<typeof SpeedInsights>['beforeSend']
->;
-
-const SPEED_INSIGHTS_SAMPLE_RATE = 0.25;
-
-const SPEED_INSIGHTS_ROUTE_PATTERNS = [
-  /^\/$/,
-  /^\/pricing\/?$/,
-  /^\/dashboard\/?$/,
-  /^\/plans\/new\/?$/,
-  /^\/plans\/[^/]+\/?$/,
-  /^\/plans\/[^/]+\/modules\/[^/]+\/?$/,
-];
-
-const filterSpeedInsights: SpeedInsightsBeforeSend = (event) => {
-  const { pathname } = new URL(event.url);
-  return SPEED_INSIGHTS_ROUTE_PATTERNS.some((pattern) => pattern.test(pathname))
-    ? event
-    : null;
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -103,18 +79,7 @@ export default function RootLayout({
         ) : (
           appContent
         )}
-        <Analytics
-          beforeSend={(event) => {
-            if (localStorage.getItem('va-disable')) {
-              return null;
-            }
-            return event;
-          }}
-        />
-        <SpeedInsights
-          sampleRate={SPEED_INSIGHTS_SAMPLE_RATE}
-          beforeSend={filterSpeedInsights}
-        />
+        <VercelTelemetry />
       </body>
     </html>
   );
