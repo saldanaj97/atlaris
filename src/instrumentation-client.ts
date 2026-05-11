@@ -34,6 +34,10 @@ if (isSentryEnabled) {
     // SDK log shipping — disabled in production to reduce ingest volume.
     enableLogs: shouldEnableLogs(),
 
+    // Application Metrics are enabled explicitly so browser instrumentation can
+    // use Sentry.metrics.count/gauge/distribution consistently across SDK upgrades.
+    enableMetrics: true,
+
     // Replay: 10 % sessions in prod (cost control), 100 % error replays (always).
     // See src/lib/observability/sampling.ts for full rationale.
     replaysSessionSampleRate: getReplaySessionSampleRate(),

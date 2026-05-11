@@ -13,9 +13,15 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@/lib/observability/metrics', () => ({
+  countMetric: vi.fn(),
+  distributionMetric: vi.fn(),
+}));
+
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
+import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 
 import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
@@ -166,6 +172,7 @@ describe('Lifecycle Consolidation', () => {
   let ports: PlanLifecycleServicePorts;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     ports = createMockPorts();
     service = new PlanLifecycleService(ports);
   });
@@ -224,6 +231,33 @@ describe('Lifecycle Consolidation', () => {
       expect(finalizeSuccess).toHaveBeenCalledTimes(1);
     });
 
+    it('emits success and duration metrics after successful generation', async () => {
+      await service.processGenerationAttempt(STREAM_INPUT);
+
+      expect(countMetric).toHaveBeenCalledWith(
+        'atlaris.plan.generation.success',
+        1,
+        {
+          attributes: {
+            tier: STREAM_INPUT.tier,
+            extended_timeout: false,
+          },
+        },
+      );
+      expect(distributionMetric).toHaveBeenCalledWith(
+        'atlaris.plan.generation.duration_ms',
+        1500,
+        {
+          unit: 'millisecond',
+          attributes: {
+            status: 'success',
+            tier: STREAM_INPUT.tier,
+            extended_timeout: false,
+          },
+        },
+      );
+    });
+
     it('calls generationFinalization.finalizeFailure exactly once on failed generation', async () => {
       const resv = makeAttemptReservation({ attemptId: 'fail-1' });
       ports = createMockPorts({
@@ -247,6 +281,51 @@ describe('Lifecycle Consolidation', () => {
 
       await service.processGenerationAttempt(RETRY_INPUT);
       expect(finalizeFailure).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits failure and duration metrics after failed generation', async () => {
+      const resv = makeAttemptReservation({ attemptId: 'metric-fail-1' });
+      ports = createMockPorts({
+        generation: {
+          runGeneration: vi.fn().mockResolvedValue({
+            status: 'failure',
+            classification: 'timeout',
+            error: new Error('timed out'),
+            durationMs: 30000,
+            reservation: resv,
+            timedOut: true,
+            extendedTimeout: false,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      await service.processGenerationAttempt(RETRY_INPUT);
+
+      expect(countMetric).toHaveBeenCalledWith(
+        'atlaris.plan.generation.failure',
+        1,
+        {
+          attributes: {
+            classification: 'timeout',
+            retryable: true,
+            tier: RETRY_INPUT.tier,
+          },
+        },
+      );
+      expect(distributionMetric).toHaveBeenCalledWith(
+        'atlaris.plan.generation.duration_ms',
+        30000,
+        {
+          unit: 'millisecond',
+          attributes: {
+            status: 'failure',
+            classification: 'timeout',
+            retryable: true,
+            tier: RETRY_INPUT.tier,
+          },
+        },
+      );
     });
   });
 
@@ -442,6 +521,12 @@ describe('Lifecycle Consolidation', () => {
         expect(result.planId).toBe('plan-123');
         expect(result.tier).toBe('free');
       }
+      expect(countMetric).toHaveBeenCalledWith('atlaris.plan.created', 1, {
+        attributes: {
+          origin: 'ai',
+          tier: 'free',
+        },
+      });
     });
 
     it('AI plan creation checks capped plans', async () => {

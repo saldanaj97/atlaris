@@ -1,5 +1,6 @@
 import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
+import { countMetric } from '@/lib/observability/metrics';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import type { PlanPersistencePort, QuotaPort } from './ports';
@@ -160,6 +161,12 @@ export async function insertCreatedPlan(params: {
     { userId, planId: insertResult.id, tier, origin: planData.origin },
     `${getCreateLogBase(lifecycleLabel)}: plan created`,
   );
+  countMetric('atlaris.plan.created', 1, {
+    attributes: {
+      origin: planData.origin,
+      tier,
+    },
+  });
   return {
     status: 'success',
     planId: insertResult.id,
