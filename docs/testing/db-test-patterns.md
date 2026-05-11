@@ -243,7 +243,7 @@ vi.mock('@supabase/service-role', () => ({
 
 **Why it exists:**
 
-- Prevents `DATABASE_URL` requirement in unit tests
+- Prevents `POSTGRES_URL` requirement in unit tests
 - Catches accidental real database access
 - Individual tests override with their own mocks via dependency injection
 

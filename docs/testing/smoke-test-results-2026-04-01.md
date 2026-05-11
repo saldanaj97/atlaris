@@ -3,7 +3,7 @@
 ## Scope
 
 - Environment: local dev server on `http://localhost:3000`
-- Database: local Postgres service on `localhost:54331`
+- Database: local Supabase Postgres on `127.0.0.1:54322`
 - Browser automation: `chrome-devtools` CLI / Chrome DevTools MCP command surface
 - Modes tested:
   - Anonymous startup with `DEV_AUTH_USER_ID` unset in `.env.local`

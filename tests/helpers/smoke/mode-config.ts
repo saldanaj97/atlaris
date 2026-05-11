@@ -15,9 +15,8 @@ export const SMOKE_AUTH_PORT = 3101 as const;
 const SMOKE_CONTROLLED_ENV_KEYS = [
   'ENABLE_SENTRY',
   'APP_URL',
-  'DATABASE_URL',
-  'DATABASE_URL_NON_POOLING',
-  'DATABASE_URL_UNPOOLED',
+  'POSTGRES_URL',
+  'POSTGRES_URL_NON_POOLING',
   'DEV_AUTH_USER_ID',
   'LOCAL_PRODUCT_TESTING',
   'MOCK_AI_SCENARIO',
@@ -44,9 +43,8 @@ export function smokeAuthAppUrl(): string {
 
 function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
   return {
-    DATABASE_URL: state.DATABASE_URL,
-    DATABASE_URL_NON_POOLING: state.DATABASE_URL_NON_POOLING,
-    DATABASE_URL_UNPOOLED: state.DATABASE_URL_UNPOOLED,
+    POSTGRES_URL: state.POSTGRES_URL,
+    POSTGRES_URL_NON_POOLING: state.POSTGRES_URL_NON_POOLING,
     ENABLE_SENTRY: 'false',
     NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     MOCK_AI_SCENARIO: 'success',

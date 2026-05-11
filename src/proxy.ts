@@ -9,27 +9,10 @@ import {
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
-
-// Next.js injects inline bootstrap scripts today, so keep unsafe-inline until
-// we migrate this middleware to a nonce-based CSP. unsafe-eval is only needed
-// for local dev tooling and must stay out of production.
-const SCRIPT_SRC = appEnv.isDevelopment
-  ? ["'self'", "'unsafe-inline'", "'unsafe-eval'"]
-  : ["'self'", "'unsafe-inline'"];
-
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  `script-src ${SCRIPT_SRC.join(' ')}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https: wss:",
-  "worker-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ');
+import {
+  createContentSecurityPolicy,
+  createCspNonce,
+} from '@/lib/proxy/security-headers';
 
 const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const CORRELATION_ID_MAX_LENGTH = 64;
@@ -48,8 +31,17 @@ const getCorrelationId = (request: NextRequest): string => {
   return sanitized ?? crypto.randomUUID();
 };
 
-const withSecurityHeaders = (response: NextResponse): NextResponse => {
-  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+const createRequestContentSecurityPolicy = (nonce: string): string =>
+  createContentSecurityPolicy({
+    isDevelopment: appEnv.isDevelopment,
+    nonce,
+  });
+
+const withSecurityHeaders = (
+  response: NextResponse,
+  contentSecurityPolicy: string,
+): NextResponse => {
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy);
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -73,20 +65,28 @@ const withCorrelationId = (
   response: NextResponse,
 ): NextResponse => {
   const correlationId = getCorrelationId(request);
+  const nonce = createCspNonce();
   response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(response);
+  return withSecurityHeaders(
+    response,
+    createRequestContentSecurityPolicy(nonce),
+  );
 };
 
 const nextWithCorrelationId = (request: NextRequest): NextResponse => {
   const correlationId = getCorrelationId(request);
+  const nonce = createCspNonce();
+  const contentSecurityPolicy = createRequestContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-correlation-id', correlationId);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
   response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(response);
+  return withSecurityHeaders(response, contentSecurityPolicy);
 };
 
 const proxy = clerkMiddleware(

@@ -1,6 +1,6 @@
 /**
  * Seed the Supabase local database with the deterministic product-testing user.
- * Refuses non-localhost DATABASE_URL to avoid accidental writes to hosted databases.
+ * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
  *
  * `supabase db reset` also applies `supabase/seed.sql`; this helper exists for
  * explicit reseeding and the legacy `pnpm db:dev:bootstrap` alias.
@@ -16,7 +16,7 @@ const DEFAULT_LOCAL_SUPABASE_URL =
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 function resolveDatabaseUrl(): string {
-  return process.env.DATABASE_URL?.trim() || DEFAULT_LOCAL_SUPABASE_URL;
+  return process.env.POSTGRES_URL?.trim() || DEFAULT_LOCAL_SUPABASE_URL;
 }
 
 function assertLocalhostOnly(connectionUrl: string): void {
@@ -25,7 +25,7 @@ function assertLocalhostOnly(connectionUrl: string): void {
     url = new URL(connectionUrl);
   } catch {
     throw new Error(
-      'Invalid DATABASE_URL: could not parse hostname (expected a postgresql:// URL).',
+      'Invalid POSTGRES_URL: could not parse hostname (expected a postgresql:// URL).',
     );
   }
 
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   await seedLocalProductTestingUser(databaseUrl);
 
   console.log('[seed-local-supabase] Done.');
-  console.log(`[seed-local-supabase] DATABASE_URL=${databaseUrl}`);
+  console.log(`[seed-local-supabase] POSTGRES_URL=${databaseUrl}`);
 }
 
 main().catch((err) => {

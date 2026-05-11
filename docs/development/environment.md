@@ -66,12 +66,12 @@ Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current
 
 | Variable                               | Local default / source                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------ |
-| `DATABASE_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
+| `POSTGRES_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
 | `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321`                                                 |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key from `supabase status`                            |
 | `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
 
-Only add `DATABASE_URL_NON_POOLING` or `DATABASE_URL_UNPOOLED` locally when a command requires those aliases; set them to the same local `DATABASE_URL`.
+Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
 
 ## Logging
 

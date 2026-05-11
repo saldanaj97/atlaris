@@ -1,9 +1,10 @@
+import { ThemeProvider } from '@/app/ThemeProvider';
+import { VercelTelemetry } from '@/app/VercelTelemetry';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
 import { Toaster } from 'sonner';
-import { ThemeProvider } from '@/app/ThemeProvider';
-import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import './globals.css';
 
 const workSans = Work_Sans({
@@ -78,6 +79,7 @@ export default function RootLayout({
         ) : (
           appContent
         )}
+        <VercelTelemetry />
       </body>
     </html>
   );

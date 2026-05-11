@@ -19,7 +19,7 @@
  * - Always use try/finally pattern to ensure cleanup is called even on errors
  *
  * RLS ARCHITECTURE (SET ROLE + Session Variable Approach):
- * - Connect with DATABASE_URL (owner role with BYPASSRLS privilege)
+ * - Connect with POSTGRES_URL (owner role with BYPASSRLS privilege)
  * - Use SET ROLE to switch to 'authenticated' or 'anon' roles (no BYPASSRLS)
  * - Set session variable request.jwt.claims using set_config() with parameterized values
  * - RLS policies (without FORCE) + roles without BYPASSRLS ensure policies are enforced

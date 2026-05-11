@@ -7,10 +7,8 @@ import {
   ProblemSolutionSection,
   UseCasesSection,
 } from './components';
-import {
-  FinalCtaSectionWithAnalytics,
-  HeroSectionWithAnalytics,
-} from './components/LandingAnalyticsWrapper';
+import { FinalCtaSection } from './components/FinalCtaSection';
+import { HeroSection } from './components/HeroSection';
 import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {
@@ -26,21 +24,19 @@ export const metadata: Metadata = {
  * - AI-powered insights and crystal clarity
  * - Modern, airy, and intuitive interface
  *
- * This is a server component for optimal static generation. Analytics tracking
- * is handled by client component wrappers (HeroSectionWithAnalytics and
- * FinalCtaSectionWithAnalytics).
+ * This is a server component for optimal static generation.
  */
 export default function LandingPage() {
   return (
     <div className="relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background pt-16 font-sans text-foreground">
       <GradientBlobBackground />
       <div className="relative z-10">
-        <HeroSectionWithAnalytics />
+        <HeroSection />
         <ProblemSolutionSection />
         <FeaturesSection />
         <HowItWorksSection />
         <UseCasesSection />
-        <FinalCtaSectionWithAnalytics />
+        <FinalCtaSection />
       </div>
     </div>
   );

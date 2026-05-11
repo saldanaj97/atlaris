@@ -12,7 +12,7 @@ import {
 
 // NOTE: We read `process.env` directly here instead of importing from
 // `@/lib/config/env` because that module eagerly validates server-only
-// secrets (CLERK_SECRET_KEY, DATABASE_URL, etc.) at import time, which would
+// secrets (CLERK_SECRET_KEY, POSTGRES_URL, etc.) at import time, which would
 // throw in this client-side instrumentation bundle. NEXT_PUBLIC_* vars
 // are also not exposed through the server env config.
 const sendDefaultPii =

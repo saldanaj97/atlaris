@@ -72,7 +72,7 @@ We use two protected branches that serve as anchors for all development:
 ### Deployment Mechanism
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
-- **Preview DB**: isolated preview Postgres per your Vercel + provider setup (set `DATABASE_URL` for preview).
+- **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Production**: `.github/workflows/deploy-production-migrations.yml` applies DB migrations first, then deploys app to Vercel production.
 
 ---

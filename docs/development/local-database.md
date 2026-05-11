@@ -62,13 +62,13 @@ Automated integration/security tests still use isolated Testcontainers, not the 
 4. Configure local app env from `supabase status`:
 
    ```env
-   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
+   POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
    NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<anon/publishable key from supabase status>
    SUPABASE_SERVICE_ROLE_KEY=<service_role key from supabase status>
    ```
 
-   If a command still needs `DATABASE_URL_NON_POOLING` or `DATABASE_URL_UNPOOLED`, set them to the same local `DATABASE_URL`.
+   If a command needs `POSTGRES_URL_NON_POOLING`, set it to the same local `POSTGRES_URL`.
 
 5. Start the app:
 
@@ -90,9 +90,9 @@ Drizzle schema/types remain in the repo, but committed migration files live unde
 
 `drizzle.config.ts` prefers direct connection URLs for DDL:
 
-`DATABASE_URL_NON_POOLING` -> `DATABASE_URL_UNPOOLED` -> `DATABASE_URL`.
+`POSTGRES_URL_NON_POOLING` -> `POSTGRES_URL`.
 
-For local Supabase, `DATABASE_URL` alone is enough unless you are running a command that explicitly requires the aliases.
+For local Supabase, `POSTGRES_URL` alone is enough unless you are running a command that explicitly requires the non-pooling alias.
 
 ## Scripts
 
@@ -108,7 +108,7 @@ For local Supabase, `DATABASE_URL` alone is enough unless you are running a comm
 
 ## Hosted Supabase migrations
 
-Use a direct/session connection string for DDL when Supabase recommends it. `drizzle.config.ts` still falls back from `DATABASE_URL_NON_POOLING` to `DATABASE_URL_UNPOOLED` to `DATABASE_URL`.
+Use a direct/session connection string for DDL when Supabase recommends it. `drizzle.config.ts` falls back from `POSTGRES_URL_NON_POOLING` to `POSTGRES_URL`.
 
 Hosted deployment and migration workflows are separate from the local-dev stack. Do not point local reset/seed commands at hosted databases.
 

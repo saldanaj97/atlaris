@@ -1,3 +1,4 @@
+import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
 import {
   buildAnonModeLayer,
   buildAuthModeLayer,
@@ -10,16 +11,13 @@ import {
 } from '@tests/helpers/smoke/mode-config';
 import type { SmokeStatePayload } from '@tests/helpers/smoke/state-file';
 import { describe, expect, it } from 'vitest';
-import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
 
 const INVALID_MODE_ERROR =
   'Missing or invalid --mode. Use --mode=anon or --mode=auth.';
 
 const FAKE_STATE: SmokeStatePayload = {
-  DATABASE_URL: 'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
-  DATABASE_URL_NON_POOLING:
-    'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
-  DATABASE_URL_UNPOOLED:
+  POSTGRES_URL: 'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
+  POSTGRES_URL_NON_POOLING:
     'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
 };
 
@@ -32,7 +30,7 @@ describe('smoke mode-config', () => {
     expect(layer.NEXT_PUBLIC_ENABLE_SENTRY).toBe('false');
     expect(layer.PORT).toBe(String(SMOKE_ANON_PORT));
     expect(layer.APP_URL).toBe(smokeAnonAppUrl());
-    expect(layer.DATABASE_URL).toBe(FAKE_STATE.DATABASE_URL);
+    expect(layer.POSTGRES_URL).toBe(FAKE_STATE.POSTGRES_URL);
   });
 
   it('buildAuthModeLayer sets seeded auth id and local mocks', () => {

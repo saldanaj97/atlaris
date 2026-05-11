@@ -31,9 +31,8 @@ function applySmokeMigrations(connectionUrl: string): void {
   const drizzleKit = resolveDrizzleKitCli();
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    DATABASE_URL: connectionUrl,
-    DATABASE_URL_NON_POOLING: connectionUrl,
-    DATABASE_URL_UNPOOLED: connectionUrl,
+    POSTGRES_URL: connectionUrl,
+    POSTGRES_URL_NON_POOLING: connectionUrl,
     NODE_ENV: 'test',
   };
   execFileSync(process.execPath, [drizzleKit, 'migrate'], {

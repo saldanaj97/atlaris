@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "flags-sdk": {
+      "source": "vercel/flags",
+      "sourceType": "github",
+      "skillPath": "skills/flags-sdk/SKILL.md",
+      "computedHash": "6805b6b7fee6e4316c7ec1b37941af9b96db00ec40521c541ec41363aece12f3"
+    },
     "qodo-get-rules": {
       "source": "qodo-ai/qodo-skills",
       "sourceType": "github",

@@ -67,8 +67,8 @@ We will primarily be utilizing the `.agents/plans/` directory to organize prds, 
 
 ### Starting services
 
-1. **PostgreSQL 17** on port **54331** — `pg_ctlcluster 17 main start` (already configured; data dir `/var/lib/postgresql/17/main`).
-2. **Docker daemon** — `dockerd &>/var/log/dockerd.log &` (needed for integration/security tests via Testcontainers).
+1. **Supabase local stack** — `pnpm db:dev:start` (Postgres on `127.0.0.1:54322`; API on `127.0.0.1:54321`).
+2. **Docker daemon** — `dockerd &>/var/log/dockerd.log &` (needed for Supabase local and integration/security tests via Testcontainers).
 3. **Next.js dev server** — `pnpm dev` (Turbopack, port 3000).
 
 ### Environment
@@ -82,8 +82,12 @@ We will primarily be utilizing the `.agents/plans/` directory to organize prds, 
 
 ### Gotchas
 
-- The `pnpm db:dev:*` scripts assume macOS Homebrew. On Linux Cloud VMs, use `pg_ctlcluster 17 main start/stop` directly and the bootstrap script `pnpm db:dev:bootstrap` (which works cross-platform).
+- The `pnpm db:dev:*` scripts use the Supabase CLI local stack. Use `pnpm db:dev:start`, `pnpm db:dev:reset`, and `pnpm db:dev:stop` for local DB lifecycle.
 - `pnpm check:type` uses `tsgo` (from `@typescript/native-preview`), not `tsc`. Keep that devDep installed.
 - Integration/security tests need Docker running. Unit tests do not.
 - `pnpm.onlyBuiltDependencies` in `package.json` must include `esbuild`, `@sentry/cli`, `sharp`, etc. for native binaries to build during `pnpm install`.
 - The `env.spec.ts` unit tests may show failures when `AI_PROVIDER` or other env vars are set in `.env.local`; this is expected — those tests validate default parsing behavior and use `vi.stubEnv` internally.
+
+## Learned User Preferences
+
+- When removing or consolidating database connection env vars, sweep application code, tests, and documentation together; avoid compatibility aliases, dual read paths, and extra abstraction layers unless an external constraint forces them.

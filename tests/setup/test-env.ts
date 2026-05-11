@@ -65,9 +65,8 @@ async function setupWorkerDatabaseEnv(): Promise<void> {
   }
 
   process.env.ALLOW_DB_TRUNCATE = runtimeState.ALLOW_DB_TRUNCATE;
-  process.env.DATABASE_URL = workerConnectionUrl;
-  process.env.DATABASE_URL_NON_POOLING = workerConnectionUrl;
-  process.env.DATABASE_URL_UNPOOLED = workerConnectionUrl;
+  process.env.POSTGRES_URL = workerConnectionUrl;
+  process.env.POSTGRES_URL_NON_POOLING = workerConnectionUrl;
   process.env.TEST_WORKER_DB_NAME = workerDbName;
   process.env.TEST_WORKER_ID = workerId;
 

@@ -51,7 +51,7 @@ type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 // See @supabase/rls for the RLS-enforced client.
 //
 // Lazy init: postgres client + drizzle are constructed on first access so Next.js
-// build-time imports of API routes don't require DATABASE_URL to be present.
+// build-time imports of API routes don't require POSTGRES_URL to be present.
 
 let _client: Sql | null = null;
 let _db: ServiceRoleDb | null = null;

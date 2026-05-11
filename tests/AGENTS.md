@@ -94,7 +94,7 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 To skip Testcontainers and use an existing database (e.g. CI):
 
 ```bash
-SKIP_TESTCONTAINERS=true DATABASE_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
+SKIP_TESTCONTAINERS=true POSTGRES_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
 ```
 
 ## DB Lifecycle (Integration/E2E/Security)

@@ -1,9 +1,9 @@
 /**
- * Fail fast when integration tests point DATABASE_URL at a non-local host.
+ * Fail fast when integration tests point POSTGRES_URL at a non-local host.
  * Testcontainers and docker-compose setups use localhost.
  */
 export function assertLocalIntegrationDatabaseUrl(): void {
-  const raw = process.env.DATABASE_URL?.trim();
+  const raw = process.env.POSTGRES_URL?.trim();
   if (!raw) {
     return;
   }
@@ -18,7 +18,7 @@ export function assertLocalIntegrationDatabaseUrl(): void {
     host === 'localhost' || host === '127.0.0.1' || host === '::1';
   if (!isLocal) {
     throw new Error(
-      `Refusing to run integration tests against non-local DATABASE_URL host "${hostname}"`,
+      `Refusing to run integration tests against non-local POSTGRES_URL host "${hostname}"`,
     );
   }
 }
