@@ -1,6 +1,6 @@
+import { ensureUser } from '@tests/helpers/db';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ensureUser } from '@tests/helpers/db';
 import postgres from 'postgres';
 import { describe, expect, it } from 'vitest';
 
@@ -33,10 +33,10 @@ const restoreLegacyPdfSchemaSql = `
 
 describe('migration 0027_windy_agent_zero', () => {
   it('coerces legacy pdf plans to manual and drops PDF-only columns', async () => {
-    const databaseUrl = process.env.DATABASE_URL;
+    const databaseUrl = process.env.POSTGRES_URL;
     if (!databaseUrl) {
       throw new Error(
-        'DATABASE_URL is required for migration integration tests.',
+        'POSTGRES_URL is required for migration integration tests.',
       );
     }
 

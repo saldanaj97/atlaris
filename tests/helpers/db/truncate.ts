@@ -19,7 +19,7 @@ import {
 import { db } from '@supabase/service-role';
 
 function assertSafeToTruncate() {
-  const url = process.env.DATABASE_URL;
+  const url = process.env.POSTGRES_URL;
   if (!url) return;
 
   if (process.env.ALLOW_DB_TRUNCATE === 'true') return;
@@ -29,7 +29,7 @@ function assertSafeToTruncate() {
     parsed = new URL(url);
   } catch {
     throw new Error(
-      'Refusing to truncate database: invalid DATABASE_URL for safety. ' +
+      'Refusing to truncate database: invalid POSTGRES_URL for safety. ' +
         'Set a valid test DB URL or ALLOW_DB_TRUNCATE=true.',
     );
   }
