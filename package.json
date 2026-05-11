@@ -58,7 +58,7 @@
     "flags": "^4.0.6",
     "lru-cache": "^11.3.5",
     "lucide-react": "^0.542.0",
-    "next": "16.2.4",
+    "next": "16.2.6",
     "next-themes": "^0.4.6",
     "p-retry": "^7.1.1",
     "pino": "^10.3.1",
