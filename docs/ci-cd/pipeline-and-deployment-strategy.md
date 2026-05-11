@@ -17,7 +17,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Open PRs into `develop` (or `main` only for true hotfixes).
 - PRs run CI checks (including migration drift checks).
 - Vercel handles preview deployments natively for non-`main` branches.
-- Preview databases are provisioned per your Vercel/hosted-Postgres setup (e.g. Supabase); wire `DATABASE_URL` for each preview environment there.
+- Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` deploys staging.
 - Merging to `main` runs production DB migrations first, then deploys production app from GitHub Actions.
 
@@ -65,7 +65,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 1. You push to a feature branch and open a PR to `develop`.
 2. `ci-pr.yml` validates code quality, tests, and migration drift.
 3. Vercel creates/updates a preview deployment automatically.
-4. Configure preview `DATABASE_URL` (and non-pooling variants if used) in Vercel or your Postgres host so the preview build targets the right database.
+4. Configure preview `POSTGRES_URL` (and `POSTGRES_URL_NON_POOLING` if used) in Vercel or Supabase so the preview build targets the right database.
 5. Preview build command runs migrations for preview (`pnpm db:migrate`) before `next build` when you wire it that way in Vercel.
 
 ---
@@ -115,7 +115,7 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ### Preview build fails on `pnpm db:migrate`
 
-- Confirm preview `DATABASE_URL` / `DATABASE_URL_NON_POOLING` in Vercel (or host) match the intended preview database and use a **direct** URL for DDL if the pooler rejects migrations.
+- Confirm preview `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` in Vercel (or host) match the intended Supabase preview database and use a **direct** URL for DDL if the pooler rejects migrations.
 
 ### PR fails migration drift check
 

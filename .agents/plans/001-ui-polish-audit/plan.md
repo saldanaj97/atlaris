@@ -186,8 +186,8 @@ Recommended first move:
 
 Evidence:
 - Forms are tidy but visually generic.
-- Auth pages render `<AuthView>` from `@neondatabase/auth/react` — a third-party component with limited customization surface (theme, social providers, redirectTo, viewPaths). Internal form fields, spacing, and button hierarchy are owned by NeonAuth, not app code.
-- Sign-up screen says "Sign in with Email Code" (NeonAuth copy, may not be directly fixable).
+- Auth pages use Clerk's embedded sign-in/sign-up components, so core form internals, social-provider controls, and some copy are owned by Clerk.
+- The surrounding app-auth layout can still control trust-building copy, spacing, surface treatment, and route-level hierarchy.
 - Google button styling does not feel aligned with primary action hierarchy.
 
 Cost:
@@ -195,13 +195,13 @@ Cost:
 
 Resolution options:
 
-1. Minimal: wrap `AuthView` in a product-styled container and check if NeonAuth exposes copy/theme customization for the "Email Code" text.
+1. Minimal: wrap Clerk auth components in a product-styled container and tune Clerk appearance tokens where supported.
 2. Better: create a product-styled auth wrapper (replace generic `container mx-auto flex grow flex-col` with a branded container matching the app shell visual language).
-3. Strong: distinguish sign-in/sign-up with clearer headings/branding around the NeonAuth component, and add product trust signals alongside the form.
-4. Heavy: redesign auth as a split trust-building surface with product proof on desktop and compact NeonAuth form on mobile.
+3. Strong: distinguish sign-in/sign-up with clearer headings/branding around the Clerk component, and add product trust signals alongside the form.
+4. Heavy: redesign auth as a split trust-building surface with product proof on desktop and compact Clerk form on mobile.
 
 Recommended first move:
-- Option 2. Wrapping in a product-styled container is the highest-leverage change given third-party constraints. Do not over-design auth before product shell is fixed. Check NeonAuth customization APIs for any copy or theme hooks.
+- Option 2. Wrapping in a product-styled container is the highest-leverage change given third-party constraints. Do not over-design auth before product shell is fixed. Use Clerk appearance options only where they improve consistency without fighting the hosted component.
 
 ## Finding 10: Create-Plan Page Feels Clever But Not Serious Enough
 
