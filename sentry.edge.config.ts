@@ -24,6 +24,10 @@ Sentry.init({
   // Errors are still captured via captureException.
   enableLogs: shouldEnableLogs(),
 
+  // Application Metrics are enabled explicitly so repo instrumentation can use
+  // Sentry.metrics.count/gauge/distribution consistently across SDK upgrades.
+  enableMetrics: true,
+
   // Enable sending user PII (Personally Identifiable Information)
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,

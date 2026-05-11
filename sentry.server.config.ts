@@ -17,6 +17,10 @@ Sentry.init({
   // Errors are still captured via captureException.
   enableLogs: shouldEnableLogs(),
 
+  // Application Metrics are enabled explicitly so repo instrumentation can use
+  // Sentry.metrics.count/gauge/distribution consistently across SDK upgrades.
+  enableMetrics: true,
+
   // Forward Pino logs to Sentry (pino is used in @/lib/logging/logger).
   // Volume is controlled by pino's logger level (info in prod, debug in dev).
   // Vercel AI integration for micro-explanations (generateObject) + force for Vercel builds

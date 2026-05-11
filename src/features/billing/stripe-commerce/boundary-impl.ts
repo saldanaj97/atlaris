@@ -18,6 +18,7 @@ import { createCustomer } from '@/features/billing/subscriptions';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
 import type { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
+import { countMetric } from '@/lib/observability/metrics';
 import Stripe from 'stripe';
 import { z } from 'zod';
 import type { db as serviceRoleDb } from '@supabase/service-role';
@@ -135,6 +136,12 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
       });
     }
 
+    countMetric('atlaris.billing.checkout_session.created', 1, {
+      attributes: {
+        mode: this.deps.localMode ? 'local' : 'stripe',
+      },
+    });
+
     return { sessionUrl };
   }
 
@@ -207,6 +214,12 @@ export class DefaultStripeCommerceBoundary implements StripeCommerceBoundary {
         },
       });
     }
+
+    countMetric('atlaris.billing.portal_session.created', 1, {
+      attributes: {
+        subscription_status: actor.subscriptionStatus ?? 'none',
+      },
+    });
 
     return { portalUrl };
   }

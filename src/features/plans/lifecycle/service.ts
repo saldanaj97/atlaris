@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logging/logger';
+import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { checkCreationGate } from './creation-pipeline';
 import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
@@ -135,6 +136,20 @@ export class PlanLifecycleService {
       });
 
       logger.info({ planId, durationMs }, 'plan.lifecycle.generation: success');
+      countMetric('atlaris.plan.generation.success', 1, {
+        attributes: {
+          tier,
+          extended_timeout: extendedTimeout,
+        },
+      });
+      distributionMetric('atlaris.plan.generation.duration_ms', durationMs, {
+        unit: 'millisecond',
+        attributes: {
+          status: 'success',
+          tier,
+          extended_timeout: extendedTimeout,
+        },
+      });
       return {
         status: 'generation_success',
         data: {
@@ -195,6 +210,26 @@ export class PlanLifecycleService {
         { planId, classification },
         'plan.lifecycle.generation: retryable failure',
       );
+      countMetric('atlaris.plan.generation.failure', 1, {
+        attributes: {
+          classification,
+          retryable: true,
+          tier,
+        },
+      });
+      distributionMetric(
+        'atlaris.plan.generation.duration_ms',
+        generationResult.durationMs,
+        {
+          unit: 'millisecond',
+          attributes: {
+            status: 'failure',
+            classification,
+            retryable: true,
+            tier,
+          },
+        },
+      );
       return {
         status: 'retryable_failure',
         classification,
@@ -205,6 +240,26 @@ export class PlanLifecycleService {
     logger.warn(
       { planId, classification },
       'plan.lifecycle.generation: permanent failure',
+    );
+    countMetric('atlaris.plan.generation.failure', 1, {
+      attributes: {
+        classification,
+        retryable: false,
+        tier,
+      },
+    });
+    distributionMetric(
+      'atlaris.plan.generation.duration_ms',
+      generationResult.durationMs,
+      {
+        unit: 'millisecond',
+        attributes: {
+          status: 'failure',
+          classification,
+          retryable: false,
+          tier,
+        },
+      },
     );
     return {
       status: 'permanent_failure',

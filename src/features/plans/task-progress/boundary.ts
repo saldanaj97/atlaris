@@ -1,4 +1,5 @@
 import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
+import { countMetric } from '@/lib/observability/metrics';
 import { PROGRESS_STATUSES } from '@/shared/types/db';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
@@ -96,6 +97,16 @@ export async function applyTaskProgressUpdates(
       ...(input.now === undefined ? {} : { now: input.now }),
     },
   );
+  const completedCount = progress.filter(
+    (row) => row.status === 'completed',
+  ).length;
+  if (completedCount > 0) {
+    countMetric('atlaris.learning.task_completed', completedCount, {
+      attributes: {
+        scope: input.moduleId === undefined ? 'plan' : 'module',
+      },
+    });
+  }
 
   const appliedByTaskId: Record<string, ProgressStatus> = {};
   for (const row of progress) {

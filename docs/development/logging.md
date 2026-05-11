@@ -4,13 +4,47 @@ This document defines the logging architecture for Atlaris, ensuring proper sepa
 
 ## Sentry Integration
 
-All logs are sent to Sentry for observability:
+Sentry is the app's error, trace, replay, log, and application-metrics sink:
 
 - **Server**: Pino logs are forwarded via `Sentry.pinoIntegration()` in `sentry.server.config.ts`
 - **Client**: `clientLogger` uses `Sentry.logger` directly
 - **Request context**: `createRequestContext()` sets `request_id` on Sentry's isolation scope for correlation
+- **Metrics**: application metrics go through `@/lib/observability/metrics`, which wraps `Sentry.metrics.count`, `Sentry.metrics.gauge`, and `Sentry.metrics.distribution`
 
-Ensure `enableLogs: true` is set in all Sentry config files (server, edge, client).
+Ensure `enableLogs` is configured in all Sentry config files (server, edge, client).
+Ensure `enableMetrics: true` is set in all Sentry config files (server, edge, client).
+
+## Application Metrics
+
+Use application metrics for numeric health signals that are not naturally errors or logs: business event counts, queue depth, success/failure rates, and operation durations.
+
+```typescript
+import {
+  countMetric,
+  distributionMetric,
+  gaugeMetric,
+} from '@/lib/observability/metrics';
+
+countMetric('atlaris.plan.created', 1, {
+  attributes: { source: 'manual' },
+  unit: 'event',
+});
+
+gaugeMetric('atlaris.queue.depth', pendingJobs, { unit: 'item' });
+
+distributionMetric('atlaris.plan.generate.duration', durationMs, {
+  attributes: { provider: 'openrouter' },
+  unit: 'millisecond',
+});
+```
+
+Rules:
+
+- Metric names must use the `atlaris.` prefix and dot-separated names.
+- Use `countMetric` for event totals, `gaugeMetric` for current values, and `distributionMetric` for latency, size, and other values where percentiles matter.
+- Keep attributes useful and bounded. Do not add raw prompt text, emails, plan titles, or other high-cardinality/PII fields.
+- Always set `unit` when the value has a unit, especially time and size.
+- Do not import `Sentry.metrics` directly in feature code; use the wrapper so Sentry disable flags and value guards stay centralized.
 
 ## Architecture Overview
 
