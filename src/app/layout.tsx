@@ -1,3 +1,5 @@
+import { ThemeProvider } from '@/app/ThemeProvider';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -5,8 +7,6 @@ import type { Metadata } from 'next';
 import { Work_Sans, Young_Serif } from 'next/font/google';
 import type { ComponentProps } from 'react';
 import { Toaster } from 'sonner';
-import { ThemeProvider } from '@/app/ThemeProvider';
-import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import './globals.css';
 
 const workSans = Work_Sans({
@@ -103,7 +103,14 @@ export default function RootLayout({
         ) : (
           appContent
         )}
-        <Analytics />
+        <Analytics
+          beforeSend={(event) => {
+            if (localStorage.getItem('va-disable')) {
+              return null;
+            }
+            return event;
+          }}
+        />
         <SpeedInsights
           sampleRate={SPEED_INSIGHTS_SAMPLE_RATE}
           beforeSend={filterSpeedInsights}
