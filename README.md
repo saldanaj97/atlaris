@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/saldanaj97/atlaris/branch/main/graph/badge.svg)](https://app.codecov.io/gh/saldanaj97/atlaris)
 
-AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, PostgreSQL RLS, Clerk Auth migration support, Stripe, and OpenRouter.
+AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScript, Drizzle, Supabase Postgres, PostgreSQL RLS, Clerk Auth, Stripe, and OpenRouter.
 
 ## What the app does
 
@@ -111,7 +111,7 @@ pnpm exec tsx scripts/tests/run.ts unit path/to/file.spec.ts
 pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts
 ```
 
-Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing database, set `SKIP_TESTCONTAINERS=true` and provide a valid `DATABASE_URL`.
+Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.
 
 ## Environment and logging
 

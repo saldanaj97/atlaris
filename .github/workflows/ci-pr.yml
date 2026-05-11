@@ -93,7 +93,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check Drizzle migration drift
         env:
-          DATABASE_URL: postgresql://placeholder@localhost/placeholder
+          POSTGRES_URL: postgresql://placeholder@localhost/placeholder
         run: |
           pnpm db:generate
           if ! git diff --quiet -- supabase/migrations/; then
@@ -441,7 +441,7 @@ jobs:
         env:
           NODE_ENV: 'test'
           BASE_REF: ${{ github.base_ref }}
-          # No DATABASE_URL: tests/setup/testcontainers.ts spins up Postgres and
+          # No POSTGRES_URL: tests/setup/testcontainers.ts spins up Postgres and
           # tests/setup/test-env.ts derives per-worker DBs from VITEST_POOL_ID.
         shell: bash
         run: |

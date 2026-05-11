@@ -6,25 +6,23 @@
  * We do **not** include `ALLOW_DB_TRUNCATE` here: that flag is for Vitest integration
  * helpers that truncate tables. Browser smoke does not use those helpers.
  */
+import { getSmokeStateFileEnv } from '@/lib/config/env';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { z } from 'zod';
-import { getSmokeStateFileEnv } from '@/lib/config/env';
 
 export const SMOKE_STATE_FILE_ENV = 'SMOKE_STATE_FILE' as const;
 
 export type SmokeStatePayload = {
-  DATABASE_URL: string;
-  DATABASE_URL_NON_POOLING: string;
-  DATABASE_URL_UNPOOLED: string;
+  POSTGRES_URL: string;
+  POSTGRES_URL_NON_POOLING: string;
 };
 
 const SmokeStatePayloadSchema = z.object({
-  DATABASE_URL: z.string().min(1),
-  DATABASE_URL_NON_POOLING: z.string().min(1),
-  DATABASE_URL_UNPOOLED: z.string().min(1),
+  POSTGRES_URL: z.string().min(1),
+  POSTGRES_URL_NON_POOLING: z.string().min(1),
 });
 
 export interface SmokeStateFileDeps {
@@ -74,9 +72,8 @@ export function buildSmokeStatePayload(
   connectionUrl: string,
 ): SmokeStatePayload {
   return {
-    DATABASE_URL: connectionUrl,
-    DATABASE_URL_NON_POOLING: connectionUrl,
-    DATABASE_URL_UNPOOLED: connectionUrl,
+    POSTGRES_URL: connectionUrl,
+    POSTGRES_URL_NON_POOLING: connectionUrl,
   };
 }
 

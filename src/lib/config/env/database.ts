@@ -1,6 +1,6 @@
 import { getServerOptional, getServerRequired } from '@/lib/config/env/shared';
 
-const getPrimaryDatabaseUrl = (): string => getServerRequired('DATABASE_URL');
+const getPrimaryDatabaseUrl = (): string => getServerRequired('POSTGRES_URL');
 
 const getRoleDatabaseUrl = (key: string): string =>
   getServerOptional(key) ?? getPrimaryDatabaseUrl();
@@ -16,9 +16,7 @@ export const databaseEnv = {
   /** Prefer the non-pooling URL when available for migrations and direct clients. */
   get nonPoolingUrl(): string {
     return (
-      getServerOptional('DATABASE_URL_NON_POOLING') ??
-      getServerOptional('DATABASE_URL_UNPOOLED') ??
-      getPrimaryDatabaseUrl()
+      getServerOptional('POSTGRES_URL_NON_POOLING') ?? getPrimaryDatabaseUrl()
     );
   },
   /** Anonymous-role fallback defaults to the primary database URL. */

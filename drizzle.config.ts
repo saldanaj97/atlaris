@@ -10,15 +10,13 @@ if (!process.env.CI) {
 }
 
 // Prefer direct connection URLs for migrations (avoids connection pooler issues with DDL),
-// with fallbacks for environments that only provide pooled DATABASE_URL.
+// with fallbacks for environments that only provide pooled POSTGRES_URL.
 const databaseUrl =
-  process.env.DATABASE_URL_NON_POOLING ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  process.env.DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
 
 if (!databaseUrl) {
   throw new Error(
-    'DATABASE_URL_NON_POOLING, DATABASE_URL_UNPOOLED, or DATABASE_URL must be set for migrations',
+    'POSTGRES_URL_NON_POOLING or POSTGRES_URL must be set for migrations',
   );
 }
 

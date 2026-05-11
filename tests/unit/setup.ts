@@ -9,7 +9,7 @@ if (!process.env.NODE_ENV) {
 }
 
 // Prevent unit tests from importing a real DB client.
-// This avoids requiring DATABASE_URL in unit test runs and catches accidental DB usage.
+// This avoids requiring POSTGRES_URL in unit test runs and catches accidental DB usage.
 vi.mock('@supabase/service-role', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('@supabase/service-role')>();

@@ -5,7 +5,7 @@
  * The container:
  *   - Uses Postgres 17 (matching docker-compose.test.yml)
  *   - Creates a test database with extensions and RLS roles
- *   - Sets DATABASE_URL / DATABASE_URL_NON_POOLING so the service-role
+ *   - Sets POSTGRES_URL / POSTGRES_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
  *   - Applies `supabase/migrations` via `pnpm db:migrate` (migration chain matches production)
  *
@@ -22,12 +22,12 @@ import { randomUUID } from 'node:crypto';
 import { unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
 import {
   bootstrapDatabase,
   grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
 import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
-import { resetServiceRoleClientForTests } from '@supabase/service-role';
 
 import {
   buildTestDbRuntimeState,
@@ -64,9 +64,8 @@ function applySchema(connectionUrl: string): void {
     stdio: 'pipe',
     env: {
       ...process.env,
-      DATABASE_URL: connectionUrl,
-      DATABASE_URL_NON_POOLING: connectionUrl,
-      DATABASE_URL_UNPOOLED: connectionUrl,
+      POSTGRES_URL: connectionUrl,
+      POSTGRES_URL_NON_POOLING: connectionUrl,
       NODE_ENV: 'test',
     },
   });
@@ -97,9 +96,8 @@ export async function setup(): Promise<void> {
 
   await ensureDatabaseExists(adminConnectionUrl, baseDbName);
 
-  process.env.DATABASE_URL = baseConnectionUrl;
-  process.env.DATABASE_URL_NON_POOLING = baseConnectionUrl;
-  process.env.DATABASE_URL_UNPOOLED = baseConnectionUrl;
+  process.env.POSTGRES_URL = baseConnectionUrl;
+  process.env.POSTGRES_URL_NON_POOLING = baseConnectionUrl;
   process.env.ALLOW_DB_TRUNCATE = 'true';
 
   await bootstrapDatabase(baseConnectionUrl);

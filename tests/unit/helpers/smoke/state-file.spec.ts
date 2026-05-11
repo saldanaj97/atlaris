@@ -114,7 +114,7 @@ describe('smoke state-file', () => {
     );
     createdPaths.push(path);
     expect(() => readSmokeStateFromPath(path, deps)).toThrow(
-      /DATABASE_URL_UNPOOLED/,
+      /POSTGRES_URL_NON_POOLING/,
     );
   });
 
