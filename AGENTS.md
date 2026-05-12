@@ -87,7 +87,7 @@ We will primarily be utilizing the `.agents/plans/` directory to organize prds, 
 - Integration/security tests need Docker running. Unit tests do not.
 - `pnpm.onlyBuiltDependencies` in `package.json` must include `esbuild`, `@sentry/cli`, `sharp`, etc. for native binaries to build during `pnpm install`.
 - The `env.spec.ts` unit tests may show failures when `AI_PROVIDER` or other env vars are set in `.env.local`; this is expected — those tests validate default parsing behavior and use `vi.stubEnv` internally.
-- Docker daemon needs `sudo` in Cloud Agent VMs: `sudo nohup dockerd > /var/log/dockerd.log 2>&1 &`, then `sudo chmod 666 /var/run/docker.sock` before Supabase CLI can connect.
+- Docker daemon needs `sudo` in Cloud Agent VMs: `sudo nohup dockerd > /var/log/dockerd.log 2>&1 &`. Before Supabase CLI can connect, ensure your user can access the socket without world-writable permissions (e.g. `sudo usermod -aG docker "$USER"` then a new login/shell, or `sudo chgrp docker /var/run/docker.sock && sudo chmod 660 /var/run/docker.sock`). Avoid `chmod 666` on the socket — it is effectively root-equivalent for any local user.
 - `.env.local` requires Supabase keys from `pnpm exec supabase status` (specifically `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SERVICE_ROLE_KEY`). Run `db:dev:start` first, then extract keys.
 
 ## Learned User Preferences
