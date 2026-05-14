@@ -46,6 +46,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/browser": "^10.53.1",
     "@sentry/nextjs": "^10.49.0",
     "@supabase/supabase-js": "^2.105.3",
     "@vercel/analytics": "^2.0.1",
