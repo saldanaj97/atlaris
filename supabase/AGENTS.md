@@ -159,9 +159,9 @@ After you obtain the same explicit `dbClient` as for other RLS-sensitive calls (
 ## Commands
 
 ```bash
-pnpm db:generate   # Generate migrations from schema changes
-pnpm db:migrate    # Apply migrations
-pnpm db:push       # Push schema directly (dev only)
+supabase migration new <name> # Create a new SQL migration file
+supabase db diff -f <name>    # Generate a migration from local DB changes
+supabase db reset             # Recreate local DB from migrations + seed.sql
 ```
 
 ## Anti-Patterns

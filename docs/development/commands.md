@@ -33,12 +33,12 @@ pnpm check:type         # TypeScript type checking only
 
 Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus Prettier on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run Prettier explicitly, for example `pnpm exec prettier . --write --ignore-unknown`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
 
-## Database (Drizzle + Supabase local)
+## Database (Supabase migrations + Drizzle ORM)
 
 ```bash
-pnpm db:generate      # Generate migrations from schema changes
-pnpm db:migrate       # Apply migrations to database
-pnpm db:push          # Push schema directly to database
+supabase migration new <name> # Create a new SQL migration file
+supabase db diff -f <name>    # Generate a migration from local DB changes
+supabase db reset             # Recreate local Supabase DB from migrations + seed.sql
 ```
 
 ### Local dev database (Supabase local)
