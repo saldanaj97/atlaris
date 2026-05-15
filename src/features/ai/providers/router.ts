@@ -9,6 +9,7 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
+  ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
 import {
@@ -137,9 +138,29 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     ];
   }
 
-  async generate(
-    input: GenerationInput,
+  private async invokeWithRetry(
+    operation: () => Promise<ProviderGenerateResult>,
     options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    return pRetry(operation, {
+      retries: MAX_PROVIDER_RETRIES,
+      minTimeout: PROVIDER_RETRY_MIN_MS,
+      maxTimeout: PROVIDER_RETRY_MAX_MS,
+      randomize: true,
+      signal: options?.signal,
+      onFailedAttempt: ({ error }) => {
+        if (!shouldRetry(error)) {
+          throw error;
+        }
+      },
+    });
+  }
+
+  private async runWithProviderFallback(
+    options: GenerationOptions | undefined,
+    run: (
+      provider: AiPlanGenerationProvider,
+    ) => Promise<ProviderGenerateResult>,
   ): Promise<ProviderGenerateResult> {
     let lastError: unknown;
 
@@ -157,20 +178,13 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         );
       }
       try {
-        const result = await pRetry(() => provider.generate(input, options), {
-          retries: MAX_PROVIDER_RETRIES,
-          minTimeout: PROVIDER_RETRY_MIN_MS,
-          maxTimeout: PROVIDER_RETRY_MAX_MS,
-          randomize: true,
-          signal: options?.signal,
-          onFailedAttempt: ({ error }) => {
-            if (!shouldRetry(error)) {
-              throw error;
-            }
-          },
-        });
+        const result = await this.invokeWithRetry(() => run(provider), options);
         return result;
       } catch (err) {
+        if (isAbortError(err)) {
+          throw err;
+        }
+
         lastError = err;
         const message = err instanceof Error ? err.message : 'unknown error';
         logger.warn(
@@ -192,5 +206,23 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       throw lastError;
     }
     throw new Error('All AI providers failed');
+  }
+
+  async generate(
+    input: GenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    return this.runWithProviderFallback(options, (provider) =>
+      provider.generate(input, options),
+    );
+  }
+
+  async generateModuleLessonBatch(
+    input: ModuleLessonBatchGenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    return this.runWithProviderFallback(options, (provider) =>
+      provider.generateModuleLessonBatch(input, options),
+    );
   }
 }

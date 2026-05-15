@@ -1,6 +1,6 @@
 # Local Supabase for development
 
-Use the **Supabase CLI local stack** for long-lived local development. This keeps local database behavior closer to hosted Supabase than a standalone Postgres service while preserving Drizzle ORM and committed SQL migrations.
+Use the **Supabase CLI local stack** for long-lived local development. This keeps local database behavior closer to hosted Supabase than a standalone Postgres service while preserving Drizzle ORM for typed application access and Supabase SQL migrations as the deployable database history.
 
 Clerk Auth remains hosted. Supabase local replaces the database and local Supabase services only.
 
@@ -84,15 +84,17 @@ pnpm db:dev:reset
 
 `supabase db reset` recreates the local database from `supabase/migrations` and then applies `supabase/seed.sql`.
 
-## Drizzle and migration ownership
+## Migration ownership
 
-Drizzle schema/types remain in the repo, but committed migration files live under `supabase/migrations`.
+Drizzle schema/types remain in the repo for typed ORM access, but committed migration files under `supabase/migrations` are the deployable source of truth.
 
-`drizzle.config.ts` prefers direct connection URLs for DDL:
+Use Supabase CLI migration commands for new schema changes:
 
-`POSTGRES_URL_NON_POOLING` -> `POSTGRES_URL`.
-
-For local Supabase, `POSTGRES_URL` alone is enough unless you are running a command that explicitly requires the non-pooling alias.
+```bash
+supabase migration new <descriptive_name>
+supabase db diff -f <descriptive_name>
+supabase db reset
+```
 
 ## Scripts
 
@@ -108,7 +110,7 @@ For local Supabase, `POSTGRES_URL` alone is enough unless you are running a comm
 
 ## Hosted Supabase migrations
 
-Use a direct/session connection string for DDL when Supabase recommends it. `drizzle.config.ts` falls back from `POSTGRES_URL_NON_POOLING` to `POSTGRES_URL`.
+Hosted migrations are applied from GitHub Actions with `supabase link --project-ref ...` followed by `supabase db push`.
 
 Hosted deployment and migration workflows are separate from the local-dev stack. Do not point local reset/seed commands at hosted databases.
 

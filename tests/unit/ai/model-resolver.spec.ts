@@ -33,6 +33,11 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
         stream: new ReadableStream<string>(),
         metadata: {},
       }),
+    generateModuleLessonBatch: () =>
+      Promise.resolve({
+        stream: new ReadableStream<string>(),
+        metadata: {},
+      }),
   });
 
   const resolveWithMockProvider = (

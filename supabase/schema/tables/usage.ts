@@ -32,6 +32,9 @@ export const usageMetrics = pgTable(
     plansGenerated: integer('plans_generated').notNull().default(0),
     regenerationsUsed: integer('regenerations_used').notNull().default(0),
     exportsUsed: integer('exports_used').notNull().default(0),
+    lessonModulesGenerated: integer('lesson_modules_generated')
+      .notNull()
+      .default(0),
     ...timestampFields,
   },
   (table) => [
@@ -41,6 +44,10 @@ export const usageMetrics = pgTable(
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
     check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
+    check(
+      'lesson_modules_generated_nonneg',
+      sql`${table.lessonModulesGenerated} >= 0`,
+    ),
 
     // RLS policies
     pgPolicy('usage_metrics_select_own', {

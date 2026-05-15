@@ -46,6 +46,14 @@ function createProvider(
         metadata: { provider: 'mock', model: 'mock-model' },
       };
     },
+    generateModuleLessonBatch: async () => ({
+      stream: new ReadableStream<string>({
+        start(controller) {
+          controller.close();
+        },
+      }),
+      metadata: { provider: 'mock', model: 'mock-model' },
+    }),
   };
 }
 

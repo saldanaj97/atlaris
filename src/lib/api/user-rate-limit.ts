@@ -43,6 +43,15 @@ type UserRateLimitConfig = {
  */
 export const USER_RATE_LIMIT_CONFIGS = {
   /**
+   * HIGH COST - full module lesson batch (many tasks in one AI call).
+   * Separate from `aiGeneration` so plan flows are not starved.
+   */
+  lessonGeneration: {
+    maxRequests: 5,
+    windowMs: 60 * 60 * 1000, // 5 requests per hour
+  },
+
+  /**
    * HIGH COST - AI generation, regeneration, content enhancement
    * These endpoints call external AI providers and can be expensive.
    * Strict limits to prevent runaway costs and abuse.

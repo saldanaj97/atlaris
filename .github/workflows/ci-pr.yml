@@ -46,17 +46,18 @@ jobs:
           filters: |
             source:
               - 'src/**'
+              - 'supabase/**'
               - 'tests/**'
               - 'scripts/**'
             code:
               - 'src/**'
+              - 'supabase/**'
               - 'tests/**'
               - 'scripts/**'
               - 'vitest.config.ts'
               - 'tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
-              - 'drizzle.config.ts'
               - '.oxlintrc.json'
               - '.prettierignore'
               - 'prettier.config.mjs'
@@ -91,16 +92,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Check Drizzle migration drift
-        env:
-          POSTGRES_URL: postgresql://placeholder@localhost/placeholder
-        run: |
-          pnpm db:generate
-          if ! git diff --quiet -- supabase/migrations/; then
-            echo "::error::Migration files are out of sync with schema. Run 'pnpm db:generate' locally and commit generated files."
-            git status --short supabase/migrations/
-            exit 1
-          fi
       - name: Run Oxlint checks
         run: |
           if [ "${{ needs.changes.outputs.source }}" = "true" ]; then

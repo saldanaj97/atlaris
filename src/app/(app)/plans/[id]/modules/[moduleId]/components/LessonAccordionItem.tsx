@@ -1,11 +1,6 @@
 'use client';
 
 import {
-  type ContentBlock,
-  generatePlaceholderContent,
-  hashString,
-} from '@/app/(app)/plans/[id]/modules/[moduleId]/components/placeholder-content';
-import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
@@ -15,6 +10,7 @@ import { formatMinutes } from '@/features/plans/formatters';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import { cn } from '@/lib/utils';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
+import type { LessonContentBlock } from '@/shared/types/lesson-content.types';
 import {
   CheckCircle2,
   Clock,
@@ -25,7 +21,7 @@ import {
   PlayCircle,
   Target,
 } from 'lucide-react';
-import { type ElementType, type JSX, useMemo } from 'react';
+import { type ElementType, type JSX } from 'react';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -70,11 +66,6 @@ const RESOURCE_CONFIG: Record<
   },
 };
 
-interface PlaceholderContentEntry {
-  key: string;
-  block: ContentBlock;
-}
-
 type LessonResources = NonNullable<ModuleDetailTask['resources']>;
 
 function getCardClassName(isLocked: boolean, isCompleted: boolean): string {
@@ -113,64 +104,151 @@ function getMutedTextClassName(isLocked: boolean): string {
     : 'text-stone-500 dark:text-stone-400';
 }
 
-function createPlaceholderContentEntries(params: {
-  lessonId: string;
-  lessonTitle: string;
-}): readonly PlaceholderContentEntry[] {
-  const occurrenceCounts = new Map<string, number>();
-  const blocks = generatePlaceholderContent({
-    seed: hashString(params.lessonId),
-    topic: params.lessonTitle,
-    minSections: 2,
-    maxSections: 3,
-    minParagraphsPerSection: 1,
-    maxParagraphsPerSection: 2,
-  });
+function getLessonBlockKey(block: LessonContentBlock): string {
+  switch (block.type) {
+    case 'heading':
+    case 'paragraph':
+    case 'practice':
+      return `${block.type}-${block.text}`;
+    case 'example':
+      return `${block.type}-${block.title}-${block.text}`;
+    case 'takeaways':
+    case 'completion_criteria':
+      return `${block.type}-${block.items.join('|')}`;
+    default: {
+      const _exhaustiveCheck: never = block;
+      return _exhaustiveCheck;
+    }
+  }
+}
 
-  return blocks.map((block) => {
-    const signature = `${block.type}-${hashString(block.content)}`;
-    const occurrence = occurrenceCounts.get(signature) ?? 0;
-    occurrenceCounts.set(signature, occurrence + 1);
-
-    return {
-      key: `${signature}-${occurrence}`,
-      block,
-    };
+function getStableEntries<T>(
+  items: readonly T[],
+  getSignature: (item: T) => string,
+): Array<{ key: string; item: T }> {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const signature = getSignature(item);
+    const occurrence = seen.get(signature) ?? 0;
+    seen.set(signature, occurrence + 1);
+    return { key: `${signature}-${occurrence}`, item };
   });
 }
 
-function ContentBlockRenderer({ block }: { block: ContentBlock }) {
+function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
   switch (block.type) {
-    case 'heading1':
+    case 'heading':
       return (
-        <h2 className="mb-4 text-xl font-bold text-stone-900 dark:text-stone-100">
-          {block.content}
-        </h2>
-      );
-    case 'heading2':
-      return (
-        <h3 className="mt-6 mb-3 text-lg font-semibold text-stone-800 dark:text-stone-200">
-          {block.content}
+        <h3 className="mt-6 mb-3 text-lg font-semibold text-stone-900 first:mt-0 dark:text-stone-100">
+          {block.text}
         </h3>
-      );
-    case 'heading3':
-      return (
-        <h4 className="mt-4 mb-2 text-base font-medium text-stone-700 dark:text-stone-300">
-          {block.content}
-        </h4>
       );
     case 'paragraph':
       return (
         <p className="mb-4 leading-relaxed text-stone-600 dark:text-stone-400">
-          {block.content}
+          {block.text}
         </p>
       );
+    case 'example':
+      return (
+        <section className="my-5 rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <h4 className="mb-2 text-sm font-semibold text-primary">
+            {block.title}
+          </h4>
+          <p className="leading-relaxed text-stone-600 dark:text-stone-300">
+            {block.text}
+          </p>
+        </section>
+      );
+    case 'practice':
+      return (
+        <section className="my-5 rounded-xl border border-accent/20 bg-accent/10 p-4">
+          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+            Practice
+          </h4>
+          <p className="leading-relaxed text-stone-600 dark:text-stone-300">
+            {block.text}
+          </p>
+        </section>
+      );
+    case 'takeaways':
+      return (
+        <section className="my-5">
+          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+            Key takeaways
+          </h4>
+          <ul className="list-disc space-y-2 pl-5 text-stone-600 dark:text-stone-400">
+            {getStableEntries(block.items, (item) => item).map(
+              ({ key, item }) => (
+                <li key={key}>{item}</li>
+              ),
+            )}
+          </ul>
+        </section>
+      );
+    case 'completion_criteria':
+      return (
+        <section className="my-5">
+          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+            Completion criteria
+          </h4>
+          <ul className="space-y-2 text-stone-600 dark:text-stone-400">
+            {getStableEntries(block.items, (item) => item).map(
+              ({ key, item }) => (
+                <li key={key} className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                  <span>{item}</span>
+                </li>
+              ),
+            )}
+          </ul>
+        </section>
+      );
     default: {
-      // Compile-time exhaustiveness when ContentBlockType grows.
-      const _exhaustiveCheck: never = block.type;
+      const _exhaustiveCheck: never = block;
       return _exhaustiveCheck;
     }
   }
+}
+
+function GeneratedContentPanel({
+  lessonContent,
+}: {
+  lessonContent: NonNullable<ModuleDetailTask['lessonContent']>;
+}) {
+  return (
+    <div className="rounded-xl border border-panel-border bg-panel p-6 shadow-sm">
+      <div className="max-w-none">
+        {getStableEntries(lessonContent.blocks, getLessonBlockKey).map(
+          ({ key, item }) => (
+            <LessonContentBlockRenderer key={key} block={item} />
+          ),
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MissingLessonContentPanel() {
+  return (
+    <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 p-6 text-center">
+      <h4 className="mb-2 text-base font-semibold text-stone-900 dark:text-stone-100">
+        Lesson content not generated yet
+      </h4>
+      <p className="mx-auto max-w-xl text-sm text-stone-600 dark:text-stone-400">
+        Use the module-level generate action to create and cache detailed
+        learning material for every lesson in this module.
+      </p>
+    </div>
+  );
+}
+
+function LessonBodyPanel({ lesson }: { lesson: ModuleDetailTask }) {
+  if (lesson.lessonContent) {
+    return <GeneratedContentPanel lessonContent={lesson.lessonContent} />;
+  }
+
+  return <MissingLessonContentPanel />;
 }
 
 function LessonMarker({
@@ -185,14 +263,14 @@ function LessonMarker({
   return (
     <div
       className={cn(
-        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+        'flex size-8 shrink-0 items-center justify-center rounded-full',
         getMarkerClassName(isLocked, isCompleted),
       )}
     >
       {isLocked ? (
-        <Lock className="h-4 w-4" />
+        <Lock className="size-4" />
       ) : isCompleted ? (
-        <CheckCircle2 className="h-5 w-5" />
+        <CheckCircle2 className="size-5" />
       ) : (
         <span className="text-sm font-semibold">{lesson.order}</span>
       )}
@@ -219,7 +297,7 @@ function ResourceSummary({
       )}
     >
       <span className="inline-flex items-center gap-1.5">
-        <LinkIcon className="h-4 w-4" />
+        <LinkIcon className="size-4" />
         {resourceCount} resource{resourceCount !== 1 ? 's' : ''}
       </span>
     </div>
@@ -282,7 +360,7 @@ function LessonTriggerContent({
         )}
       >
         <span className="inline-flex items-center gap-1.5">
-          <Clock className="h-4 w-4" />
+          <Clock className="size-4" />
           {formatMinutes(lesson.estimatedMinutes)}
         </span>
       </span>
@@ -296,7 +374,7 @@ function LockedContentOverlay() {
       {/* Fallback text layer - visible if blur is removed via dev tools */}
       <div className="absolute inset-0 flex items-center justify-center bg-stone-100 p-8 text-center dark:bg-stone-800">
         <div className="max-w-md">
-          <Lock className="mx-auto mb-4 h-12 w-12 text-stone-400 dark:text-stone-500" />
+          <Lock className="mx-auto mb-4 size-12 text-stone-400 dark:text-stone-500" />
           <p className="text-lg font-medium text-stone-500 dark:text-stone-400">
             This lesson is locked
           </p>
@@ -310,8 +388,8 @@ function LockedContentOverlay() {
       <div className="absolute inset-0 flex items-center justify-center bg-background/90 dark:bg-background/85">
         <div className="max-w-sm rounded-2xl border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm">
           <div className="mb-4 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-              <Lock className="h-8 w-8 text-stone-400 dark:text-stone-500" />
+            <div className="flex size-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
+              <Lock className="size-8 text-stone-400 dark:text-stone-500" />
             </div>
           </div>
           <h3 className="mb-2 text-lg font-semibold text-stone-700 dark:text-stone-300">
@@ -343,18 +421,18 @@ function LearningResourceCard({
     >
       <div
         className={cn(
-          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          'flex size-10 shrink-0 items-center justify-center rounded-lg',
           config.badgeClass,
         )}
       >
-        <Icon className="h-5 w-5" />
+        <Icon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2">
           <span className="truncate font-medium text-stone-800 group-hover/resource:text-primary dark:text-stone-200 dark:group-hover/resource:text-primary">
             {resource.title}
           </span>
-          <ExternalLink className="h-3 w-3 shrink-0 opacity-50" />
+          <ExternalLink className="size-3 shrink-0 opacity-50" />
         </div>
         <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
           <Badge
@@ -398,44 +476,21 @@ function LearningResources({ resources }: { resources: LessonResources }) {
   );
 }
 
-function PlaceholderContentPanel({
-  placeholderContent,
-}: {
-  placeholderContent: readonly PlaceholderContentEntry[];
-}) {
-  return (
-    <div className="rounded-xl border border-stone-200/50 bg-white/50 p-6 dark:border-stone-700/50 dark:bg-stone-800/30">
-      <div className="prose prose-stone dark:prose-invert max-w-none">
-        {placeholderContent.map(({ key, block }) => (
-          <ContentBlockRenderer key={key} block={block} />
-        ))}
-      </div>
-
-      <div className="mt-6 rounded-lg bg-amber-50/50 p-3 text-center text-xs text-amber-700 dark:bg-amber-950/20 dark:text-amber-400">
-        This content is placeholder text. AI-generated learning material will
-        appear here.
-      </div>
-    </div>
-  );
-}
-
 function LessonContent({
   lesson,
   onStatusChange,
-  placeholderContent,
   resources,
   status,
 }: {
   lesson: ModuleDetailTask;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
-  placeholderContent: readonly PlaceholderContentEntry[];
   resources: LessonResources;
   status: ProgressStatus;
 }) {
   return (
     <>
       <LearningResources resources={resources} />
-      <PlaceholderContentPanel placeholderContent={placeholderContent} />
+      <LessonBodyPanel lesson={lesson} />
 
       <div className="mt-6 flex justify-end">
         <TaskStatusButton
@@ -456,15 +511,6 @@ export function LessonAccordionItem({
 }: LessonAccordionItemProps): JSX.Element {
   const isCompleted = status === 'completed';
   const resources = lesson.resources ?? [];
-
-  const placeholderContent = useMemo(
-    () =>
-      createPlaceholderContentEntries({
-        lessonId: lesson.id,
-        lessonTitle: lesson.title,
-      }),
-    [lesson.id, lesson.title],
-  );
 
   return (
     <AccordionItem
@@ -499,7 +545,6 @@ export function LessonAccordionItem({
               lesson={lesson}
               status={status}
               onStatusChange={onStatusChange}
-              placeholderContent={placeholderContent}
               resources={resources}
             />
           )}

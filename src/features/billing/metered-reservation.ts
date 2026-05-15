@@ -7,8 +7,8 @@
  * drift across midnight or month boundaries between the two phases).
  *
  * Public callers should not import this module directly. Use
- * `regeneration-quota-boundary.ts` for the regeneration HTTP path; other
- * meters should add their own boundary instead of reaching into this file.
+ * `regeneration-quota-boundary.ts`, `lesson-generation-quota-boundary.ts`,
+ * or another dedicated boundary; do not import this file from routes.
  */
 
 import { usageMetrics, users } from '@supabase/schema';
@@ -24,7 +24,7 @@ import {
   incrementUsageInTx,
 } from './usage-metrics';
 
-type MeterKind = 'regeneration' | 'export';
+type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -34,7 +34,10 @@ type MeterKind = 'regeneration' | 'export';
  */
 type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
-type MeterColumn = 'regenerationsUsed' | 'exportsUsed';
+type MeterColumn =
+  | 'regenerationsUsed'
+  | 'exportsUsed'
+  | 'lessonModulesGenerated';
 
 type MeterConfig = {
   column: MeterColumn;
@@ -64,6 +67,15 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
       incrementUsageInTx(tx, userId, month, 'export'),
     readColumn: (metrics) => metrics.exportsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.exportsUsed} - 1)`,
+  },
+  lessonGeneration: {
+    column: 'lessonModulesGenerated',
+    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyLessonGenerations,
+    incrementInTx: (tx, userId, month) =>
+      incrementUsageInTx(tx, userId, month, 'lesson_generation'),
+    readColumn: (metrics) => metrics.lessonModulesGenerated,
+    decrementSql: () =>
+      sql`GREATEST(0, ${usageMetrics.lessonModulesGenerated} - 1)`,
   },
 };
 

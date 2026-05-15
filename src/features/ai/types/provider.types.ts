@@ -1,10 +1,12 @@
 import type {
   GenerationInput,
+  ModuleLessonBatchGenerationInput,
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
 
 export type {
   GenerationInput,
+  ModuleLessonBatchGenerationInput,
   ProviderMetadata,
   ProviderUsage,
 } from '@/shared/types/ai-provider.types';
@@ -22,6 +24,11 @@ export type GenerationOptions = {
 export type AiPlanGenerationProvider = {
   generate(
     input: GenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult>;
+
+  generateModuleLessonBatch(
+    input: ModuleLessonBatchGenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult>;
 };

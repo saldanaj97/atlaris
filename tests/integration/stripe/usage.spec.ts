@@ -215,6 +215,7 @@ describe('Usage Tracking', () => {
       expect(after[0]?.plansGenerated).toBe(1);
       expect(after[0]?.regenerationsUsed).toBe(0);
       expect(after[0]?.exportsUsed).toBe(0);
+      expect(after[0]?.lessonModulesGenerated).toBe(0);
     });
 
     it('increments regeneration counter for existing row', async () => {
@@ -263,6 +264,28 @@ describe('Usage Tracking', () => {
         .from(usageMetrics)
         .where(sql`user_id = ${userId} AND month = ${month}`);
       expect(after[0]?.exportsUsed).toBe(6);
+    });
+
+    it('increments lesson_generation counter for existing row', async () => {
+      const userId = await ensureUser({
+        authUserId: 'user_increment_lesson_gen',
+        email: 'increment.lesson@example.com',
+      });
+
+      const month = getCurrentMonth();
+      await db.insert(usageMetrics).values({
+        userId,
+        month,
+        lessonModulesGenerated: 1,
+      });
+
+      await incrementUsage(userId, 'lesson_generation');
+
+      const after = await db
+        .select()
+        .from(usageMetrics)
+        .where(sql`user_id = ${userId} AND month = ${month}`);
+      expect(after[0]?.lessonModulesGenerated).toBe(2);
     });
 
     it('updates updatedAt timestamp', async () => {
@@ -425,6 +448,10 @@ describe('Usage Tracking', () => {
           used: 7,
           limit: 10,
         },
+        lessonGenerations: {
+          used: 0,
+          limit: 3,
+        },
       });
     });
 
@@ -479,6 +506,10 @@ describe('Usage Tracking', () => {
           used: 100,
           limit: Infinity,
         },
+        lessonGenerations: {
+          used: 0,
+          limit: Infinity,
+        },
       });
     });
 
@@ -500,6 +531,7 @@ describe('Usage Tracking', () => {
       // Metrics created with zeros
       expect(summary.regenerations.used).toBe(0);
       expect(summary.exports.used).toBe(0);
+      expect(summary.lessonGenerations.used).toBe(0);
 
       // Verify in DB
       const after = await db
