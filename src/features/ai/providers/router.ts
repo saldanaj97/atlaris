@@ -23,6 +23,7 @@ import { logger } from '@/lib/logging/logger';
 export type RouterConfig = {
   useMock?: boolean;
   model?: string;
+  fallbackModels?: readonly string[];
 };
 
 /**
@@ -105,7 +106,15 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
 
     if (cfg.useMock === false) {
       const model = cfg.model ?? aiEnv.defaultModel;
-      this.providers = [() => new OpenRouterProvider({ model })];
+      this.providers = [
+        () =>
+          new OpenRouterProvider({
+            model,
+            ...(cfg.fallbackModels !== undefined
+              ? { fallbackModels: cfg.fallbackModels }
+              : {}),
+          }),
+      ];
       return;
     }
 
@@ -117,7 +126,15 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     }
 
     const model = cfg.model ?? aiEnv.defaultModel;
-    this.providers = [() => new OpenRouterProvider({ model })];
+    this.providers = [
+      () =>
+        new OpenRouterProvider({
+          model,
+          ...(cfg.fallbackModels !== undefined
+            ? { fallbackModels: cfg.fallbackModels }
+            : {}),
+        }),
+    ];
   }
 
   async generate(

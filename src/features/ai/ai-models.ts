@@ -221,3 +221,29 @@ export function getDefaultModelForTier(tier: SubscriptionTier): string {
   const availableModels = getModelsForTier(tier);
   return availableModels.length > 0 ? availableModels[0].id : AI_DEFAULT_MODEL;
 }
+
+/**
+ * Returns the ordered fallback route for a primary model.
+ *
+ * Free and starter users fall back to OpenRouter's Free Models Router
+ * (`openrouter/free`) when the primary request is not already that router.
+ * Pro users keep the current single-model route.
+ *
+ * Callers are expected to have already validated tier/model compatibility via
+ * `resolveModelForTier`; this helper only computes routing fallbacks.
+ */
+export function getFallbackModelsForTier(
+  tier: SubscriptionTier,
+  primaryModelId: string,
+): string[] {
+  if (tier === 'pro') {
+    return [];
+  }
+
+  const primaryModel = getModelById(primaryModelId);
+  if (!primaryModel || primaryModel.tier !== 'free') {
+    return [];
+  }
+
+  return primaryModelId === AI_DEFAULT_MODEL ? [] : [AI_DEFAULT_MODEL];
+}

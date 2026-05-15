@@ -1,8 +1,10 @@
+import { getFallbackModelsForTier } from '@/features/ai/ai-models';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { RouterGenerationProvider } from '@/features/ai/providers/router';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 function parseMockSeed(): number | undefined {
   return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)
@@ -39,11 +41,16 @@ function shouldUseMock(): boolean {
  * Used when a user has selected a preferred model or when explicitly specifying a model.
  * `AI_USE_MOCK`, when set, must be one of: `true`, `false`, `1`, or `0`.
  *
+ * The `tier` argument is a routing hint, not an access-control gate; callers
+ * should already have validated the model/tier pair through
+ * `resolveModelForTier`.
+ *
  * @param modelId - OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free')
  * @returns An instance implementing `AiPlanGenerationProvider`
  */
 export function getGenerationProviderWithModel(
   modelId: string,
+  tier?: SubscriptionTier,
 ): AiPlanGenerationProvider {
   if (!modelId) {
     throw new Error('modelId must be a non-empty string');
@@ -59,7 +66,12 @@ export function getGenerationProviderWithModel(
     });
   }
 
-  return new RouterGenerationProvider({ model: modelId });
+  return new RouterGenerationProvider({
+    model: modelId,
+    ...(tier !== undefined
+      ? { fallbackModels: getFallbackModelsForTier(tier, modelId) }
+      : {}),
+  });
 }
 
 /**

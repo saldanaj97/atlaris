@@ -11,6 +11,7 @@ import {
   getStatusCodeFromError,
   isAsyncIterable,
   isObjectRecord,
+  extractResponseModel,
   normalizeUsage,
   parseContent,
   type StreamEventLike,
@@ -41,6 +42,7 @@ export type OpenRouterClient = {
 export type OpenRouterProviderConfig = {
   apiKey?: string;
   model: string;
+  fallbackModels?: readonly string[];
   siteUrl?: string;
   appName?: string;
   temperature?: number;
@@ -61,6 +63,27 @@ function createFreshMetadataUsage(): ProviderUsage {
     totalTokens: undefined,
     providerReportedCostUsd: undefined,
   };
+}
+
+function buildRouteModels(
+  primaryModel: string,
+  fallbackModels: readonly string[] = [],
+): string[] {
+  const routeModels: string[] = [];
+  for (const model of [primaryModel, ...fallbackModels]) {
+    if (!model || routeModels.includes(model)) {
+      continue;
+    }
+    routeModels.push(model);
+  }
+  return routeModels;
+}
+
+function getRouteTokenCeiling(routeModels: readonly string[]): number {
+  return routeModels.reduce(
+    (lowest, modelId) => Math.min(lowest, getOutputTokenCeiling(modelId)),
+    Number.POSITIVE_INFINITY,
+  );
 }
 
 function mergeStreamUsageIntoMetadata(
@@ -245,6 +268,7 @@ function wrapStreamWithGenAiSpanLifecycle(
 function resolveOpenRouterContentStream(
   response: unknown,
   metadataUsage: ProviderUsage,
+  onModel?: (model: string) => void,
 ): { stream: ReadableStream<string>; isStreaming: boolean } {
   const isStreamingResponse = isAsyncIterable(response);
   if (isStreamingResponse) {
@@ -253,6 +277,7 @@ function resolveOpenRouterContentStream(
       onUsage: (usage, { usageObjectPresent }) => {
         mergeStreamUsageIntoMetadata(metadataUsage, usage, usageObjectPresent);
       },
+      onModel,
     });
     return { stream, isStreaming: true };
   }
@@ -266,23 +291,17 @@ function resolveOpenRouterContentStream(
   }
   const normalizedUsage = normalizeUsage(nonStreamResponse?.usage);
   mergeNonStreamUsageIntoMetadata(metadataUsage, normalizedUsage);
+  const responseModel = extractResponseModel(response);
+  if (responseModel) {
+    onModel?.(responseModel);
+  }
   return { stream: toStream(content), isStreaming: false };
-}
-
-function buildGenerateMetadata(
-  model: string,
-  usage: ProviderUsage,
-): ProviderGenerateResult['metadata'] {
-  return {
-    usage,
-    provider: 'openrouter',
-    model,
-  };
 }
 
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouterClient;
   private readonly model: string;
+  private readonly routeModels: string[];
   private readonly temperature: number;
 
   constructor(cfg: OpenRouterProviderConfig, client?: OpenRouterClient) {
@@ -290,6 +309,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       throw new Error('OpenRouterProvider requires a model to be specified');
     }
     this.model = cfg.model;
+    this.routeModels = buildRouteModels(cfg.model, cfg.fallbackModels);
     this.temperature = cfg.temperature ?? 0.2;
     if (client) {
       this.client = client;
@@ -331,9 +351,10 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     return Sentry.startSpanManual(
       {
         op: 'gen_ai.request',
-        name: `request ${this.model}`,
+        name: `request ${this.routeModels.join(' > ')}`,
         attributes: {
           'gen_ai.request.model': this.model,
+          'gen_ai.request.model_route': this.routeModels.join(' > '),
           'gen_ai.request.temperature': this.temperature,
         },
       },
@@ -353,26 +374,51 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
 
         let response: unknown;
         try {
-          response = await this.client.chat.send(
-            {
-              model: this.model,
-              messages,
-              stream: true,
-              temperature: this.temperature,
-              responseFormat: { type: 'json_object' },
-              maxTokens: getOutputTokenCeiling(this.model),
-            },
-            requestOptions,
-          );
+          const responseFormat = { type: 'json_object' as const };
+          const requestBody =
+            this.routeModels.length > 1
+              ? {
+                  models: this.routeModels,
+                  messages,
+                  stream: true,
+                  temperature: this.temperature,
+                  responseFormat,
+                  maxTokens: getRouteTokenCeiling(this.routeModels),
+                }
+              : {
+                  model: this.model,
+                  messages,
+                  stream: true,
+                  temperature: this.temperature,
+                  responseFormat,
+                  maxTokens: getRouteTokenCeiling(this.routeModels),
+                };
+          response = await this.client.chat.send(requestBody, requestOptions);
         } catch (err) {
           logAndThrowFromOpenRouterSend(err, this.model);
         }
 
         const metadataUsage = createFreshMetadataUsage();
+        const metadata: ProviderGenerateResult['metadata'] = {
+          usage: metadataUsage,
+          provider: 'openrouter',
+          model: this.model,
+        };
         const { stream, isStreaming: isStreamingResponse } =
-          resolveOpenRouterContentStream(response, metadataUsage);
+          resolveOpenRouterContentStream(
+            response,
+            metadataUsage,
+            (resolvedModel) => {
+              metadata.model = resolvedModel;
+            },
+          );
 
-        const metadata = buildGenerateMetadata(this.model, metadataUsage);
+        if (isStreamingResponse) {
+          const responseModel = extractResponseModel(response);
+          if (responseModel) {
+            metadata.model = responseModel;
+          }
+        }
 
         if (!isStreamingResponse) {
           appendGenAiTokenUsageAttributes(span, metadataUsage);

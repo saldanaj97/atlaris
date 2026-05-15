@@ -64,13 +64,14 @@ export function validateModelForTier(
 function getProviderSafe(
   modelIdToUse: string,
   requestedModel: string | undefined | null,
+  userTier: SubscriptionTier,
   providerGetter: ProviderGetter,
   requestLogger: ModelResolverLogger,
 ): AiPlanGenerationProvider {
   try {
     // Always use the model-specific provider factory so default-model fallback
     // cannot be silently redirected by aiEnv.defaultModel.
-    return providerGetter(modelIdToUse);
+    return providerGetter(modelIdToUse, userTier);
   } catch (err) {
     const factoryName = providerGetter.name || 'unknownFactory';
     const errPayload =
@@ -122,6 +123,7 @@ export function resolveModelForTier(
       provider: getProviderSafe(
         defaultModelForTier,
         requestedModel,
+        userTier,
         providerGetter,
         requestLogger,
       ),
@@ -141,6 +143,7 @@ export function resolveModelForTier(
       provider: getProviderSafe(
         defaultModelForTier,
         requestedModel,
+        userTier,
         providerGetter,
         requestLogger,
       ),
@@ -161,6 +164,7 @@ export function resolveModelForTier(
       provider: getProviderSafe(
         defaultModelForTier,
         requestedModel,
+        userTier,
         providerGetter,
         requestLogger,
       ),
@@ -174,6 +178,7 @@ export function resolveModelForTier(
     provider: getProviderSafe(
       requestedModel,
       requestedModel,
+      userTier,
       providerGetter,
       requestLogger,
     ),

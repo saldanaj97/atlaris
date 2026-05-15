@@ -4,6 +4,7 @@ import {
   AI_DEFAULT_MODEL,
   AVAILABLE_MODELS,
   getDefaultModelForTier,
+  getFallbackModelsForTier,
   getModelById,
   getModelsForTier,
   isValidModelId,
@@ -258,6 +259,30 @@ describe('AI Models Configuration', () => {
       const defaultModel = getDefaultModelForTier('free');
       const freeModelIds = freeModels.map((model) => model.id);
       expect(freeModelIds).toContain(defaultModel);
+    });
+  });
+
+  describe('getFallbackModelsForTier', () => {
+    it('uses openrouter/free as the fallback route for free-tier models', () => {
+      expect(
+        getFallbackModelsForTier('free', 'anthropic/claude-haiku-4.5'),
+      ).toEqual([AI_DEFAULT_MODEL]);
+    });
+
+    it('uses openrouter/free as the fallback route for starter-tier models', () => {
+      expect(
+        getFallbackModelsForTier('starter', 'google/gemini-2.0-flash-exp:free'),
+      ).toEqual([AI_DEFAULT_MODEL]);
+    });
+
+    it('does not duplicate openrouter/free when it is already the primary route', () => {
+      expect(getFallbackModelsForTier('free', AI_DEFAULT_MODEL)).toEqual([]);
+    });
+
+    it('does not add free-router fallback for pro tier', () => {
+      expect(
+        getFallbackModelsForTier('pro', 'anthropic/claude-sonnet-4.5'),
+      ).toEqual([]);
     });
   });
 
