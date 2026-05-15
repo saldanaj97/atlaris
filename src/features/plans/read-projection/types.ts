@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
+import type { LessonContent } from '@/shared/types/lesson-content.types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 
 export type PlanDbClient = DbClient;
@@ -37,7 +38,23 @@ export type ModuleDetailTask = {
   description: string | null;
   estimatedMinutes: number;
   status: ProgressStatus;
+  lessonContent: LessonContent | null;
+  lessonContentUpdatedAt: Date | null;
   resources: ModuleDetailResource[];
+};
+
+export type ModuleLessonGenerationStatus =
+  | 'not_generated'
+  | 'generating'
+  | 'ready'
+  | 'failed';
+
+export type ModuleLessonGenerationSummary = {
+  status: ModuleLessonGenerationStatus;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  failedAt: Date | null;
+  error: string | null;
 };
 
 /**
@@ -49,6 +66,7 @@ export type ModuleDetailModule = {
   title: string;
   description: string | null;
   estimatedMinutes: number;
+  lessonGeneration: ModuleLessonGenerationSummary;
   tasks: ModuleDetailTask[];
 };
 

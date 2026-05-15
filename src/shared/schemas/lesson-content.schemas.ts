@@ -94,3 +94,41 @@ export const ModuleLessonGenerationMetadataSchema = z
     batchRequestId: z.string().max(128).optional(),
   })
   .strict();
+
+const ModuleLessonGenerationApiBaseSchema = z
+  .object({
+    planId: z.string().uuid(),
+    moduleId: z.string().uuid(),
+  })
+  .strict();
+
+export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
+  'state',
+  [
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('ready'),
+      durationMs: z.number().int().nonnegative().optional(),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('generating'),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('disabled'),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('provider_failure'),
+      message: z.string().min(1),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('quota_denied'),
+      currentCount: z.number().int().nonnegative(),
+      limit: z.number().int().nonnegative(),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('not_found'),
+    }),
+    ModuleLessonGenerationApiBaseSchema.extend({
+      state: z.literal('locked'),
+    }),
+  ],
+);

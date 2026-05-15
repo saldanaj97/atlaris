@@ -4,6 +4,7 @@ import type {
   ModuleTaskMetricRow,
 } from '@/lib/db/queries/types/modules.types';
 import type { ResourceType } from '@/shared/types/db.types';
+import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
 import type {
   ModuleDetailModule,
@@ -116,6 +117,11 @@ export function buildModuleDetailReadModel(
       description: task.description,
       estimatedMinutes: task.estimatedMinutes ?? 0,
       status: progress?.status ?? 'not_started',
+      lessonContent:
+        task.lessonContent === null
+          ? null
+          : LessonContentSchema.parse(task.lessonContent),
+      lessonContentUpdatedAt: task.lessonContentUpdatedAt,
       resources,
     };
   });
@@ -126,6 +132,13 @@ export function buildModuleDetailReadModel(
     title: rows.module.title,
     description: rows.module.description,
     estimatedMinutes: rows.module.estimatedMinutes ?? 0,
+    lessonGeneration: {
+      status: rows.module.lessonGenerationStatus,
+      startedAt: rows.module.lessonGenerationStartedAt,
+      completedAt: rows.module.lessonGenerationCompletedAt,
+      failedAt: rows.module.lessonGenerationFailedAt,
+      error: rows.module.lessonGenerationError,
+    },
     tasks,
   };
 

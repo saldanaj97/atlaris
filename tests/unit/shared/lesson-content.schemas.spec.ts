@@ -10,6 +10,7 @@ import {
 import {
   LessonContentSchema,
   ModuleLessonBatchProviderOutputSchema,
+  ModuleLessonGenerationApiResponseSchema,
   ModuleLessonGenerationMetadataSchema,
 } from '@/shared/schemas/lesson-content.schemas';
 
@@ -149,6 +150,97 @@ describe('lesson content Zod contracts', () => {
     ).not.toThrow();
     expect(() =>
       ModuleLessonGenerationMetadataSchema.parse({ version: 1, x: 1 }),
+    ).toThrow();
+  });
+
+  it('accepts module lesson generation API responses for every state variant', () => {
+    const planId = '11111111-1111-4111-8111-111111111111';
+    const moduleId = '22222222-2222-4222-8222-222222222222';
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'ready',
+        planId,
+        moduleId,
+        durationMs: 1,
+      }),
+    ).toMatchObject({ state: 'ready', planId, moduleId });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'generating',
+        planId,
+        moduleId,
+      }),
+    ).toMatchObject({ state: 'generating' });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'disabled',
+        planId,
+        moduleId,
+      }),
+    ).toMatchObject({ state: 'disabled' });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'provider_failure',
+        planId,
+        moduleId,
+        message: 'x',
+      }),
+    ).toMatchObject({ state: 'provider_failure' });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'quota_denied',
+        planId,
+        moduleId,
+        currentCount: 0,
+        limit: 0,
+      }),
+    ).toMatchObject({ state: 'quota_denied' });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'not_found',
+        planId,
+        moduleId,
+      }),
+    ).toMatchObject({ state: 'not_found' });
+
+    expect(
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'locked',
+        planId,
+        moduleId,
+      }),
+    ).toMatchObject({ state: 'locked' });
+  });
+
+  it('rejects quota_denied when limit is not an integer', () => {
+    const planId = '33333333-3333-4333-8333-333333333333';
+    const moduleId = '44444444-4444-4444-8444-444444444444';
+    expect(() =>
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'quota_denied',
+        planId,
+        moduleId,
+        currentCount: 1,
+        limit: 1.5,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects legacy disabled encoding on failed + reason', () => {
+    const planId = '55555555-5555-4555-8555-555555555555';
+    const moduleId = '66666666-6666-4666-8666-666666666666';
+    expect(() =>
+      ModuleLessonGenerationApiResponseSchema.parse({
+        state: 'failed',
+        planId,
+        moduleId,
+        reason: 'disabled',
+      }),
     ).toThrow();
   });
 });

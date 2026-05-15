@@ -412,6 +412,70 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('not_found');
   });
 
+  it('returns locked for an owned module behind incomplete prior modules without provider or quota side effects', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-locked');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const month = getCurrentMonth();
+    await db.insert(usageMetrics).values({
+      userId,
+      month,
+      lessonModulesGenerated: 0,
+    });
+
+    const plan = await createTestPlan({ userId });
+    const firstModule = await createTestModule({
+      planId: plan.id,
+      order: 1,
+      title: 'Incomplete first module',
+    });
+    const lockedModule = await createTestModule({
+      planId: plan.id,
+      order: 2,
+      title: 'Locked second module',
+    });
+    await createTestTask({ moduleId: firstModule.id, order: 1 });
+    await createTestTask({ moduleId: lockedModule.id, order: 1 });
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    const provider = {
+      generateModuleLessonBatch: vi.fn(async () => {
+        throw new Error('provider should not run for locked modules');
+      }),
+    };
+
+    const result = await generateModuleLessons(
+      {
+        dbClient: rlsDb,
+        userId,
+        planId: plan.id,
+        moduleId: lockedModule.id,
+        userTier: 'free',
+      },
+      { provider },
+    );
+
+    expect(result.kind).toBe('locked');
+    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
+
+    const [modRow] = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.id, lockedModule.id));
+    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(0);
+  });
+
   it('returns disabled when LESSON_GENERATION_ENABLED is false', async () => {
     vi.stubEnv('LESSON_GENERATION_ENABLED', '0');
 

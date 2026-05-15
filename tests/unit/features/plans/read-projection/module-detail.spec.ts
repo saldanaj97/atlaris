@@ -193,6 +193,46 @@ describe('module-detail read projection', () => {
     expect(model!.module.tasks[0].status).toBe('in_progress');
   });
 
+  it('projects lesson generation state and persisted task lesson content', () => {
+    const lessonContent = {
+      version: 1 as const,
+      blocks: [
+        { type: 'heading' as const, text: 'Generated lesson' },
+        { type: 'paragraph' as const, text: 'Use the concept in context.' },
+      ],
+    };
+    const updatedAt = new Date('2025-06-02T00:00:00.000Z');
+
+    const rows = rowsForReadModel({
+      module: {
+        ...rowsForReadModel({}).module,
+        lessonGenerationStatus: 'ready',
+        lessonGenerationStartedAt: BASE,
+        lessonGenerationCompletedAt: updatedAt,
+      },
+      taskRows: [
+        {
+          ...rowsForReadModel({}).taskRows[0],
+          lessonContent,
+          lessonContentUpdatedAt: updatedAt,
+        },
+      ],
+    });
+
+    const model = buildModuleDetailReadModel(rows);
+
+    expect(model).not.toBeNull();
+    expect(model!.module.lessonGeneration).toMatchObject({
+      status: 'ready',
+      startedAt: BASE,
+      completedAt: updatedAt,
+      failedAt: null,
+      error: null,
+    });
+    expect(model!.module.tasks[0].lessonContent).toEqual(lessonContent);
+    expect(model!.module.tasks[0].lessonContentUpdatedAt).toBe(updatedAt);
+  });
+
   it('sets previousModulesComplete to false when a prior module is incomplete', () => {
     const planId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const m1 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';

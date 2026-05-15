@@ -66,6 +66,7 @@ export type GenerateModuleLessonsDeps = {
 
 export type GenerateModuleLessonsResult =
   | { readonly kind: 'not_found' }
+  | { readonly kind: 'locked' }
   | { readonly kind: 'already_ready' }
   | { readonly kind: 'in_flight' }
   | { readonly kind: 'disabled' }
@@ -105,6 +106,10 @@ export async function generateModuleLessons(
 
   if (!load) {
     return { kind: 'not_found' };
+  }
+
+  if (!load.isUnlocked) {
+    return { kind: 'locked' };
   }
 
   const claim = await claimModuleLessonGenerationOrDescribe(
