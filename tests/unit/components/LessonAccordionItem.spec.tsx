@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { Accordion } from '@/components/ui/accordion';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
+import { createId } from '@tests/fixtures/ids';
 
 const baseLesson: ModuleDetailTask = {
-  id: 'task-1',
+  id: createId('task'),
   order: 1,
   title: 'Understand state',
   description: 'Learn how state changes UI.',
@@ -16,7 +17,7 @@ const baseLesson: ModuleDetailTask = {
   lessonContentUpdatedAt: null,
   resources: [
     {
-      id: 'tr-1',
+      id: createId('task-resource'),
       order: 1,
       notes: 'Read first',
       type: 'article',

@@ -43,6 +43,7 @@ export const LessonTakeawaysBlockSchema = z
     type: z.literal('takeaways'),
     items: z
       .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
+      .min(1)
       .max(MAX_LESSON_LIST_ITEMS),
   })
   .strict();
@@ -52,6 +53,7 @@ export const LessonCompletionCriteriaBlockSchema = z
     type: z.literal('completion_criteria'),
     items: z
       .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
+      .min(1)
       .max(MAX_LESSON_LIST_ITEMS),
   })
   .strict();
@@ -68,7 +70,10 @@ export const LessonContentBlockSchema = z.discriminatedUnion('type', [
 export const LessonContentSchema = z
   .object({
     version: z.literal(1),
-    blocks: z.array(LessonContentBlockSchema).max(MAX_LESSON_BLOCKS_PER_TASK),
+    blocks: z
+      .array(LessonContentBlockSchema)
+      .min(1)
+      .max(MAX_LESSON_BLOCKS_PER_TASK),
   })
   .strict();
 
@@ -84,6 +89,7 @@ export const ModuleLessonBatchProviderOutputSchema = z
           })
           .strict(),
       )
+      .min(1)
       .max(MAX_MODULE_LESSON_BATCH_TASKS),
   })
   .strict();

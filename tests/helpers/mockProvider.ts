@@ -142,6 +142,8 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
       _input: ModuleLessonBatchGenerationInput,
       _options?: GenerationOptions,
     ): Promise<ProviderGenerateResult> {
+      invocationCount += 1;
+
       switch (config.scenario) {
         case 'success':
           return buildResult(

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
@@ -5,9 +7,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
+import { createId } from '@tests/fixtures/ids';
 
-const PLAN_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const MODULE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const PLAN_ID = randomUUID();
+const MODULE_ID = randomUUID();
 const GENERATE_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/generate`;
 
 const refreshMock = vi.fn();
@@ -24,7 +27,7 @@ vi.mock('sonner', () => ({
 }));
 
 const lesson: ModuleDetailTask = {
-  id: 'task-1',
+  id: createId('task'),
   order: 1,
   title: 'First lesson',
   description: null,

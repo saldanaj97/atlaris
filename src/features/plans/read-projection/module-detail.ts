@@ -73,6 +73,17 @@ function flattenTaskResource(taskResource: {
   };
 }
 
+function parseLessonContentForRead(
+  lessonContent: unknown,
+): ModuleDetailTask['lessonContent'] {
+  if (lessonContent === null) {
+    return null;
+  }
+
+  const parsed = LessonContentSchema.safeParse(lessonContent);
+  return parsed.success ? parsed.data : null;
+}
+
 /**
  * Assembles module-detail UI read-model from `getModuleDetailRows` output.
  *
@@ -117,10 +128,7 @@ export function buildModuleDetailReadModel(
       description: task.description,
       estimatedMinutes: task.estimatedMinutes ?? 0,
       status: progress?.status ?? 'not_started',
-      lessonContent:
-        task.lessonContent === null
-          ? null
-          : LessonContentSchema.parse(task.lessonContent),
+      lessonContent: parseLessonContentForRead(task.lessonContent),
       lessonContentUpdatedAt: task.lessonContentUpdatedAt,
       resources,
     };

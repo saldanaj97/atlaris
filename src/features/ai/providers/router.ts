@@ -181,6 +181,10 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
         const result = await this.invokeWithRetry(() => run(provider), options);
         return result;
       } catch (err) {
+        if (isAbortError(err)) {
+          throw err;
+        }
+
         lastError = err;
         const message = err instanceof Error ? err.message : 'unknown error';
         logger.warn(

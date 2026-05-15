@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -61,9 +63,10 @@ describe('lesson content Zod contracts', () => {
     ).toThrow();
   });
 
-  it('allows empty blocks array', () => {
-    const parsed = LessonContentSchema.parse({ version: 1, blocks: [] });
-    expect(parsed.blocks).toHaveLength(0);
+  it('rejects empty blocks array', () => {
+    expect(() =>
+      LessonContentSchema.parse({ version: 1, blocks: [] }),
+    ).toThrow();
   });
 
   it('rejects paragraph text over cap', () => {
@@ -116,7 +119,7 @@ describe('lesson content Zod contracts', () => {
   });
 
   it('accepts valid batch provider output', () => {
-    const taskId = '11111111-1111-4111-8111-111111111111';
+    const taskId = randomUUID();
     const parsed = ModuleLessonBatchProviderOutputSchema.parse({
       version: 1,
       tasks: [{ taskId, content: sampleContent }],
@@ -125,7 +128,7 @@ describe('lesson content Zod contracts', () => {
   });
 
   it('rejects too many tasks in batch output', () => {
-    const taskId = '22222222-2222-4222-8222-222222222222';
+    const taskId = randomUUID();
     const tasks = Array.from(
       { length: MAX_MODULE_LESSON_BATCH_TASKS + 1 },
       () => ({
@@ -154,8 +157,8 @@ describe('lesson content Zod contracts', () => {
   });
 
   it('accepts module lesson generation API responses for every state variant', () => {
-    const planId = '11111111-1111-4111-8111-111111111111';
-    const moduleId = '22222222-2222-4222-8222-222222222222';
+    const planId = randomUUID();
+    const moduleId = randomUUID();
     expect(
       ModuleLessonGenerationApiResponseSchema.parse({
         state: 'ready',
@@ -218,8 +221,8 @@ describe('lesson content Zod contracts', () => {
   });
 
   it('rejects quota_denied when limit is not an integer', () => {
-    const planId = '33333333-3333-4333-8333-333333333333';
-    const moduleId = '44444444-4444-4444-8444-444444444444';
+    const planId = randomUUID();
+    const moduleId = randomUUID();
     expect(() =>
       ModuleLessonGenerationApiResponseSchema.parse({
         state: 'quota_denied',
@@ -232,8 +235,8 @@ describe('lesson content Zod contracts', () => {
   });
 
   it('rejects legacy disabled encoding on failed + reason', () => {
-    const planId = '55555555-5555-4555-8555-555555555555';
-    const moduleId = '66666666-6666-4666-8666-666666666666';
+    const planId = randomUUID();
+    const moduleId = randomUUID();
     expect(() =>
       ModuleLessonGenerationApiResponseSchema.parse({
         state: 'failed',

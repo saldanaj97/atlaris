@@ -37,6 +37,27 @@ export type UsageSummary = {
   };
 };
 
+function getUsageCounterUpdate(type: UsageType) {
+  switch (type) {
+    case 'plan':
+      return { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` };
+    case 'regeneration':
+      return {
+        regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1`,
+      };
+    case 'export':
+      return { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+    case 'lesson_generation':
+      return {
+        lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
+      };
+    default: {
+      const _exhaustive: never = type;
+      return _exhaustive;
+    }
+  }
+}
+
 /**
  * Get current month in YYYY-MM format
  */
@@ -98,17 +119,7 @@ export async function incrementUsage(
   // Ensure metrics exist for this month
   await getOrCreateUsageMetrics(userId, month, dbClient);
 
-  // Increment the appropriate counter based on type
-  const updateObj =
-    type === 'plan'
-      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
-      : type === 'regeneration'
-        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : type === 'export'
-          ? { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` }
-          : {
-              lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
-            };
+  const updateObj = getUsageCounterUpdate(type);
 
   // Increment the counter
   await dbClient
@@ -219,16 +230,7 @@ export async function incrementUsageInTx(
 ): Promise<void> {
   await ensureUsageMetricsExist(tx, userId, month);
 
-  const updateObj =
-    type === 'plan'
-      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
-      : type === 'regeneration'
-        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : type === 'export'
-          ? { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` }
-          : {
-              lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
-            };
+  const updateObj = getUsageCounterUpdate(type);
 
   await tx
     .update(usageMetrics)

@@ -329,10 +329,14 @@ describe('User Rate Limiting', () => {
     });
 
     it('lessonGeneration is stricter per hour than aiGeneration', () => {
-      expect(USER_RATE_LIMIT_CONFIGS.lessonGeneration.maxRequests).toBe(5);
-      expect(USER_RATE_LIMIT_CONFIGS.lessonGeneration.maxRequests).toBeLessThan(
-        USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests,
-      );
+      const requestsPerHour = (config: {
+        maxRequests: number;
+        windowMs: number;
+      }) => config.maxRequests / (config.windowMs / 3_600_000);
+
+      expect(
+        requestsPerHour(USER_RATE_LIMIT_CONFIGS.lessonGeneration),
+      ).toBeLessThan(requestsPerHour(USER_RATE_LIMIT_CONFIGS.aiGeneration));
     });
 
     it('aiGeneration is stricter than integration and mutation buckets', () => {

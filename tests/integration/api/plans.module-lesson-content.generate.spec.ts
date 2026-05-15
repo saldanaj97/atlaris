@@ -4,10 +4,18 @@ import { join } from 'node:path';
 import { setTestUser, clearTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockedFunction,
+} from 'vitest';
 
-import { POST } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route';
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route';
+import type { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import {
@@ -15,11 +23,12 @@ import {
   USER_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/user-rate-limit';
 
-vi.mock('@/features/lesson-content/generate-module-lessons', () => ({
-  generateModuleLessons: vi.fn(),
-}));
-
-const mockGenerateModuleLessons = vi.mocked(generateModuleLessons);
+const mockGenerateModuleLessons = vi.fn() as MockedFunction<
+  typeof generateModuleLessons
+>;
+const POST = createModuleLessonContentGenerateHandler(
+  mockGenerateModuleLessons,
+);
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 const VALID_PLAN_ID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';

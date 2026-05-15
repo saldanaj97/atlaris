@@ -156,10 +156,24 @@ describe('usage_metrics lesson_modules_generated', () => {
       email: buildTestEmail(authUserId),
     });
 
+    await db.execute(sql`
+      INSERT INTO usage_metrics (user_id, month)
+      VALUES (${userId}, '2026-01')
+    `);
+
+    const [defaulted] = await db
+      .select({
+        lessonModulesGenerated: usageMetrics.lessonModulesGenerated,
+      })
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+
+    expect(defaulted?.lessonModulesGenerated).toBe(0);
+
     await expectCheckConstraintViolation(
       db.execute(sql`
         INSERT INTO usage_metrics (user_id, month, lesson_modules_generated)
-        VALUES (${userId}, '2026-01', -1)
+        VALUES (${userId}, '2026-02', -1)
       `),
       'lesson_modules_generated_nonneg',
     );

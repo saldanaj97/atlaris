@@ -27,6 +27,7 @@ describe('Environment Configuration', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   describe('parseNodeEnv (pure)', () => {
@@ -210,7 +211,11 @@ describe('Environment Configuration', () => {
       'defaults generationEnabled to %s when LESSON_GENERATION_ENABLED is %s',
       (nodeEnv, value, expected) => {
         vi.stubEnv('NODE_ENV', nodeEnv);
+        if (nodeEnv === 'production') {
+          vi.stubGlobal('window', undefined);
+        }
         const env = {
+          NODE_ENV: nodeEnv,
           LESSON_GENERATION_ENABLED: value,
         } as const;
         const access = createServerEnvAccess(() => env);

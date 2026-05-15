@@ -1,6 +1,7 @@
 import {
   createServerEnvAccess,
   EnvValidationError,
+  type EnvSource,
   getProcessEnvSource,
   parseNodeEnv,
   type ServerEnvAccess,
@@ -11,8 +12,8 @@ interface LessonContentEnv {
   readonly generationEnabled: boolean;
 }
 
-function isDevelopmentRuntime(): boolean {
-  return parseNodeEnv(getProcessEnvSource()) === 'development';
+function isDevelopmentRuntime(env: EnvSource): boolean {
+  return parseNodeEnv(env) === 'development';
 }
 
 function parseLessonGenerationEnabled(
@@ -47,7 +48,7 @@ function readGenerationEnabled(access: ServerEnvAccess): boolean {
   return parseLessonGenerationEnabled(
     access.getServerOptional('LESSON_GENERATION_ENABLED'),
     'LESSON_GENERATION_ENABLED',
-    isDevelopmentRuntime(),
+    isDevelopmentRuntime({ NODE_ENV: access.getServerOptional('NODE_ENV') }),
   );
 }
 
