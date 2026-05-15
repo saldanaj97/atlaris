@@ -8,9 +8,15 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
+  ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
   ProviderMetadata,
 } from '@/features/ai/types/provider.types';
+
+const EMPTY_MODULE_LESSON_BATCH_PAYLOAD = {
+  version: 1,
+  tasks: [],
+} as const;
 
 type MockProviderScenario =
   | 'success'
@@ -117,6 +123,41 @@ export function createMockProvider(config: MockProviderConfig): MockProvider {
         case 'rate_limit':
           throw new ProviderRateLimitError(
             'Mock provider simulated rate limit.',
+          );
+        case 'timeout':
+          throw new ProviderTimeoutError('Mock provider simulated timeout.');
+        case 'error':
+          throw new ProviderError(
+            'provider_error',
+            'Mock provider simulated failure.',
+          );
+        default:
+          throw new ProviderError(
+            'provider_error',
+            `Mock provider scenario "${String(config.scenario)}" not implemented.`,
+          );
+      }
+    },
+    async generateModuleLessonBatch(
+      _input: ModuleLessonBatchGenerationInput,
+      _options?: GenerationOptions,
+    ): Promise<ProviderGenerateResult> {
+      switch (config.scenario) {
+        case 'success':
+          return buildResult(
+            EMPTY_MODULE_LESSON_BATCH_PAYLOAD,
+            undefined,
+            config,
+          );
+        case 'validation':
+          return buildResult(
+            EMPTY_MODULE_LESSON_BATCH_PAYLOAD,
+            undefined,
+            config,
+          );
+        case 'rate_limit':
+          throw new ProviderRateLimitError(
+            'Mock provider simulated rate limit (module batch).',
           );
         case 'timeout':
           throw new ProviderTimeoutError('Mock provider simulated timeout.');

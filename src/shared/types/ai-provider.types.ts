@@ -14,6 +14,16 @@ export type GenerationInput = {
   deadlineDate?: string | null;
 };
 
+/**
+ * Module lesson batch call: prompts from boundary module; `taskIds` mirrors DB
+ * module order for deterministic mock payloads and later parser checks.
+ */
+export type ModuleLessonBatchGenerationInput = {
+  systemPrompt: string;
+  userPrompt: string;
+  taskIds: readonly string[];
+};
+
 /** Core scalar fields shared across create/retry/stream/lifecycle. */
 export type PlanGenerationCoreFields = Pick<
   GenerationInput,

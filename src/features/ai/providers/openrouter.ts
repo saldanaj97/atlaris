@@ -27,6 +27,7 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
+  ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/features/ai/types/provider.types';
@@ -298,6 +299,8 @@ function resolveOpenRouterContentStream(
   return { stream: toStream(content), isStreaming: false };
 }
 
+type OpenRouterChatMessage = { role: 'system' | 'user'; content: string };
+
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouterClient;
   private readonly model: string;
@@ -328,30 +331,15 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     }
   }
 
-  async generate(
-    input: GenerationInput,
-    options?: GenerationOptions,
+  private executeJsonObjectChat(
+    messages: readonly OpenRouterChatMessage[],
+    options: GenerationOptions | undefined,
+    requestSpanName: string,
   ): Promise<ProviderGenerateResult> {
-    const systemPrompt = buildSystemPrompt();
-    const userPrompt = buildUserPrompt({
-      topic: input.topic,
-      notes: input.notes,
-      skillLevel: input.skillLevel,
-      learningStyle: input.learningStyle,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate,
-      deadlineDate: input.deadlineDate,
-    });
-
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      { role: 'user' as const, content: userPrompt },
-    ];
-
     return Sentry.startSpanManual(
       {
         op: 'gen_ai.request',
-        name: `request ${this.routeModels.join(' > ')}`,
+        name: requestSpanName,
         attributes: {
           'gen_ai.request.model': this.model,
           'gen_ai.request.model_route': this.routeModels.join(' > '),
@@ -376,11 +364,12 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         try {
           const responseFormat = { type: 'json_object' as const };
           const tokenCeiling = getRouteTokenCeiling(this.routeModels);
+          const messagePayload = [...messages];
           const requestBody =
             this.routeModels.length > 1
               ? {
                   models: this.routeModels,
-                  messages,
+                  messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
                   responseFormat,
@@ -388,7 +377,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                 }
               : {
                   model: this.model,
-                  messages,
+                  messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
                   responseFormat,
@@ -440,6 +429,49 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           metadata,
         };
       },
+    );
+  }
+
+  async generate(
+    input: GenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    const systemPrompt = buildSystemPrompt();
+    const userPrompt = buildUserPrompt({
+      topic: input.topic,
+      notes: input.notes,
+      skillLevel: input.skillLevel,
+      learningStyle: input.learningStyle,
+      weeklyHours: input.weeklyHours,
+      startDate: input.startDate,
+      deadlineDate: input.deadlineDate,
+    });
+
+    const messages: OpenRouterChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ];
+
+    return this.executeJsonObjectChat(
+      messages,
+      options,
+      `request ${this.routeModels.join(' > ')}`,
+    );
+  }
+
+  generateModuleLessonBatch(
+    input: ModuleLessonBatchGenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    const messages: OpenRouterChatMessage[] = [
+      { role: 'system', content: input.systemPrompt },
+      { role: 'user', content: input.userPrompt },
+    ];
+
+    return this.executeJsonObjectChat(
+      messages,
+      options,
+      `request module-lesson-batch ${this.routeModels.join(' > ')}`,
     );
   }
 }

@@ -31,6 +31,11 @@ const stubProviderGetter = vi.fn((_modelId: string) => ({
       'Provider generate should not be called in model resolution tests',
     );
   }),
+  generateModuleLessonBatch: vi.fn(async () => {
+    throw new Error(
+      'Provider generateModuleLessonBatch should not be called in model resolution tests',
+    );
+  }),
 }));
 
 const stubLogger = {
