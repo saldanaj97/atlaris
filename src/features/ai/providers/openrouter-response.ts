@@ -22,6 +22,10 @@ type StreamChoiceLike = {
 };
 
 export type StreamEventLike = OpenRouterStreamChunk & {
+  model?: string;
+  data?: {
+    model?: string;
+  };
   choices?: StreamChoiceLike[];
   delta?: string;
 };
@@ -78,6 +82,44 @@ function extractChunkText(event: StreamEventLike): string {
 
   const fromMessage = parseContent(choice.message?.content);
   return fromMessage ?? '';
+}
+
+export function extractModelFromEvent(
+  event: StreamEventLike,
+): string | undefined {
+  if (typeof event.model === 'string' && event.model.length > 0) {
+    return event.model;
+  }
+
+  if (
+    isObjectRecord(event.data) &&
+    typeof event.data.model === 'string' &&
+    event.data.model.length > 0
+  ) {
+    return event.data.model;
+  }
+
+  return undefined;
+}
+
+export function extractResponseModel(response: unknown): string | undefined {
+  if (!isObjectRecord(response)) {
+    return undefined;
+  }
+
+  if (typeof response.model === 'string' && response.model.length > 0) {
+    return response.model;
+  }
+
+  if (
+    isObjectRecord(response.data) &&
+    typeof response.data.model === 'string' &&
+    response.data.model.length > 0
+  ) {
+    return response.data.model;
+  }
+
+  return undefined;
 }
 
 export function normalizeUsage(
@@ -288,8 +330,9 @@ type StreamUsageEventContext = {
 export function streamFromEvents(params: {
   events: AsyncIterable<StreamEventLike>;
   onUsage: (usage: ProviderUsage, context: StreamUsageEventContext) => void;
+  onModel?: (model: string) => void;
 }): ReadableStream<string> {
-  const { events, onUsage } = params;
+  const { events, onUsage, onModel } = params;
   const textChunks = (async function* () {
     let emittedAnyText = false;
 
@@ -297,6 +340,10 @@ export function streamFromEvents(params: {
       const usageObjectPresent =
         isObjectRecord(event.usage) && !Array.isArray(event.usage);
       onUsage(normalizeUsage(event.usage), { usageObjectPresent });
+      const model = extractModelFromEvent(event);
+      if (model) {
+        onModel?.(model);
+      }
       const text = extractChunkText(event);
       if (!text) {
         continue;

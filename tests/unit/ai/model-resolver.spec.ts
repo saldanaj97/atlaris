@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
@@ -76,6 +76,15 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
         modelId: FREE_MODEL_ID,
         fallback: false,
       });
+    });
+
+    it('passes the user tier to the provider factory', () => {
+      const provider = createMockProvider();
+      const providerGetter = vi.fn(() => provider);
+
+      resolveModelForTier('free', FREE_MODEL_ID, providerGetter);
+
+      expect(providerGetter).toHaveBeenCalledWith(FREE_MODEL_ID, 'free');
     });
 
     it('denies pro model and falls back to default', () => {

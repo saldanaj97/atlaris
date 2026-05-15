@@ -159,6 +159,23 @@ describe('RouterGenerationProvider', () => {
       expect(result.metadata.provider).toBe('openrouter');
       expect(result.metadata.model).toBe('anthropic/claude-haiku-4.5');
     });
+
+    it('forwards fallbackModels to OpenRouterProvider', async () => {
+      process.env.AI_USE_MOCK = 'false';
+
+      const provider = new RouterGenerationProvider({
+        model: 'anthropic/claude-haiku-4.5',
+        fallbackModels: [AI_DEFAULT_MODEL],
+      });
+      const result = await provider.generate(mockInput);
+
+      expect(result.metadata.provider).toBe('openrouter');
+      expect(mockSend.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+        }),
+      );
+    });
   });
 
   describe('model configuration priority', () => {

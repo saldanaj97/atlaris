@@ -4,6 +4,7 @@ import {
   DEFAULT_OUTPUT_TOKEN_CEILING,
   getOutputTokenCeiling,
 } from '@/features/ai/cost';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import {
   type OpenRouterClient,
@@ -150,6 +151,7 @@ describe('OpenRouterProvider', () => {
     it('uses custom model when specified', async () => {
       const { client, send } = createMockClient();
       send.mockResolvedValueOnce({
+        model: 'anthropic/claude-3-sonnet',
         choices: [
           {
             message: {
@@ -164,7 +166,7 @@ describe('OpenRouterProvider', () => {
         client,
       );
 
-      await provider.generate(SAMPLE_INPUT);
+      const result = await provider.generate(SAMPLE_INPUT);
 
       expect(send).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -172,6 +174,43 @@ describe('OpenRouterProvider', () => {
         }),
         expect.any(Object),
       );
+      expect(result.metadata.model).toBe('anthropic/claude-3-sonnet');
+    });
+
+    it('sends fallback routes using models when configured', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
+        model: AI_DEFAULT_MODEL,
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(VALID_PLAN_RESPONSE),
+            },
+          },
+        ],
+        usage: {
+          promptTokens: 20,
+          completionTokens: 40,
+          totalTokens: 60,
+        },
+      });
+
+      const provider = new OpenRouterProvider(
+        {
+          model: 'anthropic/claude-haiku-4.5',
+          fallbackModels: [AI_DEFAULT_MODEL],
+        },
+        client,
+      );
+      const result = await provider.generate(SAMPLE_INPUT);
+      await collectStream(result.stream);
+
+      const [request] = send.mock.calls[0] ?? [];
+      expect(request).toMatchObject({
+        models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+      });
+      expect(request).not.toHaveProperty('model');
+      expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
     });
   });
 
@@ -348,6 +387,34 @@ describe('OpenRouterProvider', () => {
       );
     });
 
+    it('uses the safest output ceiling across the route models', async () => {
+      const { client, send } = createMockClient();
+      send.mockResolvedValueOnce({
+        model: AI_DEFAULT_MODEL,
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(VALID_PLAN_RESPONSE),
+            },
+          },
+        ],
+      });
+
+      const provider = new OpenRouterProvider(
+        {
+          model: 'openai/gpt-4o',
+          fallbackModels: [AI_DEFAULT_MODEL],
+        },
+        client,
+      );
+      await provider.generate(SAMPLE_INPUT);
+
+      const requestBody = send.mock.calls[0][0] as {
+        maxTokens: number;
+      };
+      expect(requestBody.maxTokens).toBe(DEFAULT_OUTPUT_TOKEN_CEILING);
+    });
+
     it('includes topic in user prompt', async () => {
       const { client, send } = createMockClient();
       send.mockResolvedValueOnce({
@@ -519,6 +586,37 @@ describe('OpenRouterProvider', () => {
           totalTokens: 250,
           providerReportedCostUsd: undefined,
         });
+      });
+
+      it('updates metadata.model from streaming chunk model metadata', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithModelMetadata(): AsyncIterable<
+          StreamEventLike & { data?: { model?: string } }
+        > {
+          yield {
+            data: { model: AI_DEFAULT_MODEL },
+            delta: payload.slice(0, 40),
+          } as StreamEventLike & { data?: { model?: string } };
+          yield {
+            delta: payload.slice(40),
+          } as StreamEventLike;
+        }
+
+        const { client, send } = createMockClient();
+        send.mockResolvedValueOnce(streamWithModelMetadata());
+
+        const provider = new OpenRouterProvider(
+          {
+            model: 'openai/gpt-4o',
+            fallbackModels: [AI_DEFAULT_MODEL],
+          },
+          client,
+        );
+        const result = await provider.generate(SAMPLE_INPUT);
+
+        await collectStream(result.stream);
+
+        expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
       });
 
       it('streams and merges usage from multiple events', async () => {
