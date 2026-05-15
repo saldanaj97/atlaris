@@ -11,7 +11,11 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Usage type for incrementing counters
-type UsageType = 'plan' | 'regeneration' | 'export';
+export type UsageType =
+  | 'plan'
+  | 'regeneration'
+  | 'export'
+  | 'lesson_generation';
 
 export type UsageSummary = {
   tier: SubscriptionTier;
@@ -24,6 +28,10 @@ export type UsageSummary = {
     limit: number;
   };
   exports: {
+    used: number;
+    limit: number;
+  };
+  lessonGenerations: {
     used: number;
     limit: number;
   };
@@ -53,6 +61,7 @@ async function getOrCreateUsageMetrics(
       plansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
+      lessonModulesGenerated: 0,
     })
     .onConflictDoNothing({
       target: [usageMetrics.userId, usageMetrics.month],
@@ -95,7 +104,11 @@ export async function incrementUsage(
       ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
       : type === 'regeneration'
         ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+        : type === 'export'
+          ? { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` }
+          : {
+              lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
+            };
 
   // Increment the counter
   await dbClient
@@ -160,6 +173,10 @@ export async function getUsageSummaryForTier(args: {
       used: metrics.exportsUsed,
       limit: limits.monthlyExports,
     },
+    lessonGenerations: {
+      used: metrics.lessonModulesGenerated,
+      limit: limits.monthlyLessonGenerations,
+    },
   };
 }
 
@@ -187,6 +204,7 @@ export async function ensureUsageMetricsExist(
       plansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
+      lessonModulesGenerated: 0,
     })
     .onConflictDoNothing({
       target: [usageMetrics.userId, usageMetrics.month],
@@ -197,7 +215,7 @@ export async function incrementUsageInTx(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string,
-  type: 'plan' | 'regeneration' | 'export',
+  type: UsageType,
 ): Promise<void> {
   await ensureUsageMetricsExist(tx, userId, month);
 
@@ -206,7 +224,11 @@ export async function incrementUsageInTx(
       ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
       : type === 'regeneration'
         ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+        : type === 'export'
+          ? { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` }
+          : {
+              lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
+            };
 
   await tx
     .update(usageMetrics)

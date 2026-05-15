@@ -1,5 +1,6 @@
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import { aiUsageEvents, learningPlans } from '@supabase/schema';
+import { incrementUsage } from '@/features/billing/usage-metrics';
+import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq, sql } from 'drizzle-orm';
@@ -144,5 +145,40 @@ describe('AI usage logging', () => {
       `),
       'ai_usage_events_provider_cost_microusd_nonneg',
     );
+  });
+});
+
+describe('usage_metrics lesson_modules_generated', () => {
+  it('defaults to 0 and rejects negative values', async () => {
+    const authUserId = buildTestAuthUserId('usage-metrics-lesson-mod');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    await expectCheckConstraintViolation(
+      db.execute(sql`
+        INSERT INTO usage_metrics (user_id, month, lesson_modules_generated)
+        VALUES (${userId}, '2026-01', -1)
+      `),
+      'lesson_modules_generated_nonneg',
+    );
+  });
+
+  it('increments via incrementUsage lesson_generation', async () => {
+    const authUserId = buildTestAuthUserId('usage-metrics-lesson-inc');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    await incrementUsage(userId, 'lesson_generation', db);
+
+    const [row] = await db
+      .select()
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+
+    expect(row?.lessonModulesGenerated).toBe(1);
   });
 });
