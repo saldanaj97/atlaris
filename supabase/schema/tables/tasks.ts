@@ -5,6 +5,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgPolicy,
   pgTable,
   text,
@@ -13,7 +14,20 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { progressStatus, resourceType } from '../../enums';
+import type {
+  LessonContent,
+  ModuleLessonGenerationMetadata,
+} from '@/shared/types/lesson-content.types';
+
+import {
+  lessonGenerationStatus,
+  progressStatus,
+  resourceType,
+} from '../../enums';
+import {
+  MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH,
+  MAX_TASK_LESSON_CONTENT_JSON_CHARS,
+} from '../constants';
 import { timestampFields } from '../helpers';
 import {
   planOwnedByCurrentUser,
@@ -41,6 +55,22 @@ export const modules = pgTable(
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
     ...moduleContentColumns,
+    lessonGenerationStatus: lessonGenerationStatus('lesson_generation_status')
+      .notNull()
+      .default('not_generated'),
+    lessonGenerationStartedAt: timestamp('lesson_generation_started_at', {
+      withTimezone: true,
+    }),
+    lessonGenerationCompletedAt: timestamp('lesson_generation_completed_at', {
+      withTimezone: true,
+    }),
+    lessonGenerationFailedAt: timestamp('lesson_generation_failed_at', {
+      withTimezone: true,
+    }),
+    lessonGenerationError: text('lesson_generation_error'),
+    lessonGenerationMetadata: jsonb(
+      'lesson_generation_metadata',
+    ).$type<ModuleLessonGenerationMetadata | null>(),
     ...timestampFields,
   },
   (table) => {
@@ -54,6 +84,10 @@ export const modules = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check(
+        'module_lesson_generation_error_length',
+        sql`(${table.lessonGenerationError} IS NULL OR char_length(${table.lessonGenerationError}) <= ${sql.raw(String(MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH))})`,
+      ),
       check('module_title_length', sql`char_length(${table.title}) <= 500`),
       unique('modules_plan_id_order_unique').on(table.planId, table.order),
       index('idx_modules_plan_id').on(table.planId),
@@ -104,6 +138,10 @@ export const tasks = pgTable(
     hasMicroExplanation: boolean('has_micro_explanation')
       .notNull()
       .default(false),
+    lessonContent: jsonb('lesson_content').$type<LessonContent | null>(),
+    lessonContentUpdatedAt: timestamp('lesson_content_updated_at', {
+      withTimezone: true,
+    }),
     ...timestampFields,
   },
   (table) => {
@@ -125,6 +163,10 @@ export const tasks = pgTable(
     return [
       check('order_check', sql`${table.order} >= 1`),
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
+      check(
+        'task_lesson_content_json_length',
+        sql`(${table.lessonContent} IS NULL OR length(${table.lessonContent}::text) <= ${sql.raw(String(MAX_TASK_LESSON_CONTENT_JSON_CHARS))})`,
+      ),
       check('task_title_length', sql`char_length(${table.title}) <= 500`),
       unique('tasks_module_id_order_unique').on(table.moduleId, table.order),
       index('idx_tasks_module_id').on(table.moduleId),

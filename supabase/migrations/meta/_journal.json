@@ -225,6 +225,13 @@
       "when": 1778022600000,
       "tag": "0031_grant_rls_role_privileges",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1778871927103,
+      "tag": "0032_acoustic_lila_cheney",
+      "breakpoints": true
     }
   ]
 }

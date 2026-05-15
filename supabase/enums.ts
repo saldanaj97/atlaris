@@ -20,6 +20,14 @@ export const generationStatus = pgEnum('generation_status', [
   'failed',
 ]);
 
+/** Module-scoped lesson batch generation state (distinct from plan `generation_status`). */
+export const lessonGenerationStatus = pgEnum('lesson_generation_status', [
+  'not_generated',
+  'generating',
+  'ready',
+  'failed',
+]);
+
 export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
 
 export const resourceType = pgEnum('resource_type', [

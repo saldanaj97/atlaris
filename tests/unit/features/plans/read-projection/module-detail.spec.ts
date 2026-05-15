@@ -8,6 +8,31 @@ import type { ModuleDetailRows } from '@/lib/db/queries/types/modules.types';
 
 const BASE = new Date('2025-06-01T00:00:00.000Z');
 
+const DEFAULT_MODULE_LESSON_COLS: Pick<
+  ModuleDetailRows['module'],
+  | 'lessonGenerationStatus'
+  | 'lessonGenerationStartedAt'
+  | 'lessonGenerationCompletedAt'
+  | 'lessonGenerationFailedAt'
+  | 'lessonGenerationError'
+  | 'lessonGenerationMetadata'
+> = {
+  lessonGenerationStatus: 'not_generated',
+  lessonGenerationStartedAt: null,
+  lessonGenerationCompletedAt: null,
+  lessonGenerationFailedAt: null,
+  lessonGenerationError: null,
+  lessonGenerationMetadata: null,
+};
+
+const DEFAULT_TASK_LESSON_COLS: Pick<
+  ModuleDetailRows['taskRows'][number],
+  'lessonContent' | 'lessonContentUpdatedAt'
+> = {
+  lessonContent: null,
+  lessonContentUpdatedAt: null,
+};
+
 function rowsForReadModel(
   overrides: Partial<ModuleDetailRows>,
 ): ModuleDetailRows {
@@ -24,6 +49,7 @@ function rowsForReadModel(
       estimatedMinutes: 60,
       createdAt: BASE,
       updatedAt: BASE,
+      ...DEFAULT_MODULE_LESSON_COLS,
     },
     moduleMetricsRows: [
       {
@@ -45,6 +71,7 @@ function rowsForReadModel(
         hasMicroExplanation: false,
         createdAt: BASE,
         updatedAt: BASE,
+        ...DEFAULT_TASK_LESSON_COLS,
       },
     ],
     progressRows: [],
@@ -113,6 +140,7 @@ describe('module-detail read projection', () => {
         estimatedMinutes: 40,
         createdAt: BASE,
         updatedAt: BASE,
+        ...DEFAULT_MODULE_LESSON_COLS,
       },
       moduleMetricsRows: [
         {
@@ -141,6 +169,7 @@ describe('module-detail read projection', () => {
           hasMicroExplanation: false,
           createdAt: BASE,
           updatedAt: BASE,
+          ...DEFAULT_TASK_LESSON_COLS,
         },
       ],
       progressRows: [
@@ -180,6 +209,7 @@ describe('module-detail read projection', () => {
         estimatedMinutes: 40,
         createdAt: BASE,
         updatedAt: BASE,
+        ...DEFAULT_MODULE_LESSON_COLS,
       },
       moduleMetricsRows: [
         {
@@ -217,6 +247,7 @@ describe('module-detail read projection', () => {
         estimatedMinutes: 1,
         createdAt: BASE,
         updatedAt: BASE,
+        ...DEFAULT_MODULE_LESSON_COLS,
       },
       moduleMetricsRows: [],
     });
@@ -239,6 +270,7 @@ describe('module-detail read projection', () => {
           hasMicroExplanation: false,
           createdAt: BASE,
           updatedAt: BASE,
+          ...DEFAULT_TASK_LESSON_COLS,
         },
       ],
       resourceRows: [
