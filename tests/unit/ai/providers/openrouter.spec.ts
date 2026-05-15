@@ -205,12 +205,11 @@ describe('OpenRouterProvider', () => {
       const result = await provider.generate(SAMPLE_INPUT);
       await collectStream(result.stream);
 
-      expect(send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
-        }),
-        expect.any(Object),
-      );
+      const [request] = send.mock.calls[0] ?? [];
+      expect(request).toMatchObject({
+        models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+      });
+      expect(request).not.toHaveProperty('model');
       expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
     });
   });

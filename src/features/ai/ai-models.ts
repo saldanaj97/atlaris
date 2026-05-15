@@ -229,8 +229,8 @@ export function getDefaultModelForTier(tier: SubscriptionTier): string {
  * (`openrouter/free`) when the primary request is not already that router.
  * Pro users keep the current single-model route.
  *
- * Callers are expected to have already validated tier/model compatibility via
- * `resolveModelForTier`; this helper only computes routing fallbacks.
+ * Unknown model IDs get the free router as a defensive fallback; known paid
+ * catalog models do not get a free-tier fallback.
  */
 export function getFallbackModelsForTier(
   tier: SubscriptionTier,
@@ -241,7 +241,7 @@ export function getFallbackModelsForTier(
   }
 
   const primaryModel = getModelById(primaryModelId);
-  if (!primaryModel || primaryModel.tier !== 'free') {
+  if (primaryModel?.tier === 'pro') {
     return [];
   }
 

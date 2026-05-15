@@ -375,6 +375,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         let response: unknown;
         try {
           const responseFormat = { type: 'json_object' as const };
+          const tokenCeiling = getRouteTokenCeiling(this.routeModels);
           const requestBody =
             this.routeModels.length > 1
               ? {
@@ -383,7 +384,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                   stream: true,
                   temperature: this.temperature,
                   responseFormat,
-                  maxTokens: getRouteTokenCeiling(this.routeModels),
+                  maxTokens: tokenCeiling,
                 }
               : {
                   model: this.model,
@@ -391,7 +392,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                   stream: true,
                   temperature: this.temperature,
                   responseFormat,
-                  maxTokens: getRouteTokenCeiling(this.routeModels),
+                  maxTokens: tokenCeiling,
                 };
           response = await this.client.chat.send(requestBody, requestOptions);
         } catch (err) {
@@ -413,6 +414,9 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             },
           );
 
+        // Model metadata starts with the requested model, may get a quick
+        // best-effort value from the initial streaming response, and is finally
+        // overwritten by the stream parser when it discovers the resolved route.
         if (isStreamingResponse) {
           const responseModel = extractResponseModel(response);
           if (responseModel) {

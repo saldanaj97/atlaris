@@ -275,6 +275,18 @@ describe('AI Models Configuration', () => {
       ).toEqual([AI_DEFAULT_MODEL]);
     });
 
+    it('uses openrouter/free as the fallback route for unknown free-tier primary models', () => {
+      expect(getFallbackModelsForTier('free', 'some/unknown-model')).toEqual([
+        AI_DEFAULT_MODEL,
+      ]);
+    });
+
+    it('does not add free-router fallback for known paid primary models on free tier', () => {
+      expect(
+        getFallbackModelsForTier('free', 'google/gemini-2.5-flash-lite'),
+      ).toEqual([]);
+    });
+
     it('does not duplicate openrouter/free when it is already the primary route', () => {
       expect(getFallbackModelsForTier('free', AI_DEFAULT_MODEL)).toEqual([]);
     });
