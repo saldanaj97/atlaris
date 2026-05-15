@@ -319,6 +319,7 @@ describe('User Rate Limiting', () => {
 
   describe('USER_RATE_LIMIT_CONFIGS', () => {
     it('has expected categories', () => {
+      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('lessonGeneration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('aiGeneration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('integration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('mutation');
@@ -327,7 +328,14 @@ describe('User Rate Limiting', () => {
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('oauth');
     });
 
-    it('aiGeneration has lowest limit (expensive AI calls)', () => {
+    it('lessonGeneration is stricter per hour than aiGeneration', () => {
+      expect(USER_RATE_LIMIT_CONFIGS.lessonGeneration.maxRequests).toBe(5);
+      expect(USER_RATE_LIMIT_CONFIGS.lessonGeneration.maxRequests).toBeLessThan(
+        USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests,
+      );
+    });
+
+    it('aiGeneration is stricter than integration and mutation buckets', () => {
       const aiLimit = USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests;
 
       expect(aiLimit).toBeLessThanOrEqual(

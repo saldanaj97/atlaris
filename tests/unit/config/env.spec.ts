@@ -7,6 +7,7 @@ import {
   createClerkAuthEnv,
   createAiEnvFacets,
   createAppEnv,
+  createLessonContentEnvForTests,
   createServerEnvAccess,
   createSupabasePublicEnv,
   EnvValidationError,
@@ -196,6 +197,64 @@ describe('Environment Configuration', () => {
 
       expect(aiTimeoutEnv.baseMs).toBe(7000);
       expect(aiTimeoutEnv.extensionThresholdMs).toBe(2000);
+    });
+  });
+
+  describe('createLessonContentEnvForTests (pure)', () => {
+    it.each([
+      ['development', undefined, true],
+      ['development', '', true],
+      ['production', undefined, false],
+      ['production', '', false],
+    ] as const)(
+      'defaults generationEnabled to %s when LESSON_GENERATION_ENABLED is %s',
+      (nodeEnv, value, expected) => {
+        vi.stubEnv('NODE_ENV', nodeEnv);
+        const env = {
+          LESSON_GENERATION_ENABLED: value,
+        } as const;
+        const access = createServerEnvAccess(() => env);
+        const lesson = createLessonContentEnvForTests(access);
+
+        expect(lesson.generationEnabled).toBe(expected);
+      },
+    );
+
+    it.each([
+      ['true', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('parses LESSON_GENERATION_ENABLED=%s', (value, expected) => {
+      vi.stubEnv('NODE_ENV', 'production');
+      const env = {
+        LESSON_GENERATION_ENABLED: value,
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const lesson = createLessonContentEnvForTests(access);
+
+      expect(lesson.generationEnabled).toBe(expected);
+    });
+
+    it('rejects invalid LESSON_GENERATION_ENABLED with envKey', () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      const env = {
+        LESSON_GENERATION_ENABLED: 'maybe',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const lesson = createLessonContentEnvForTests(access);
+
+      let caughtError: unknown;
+      try {
+        void lesson.generationEnabled;
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(EnvValidationError);
+      expect((caughtError as EnvValidationError).envKey).toBe(
+        'LESSON_GENERATION_ENABLED',
+      );
     });
   });
 

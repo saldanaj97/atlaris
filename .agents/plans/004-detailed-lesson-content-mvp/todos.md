@@ -21,30 +21,30 @@ GitHub issue: https://github.com/saldanaj97/atlaris/issues/328
 
 ### Step 1 - Schema And Contracts
 
-- [ ] Add module-level lesson-generation status/metadata.
-- [ ] Add task-level detailed lesson content payload.
-- [ ] Add schema constants/checks for content-size limits where needed.
-- [ ] Generate/apply Supabase migration.
-- [ ] Add shared runtime schemas for lesson content blocks and module-batch provider output.
+- [x] Add module-level lesson-generation status/metadata.
+- [x] Add task-level detailed lesson content payload.
+- [x] Add schema constants/checks for content-size limits where needed.
+- [x] Generate/apply Supabase migration.
+- [x] Add shared runtime schemas for lesson content blocks and module-batch provider output.
 
 ### Step 2 - Generation Boundary
 
-- [ ] Build a module lesson-content prompt with plan, module, and ordered task context.
-- [ ] Add parser validation for exact task ID coverage.
-- [ ] Add ownership-scoped module/task loading for generation.
-- [ ] Add idempotent status transition for missing/failed to generating.
-- [ ] Reuse existing model resolver/provider factory for provider selection.
-- [ ] Record provider usage for lesson generation.
-- [ ] Persist all task lesson payloads and module status in one transaction.
-- [ ] Preserve/restore failed state on provider or parser failure.
+- [x] Build a module lesson-content prompt with plan, module, and ordered task context.
+- [x] Add parser validation for exact task ID coverage.
+- [x] Add ownership-scoped module/task loading for generation.
+- [x] Add idempotent status transition for missing/failed to generating.
+- [x] Reuse existing model resolver/provider factory for provider selection.
+- [x] Record provider usage for lesson generation.
+- [x] Persist all task lesson payloads and module status in one transaction.
+- [x] Preserve/restore failed state on provider or parser failure.
 
 ### Step 3 - Quota And Tier Gating
 
-- [ ] Add lesson-generation limits to tier constants.
-- [ ] Add usage metric column or equivalent aggregate for lesson module generations.
-- [ ] Add reserve/compensate boundary for lesson generation usage.
-- [ ] Wire high-cost route rate limiting.
-- [ ] Add an operator kill-switch/config guard for lesson generation.
+- [x] Add lesson-generation limits to tier constants.
+- [x] Add usage metric column or equivalent aggregate for lesson module generations.
+- [x] Add reserve/compensate boundary for lesson generation usage.
+- [x] Wire high-cost route rate limiting.
+- [x] Add an operator kill-switch/config guard for lesson generation.
 
 ### Step 4 - API
 
