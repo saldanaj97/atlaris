@@ -93,16 +93,32 @@ describe('ManualCreatePanel', () => {
     await user.click(await screen.findByText(nextLabel));
   }
 
+  async function chooseDefaultPreferences(): Promise<void> {
+    await chooseOption('Experience', 'Beginner');
+    await chooseOption('Weekly time', '3-5 hours');
+    await chooseOption('Learning style', 'Mixed');
+    await chooseOption('Finish by', '1 month');
+  }
+
   async function submitForm(): Promise<void> {
     await user.click(screen.getByRole('button', { name: /generate my plan/i }));
   }
 
   describe('defaults', () => {
-    it('defaults the deadline dropdown to 1 month', async () => {
+    it('shows preference placeholders before selection', async () => {
       render(<ManualCreatePanel />);
 
       const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
-      expect(deadline).toHaveTextContent('1 month');
+      expect(deadline).toHaveTextContent('Finish by');
+      expect(
+        screen.getByRole('combobox', { name: /^skill level$/i }),
+      ).toHaveTextContent('Experience');
+      expect(
+        screen.getByRole('combobox', { name: /^weekly hours$/i }),
+      ).toHaveTextContent('Weekly time');
+      expect(
+        screen.getByRole('combobox', { name: /^learning style$/i }),
+      ).toHaveTextContent('Learning style');
     });
   });
 
@@ -117,6 +133,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Test Topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -156,10 +173,10 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('  Learn Rust  ');
-      await chooseOption('Beginner', 'Advanced');
-      await chooseOption('3-5 hours', '11-15 hours');
-      await chooseOption('Mixed', 'Reading');
-      await chooseOption('1 month', '3 months');
+      await chooseOption('Experience', 'Advanced');
+      await chooseOption('Weekly time', '11-15 hours');
+      await chooseOption('Learning style', 'Reading');
+      await chooseOption('Finish by', '3 months');
       await submitForm();
 
       await waitFor(() => {
@@ -189,6 +206,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Cancelled topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -220,6 +238,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Recovery topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -256,6 +275,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Recovery from error data');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -280,6 +300,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Recovery from state');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -296,6 +317,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Generic error topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -319,6 +341,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Fallback error topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
@@ -337,6 +360,7 @@ describe('ManualCreatePanel', () => {
       render(<ManualCreatePanel />);
 
       await fillTopic('Long running topic');
+      await chooseDefaultPreferences();
       await submitForm();
 
       await waitFor(() => {
