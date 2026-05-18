@@ -95,3 +95,11 @@
 **Rule:** Keep tenant-scoped reads under request auth/RLS, but write billing-owned user columns through the existing service-role boundary dependency. Do not add test-only bypasses for system-owned billing mutations.
 
 **Impact:** This preserves the security boundary while allowing checkout and local billing smoke to exercise the real route path.
+
+## 2026-05-18: Doc automation — verify module-lesson pipeline in source
+
+**Context:** Cron doc pass found `docs/architecture/plan-generation-architecture.md` still pointed at non-existent `docs/rules/...` paths and did not describe the new module lesson batch API, quota meter, or `LESSON_GENERATION_ENABLED`.
+
+**Rule:** When documenting a feature, trace the public route → service → quota boundary → persistence helpers; cite real files. Fix broken relative doc links in the same edit when they are in touched files.
+
+**Impact:** Onboarding stays aligned with `generateModuleLessons`, `module-lesson-generation` queries, and metered reservation behavior without duplicating tier numbers outside `tier-limits.ts`.

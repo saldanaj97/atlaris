@@ -11,7 +11,11 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Usage type for incrementing counters
-type UsageType = 'plan' | 'regeneration' | 'export';
+export type UsageType =
+  | 'plan'
+  | 'regeneration'
+  | 'export'
+  | 'lesson_generation';
 
 export type UsageSummary = {
   tier: SubscriptionTier;
@@ -27,7 +31,32 @@ export type UsageSummary = {
     used: number;
     limit: number;
   };
+  lessonGenerations: {
+    used: number;
+    limit: number;
+  };
 };
+
+function getUsageCounterUpdate(type: UsageType) {
+  switch (type) {
+    case 'plan':
+      return { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` };
+    case 'regeneration':
+      return {
+        regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1`,
+      };
+    case 'export':
+      return { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+    case 'lesson_generation':
+      return {
+        lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
+      };
+    default: {
+      const _exhaustive: never = type;
+      return _exhaustive;
+    }
+  }
+}
 
 /**
  * Get current month in YYYY-MM format
@@ -53,6 +82,7 @@ async function getOrCreateUsageMetrics(
       plansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
+      lessonModulesGenerated: 0,
     })
     .onConflictDoNothing({
       target: [usageMetrics.userId, usageMetrics.month],
@@ -89,13 +119,7 @@ export async function incrementUsage(
   // Ensure metrics exist for this month
   await getOrCreateUsageMetrics(userId, month, dbClient);
 
-  // Increment the appropriate counter based on type
-  const updateObj =
-    type === 'plan'
-      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
-      : type === 'regeneration'
-        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+  const updateObj = getUsageCounterUpdate(type);
 
   // Increment the counter
   await dbClient
@@ -160,6 +184,10 @@ export async function getUsageSummaryForTier(args: {
       used: metrics.exportsUsed,
       limit: limits.monthlyExports,
     },
+    lessonGenerations: {
+      used: metrics.lessonModulesGenerated,
+      limit: limits.monthlyLessonGenerations,
+    },
   };
 }
 
@@ -187,6 +215,7 @@ export async function ensureUsageMetricsExist(
       plansGenerated: 0,
       regenerationsUsed: 0,
       exportsUsed: 0,
+      lessonModulesGenerated: 0,
     })
     .onConflictDoNothing({
       target: [usageMetrics.userId, usageMetrics.month],
@@ -197,16 +226,11 @@ export async function incrementUsageInTx(
   tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
   userId: string,
   month: string,
-  type: 'plan' | 'regeneration' | 'export',
+  type: UsageType,
 ): Promise<void> {
   await ensureUsageMetricsExist(tx, userId, month);
 
-  const updateObj =
-    type === 'plan'
-      ? { plansGenerated: sql`${usageMetrics.plansGenerated} + 1` }
-      : type === 'regeneration'
-        ? { regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1` }
-        : { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
+  const updateObj = getUsageCounterUpdate(type);
 
   await tx
     .update(usageMetrics)

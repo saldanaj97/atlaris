@@ -15,22 +15,22 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 - Start work from `develop`.
 - Open PRs into `develop` (or `main` only for true hotfixes).
-- PRs run CI checks (including migration drift checks).
+- PRs run CI checks.
 - Vercel handles preview deployments natively for non-`main` branches.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
-- Merging to `develop` deploys staging.
-- Merging to `main` runs production DB migrations first, then deploys production app from GitHub Actions.
+- Merging to `develop` runs Supabase CLI migrations against staging.
+- Merging to `main` runs Supabase CLI migrations against production.
 
 ---
 
 ## Environments and ownership
 
-| Environment | Source              | Owner                      | Notes                                                  |
-| ----------- | ------------------- | -------------------------- | ------------------------------------------------------ |
-| Local       | Your feature branch | You                        | `pnpm dev`                                             |
-| Preview     | PR branch           | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration         |
-| Staging     | `develop`           | Vercel                     | Integration baseline                                   |
-| Production  | `main`              | GitHub Actions + Vercel    | Migrate first in GH Action, then deploy via Vercel CLI |
+| Environment | Source              | Owner                      | Notes                                                      |
+| ----------- | ------------------- | -------------------------- | ---------------------------------------------------------- |
+| Local       | Your feature branch | You                        | `pnpm dev`                                                 |
+| Preview     | PR branch           | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration             |
+| Staging     | `develop`           | GitHub Actions + Vercel    | Supabase migrations target the staging Supabase project    |
+| Production  | `main`              | GitHub Actions + Vercel    | Supabase migrations target the production Supabase project |
 
 ---
 
@@ -40,7 +40,6 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 - Trigger: PRs to `develop` or `main`
 - Runs: lint, type-check, dependency audit, build, unit tests, light integration tests
-- Includes: migration drift check (`pnpm db:generate` must produce no uncommitted changes)
 - Skips docs-only changes (`docs/**`, `**/*.md`, etc.)
 
 ### 2) `.github/workflows/ci-trunk.yml`
@@ -48,25 +47,30 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Trigger: push to `develop` or `main` (plus merge queue)
 - Runs: heavier integration and e2e/smoke validations on trunk branches
 
-### 3) `.github/workflows/deploy-production-migrations.yml`
+### 3) `.github/workflows/staging-db-migrations.yaml`
+
+- Trigger: push to `develop` (or manual dispatch)
+- Purpose: apply committed Supabase migrations to the staging Supabase project
+- Behavior:
+  - Links the Supabase CLI to `STAGING_PROJECT_ID`
+  - Runs `supabase db push`
+
+### 4) `.github/workflows/production-db-migrations.yaml`
 
 - Trigger: push to `main` (or manual dispatch)
-- Purpose: apply production migrations first, then deploy production app
+- Purpose: apply committed Supabase migrations to the production Supabase project
 - Behavior:
-  - Runs a preflight DB-change detector on `main` pushes
-  - Honors `workflow_dispatch` input `deploy_migrations` to force-run (`true`) or skip (`false`)
-  - Runs `pnpm db:migrate` against production DB when preflight says to run
-  - Deploys production app with Vercel CLI only after migration job succeeds (or is skipped)
+  - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
+  - Runs `supabase db push`
 
 ---
 
 ## End-to-end flow: PR lifecycle
 
 1. You push to a feature branch and open a PR to `develop`.
-2. `ci-pr.yml` validates code quality, tests, and migration drift.
+2. `ci-pr.yml` validates code quality and tests.
 3. Vercel creates/updates a preview deployment automatically.
-4. Configure preview `POSTGRES_URL` (and `POSTGRES_URL_NON_POOLING` if used) in Vercel or Supabase so the preview build targets the right database.
-5. Preview build command runs migrations for preview (`pnpm db:migrate`) before `next build` when you wire it that way in Vercel.
+4. Configure preview Supabase settings in Vercel if preview deployments need a database.
 
 ---
 
@@ -75,15 +79,15 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### Merge to `develop`
 
 - Runs `ci-trunk.yml`
+- Runs `staging-db-migrations.yaml`
 - Vercel deploys staging
 
 ### Merge to `main`
 
 - Runs `ci-trunk.yml`
-- Runs `deploy-production-migrations.yml`
-  - preflight
-  - production migrations (if needed)
-  - production app deploy
+- Runs `production-db-migrations.yaml`
+  - links the production Supabase project
+  - applies committed migrations with `supabase db push`
 
 ---
 
@@ -91,19 +95,16 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### GitHub secrets
 
-- `DATABASE_URL_PROD` (used by production migration workflow)
-- `DATABASE_URL_PROD_NON_POOLING` (used by production migration workflow)
+- `SUPABASE_ACCESS_TOKEN` (used by staging and production migration workflows)
+- `STAGING_PROJECT_ID` (Supabase project ref for staging)
+- `STAGING_DB_PASSWORD` (database password for staging)
+- `PRODUCTION_PROJECT_ID` (Supabase project ref for production)
+- `PRODUCTION_DB_PASSWORD` (database password for production)
 - `VERCEL_TOKEN` (used by production deploy workflow)
 - `VERCEL_ORG_ID` (used by production deploy workflow)
 - `VERCEL_PROJECT_ID` (used by production deploy workflow)
 
 ### Vercel settings
-
-Preview build command should be environment-aware:
-
-```bash
-if [ "$VERCEL_ENV" = "preview" ]; then pnpm db:migrate && next build --turbopack; else next build --turbopack; fi
-```
 
 Set preview deployment behavior so non-`main` branches get preview deployments.
 
@@ -113,20 +114,16 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ## How to reason about failures quickly
 
-### Preview build fails on `pnpm db:migrate`
+### Supabase migration workflow fails
 
-- Confirm preview `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` in Vercel (or host) match the intended Supabase preview database and use a **direct** URL for DDL if the pooler rejects migrations.
-
-### PR fails migration drift check
-
-- Run `pnpm db:generate` locally
-- Commit generated files under `supabase/migrations/`
-- Push again
+- Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
+- Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
+- Inspect the `supabase db push` logs for the failing migration file.
 
 ### Production deploy blocked
 
-- Check `deploy-production-migrations.yml` preflight output (`reason`)
-- If migrations ran, inspect `Run Drizzle migrations` logs
+- Check `production-db-migrations.yaml`
+- If migrations ran, inspect the `supabase db push` logs
 - Verify Vercel secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) for deployment stage
 
 ---
@@ -143,8 +140,8 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ## Related docs
 
-- `docs/context/ci/branching-strategy.md`
-- `docs/rules/ci/development-workflow.md`
+- `docs/ci/branching-strategy.md`
 - `.github/workflows/ci-pr.yml`
 - `.github/workflows/ci-trunk.yml`
-- `.github/workflows/deploy-production-migrations.yml`
+- `.github/workflows/staging-db-migrations.yaml`
+- `.github/workflows/production-db-migrations.yaml`

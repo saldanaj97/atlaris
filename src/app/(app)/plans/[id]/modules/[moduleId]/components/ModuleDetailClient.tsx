@@ -77,7 +77,9 @@ export function ModuleDetailClient({
 
       <ModuleLessonsClient
         planId={planId}
+        moduleId={module.id}
         lessons={lessons}
+        lessonGeneration={module.lessonGeneration}
         nextModuleId={nextModuleId}
         previousModulesComplete={previousModulesComplete}
         statuses={statuses}

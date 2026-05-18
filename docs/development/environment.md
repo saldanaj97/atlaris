@@ -24,6 +24,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
+- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
 
@@ -49,6 +50,7 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                            | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                             | No       |
+| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
 
 ### Local product testing (development / test)
 
@@ -84,7 +86,7 @@ The codebase uses a **dual-logger architecture**:
 | **Server**  | `@/lib/logging/logger` | API routes, server components, server actions                  |
 | **Client**  | `@/lib/logging/client` | Client components with `'use client'`, hooks, error boundaries |
 
-**Never mix them.** Client components (`'use client'`) must NOT import `@/lib/logging/logger`. See the full logging architecture guide at `docs/rules/logging.md`.
+**Never mix them.** Client components (`'use client'`) must NOT import `@/lib/logging/logger`. See the full logging architecture guide at `docs/development/logging.md`.
 
 ### Quick Reference
 
@@ -161,7 +163,7 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 
 ## Related Files
 
-- `docs/rules/logging.md` - Comprehensive logging architecture guide
+- `docs/development/logging.md` - Comprehensive logging architecture guide
 - `src/lib/config/env.ts` - Environment variable definitions and validation
 - `src/lib/logging/logger.ts` - Server-side Pino structured logging
 - `src/lib/logging/client.ts` - Client-side console wrapper

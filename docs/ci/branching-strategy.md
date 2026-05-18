@@ -38,11 +38,11 @@ We use two protected branches that serve as anchors for all development:
                          WHAT RUNS WHEN
     ┌─────────────────────────────────────────────────────────────┐
     │                                                             │
-    │   Open PR ───────> CI PR checks + preview deploy + schema diff│
+    │   Open PR ───────> CI PR checks + preview deploy              │
     │                                                             │
-    │   Merge to develop ──> Full CI ──> Vercel deploys staging   │
+    │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
-    │   Merge to main ─────> Full CI ──> Migrate DB ──> Deploy app│
+    │   Merge to main ─────> Full CI ──> DB migrations ──> Prod    │
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
 ```
@@ -73,13 +73,14 @@ We use two protected branches that serve as anchors for all development:
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Production**: `.github/workflows/deploy-production-migrations.yml` applies DB migrations first, then deploys app to Vercel production.
+- **Staging**: `.github/workflows/staging-db-migrations.yaml` applies committed Supabase migrations to the staging Supabase project on `develop`.
+- **Production**: `.github/workflows/production-db-migrations.yaml` applies committed Supabase migrations to the production Supabase project on `main`.
 
 ---
 
 ## CI Workflows Explained
 
-We use 3 core GitHub Actions workflows:
+We use 4 core GitHub Actions workflows:
 
 ### 1. `ci-pr.yml` - PR Validation
 
@@ -90,7 +91,6 @@ We use 3 core GitHub Actions workflows:
 - Lint (Oxlint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
-- Migration drift check (`pnpm db:generate` must not change committed migration files)
 - Build (Next.js)
 - Unit tests
 - Light integration tests
@@ -108,17 +108,27 @@ We use 3 core GitHub Actions workflows:
 
 **Purpose:** Comprehensive validation after merge.
 
-### 3. `deploy-production-migrations.yml` - Production Release Workflow
+### 3. `staging-db-migrations.yaml` - Staging Database Migration Workflow
+
+**Triggers:** Push to `develop`, or `workflow_dispatch`
+
+**What it does:**
+
+- Links the Supabase CLI to the project in `STAGING_PROJECT_ID`
+- Runs `supabase db push`
+
+**Purpose:** Keep the staging database aligned with committed migrations on `develop`.
+
+### 4. `production-db-migrations.yaml` - Production Database Migration Workflow
 
 **Triggers:** Push to `main`, or `workflow_dispatch`
 
 **What it does:**
 
-- Preflight detects DB-related file changes
-- Runs `pnpm db:migrate` against production when needed
-- Deploys production app via Vercel CLI only after migration stage is successful (or skipped)
+- Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
+- Runs `supabase db push`
 
-**Purpose:** Prevent app deploy-before-migration race conditions.
+**Purpose:** Keep the production database aligned with committed migrations on `main`.
 
 ---
 
@@ -137,7 +147,8 @@ git checkout -b feature/my-feature
 If you changed DB schema:
 
 ```bash
-pnpm db:generate
+supabase migration new <descriptive_name>
+# edit the generated SQL migration, then validate it locally with supabase db reset
 git add supabase/migrations
 git commit -m "feat: ..."
 ```
@@ -148,38 +159,37 @@ git commit -m "feat: ..."
 
 1. CI runs automatically (`ci-pr.yml`)
 2. Vercel preview deploy runs automatically
-3. Schema diff comment appears after successful preview deploy
-4. Address feedback and merge
+3. Address feedback and merge
 
 ### Step 5: Merge to `develop`
 
 1. Full CI runs (`ci-trunk.yml`)
-2. Vercel deploys staging
+2. `staging-db-migrations.yaml` applies committed migrations to staging
+3. Vercel deploys staging
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
 2. Full CI runs
-3. `deploy-production-migrations.yml` runs preflight
-4. DB migrations run if needed
-5. Production app deploy runs after migration stage
+3. `production-db-migrations.yaml` applies committed migrations to production
+4. Production app deploy runs
 
 ---
 
 ## Database Migrations
 
-| Stage          | What happens                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------- |
-| **PR**         | Developer commits generated migrations; CI fails if `pnpm db:generate` would change committed migration files |
-| **Preview**    | Vercel preview build runs `pnpm db:migrate`                                                                   |
-| **Production** | `deploy-production-migrations.yml` runs preflight + `db:migrate` before production deploy                     |
+| Stage          | What happens                                                           |
+| -------------- | ---------------------------------------------------------------------- |
+| **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
+| **Staging**    | `staging-db-migrations.yaml` runs `supabase db push` on `develop`      |
+| **Production** | `production-db-migrations.yaml` runs `supabase db push` on `main`      |
 
 Migration-related changes include:
 
 - `supabase/schema/**`
 - `supabase/migrations/**`
 - `supabase/enums.ts`
-- `drizzle.config.ts`
+- `supabase/config.toml`
 
 ---
 
@@ -189,9 +199,9 @@ Migration-related changes include:
 
 Target `develop` unless it is a true production hotfix.
 
-### What if CI fails because migrations are out of sync?
+### What if a migration workflow fails?
 
-Run `pnpm db:generate` locally, commit generated files, push again.
+Check the GitHub Actions logs for `supabase db push`, confirm the branch is targeting the intended project secret, and fix the failing migration SQL in a follow-up commit.
 
 ### How do I test against a real DB before merge?
 
@@ -203,5 +213,6 @@ Use the Vercel preview deployment URL; ensure preview environment variables poin
 
 - `.github/workflows/ci-pr.yml` - PR validation
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
-- `.github/workflows/deploy-production-migrations.yml` - Production migration + deploy workflow
-- `docs/rules/ci/development-workflow.md` - Rules for agents/automation
+- `.github/workflows/staging-db-migrations.yaml` - Staging migration workflow
+- `.github/workflows/production-db-migrations.yaml` - Production migration workflow
+- `docs/ci-cd/pipeline-and-deployment-strategy.md` - Deployment pipeline details

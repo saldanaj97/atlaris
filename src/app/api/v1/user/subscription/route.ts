@@ -26,6 +26,7 @@ export const GET = requestBoundary.route(
           activePlans: snapshot.usage.activePlans,
           regenerations: snapshot.usage.regenerations,
           exports: snapshot.usage.exports,
+          lessonGenerations: snapshot.usage.lessonGenerations,
         },
       });
     } catch (error) {

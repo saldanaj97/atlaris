@@ -9,6 +9,7 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
   GenerationOptions,
+  ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
 import { aiEnv } from '@/lib/config/env';
@@ -168,6 +169,27 @@ function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
   }
 
   return { modules };
+}
+
+function buildSyntheticModuleLessonBatchPayload(
+  taskIds: readonly string[],
+): unknown {
+  return {
+    version: 1,
+    tasks: taskIds.map((taskId, index) => ({
+      taskId,
+      content: {
+        version: 1,
+        blocks: [
+          { type: 'heading', text: `Lesson ${index + 1}` },
+          {
+            type: 'paragraph',
+            text: `Mock lesson for task ${taskId.slice(0, 8)} (module batch).`,
+          },
+        ],
+      },
+    })),
+  };
 }
 
 async function* createMockChunks(
@@ -345,6 +367,96 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
           promptTokens: 100,
           completionTokens: 500,
           totalTokens: 600,
+        },
+      },
+    });
+  }
+
+  generateModuleLessonBatch(
+    input: ModuleLessonBatchGenerationInput,
+    options?: GenerationOptions,
+  ): Promise<ProviderGenerateResult> {
+    const scenario = this.config.scenario;
+    if (scenario === 'timeout') {
+      return Promise.reject(
+        new ProviderTimeoutError(
+          'MOCK_AI_SCENARIO=timeout (mock module batch)',
+        ),
+      );
+    }
+    if (scenario === 'provider_error') {
+      return Promise.reject(
+        new ProviderError(
+          'provider_error',
+          'MOCK_AI_SCENARIO=provider_error (module batch)',
+        ),
+      );
+    }
+    if (scenario === 'rate_limit') {
+      return Promise.reject(
+        new ProviderRateLimitError(
+          'MOCK_AI_SCENARIO=rate_limit (module batch)',
+        ),
+      );
+    }
+    if (scenario === 'invalid_response') {
+      return Promise.resolve({
+        stream: new ReadableStream<string>({
+          start(controller) {
+            controller.enqueue('not-valid-json{{{');
+            controller.close();
+          },
+        }),
+        metadata: {
+          provider: 'mock',
+          model: 'mock-invalid',
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+          },
+        },
+      });
+    }
+
+    const rng =
+      this.config.deterministicSeed !== undefined
+        ? new SeededRandom(this.config.deterministicSeed)
+        : undefined;
+
+    const failureCheck = rng ? rng.next() : Math.random();
+    if (failureCheck < this.config.failureRate) {
+      return Promise.reject(
+        new ProviderError(
+          'provider_error',
+          'Mock module batch simulated failure for testing',
+        ),
+      );
+    }
+
+    const payload = buildSyntheticModuleLessonBatchPayload(input.taskIds);
+
+    const baseDelay = this.config.delayMs;
+    const variance =
+      baseDelay >= VARIANCE_THRESHOLD_MS
+        ? rng
+          ? rng.nextInt(-2000, 2000)
+          : getRandomInt(-2000, 2000)
+        : 0;
+    const actualDelay =
+      baseDelay >= VARIANCE_THRESHOLD_MS
+        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
+        : baseDelay;
+
+    return Promise.resolve({
+      stream: createMockStream(payload, actualDelay, options?.signal),
+      metadata: {
+        provider: 'mock',
+        model: 'mock-module-lesson-batch-v1',
+        usage: {
+          promptTokens: 120,
+          completionTokens: 800,
+          totalTokens: 920,
         },
       },
     });

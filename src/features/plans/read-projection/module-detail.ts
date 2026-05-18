@@ -4,6 +4,7 @@ import type {
   ModuleTaskMetricRow,
 } from '@/lib/db/queries/types/modules.types';
 import type { ResourceType } from '@/shared/types/db.types';
+import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
 import type {
   ModuleDetailModule,
@@ -72,6 +73,17 @@ function flattenTaskResource(taskResource: {
   };
 }
 
+function parseLessonContentForRead(
+  lessonContent: unknown,
+): ModuleDetailTask['lessonContent'] {
+  if (lessonContent === null) {
+    return null;
+  }
+
+  const parsed = LessonContentSchema.safeParse(lessonContent);
+  return parsed.success ? parsed.data : null;
+}
+
 /**
  * Assembles module-detail UI read-model from `getModuleDetailRows` output.
  *
@@ -116,6 +128,8 @@ export function buildModuleDetailReadModel(
       description: task.description,
       estimatedMinutes: task.estimatedMinutes ?? 0,
       status: progress?.status ?? 'not_started',
+      lessonContent: parseLessonContentForRead(task.lessonContent),
+      lessonContentUpdatedAt: task.lessonContentUpdatedAt,
       resources,
     };
   });
@@ -126,6 +140,13 @@ export function buildModuleDetailReadModel(
     title: rows.module.title,
     description: rows.module.description,
     estimatedMinutes: rows.module.estimatedMinutes ?? 0,
+    lessonGeneration: {
+      status: rows.module.lessonGenerationStatus,
+      startedAt: rows.module.lessonGenerationStartedAt,
+      completedAt: rows.module.lessonGenerationCompletedAt,
+      failedAt: rows.module.lessonGenerationFailedAt,
+      error: rows.module.lessonGenerationError,
+    },
     tasks,
   };
 

@@ -1,4 +1,5 @@
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
+import type { RouteParams } from '@/lib/api/types/auth.types';
 import type { OwnedPlanRecord } from '@/lib/db/queries/helpers/plans-helpers';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import type { DbClient } from '@/lib/db/types';
@@ -38,6 +39,20 @@ export function requirePlanIdFromRequest(
     throw new ValidationError('Invalid plan id format.');
   }
   return planId;
+}
+
+export function requireUuidRouteParam(
+  params: RouteParams,
+  paramName: string,
+): string {
+  const value = params[paramName];
+  if (typeof value !== 'string') {
+    throw new ValidationError(`${paramName} is required in the request path.`);
+  }
+  if (!isUuid(value)) {
+    throw new ValidationError(`Invalid ${paramName} format.`);
+  }
+  return value;
 }
 
 export async function requireOwnedPlanById(params: {

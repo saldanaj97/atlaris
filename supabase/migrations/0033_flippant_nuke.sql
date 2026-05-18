@@ -1,0 +1,2 @@
+ALTER TABLE "usage_metrics" ADD COLUMN "lesson_modules_generated" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "usage_metrics" ADD CONSTRAINT "lesson_modules_generated_nonneg" CHECK ("usage_metrics"."lesson_modules_generated" >= 0);

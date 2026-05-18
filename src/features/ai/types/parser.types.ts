@@ -7,7 +7,7 @@ export type ParserCallbacks = {
   signal?: AbortSignal;
 };
 
-export type ParserErrorKind = 'invalid_json' | 'validation';
+export type ParserErrorKind = 'invalid_input' | 'invalid_json' | 'validation';
 
 export type ParsedGeneration = {
   modules: ParsedModule[];

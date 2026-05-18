@@ -167,6 +167,10 @@ function createProvider(
       stream: streamFromJson({ modules }),
       metadata: { model: 'gpt-4' },
     }),
+    generateModuleLessonBatch: vi.fn().mockResolvedValue({
+      stream: streamFromJson({ version: 1, tasks: [] }),
+      metadata: { model: 'gpt-4' },
+    }),
   };
 }
 
@@ -386,6 +390,10 @@ describe('runGenerationAttempt pacing', () => {
     const context = buildContext();
     const provider: AiPlanGenerationProvider = {
       generate: vi.fn().mockRejectedValue(new ProviderTimeoutError('timeout')),
+      generateModuleLessonBatch: vi.fn().mockResolvedValue({
+        stream: streamFromJson({ version: 1, tasks: [] }),
+        metadata: {},
+      }),
     };
     const { attemptOperations, dbClient, finalizeAttemptFailureMock } =
       createDbHarness({
