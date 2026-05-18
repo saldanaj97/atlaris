@@ -140,8 +140,7 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ## Related docs
 
-- `docs/context/ci/branching-strategy.md`
-- `docs/rules/ci/development-workflow.md`
+- `docs/ci/branching-strategy.md`
 - `.github/workflows/ci-pr.yml`
 - `.github/workflows/ci-trunk.yml`
 - `.github/workflows/staging-db-migrations.yaml`

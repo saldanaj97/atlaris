@@ -215,4 +215,4 @@ Use the Vercel preview deployment URL; ensure preview environment variables poin
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
 - `.github/workflows/staging-db-migrations.yaml` - Staging migration workflow
 - `.github/workflows/production-db-migrations.yaml` - Production migration workflow
-- `docs/rules/ci/development-workflow.md` - Rules for agents/automation
+- `docs/ci-cd/pipeline-and-deployment-strategy.md` - Deployment pipeline details

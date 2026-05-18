@@ -456,7 +456,7 @@ jobs:
             vitest\.config\.ts|
             tsconfig\.json|
             package\.json|
-            src/lib/db/(schema|enums|migrations|drizzle)\.ts
+            supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?
           )$
           EOF
           # Remove newlines and spaces for grep -E compatibility

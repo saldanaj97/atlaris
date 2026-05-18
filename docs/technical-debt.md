@@ -80,7 +80,7 @@ and document the failing pooler/driver as the reason.
 Resolved in migration `0020_burly_jackal.sql`. CHECK constraints
 (`char_length(title) <= 500`) now exist on `modules`, `tasks`, and `resources`
 tables. The AI parser also truncates titles defensively before DB insertion.
-Constants live in `src/lib/db/schema/constants.ts`; drift is caught by
+Constants live in `supabase/schema/constants.ts`; drift is caught by
 `tests/unit/db/title-length-constraints.spec.ts`.
 
 ## ~~OpenRouter cost accounting on `ai_usage_events`~~ _(shipped, #301)_
@@ -122,7 +122,7 @@ was the first auto-generated migration since the fix.
 Resolved: the `resource_type` enum value was renamed from `youtube` to `video`
 via `ALTER TYPE ... RENAME VALUE` migration, and all code references updated.
 
-~~`src/lib/db/enums.ts` still carries a TODO around the `youtube` resource enum
+~~`supabase/enums.ts` still carries a TODO around the `youtube` resource enum
 name. Renaming it back to `video` would improve conceptual consistency, but it
 would also require a migration plus compatibility work for any persisted rows
 and UI logic.~~
@@ -136,7 +136,7 @@ role to only UPDATE `name`, `preferred_ai_model`, and `updated_at` on the
 `users` table. All other columns (billing, system-managed) are only writable by
 the service-role which has BYPASSRLS.
 
-**Canonical column list:** [`src/lib/db/privileges/users-authenticated-update-columns.ts`](../src/lib/db/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
+**Canonical column list:** [`supabase/privileges/users-authenticated-update-columns.ts`](../supabase/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
 
 When adding new user-editable columns to the `users` table, update in lockstep:
 
@@ -148,6 +148,6 @@ When adding new user-editable columns to the `users` table, update in lockstep:
 
 Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration, `ci-trunk.yml`, and bootstrap sources against the canonical list.
 
-**CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` prepares the DB with `pnpm db:push` and broad table grants; it does **not** replicate the full migration `0018` column-level `REVOKE`/`GRANT` sequence. Do not assume PR integration DBs match production privilege layout; full alignment is enforced on trunk (`ci-trunk.yml`) and via migrations + the files above.
+**CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` uses the Testcontainers-backed migration bootstrap instead of a `pnpm db:push` shortcut, so PR integration DBs now run through the committed migration path. Keep this aligned with trunk (`ci-trunk.yml`) and the files above when privilege rules change.
 
 Failure to update consumers after changing the allowlist will cause authenticated users to lose `UPDATE` on new columns or leave billing columns writable — caught by security/unit tests and the drift spec.
