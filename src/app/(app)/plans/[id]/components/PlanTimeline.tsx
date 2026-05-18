@@ -1,7 +1,5 @@
 'use client';
 
-import type { JSX } from 'react';
-import { useMemo, useState } from 'react';
 import type { TimelineModule } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
 import { TimelineModuleCard } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
 import { getStatusesFromModules } from '@/app/(app)/plans/[id]/helpers';
@@ -13,6 +11,9 @@ import {
   deriveCompletedModuleIds,
   deriveModuleProgressState,
 } from '@/features/plans/task-progress/client';
+import { CheckCircle2, Flag } from 'lucide-react';
+import type { JSX } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -73,6 +74,15 @@ export function PlanTimeline({
     () => deriveActiveModuleId(modules, effectiveStatuses),
     [modules, effectiveStatuses],
   );
+  const isPlanComplete =
+    modules.length > 0 &&
+    modules.every(
+      (mod) =>
+        mod.tasks.length > 0 &&
+        mod.tasks.every(
+          (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
+        ),
+    );
 
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
     return activeModuleId ? [activeModuleId] : [];
@@ -136,7 +146,7 @@ export function PlanTimeline({
   }
 
   return (
-    <section className="mt-12">
+    <section className="mt-12 scroll-mt-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
           Learning Modules
@@ -146,13 +156,16 @@ export function PlanTimeline({
         </span>
       </div>
 
-      <div className="relative">
-        <div className="absolute top-0 bottom-0 left-8 w-0.5 -translate-x-1/2 bg-linear-to-b from-primary/40 via-primary to-stone-200 dark:from-primary/60 dark:via-primary dark:to-stone-700" />
+      <div className="relative pb-4">
+        <div
+          className="pointer-events-none absolute top-3 bottom-10 left-8 w-0.5 -translate-x-1/2 bg-linear-to-b from-primary/50 via-primary/90 to-transparent dark:from-primary/70 dark:via-primary dark:to-transparent"
+          aria-hidden
+        />
 
         <Accordion
           type="multiple"
           value={visibleExpandedModuleIds}
-          className="space-y-4"
+          className="space-y-4 pb-2"
         >
           {timelineModules.map((mod) => {
             return (
@@ -168,6 +181,60 @@ export function PlanTimeline({
             );
           })}
         </Accordion>
+
+        <div className="mt-5 flex items-stretch">
+          <div className="relative flex w-16 shrink-0 items-center justify-center">
+            <div
+              className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-white shadow-sm dark:bg-stone-900 ${
+                isPlanComplete
+                  ? 'border-success text-success'
+                  : 'border-stone-300 text-stone-400 dark:border-stone-600 dark:text-stone-500'
+              }`}
+            >
+              {isPlanComplete ? (
+                <CheckCircle2 size={18} className="fill-success/15" />
+              ) : (
+                <Flag size={16} />
+              )}
+            </div>
+          </div>
+          <div
+            className={`flex-1 rounded-2xl border p-5 shadow-sm ${
+              isPlanComplete
+                ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
+                : 'border-dashed border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60'
+            }`}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p
+                  className={`text-sm font-semibold ${
+                    isPlanComplete
+                      ? 'text-success'
+                      : 'text-stone-500 dark:text-stone-400'
+                  }`}
+                >
+                  {isPlanComplete ? 'Congratulations!' : 'End of plan'}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">
+                  {isPlanComplete
+                    ? 'You have completed all modules in this plan.'
+                    : 'This is the end of the plan.'}
+                </h3>
+              </div>
+              <span
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                  isPlanComplete
+                    ? 'bg-success/15 text-success dark:bg-success/25'
+                    : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                }`}
+              >
+                {modules.length} module{modules.length !== 1 ? 's' : ''}{' '}
+                {isPlanComplete ? 'finished' : 'total'}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

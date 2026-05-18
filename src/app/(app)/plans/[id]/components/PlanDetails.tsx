@@ -80,7 +80,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const isGenerating = isPendingOrProcessing;
 
   return (
-    <div>
+    <div className="pb-12 md:pb-20">
       <header className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" asChild>
