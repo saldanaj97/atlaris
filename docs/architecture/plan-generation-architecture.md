@@ -1,7 +1,7 @@
 # Plan Generation Architecture
 
 **Audience:** Developers onboarding to the plan generation pipeline  
-**Last Updated:** April 2026
+**Last Updated:** May 2026
 
 ## Overview
 
@@ -57,6 +57,7 @@ This separation between external auth identity and internal app user row is not 
 | `src/app/api/v1/plans/[planId]/attempts/route.ts`   | Return attempt history                     |
 | `src/app/api/v1/plans/[planId]/retry/route.ts`      | Retry a failed or pending-retry generation |
 | `src/app/api/v1/plans/[planId]/regenerate/route.ts` | Regenerate an existing plan                |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation |
 
 ### AI layer
 
@@ -158,6 +159,38 @@ The generation pipeline uses stable classifications including:
 
 These classifications drive logging, user messaging, and retry decisions.
 
+## Module lesson generation (separate pipeline)
+
+This path is **not** the streamed plan creator. It fills structured lesson content for **one module** in a single provider batch (all tasks in that module), after the plan exists and tasks are laid out.
+
+### Entry point
+
+- `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate`
+- Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`
+- Core orchestration: `generateModuleLessons` in `src/features/lesson-content/generate-module-lessons.ts`
+
+### Preconditions and guards
+
+- **Ownership:** route calls `requireOwnedPlanById` before generation.
+- **Unlock rule:** `loadModuleLessonGenerationContext` in `src/lib/db/queries/module-lesson-generation.ts` marks the module unlocked only when every **earlier** module (by plan order) has all tasks completed; otherwise generation returns `locked` (HTTP 409).
+- **Claimable states:** module `lesson_generation_status` must be `not_generated` or `failed` to move to `generating` via compare-and-set; `ready` short-circuits as `already_ready`; concurrent `generating` returns `in_flight` (HTTP 202).
+- **Feature flag:** `lessonContentEnv.generationEnabled` reads `LESSON_GENERATION_ENABLED` (`src/lib/config/env/lesson-content.ts`). When false, API returns `disabled` (HTTP 503).
+- **Rate limit:** `requestBoundary.route` uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user, in-memory limiter).
+- **Monthly meter:** `runLessonGenerationQuotaReserved` in `src/features/billing/lesson-generation-quota-boundary.ts` reserves the `lessonGeneration` meter **after** a successful DB claim and **before** provider work. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` in `src/shared/constants/tier-limits.ts` (free: 3, starter: 25, pro: unlimited). On quota denial the module row is reverted from `generating` to `not_generated` and the API returns 429 with counts.
+
+### Execution flow (happy path)
+
+1. Load plan + module + ordered tasks; verify unlock.
+2. **Claim** module row to `generating` (or return already ready / in flight / not found).
+3. Build batch prompts from `src/features/lesson-content/module-lesson-prompts.ts`.
+4. Inside quota boundary: resolve provider (`resolveModelForTier` unless tests inject a provider), call `generateModuleLessonBatchWithInstrumentation`, parse stream via `parseModuleLessonBatchFromStream`.
+5. **Persist** in one transaction path: `commitModuleLessonBatchSuccess` writes per-task `lesson_content`, sets module to `ready`, records AI usage metadata, increments `usage_metrics.lesson_modules_generated` for the calendar month (via `src/features/billing/metered-reservation.ts` / `usage-metrics.ts`).
+6. On parser/provider failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` with a truncated error string; quota work returns `revert` so the meter reservation is compensated.
+
+### API response shape
+
+JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/schemas/lesson-content.schemas.ts`). HTTP status varies by `GenerateModuleLessonsResult`: e.g. 200 for `success` / `already_ready`, 202 `in_flight`, 429 `quota_denied`, 502 `failed` (`provider_failure`), 503 `disabled`, 404 `not_found`, 409 `locked`.
+
 ## Database tables involved
 
 The main persistence path touches:
@@ -167,8 +200,9 @@ The main persistence path touches:
 - `tasks`
 - `generation_attempts`
 - supporting usage and billing tables where applicable
+- module lesson batches additionally update `modules.lesson_generation_*`, `tasks.lesson_content`, and `usage_metrics.lesson_modules_generated`
 
-See `docs/rules/database/schema-overview.md` for the current schema view.
+See `docs/database/schema-overview.md` for the current schema view.
 
 ## RLS model
 
@@ -188,8 +222,8 @@ If someone imports the service-role DB into a request handler, they are not bein
 
 ## Related documents
 
-- `docs/context/architecture/auth-and-data-layer.md`
-- `docs/rules/api/rate-limiting.md`
-- `docs/rules/database/schema-overview.md`
+- `docs/architecture/auth-and-data-layer.md`
+- `docs/api/rate-limiting.md`
+- `docs/database/schema-overview.md`
 - `src/lib/ai/AGENTS.md`
 - `supabase/AGENTS.md`
