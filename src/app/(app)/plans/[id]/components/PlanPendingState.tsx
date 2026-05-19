@@ -164,12 +164,12 @@ function RetryAction({
     <Button onClick={onRetry} disabled={isRetryDisabled} className="w-full">
       {isRetrying ? (
         <>
-          <Loader2 className="mr-2 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Retrying…
         </>
       ) : (
         <>
-          <RefreshCw className="mr-2" />
+          <RefreshCw className="mr-2 h-4 w-4" />
           Retry Generation ({MAX_RETRY_ATTEMPTS - attempts} attempts remaining)
         </>
       )}
@@ -270,7 +270,7 @@ function ConnectionIssuePanel({
       </div>
 
       <Button onClick={onRefresh} className="w-full" variant="outline">
-        <RefreshCw className="mr-2" />
+        <RefreshCw className="mr-2 h-4 w-4" />
         Refresh
       </Button>
     </div>
@@ -388,7 +388,7 @@ function GenerationStatusContent({
       </div>
 
       <Button onClick={onRefresh} className="w-full" variant="outline">
-        <RefreshCw className="mr-2" />
+        <RefreshCw className="mr-2 h-4 w-4" />
         Refresh
       </Button>
     </div>

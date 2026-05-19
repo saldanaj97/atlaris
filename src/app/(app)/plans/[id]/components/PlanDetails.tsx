@@ -85,7 +85,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard">
-              <ArrowLeft size={16} aria-hidden="true" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to Dashboard
             </Link>
           </Button>
@@ -102,7 +102,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
               disabled={isGenerating}
               className="text-muted-foreground hover:text-destructive"
             >
-              <Trash2 className="mr-2" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete plan
             </Button>
           </DeletePlanDialog>

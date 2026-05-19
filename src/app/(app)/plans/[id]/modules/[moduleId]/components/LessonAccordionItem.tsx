@@ -75,7 +75,7 @@ function getCardClassName(isLocked: boolean, isCompleted: boolean): string {
   if (isCompleted) {
     return 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10';
   }
-  return 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border';
+  return 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border dark:hover:border-primary/30';
 }
 
 function getMarkerClassName(isLocked: boolean, isCompleted: boolean): string {
@@ -403,7 +403,7 @@ function LearningResourceCard({
       href={resource.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+      className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30"
     >
       <div
         className={cn(
