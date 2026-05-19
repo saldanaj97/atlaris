@@ -292,7 +292,7 @@ rg "isTest" src/lib/api/auth.ts
 - Line 13-14: Add server components to the client-selection table.
 - Update the "Auth Wrappers" section to note that `withErrorBoundary` and `withRateLimit` are now in `@/lib/api/middleware`.
 
-### Step 4.3 — Update `docs/agent-context/learnings.md`
+### Step 4.3 — Update the durable guidance notes
 
 - Line 23 was already corrected in the audit fixes.
 - Verify it still reads correctly after all the code changes.

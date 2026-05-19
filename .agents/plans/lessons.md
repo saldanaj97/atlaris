@@ -18,7 +18,7 @@
 
 ## 2026-04-05: Verify active surface area before planning around it
 
-**Context:** The authenticated-request-scope research initially treated dead or internal-only helpers as active public primitives, and `docs/agent-context/learnings.md` preserved a server-component rule for `getCurrentUserRecordSafe()` even though the function had 0 callers and had already caused a regression when chosen over `withServerComponentContext()`.
+**Context:** The authenticated-request-scope research initially treated dead or internal-only helpers as active public primitives, and the prior guidance notes preserved a server-component rule for `getCurrentUserRecordSafe()` even though the function had 0 callers and had already caused a regression when chosen over `withServerComponentContext()`.
 
 **Rule:** Before turning helper-selection rules into planning assumptions or durable learnings, verify external call sites and classify exports as active, internal-only, escape hatch, or dead code.
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Agent memory:** Recurring preferences and durable workspace facts live in [`docs/agent-context/learnings.md`](docs/agent-context/learnings.md). Read that file whenever you read or apply this file.
+**Agent memory:** Recurring preferences and durable workspace facts live in `.agents/plans/lessons.md`. Read that file whenever you read or apply this file.
 
 We will primarily be utilizing the `.agents/plans/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
 
