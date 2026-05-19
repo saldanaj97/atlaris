@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import {
   FeaturesSection,
   FinalCtaSection,
-  GradientBlobBackground,
   HeroSection,
   HowItWorksSection,
   ProblemSolutionSection,
@@ -29,8 +28,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background pt-16 font-sans text-foreground">
-      <GradientBlobBackground />
-      <div className="relative z-10">
+      <div className="relative">
         <HeroSection />
         <ProblemSolutionSection />
         <FeaturesSection />

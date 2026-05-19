@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import { cn } from '@/lib/utils';
 
 interface ModuleTimelineProps {
   planId: string;
@@ -185,11 +186,12 @@ export function PlanTimeline({
         <div className="mt-5 flex items-stretch">
           <div className="relative flex w-16 shrink-0 items-center justify-center">
             <div
-              className={`z-10 flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-white shadow-sm dark:bg-stone-900 ${
+              className={cn(
+                'z-10 flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-white shadow-sm dark:bg-stone-900',
                 isPlanComplete
                   ? 'border-success text-success'
-                  : 'border-stone-300 text-stone-400 dark:border-stone-600 dark:text-stone-500'
-              }`}
+                  : 'border-stone-300 text-stone-400 dark:border-stone-600 dark:text-stone-500',
+              )}
             >
               {isPlanComplete ? (
                 <CheckCircle2 size={18} className="fill-success/15" />
@@ -199,20 +201,22 @@ export function PlanTimeline({
             </div>
           </div>
           <div
-            className={`flex-1 rounded-2xl border p-5 shadow-sm ${
+            className={cn(
+              'flex-1 rounded-2xl border p-5 shadow-sm',
               isPlanComplete
                 ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
-                : 'border-dashed border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60'
-            }`}
+                : 'border-dashed border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-900/60',
+            )}
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p
-                  className={`text-sm font-semibold ${
+                  className={cn(
+                    'text-sm font-semibold',
                     isPlanComplete
                       ? 'text-success'
-                      : 'text-stone-500 dark:text-stone-400'
-                  }`}
+                      : 'text-stone-500 dark:text-stone-400',
+                  )}
                 >
                   {isPlanComplete ? 'Congratulations!' : 'End of plan'}
                 </p>
@@ -223,11 +227,12 @@ export function PlanTimeline({
                 </h3>
               </div>
               <span
-                className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                className={cn(
+                  'rounded-md px-2.5 py-1 text-xs font-semibold',
                   isPlanComplete
                     ? 'bg-success/15 text-success dark:bg-success/25'
-                    : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
-                }`}
+                    : 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400',
+                )}
               >
                 {modules.length} module{modules.length !== 1 ? 's' : ''}{' '}
                 {isPlanComplete ? 'finished' : 'total'}

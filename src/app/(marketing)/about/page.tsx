@@ -7,7 +7,6 @@ import {
   TeamSection,
   ValuesSection,
 } from '@/app/(marketing)/about/components';
-import { GradientBlobBackground } from '@/app/(marketing)/landing/components';
 
 export const metadata: Metadata = {
   title: 'About | Atlaris',
@@ -25,7 +24,6 @@ export const metadata: Metadata = {
 export default function Page(): React.ReactElement {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background font-sans text-foreground">
-      <GradientBlobBackground />
       <HeroSection />
       <MissionSection />
       <ValuesSection />

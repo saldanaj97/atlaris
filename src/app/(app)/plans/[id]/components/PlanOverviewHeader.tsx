@@ -1,4 +1,5 @@
 import { BookOpen, Calendar, Clock, TrendingUp } from 'lucide-react';
+import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
@@ -39,49 +40,39 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
   return (
     <article className="lg:col-span-2">
       {/* Cover Image Area */}
-      <div
-        className={`relative mb-6 overflow-hidden rounded-3xl bg-linear-to-br ${gradient} p-8 shadow-2xl`}
+      <GradientProgressHeroFrame
+        className="mb-6"
+        contentClassName="min-h-88"
+        gradientClassName={gradient}
+        completion={completion}
       >
-        {/* Decorative elements */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjA5IDAgNi0uNzc4IDguNTQzLTIuMTQ3QzUzLjA1MSA0Ny41OCA1OCA0MC40MTYgNTggMzJjMC04LjI4NC02LjcxNi0xNS0xNS0xNS0xLjU5MyAwLTMuMTI4LjI0OC00LjU3My43MDlDMzcuMjkgMTguMjQ5IDM2LjY1MiAxOCAzNiAxOHoiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2c+PC9zdmc+')] opacity-30" />
-
-        <div className="relative z-10 flex min-h-88 flex-col justify-between">
-          <div className="flex items-start justify-between">
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-            {/* Share/ExternalLink buttons removed - no functionality implemented */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
-
-          <div>
-            <p className="mb-2 text-sm font-medium tracking-wider text-white/70 uppercase">
-              Learning Plan
-            </p>
-            <h2 className="mb-1 text-4xl font-bold text-white md:text-5xl">
-              {plan.topic}
-            </h2>
-            <p className="text-xl text-white/80">
-              {formatSkillLevel(plan.skillLevel)} •{' '}
-              {formatMinutes(totalMinutes)} total
-            </p>
-          </div>
+          {/* Share/ExternalLink buttons removed - no functionality implemented */}
         </div>
 
-        {/* Progress bar overlay */}
-        <div className="absolute right-0 bottom-0 left-0 h-1 bg-black/20">
-          <div
-            className="h-full bg-white transition-all duration-500"
-            style={{ width: `${completion}%` }}
-          />
+        <div>
+          <p className="mb-2 text-sm font-medium tracking-wider text-white/70 uppercase">
+            Learning Plan
+          </p>
+          <h2 className="mb-1 text-4xl font-bold text-white md:text-5xl">
+            {plan.topic}
+          </h2>
+          <p className="text-xl text-white/80">
+            {formatSkillLevel(plan.skillLevel)} • {formatMinutes(totalMinutes)}{' '}
+            total
+          </p>
         </div>
-      </div>
+      </GradientProgressHeroFrame>
 
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

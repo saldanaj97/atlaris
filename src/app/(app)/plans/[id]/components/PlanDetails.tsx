@@ -4,7 +4,6 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactElement, useCallback, useMemo } from 'react';
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
-import { ExportButtons } from '@/app/(app)/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
@@ -115,8 +114,6 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         <>
           {/* Plan Overview */}
           <PlanOverviewHeader plan={plan} stats={overviewStats} />
-
-          <ExportButtons planId={plan.id} />
 
           {/* Module Timeline */}
           <PlanTimeline

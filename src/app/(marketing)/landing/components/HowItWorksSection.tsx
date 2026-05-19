@@ -70,9 +70,6 @@ export function HowItWorksSection() {
 function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40">
-      {/* Decorative glow */}
-      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-primary/40 to-accent/30 opacity-20 blur-2xl transition group-hover:opacity-40 motion-reduce:transition-none"></div>
-
       <div className="mb-4 flex items-center gap-3">
         <span
           className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent text-sm font-bold text-white shadow-lg"

@@ -3,6 +3,7 @@
 import { CheckCircle2, Circle } from 'lucide-react';
 import type { JSX } from 'react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface TaskStatusButtonProps {
@@ -39,11 +40,12 @@ export function TaskStatusButton({
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
-      className={`rounded-xl px-4 transition-all ${
+      className={cn(
+        'rounded-xl px-4 transition-all',
         isCompleted
           ? 'bg-success text-success-foreground hover:bg-success/90'
-          : 'bg-white/50 text-foreground hover:bg-primary hover:text-primary-foreground dark:bg-card/50 dark:text-muted-foreground dark:hover:bg-primary dark:hover:text-primary-foreground'
-      }`}
+          : 'bg-white/50 text-foreground hover:bg-primary hover:text-primary-foreground dark:bg-card/50 dark:text-muted-foreground dark:hover:bg-primary dark:hover:text-primary-foreground',
+      )}
     >
       {isCompleted ? (
         <CheckCircle2 className="h-5 w-5" />

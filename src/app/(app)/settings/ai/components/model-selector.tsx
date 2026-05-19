@@ -3,7 +3,8 @@
 import { AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { JSX } from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId } from 'react';
+import { useModelPreferenceSave } from '@/app/(app)/settings/ai/components/useModelPreferenceSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -25,15 +26,10 @@ import {
 } from '@/components/ui/select';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import { ROUTES } from '@/features/navigation';
-import { clientLogger } from '@/lib/logging/client';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
 const NO_MODEL_VALUE = '__no_model_selected__';
-
-function normalizePreference(model: string | null): string {
-  return model ?? '';
-}
 
 type ModelSelectorProps = {
   currentModel: string | null;
@@ -50,122 +46,25 @@ const ModelDropdown = ({
 }: ModelSelectorProps): JSX.Element => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
-
-  const [selectedModel, setSelectedModel] = useState<string>(() =>
-    normalizePreference(currentModel),
-  );
-  const [optimisticBaseline, setOptimisticBaseline] = useState<
-    string | undefined
-  >(undefined);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>(
-    'idle',
-  );
-
-  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearStatusReset = () => {
-    if (statusTimeoutRef.current !== null) {
-      clearTimeout(statusTimeoutRef.current);
-      statusTimeoutRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (statusTimeoutRef.current !== null) {
-        clearTimeout(statusTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    setSelectedModel(normalizePreference(currentModel));
-  }, [currentModel]);
-
-  // After save we set optimisticBaseline to the value we sent; when `currentModel`
-  // (server) catches up, setOptimisticBaseline compares normalizePreference(currentModel)
-  // to that baseline and clears optimisticBaseline. Until then, effectiveBaseline uses
-  // optimisticBaseline when set, otherwise normalizePreference(currentModel).
-  useEffect(() => {
-    setOptimisticBaseline((prev) => {
-      if (prev === undefined) return undefined;
-      return normalizePreference(currentModel) === prev ? undefined : prev;
-    });
-  }, [currentModel]);
-
-  const effectiveBaseline =
-    optimisticBaseline !== undefined
-      ? optimisticBaseline
-      : normalizePreference(currentModel);
+  const {
+    clearSelection,
+    effectiveBaseline,
+    hasChanges,
+    isSaving,
+    saveSelectedModel,
+    saveStatus,
+    selectedModel,
+    setSelectedModel,
+    useTierDefault,
+  } = useModelPreferenceSave({ currentModel, onSave });
 
   const selectedModelData = availableModels.find((m) => m.id === selectedModel);
 
-  const hasChanges = selectedModel !== effectiveBaseline;
-
-  const scheduleStatusReset = () => {
-    clearStatusReset();
-    statusTimeoutRef.current = setTimeout(() => {
-      statusTimeoutRef.current = null;
-      setSaveStatus('idle');
-    }, 3000);
-  };
-
-  const runSave = async (
-    modelId: string | null,
-    options: {
-      errorMessage: string;
-      nextSelectedModel?: string;
-    },
-  ): Promise<void> => {
-    setIsSaving(true);
-    setSaveStatus('idle');
-    clearStatusReset();
-
-    try {
-      await onSave(modelId);
-      const normalizedModelId = normalizePreference(modelId);
-
-      setOptimisticBaseline(normalizedModelId);
-      if (options.nextSelectedModel !== undefined) {
-        setSelectedModel(options.nextSelectedModel);
-      }
-      setSaveStatus('success');
-      scheduleStatusReset();
-    } catch (error) {
-      clientLogger.error(options.errorMessage, {
-        message: error instanceof Error ? error.message : String(error),
-        selectedModel: modelId,
-      });
-      setSaveStatus('error');
-      scheduleStatusReset();
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSave = async (): Promise<void> => {
-    await runSave(selectedModel, {
-      errorMessage: 'Failed to save model preference',
-    });
-  };
-
-  const handleUseTierDefault = async (): Promise<void> => {
-    await runSave(null, {
-      errorMessage: 'Failed to clear model preference',
-      nextSelectedModel: '',
-    });
-  };
-
-  const handleClearSelection = () => {
-    setSelectedModel('');
-  };
-
   const handleSecondaryAction = () => {
     if (effectiveBaseline !== '') {
-      void handleUseTierDefault();
+      void useTierDefault();
     } else {
-      handleClearSelection();
+      clearSelection();
     }
   };
 
@@ -297,7 +196,7 @@ const ModelDropdown = ({
 
       <Button
         type="button"
-        onClick={() => void handleSave()}
+        onClick={() => void saveSelectedModel()}
         disabled={saveDisabled}
         className="w-full"
       >

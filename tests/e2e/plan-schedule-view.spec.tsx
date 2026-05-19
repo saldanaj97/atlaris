@@ -15,11 +15,6 @@ vi.mock('next/navigation', async (orig) => {
   };
 });
 
-// Mock child components to simplify the test
-vi.mock('@/app/(app)/plans/[id]/components/ExportButtons', () => ({
-  ExportButtons: () => <div data-testid="export-buttons">Export</div>,
-}));
-
 vi.mock('@/app/(app)/plans/[id]/components/PlanPendingState', () => ({
   PlanPendingState: () => (
     <div data-testid="plan-pending-state">Plan is generating...</div>
@@ -177,13 +172,6 @@ describe('Plan Details View', () => {
     expect(backLink).toHaveAttribute('href', '/dashboard');
   });
 
-  it('should display export buttons for ready plans', async () => {
-    const plan = createMockPlan();
-    await renderPlanDetails(plan);
-
-    expect(screen.getByTestId('export-buttons')).toBeInTheDocument();
-  });
-
   it('should display pending state for generating plans', async () => {
     const plan = createMockPlan();
     plan.status = 'pending';
@@ -199,13 +187,5 @@ describe('Plan Details View', () => {
     await renderPlanDetails(plan);
 
     expect(screen.getByTestId('plan-pending-state')).toBeInTheDocument();
-  });
-
-  it('should not show export buttons for pending plans', async () => {
-    const plan = createMockPlan();
-    plan.status = 'pending';
-    await renderPlanDetails(plan);
-
-    expect(screen.queryByTestId('export-buttons')).not.toBeInTheDocument();
   });
 });

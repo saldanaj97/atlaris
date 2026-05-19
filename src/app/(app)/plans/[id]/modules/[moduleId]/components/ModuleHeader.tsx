@@ -12,6 +12,7 @@ import {
 import Link from 'next/link';
 import type { JSX } from 'react';
 
+import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -197,63 +198,53 @@ export function ModuleHeader({
       </nav>
 
       {/* Hero Card with Glassmorphism */}
-      <div
-        className={`relative overflow-hidden rounded-3xl bg-linear-to-br ${gradient} p-8 shadow-2xl shadow-primary/20`}
+      <GradientProgressHeroFrame
+        className="shadow-primary/20"
+        contentClassName="min-h-62"
+        gradientClassName={gradient}
+        completion={completion}
       >
-        {/* Decorative glassmorphism overlay */}
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjA5IDAgNi0uNzc4IDguNTQzLTIuMTQ3QzUzLjA1MSA0Ny41OCA1OCA0MC40MTYgNTggMzJjMC04LjI4NC02LjcxNi0xNS0xNS0xNS0xLjU5MyAwLTMuMTI4LjI0OC00LjU3My43MDlDMzcuMjkgMTguMjQ5IDM2LjY1MiAxOCAzNiAxOHoiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2c+PC9zdmc+')] opacity-30" />
-
-        <div className="relative z-10 flex min-h-62 flex-col justify-between">
-          {/* Top Row: Module Badge and Navigation */}
-          <div className="flex items-start justify-between">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white">
-                Module {module.order} of {totalModules}
-              </span>
-            </div>
-
-            {/* Module Navigation */}
-            <div className="flex gap-2">
-              <ModuleRoundNavLink
-                planId={planId}
-                targetModuleId={previousModuleId}
-                direction="previous"
-              />
-              <ModuleRoundNavLink
-                planId={planId}
-                targetModuleId={nextModuleId}
-                direction="next"
-              />
-            </div>
+        {/* Top Row: Module Badge and Navigation */}
+        <div className="flex items-start justify-between">
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white">
+              Module {module.order} of {totalModules}
+            </span>
           </div>
 
-          {/* Module Title and Description */}
-          <div>
-            <h1 className="mb-2 flex items-center gap-2 text-3xl font-bold text-white md:text-4xl">
-              {module.title}
-              {!previousModulesComplete && (
-                <Lock className="h-6 w-6 text-white/50 md:h-7 md:w-7" />
-              )}
-              {completion === 100 && (
-                <CheckCircle2 className="h-6 w-6 text-white drop-shadow-md md:h-7 md:w-7" />
-              )}
-            </h1>
-            {module.description && (
-              <p className="max-w-2xl text-lg text-white/80">
-                {module.description}
-              </p>
+          {/* Module Navigation */}
+          <div className="flex gap-2">
+            <ModuleRoundNavLink
+              planId={planId}
+              targetModuleId={previousModuleId}
+              direction="previous"
+            />
+            <ModuleRoundNavLink
+              planId={planId}
+              targetModuleId={nextModuleId}
+              direction="next"
+            />
+          </div>
+        </div>
+
+        {/* Module Title and Description */}
+        <div>
+          <h1 className="mb-2 flex items-center gap-2 text-3xl font-bold text-white md:text-4xl">
+            {module.title}
+            {!previousModulesComplete && (
+              <Lock className="h-6 w-6 text-white/50 md:h-7 md:w-7" />
             )}
-          </div>
+            {completion === 100 && (
+              <CheckCircle2 className="h-6 w-6 text-white drop-shadow-md md:h-7 md:w-7" />
+            )}
+          </h1>
+          {module.description && (
+            <p className="max-w-2xl text-lg text-white/80">
+              {module.description}
+            </p>
+          )}
         </div>
-
-        {/* Progress bar overlay */}
-        <div className="absolute right-0 bottom-0 left-0 h-1 bg-black/20">
-          <div
-            className="h-full bg-white transition-all duration-500"
-            style={{ width: `${completion}%` }}
-          />
-        </div>
-      </div>
+      </GradientProgressHeroFrame>
 
       {/* Stats grid */}
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
