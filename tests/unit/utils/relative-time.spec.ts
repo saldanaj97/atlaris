@@ -1,11 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { getActivityRelativeLabel } from '@/app/(app)/dashboard/components/activity-utils';
 import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
   formatRelativePast,
   formatScheduledEventRelative,
   toValidDate,
 } from '@/lib/date/relative-time';
+import { describe, expect, it } from 'vitest';
 
 describe('relative-time', () => {
   const ref = new Date('2025-06-15T12:00:00.000Z');
@@ -83,9 +82,9 @@ describe('relative-time', () => {
     );
   });
 
-  it('supports deterministic now injection in dashboard and plan helpers', () => {
+  it('supports deterministic now injection in scheduled-event and plan helpers', () => {
     expect(
-      getActivityRelativeLabel(new Date('2025-06-15T12:30:00.000Z'), ref),
+      formatScheduledEventRelative(new Date('2025-06-15T12:30:00.000Z'), ref),
     ).toBe('In 30 min');
     expect(
       getPlanLastActivityRelative(

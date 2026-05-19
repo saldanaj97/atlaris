@@ -3,6 +3,8 @@
 import type { JSX } from 'react';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { PageShell } from '@/components/ui/page-shell';
 import { clientLogger } from '@/lib/logging/client';
 
 interface ErrorProps {
@@ -27,11 +29,11 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
-      <header className="mb-6">
-        <h1>Activity Feed</h1>
-        <p className="subtitle">Your learning journey, moment by moment</p>
-      </header>
+    <PageShell>
+      <PageHeader
+        title="Activity Feed"
+        subtitle="Your learning journey, moment by moment"
+      />
 
       <div
         role="alert"
@@ -44,10 +46,8 @@ export default function DashboardError({
           We couldn&apos;t load your activity feed. This could be a temporary
           issue.
         </p>
-        <Button onClick={reset} variant="default">
-          Try Again
-        </Button>
+        <Button onClick={reset}>Try Again</Button>
       </div>
-    </div>
+    </PageShell>
   );
 }

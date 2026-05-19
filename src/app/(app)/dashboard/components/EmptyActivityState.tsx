@@ -1,5 +1,3 @@
-import { Activity, Plus } from 'lucide-react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -9,41 +7,34 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
+import { ROUTES } from '@/features/navigation/routes';
+import { Activity, Plus } from 'lucide-react';
+import Link from 'next/link';
 
-import type { ActivityFilter, ActivityLabel } from '../types';
+import type { ActivityFilter } from '../types';
 
 interface EmptyActivityStateProps {
   filter: ActivityFilter;
 }
 
-function getFilterLabel(filter: ActivityFilter): ActivityLabel {
+function getFilterLabel(filter: ActivityFilter): string {
   switch (filter) {
-    case 'all':
-      return 'All';
-    case 'session':
-      return 'Sessions';
     case 'milestone':
       return 'Milestones';
     case 'progress':
       return 'Progress';
-    case 'export':
-      return 'Exports';
-    default:
+    case 'all':
       return 'All';
   }
 }
 
 function getFilterDescription(filter: ActivityFilter): string {
   switch (filter) {
-    case 'session':
-      return 'Sessions are created when you begin a new learning session by clicking the "Start Session" button in a plan.';
     case 'milestone':
       return 'Milestones appear when you complete key goals or reach important checkpoints in your plans.';
     case 'progress':
       return 'Progress updates are tracked as you work through your plans. Complete tasks and mark progress to see updates here.';
-    case 'export':
-      return 'Exports are created when you export your plans or content to external platforms like Google Calendar.';
-    default:
+    case 'all':
       return "You don't have any activity yet. Create a plan to get started!";
   }
 }
@@ -66,8 +57,8 @@ export function EmptyActivityState({ filter }: EmptyActivityStateProps) {
       {filter === 'all' && (
         <EmptyContent>
           <Button asChild>
-            <Link href="/plans/new">
-              <Plus className="h-4 w-4" />
+            <Link href={ROUTES.PLANS.NEW}>
+              <Plus />
               Create Your First Plan
             </Link>
           </Button>
