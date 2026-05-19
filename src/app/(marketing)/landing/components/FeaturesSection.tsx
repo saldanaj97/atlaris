@@ -53,7 +53,7 @@ export function FeaturesSection() {
           <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
             Beautifully <span className="gradient-text">Transparent</span>
           </h2>
-          <p className="marketing-subtitle mx-auto max-w-2xl text-muted-foreground">
+          <p className="marketing-subtitle mx-auto max-w-2xl">
             Every element designed with clarity in mind, letting you focus on
             what matters most.
           </p>
@@ -63,7 +63,7 @@ export function FeaturesSection() {
           {FEATURES.map((feature) => (
             <div
               key={feature.title}
-              className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
+              className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40"
             >
               <div
                 className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
@@ -71,7 +71,7 @@ export function FeaturesSection() {
               ></div>
 
               <div className="brand-fill-interactive mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
-                {feature.icon}
+                <span aria-hidden="true">{feature.icon}</span>
               </div>
               <h3 className="marketing-card-title mb-3">{feature.title}</h3>
               <p className="leading-relaxed text-muted-foreground">

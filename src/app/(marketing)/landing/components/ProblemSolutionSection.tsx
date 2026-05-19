@@ -34,7 +34,7 @@ export function ProblemSolutionSection() {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Problem Card */}
           <section
-            className="group relative overflow-hidden rounded-3xl border border-destructive/30 bg-linear-to-br from-destructive/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40"
+            className="group relative overflow-hidden rounded-3xl border border-destructive/30 bg-linear-to-br from-destructive/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40"
             aria-labelledby={problemCardHeadingId}
           >
             {/* Decorative glow */}
@@ -68,7 +68,7 @@ export function ProblemSolutionSection() {
 
           {/* Solution Card */}
           <section
-            className="group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-primary/20 dark:from-primary/5 dark:to-card/40"
+            className="group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40"
             aria-labelledby={solutionCardHeadingId}
           >
             {/* Decorative glow */}
@@ -109,7 +109,7 @@ interface ItemProps {
 function ProblemItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-destructive/10 shadow-sm">
+      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-destructive/10 shadow-sm">
         <X className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
       </div>
       <span className="leading-relaxed text-muted-foreground">{children}</span>
@@ -126,7 +126,7 @@ function ProblemItem({ children }: ItemProps) {
 function SolutionItem({ children }: ItemProps) {
   return (
     <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 shadow-sm">
+      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 shadow-sm">
         <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
       </div>
       <span className="leading-relaxed text-muted-foreground">{children}</span>

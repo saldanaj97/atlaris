@@ -18,7 +18,7 @@ export function GradientBlobBackground() {
 
       {/* Middle section blobs */}
       <div
-        className="absolute top-[33%] left-1/4 h-64 w-64 rounded-full bg-linear-to-br from-destructive/20 to-accent/20 opacity-40 blur-3xl"
+        className="absolute top-1/3 left-1/4 h-64 w-64 rounded-full bg-linear-to-br from-destructive/20 to-accent/20 opacity-40 blur-3xl"
         aria-hidden="true"
       ></div>
       <div
@@ -28,11 +28,11 @@ export function GradientBlobBackground() {
 
       {/* Lower section blobs */}
       <div
-        className="absolute top-[66%] left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-50 blur-3xl"
+        className="absolute top-2/3 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-50 blur-3xl"
         aria-hidden="true"
       ></div>
       <div
-        className="absolute top-[75%] right-10 h-48 w-48 rounded-full bg-linear-to-br from-primary/20 to-accent/20 opacity-40 blur-3xl"
+        className="absolute top-3/4 right-10 h-48 w-48 rounded-full bg-linear-to-br from-primary/20 to-accent/20 opacity-40 blur-3xl"
         aria-hidden="true"
       ></div>
 

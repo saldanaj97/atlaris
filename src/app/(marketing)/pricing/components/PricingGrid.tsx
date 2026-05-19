@@ -1,15 +1,15 @@
-import Link from 'next/link';
-import type { JSX } from 'react';
+import type { StripeTierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
 import { PricingCard } from '@/app/(marketing)/pricing/components/PricingCard';
 import { PRICING_TIERS } from '@/app/(marketing)/pricing/components/PricingTiers';
-import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
 import SubscribeButton from '@/app/(marketing)/pricing/components/SubscribeButton';
-import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import { Button } from '@/components/ui/button';
+import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import Link from 'next/link';
+import type { JSX } from 'react';
 
 interface PricingGridProps {
-  configs: TierConfig[];
+  configs: StripeTierConfig[];
   intervalLabel: string;
   tierDisplayMap: Map<SubscriptionTier, BillingCatalogTierData>;
   subscribeLabel: string;
@@ -47,7 +47,7 @@ export function PricingGrid({
                   variant="outline"
                   className="w-full rounded-full"
                 >
-                  <Link href="/dashboard">Continue Free</Link>
+                  <Link href="/plans/new">Get started free</Link>
                 </Button>
               ) : priceId ? (
                 <SubscribeButton

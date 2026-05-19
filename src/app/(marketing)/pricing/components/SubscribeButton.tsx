@@ -190,6 +190,7 @@ export default function SubscribeButton({
       variant={variant}
       className={className}
       disabled={loading}
+      aria-busy={loading}
       onClick={() => {
         void handleClick();
       }}

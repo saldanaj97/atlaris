@@ -2,7 +2,7 @@ import { isUnlimitedNumber } from '@/app/(app)/plans/components/usage-types';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-interface TierConfig {
+interface PricingTierDisplay {
   name: string;
   price: string | null;
   description: string;
@@ -19,7 +19,7 @@ function formatSchedulingHorizon(value: number | null): string {
   return isUnlimitedNumber(value) ? 'Unlimited' : `${value}-week`;
 }
 
-export const PRICING_TIERS: Record<SubscriptionTier, TierConfig> = {
+export const PRICING_TIERS: Record<SubscriptionTier, PricingTierDisplay> = {
   free: {
     name: 'Free',
     price: '$0',

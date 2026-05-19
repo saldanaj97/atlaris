@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 
 import {
   FeaturesSection,
+  FinalCtaSection,
   GradientBlobBackground,
+  HeroSection,
   HowItWorksSection,
   ProblemSolutionSection,
   UseCasesSection,
 } from './components';
-import { FinalCtaSection } from './components/FinalCtaSection';
-import { HeroSection } from './components/HeroSection';
 import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {

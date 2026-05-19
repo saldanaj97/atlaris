@@ -1,10 +1,10 @@
+import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
+import type { StripeTierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
+import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { render, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
-import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
-import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Mock SubscribeButton
 vi.mock('@/app/(marketing)/pricing/components/SubscribeButton', () => ({
@@ -27,7 +27,7 @@ vi.mock('next/link', () => ({
 }));
 
 describe('PricingGrid', () => {
-  const mockConfigs: TierConfig[] = [
+  const mockConfigs: StripeTierConfig[] = [
     {
       key: 'free',
     },
@@ -123,8 +123,8 @@ describe('PricingGrid', () => {
       />,
     );
 
-    // Free tier should have a link to dashboard
-    expect(screen.getByText('Continue Free')).toBeInTheDocument();
+    const freeLink = screen.getByRole('link', { name: 'Get started free' });
+    expect(freeLink).toHaveAttribute('href', '/plans/new');
   });
 
   it('should display tier features', () => {
@@ -199,7 +199,7 @@ describe('PricingGrid', () => {
   });
 
   it('should render single tier when only one config provided', () => {
-    const singleConfig: TierConfig[] = [
+    const singleConfig: StripeTierConfig[] = [
       {
         key: 'starter',
         priceId: 'price_starter_monthly',
@@ -288,12 +288,12 @@ describe('PricingGrid', () => {
 
     // Free tier should not have a SubscribeButton
     expect(screen.queryByTestId('subscribe-null')).not.toBeInTheDocument();
-    // But should have the Continue Free link
-    expect(screen.getByText('Continue Free')).toBeInTheDocument();
+    const freeLink = screen.getByRole('link', { name: 'Get started free' });
+    expect(freeLink).toHaveAttribute('href', '/plans/new');
   });
 
   it('should not render SubscribeButton when a paid tier priceId is empty', () => {
-    const configsWithEmptyPriceId: TierConfig[] = [
+    const configsWithEmptyPriceId: StripeTierConfig[] = [
       {
         key: 'starter',
         priceId: '',

@@ -24,7 +24,7 @@ export function TeamSection(): JSX.Element {
         {TEAM_MEMBERS.map((member) => (
           <Card
             key={member.name}
-            className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 text-center shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
+            className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 text-center shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40"
           >
             <div
               className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
