@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
 import type React from 'react';
-import {
-  CtaSection,
-  HeroSection,
-  MissionSection,
-  TeamSection,
-  ValuesSection,
-} from '@/app/(marketing)/about/components';
+import { CtaSection } from '@/app/(marketing)/about/components/CtaSection';
+import { HeroSection } from '@/app/(marketing)/about/components/HeroSection';
+import { MissionSection } from '@/app/(marketing)/about/components/MissionSection';
+import { TeamSection } from '@/app/(marketing)/about/components/TeamSection';
+import { ValuesSection } from '@/app/(marketing)/about/components/ValuesSection';
 
 export const metadata: Metadata = {
   title: 'About | Atlaris',

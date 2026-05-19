@@ -3,13 +3,12 @@
 import { type ReactElement, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+  getClientErrorMessage,
+  requestPostJson,
+} from '@/app/_shared/client-api';
 import { Button } from '@/components/ui/button';
 import { createPortalResponseSchema } from '@/features/billing/validation/stripe';
-import {
-  clientErrorFieldsFromParsedApi,
-  parseApiErrorUnlessOk,
-  readResponseJsonBody,
-} from '@/lib/api/client-response-body';
 import { clientLogger } from '@/lib/logging/client';
 
 const PORTAL_TIMEOUT_MS = 15_000;
@@ -35,14 +34,6 @@ type PortalRequestResult =
         | 'network';
     };
 
-function isTimeoutError(error: unknown): error is DOMException {
-  return error instanceof DOMException && error.name === 'TimeoutError';
-}
-
-function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  return error instanceof Error ? error.message : fallbackMessage;
-}
-
 function normalizePortalUrl(portalUrl: string): string | null {
   let parsedUrl: URL;
 
@@ -63,125 +54,42 @@ function normalizePortalUrl(portalUrl: string): string | null {
   return parsedUrl.toString();
 }
 
-function createPortalTimeoutSignal(timeoutMs: number): {
-  signal: AbortSignal;
-  cleanup: () => void;
-  didTimeout: () => boolean;
-} {
-  if (typeof AbortSignal.timeout === 'function') {
-    const signal = AbortSignal.timeout(timeoutMs);
-    let timedOut = false;
-
-    const onAbort = (): void => {
-      if (
-        signal.reason instanceof DOMException &&
-        signal.reason.name === 'TimeoutError'
-      ) {
-        timedOut = true;
-      }
-    };
-
-    signal.addEventListener('abort', onAbort);
-
-    return {
-      signal,
-      cleanup: () => {
-        signal.removeEventListener('abort', onAbort);
-      },
-      didTimeout: () => timedOut,
-    };
-  }
-
-  const controller = new AbortController();
-  let timedOut = false;
-  const timeoutId = globalThis.setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
-
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      globalThis.clearTimeout(timeoutId);
-    },
-    didTimeout: () => timedOut,
-  };
-}
-
 async function requestBillingPortal(params: {
   returnUrl?: string;
 }): Promise<PortalRequestResult> {
-  const timeoutSignal = createPortalTimeoutSignal(PORTAL_TIMEOUT_MS);
-  const responseResult = await fetch('/api/v1/stripe/create-portal', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const result = await requestPostJson({
+    url: '/api/v1/stripe/create-portal',
+    body: { returnUrl: params.returnUrl },
+    schema: createPortalResponseSchema,
+    fallbackMessage: 'Failed to open billing portal',
+    timeoutMs: PORTAL_TIMEOUT_MS,
+    mapSchemaError: (issue) => {
+      if (issue.path?.[0] === 'portalUrl') {
+        return issue.message;
+      }
+
+      return undefined;
     },
-    body: JSON.stringify({ returnUrl: params.returnUrl }),
-    signal: timeoutSignal.signal,
-  })
-    .then((response) => ({ kind: 'response' as const, response }))
-    .catch((error: unknown) => ({ kind: 'network-error' as const, error }))
-    .finally(() => {
-      timeoutSignal.cleanup();
-    });
+  });
 
-  if (responseResult.kind === 'network-error') {
-    const requestTimedOut =
-      isTimeoutError(responseResult.error) || timeoutSignal.didTimeout();
+  if (result.kind === 'error') {
+    const message = result.message;
+    const timedOut = message === 'Request timed out — please try again';
 
     return {
       kind: 'error',
-      message: requestTimedOut
-        ? 'Request timed out — please try again'
-        : getErrorMessage(responseResult.error, 'Something went wrong'),
-      error: responseResult.error,
-      reason: requestTimedOut ? 'timeout' : 'network',
+      message,
+      error: result.error,
+      reason: timedOut
+        ? 'timeout'
+        : message === 'Invalid billing portal response' ||
+            message.includes('portalUrl')
+          ? 'invalid-response'
+          : 'network',
     };
   }
 
-  const { response } = responseResult;
-
-  const apiError = await parseApiErrorUnlessOk(
-    response,
-    'Failed to open billing portal',
-  );
-  if (apiError !== null) {
-    return {
-      kind: 'error',
-      ...clientErrorFieldsFromParsedApi(apiError),
-      reason: 'api',
-    };
-  }
-
-  const bodyResult = await readResponseJsonBody(response);
-
-  if (bodyResult.kind === 'parse-error') {
-    return {
-      kind: 'error',
-      message: 'Invalid billing portal response',
-      error: bodyResult.error,
-      reason: 'invalid-response',
-    };
-  }
-
-  const parsed = createPortalResponseSchema.safeParse(bodyResult.raw);
-  if (!parsed.success) {
-    const portalUrlIssue = parsed.error.issues.find(
-      (issue) => issue.path[0] === 'portalUrl',
-    );
-    return {
-      kind: 'error',
-      message:
-        portalUrlIssue?.message ??
-        parsed.error.issues[0]?.message ??
-        'Invalid billing portal response',
-      error: parsed.error,
-      reason: 'invalid-response',
-    };
-  }
-
-  const portalUrl = normalizePortalUrl(parsed.data.portalUrl);
+  const portalUrl = normalizePortalUrl(result.data.portalUrl);
   if (portalUrl === null) {
     return {
       kind: 'error',
@@ -245,7 +153,7 @@ export default function ManageSubscriptionButton({
           returnUrl,
         });
         toast.error('Unable to open billing portal', {
-          description: getErrorMessage(error, 'Something went wrong'),
+          description: getClientErrorMessage(error, 'Something went wrong'),
         });
       }
     } finally {

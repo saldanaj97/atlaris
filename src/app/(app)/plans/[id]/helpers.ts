@@ -6,6 +6,12 @@
  */
 
 import {
+  accessError,
+  accessSuccess,
+  getAccessError,
+  isAccessSuccess,
+} from '@/app/(app)/plans/access-result';
+import {
   buildTaskStatusMap,
   derivePlanDetailsCardStats,
   derivePlanOverviewStats,
@@ -56,39 +62,23 @@ export function computeDetailsCardStats(
   return derivePlanDetailsCardStats(plan, statuses);
 }
 
-/**
- * Helper to create success result
- */
 export function planSuccess(data: ClientPlanDetail): PlanAccessResult {
-  return { success: true, data };
+  return accessSuccess(data);
 }
 
-/**
- * Helper to create error result
- */
 export function planError(
   code: PlanAccessErrorCode,
   message: string,
 ): PlanAccessResult {
-  return { success: false, error: { code, message } };
+  return accessError(code, message);
 }
 
-/**
- * Type guard to check if plan access result is successful
- */
 export function isPlanSuccess(
   result: PlanAccessResult,
 ): result is { success: true; data: ClientPlanDetail } {
-  return result.success === true;
+  return isAccessSuccess(result);
 }
 
-/**
- * Helper to safely extract error from plan access result
- * Only call this after checking !isPlanSuccess(result)
- */
 export function getPlanError(result: PlanAccessResult): PlanAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
+  return getAccessError(result);
 }

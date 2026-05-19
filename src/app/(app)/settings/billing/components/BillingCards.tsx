@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
-import { isUnlimitedNumber } from '@/app/(app)/plans/components/usage-types';
+import {
+  formatCompactUsageLimit,
+  formatUsageLimitLabel,
+  getUsagePercent,
+} from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -48,16 +52,6 @@ export async function BillingCards(): Promise<JSX.Element> {
         day: 'numeric',
       })
     : '—';
-
-  // Returns 0 for unlimited limits since there's no cap to show progress against.
-  const getUsagePercent = (used: number, limit: number): number => {
-    if (isUnlimitedNumber(limit) || limit <= 0) return 0;
-    return Math.min(100, Math.round((used / limit) * 100));
-  };
-  const formatLimitLabel = (limit: number): string =>
-    isUnlimitedNumber(limit) ? 'unlimited' : String(limit);
-  const formatLimitValue = (limit: number): string =>
-    isUnlimitedNumber(limit) ? '∞' : String(limit);
 
   const plansValue = getUsagePercent(
     snapshot.usage.activePlans.current,
@@ -120,12 +114,12 @@ export async function BillingCards(): Promise<JSX.Element> {
               <span>Active plans</span>
               <span className="text-muted-foreground">
                 {snapshot.usage.activePlans.current}/
-                {formatLimitValue(snapshot.usage.activePlans.limit)}
+                {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
               </span>
             </div>
             <Progress
               value={plansValue}
-              aria-label={`Active plans: ${snapshot.usage.activePlans.current} of ${formatLimitLabel(snapshot.usage.activePlans.limit)}`}
+              aria-label={`Active plans: ${snapshot.usage.activePlans.current} of ${formatUsageLimitLabel(snapshot.usage.activePlans.limit)}`}
             />
           </div>
 
@@ -134,12 +128,12 @@ export async function BillingCards(): Promise<JSX.Element> {
               <span>Regenerations (monthly)</span>
               <span className="text-muted-foreground">
                 {snapshot.usage.regenerations.used}/
-                {formatLimitValue(snapshot.usage.regenerations.limit)}
+                {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
               </span>
             </div>
             <Progress
               value={regenValue}
-              aria-label={`Monthly regenerations: ${snapshot.usage.regenerations.used} of ${formatLimitLabel(snapshot.usage.regenerations.limit)}`}
+              aria-label={`Monthly regenerations: ${snapshot.usage.regenerations.used} of ${formatUsageLimitLabel(snapshot.usage.regenerations.limit)}`}
             />
           </div>
 
@@ -148,12 +142,12 @@ export async function BillingCards(): Promise<JSX.Element> {
               <span>Exports (monthly)</span>
               <span className="text-muted-foreground">
                 {snapshot.usage.exports.used}/
-                {formatLimitValue(snapshot.usage.exports.limit)}
+                {formatCompactUsageLimit(snapshot.usage.exports.limit)}
               </span>
             </div>
             <Progress
               value={exportValue}
-              aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatLimitLabel(snapshot.usage.exports.limit)}`}
+              aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatUsageLimitLabel(snapshot.usage.exports.limit)}`}
             />
           </div>
         </div>

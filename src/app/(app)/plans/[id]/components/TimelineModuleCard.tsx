@@ -5,21 +5,18 @@ import {
   CheckCircle2,
   ChevronRight,
   ExternalLink,
-  FileText,
-  Link as LinkIcon,
   Lock,
-  PlayCircle,
-  Target,
 } from 'lucide-react';
 import Link from 'next/link';
-import type { ElementType, JSX } from 'react';
+import type { JSX } from 'react';
+import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { UpdateTaskStatusButton } from '@/app/(app)/plans/[id]/components/UpdateTaskStatusButton';
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import type { ClientTask } from '@/shared/types/client.types';
-import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 type ModuleStatus = 'completed' | 'active' | 'locked';
 
@@ -42,14 +39,6 @@ interface TimelineModuleCardProps {
   onModuleToggle: (moduleId: string) => void;
   onTaskStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }
-
-const RESOURCE_CONFIG: Record<ResourceType, ElementType> = {
-  video: PlayCircle,
-  article: FileText,
-  course: Target,
-  doc: FileText,
-  other: LinkIcon,
-};
 
 function getMarkerClassName(status: ModuleStatus): string {
   if (status === 'completed') return 'border-success text-success';
@@ -109,7 +98,7 @@ function TimelineResourceLink({
 }: {
   resource: NonNullable<ClientTask['resources']>[number];
 }) {
-  const Icon = RESOURCE_CONFIG[resource.type];
+  const Icon = getResourceIcon(resource.type);
 
   return (
     <Button

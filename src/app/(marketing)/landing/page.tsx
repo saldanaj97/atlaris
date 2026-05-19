@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
 
-import {
-  FeaturesSection,
-  FinalCtaSection,
-  HeroSection,
-  HowItWorksSection,
-  ProblemSolutionSection,
-  UseCasesSection,
-} from './components';
+import { FeaturesSection } from '@/app/(marketing)/landing/components/FeaturesSection';
+import { FinalCtaSection } from '@/app/(marketing)/landing/components/FinalCtaSection';
+import { HeroSection } from '@/app/(marketing)/landing/components/HeroSection';
+import { HowItWorksSection } from '@/app/(marketing)/landing/components/HowItWorksSection';
+import { ProblemSolutionSection } from '@/app/(marketing)/landing/components/ProblemSolutionSection';
+import { UseCasesSection } from '@/app/(marketing)/landing/components/UseCasesSection';
 import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {

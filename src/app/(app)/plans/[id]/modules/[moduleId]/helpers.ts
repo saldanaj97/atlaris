@@ -5,46 +5,36 @@
  * to create results, check success status, and safely extract error information.
  */
 
+import {
+  accessError,
+  accessSuccess,
+  getAccessError,
+  isAccessSuccess,
+} from '@/app/(app)/plans/access-result';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 import type {
   ModuleAccessError,
   ModuleAccessErrorCode,
   ModuleAccessResult,
-} from '@/app/(app)/plans/[id]/modules/[moduleId]/types';
-import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
+} from './types';
 
-/**
- * Helper to create success result
- */
 export function moduleSuccess(data: ModuleDetailReadModel): ModuleAccessResult {
-  return { success: true, data };
+  return accessSuccess(data);
 }
 
-/**
- * Helper to create error result
- */
 export function moduleError(
   code: ModuleAccessErrorCode,
   message: string,
 ): ModuleAccessResult {
-  return { success: false, error: { code, message } };
+  return accessError(code, message);
 }
 
-/**
- * Type guard to check if module access result is successful
- */
 export function isModuleSuccess(
   result: ModuleAccessResult,
 ): result is { success: true; data: ModuleDetailReadModel } {
-  return result.success === true;
+  return isAccessSuccess(result);
 }
 
-/**
- * Helper to safely extract error from module access result
- * Only call this after checking !isModuleSuccess(result)
- */
 export function getModuleError(result: ModuleAccessResult): ModuleAccessError {
-  if (result.success === false) {
-    return result.error;
-  }
-  throw new Error('Cannot get error from successful result');
+  return getAccessError(result);
 }

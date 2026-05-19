@@ -1,9 +1,9 @@
 'use client';
 
 import {
-  formatUsageLimit,
+  formatCompactUsageLimit,
   type UsageData,
-} from '@/app/(app)/plans/components/usage-types';
+} from '@/app/_shared/usage-formatting';
 import { UsageHoverCard } from './UsageHoverCard';
 
 interface PlanCountBadgeProps {
@@ -15,7 +15,7 @@ export function PlanCountBadge({ usage }: PlanCountBadgeProps) {
     <UsageHoverCard usage={usage}>
       <span className="cursor-default rounded-full bg-muted-foreground/10 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
         {usage.activePlans.current} /{' '}
-        {formatUsageLimit(usage.activePlans.limit)}
+        {formatCompactUsageLimit(usage.activePlans.limit)}
       </span>
     </UsageHoverCard>
   );

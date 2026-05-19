@@ -3,7 +3,7 @@
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
-import type { UsageData } from '@/app/(app)/plans/components/usage-types';
+import type { UsageData } from '@/app/_shared/usage-formatting';
 import { Button } from '@/components/ui/button';
 import type {
   FilterStatus,
