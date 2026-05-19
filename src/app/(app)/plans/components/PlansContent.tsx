@@ -66,7 +66,7 @@ export async function PlansContent(): Promise<JSX.Element> {
   if (!summaries.length) {
     return (
       <section aria-label="No plans found">
-        <Empty className="min-h-[20rem] border">
+        <Empty className="min-h-100 border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Sparkles />
@@ -80,7 +80,7 @@ export async function PlansContent(): Promise<JSX.Element> {
           <EmptyContent>
             <Button asChild size="lg">
               <Link href="/plans/new">
-                <Plus className="h-4 w-4" />
+                <Plus />
                 Create your first plan
               </Link>
             </Button>

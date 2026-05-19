@@ -41,10 +41,7 @@ export function ScheduleWeekList({ schedule }: ScheduleWeekListProps) {
           {/* Days and Sessions */}
           <div className="space-y-4">
             {week.days.map((day) => (
-              <div
-                key={day.dayNumber}
-                className="bg-secondary-background rounded-md p-4"
-              >
+              <div key={day.dayNumber} className="rounded-md bg-muted p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium text-muted-foreground">
                     Day {day.dayNumber} – {day.date}

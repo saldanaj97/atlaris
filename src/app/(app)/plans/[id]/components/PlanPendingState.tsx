@@ -164,12 +164,12 @@ function RetryAction({
     <Button onClick={onRetry} disabled={isRetryDisabled} className="w-full">
       {isRetrying ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 animate-spin" />
           Retrying…
         </>
       ) : (
         <>
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <RefreshCw className="mr-2" />
           Retry Generation ({MAX_RETRY_ATTEMPTS - attempts} attempts remaining)
         </>
       )}
@@ -270,7 +270,7 @@ function ConnectionIssuePanel({
       </div>
 
       <Button onClick={onRefresh} className="w-full" variant="outline">
-        <RefreshCw className="mr-2 h-4 w-4" />
+        <RefreshCw className="mr-2" />
         Refresh
       </Button>
     </div>
@@ -388,7 +388,7 @@ function GenerationStatusContent({
       </div>
 
       <Button onClick={onRefresh} className="w-full" variant="outline">
-        <RefreshCw className="mr-2 h-4 w-4" />
+        <RefreshCw className="mr-2" />
         Refresh
       </Button>
     </div>
@@ -455,7 +455,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="p-6">
+      <Card>
         <PlanStatusHeader
           plan={plan}
           isPolling={isPolling}
@@ -488,11 +488,13 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
         </CardContent>
       </Card>
 
-      <Card className="p-6 text-center text-muted-foreground">
-        <p>
-          Once generation is complete, your personalized learning modules and
-          tasks will appear here.
-        </p>
+      <Card className="text-center text-muted-foreground">
+        <CardContent>
+          <p>
+            Once generation is complete, your personalized learning modules and
+            tasks will appear here.
+          </p>
+        </CardContent>
       </Card>
     </div>
   );

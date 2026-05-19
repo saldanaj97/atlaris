@@ -102,7 +102,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
               disabled={isGenerating}
               className="text-muted-foreground hover:text-destructive"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="mr-2" />
               Delete plan
             </Button>
           </DeletePlanDialog>

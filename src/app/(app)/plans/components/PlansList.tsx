@@ -20,6 +20,8 @@ interface PlansListProps {
   referenceTimestamp: string;
 }
 
+const filterButtonClassName = 'rounded-lg px-3 py-1.5';
+
 export function PlansList({
   summaries,
   usage: _usage,
@@ -66,7 +68,7 @@ export function PlansList({
   }, [summaries, effectiveReferenceTimestamp]);
 
   return (
-    <div className="font-sans">
+    <>
       {/* Search Bar */}
       <div className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5">
         <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -85,14 +87,14 @@ export function PlansList({
         <Button
           onClick={() => setFilterStatus('all')}
           variant={filterStatus === 'all' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition"
+          className={filterButtonClassName}
         >
           All Plans
         </Button>
         <Button
           onClick={() => setFilterStatus('active')}
           variant={filterStatus === 'active' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+          className={filterButtonClassName}
         >
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
           Active ({statusCounts.active})
@@ -100,7 +102,7 @@ export function PlansList({
         <Button
           onClick={() => setFilterStatus('completed')}
           variant={filterStatus === 'completed' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+          className={filterButtonClassName}
         >
           <span className="h-2 w-2 rounded-full bg-blue-500" />
           Completed ({statusCounts.completed})
@@ -108,7 +110,7 @@ export function PlansList({
         <Button
           onClick={() => setFilterStatus('inactive')}
           variant={filterStatus === 'inactive' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+          className={filterButtonClassName}
         >
           <span className="h-2 w-2 rounded-full bg-amber-500" />
           Inactive ({statusCounts.paused})
@@ -116,7 +118,7 @@ export function PlansList({
         <Button
           onClick={() => setFilterStatus('generating')}
           variant={filterStatus === 'generating' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+          className={filterButtonClassName}
         >
           <span className="h-2 w-2 rounded-full bg-primary" />
           Generating ({statusCounts.generating})
@@ -124,7 +126,7 @@ export function PlansList({
         <Button
           onClick={() => setFilterStatus('failed')}
           variant={filterStatus === 'failed' ? 'default' : 'outline'}
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition"
+          className={filterButtonClassName}
         >
           <span className="h-2 w-2 rounded-full bg-red-500" />
           Failed ({statusCounts.failed})
@@ -152,6 +154,6 @@ export function PlansList({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

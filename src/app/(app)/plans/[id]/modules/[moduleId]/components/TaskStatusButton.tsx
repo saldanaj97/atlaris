@@ -39,20 +39,18 @@ export function TaskStatusButton({
       aria-label={
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
-      className={`flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+      className={`rounded-xl px-4 transition-all ${
         isCompleted
           ? 'bg-success text-success-foreground hover:bg-success/90'
           : 'bg-white/50 text-foreground hover:bg-primary hover:text-primary-foreground dark:bg-card/50 dark:text-muted-foreground dark:hover:bg-primary dark:hover:text-primary-foreground'
       }`}
     >
-      <div className="flex items-center gap-2">
-        {isCompleted ? (
-          <CheckCircle2 className="h-5 w-5" />
-        ) : (
-          <Circle className="h-5 w-5" />
-        )}
-        {isCompleted ? 'Completed' : 'Mark Complete'}
-      </div>
+      {isCompleted ? (
+        <CheckCircle2 className="h-5 w-5" />
+      ) : (
+        <Circle className="h-5 w-5" />
+      )}
+      {isCompleted ? 'Completed' : 'Mark Complete'}
     </Button>
   );
 }

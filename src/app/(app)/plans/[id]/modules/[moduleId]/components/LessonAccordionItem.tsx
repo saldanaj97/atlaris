@@ -371,21 +371,7 @@ function LessonTriggerContent({
 function LockedContentOverlay() {
   return (
     <div className="relative min-h-75 overflow-hidden rounded-xl border border-stone-200/50 dark:border-stone-700/50">
-      {/* Fallback text layer - visible if blur is removed via dev tools */}
-      <div className="absolute inset-0 flex items-center justify-center bg-stone-100 p-8 text-center dark:bg-stone-800">
-        <div className="max-w-md">
-          <Lock className="mx-auto mb-4 size-12 text-stone-400 dark:text-stone-500" />
-          <p className="text-lg font-medium text-stone-500 dark:text-stone-400">
-            This lesson is locked
-          </p>
-          <p className="mt-2 text-sm text-stone-400 dark:text-stone-500">
-            Complete the previous lessons to unlock this content. Learning is
-            most effective when you follow the structured path.
-          </p>
-        </div>
-      </div>
-
-      <div className="absolute inset-0 flex items-center justify-center bg-background/90 dark:bg-background/85">
+      <div className="flex min-h-75 items-center justify-center bg-background/90 p-8 dark:bg-background/85">
         <div className="max-w-sm rounded-2xl border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm">
           <div className="mb-4 flex justify-center">
             <div className="flex size-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
@@ -417,7 +403,7 @@ function LearningResourceCard({
       href={resource.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30"
+      className="group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
     >
       <div
         className={cn(

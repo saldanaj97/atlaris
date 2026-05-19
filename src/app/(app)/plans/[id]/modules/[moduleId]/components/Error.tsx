@@ -43,7 +43,7 @@ export function ModuleDetailPageError({
           {planId && (
             <Button asChild>
               <Link href={`/plans/${planId}`}>
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft />
                 Back to Plan
               </Link>
             </Button>

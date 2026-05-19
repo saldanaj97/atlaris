@@ -7,7 +7,7 @@ import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
 import { cn } from '@/lib/utils';
 
-type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
+type DropdownVariant = 'primary';
 
 interface InlineDropdownProps<TValue extends string> {
   id?: string;
@@ -32,21 +32,6 @@ const VARIANT_STYLES: Record<
     pill: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
     dropdown: 'border-border/80 bg-popover/95 dark:border-border',
     item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15',
-  },
-  accent: {
-    pill: 'border-accent/30 bg-accent/30 text-accent-foreground hover:bg-accent/50 data-[state=open]:bg-accent/50 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown: 'border-border/80 bg-popover/95 dark:border-border',
-    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-accent/40 data-[state=checked]:text-accent-foreground dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15 dark:data-[state=checked]:text-primary',
-  },
-  cyan: {
-    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80 data-[state=open]:bg-cyan-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown: 'border-border/80 bg-popover/95 dark:border-border',
-    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-cyan-100/80 data-[state=checked]:text-cyan-800 dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15 dark:data-[state=checked]:text-primary',
-  },
-  rose: {
-    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80 data-[state=open]:bg-rose-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown: 'border-border/80 bg-popover/95 dark:border-border',
-    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-rose-100/80 data-[state=checked]:text-rose-800 dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15 dark:data-[state=checked]:text-primary',
   },
 };
 
@@ -152,7 +137,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align="start"
             className={cn(
-              'z-50 min-w-[220px] overflow-hidden rounded-[18px] border shadow-xl backdrop-blur-xl',
+              'z-50 min-w-70 overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -167,7 +152,7 @@ export function InlineDropdown<TValue extends string>({
                   value={option.value}
                   textValue={option.label}
                   className={cn(
-                    'relative w-full cursor-default rounded-[12px] py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
+                    'relative w-full cursor-default rounded-xl py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
                     styles.item,
                   )}
                 >

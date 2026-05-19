@@ -39,20 +39,18 @@ export const UpdateTaskStatusButton = (
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
       className={cn(
-        'flex items-center rounded-xl border px-4 py-2 text-left text-sm font-medium',
+        'rounded-xl border px-4 text-left',
         isCompleted
           ? 'border-success bg-success text-success-foreground hover:bg-success/90 dark:border-success dark:bg-success dark:hover:bg-success/90'
           : 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground',
       )}
     >
-      <div className="flex items-center gap-2">
-        {isCompleted ? (
-          <CheckCircle2 className="h-5 w-5" />
-        ) : (
-          <CircleDashed className="h-5 w-5" />
-        )}
-        {buttonLabel}
-      </div>
+      {isCompleted ? (
+        <CheckCircle2 className="h-5 w-5" />
+      ) : (
+        <CircleDashed className="h-5 w-5" />
+      )}
+      {buttonLabel}
     </Button>
   );
 };

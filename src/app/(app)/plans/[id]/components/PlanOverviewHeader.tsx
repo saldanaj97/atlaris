@@ -16,11 +16,10 @@ const SKILL_GRADIENTS: Record<string, string> = {
   advanced: 'from-amber-600 via-orange-500 to-red-500',
 };
 
-// Shadow color presets matching skill level gradients
 const SKILL_SHADOWS: Record<string, string> = {
-  beginner: 'shadow-emerald/20',
+  beginner: 'shadow-emerald-500/20',
   intermediate: 'shadow-primary/20',
-  advanced: 'shadow-amber/20',
+  advanced: 'shadow-amber-500/20',
 };
 
 /**
@@ -54,7 +53,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
         {/* Decorative elements */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtOS45NDEgMC0xOCA4LjA1OS0xOCAxOHM4LjA1OSAxOCAxOCAxOGMzLjA5IDAgNi0uNzc4IDguNTQzLTIuMTQ3QzUzLjA1MSA0Ny41OCA1OCA0MC40MTYgNTggMzJjMC04LjI4NC02LjcxNi0xNS0xNS0xNS0xLjU5MyAwLTMuMTI4LjI0OC00LjU3My43MDlDMzcuMjkgMTguMjQ5IDM2LjY1MiAxOCAzNiAxOHoiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIiBzdHJva2Utd2lkdGg9IjEiLz48L2c+PC9zdmc+')] opacity-30" />
 
-        <div className="relative z-10 flex min-h-[280px] flex-col justify-between">
+        <div className="relative z-10 flex min-h-88 flex-col justify-between">
           <div className="flex items-start justify-between">
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
@@ -95,25 +94,25 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
       {/* Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          icon={<BookOpen className="h-5 w-5" />}
+          icon={<BookOpen />}
           label="Modules"
           value={`${completedModules}/${totalModules}`}
           sublabel="Completed"
         />
         <MetricCard
-          icon={<Clock className="h-5 w-5" />}
+          icon={<Clock />}
           label="Progress"
           value={`${completion}%`}
           sublabel={`${completedTasks}/${totalTasks} tasks`}
         />
         <MetricCard
-          icon={<TrendingUp className="h-5 w-5" />}
+          icon={<TrendingUp />}
           label="Total Effort"
           value={formatMinutes(totalMinutes)}
           sublabel={plan.weeklyHours ? `${plan.weeklyHours}h/week` : '—'}
         />
         <MetricCard
-          icon={<Calendar className="h-5 w-5" />}
+          icon={<Calendar />}
           label="Est. Finish"
           value={estimatedCompletionDate ?? '—'}
           sublabel={

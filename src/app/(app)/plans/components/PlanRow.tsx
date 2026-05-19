@@ -145,7 +145,7 @@ export function PlanRow({
               title="Plan actions"
               aria-label="Plan actions"
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

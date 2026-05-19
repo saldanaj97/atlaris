@@ -37,7 +37,7 @@ export function PlansContentSkeleton(): JSX.Element {
 
 function PlanRowSkeleton(): JSX.Element {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-transparent bg-transparent px-5 py-4">
+    <div className="flex items-center gap-4 rounded-2xl px-5 py-4">
       {/* Status indicator skeleton */}
       <Skeleton className="h-2.5 w-2.5 shrink-0 rounded-full" />
 

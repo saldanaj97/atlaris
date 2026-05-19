@@ -135,7 +135,7 @@ export function PlanTimeline({
 
   if (modules.length === 0) {
     return (
-      <Card className="rounded-2xl text-center">
+      <Card className="text-center">
         <CardContent className="p-6">
           <p className="text-stone-500 dark:text-stone-400">
             No modules available yet.

@@ -123,7 +123,7 @@ function StatCardSkeleton() {
 
 function ModuleAccordionSkeleton() {
   return (
-    <Card className="rounded-2xl shadow-sm">
+    <Card>
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
