@@ -4,19 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
-import { assertNever } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Calendar, Clock, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
 import {
-  DEADLINE_OPTIONS,
-  LEARNING_STYLE_OPTIONS,
-  SKILL_LEVEL_OPTIONS,
-  WEEKLY_HOURS_OPTIONS,
-} from './constants';
-import { InlineDropdown } from './InlineDropdown';
+  createInitialPlanInputState,
+  planInputReducer,
+} from './plan-input-state';
+import { PreferenceControls } from './PreferenceControls';
 
 import type { PlanFormData } from './types';
 
@@ -26,68 +23,6 @@ interface UnifiedPlanInputProps {
   disabled?: boolean;
   initialTopic?: string;
   topicResetVersion?: number;
-}
-
-interface PlanInputState {
-  topic: string;
-  skillLevel: SkillLevel | null;
-  weeklyHours: WeeklyHours | null;
-  learningStyle: LearningStyle | null;
-  deadlineWeeks: DeadlineWeeks | null;
-}
-
-type SkillLevel = (typeof SKILL_LEVEL_OPTIONS)[number]['value'];
-type WeeklyHours = (typeof WEEKLY_HOURS_OPTIONS)[number]['value'];
-type LearningStyle = (typeof LEARNING_STYLE_OPTIONS)[number]['value'];
-type DeadlineWeeks = (typeof DEADLINE_OPTIONS)[number]['value'];
-
-type PlanInputAction =
-  | { type: 'set-topic'; value: string }
-  | { type: 'reset-topic'; value: string }
-  | { type: 'set-skill-level'; value: SkillLevel }
-  | { type: 'set-weekly-hours'; value: WeeklyHours }
-  | { type: 'set-learning-style'; value: LearningStyle }
-  | { type: 'set-deadline-weeks'; value: DeadlineWeeks };
-
-function planInputReducer(
-  state: PlanInputState,
-  action: PlanInputAction,
-): PlanInputState {
-  switch (action.type) {
-    case 'set-topic':
-      return {
-        ...state,
-        topic: action.value,
-      };
-    // Keep this action separate so external resets remain distinct from user edits in reducer traces.
-    case 'reset-topic':
-      return {
-        ...state,
-        topic: action.value,
-      };
-    case 'set-skill-level':
-      return {
-        ...state,
-        skillLevel: action.value,
-      };
-    case 'set-weekly-hours':
-      return {
-        ...state,
-        weeklyHours: action.value,
-      };
-    case 'set-learning-style':
-      return {
-        ...state,
-        learningStyle: action.value,
-      };
-    case 'set-deadline-weeks':
-      return {
-        ...state,
-        deadlineWeeks: action.value,
-      };
-    default:
-      return assertNever(action);
-  }
 }
 
 /**
@@ -103,13 +38,11 @@ export function UnifiedPlanInput({
   topicResetVersion = 0,
 }: UnifiedPlanInputProps): JSX.Element {
   const baseId = useId();
-  const [state, dispatch] = useReducer(planInputReducer, {
-    topic: initialTopic,
-    skillLevel: null,
-    weeklyHours: null,
-    learningStyle: null,
-    deadlineWeeks: null,
-  });
+  const [state, dispatch] = useReducer(
+    planInputReducer,
+    initialTopic,
+    createInitialPlanInputState,
+  );
 
   const prevResetVersionRef = useRef(topicResetVersion);
   // Ref so the reset effect can read the current topic without it being a dep.
@@ -232,58 +165,11 @@ export function UnifiedPlanInput({
             Describe what you want to learn and choose each preference to
             continue.
           </p>
-          <div
-            className={cn(
-              'm-0 grid min-w-0 grid-cols-1 gap-3',
-              'sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-3',
-              'xl:flex-none',
-            )}
-          >
-            <InlineDropdown
-              id={`${baseId}-skill-level`}
-              ariaLabel="Skill level"
-              options={SKILL_LEVEL_OPTIONS}
-              value={state.skillLevel}
-              onChange={(value) => dispatch({ type: 'set-skill-level', value })}
-              placeholder="Experience"
-              variant="primary"
-            />
-            <InlineDropdown
-              id={`${baseId}-weekly-hours`}
-              ariaLabel="Weekly hours"
-              options={WEEKLY_HOURS_OPTIONS}
-              value={state.weeklyHours}
-              onChange={(value) =>
-                dispatch({ type: 'set-weekly-hours', value })
-              }
-              icon={<Clock className="size-3.5" />}
-              placeholder="Weekly time"
-              variant="primary"
-            />
-            <InlineDropdown
-              id={`${baseId}-learning-style`}
-              ariaLabel="Learning style"
-              options={LEARNING_STYLE_OPTIONS}
-              value={state.learningStyle}
-              onChange={(value) =>
-                dispatch({ type: 'set-learning-style', value })
-              }
-              placeholder="Learning style"
-              variant="primary"
-            />
-            <InlineDropdown
-              id={`${baseId}-deadline`}
-              ariaLabel="Deadline"
-              options={DEADLINE_OPTIONS}
-              value={state.deadlineWeeks}
-              onChange={(value) =>
-                dispatch({ type: 'set-deadline-weeks', value })
-              }
-              icon={<Calendar className="size-3.5" />}
-              placeholder="Finish by"
-              variant="primary"
-            />
-          </div>
+          <PreferenceControls
+            baseId={baseId}
+            state={state}
+            dispatch={dispatch}
+          />
           <Button
             type="button"
             variant="cta"

@@ -48,6 +48,12 @@ Captured from parallel explore + consolidation (no implementations yet). Paths r
   - Clarified permissive env boolean parsing and renamed the strict AI boolean parser.
   - Removed direct `lib/db/queries/types/*` imports from `shared/types/client.types.ts` and derived `PlanStatus` from `PLAN_STATUSES`.
   - Validation so far: `pnpm check:type` and targeted unit tests passed.
+- Phase 3 app/UI cleanup in progress:
+  - Split route-local plan/module components: `TimelineModuleCard`, `PlanPendingPanels`, `UnifiedPlanInput`, `ModuleLessonsClient`, and `ModuleHeader`.
+  - Stale archive rows for oversized `LessonAccordionItem.tsx` and `PlanPendingState.tsx` have been superseded by newer hotspots such as `TimelineModuleCard.tsx` and `PlanPendingPanels.tsx`.
+  - Task 2 (dead helper exports): removed accidental exports from `GenerationStatusPanels.tsx` (`RetryAction`, `ExhaustedRetriesMessage`); extracted `LockedGenerationPanel`, `GenerationDescription`, and `GenerationAction` from `GenerationStatePanel.tsx` to clear Fallow changed-scope findings.
+  - Active barrels left in place: `src/features/navigation/index.ts`, `src/features/plans/write-service/index.ts`, `src/lib/utils/index.ts`.
+  - Validation so far: targeted component specs, `pnpm test:changed`, `pnpm check:full`, and `fallow audit --base origin/develop` passed.
 
 ---
 
