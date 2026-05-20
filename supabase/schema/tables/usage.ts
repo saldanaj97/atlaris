@@ -55,22 +55,6 @@ export const usageMetrics = pgTable(
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
-    pgPolicy('usage_metrics_insert_own', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_update_own', {
-      for: 'update',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_delete_own', {
-      for: 'delete',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
   ],
 ).enableRLS();
 
@@ -129,11 +113,6 @@ export const aiUsageEvents = pgTable(
       for: 'select',
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('ai_usage_events_insert_own', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
   ],
 ).enableRLS();

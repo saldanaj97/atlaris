@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 
+import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL } from '../../../supabase/privileges/authenticated-table-privileges';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/users-authenticated-update-columns';
 import { db } from '@supabase/service-role';
 
@@ -57,8 +58,13 @@ export async function ensureRlsRolesAndPermissions() {
   await db.execute(sql`
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
+    REVOKE DELETE ON "users" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
+    REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(
+      AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL,
+    )} FROM authenticated;
+    GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated;
   `);
 
   // Grant read-only permissions to anon role
@@ -74,7 +80,7 @@ export async function ensureRlsRolesAndPermissions() {
   // Grant default permissions for future tables
   await db.execute(sql`
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+    GRANT SELECT ON TABLES TO authenticated;
   `);
 
   await db.execute(sql`
@@ -127,42 +133,6 @@ export async function ensureRlsRolesAndPermissions() {
         )
       );
 
-    CREATE POLICY learning_plans_insert ON learning_plans
-      FOR INSERT
-      TO authenticated
-      WITH CHECK (
-        user_id IN (
-          SELECT id FROM users
-          WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-        )
-      );
-
-    CREATE POLICY learning_plans_update ON learning_plans
-      FOR UPDATE
-      TO authenticated
-      USING (
-        user_id IN (
-          SELECT id FROM users
-          WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-        )
-      )
-      WITH CHECK (
-        user_id IN (
-          SELECT id FROM users
-          WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-        )
-      );
-
-    CREATE POLICY learning_plans_delete ON learning_plans
-      FOR DELETE
-      TO authenticated
-      USING (
-        user_id IN (
-          SELECT id FROM users
-          WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-        )
-      );
-
     DROP POLICY IF EXISTS generation_attempts_select ON generation_attempts;
     DROP POLICY IF EXISTS generation_attempts_insert ON generation_attempts;
     DROP POLICY IF EXISTS generation_attempts_update ON generation_attempts;
@@ -182,50 +152,6 @@ export async function ensureRlsRolesAndPermissions() {
         )
       );
 
-    CREATE POLICY generation_attempts_insert ON generation_attempts
-      FOR INSERT
-      TO authenticated
-      WITH CHECK (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY generation_attempts_update ON generation_attempts
-      FOR UPDATE
-      TO authenticated
-      USING (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      )
-      WITH CHECK (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY generation_attempts_delete_deny ON generation_attempts
-      AS RESTRICTIVE
-      FOR DELETE
-      TO authenticated
-      USING (false);
-
     DROP POLICY IF EXISTS modules_select_own_plan ON modules;
     DROP POLICY IF EXISTS modules_insert_own_plan ON modules;
     DROP POLICY IF EXISTS modules_update_own_plan ON modules;
@@ -233,58 +159,6 @@ export async function ensureRlsRolesAndPermissions() {
 
     CREATE POLICY modules_select_own_plan ON modules
       FOR SELECT
-      TO authenticated
-      USING (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY modules_insert_own_plan ON modules
-      FOR INSERT
-      TO authenticated
-      WITH CHECK (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY modules_update_own_plan ON modules
-      FOR UPDATE
-      TO authenticated
-      USING (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      )
-      WITH CHECK (
-        plan_id IN (
-          SELECT lp.id
-          FROM learning_plans lp
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY modules_delete_own_plan ON modules
-      FOR DELETE
       TO authenticated
       USING (
         plan_id IN (
@@ -317,60 +191,5 @@ export async function ensureRlsRolesAndPermissions() {
         )
       );
 
-    CREATE POLICY tasks_insert_own_plan ON tasks
-      FOR INSERT
-      TO authenticated
-      WITH CHECK (
-        module_id IN (
-          SELECT m.id
-          FROM modules m
-          JOIN learning_plans lp ON lp.id = m.plan_id
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY tasks_update_own_plan ON tasks
-      FOR UPDATE
-      TO authenticated
-      USING (
-        module_id IN (
-          SELECT m.id
-          FROM modules m
-          JOIN learning_plans lp ON lp.id = m.plan_id
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      )
-      WITH CHECK (
-        module_id IN (
-          SELECT m.id
-          FROM modules m
-          JOIN learning_plans lp ON lp.id = m.plan_id
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
-
-    CREATE POLICY tasks_delete_own_plan ON tasks
-      FOR DELETE
-      TO authenticated
-      USING (
-        module_id IN (
-          SELECT m.id
-          FROM modules m
-          JOIN learning_plans lp ON lp.id = m.plan_id
-          WHERE lp.user_id IN (
-            SELECT id FROM users
-            WHERE auth_user_id = current_setting('request.jwt.claims', true)::json->>'sub'
-          )
-        )
-      );
   `);
 }

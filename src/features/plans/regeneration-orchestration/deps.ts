@@ -17,6 +17,7 @@ import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 import type { RegenerationOwnedPlan } from './types';
 
@@ -111,7 +112,7 @@ export function createDefaultRegenerationOrchestrationDeps(
     tier: { resolveUserTier },
     priority: { computeJobPriority, isPriorityTopic },
     lifecycle: {
-      service: createPlanLifecycleService({ dbClient }),
+      service: createPlanLifecycleService({ dbClient: serviceRoleDb }),
     },
     inlineDrain: {
       tryRegister: tryRegisterInlineDrain,

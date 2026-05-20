@@ -4,6 +4,7 @@
  */
 import postgres from 'postgres';
 
+import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../../supabase/privileges/authenticated-table-privileges';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
@@ -48,11 +49,18 @@ export async function grantRlsPermissions(
     await sql`GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon`;
     await sql`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon`;
 
+    const serverOwnedTablesSql = AUTHENTICATED_SERVER_OWNED_WRITE_TABLES.map(
+      (table) => `"${table}"`,
+    ).join(', ');
+
     await sql.unsafe(`
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
+      REVOKE DELETE ON "users" FROM authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
+      REVOKE INSERT, UPDATE, DELETE ON ${serverOwnedTablesSql} FROM authenticated;
+      GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`
@@ -95,9 +103,29 @@ export async function grantRlsPermissions(
       );
     }
 
+    const serverOwnedWriteGrants = await sql<
+      { table_name: string; privilege_type: string }[]
+    >`
+      select table_name::text, privilege_type::text
+      from information_schema.table_privileges
+      where table_schema = 'public'
+        and table_name = any(${AUTHENTICATED_SERVER_OWNED_WRITE_TABLES})
+        and grantee = 'authenticated'
+        and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+      order by table_name, privilege_type
+    `;
+    if (serverOwnedWriteGrants.length > 0) {
+      const got = serverOwnedWriteGrants
+        .map((r) => `${r.table_name}:${r.privilege_type}`)
+        .join(', ');
+      throw new Error(
+        `Bootstrap: server-owned write grants for authenticated expected [], got [${got}]. Sync grantRlsPermissions with supabase/migrations/20260520194501_harden_authenticated_server_owned_writes.sql and supabase/privileges/authenticated-table-privileges.ts.`,
+      );
+    }
+
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
-        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated
+        GRANT SELECT ON TABLES TO authenticated
     `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public

@@ -74,28 +74,6 @@ export const learningPlans = pgTable(
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
-
-    // Users can only create plans for themselves
-    pgPolicy('learning_plans_insert', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Users can update only their own plans
-    pgPolicy('learning_plans_update', {
-      for: 'update',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-
-    // Users can delete only their own plans
-    pgPolicy('learning_plans_delete', {
-      for: 'delete',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
   ],
 ).enableRLS();
 
@@ -131,27 +109,6 @@ export const planSchedules = pgTable(
       // Users can read schedule cache for their own plans
       pgPolicy('plan_schedules_select', {
         for: 'select',
-        to: 'authenticated',
-        using: planOwnership,
-      }),
-
-      // Users can create/update schedule cache for their own plans
-      pgPolicy('plan_schedules_insert', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: planOwnership,
-      }),
-
-      pgPolicy('plan_schedules_update', {
-        for: 'update',
-        to: 'authenticated',
-        using: planOwnership,
-        withCheck: planOwnership,
-      }),
-
-      // Users can delete schedule cache for their own plans
-      pgPolicy('plan_schedules_delete', {
-        for: 'delete',
         to: 'authenticated',
         using: planOwnership,
       }),
@@ -203,29 +160,6 @@ export const generationAttempts = pgTable(
         for: 'select',
         to: 'authenticated',
         using: planOwnership,
-      }),
-
-      // Users can insert attempts only for plans they own
-      pgPolicy('generation_attempts_insert', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: planOwnership,
-      }),
-
-      // Users can update attempts only for plans they own
-      pgPolicy('generation_attempts_update', {
-        for: 'update',
-        to: 'authenticated',
-        using: planOwnership,
-        withCheck: planOwnership,
-      }),
-
-      // Immutable audit log: deletes explicitly denied for authenticated
-      pgPolicy('generation_attempts_delete_deny', {
-        as: 'restrictive',
-        for: 'delete',
-        to: 'authenticated',
-        using: sql`false`,
       }),
     ];
   },

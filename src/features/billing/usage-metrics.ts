@@ -4,6 +4,7 @@ import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { UsageMetricsLoadError } from './errors';
 import { resolveUserTier } from './tier';
 
@@ -74,7 +75,7 @@ async function getOrCreateUsageMetrics(
   month: string,
   dbClient: DbClient = getDb(),
 ) {
-  const [created] = await dbClient
+  const [created] = await serviceRoleDb
     .insert(usageMetrics)
     .values({
       userId,
@@ -112,7 +113,7 @@ async function getOrCreateUsageMetrics(
 export async function incrementUsage(
   userId: string,
   type: UsageType,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient = serviceRoleDb,
 ): Promise<void> {
   const month = getCurrentMonth();
 

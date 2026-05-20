@@ -97,7 +97,7 @@ describe('RLS attempt insertion', () => {
     expect(attempts.length).toBe(0);
   });
 
-  it('owner can insert attempt', async () => {
+  it('server-owned generation path can insert an owned attempt', async () => {
     const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner-pos');
     setTestUser(ownerAuthUserId);
     const ownerId = await ensureUser({
@@ -115,8 +115,6 @@ describe('RLS attempt insertion', () => {
     });
 
     const mock = createMockProvider({ scenario: 'success' });
-    const rlsDb = await createRlsDbForUser(ownerAuthUserId);
-
     const result = await runGenerationAttempt(
       {
         planId: plan.id,
@@ -129,7 +127,7 @@ describe('RLS attempt insertion', () => {
           learningStyle: 'reading',
         },
       },
-      { provider: mock.provider, dbClient: rlsDb },
+      { provider: mock.provider, dbClient: db },
     );
 
     expect(result.status).toBe('success');

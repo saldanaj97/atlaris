@@ -1,16 +1,15 @@
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
-import { createStreamDbClient } from './stream-db';
 import {
   preparePlanGenerationSessionCommand,
   type RespondCreateStreamArgs,
   type RespondRetryStreamArgs,
   type SessionCommand,
 } from './session-command';
-import { createSafeStreamCleanup } from './stream-cleanup-policy';
 import { runPlanGenerationSessionStream } from './stream-transport';
 
 export {
@@ -25,7 +24,6 @@ export {
  * streaming plan-generation `Response`.
  *
  * Implementations hide:
- * - stream-scoped DB lease lifecycle
  * - create vs retry preparation
  * - `plan_start` emission and SSE sequencing
  * - unhandled-exception cleanup
@@ -50,14 +48,14 @@ interface CreateSessionBoundaryDeps {
  *
  * Tests inject a fake `createLifecycleService` to swap the lifecycle service
  * under the boundary; production uses default `createPlanLifecycleService`
- * on the stream-scoped DB client.
+ * on the trusted server-owned DB client.
  */
 export function createPlanGenerationSessionBoundary(
   deps: CreateSessionBoundaryDeps = {},
 ): PlanGenerationSessionBoundary {
   const buildLifecycle: CreateLifecycleService =
     deps.createLifecycleService ??
-    ((dbClient) => createPlanLifecycleService({ dbClient }));
+    (() => createPlanLifecycleService({ dbClient: serviceRoleDb }));
 
   return {
     respondCreateStream: (args) =>
@@ -71,30 +69,22 @@ async function run(
   command: SessionCommand,
   buildLifecycle: CreateLifecycleService,
 ): Promise<Response> {
-  const { dbClient, cleanup } = await createStreamDbClient(command.authUserId);
-  const closeStreamDb = createSafeStreamCleanup(command.authUserId, cleanup);
+  const lifecycleService = buildLifecycle(serviceRoleDb);
 
-  try {
-    const lifecycleService = buildLifecycle(dbClient);
+  const prepared = await preparePlanGenerationSessionCommand({
+    command,
+    lifecycleService,
+  });
 
-    const prepared = await preparePlanGenerationSessionCommand({
-      command,
-      lifecycleService,
-    });
-
-    return await runPlanGenerationSessionStream({
-      requestSignal: command.req.signal,
-      requestId: command.requestId,
-      authUserId: command.authUserId,
-      dbClient,
-      cleanup: closeStreamDb,
-      prepared,
-      processGeneration:
-        lifecycleService.processGenerationAttempt.bind(lifecycleService),
-      responseHeaders: command.responseHeaders,
-    });
-  } catch (error) {
-    await closeStreamDb();
-    throw error;
-  }
+  return await runPlanGenerationSessionStream({
+    requestSignal: command.req.signal,
+    requestId: command.requestId,
+    authUserId: command.authUserId,
+    dbClient: serviceRoleDb,
+    cleanup: async () => {},
+    prepared,
+    processGeneration:
+      lifecycleService.processGenerationAttempt.bind(lifecycleService),
+    responseHeaders: command.responseHeaders,
+  });
 }

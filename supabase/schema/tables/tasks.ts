@@ -101,28 +101,6 @@ export const modules = pgTable(
         to: 'authenticated',
         using: ownPlanAccess,
       }),
-
-      // Users can insert modules only in their own plans
-      pgPolicy('modules_insert_own_plan', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: ownPlanAccess,
-      }),
-
-      // Users can update modules only in their own plans
-      pgPolicy('modules_update_own_plan', {
-        for: 'update',
-        to: 'authenticated',
-        using: ownPlanAccess,
-        withCheck: ownPlanAccess,
-      }),
-
-      // Users can delete modules only in their own plans
-      pgPolicy('modules_delete_own_plan', {
-        for: 'delete',
-        to: 'authenticated',
-        using: ownPlanAccess,
-      }),
     ];
   },
 ).enableRLS();
@@ -177,28 +155,6 @@ export const tasks = pgTable(
       // Users can read tasks of their own plans
       pgPolicy('tasks_select_own_plan', {
         for: 'select',
-        to: 'authenticated',
-        using: moduleOwnPlanAccess,
-      }),
-
-      // Users can insert tasks only in their own plans
-      pgPolicy('tasks_insert_own_plan', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: moduleOwnPlanAccess,
-      }),
-
-      // Users can update tasks only in their own plans
-      pgPolicy('tasks_update_own_plan', {
-        for: 'update',
-        to: 'authenticated',
-        using: moduleOwnPlanAccess,
-        withCheck: moduleOwnPlanAccess,
-      }),
-
-      // Users can delete tasks only in their own plans
-      pgPolicy('tasks_delete_own_plan', {
-        for: 'delete',
         to: 'authenticated',
         using: moduleOwnPlanAccess,
       }),
@@ -286,26 +242,6 @@ export const taskResources = pgTable(
       // Users can read task resources of their own plans
       pgPolicy('task_resources_select_own_plan', {
         for: 'select',
-        to: 'authenticated',
-        using: taskOwnAccess,
-      }),
-
-      // Users can manage task resources only in their own plans
-      pgPolicy('task_resources_insert_own_plan', {
-        for: 'insert',
-        to: 'authenticated',
-        withCheck: taskOwnAccess,
-      }),
-
-      pgPolicy('task_resources_update_own_plan', {
-        for: 'update',
-        to: 'authenticated',
-        using: taskOwnAccess,
-        withCheck: taskOwnAccess,
-      }),
-
-      pgPolicy('task_resources_delete_own_plan', {
-        for: 'delete',
         to: 'authenticated',
         using: taskOwnAccess,
       }),

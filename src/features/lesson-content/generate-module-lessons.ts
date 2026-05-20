@@ -30,6 +30,7 @@ import {
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 function errorToPersistedMessage(error: unknown): string {
   if (error instanceof ParserError) {
@@ -62,6 +63,7 @@ export type GenerateModuleLessonsDeps = {
     'generateModuleLessonBatch'
   >;
   readonly runLessonQuotaReserved?: typeof runLessonGenerationQuotaReserved;
+  readonly serverDbClient?: DbClient;
 };
 
 export type GenerateModuleLessonsResult =
@@ -96,6 +98,7 @@ export async function generateModuleLessons(
   const timeoutConfig = resolveTimeoutConfig(params.timeoutConfig, clock);
   const runReserved =
     deps.runLessonQuotaReserved ?? runLessonGenerationQuotaReserved;
+  const serverDbClient = deps.serverDbClient ?? serviceRoleDb;
 
   const load = await loadModuleLessonGenerationContext(
     params.dbClient,
@@ -113,7 +116,7 @@ export async function generateModuleLessons(
   }
 
   const claim = await claimModuleLessonGenerationOrDescribe(
-    params.dbClient,
+    serverDbClient,
     params.planId,
     params.moduleId,
     params.userId,
@@ -163,7 +166,7 @@ export async function generateModuleLessons(
       userId: params.userId,
       planId: params.planId,
       moduleId: params.moduleId,
-      dbClient: params.dbClient,
+      dbClient: serverDbClient,
       work: async (): Promise<
         LessonGenerationQuotaWorkResult<
           LessonQuotaConsumed,
@@ -208,7 +211,7 @@ export async function generateModuleLessons(
 
           const usage = safeNormalizeUsage(providerResult.metadata);
 
-          await commitModuleLessonBatchSuccess(params.dbClient, {
+          await commitModuleLessonBatchSuccess(serverDbClient, {
             userId: params.userId,
             planId: params.planId,
             moduleId: params.moduleId,
@@ -233,7 +236,7 @@ export async function generateModuleLessons(
           );
 
           try {
-            await commitModuleLessonGenerationFailure(params.dbClient, {
+            await commitModuleLessonGenerationFailure(serverDbClient, {
               userId: params.userId,
               planId: params.planId,
               moduleId: params.moduleId,
@@ -270,7 +273,7 @@ export async function generateModuleLessons(
   } catch (error) {
     const message = errorToPersistedMessage(error);
     try {
-      await revertModuleLessonGeneratingToNotGenerated(params.dbClient, {
+      await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
@@ -298,7 +301,7 @@ export async function generateModuleLessons(
 
   if (!quotaResult.ok) {
     try {
-      await revertModuleLessonGeneratingToNotGenerated(params.dbClient, {
+      await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,

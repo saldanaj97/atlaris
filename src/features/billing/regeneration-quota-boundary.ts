@@ -13,6 +13,7 @@
 import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import {
   compensateMeteredReservation,
   type MeteredReservationToken,
@@ -113,9 +114,15 @@ type SafeCompensateArgs = {
 
 const DEFAULT_DEPS: RegenerationQuotaBoundaryDeps = {
   reserve: (userId, dbClient) =>
-    reserveMeteredUsage({ userId, meter: 'regeneration' }, dbClient),
+    reserveMeteredUsage(
+      { userId, meter: 'regeneration' },
+      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
+    ),
   compensate: (token, dbClient) =>
-    compensateMeteredReservation(token, dbClient),
+    compensateMeteredReservation(
+      token,
+      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
+    ),
   reportReconciliation: recordBillingReconciliationRequired,
 };
 

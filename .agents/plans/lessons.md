@@ -111,3 +111,11 @@
 **Rule:** For unused code, duplicate-code, circular-dependency, and cleanup-audit checks, use Fallow (`fallow ... --format json --quiet ... 2>/dev/null || true`) instead of Knip. Verify the live package scripts first if a repo-local wrapper is expected.
 
 **Impact:** Review validation stays aligned with the current toolchain and avoids wasting time on retired commands.
+
+## 2026-05-20: Server-owned RLS state needs matching tests and service-role paths
+
+**Context:** Hardening authenticated Supabase privileges for billing and generation state exposed stale integration tests that still wrote `generation_attempts` through an authenticated RLS client.
+
+**Rule:** When revoking authenticated writes from server-owned tables, update both the RLS negative tests and any positive integration specs to exercise the trusted service-role boundary. Do not restore broad grants just to keep old tests passing.
+
+**Impact:** Security-sensitive privilege changes stay enforced at the database layer while plan generation, regeneration, lesson generation, billing meters, and observability still validate through the intended server-owned paths.
