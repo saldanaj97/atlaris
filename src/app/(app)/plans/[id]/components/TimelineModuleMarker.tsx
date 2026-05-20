@@ -1,5 +1,5 @@
-import { CheckCircle2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CheckCircle2, Lock } from 'lucide-react';
 import type { ModuleStatus } from './TimelineModuleCard';
 import { getMarkerClassName } from './timeline-module-card-styles';
 
@@ -7,7 +7,7 @@ export function TimelineModuleMarker({ status }: { status: ModuleStatus }) {
   return (
     <div
       className={cn(
-        'z-10 flex h-6 w-6 items-center justify-center rounded-full border-[3px] bg-white transition-all duration-500 ease-out dark:bg-stone-900',
+        'z-10 flex h-6 w-6 items-center justify-center rounded-full border-[3px] bg-panel transition-all duration-500 ease-out',
         getMarkerClassName(status),
       )}
     >

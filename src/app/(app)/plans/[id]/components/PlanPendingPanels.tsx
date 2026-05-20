@@ -114,8 +114,10 @@ export function GenerationStatusContent({
 
 export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
   return (
-    <div className="border-t pt-4">
-      <h3 className="mb-2 font-semibold">Plan Details</h3>
+    <section className="border-t pt-4" aria-labelledby="plan-details-heading">
+      <h3 id="plan-details-heading" className="mb-2 font-semibold">
+        Plan Details
+      </h3>
       <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2">
         <div>
           <span className="font-medium">Skill Level:</span>{' '}
@@ -133,6 +135,6 @@ export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
           {formatOrigin(plan.origin)}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -7,7 +7,7 @@ export function getMarkerClassName(status: ModuleStatus): string {
     case 'active':
       return 'scale-110 border-primary text-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]';
     case 'locked':
-      return 'border-stone-300 text-stone-300 dark:border-stone-600 dark:text-stone-600';
+      return 'border-muted-foreground/40 text-muted-foreground/50';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -18,11 +18,11 @@ export function getMarkerClassName(status: ModuleStatus): string {
 export function getCardClassName(status: ModuleStatus): string {
   switch (status) {
     case 'active':
-      return 'border-primary/30 bg-white shadow-md dark:border-primary/50 dark:bg-stone-900';
+      return 'border-primary/30 bg-panel shadow-md dark:border-primary/50';
     case 'locked':
-      return 'border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-900/70';
+      return 'border-border bg-muted/40 dark:bg-muted/25';
     case 'completed':
-      return 'border-stone-100 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900';
+      return 'border-panel-border bg-panel shadow-sm';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -37,7 +37,7 @@ export function getWeekBadgeClassName(status: ModuleStatus): string {
     case 'completed':
       return 'bg-success/15 text-success dark:bg-success/25 dark:text-success-foreground';
     case 'locked':
-      return 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400';
+      return 'bg-muted text-muted-foreground';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -48,11 +48,11 @@ export function getWeekBadgeClassName(status: ModuleStatus): string {
 export function getTitleClassName(status: ModuleStatus): string {
   switch (status) {
     case 'active':
-      return 'text-stone-900 dark:text-stone-100';
+      return 'text-foreground';
     case 'locked':
-      return 'text-stone-600 dark:text-stone-400';
+      return 'text-muted-foreground';
     case 'completed':
-      return 'text-stone-700 dark:text-stone-300';
+      return 'text-foreground/90';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;

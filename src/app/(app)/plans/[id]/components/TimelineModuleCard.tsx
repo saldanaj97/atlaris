@@ -1,13 +1,13 @@
 'use client';
 
-import { ArrowRight, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
-import type { JSX } from 'react';
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import { ArrowRight, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import type { JSX } from 'react';
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
 import {
@@ -87,11 +87,11 @@ export function TimelineModuleCard({
               >
                 Week {module.order}
               </span>
-              <span className="text-xs text-stone-400 dark:text-stone-500">
+              <span className="text-xs text-muted-foreground">
                 {module.duration}
               </span>
               {module.tasks.length > 0 && (
-                <span className="text-xs text-stone-400 dark:text-stone-500">
+                <span className="text-xs text-muted-foreground">
                   • {module.completedTasks}/{module.tasks.length} tasks
                 </span>
               )}
@@ -106,7 +106,7 @@ export function TimelineModuleCard({
             </h3>
             {module.description && (
               <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
-                <p className="text-sm text-stone-500 dark:text-stone-400">
+                <p className="text-sm text-muted-foreground">
                   {module.description}
                 </p>
               </div>
@@ -116,7 +116,7 @@ export function TimelineModuleCard({
             <ChevronRight
               size={20}
               className={cn(
-                'mt-0.5 shrink-0 text-stone-400 transition-transform duration-300 dark:text-stone-500',
+                'mt-0.5 shrink-0 text-muted-foreground transition-transform duration-300',
                 isOpen ? '-rotate-90' : 'rotate-90',
               )}
             />
@@ -127,7 +127,7 @@ export function TimelineModuleCard({
           id={`module-content-${module.id}`}
           className="px-4 pb-4"
         >
-          <div className="border-t border-stone-100 pt-4 dark:border-stone-800">
+          <div className="border-t border-border pt-4">
             <TimelineTaskList
               module={module}
               statuses={statuses}
@@ -135,12 +135,7 @@ export function TimelineModuleCard({
             />
 
             <div className="mt-4 flex justify-end">
-              <Button
-                asChild
-                variant="soft-primary"
-                size="sm"
-                className="h-auto px-4 py-2"
-              >
+              <Button asChild variant="soft-primary" size="sm">
                 <Link href={`/plans/${planId}/modules/${module.id}`}>
                   View Full Module
                   <ArrowRight size={16} />

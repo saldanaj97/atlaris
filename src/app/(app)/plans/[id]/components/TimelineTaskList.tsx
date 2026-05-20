@@ -1,11 +1,11 @@
-import { CheckCircle2, ExternalLink } from 'lucide-react';
-import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { UpdateTaskStatusButton } from '@/app/(app)/plans/[id]/components/UpdateTaskStatusButton';
+import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import { CheckCircle2, ExternalLink } from 'lucide-react';
 import type { TimelineModule } from './TimelineModuleCard';
 
 function TimelineResourceLink({
@@ -48,7 +48,7 @@ function TimelineTaskCard({
         'rounded-2xl border p-4 transition-colors',
         isCompleted
           ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
-          : 'border-stone-100 bg-stone-50/50 hover:border-primary/30 dark:border-stone-800 dark:bg-stone-800/50 dark:hover:border-primary/50',
+          : 'border-border bg-muted/30 hover:border-primary/30 dark:bg-muted/25 dark:hover:border-primary/50',
       )}
     >
       <div className="flex h-full flex-col gap-3 sm:flex-row sm:items-center">
@@ -58,7 +58,7 @@ function TimelineTaskCard({
             className={cn(
               isCompleted
                 ? 'fill-success/20 text-success dark:text-success'
-                : 'text-stone-300 dark:text-stone-600',
+                : 'text-muted-foreground/50',
             )}
           />
         </div>
@@ -69,17 +69,17 @@ function TimelineTaskCard({
                 'font-medium wrap-break-word',
                 isCompleted
                   ? 'text-success dark:text-success'
-                  : 'text-stone-800 dark:text-stone-200',
+                  : 'text-foreground',
               )}
             >
               {task.title}
             </p>
-            <span className="text-xs text-stone-400 dark:text-stone-500">
+            <span className="text-xs text-muted-foreground">
               {formatMinutes(task.estimatedMinutes)}
             </span>
           </div>
           {task.description && (
-            <p className="mt-1 text-sm wrap-break-word text-stone-500 dark:text-stone-400">
+            <p className="mt-1 text-sm wrap-break-word text-muted-foreground">
               {task.description}
             </p>
           )}
@@ -115,9 +115,7 @@ export function TimelineTaskList({
 }) {
   if (module.tasks.length === 0) {
     return (
-      <p className="text-sm text-stone-400 dark:text-stone-500">
-        No tasks in this module.
-      </p>
+      <p className="text-sm text-muted-foreground">No tasks in this module.</p>
     );
   }
 

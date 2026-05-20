@@ -24,19 +24,7 @@ interface ModuleHeaderProps {
   allModules: ModuleDetailNavItem[];
 }
 
-/** Brand-only gradients (primary / accent / primary-dark) for visual variety */
-const MODULE_GRADIENTS = [
-  'from-primary via-accent to-primary-dark',
-  'from-primary-dark via-primary to-accent',
-  'from-accent via-primary to-primary-dark',
-  'from-primary via-primary-dark to-accent',
-  'from-chart-2 via-primary to-accent',
-];
-
-/**
- * Module detail hero header.
- * Displays module title, progress stats, and navigation between modules.
- */
+/** Module detail hero: title, progress, and round navigation. */
 export function ModuleHeader({
   module,
   planId,
@@ -55,9 +43,6 @@ export function ModuleHeader({
     completionPercent: completion,
   } = deriveModuleCompletionSummary(module, statuses);
 
-  const gradient =
-    MODULE_GRADIENTS[(module.order - 1) % MODULE_GRADIENTS.length];
-
   return (
     <article className="mb-8">
       <ModuleBreadcrumbNav
@@ -69,14 +54,12 @@ export function ModuleHeader({
       />
 
       <GradientProgressHeroFrame
-        className="shadow-primary/20"
         contentClassName="min-h-62"
-        gradientClassName={gradient}
         completion={completion}
       >
         <div className="flex items-start justify-between">
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white">
+            <span className="rounded-full border border-border/60 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
               Module {module.order} of {totalModules}
             </span>
           </div>
@@ -96,17 +79,17 @@ export function ModuleHeader({
         </div>
 
         <div>
-          <h1 className="mb-2 flex items-center gap-2 text-3xl font-bold text-white md:text-4xl">
+          <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl">
             {module.title}
             {!previousModulesComplete && (
-              <Lock className="h-6 w-6 text-white/50 md:h-7 md:w-7" />
+              <Lock className="h-6 w-6 text-muted-foreground md:h-7 md:w-7" />
             )}
             {completion === 100 && (
-              <CheckCircle2 className="h-6 w-6 text-white drop-shadow-md md:h-7 md:w-7" />
+              <CheckCircle2 className="h-6 w-6 text-success md:h-7 md:w-7" />
             )}
           </h1>
           {module.description && (
-            <p className="max-w-2xl text-lg text-white/80">
+            <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
               {module.description}
             </p>
           )}
