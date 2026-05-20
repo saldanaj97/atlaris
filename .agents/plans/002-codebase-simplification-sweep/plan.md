@@ -1,6 +1,6 @@
 # Codebase simplification sweep (findings archive)
 
-Captured from parallel explore + consolidation (no implementations yet). Paths relative to repo root unless noted.
+Captured from parallel explore + consolidation. **Execution phases 0–6 are complete** (verified 2026-05-20). Paths relative to repo root unless noted.
 
 ## Scope / gaps
 
@@ -12,6 +12,8 @@ Captured from parallel explore + consolidation (no implementations yet). Paths r
 
 ## Execution progress
 
+**Status: sweep complete** — all phases 0–6 checked off; final `pnpm test:changed` + `pnpm check:full` passed 2026-05-20.
+
 - [x] Phase 0 — Baseline and guardrails captured (`check:type`, `test:unit:changed`, `test:changed`, `check:full`)
 - [x] Slice 1.1 — Calendar date rule
 - [x] Slice 1.2 — Attempt cap source
@@ -22,10 +24,10 @@ Captured from parallel explore + consolidation (no implementations yet). Paths r
 - [x] Slice 2.2 — Route handler middleware naming
 - [x] Slice 2.3 — Env boolean parsing docs/names
 - [x] Slice 2.4 — Shared client type boundary
-- [ ] Phase 3 — App and UI cleanup
-- [ ] Phase 4 — Component primitive cleanup
-- [ ] Phase 5 — Test suite cleanup
-- [ ] Phase 6 — Edge boundary
+- [x] Phase 3 — App and UI cleanup
+- [x] Phase 4 — Component primitive cleanup
+- [x] Phase 5 — Test suite cleanup
+- [x] Phase 6 — Edge boundary cleanup
 
 ### Completed slice notes
 
@@ -48,12 +50,31 @@ Captured from parallel explore + consolidation (no implementations yet). Paths r
   - Clarified permissive env boolean parsing and renamed the strict AI boolean parser.
   - Removed direct `lib/db/queries/types/*` imports from `shared/types/client.types.ts` and derived `PlanStatus` from `PLAN_STATUSES`.
   - Validation so far: `pnpm check:type` and targeted unit tests passed.
-- Phase 3 app/UI cleanup in progress:
-  - Split route-local plan/module components: `TimelineModuleCard`, `PlanPendingPanels`, `UnifiedPlanInput`, `ModuleLessonsClient`, and `ModuleHeader`.
-  - Stale archive rows for oversized `LessonAccordionItem.tsx` and `PlanPendingState.tsx` have been superseded by newer hotspots such as `TimelineModuleCard.tsx` and `PlanPendingPanels.tsx`.
+- Phase 3 app/UI cleanup (complete):
+  - Task 1 (component splits): `TimelineModuleCard` → `timeline-module-card-styles.ts`, `TimelineModuleMarker.tsx`, `TimelineTaskList.tsx`; `PlanPendingPanels` → `GenerationStatusPanels.tsx`; `UnifiedPlanInput` → `plan-input-state.ts`, `PreferenceControls.tsx`; `ModuleHeader` → `ModuleBreadcrumbNav.tsx`, `ModuleRoundNavLink.tsx`, `ModuleStatsGrid.tsx`; `ModuleLessonsClient` → `GenerationStatePanel.tsx`, `ModuleCompletePanel.tsx`. Hotspots now ~150 LOC or below (e.g. `TimelineModuleCard.tsx` 150, `PlanPendingPanels.tsx` 140). Marketing splits (`pricing/page.tsx`, `HowItWorksSection.tsx`) were optional and remain unsplit.
   - Task 2 (dead helper exports): removed accidental exports from `GenerationStatusPanels.tsx` (`RetryAction`, `ExhaustedRetriesMessage`); extracted `LockedGenerationPanel`, `GenerationDescription`, and `GenerationAction` from `GenerationStatePanel.tsx` to clear Fallow changed-scope findings.
   - Active barrels left in place: `src/features/navigation/index.ts`, `src/features/plans/write-service/index.ts`, `src/lib/utils/index.ts`.
-  - Validation so far: targeted component specs, `pnpm test:changed`, `pnpm check:full`, and `fallow audit --base origin/develop` passed.
+  - Task 3 (plan detail + create-plan styling boundaries): `GradientProgressHeroFrame` uses product panel tokens; hero headers and timeline split files use semantic tokens; `InlineDropdown` uses solid `bg-popover`. Other plan surfaces still use `stone-*` (e.g. `PlanTimeline.tsx`, lesson/module panels) — out of Task 3 scope.
+  - Task 4 (plan test refocus on public behavior): `plan-pending-view-state.spec.ts`, `plan-input-state.spec.ts`, expanded `PlanPendingState.spec.tsx`, tightened `page.spec.tsx`, new `PlanTimeline.spec.tsx`.
+  - Re-verified 2026-05-20: `pnpm exec vitest run --project unit` on all five plan unit specs above (38 tests passed); slices 1–2 artifacts present (`calendar-date`, `generation-input`, `route-wrappers.ts`, `isKnownFailureClassification` in `error-response`, `plan-generation-session.ts` ~90 LOC).
+  - Prior validation: targeted component specs, `pnpm test:changed`, `pnpm check:full`, and `fallow audit --base origin/develop` passed.
+- Phase 4 component primitive cleanup (2026-05-20):
+  - Added `header-shell.ts`, `nav-active.ts`, `SiteHeaderChrome.tsx` (single `usePathname()` boundary).
+  - `DesktopHeader` / `MobileHeader` take `pathname`; shell classes deduplicated; desktop nav `aria-current="page"` parity.
+  - `SiteHeader` remains server auth/tier; renders `SiteHeaderChrome` only.
+  - Validation: `pnpm check:type` passed.
+- Phase 5 test suite cleanup (2026-05-20):
+  - Cluster A: `stream-session-test-helpers.ts` for create/retry stream specs (20 tests passed).
+  - Cluster B: `lifecycle-test-helpers.ts` shared `createMockPorts` for consolidation + service specs (37 tests passed).
+  - Cluster C: `rls-test-helpers.ts` extracted policy constants + `expectRlsViolation` (`pnpm test:security`, 28 tests passed).
+  - Cluster D: `openrouter-test-helpers.ts` fixtures/helpers (37 tests passed).
+  - Cluster E: `mock-server-auth.ts` `mockServerSession` + per-file `vi.hoisted` auth mock in 7 API integration specs (29 tests passed).
+- Phase 6 edge boundary cleanup (2026-05-20):
+  - `src/lib/proxy/correlation.ts` (sanitize + `getCorrelationId`); `applyProxySecurityHeaders` in `security-headers.ts`; `src/proxy.ts` slimmed.
+  - Added `tests/unit/lib/proxy-correlation.spec.ts`; existing proxy unit specs passed.
+- Final validation (phases 4–6, re-verified 2026-05-20):
+  - `pnpm test:changed`: passed (unit:changed + integration:changed, 49 tests).
+  - `pnpm check:full`: passed (lint + type).
 
 ---
 
@@ -178,6 +199,11 @@ Each subsection is one zone. Rows sorted **High → Med → Low–Med → Low** 
 
 ## Follow-up passes (optional)
 
+Phases 0–6 are complete (see execution progress). Remaining items are **out of sweep scope** unless a new pass is opened.
+
+- **Tests (optional):** further split `tests/security/rls.policies.spec.ts` (~1420 LOC) by security boundary now that `rls-test-helpers.ts` exists; behavior-group splits for `openrouter.spec.ts` if readability stalls.
+- **Components (optional):** UI kit `forwardRef` only where a call site needs ref forwarding (no blanket `components/ui/*` churn).
 - Deep sweep: `src/features/ai`, `scheduling`, `navigation` (non-plans).
 - `scripts/`, `.github/`, tooling configs.
 - `src/app/api/**/*` duplicate handler patterns.
+- App archive still open: `ProfileForm.tsx` (~355 LOC), error-boundary/ROUTES consolidation, marketing pricing/landing splits, `TaskStatusButton` duplication.
