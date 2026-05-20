@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { maintenanceMode } from '@/flags';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import { getCorrelationId } from '@/lib/proxy/correlation';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
   isProtectedRoute,
@@ -10,55 +11,16 @@ import {
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
 import {
+  applyProxySecurityHeaders,
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
-
-const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
-const CORRELATION_ID_MAX_LENGTH = 64;
-
-const sanitizeCorrelationId = (value: string | null): string | null => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > CORRELATION_ID_MAX_LENGTH) return null;
-  if (!CORRELATION_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-};
-
-const getCorrelationId = (request: NextRequest): string => {
-  const headerCorrelationId = request.headers.get('x-correlation-id');
-  const sanitized = sanitizeCorrelationId(headerCorrelationId);
-  return sanitized ?? crypto.randomUUID();
-};
 
 const createRequestContentSecurityPolicy = (nonce: string): string =>
   createContentSecurityPolicy({
     isDevelopment: appEnv.isDevelopment,
     nonce,
   });
-
-const withSecurityHeaders = (
-  response: NextResponse,
-  contentSecurityPolicy: string,
-): NextResponse => {
-  response.headers.set('Content-Security-Policy', contentSecurityPolicy);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()',
-  );
-
-  if (appEnv.isProduction) {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload',
-    );
-  }
-
-  return response;
-};
 
 const withCorrelationId = (
   request: NextRequest,
@@ -67,9 +29,10 @@ const withCorrelationId = (
   const correlationId = getCorrelationId(request);
   const nonce = createCspNonce();
   response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(
+  return applyProxySecurityHeaders(
     response,
     createRequestContentSecurityPolicy(nonce),
+    { isProduction: appEnv.isProduction },
   );
 };
 
@@ -86,7 +49,9 @@ const nextWithCorrelationId = (request: NextRequest): NextResponse => {
     request: { headers: requestHeaders },
   });
   response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(response, contentSecurityPolicy);
+  return applyProxySecurityHeaders(response, contentSecurityPolicy, {
+    isProduction: appEnv.isProduction,
+  });
 };
 
 const proxy = clerkMiddleware(

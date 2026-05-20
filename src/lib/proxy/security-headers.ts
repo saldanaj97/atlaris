@@ -1,3 +1,5 @@
+import type { NextResponse } from 'next/server';
+
 const CLERK_FRONTEND_API_SRC = 'https://*.clerk.accounts.dev';
 const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
 
@@ -45,6 +47,30 @@ export function createContentSecurityPolicy(
     "form-action 'self'",
     "frame-ancestors 'none'",
   ].join('; ');
+}
+
+export function applyProxySecurityHeaders(
+  response: NextResponse,
+  contentSecurityPolicy: string,
+  options?: { isProduction?: boolean },
+): NextResponse {
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy);
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=()',
+  );
+
+  if (options?.isProduction) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload',
+    );
+  }
+
+  return response;
 }
 
 export function createCspNonce(): string {
