@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { clientLogger } from '@/lib/logging/client';
 
-export type ModelPreferenceSaveState = 'idle' | 'success' | 'error';
+type ModelPreferenceSaveState = 'idle' | 'success' | 'error';
 
 function normalizePreference(model: string | null): string {
   return model ?? '';

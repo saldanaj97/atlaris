@@ -10,7 +10,7 @@ export interface UsageData {
  * `null` (optional caps like `maxWeeks`) to mean "unbounded". Centralize the
  * predicate so callers don't have to remember to check both.
  */
-export function isUnlimitedNumber(value: number | null | undefined): boolean {
+function isUnlimitedNumber(value: number | null | undefined): boolean {
   return value === null || value === undefined || value === Infinity;
 }
 

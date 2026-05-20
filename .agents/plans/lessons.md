@@ -103,3 +103,11 @@
 **Rule:** When documenting a feature, trace the public route → service → quota boundary → persistence helpers; cite real files. Fix broken relative doc links in the same edit when they are in touched files.
 
 **Impact:** Onboarding stays aligned with `generateModuleLessons`, `module-lesson-generation` queries, and metered reservation behavior without duplicating tier numbers outside `tier-limits.ts`.
+
+## 2026-05-19: Use Fallow instead of Knip for static cleanup checks
+
+**Context:** During a review of the current cleanup branch, the agent attempted `pnpm check:knip` even though the repo has moved to Fallow for dead-code/static cleanup analysis.
+
+**Rule:** For unused code, duplicate-code, circular-dependency, and cleanup-audit checks, use Fallow (`fallow ... --format json --quiet ... 2>/dev/null || true`) instead of Knip. Verify the live package scripts first if a repo-local wrapper is expected.
+
+**Impact:** Review validation stays aligned with the current toolchain and avoids wasting time on retired commands.

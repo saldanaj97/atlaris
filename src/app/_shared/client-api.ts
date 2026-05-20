@@ -14,7 +14,7 @@ export function getClientErrorMessage(
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
-export function createTimeoutSignal(timeoutMs: number): {
+function createTimeoutSignal(timeoutMs: number): {
   signal: AbortSignal;
   cleanup: () => void;
   didTimeout: () => boolean;
@@ -59,7 +59,7 @@ export function createTimeoutSignal(timeoutMs: number): {
   };
 }
 
-export function isTimeoutAbortError(error: unknown): error is DOMException {
+function isTimeoutAbortError(error: unknown): error is DOMException {
   return error instanceof DOMException && error.name === 'TimeoutError';
 }
 
