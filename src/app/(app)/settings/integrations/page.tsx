@@ -1,9 +1,7 @@
 import type { JSX } from 'react';
 
-import {
-  IntegrationGrid,
-  RequestIntegration,
-} from '@/app/(app)/settings/integrations/components';
+import { IntegrationGrid } from '@/app/(app)/settings/integrations/components/IntegrationGrid';
+import { RequestIntegration } from '@/app/(app)/settings/integrations/components/RequestIntegration';
 import { PageHeader } from '@/components/ui/page-header';
 
 /**

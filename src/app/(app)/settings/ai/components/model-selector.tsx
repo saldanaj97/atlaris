@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { AvailableModel } from '@/features/ai/types/model.types';
-import { ROUTES } from '@/features/navigation';
+import { ROUTES } from '@/features/navigation/routes';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   authenticatedNavItems,
   unauthenticatedNavItems,
-} from '@/features/navigation';
+} from '@/features/navigation/items';
 
 describe('Navigation', () => {
   describe('authenticatedNavItems', () => {
