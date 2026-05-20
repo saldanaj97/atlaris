@@ -3,11 +3,6 @@
 import '@tests/mocks/unit/client-logger.unit';
 import '@tests/mocks/unit/sonner.unit';
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { createDeferredPromise } from '@tests/helpers/deferred-promise';
-import { toast } from 'sonner';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
@@ -16,6 +11,11 @@ import type {
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
+import { toast } from 'sonner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn<(href: string) => void>();
 
@@ -103,6 +103,57 @@ describe('ManualCreatePanel', () => {
   async function submitForm(): Promise<void> {
     await user.click(screen.getByRole('button', { name: /generate my plan/i }));
   }
+
+  describe('form validity', () => {
+    it('keeps submit disabled until the topic and all preferences are selected', async () => {
+      render(<ManualCreatePanel />);
+
+      expect(
+        screen.getByRole('button', { name: /generate my plan/i }),
+      ).toBeDisabled();
+
+      await fillTopic('Test Topic');
+      expect(
+        screen.getByRole('button', { name: /generate my plan/i }),
+      ).toBeDisabled();
+
+      await chooseDefaultPreferences();
+
+      expect(
+        screen.getByRole('button', { name: /generate my plan/i }),
+      ).toBeEnabled();
+    });
+
+    it.each([
+      ['Cmd+Enter', '{Meta>}{Enter}{/Meta}'],
+      ['Ctrl+Enter', '{Control>}{Enter}{/Control}'],
+    ])(
+      'submits on %s only when the form is valid',
+      async (_label, shortcut) => {
+        mockStartGeneration.mockResolvedValue({
+          status: 'completed',
+          planId: 'plan-keyboard',
+          result: 'plan-keyboard',
+        });
+
+        render(<ManualCreatePanel />);
+
+        const topicInput = screen.getByLabelText(/what do you want to learn/i);
+        await user.type(topicInput, 'Keyboard topic');
+        await user.keyboard(shortcut);
+
+        expect(mockStartGeneration).not.toHaveBeenCalled();
+
+        await chooseDefaultPreferences();
+        await user.click(topicInput);
+        await user.keyboard(shortcut);
+
+        await waitFor(() => {
+          expect(mockStartGeneration).toHaveBeenCalledTimes(1);
+        });
+      },
+    );
+  });
 
   describe('defaults', () => {
     it('shows preference placeholders before selection', async () => {

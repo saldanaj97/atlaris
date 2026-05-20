@@ -38,59 +38,15 @@ import {
   createRlsDbForUser,
   getServiceRoleDb,
 } from '../helpers/rls';
+import {
+  expectedPolicyTables,
+  expectRlsViolation,
+  policyRowSchema,
+  serverOwnedWriteTables,
+} from './rls-test-helpers';
 
-const policyRowSchema = z.object({
-  tablename: z.string(),
-  policyname: z.string(),
-  role: z.string(),
-});
-// Keep this list limited to tables with explicit allow/deny behavior checks in
-// this file. Do not add metadata-only tables here without functional tests.
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_schedules, plan_generations, task_resources, oauth_state_tokens.
-const expectedPolicyTables = [
-  'users',
-  'learning_plans',
-  'generation_attempts',
-  'job_queue',
-  'modules',
-  'tasks',
-  'resources',
-  'task_progress',
-  'usage_metrics',
-  'ai_usage_events',
-] as const;
-
-const serverOwnedWriteTables = [
-  'ai_usage_events',
-  'generation_attempts',
-  'learning_plans',
-  'modules',
-  'plan_schedules',
-  'resources',
-  'task_resources',
-  'tasks',
-  'usage_metrics',
-] as const;
-
-async function expectRlsViolation(operation: () => Promise<unknown>) {
-  try {
-    await operation();
-    throw new Error('Expected RLS violation but operation succeeded');
-  } catch (error) {
-    const err = error as Error;
-    const message = err.message;
-    const causeMessage = (err.cause as Error)?.message || '';
-    const combinedMessage = `${message} ${causeMessage}`;
-
-    if (!/row.*level.*security|permission/i.test(combinedMessage)) {
-      throw new Error(
-        `Expected RLS violation error but got: ${message}${causeMessage ? ` (cause: ${causeMessage})` : ''}`,
-        { cause: error },
-      );
-    }
-  }
-}
 
 describe('RLS Policy Verification', () => {
   beforeEach(async () => {

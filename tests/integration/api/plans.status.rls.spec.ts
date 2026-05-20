@@ -2,13 +2,18 @@ import { learningPlans } from '@supabase/schema';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 
-// Mock auth before importing the route
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 describe('GET /api/v1/plans/:planId/status - access control', () => {
   let ownerUserId: string;
@@ -19,10 +24,7 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
 
   beforeEach(async () => {
     // Mock Auth to return the owner by default
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: ownerAuthId } },
-    });
+    mockServerSession(serverAuth.getSession, ownerAuthId);
 
     // Authenticate as owner for the route
     setTestUser(ownerAuthId);

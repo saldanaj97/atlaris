@@ -13,14 +13,20 @@ import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { buildTestPlanInsert } from '@tests/fixtures/plans';
 import { clearTestUser, setTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db/users';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { db } from '@supabase/service-role';
 
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 /** Locks lightweight list item shape for GET /api/v1/plans (AC3). */
 const lightweightPlanListItemSchema = z
@@ -112,10 +118,7 @@ describe('Plan read API response contracts', () => {
 
   beforeEach(async () => {
     authUserId = createId('auth-user');
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
     userId = await ensureUser({

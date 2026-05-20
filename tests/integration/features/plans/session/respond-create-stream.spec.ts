@@ -16,10 +16,8 @@ import type {
 } from '@/features/plans/lifecycle/types';
 import type { RespondCreateStreamArgs } from '@/features/plans/session/plan-generation-session';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import type {
-  AttemptReservation,
-  AttemptsDbClient,
-} from '@/lib/db/queries/types/attempts.types';
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import { buildMockCreateLifecycle } from './stream-session-test-helpers';
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
@@ -72,55 +70,6 @@ const BASE_BODY: CreateLearningPlanInput = {
   origin: 'ai',
 };
 
-function fakeReservation(attemptNumber: number): AttemptReservation {
-  return {
-    reserved: true,
-    attemptId: `fake-attempt-${attemptNumber}`,
-    attemptNumber,
-    startedAt: new Date(),
-    sanitized: {
-      topic: {
-        value: BASE_BODY.topic,
-        truncated: false,
-        originalLength: BASE_BODY.topic.length,
-      },
-      notes: { value: undefined, truncated: false },
-    },
-    promptHash: `fake-hash-${attemptNumber}`,
-  };
-}
-
-interface FakeLifecycleHandle {
-  service: PlanLifecycleService;
-  createPlan: ReturnType<typeof vi.fn>;
-  processGenerationAttempt: ReturnType<typeof vi.fn>;
-}
-
-function buildFakeLifecycle({
-  createResult = SUCCESS_CREATE_RESULT,
-  process,
-  reserveAttemptNumber = 1,
-}: {
-  createResult?: CreatePlanResult;
-  process: (input: ProcessGenerationInput) => Promise<GenerationAttemptResult>;
-  reserveAttemptNumber?: number;
-}): FakeLifecycleHandle {
-  const createPlan = vi.fn().mockResolvedValue(createResult);
-  const processGenerationAttempt = vi.fn(
-    async (input: ProcessGenerationInput) => {
-      input.onAttemptReserved?.(fakeReservation(reserveAttemptNumber));
-      return process(input);
-    },
-  );
-
-  const service = {
-    createPlan,
-    processGenerationAttempt,
-  } as unknown as PlanLifecycleService;
-
-  return { service, createPlan, processGenerationAttempt };
-}
-
 function buildCreateRequest(
   overrides: { signal?: AbortSignal; url?: string } = {},
 ): Request {
@@ -145,7 +94,8 @@ function buildArgs(
 
 describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   it('emits plan_start, module_summary, progress, then complete on success', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => SUCCESS_ATTEMPT_RESULT,
     });
     const createLifecycleService = vi.fn(() => fake.service);
@@ -191,7 +141,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('emits sanitized error event for handled retryable failures', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => ({
         status: 'retryable_failure',
         classification: 'provider_error',
@@ -233,7 +184,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('includes requestId on handled error SSE when requestId is supplied', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => ({
         status: 'retryable_failure',
         classification: 'provider_error',
@@ -264,7 +216,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('emits permanent failure error code without retryable flag', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => ({
         status: 'permanent_failure',
         classification: 'validation',
@@ -296,7 +249,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
       .spyOn(streamCleanup, 'safeMarkPlanFailedWithDbClient')
       .mockResolvedValue(undefined);
 
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => {
         throw new Error('boundary unhandled boom');
       },
@@ -336,7 +290,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
   it('suppresses terminal SSE events when the client disconnects mid-stream', async () => {
     const controller = new AbortController();
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => {
         controller.abort();
         throw new DOMException('Client disconnected', 'AbortError');
@@ -362,7 +317,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('passes responseHeaders through to the streaming Response', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => SUCCESS_ATTEMPT_RESULT,
     });
     const boundary = createPlanGenerationSessionBoundary({
@@ -392,7 +348,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
   it('ignores invalid model query param when savedPreferredAiModel is null', async () => {
     const captured: ProcessGenerationInput[] = [];
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
         return SUCCESS_ATTEMPT_RESULT;
@@ -424,7 +381,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
   it('forwards a valid model query param into processGenerationAttempt', async () => {
     const captured: ProcessGenerationInput[] = [];
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
         return SUCCESS_ATTEMPT_RESULT;
@@ -455,7 +413,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
   it('falls back to savedPreferredAiModel when no query param is supplied', async () => {
     const captured: ProcessGenerationInput[] = [];
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
         return SUCCESS_ATTEMPT_RESULT;
@@ -483,7 +442,8 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {
-    const fake = buildFakeLifecycle({
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
       process: async () => SUCCESS_ATTEMPT_RESULT,
     });
     const createLifecycleService = vi.fn<

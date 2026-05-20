@@ -5,75 +5,7 @@ import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function createMockPorts(
-  overrides?: Partial<PlanLifecycleServicePorts>,
-): PlanLifecycleServicePorts {
-  const reservation = makeAttemptReservation();
-  return {
-    planPersistence: {
-      atomicInsertPlan: async () => ({
-        success: true as const,
-        id: 'plan-123',
-      }),
-      findCappedPlanWithoutModules: async () => null,
-      findRecentDuplicatePlan: async () => null,
-      markGenerationSuccess: async () => {},
-      markGenerationFailure: async () => {},
-    },
-    quota: {
-      resolveUserTier: async () => 'free' as const,
-      checkDurationCap: () => ({ allowed: true }),
-      normalizePlanDuration: () => ({
-        startDate: '2025-01-01',
-        deadlineDate: '2025-01-15',
-        totalWeeks: 2,
-      }),
-    },
-    generation: {
-      runGeneration: async () => ({
-        status: 'success' as const,
-        modules: [],
-        metadata: {},
-        usage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalTokens: 0,
-          model: 'openai/gpt-4o',
-          provider: 'openrouter',
-          estimatedCostCents: 0,
-          providerCostMicrousd: null,
-          isPartial: false,
-          missingFields: [],
-        },
-        durationMs: 1000,
-        reservation,
-        extendedTimeout: false,
-      }),
-    },
-    generationFinalization: {
-      finalizeSuccess: vi.fn().mockResolvedValue({
-        id: reservation.attemptId,
-        planId: 'plan-gen-001',
-        status: 'success' as const,
-        classification: null,
-        durationMs: 1000,
-        modulesCount: 0,
-        tasksCount: 0,
-        truncatedTopic: false,
-        truncatedNotes: false,
-        normalizedEffort: false,
-        promptHash: reservation.promptHash,
-        metadata: null,
-        createdAt: new Date(),
-      }),
-      finalizeFailure: vi.fn().mockResolvedValue(undefined),
-    },
-    ...overrides,
-  };
-}
+import { createMockPorts } from './lifecycle-test-helpers';
 
 const validInput: CreateAiPlanInput = {
   userId: 'user-abc',
