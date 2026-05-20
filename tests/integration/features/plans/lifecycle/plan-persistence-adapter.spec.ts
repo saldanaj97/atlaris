@@ -1,7 +1,7 @@
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import { generationAttempts, learningPlans } from '@supabase/schema';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';

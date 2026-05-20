@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { jobQueue, learningPlans, usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 
-import { truncateAll } from '../../helpers/db';
+import { truncateAll } from '../../helpers/db/truncate';
 
 describe('truncateAll', () => {
   it('clears critical tables between integration tests', async () => {

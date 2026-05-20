@@ -7,7 +7,7 @@ import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { buildTestPlanInsert } from '../../fixtures/plans';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
 // Keep this auth-server mock local. Removing it cleanly would require routing
 // requestBoundary.route -> withAuth through injectable auth/session providers in

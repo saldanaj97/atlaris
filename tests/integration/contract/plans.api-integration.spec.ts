@@ -5,7 +5,7 @@ import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';

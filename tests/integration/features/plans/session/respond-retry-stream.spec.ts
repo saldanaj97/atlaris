@@ -11,7 +11,7 @@ import {
 } from '@/features/plans/session/plan-generation-session';
 import * as streamCleanup from '@/features/plans/session/stream-cleanup';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import {
   findStreamingEvent,
   readStreamingResponse,

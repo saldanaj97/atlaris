@@ -12,7 +12,7 @@ import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { buildTestPlanInsert } from '@tests/fixtures/plans';
 import { clearTestUser, setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';

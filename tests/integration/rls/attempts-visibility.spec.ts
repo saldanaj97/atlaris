@@ -3,7 +3,7 @@ import { generationAttempts, learningPlans } from '@supabase/schema';
 import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
 async function createPlanWithAttempt({
   authUserId,

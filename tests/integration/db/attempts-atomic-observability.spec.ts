@@ -15,7 +15,7 @@ import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
   cleanupTrackedRlsClients,
   createRlsDbForUser,

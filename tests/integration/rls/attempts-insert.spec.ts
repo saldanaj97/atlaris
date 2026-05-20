@@ -6,7 +6,7 @@ import { generationAttempts } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
 import { createRlsDbForUser } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';

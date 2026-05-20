@@ -14,7 +14,7 @@ import {
   getDurableWindowSeedCount,
 } from '../../fixtures/attempts';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   const attemptCap = getGenerationAttemptCap();

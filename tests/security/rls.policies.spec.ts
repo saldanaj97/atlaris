@@ -28,7 +28,7 @@ import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { db } from '@supabase/service-role';
-import { truncateAll } from '../helpers/db';
+import { truncateAll } from '../helpers/db/truncate';
 import {
   cleanupTrackedRlsClients,
   createAnonRlsDb,

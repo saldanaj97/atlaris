@@ -4,7 +4,7 @@ import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import {
   createRlsDbForUser,
   cleanupTrackedRlsClients,

@@ -6,7 +6,7 @@ import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
   readStreamingResponse,
   type StreamingEvent,

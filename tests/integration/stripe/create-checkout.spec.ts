@@ -1,5 +1,5 @@
 import { setTestUser } from '@/../tests/helpers/auth';
-import { ensureUser } from '@/../tests/helpers/db';
+import { ensureUser } from '@/../tests/helpers/db/users';
 import {
   createCreateCheckoutHandler,
   POST,

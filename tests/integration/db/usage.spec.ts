@@ -11,7 +11,7 @@ import {
   recordUsage,
 } from '../../../supabase/usage';
 
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function hasConstraintViolation(err: unknown, constraintName: string): boolean {

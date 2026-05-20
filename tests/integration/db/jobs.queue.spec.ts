@@ -16,7 +16,7 @@ import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
 } from '@/shared/constants/retry-policy';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { and, eq, lt } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';

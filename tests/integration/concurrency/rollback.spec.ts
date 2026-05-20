@@ -5,7 +5,7 @@ import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 /**

@@ -6,7 +6,7 @@ import { db } from '@supabase/service-role';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
 
 const authUserId = 'auth_generation_cap_boundary';

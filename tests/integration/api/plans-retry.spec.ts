@@ -8,7 +8,7 @@ import { db } from '@supabase/service-role';
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { readStreamingResponse } from '../../helpers/streaming';
 
 type RetryAttemptOverrides = Partial<
