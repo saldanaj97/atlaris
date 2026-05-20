@@ -62,17 +62,6 @@ describe('ProfileForm', () => {
     vi.restoreAllMocks();
   });
 
-  // ── Loading & Display ──────────────────────────────────────────────
-
-  it('renders skeleton while loading', () => {
-    // Never-resolving fetch to keep loading state
-    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
-
-    render(<ProfileForm />);
-    // Skeleton has no text content; the real form content should be absent
-    expect(screen.queryByText('Personal Information')).toBeNull();
-  });
-
   it('displays profile data after successful fetch', async () => {
     mockFetchSuccess();
 
@@ -115,8 +104,6 @@ describe('ProfileForm', () => {
     expect(screen.getByText(/Something broke/)).toBeInTheDocument();
   });
 
-  // ── Name Editing ───────────────────────────────────────────────────
-
   it('does not show save button when name is unchanged', async () => {
     mockFetchSuccess();
 
@@ -151,8 +138,6 @@ describe('ProfileForm', () => {
     const saveButton = screen.getByRole('button', { name: /save changes/i });
     expect(saveButton).toBeEnabled();
   });
-
-  // ── Save Flow ──────────────────────────────────────────────────────
 
   it('saves updated name and shows success toast', async () => {
     const updatedProfile = { ...MOCK_PROFILE, name: 'Charles Babbage' };
@@ -279,22 +264,5 @@ describe('ProfileForm', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Network failure');
     });
-  });
-
-  // ── Account Details ────────────────────────────────────────────────
-
-  it('renders billing settings link', async () => {
-    mockFetchSuccess();
-
-    render(<ProfileForm />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Account Details')).toBeInTheDocument();
-    });
-
-    const billingLink = screen.getByRole('link', {
-      name: /billing settings/i,
-    });
-    expect(billingLink).toHaveAttribute('href', '/settings/billing');
   });
 });

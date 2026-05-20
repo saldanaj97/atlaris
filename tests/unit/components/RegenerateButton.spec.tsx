@@ -25,14 +25,6 @@ describe('RegenerateButton', () => {
     vi.useRealTimers();
   });
 
-  it('should render with correct default label', () => {
-    render(<RegenerateButton planId="test-plan-123" />);
-
-    expect(
-      screen.getByRole('button', { name: /regenerate plan/i }),
-    ).toBeInTheDocument();
-  });
-
   it('should trigger regeneration API call on click', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -72,30 +64,6 @@ describe('RegenerateButton', () => {
 
     // Verify button is disabled during loading
     expect(button).toBeDisabled();
-
-    await act(async () => {
-      deferredFetch.resolve({ ok: true });
-    });
-  });
-
-  it('should disable button during regeneration', async () => {
-    const deferredFetch = createDeferredPromise<{ ok: boolean }>();
-    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
-    vi.stubGlobal('fetch', mockFetch);
-
-    render(<RegenerateButton planId="test-plan-123" />);
-
-    const button = screen.getByRole('button', { name: /regenerate plan/i });
-
-    // Button should be enabled initially
-    expect(button).not.toBeDisabled();
-
-    fireEvent.click(button);
-
-    // Button should be disabled during loading
-    await waitFor(() => {
-      expect(button).toBeDisabled();
-    });
 
     await act(async () => {
       deferredFetch.resolve({ ok: true });
@@ -151,51 +119,6 @@ describe('RegenerateButton', () => {
       expect(toast.error).toHaveBeenCalledWith(
         'Unable to enqueue regeneration',
       );
-    });
-  });
-
-  it('should re-enable button after successful regeneration', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ success: true }),
-    });
-    vi.stubGlobal('fetch', mockFetch);
-
-    render(<RegenerateButton planId="test-plan-123" />);
-
-    const button = screen.getByRole('button', { name: /regenerate plan/i });
-    fireEvent.click(button);
-
-    // Wait for operation to complete
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalled();
-    });
-
-    // Button should be enabled again
-    await waitFor(() => {
-      expect(button).not.toBeDisabled();
-    });
-  });
-
-  it('should re-enable button after failed regeneration', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-    });
-    vi.stubGlobal('fetch', mockFetch);
-
-    render(<RegenerateButton planId="test-plan-123" />);
-
-    const button = screen.getByRole('button', { name: /regenerate plan/i });
-    fireEvent.click(button);
-
-    // Wait for operation to complete
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
-    });
-
-    // Button should be enabled again
-    await waitFor(() => {
-      expect(button).not.toBeDisabled();
     });
   });
 

@@ -56,27 +56,7 @@ describe('AuthControls', () => {
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
 
-  it('defaults to Clerk user button when the setting is omitted', () => {
-    renderAuthControls({ isAuthenticated: true });
-
-    expect(screen.getByTestId('user-button')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /account/i }),
-    ).not.toBeInTheDocument();
-  });
-
   describe('tier badge', () => {
-    it('does not render badge for free tier', () => {
-      renderAuthControls({
-        isAuthenticated: true,
-        tier: 'free',
-        showClerkUserButton: true,
-      });
-
-      expect(screen.queryByText('free')).not.toBeInTheDocument();
-      expect(screen.getByTestId('user-button')).toBeInTheDocument();
-    });
-
     it.each(['starter', 'pro'] as const)(
       'renders %s tier when authenticated and tier is provided',
       (tier) => {

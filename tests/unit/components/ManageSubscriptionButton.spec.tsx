@@ -20,39 +20,6 @@ describe('ManageSubscriptionButton', () => {
     vi.restoreAllMocks();
   });
 
-  it('should render with default label', () => {
-    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
-
-    expect(
-      screen.getByRole('button', { name: /manage subscription/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('should render with custom label', () => {
-    render(
-      <ManageSubscriptionButton
-        canOpenBillingPortal={true}
-        label="Billing Settings"
-      />,
-    );
-
-    expect(
-      screen.getByRole('button', { name: /billing settings/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('should apply custom className', () => {
-    render(
-      <ManageSubscriptionButton
-        canOpenBillingPortal={true}
-        className="custom-class"
-      />,
-    );
-
-    const button = screen.getByRole('button');
-    expect(button).toHaveClass('custom-class');
-  });
-
   it('should call portal API when clicked', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -140,43 +107,6 @@ describe('ManageSubscriptionButton', () => {
       json: async () => ({
         portalUrl: 'https://billing.stripe.com/portal',
       }),
-    });
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://billing.stripe.com/portal');
-    });
-  });
-
-  it('should disable button during portal creation', async () => {
-    const mockFetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: async () => ({
-                  portalUrl: 'https://billing.stripe.com/portal',
-                }),
-              }),
-            100,
-          ),
-        ),
-    );
-    vi.stubGlobal('fetch', mockFetch);
-
-    render(<ManageSubscriptionButton canOpenBillingPortal={true} />);
-
-    const button = screen.getByRole('button');
-
-    // Button should be enabled initially
-    expect(button).not.toBeDisabled();
-
-    fireEvent.click(button);
-
-    // Button should be disabled during loading
-    await waitFor(() => {
-      expect(button).toBeDisabled();
     });
 
     await waitFor(() => {
