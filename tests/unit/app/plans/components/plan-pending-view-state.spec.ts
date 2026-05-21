@@ -1,6 +1,7 @@
 import {
   buildPlanPendingViewState,
   formatOrigin,
+  getStatusBadgeVariant,
   MAX_RETRY_ATTEMPTS,
 } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
@@ -24,7 +25,87 @@ describe('formatOrigin', () => {
 });
 
 describe('buildPlanPendingViewState', () => {
-  it('marks processing and retrying when a retry session is active', () => {
+  it('sets panelKind to failure when failed with a message', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'failed',
+      retryStatus: 'idle',
+      attempts: 1,
+      error: 'Generation failed',
+      pollingError: null,
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('failure');
+    expect(viewState.status).toBe('failed');
+  });
+
+  it('sets panelKind to connection when polling fails with an error', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'processing',
+      retryStatus: 'idle',
+      attempts: 0,
+      error: null,
+      pollingError: 'Unable to reach the server',
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('connection');
+  });
+
+  it('sets panelKind to processing for active generation', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'processing',
+      retryStatus: 'idle',
+      attempts: 2,
+      error: null,
+      pollingError: null,
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('processing');
+  });
+
+  it('sets panelKind to pending for queued plans', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'pending',
+      retryStatus: 'idle',
+      attempts: 0,
+      error: null,
+      pollingError: null,
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('pending');
+  });
+
+  it('sets panelKind to ready when generation completes', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'ready',
+      retryStatus: 'idle',
+      attempts: 0,
+      error: null,
+      pollingError: null,
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('ready');
+  });
+
+  it('sets panelKind to unsupported for unknown status values', () => {
+    const viewState = buildPlanPendingViewState({
+      status: 'archived',
+      retryStatus: 'idle',
+      attempts: 0,
+      error: null,
+      pollingError: null,
+      retryError: null,
+    });
+
+    expect(viewState.panelKind).toBe('unsupported');
+    expect(viewState.status).toBe('archived');
+  });
+
+  it('keeps failure panelKind while a retry session is active', () => {
     const viewState = buildPlanPendingViewState({
       status: 'failed',
       retryStatus: 'retrying',
@@ -34,9 +115,9 @@ describe('buildPlanPendingViewState', () => {
       retryError: null,
     });
 
-    expect(viewState.isProcessing).toBe(true);
     expect(viewState.isRetrying).toBe(true);
-    expect(viewState.isFailed).toBe(true);
+    expect(viewState.panelKind).toBe('failure');
+    expect(getStatusBadgeVariant(viewState)).toBe('default');
   });
 
   it('uses the interrupted fallback when a cancelled retry has no concrete error', () => {

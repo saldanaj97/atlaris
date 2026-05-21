@@ -38,19 +38,10 @@ export function PlanStatusHeader({
             {formatSkillLevel(plan.skillLevel)}
           </Badge>
           <Badge
-            variant={getStatusBadgeVariant(
-              viewState.isFailed,
-              viewState.isProcessing,
-              viewState.isRetrying,
-              viewState.retryInterrupted,
-            )}
+            variant={getStatusBadgeVariant(viewState)}
             className="ml-2 uppercase"
           >
-            {getStatusBadgeLabel(
-              viewState.status,
-              viewState.isRetrying,
-              viewState.retryInterrupted,
-            )}
+            {getStatusBadgeLabel(viewState)}
           </Badge>
         </div>
         {isPolling ? (
@@ -73,43 +64,35 @@ export function GenerationStatusContent({
   onRefresh: () => void;
   onRetry: () => void;
 }) {
-  if (viewState.isFailed && viewState.failedPlanMessage) {
-    return (
-      <FailurePanel
-        viewState={viewState}
-        isRetryDisabled={isRetryDisabled}
-        onRetry={onRetry}
-      />
-    );
+  switch (viewState.panelKind) {
+    case 'failure':
+      return (
+        <FailurePanel
+          viewState={viewState}
+          isRetryDisabled={isRetryDisabled}
+          onRetry={onRetry}
+        />
+      );
+    case 'connection':
+      return (
+        <ConnectionIssuePanel
+          displayError={viewState.displayError!}
+          onRefresh={onRefresh}
+        />
+      );
+    case 'processing':
+      return <ProcessingPanel attempts={viewState.attempts} />;
+    case 'pending':
+      return <PendingPanel />;
+    case 'ready':
+      return <ReadyPanel />;
+    case 'unsupported':
+      clientLogger.error('Unsupported plan generation status', {
+        status: viewState.status,
+        viewState,
+      });
+      return <UnsupportedStatusPanel onRefresh={onRefresh} />;
   }
-
-  if (viewState.hasPollingError && viewState.displayError) {
-    return (
-      <ConnectionIssuePanel
-        displayError={viewState.displayError}
-        onRefresh={onRefresh}
-      />
-    );
-  }
-
-  if (viewState.isProcessing) {
-    return <ProcessingPanel attempts={viewState.attempts} />;
-  }
-
-  if (viewState.isPending) {
-    return <PendingPanel />;
-  }
-
-  if (viewState.status === 'ready') {
-    return <ReadyPanel />;
-  }
-
-  clientLogger.error('Unsupported plan generation status', {
-    status: viewState.status,
-    viewState,
-  });
-
-  return <UnsupportedStatusPanel onRefresh={onRefresh} />;
 }
 
 export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
