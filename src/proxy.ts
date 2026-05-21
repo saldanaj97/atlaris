@@ -16,42 +16,45 @@ import {
   createCspNonce,
 } from '@/lib/proxy/security-headers';
 
-const createRequestContentSecurityPolicy = (nonce: string): string =>
-  createContentSecurityPolicy({
+function buildProxyRequestContext(request: NextRequest) {
+  const correlationId = getCorrelationId(request);
+  const nonce = createCspNonce();
+  const contentSecurityPolicy = createContentSecurityPolicy({
     isDevelopment: appEnv.isDevelopment,
     nonce,
   });
+  return { correlationId, nonce, contentSecurityPolicy };
+}
+
+function applyProxyDecorations(
+  response: NextResponse,
+  ctx: ReturnType<typeof buildProxyRequestContext>,
+): NextResponse {
+  response.headers.set('x-correlation-id', ctx.correlationId);
+  return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
+    isProduction: appEnv.isProduction,
+  });
+}
 
 const withCorrelationId = (
   request: NextRequest,
   response: NextResponse,
 ): NextResponse => {
-  const correlationId = getCorrelationId(request);
-  const nonce = createCspNonce();
-  response.headers.set('x-correlation-id', correlationId);
-  return applyProxySecurityHeaders(
-    response,
-    createRequestContentSecurityPolicy(nonce),
-    { isProduction: appEnv.isProduction },
-  );
+  const ctx = buildProxyRequestContext(request);
+  return applyProxyDecorations(response, ctx);
 };
 
 const nextWithCorrelationId = (request: NextRequest): NextResponse => {
-  const correlationId = getCorrelationId(request);
-  const nonce = createCspNonce();
-  const contentSecurityPolicy = createRequestContentSecurityPolicy(nonce);
+  const ctx = buildProxyRequestContext(request);
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-correlation-id', correlationId);
-  requestHeaders.set('x-nonce', nonce);
-  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
+  requestHeaders.set('x-correlation-id', ctx.correlationId);
+  requestHeaders.set('x-nonce', ctx.nonce);
+  requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
-  response.headers.set('x-correlation-id', correlationId);
-  return applyProxySecurityHeaders(response, contentSecurityPolicy, {
-    isProduction: appEnv.isProduction,
-  });
+  return applyProxyDecorations(response, ctx);
 };
 
 const proxy = clerkMiddleware(
