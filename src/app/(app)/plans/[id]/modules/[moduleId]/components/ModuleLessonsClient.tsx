@@ -66,10 +66,8 @@ export function ModuleLessonsClient({
     <>
       <section>
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-stone-900 dark:text-stone-100">
-            Lessons
-          </h2>
-          <span className="text-sm text-stone-500 dark:text-stone-400">
+          <h2 className="text-2xl font-semibold text-foreground">Lessons</h2>
+          <span className="text-sm text-muted-foreground">
             {completedLessons}/{totalLessons} completed
           </span>
         </div>
@@ -85,7 +83,7 @@ export function ModuleLessonsClient({
 
         {lessons.length === 0 ? (
           <Surface variant="default" padding="none" className="p-8 text-center">
-            <p className="text-stone-500 dark:text-stone-400">
+            <p className="text-muted-foreground">
               No lessons available for this module.
             </p>
           </Surface>

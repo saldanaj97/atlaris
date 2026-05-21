@@ -29,7 +29,7 @@ function ModuleSwitcherMenuItem({
   if (item.isLocked) {
     return (
       <DropdownMenuItem disabled className="opacity-50">
-        <span className="flex items-center gap-2 text-stone-400 dark:text-stone-500">
+        <span className="flex items-center gap-2 text-muted-foreground/50">
           <Lock className="size-4 shrink-0" />
           <span className="truncate">{item.title}</span>
         </span>
@@ -79,18 +79,18 @@ export function ModuleBreadcrumbNav({
         <li>
           <Link
             href={`/plans/${planId}`}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-stone-600 transition-colors hover:bg-stone-100 hover:text-primary dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-primary"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span className="max-w-56 truncate sm:max-w-88">{planTopic}</span>
           </Link>
         </li>
-        <li className="text-stone-300 dark:text-stone-600">
+        <li className="text-muted-foreground/40">
           <ChevronRight className="h-4 w-4" />
         </li>
         <li>
           <DropdownMenu>
-            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary transition-colors hover:bg-primary/20 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:focus:ring-offset-stone-900">
+            <DropdownMenuTrigger className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary transition-colors hover:bg-primary/20 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background focus:outline-none dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30">
               Module {moduleOrder}
               <ChevronDown className="h-3.5 w-3.5" />
             </DropdownMenuTrigger>

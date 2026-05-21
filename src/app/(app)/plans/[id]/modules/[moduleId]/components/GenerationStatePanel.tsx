@@ -32,10 +32,10 @@ function LockedGenerationPanel(): JSX.Element {
           <Sparkles className="size-5" />
         </div>
         <div>
-          <h3 className="font-semibold text-stone-900 dark:text-stone-100">
+          <h3 className="font-semibold text-foreground">
             Lesson generation unlocks with this module
           </h3>
-          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             Complete previous modules to unlock lesson generation.
           </p>
         </div>
@@ -56,7 +56,7 @@ function GenerationDescription({
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
-        <h3 className="font-semibold text-stone-900 dark:text-stone-100">
+        <h3 className="font-semibold text-foreground">
           Detailed lesson content
         </h3>
         <Badge variant="secondary">
@@ -65,7 +65,7 @@ function GenerationDescription({
       </div>
       {lessonGeneration.status === 'generating' ? (
         <>
-          <p className="text-sm text-stone-500 dark:text-stone-400">
+          <p className="text-sm text-muted-foreground">
             Generation is running for the full module. You can keep reviewing
             lessons, resources, and progress while content is prepared.
           </p>
@@ -76,12 +76,12 @@ function GenerationDescription({
           ) : null}
         </>
       ) : lessonGeneration.status === 'failed' ? (
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm text-muted-foreground">
           {lessonGeneration.error ??
             'Generation failed. Retry to create fresh lesson content for this module.'}
         </p>
       ) : (
-        <p className="text-sm text-stone-500 dark:text-stone-400">
+        <p className="text-sm text-muted-foreground">
           One click generates and caches detailed content for every lesson in
           this module.
         </p>

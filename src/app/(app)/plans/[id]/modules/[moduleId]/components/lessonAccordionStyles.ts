@@ -7,7 +7,7 @@ export function getCardClassName(
   isCompleted: boolean,
 ): string {
   if (isLocked) {
-    return 'border-stone-200/50 bg-stone-100/50 opacity-75 dark:border-stone-700/50 dark:bg-stone-800/30';
+    return 'border-border bg-muted/40 opacity-75 dark:bg-muted/25';
   }
   if (isCompleted) {
     return 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10';
@@ -20,7 +20,7 @@ export function getMarkerClassName(
   isCompleted: boolean,
 ): string {
   if (isLocked) {
-    return 'bg-stone-200 text-stone-400 dark:bg-stone-700 dark:text-stone-500';
+    return 'bg-muted text-muted-foreground/50';
   }
   if (isCompleted) {
     return 'bg-success text-success-foreground';
@@ -33,18 +33,16 @@ export function getTitleClassName(
   isCompleted: boolean,
 ): string {
   if (isLocked) {
-    return 'text-stone-400 dark:text-stone-500';
+    return 'text-muted-foreground/50';
   }
   if (isCompleted) {
     return 'text-success dark:text-success';
   }
-  return 'text-stone-900 dark:text-stone-100';
+  return 'text-foreground';
 }
 
 export function getMutedTextClassName(isLocked: boolean): string {
-  return isLocked
-    ? 'text-stone-400 dark:text-stone-500'
-    : 'text-stone-500 dark:text-stone-400';
+  return isLocked ? 'text-muted-foreground/50' : 'text-muted-foreground';
 }
 
 export function getStableEntries<T>(
