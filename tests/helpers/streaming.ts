@@ -5,6 +5,8 @@
  * streaming responses in integration tests.
  */
 
+import { expect } from 'vitest';
+
 /**
  * Type for parsed streaming events
  */
@@ -116,4 +118,57 @@ export async function readStreamingResponse(
 
   const buffer = await readStreamBodyIntoBuffer(reader);
   return parseSseBufferToEvents(buffer);
+}
+
+export function expectStreamingJsonObject(
+  value: unknown,
+): Record<string, unknown> {
+  expect(value).toBeTypeOf('object');
+  expect(value).not.toBeNull();
+  return value as Record<string, unknown>;
+}
+
+export function expectPlanStartEvent(
+  events: StreamingEvent[],
+  expectedAttemptNumber: number,
+): { planId: string } {
+  const startEvent = events.find((event) => event.type === 'plan_start');
+  if (!startEvent) {
+    throw new Error('Expected plan_start event');
+  }
+
+  const startData = expectStreamingJsonObject(startEvent.data);
+  expect(startData.planId).toEqual(expect.any(String));
+  expect(startData.attemptNumber).toBe(expectedAttemptNumber);
+
+  const planId = startData.planId;
+  if (typeof planId !== 'string' || planId.length === 0) {
+    throw new Error('Expected plan_start event to include a planId');
+  }
+
+  return { planId };
+}
+
+export function expectTerminalEventAfterStart(
+  events: StreamingEvent[],
+  terminalType: 'complete' | 'error' | 'cancelled',
+): StreamingEvent {
+  const eventTypes = events.map((event) => event.type);
+  const startIndex = eventTypes.indexOf('plan_start');
+  const terminalIndex = eventTypes.indexOf(terminalType);
+
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(terminalIndex).toBeGreaterThan(startIndex);
+  expect(
+    eventTypes
+      .slice(0, terminalIndex)
+      .filter((type) => ['complete', 'error', 'cancelled'].includes(type)),
+  ).toEqual([]);
+
+  const terminalEvent = events[terminalIndex];
+  if (!terminalEvent) {
+    throw new Error(`Expected ${terminalType} event`);
+  }
+
+  return terminalEvent;
 }

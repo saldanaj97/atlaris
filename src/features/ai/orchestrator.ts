@@ -58,7 +58,7 @@ export async function runGenerationExecution(
 
   if (!isAttemptsDbClient(dbClient)) {
     throw new Error(
-      'runGenerationExecution requires dbClient (pass request-scoped getDb() from API routes)',
+      'runGenerationExecution requires dbClient (pass serviceRoleDb from server-owned generation boundaries, or an explicit test client)',
     );
   }
 

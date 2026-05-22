@@ -1,4 +1,4 @@
-import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
@@ -22,8 +22,8 @@ import { ZodError } from 'zod';
  */
 export const POST: PlainHandler = requestBoundary.route(
   { rateLimit: 'aiGeneration' },
-  async ({ req, actor }) => {
-    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+  async ({ req, params, actor }) => {
+    const planId = requireUuidRouteParam(params, 'planId');
 
     const body = await parseJsonBody(req, {
       mode: 'required',

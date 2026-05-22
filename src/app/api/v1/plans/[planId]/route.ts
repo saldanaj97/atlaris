@@ -1,4 +1,4 @@
-import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import { removePlanForWrite } from '@/features/plans/write-service';
 import { NotFoundError } from '@/lib/api/errors';
@@ -20,8 +20,8 @@ import { logger } from '@/lib/logging/logger';
 
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
-  async ({ req, actor, db }) => {
-    const planId = requirePlanIdFromRequest(req, 'last');
+  async ({ params, actor, db }) => {
+    const planId = requireUuidRouteParam(params, 'planId');
 
     logger.info({ planId, userId: actor.id }, 'Fetching learning plan detail');
 
@@ -46,8 +46,8 @@ export const GET = requestBoundary.route(
 
 export const DELETE = requestBoundary.route(
   { rateLimit: 'mutation' },
-  async ({ req, actor, db }) => {
-    const planId = requirePlanIdFromRequest(req, 'last');
+  async ({ params, actor, db }) => {
+    const planId = requireUuidRouteParam(params, 'planId');
 
     logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
 

@@ -1,6 +1,6 @@
 import { buildModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import { microusdIntegerToBigint } from '@/features/ai/provider-cost-microusd';
-import { getDb } from './runtime';
+import { db as serviceRoleDb } from './service-role';
 import { aiUsageEvents } from './schema';
 
 import type { DbClient, DbTransaction } from '@/lib/db/types';
@@ -50,9 +50,14 @@ export function canonicalUsageToRecordParams(
   };
 }
 
+/**
+ * Inserts an AI usage audit row. Defaults to service-role because
+ * `ai_usage_events` is server-owned; prefer recordUsageInTx inside generation
+ * transactions. Pass an explicit client only from trusted server boundaries.
+ */
 export async function recordUsage(
   params: RecordUsageParams,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient = serviceRoleDb,
 ): Promise<void> {
   await recordUsageInTx(dbClient, params);
 }

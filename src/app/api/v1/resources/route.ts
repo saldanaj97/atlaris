@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { ValidationError } from '@/lib/api/errors';
 import { parseListPaginationParams } from '@/lib/api/pagination';
+import { getRequestSearchParams } from '@/lib/api/request-url';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { resources } from '@supabase/schema';
@@ -19,10 +20,10 @@ const resourcesTypeQuerySchema = z.object({
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ req, db }) => {
-    const url = new URL(req.url);
+    const searchParams = getRequestSearchParams(req);
 
     const parsedTypeQuery = resourcesTypeQuerySchema.safeParse({
-      type: url.searchParams.get('type') ?? undefined,
+      type: searchParams.get('type') ?? undefined,
     });
     if (!parsedTypeQuery.success) {
       throw new ValidationError(
@@ -31,7 +32,7 @@ export const GET = requestBoundary.route(
       );
     }
 
-    const { limit, offset } = parseListPaginationParams(url.searchParams, {
+    const { limit, offset } = parseListPaginationParams(searchParams, {
       defaultLimit: DEFAULT_RESOURCES_LIMIT,
       maxLimit: PAGINATION_MAX_LIMIT,
     });

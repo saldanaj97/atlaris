@@ -1,6 +1,6 @@
 import {
   requireOwnedPlanById,
-  requirePlanIdFromRequest,
+  requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
@@ -8,8 +8,8 @@ import { getAllTasksInPlan } from '@/lib/db/queries/tasks';
 
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
-  async ({ req, actor, db }) => {
-    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+  async ({ params, actor, db }) => {
+    const planId = requireUuidRouteParam(params, 'planId');
     await requireOwnedPlanById({
       planId,
       ownerUserId: actor.id,
