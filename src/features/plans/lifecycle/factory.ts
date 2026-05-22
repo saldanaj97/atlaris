@@ -8,10 +8,11 @@
  * Connection 1 (request-scoped) was used for lifecycle operations after withAuth's
  * finally block closed it.
  *
- * Connection scoping:
- *   - Stream route: stream-scoped RLS connection (survives entire generation)
- *   - Retry route: request-scoped RLS connection (synchronous with request)
- *   - Workers: service-role connection (no RLS needed)
+ * DB client scoping (server-owned writes):
+ *   - Plan stream/retry sessions: service-role client for generation persistence
+ *     after request auth and ownership checks at the route boundary
+ *   - Workers: service-role client (same server-owned write boundary)
+ *   - Reads and pre-write access checks: request-scoped RLS via getDb()
  */
 
 import { GenerationAdapter } from './adapters/generation-adapter';

@@ -37,6 +37,7 @@ import type {
 } from '@/shared/types/db.types';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
@@ -468,7 +469,8 @@ type DeletePlanResult =
  *
  * @param planId - Plan ID to delete
  * @param userId - Authenticated user ID (ownership enforced via WHERE + RLS)
- * @param dbClient - Optional client; defaults to getDb()
+ * @param dbClient - Optional client; defaults to serviceRoleDb (learning_plans
+ *   DELETE is server-owned; ownership is enforced via explicit userId filters)
  * @returns DeletePlanResult indicating success or failure reason
  */
 export async function deletePlan(
@@ -477,7 +479,7 @@ export async function deletePlan(
   dbClient?: DeletePlanDbClient,
   deps: DeletePlanDeps = defaultDeletePlanDeps,
 ): Promise<DeletePlanResult> {
-  const client = dbClient ?? getDb();
+  const client = dbClient ?? serviceRoleDb;
 
   const plan = await deps.selectOwnedPlanById({
     planId,

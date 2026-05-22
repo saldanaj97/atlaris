@@ -120,6 +120,14 @@
 
 **Impact:** Security-sensitive privilege changes stay enforced at the database layer while plan generation, regeneration, lesson generation, billing meters, and observability still validate through the intended server-owned paths.
 
+## 2026-05-21: Server-owned write contracts drift from privilege hardening
+
+**Context:** After revoking authenticated writes on billing/generation tables, stale comments still told agents to pass request-scoped `getDb()` for generation persistence, and helpers like `recordUsage` / `deletePlan` defaulted to `getDb()`.
+
+**Rule:** Keep reads and ownership checks on request-scoped RLS; default server-owned mutations to `serviceRoleDb` only inside feature-owned write boundaries. Re-export `AUTHENTICATED_SERVER_OWNED_WRITE_TABLES` in security tests and add bootstrap drift checks instead of duplicating table lists.
+
+**Impact:** Prevents accidental reintroduction of authenticated writes and keeps docs aligned with the privilege-first boundary.
+
 ## 2026-05-20: Vitest `vi.hoisted` cannot call imported factories
 
 **Context:** Shared `mockServerSession` helper worked, but `vi.hoisted(createServerAuthMockHandle)` failed at collection time with `Cannot access '__vi_import_*' before initialization`.

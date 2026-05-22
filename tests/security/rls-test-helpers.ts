@@ -1,3 +1,4 @@
+import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '@supabase/privileges/authenticated-table-privileges';
 import { z } from 'zod';
 
 export const policyRowSchema = z.object({
@@ -21,17 +22,8 @@ export const expectedPolicyTables = [
   'ai_usage_events',
 ] as const;
 
-export const serverOwnedWriteTables = [
-  'ai_usage_events',
-  'generation_attempts',
-  'learning_plans',
-  'modules',
-  'plan_schedules',
-  'resources',
-  'task_resources',
-  'tasks',
-  'usage_metrics',
-] as const;
+/** Re-exported from supabase/privileges — keep in sync via drift unit test. */
+export const serverOwnedWriteTables = AUTHENTICATED_SERVER_OWNED_WRITE_TABLES;
 
 export async function expectRlsViolation(operation: () => Promise<unknown>) {
   try {

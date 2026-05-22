@@ -66,9 +66,9 @@ export async function safeMarkPlanFailed(
 
 /**
  * `safeMarkPlanFailedWithDbClient` builds the `PlanPersistenceAdapter` used by
- * `safeMarkPlanFailed`. Request handlers should pass the RLS-enforced
- * `DbClient` returned by `getDb()`, while workers/tests may pass a service-role
- * or test client matching their execution context.
+ * `safeMarkPlanFailed`. Plan failure marking mutates server-owned plan state;
+ * pass serviceRoleDb from feature-owned generation boundaries. Workers/tests
+ * may pass service-role or other privileged clients matching their context.
  */
 export async function safeMarkPlanFailedWithDbClient(
   planId: string,

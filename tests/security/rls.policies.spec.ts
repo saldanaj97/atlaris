@@ -21,9 +21,11 @@ import {
   generationAttempts,
   learningPlans,
   modules,
+  planSchedules,
   resources,
   usageMetrics,
   taskProgress,
+  taskResources,
   tasks,
   users,
 } from '@supabase/schema';
@@ -46,7 +48,7 @@ import {
 } from './rls-test-helpers';
 
 // Coverage gap (not functionally exercised in this suite yet):
-// plan_schedules, plan_generations, task_resources, oauth_state_tokens.
+// plan_generations, oauth_state_tokens.
 
 describe('RLS Policy Verification', () => {
   beforeEach(async () => {
@@ -636,6 +638,102 @@ describe('RLS Policy Verification', () => {
         regenerationsUsed: 3,
         lessonModulesGenerated: 4,
       });
+    });
+
+    it('authenticated users cannot directly write plan schedule cache rows', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'plan_schedules_guard',
+          email: 'plan-schedules-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Schedule Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('plan_schedules_guard');
+
+      await expectRlsViolation(() =>
+        authDb.insert(planSchedules).values({
+          planId: plan.id,
+          scheduleJson: { weeks: [] },
+          inputsHash: 'forged-hash',
+          timezone: 'UTC',
+          weeklyHours: 5,
+          startDate: '2026-05-01',
+        }),
+      );
+    });
+
+    it('authenticated users cannot directly write task resource links', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'task_resources_guard',
+          email: 'task-resources-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Task Resources Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const [module] = await db
+        .insert(modules)
+        .values({
+          planId: plan.id,
+          order: 1,
+          title: 'Module 1',
+          estimatedMinutes: 60,
+        })
+        .returning();
+
+      const [task] = await db
+        .insert(tasks)
+        .values({
+          moduleId: module.id,
+          order: 1,
+          title: 'Task 1',
+          estimatedMinutes: 30,
+        })
+        .returning();
+
+      const [resource] = await db
+        .insert(resources)
+        .values({
+          type: 'article',
+          title: 'Linked Resource',
+          url: `https://example.com/article-${Date.now()}`,
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('task_resources_guard');
+
+      await expectRlsViolation(() =>
+        authDb.insert(taskResources).values({
+          taskId: task.id,
+          resourceId: resource.id,
+          order: 1,
+        }),
+      );
     });
 
     it('authenticated users cannot directly write AI usage event audit rows', async () => {
