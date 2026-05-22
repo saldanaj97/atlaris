@@ -123,3 +123,36 @@ No Task 4+ index decision should rely on top statement data from this low-traffi
 - Index cleanup remains gated. Dev has useful local usage signal for `idx_modules_plan_id_order`, `idx_tasks_module_id_order`, `users_auth_user_id_unique`, `usage_metrics_user_id_month_unique`, and plan-origin reads.
 - Prod is too empty to justify destructive index changes by usage counters alone.
 - RLS Advisor warnings are documented, but policy rewrites stay deferred until Task 9 benchmark work.
+
+## Task 4-6 Index Decisions
+
+Additional local verification used `postgresql://postgres:postgres@127.0.0.1:54322/postgres` after local reset. Temporary seed data and candidate indexes were created inside transactions and rolled back.
+
+| Index | Decision | Rationale |
+| --- | --- | --- |
+| `idx_modules_plan_id` | Drop | Left-prefix covered by unique `(plan_id, "order")`; supports FK lookups without a duplicate single-column index. |
+| `idx_modules_plan_id_order` | Drop | Exact non-unique duplicate of `modules_plan_id_order_unique`. |
+| `idx_tasks_module_id` | Drop | Left-prefix covered by unique `(module_id, "order")`; supports FK lookups without a duplicate single-column index. |
+| `idx_tasks_module_id_order` | Drop | Exact non-unique duplicate of `tasks_module_id_order_unique`. |
+| `idx_task_resources_task_id` | Drop | Left-prefix covered by unique `(task_id, resource_id)`. |
+| `idx_usage_metrics_user_id` | Drop | Usage metrics reads/writes use `(user_id, month)`; unique composite covers the active access path and user-only left-prefix lookups. |
+| `idx_usage_metrics_month` | Drop | No production code path filters by month alone; monthly test ordering is not a production access path. |
+| `idx_ai_usage_user_id` | Drop | Covered by left-prefix of `(user_id, created_at)`; keep `idx_ai_usage_created_at` for retention/time-window work. |
+| `idx_plan_schedules_inputs_hash` | Drop | Schedule cache reads are keyed by `plan_id` primary key; `inputs_hash` is compared after lookup and is not queried directly. |
+| `idx_learning_plans_user_id` | Replace | Local EXPLAIN with 5,000 rows showed `WHERE user_id ORDER BY created_at DESC LIMIT 20` changed from seq scan + top-N sort (`0.777 ms`) to `idx_learning_plans_user_created_at_desc` index scan (`0.027 ms`). |
+| `idx_job_queue_status_scheduled_priority` | Replace | Local EXPLAIN with 10,000 queued rows showed queue claim changed from seq scan + sort (`1.671 ms`) to `idx_job_queue_pending_claim` partial index scan (`0.018 ms`). |
+| `idx_job_queue_plan_id` | Keep | Full `plan_id` index remains useful for FK/cascade support and tests/admin lookups; active-regeneration partial replacement would add net index cost. |
+| `idx_job_queue_user_id` | Keep | Full `user_id` index remains useful for FK/cascade support and user/job counting. |
+| `idx_job_queue_created_at` | Keep | Monitoring and count windows filter by `created_at`; retention work also benefits from a time index. |
+| Duplicate-topic expression index | Defer | The duplicate detection window is small and not proven costly; no `lower(topic)` index added. |
+
+Migration: `supabase/migrations/20260522214809_db_cost_index_cleanup.sql`.
+
+Local validation:
+
+- `pnpm check:type`: passed after Drizzle schema edits.
+- `pnpm db:dev:reset`: passed and applied `20260522214809_db_cost_index_cleanup.sql` locally only.
+- Local post-reset index verification showed only the new `idx_learning_plans_user_created_at_desc` and `idx_job_queue_pending_claim` among the replacement/drop set.
+- `pnpm exec vitest run --project integration tests/integration/db/jobs.queue.spec.ts`: passed, 10 tests.
+- `pnpm exec vitest run --project integration tests/integration/db/usage.spec.ts`: passed, 8 tests.
+- `pnpm test:security`: passed, 30 tests.

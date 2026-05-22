@@ -28,13 +28,13 @@
 
 ## Phase 3 - Measured Index Work
 
-- [ ] Build the candidate index table in `metrics-before.md`.
-- [ ] Decide exact duplicate drops.
-- [ ] Decide left-prefix drops only with live usage evidence.
-- [ ] Decide queue replacement indexes only with `EXPLAIN` evidence.
-- [ ] Decide plan-list index only with measured sort/scan evidence.
-- [ ] Generate schema/migration changes in a focused migration.
-- [ ] Validate local reset/security/integration tests if local Supabase is available.
+- [x] Build the candidate index table in `metrics-before.md`.
+- [x] Decide exact duplicate drops.
+- [x] Decide left-prefix drops only with live usage evidence.
+- [x] Decide queue replacement indexes only with `EXPLAIN` evidence.
+- [x] Decide plan-list index only with measured sort/scan evidence.
+- [x] Generate schema/migration changes in a focused migration.
+- [x] Validate local reset/security/integration tests if local Supabase is available.
 
 ## Phase 4 - Table and Retention Decisions
 

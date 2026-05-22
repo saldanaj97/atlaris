@@ -52,7 +52,10 @@ export const learningPlans = pgTable(
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
-    index('idx_learning_plans_user_id').on(table.userId),
+    index('idx_learning_plans_user_created_at_desc').on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
     index('idx_learning_plans_user_generation_status').on(
       table.userId,
       table.generationStatus,
@@ -102,8 +105,6 @@ export const planSchedules = pgTable(
     });
 
     return [
-      index('idx_plan_schedules_inputs_hash').on(table.inputsHash),
-
       // RLS Policies (session-variable-based)
 
       // Users can read schedule cache for their own plans
