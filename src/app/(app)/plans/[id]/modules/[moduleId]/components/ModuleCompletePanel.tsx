@@ -26,7 +26,7 @@ export function ModuleCompletePanel({
           </Link>
         </Button>
       ) : (
-        <Button asChild variant="success" className="h-auto px-6 py-3">
+        <Button asChild className="h-auto px-6 py-3">
           <Link href={`/plans/${planId}`}>
             Back to Plan Overview
             <ArrowRight className="size-4" />
