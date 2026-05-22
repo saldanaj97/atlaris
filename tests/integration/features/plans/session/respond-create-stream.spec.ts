@@ -9,15 +9,16 @@ import { buildTestAuthUserId } from '@tests/helpers/testIds';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-import type {
-  CreatePlanResult,
-  GenerationAttemptResult,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle/types';
-import type { RespondCreateStreamArgs } from '@/features/plans/session/plan-generation-session';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import { buildMockCreateLifecycle } from './stream-session-test-helpers';
+import {
+  BASE_CREATE_BODY,
+  buildCreateStreamArgs,
+  buildCreateStreamRequest,
+  buildMockCreateLifecycle,
+  SUCCESS_CREATE_ATTEMPT_RESULT,
+  SUCCESS_CREATE_RESULT,
+} from './stream-session-test-helpers';
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
@@ -25,78 +26,11 @@ if (!VALID_PRO_MODEL) {
   throw new Error('Expected at least one pro-tier model fixture');
 }
 
-const SUCCESS_CREATE_RESULT: CreatePlanResult = {
-  status: 'success',
-  planId: 'plan_boundary_create_success',
-  tier: 'pro',
-  normalizedInput: {
-    topic: 'Boundary Topic',
-    skillLevel: 'beginner',
-    weeklyHours: 5,
-    learningStyle: 'mixed',
-    startDate: null,
-    deadlineDate: '2030-01-01',
-  },
-};
-
-const SUCCESS_ATTEMPT_RESULT: GenerationAttemptResult = {
-  status: 'generation_success',
-  data: {
-    modules: [
-      {
-        title: 'Boundary Module',
-        estimatedMinutes: 60,
-        tasks: [{ title: 'Boundary Task', estimatedMinutes: 30 }],
-      },
-    ],
-    metadata: {
-      provider: 'mock',
-      model: 'mock-model',
-      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
-    },
-    durationMs: 5,
-  },
-};
-
-const BASE_BODY: CreateLearningPlanInput = {
-  topic: 'Boundary Topic',
-  skillLevel: 'beginner',
-  weeklyHours: 5,
-  learningStyle: 'mixed',
-  notes: undefined,
-  startDate: undefined,
-  deadlineDate: '2030-01-01',
-  visibility: 'private',
-  origin: 'ai',
-};
-
-function buildCreateRequest(
-  overrides: { signal?: AbortSignal; url?: string } = {},
-): Request {
-  return new Request(overrides.url ?? 'http://localhost/api/v1/plans/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(BASE_BODY),
-    ...(overrides.signal ? { signal: overrides.signal } : {}),
-  });
-}
-
-function buildArgs(
-  args: Partial<RespondCreateStreamArgs> & { req: Request; authUserId: string },
-): RespondCreateStreamArgs {
-  return {
-    internalUserId: 'internal-user-id',
-    body: { ...BASE_BODY },
-    savedPreferredAiModel: null,
-    ...args,
-  };
-}
-
 describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   it('emits plan_start, module_summary, progress, then complete on success', async () => {
     const fake = buildMockCreateLifecycle({
       createResult: SUCCESS_CREATE_RESULT,
-      process: async () => SUCCESS_ATTEMPT_RESULT,
+      process: async () => SUCCESS_CREATE_ATTEMPT_RESULT,
     });
     const createLifecycleService = vi.fn(() => fake.service);
     const boundary = createPlanGenerationSessionBoundary({
@@ -104,10 +38,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-success');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId }),
+      buildCreateStreamArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
@@ -128,7 +62,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     expect(planStart?.data).toMatchObject({
       planId: SUCCESS_CREATE_RESULT.planId,
       attemptNumber: 1,
-      topic: 'Boundary Topic',
+      topic: BASE_CREATE_BODY.topic,
     });
 
     const complete = findStreamingEvent(events, 'complete');
@@ -156,10 +90,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-retryable');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId }),
+      buildCreateStreamArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
@@ -197,10 +131,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-reqid');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         requestId: 'corr-boundary-create-1',
@@ -229,10 +163,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-permanent');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId }),
+      buildCreateStreamArgs({ req, authUserId }),
     );
 
     const events = await readStreamingResponse(response);
@@ -260,10 +194,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-unhandled');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         requestId: 'corr-boundary-create-unhandled',
@@ -302,10 +236,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-disconnect');
-    const req = buildCreateRequest({ signal: controller.signal });
+    const req = buildCreateStreamRequest({ signal: controller.signal });
 
     const response = await boundary.respondCreateStream(
-      buildArgs({ req, authUserId }),
+      buildCreateStreamArgs({ req, authUserId }),
     );
 
     expect(response.status).toBe(200);
@@ -319,17 +253,17 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   it('passes responseHeaders through to the streaming Response', async () => {
     const fake = buildMockCreateLifecycle({
       createResult: SUCCESS_CREATE_RESULT,
-      process: async () => SUCCESS_ATTEMPT_RESULT,
+      process: async () => SUCCESS_CREATE_ATTEMPT_RESULT,
     });
     const boundary = createPlanGenerationSessionBoundary({
       createLifecycleService: () => fake.service,
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-headers');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         responseHeaders: {
@@ -352,7 +286,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
       createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
-        return SUCCESS_ATTEMPT_RESULT;
+        return SUCCESS_CREATE_ATTEMPT_RESULT;
       },
     });
     const boundary = createPlanGenerationSessionBoundary({
@@ -360,12 +294,12 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-model-invalid');
-    const req = buildCreateRequest({
+    const req = buildCreateStreamRequest({
       url: 'http://localhost/api/v1/plans/stream?model=invalid/model-id',
     });
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         savedPreferredAiModel: null,
@@ -385,7 +319,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
       createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
-        return SUCCESS_ATTEMPT_RESULT;
+        return SUCCESS_CREATE_ATTEMPT_RESULT;
       },
     });
     const boundary = createPlanGenerationSessionBoundary({
@@ -393,12 +327,12 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-model-valid');
-    const req = buildCreateRequest({
+    const req = buildCreateStreamRequest({
       url: `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(VALID_PRO_MODEL)}`,
     });
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         savedPreferredAiModel: null,
@@ -417,7 +351,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
       createResult: SUCCESS_CREATE_RESULT,
       process: async (input) => {
         captured.push(input);
-        return SUCCESS_ATTEMPT_RESULT;
+        return SUCCESS_CREATE_ATTEMPT_RESULT;
       },
     });
     const boundary = createPlanGenerationSessionBoundary({
@@ -425,10 +359,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     });
 
     const authUserId = buildTestAuthUserId('boundary-create-saved-pref');
-    const req = buildCreateRequest();
+    const req = buildCreateStreamRequest();
 
     const response = await boundary.respondCreateStream(
-      buildArgs({
+      buildCreateStreamArgs({
         req,
         authUserId,
         savedPreferredAiModel: VALID_PRO_MODEL,
@@ -444,7 +378,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
   it('builds a fresh lifecycle service per request via the injected factory', async () => {
     const fake = buildMockCreateLifecycle({
       createResult: SUCCESS_CREATE_RESULT,
-      process: async () => SUCCESS_ATTEMPT_RESULT,
+      process: async () => SUCCESS_CREATE_ATTEMPT_RESULT,
     });
     const createLifecycleService = vi.fn<
       (db: AttemptsDbClient) => PlanLifecycleService
@@ -457,10 +391,10 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
 
     const responses = await Promise.all([
       boundary.respondCreateStream(
-        buildArgs({ req: buildCreateRequest(), authUserId }),
+        buildCreateStreamArgs({ req: buildCreateStreamRequest(), authUserId }),
       ),
       boundary.respondCreateStream(
-        buildArgs({ req: buildCreateRequest(), authUserId }),
+        buildCreateStreamArgs({ req: buildCreateStreamRequest(), authUserId }),
       ),
     ]);
 
