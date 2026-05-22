@@ -45,7 +45,12 @@
 - [x] Wire or defer `job_queue` cleanup scheduling.
 - [x] Add tests for any retention predicates implemented.
 
-## Phase 5 - Docs and Final Validation
+## Phase 5 - RLS Benchmark
+
+- [x] Benchmark representative authenticated RLS reads locally.
+- [x] Document RLS findings without changing policy shape.
+
+## Phase 6 - Docs and Final Validation
 
 - [ ] Update `docs/database/schema-overview.md` for schema/index/table changes.
 - [ ] Update `supabase/AGENTS.md` for ownership/guardrail changes if needed.
