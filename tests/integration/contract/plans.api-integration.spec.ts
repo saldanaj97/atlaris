@@ -6,6 +6,7 @@ import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -41,7 +42,10 @@ describe('Phase 4: API Integration', () => {
         .returning();
 
       let statusRequest = await createStatusRequest(plan.id);
-      let statusResponse = await GET_STATUS(statusRequest);
+      let statusResponse = await GET_STATUS(
+        statusRequest,
+        buildRouteHandlerContext({ planId: plan.id }),
+      );
       expect(statusResponse.status).toBe(200);
       let statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('processing');
@@ -61,7 +65,10 @@ describe('Phase 4: API Integration', () => {
       });
 
       statusRequest = await createStatusRequest(plan.id);
-      statusResponse = await GET_STATUS(statusRequest);
+      statusResponse = await GET_STATUS(
+        statusRequest,
+        buildRouteHandlerContext({ planId: plan.id }),
+      );
       statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('ready');
     });
@@ -94,7 +101,10 @@ describe('Phase 4: API Integration', () => {
       });
 
       const statusRequest = await createStatusRequest(plan.id);
-      const statusResponse = await GET_STATUS(statusRequest);
+      const statusResponse = await GET_STATUS(
+        statusRequest,
+        buildRouteHandlerContext({ planId: plan.id }),
+      );
       const statusPayload = await statusResponse.json();
       expect(statusPayload.status).toBe('failed');
       expect(statusPayload.latestError).toBe(

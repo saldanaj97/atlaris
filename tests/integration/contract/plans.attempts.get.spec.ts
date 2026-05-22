@@ -5,12 +5,16 @@ import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function buildRequest(planId: string) {
-  return new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
-    method: 'GET',
-  });
+  return {
+    request: new Request(`http://localhost/api/v1/plans/${planId}/attempts`, {
+      method: 'GET',
+    }),
+    context: buildRouteHandlerContext({ planId }),
+  };
 }
 
 describe('GET /api/v1/plans/:planId/attempts', () => {
@@ -65,7 +69,8 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
       },
     ]);
 
-    const response = await GET(buildRequest(plan.id));
+    const { request, context } = buildRequest(plan.id);
+    const response = await GET(request, context);
     expect(response.status).toBe(200);
 
     const attempts = await response.json();
@@ -83,9 +88,10 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
       email: buildTestEmail(otherOwnerAuthId),
     });
 
-    const response = await GET(
-      buildRequest('00000000-0000-0000-0000-000000000000'),
+    const { request, context } = buildRequest(
+      '00000000-0000-0000-0000-000000000000',
     );
+    const response = await GET(request, context);
     expect(response.status).toBe(404);
   });
 });

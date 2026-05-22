@@ -1,5 +1,5 @@
 import { classificationToUserMessage } from '@/features/ai/failure-presentation';
-import { requirePlanIdFromRequest } from '@/features/plans/api/route-context';
+import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { getPlanGenerationStatusSnapshot } from '@/features/plans/read-projection/service';
 import { NotFoundError } from '@/lib/api/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -17,8 +17,8 @@ import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
-  async ({ req, actor, db, correlationId }): Promise<Response> => {
-    const planId = requirePlanIdFromRequest(req, 'second-to-last');
+  async ({ params, actor, db, correlationId }): Promise<Response> => {
+    const planId = requireUuidRouteParam(params, 'planId');
 
     logger.debug(
       { planId, userId: actor.id, correlationId },
