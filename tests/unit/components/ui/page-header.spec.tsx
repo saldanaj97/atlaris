@@ -19,4 +19,18 @@ describe('PageHeader', () => {
       screen.getByRole('heading', { name: 'Sub page', level: 2 }),
     ).toBeInTheDocument();
   });
+
+  it('renders centered title and subtitle when align is center', () => {
+    render(
+      <PageHeader
+        align="center"
+        title="Create plan"
+        subtitle="Describe your goal"
+      />,
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Create plan', level: 1 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Describe your goal')).toBeInTheDocument();
+  });
 });
