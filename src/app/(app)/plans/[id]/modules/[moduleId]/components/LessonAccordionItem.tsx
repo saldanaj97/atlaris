@@ -13,7 +13,7 @@ import type { JSX } from 'react';
 import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
-import { getCardClassName } from './lessonAccordionStyles';
+import { getLessonCardClassName } from './lessonAccordionStyles';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -89,7 +89,7 @@ export function LessonAccordionItem({
       disabled={isLocked}
       className={cn(
         'rounded-2xl border transition-all duration-300',
-        getCardClassName(isLocked, isCompleted),
+        getLessonCardClassName(isLocked, isCompleted),
       )}
     >
       <AccordionTrigger

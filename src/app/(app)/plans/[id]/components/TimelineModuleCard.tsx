@@ -2,6 +2,12 @@
 
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
+import {
+  getTimelineCardClassName,
+  getTimelineTitleClassName,
+  getTimelineWeekBadgeClassName,
+  type ModuleStatus,
+} from '@/app/(app)/plans/plans-progress-theme';
 import { cn } from '@/lib/utils';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -10,13 +16,6 @@ import Link from 'next/link';
 import type { JSX } from 'react';
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
-import {
-  getCardClassName,
-  getTitleClassName,
-  getWeekBadgeClassName,
-} from './timeline-module-card-styles';
-
-export type ModuleStatus = 'completed' | 'active' | 'locked';
 
 export interface TimelineModule {
   id: string;
@@ -62,7 +61,7 @@ export function TimelineModuleCard({
         disabled={isLocked}
         className={cn(
           'group/accordion flex flex-1 flex-col rounded-2xl border transition-all duration-300',
-          getCardClassName(module.status),
+          getTimelineCardClassName(module.status),
         )}
       >
         <Button
@@ -82,7 +81,7 @@ export function TimelineModuleCard({
               <span
                 className={cn(
                   'rounded-md px-2 py-0.5 text-xs font-semibold',
-                  getWeekBadgeClassName(module.status),
+                  getTimelineWeekBadgeClassName(module.status),
                 )}
               >
                 Week {module.order}
@@ -99,7 +98,7 @@ export function TimelineModuleCard({
             <h3
               className={cn(
                 'font-semibold wrap-break-word',
-                getTitleClassName(module.status),
+                getTimelineTitleClassName(module.status),
               )}
             >
               {module.title}

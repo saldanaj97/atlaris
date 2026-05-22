@@ -1,14 +1,10 @@
+import {
+  PLAN_FOOTER_THEME,
+  type PlanFooterStatus,
+} from '@/app/(app)/plans/plans-progress-theme';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Flag } from 'lucide-react';
 import type { JSX } from 'react';
-import {
-  getPlanFooterBadgeClassName,
-  getPlanFooterCardClassName,
-  getPlanFooterLabelClassName,
-  getPlanFooterMarkerClassName,
-  getPlanFooterTitleClassName,
-  type PlanFooterStatus,
-} from './timeline-module-card-styles';
 
 interface TimelinePlanFooterProps {
   isPlanComplete: boolean;
@@ -20,6 +16,7 @@ export function TimelinePlanFooter({
   moduleCount,
 }: TimelinePlanFooterProps): JSX.Element {
   const status: PlanFooterStatus = isPlanComplete ? 'complete' : 'incomplete';
+  const theme = PLAN_FOOTER_THEME[status];
   const moduleLabel = `${moduleCount} module${moduleCount !== 1 ? 's' : ''}`;
 
   return (
@@ -28,7 +25,7 @@ export function TimelinePlanFooter({
         <div
           className={cn(
             'z-10 flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-panel shadow-sm',
-            getPlanFooterMarkerClassName(status),
+            theme.marker,
           )}
         >
           {isPlanComplete ? (
@@ -39,27 +36,14 @@ export function TimelinePlanFooter({
         </div>
       </div>
       <div
-        className={cn(
-          'flex-1 rounded-2xl border p-5 shadow-sm',
-          getPlanFooterCardClassName(status),
-        )}
+        className={cn('flex-1 rounded-2xl border p-5 shadow-sm', theme.card)}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p
-              className={cn(
-                'text-sm font-semibold',
-                getPlanFooterLabelClassName(status),
-              )}
-            >
+            <p className={cn('text-sm font-semibold', theme.label)}>
               {isPlanComplete ? 'Congratulations!' : 'End of plan'}
             </p>
-            <h3
-              className={cn(
-                'mt-1 text-lg font-semibold',
-                getPlanFooterTitleClassName(status),
-              )}
-            >
+            <h3 className={cn('mt-1 text-lg font-semibold', theme.title)}>
               {isPlanComplete
                 ? 'You have completed all modules in this plan.'
                 : 'This is the end of the plan.'}
@@ -68,7 +52,7 @@ export function TimelinePlanFooter({
           <span
             className={cn(
               'rounded-md px-2.5 py-1 text-xs font-semibold',
-              getPlanFooterBadgeClassName(status),
+              theme.badge,
             )}
           >
             {moduleLabel} {isPlanComplete ? 'finished' : 'total'}
