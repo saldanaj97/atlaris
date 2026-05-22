@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -108,7 +110,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return 404 for non-existent plan', async () => {
-    const missingPlanId = '00000000-0000-0000-0000-000000000000';
+    const missingPlanId = randomUUID();
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${missingPlanId}/tasks`,

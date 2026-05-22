@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import { GET } from '@/app/api/v1/plans/[planId]/attempts/route';
@@ -88,9 +90,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
       email: buildTestEmail(otherOwnerAuthId),
     });
 
-    const { request, context } = buildRequest(
-      '00000000-0000-0000-0000-000000000000',
-    );
+    const { request, context } = buildRequest(randomUUID());
     const response = await GET(request, context);
     expect(response.status).toBe(404);
   });

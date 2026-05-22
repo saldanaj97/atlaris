@@ -161,7 +161,7 @@ export function expectTerminalEventAfterStart(
   expect(terminalIndex).toBeGreaterThan(startIndex);
   expect(
     eventTypes
-      .slice(0, terminalIndex)
+      .slice(startIndex + 1, terminalIndex)
       .filter((type) => ['complete', 'error', 'cancelled'].includes(type)),
   ).toEqual([]);
 

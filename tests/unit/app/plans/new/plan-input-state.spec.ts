@@ -15,37 +15,48 @@ describe('plan-input-state', () => {
     });
   });
 
-  it('updates only the targeted preference field for each selection action', () => {
-    let state = createInitialPlanInputState('Learn Rust');
+  it.each([
+    {
+      action: { type: 'set-skill-level' as const, value: 'beginner' as const },
+      expectedField: 'skillLevel' as const,
+      expectedValue: 'beginner' as const,
+      untouchedField: 'weeklyHours' as const,
+    },
+    {
+      action: { type: 'set-weekly-hours' as const, value: '3-5' as const },
+      expectedField: 'weeklyHours' as const,
+      expectedValue: '3-5' as const,
+      untouchedField: 'learningStyle' as const,
+    },
+    {
+      action: { type: 'set-learning-style' as const, value: 'mixed' as const },
+      expectedField: 'learningStyle' as const,
+      expectedValue: 'mixed' as const,
+      untouchedField: 'deadlineWeeks' as const,
+    },
+    {
+      action: { type: 'set-deadline-weeks' as const, value: '4' as const },
+      expectedField: 'deadlineWeeks' as const,
+      expectedValue: '4' as const,
+      untouchedField: 'topic' as const,
+      topicValue: 'Learn Rust',
+    },
+  ])(
+    'updates only $expectedField for $action.type',
+    ({ action, expectedField, expectedValue, untouchedField, topicValue }) => {
+      const state = planInputReducer(
+        createInitialPlanInputState('Learn Rust'),
+        action,
+      );
 
-    state = planInputReducer(state, {
-      type: 'set-skill-level',
-      value: 'beginner',
-    });
-    expect(state.skillLevel).toBe('beginner');
-    expect(state.weeklyHours).toBeNull();
-
-    state = planInputReducer(state, {
-      type: 'set-weekly-hours',
-      value: '3-5',
-    });
-    expect(state.weeklyHours).toBe('3-5');
-    expect(state.learningStyle).toBeNull();
-
-    state = planInputReducer(state, {
-      type: 'set-learning-style',
-      value: 'mixed',
-    });
-    expect(state.learningStyle).toBe('mixed');
-    expect(state.deadlineWeeks).toBeNull();
-
-    state = planInputReducer(state, {
-      type: 'set-deadline-weeks',
-      value: '4',
-    });
-    expect(state.deadlineWeeks).toBe('4');
-    expect(state.topic).toBe('Learn Rust');
-  });
+      expect(state[expectedField]).toBe(expectedValue);
+      if (topicValue !== undefined) {
+        expect(state.topic).toBe(topicValue);
+      } else {
+        expect(state[untouchedField]).toBeNull();
+      }
+    },
+  );
 
   it('updates topic on reset-topic without clearing selected preferences', () => {
     let state = createInitialPlanInputState('Learn Rust');

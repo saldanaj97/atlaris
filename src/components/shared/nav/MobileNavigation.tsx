@@ -102,7 +102,7 @@ export default function MobileNavigation({
                 {item.dropdown && (
                   <div className="ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30">
                     {item.dropdown.map((subItem) => {
-                      const isSubActive = pathname === subItem.href;
+                      const isSubActive = isNavItemActive(pathname, subItem);
                       return (
                         <Link
                           key={subItem.href}

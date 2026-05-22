@@ -224,252 +224,174 @@ describe('OpenRouterProvider', () => {
         expect(usage.totalTokens).toBe(480);
       });
 
-      it('keeps the last streaming usage.cost (USD) on the final event', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamWithCost(): AsyncIterable<{
-          delta?: string;
-          usage?: {
-            promptTokens?: number;
-            completionTokens?: number;
-            totalTokens?: number;
-            cost?: number;
-          };
-        }> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
-          };
-          yield {
-            usage: {
-              promptTokens: 10,
-              completionTokens: 20,
-              totalTokens: 30,
-              cost: 0.01,
-            },
-          };
-        }
+      it.each([
+        {
+          name: 'keeps the last streaming usage.cost (USD) on the final event',
+          streamFactory: async function* streamWithCost(payload: string) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+            };
+            yield {
+              usage: {
+                promptTokens: 10,
+                completionTokens: 20,
+                totalTokens: 30,
+                cost: 0.01,
+              },
+            };
+          },
+          expectedCost: 0.01,
+        },
+        {
+          name: 'clears streaming usage.cost when a later chunk has usage without cost',
+          streamFactory: async function* streamCostThenUsageWithoutCost(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.01,
+              },
+            };
+            yield {
+              usage: {
+                promptTokens: 10,
+                completionTokens: 20,
+                totalTokens: 30,
+              },
+            };
+          },
+          expectedCost: undefined,
+        },
+        {
+          name: 'retains streaming usage.cost when later chunks omit the usage field',
+          streamFactory: async function* streamWithTextOnlyAfterCost(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.02,
+              },
+            };
+            yield { delta: payload.slice(40) };
+          },
+          expectedCost: 0.02,
+        },
+        {
+          name: 'retains streaming usage.cost when a later chunk has usage: null',
+          streamFactory: async function* streamCostThenNullUsage(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.01,
+              },
+            };
+            yield { usage: null };
+            yield { delta: payload.slice(40) };
+          },
+          expectedCost: 0.01,
+        },
+        {
+          name: 'retains streaming usage.cost when a later chunk has a primitive usage value',
+          streamFactory: async function* streamCostThenPrimitiveUsage(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.01,
+              },
+            };
+            yield { usage: 1 } as StreamEventLike;
+            yield { delta: payload.slice(40) };
+          },
+          expectedCost: 0.01,
+        },
+        {
+          name: 'retains streaming usage.cost when a later chunk has an array usage value',
+          streamFactory: async function* streamCostThenArrayUsage(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.01,
+              },
+            };
+            yield { usage: [] as never };
+            yield { delta: payload.slice(40) };
+          },
+          expectedCost: 0.01,
+        },
+        {
+          name: 'clears streaming usage.cost when a later usage object omits cost after text-only chunks',
+          streamFactory: async function* streamWithTextOnlyAfterCostThenUsage(
+            payload: string,
+          ) {
+            yield {
+              delta: payload.slice(0, 40),
+              usage: {
+                promptTokens: 1,
+                completionTokens: 2,
+                totalTokens: 3,
+                cost: 0.02,
+              },
+            };
+            yield { delta: payload.slice(40, 120) };
+            yield {
+              usage: {
+                promptTokens: 10,
+                completionTokens: 20,
+                totalTokens: 30,
+              },
+            };
+          },
+          expectedCost: undefined,
+          expectedPromptTokens: 10,
+        },
+      ])(
+        '$name',
+        async ({ streamFactory, expectedCost, expectedPromptTokens }) => {
+          const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+          const { client, send } = createOpenRouterMockClient();
+          send.mockResolvedValueOnce(streamFactory(payload));
 
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamWithCost());
+          const provider = new OpenRouterProvider(
+            { model: OPENROUTER_TEST_MODEL },
+            client,
+          );
+          const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+          await collectOpenRouterStream(result.stream);
 
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
-      });
-
-      it('clears streaming usage.cost when a later chunk has usage without cost', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamCostThenUsageWithoutCost(): AsyncIterable<{
-          delta?: string;
-          usage?: {
-            promptTokens?: number;
-            completionTokens?: number;
-            totalTokens?: number;
-            cost?: number;
-          };
-        }> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.01,
-            },
-          };
-          yield {
-            usage: {
-              promptTokens: 10,
-              completionTokens: 20,
-              totalTokens: 30,
-            },
-          };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamCostThenUsageWithoutCost());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBeUndefined();
-      });
-
-      it('retains streaming usage.cost when later chunks omit the usage field', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamWithTextOnlyAfterCost(): AsyncIterable<{
-          delta?: string;
-          usage?: {
-            promptTokens?: number;
-            completionTokens?: number;
-            totalTokens?: number;
-            cost?: number;
-          };
-        }> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.02,
-            },
-          };
-          yield { delta: payload.slice(40) };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamWithTextOnlyAfterCost());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.02);
-      });
-
-      it('retains streaming usage.cost when a later chunk has usage: null', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamCostThenNullUsage(): AsyncIterable<StreamEventLike> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.01,
-            },
-          };
-          yield { usage: null };
-          yield { delta: payload.slice(40) };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamCostThenNullUsage());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
-      });
-
-      it('retains streaming usage.cost when a later chunk has a primitive usage value', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamCostThenPrimitiveUsage(): AsyncIterable<StreamEventLike> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.01,
-            },
-          };
-          yield { usage: 1 } as StreamEventLike;
-          yield { delta: payload.slice(40) };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamCostThenPrimitiveUsage());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
-      });
-
-      it('retains streaming usage.cost when a later chunk has an array usage value', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamCostThenArrayUsage(): AsyncIterable<StreamEventLike> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.01,
-            },
-          };
-          yield { usage: [] as never };
-          yield { delta: payload.slice(40) };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamCostThenArrayUsage());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
-      });
-
-      it('clears streaming usage.cost when a later usage object omits cost after text-only chunks', async () => {
-        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
-        async function* streamWithTextOnlyAfterCost(): AsyncIterable<{
-          delta?: string;
-          usage?: {
-            promptTokens?: number;
-            completionTokens?: number;
-            totalTokens?: number;
-            cost?: number;
-          };
-        }> {
-          yield {
-            delta: payload.slice(0, 40),
-            usage: {
-              promptTokens: 1,
-              completionTokens: 2,
-              totalTokens: 3,
-              cost: 0.02,
-            },
-          };
-          yield { delta: payload.slice(40, 120) };
-          yield {
-            usage: {
-              promptTokens: 10,
-              completionTokens: 20,
-              totalTokens: 30,
-            },
-          };
-        }
-
-        const { client, send } = createOpenRouterMockClient();
-        send.mockResolvedValueOnce(streamWithTextOnlyAfterCost());
-
-        const provider = new OpenRouterProvider(
-          { model: OPENROUTER_TEST_MODEL },
-          client,
-        );
-        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-        await collectOpenRouterStream(result.stream);
-
-        expect(result.metadata.usage?.providerReportedCostUsd).toBeUndefined();
-        expect(result.metadata.usage?.promptTokens).toBe(10);
-      });
+          expect(result.metadata.usage?.providerReportedCostUsd).toBe(
+            expectedCost,
+          );
+          if (expectedPromptTokens !== undefined) {
+            expect(result.metadata.usage?.promptTokens).toBe(
+              expectedPromptTokens,
+            );
+          }
+        },
+      );
     });
   });
 });

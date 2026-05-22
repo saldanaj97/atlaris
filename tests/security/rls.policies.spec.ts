@@ -29,6 +29,7 @@ import {
   tasks,
   users,
 } from '@supabase/schema';
+import { createId } from '@tests/fixtures/ids';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -721,7 +722,7 @@ describe('RLS Policy Verification', () => {
         .values({
           type: 'article',
           title: 'Linked Resource',
-          url: `https://example.com/article-${Date.now()}`,
+          url: `https://example.com/article-${createId('resource')}`,
         })
         .returning();
 

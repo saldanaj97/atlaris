@@ -44,8 +44,11 @@ const withCorrelationId = (
   return applyProxyDecorations(response, ctx);
 };
 
-const nextWithCorrelationId = (request: NextRequest): NextResponse => {
-  const ctx = buildProxyRequestContext(request);
+const nextWithCorrelationId = (
+  request: NextRequest,
+  existingCtx?: ReturnType<typeof buildProxyRequestContext>,
+): NextResponse => {
+  const ctx = existingCtx ?? buildProxyRequestContext(request);
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-correlation-id', ctx.correlationId);
   requestHeaders.set('x-nonce', ctx.nonce);
@@ -99,13 +102,14 @@ const proxy = clerkMiddleware(
           pathname,
         })
       ) {
+        const ctx = buildProxyRequestContext(request);
         console.debug('[dev_auth_bypass]', {
           event: 'dev_auth_bypass',
           userId: devAuthEnv.userId,
           pathname,
-          correlationId: getCorrelationId(request),
+          correlationId: ctx.correlationId,
         });
-        return nextWithCorrelationId(request);
+        return nextWithCorrelationId(request, ctx);
       }
 
       await auth.protect();
