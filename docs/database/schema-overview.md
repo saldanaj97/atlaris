@@ -15,19 +15,19 @@ users 1—* oauth_state_tokens
 
 Defined in `supabase/enums.ts`:
 
-| Enum                  | Values                                           |
-| --------------------- | ------------------------------------------------ |
-| `skill_level`         | `beginner`, `intermediate`, `advanced`           |
-| `learning_style`      | `reading`, `video`, `practice`, `mixed`          |
-| `resource_type`       | `youtube`, `article`, `course`, `doc`, `other`   |
-| `progress_status`     | `not_started`, `in_progress`, `completed`        |
-| `generation_status`   | `generating`, `pending_retry`, `ready`, `failed` |
+| Enum                       | Values                                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `skill_level`              | `beginner`, `intermediate`, `advanced`                                                                    |
+| `learning_style`           | `reading`, `video`, `practice`, `mixed`                                                                   |
+| `resource_type`            | `video`, `article`, `course`, `doc`, `other`                                                              |
+| `progress_status`          | `not_started`, `in_progress`, `completed`                                                                 |
+| `generation_status`        | `generating`, `pending_retry`, `ready`, `failed`                                                          |
 | `lesson_generation_status` | `not_generated`, `generating`, `ready`, `failed` (per **module**; separate from plan `generation_status`) |
-| `job_status`          | `pending`, `processing`, `completed`, `failed`   |
-| `job_type`            | values sourced from `src/lib/jobs/constants.ts`  |
-| `subscription_tier`   | `free`, `starter`, `pro`                         |
-| `subscription_status` | `active`, `canceled`, `past_due`, `trialing`     |
-| `plan_origin`         | `ai`, `template`, `manual`                       |
+| `job_status`               | `pending`, `processing`, `completed`, `failed`                                                            |
+| `job_type`                 | values sourced from `src/lib/jobs/constants.ts`                                                           |
+| `subscription_tier`        | `free`, `starter`, `pro`                                                                                  |
+| `subscription_status`      | `active`, `canceled`, `past_due`, `trialing`                                                              |
+| `plan_origin`              | `ai`, `template`, `manual`                                                                                |
 
 ## Key constraints
 
@@ -48,32 +48,40 @@ RLS is enforced through request-scoped Postgres session state:
 
 ## Frequently referenced indexes
 
-| Table                | Index / uniqueness                                |
-| -------------------- | ------------------------------------------------- |
-| `learning_plans`     | `(user_id, is_quota_eligible, generation_status)` |
-| `modules`            | `(plan_id, order)`                                |
-| `tasks`              | `(module_id, order)`                              |
-| `task_progress`      | `(user_id, task_id)`                              |
-| `task_resources`     | `(task_id, resource_id)`                          |
-| `job_queue`          | `(status, scheduled_for, priority)`               |
+| Table                | Index / uniqueness                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `learning_plans`     | `(user_id, created_at desc)`, `(user_id, is_quota_eligible, generation_status)`                               |
+| `modules`            | `(plan_id, order)`                                                                                            |
+| `tasks`              | `(module_id, order)`                                                                                          |
+| `task_progress`      | `(user_id, task_id)`                                                                                          |
+| `task_resources`     | `(task_id, resource_id)`                                                                                      |
+| `job_queue`          | partial pending claim index on `(job_type, priority desc, created_at)`                                        |
 | `usage_metrics`      | `(user_id, month)` unique; `lesson_modules_generated` counts successful module lesson batches (billing meter) |
-| `ai_usage_events`    | `(user_id, created_at)`                           |
-| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`              |
+| `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
+| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
+
+## Ownership and retention
+
+- `oauth_state_tokens` is retained as integration infrastructure for future multi-instance OAuth flows. Expired rows are deleted by `cleanupExpiredOauthStateTokens`.
+- `resources` and `task_resources` are active read surfaces for plan detail/resource display. A production writer is still a product follow-up; the tables are not removed while the UI/API read surface exists.
+- `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `cleanupRetainedJobQueueRows`.
+- `stripe_webhook_events` keeps event IDs for 45 days to cover Stripe automatic retries plus manual resend windows before `cleanupRetainedStripeWebhookEvents` prunes old idempotency rows.
+- `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
 
 ## Code locations
 
-| Concern          | Location                       |
-| ---------------- | ------------------------------ |
-| Schema tables    | `supabase/schema/tables/`      |
-| Enum definitions | `supabase/enums.ts`            |
-| Relations        | `supabase/schema/relations.ts` |
-| Query modules    | `src/lib/db/queries/`          |
+| Concern                  | Location                                         |
+| ------------------------ | ------------------------------------------------ |
+| Schema tables            | `supabase/schema/tables/`                        |
+| Enum definitions         | `supabase/enums.ts`                              |
+| Relations                | `supabase/schema/relations.ts`                   |
+| Query modules            | `src/lib/db/queries/`                            |
 | Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts` |
-| Usage tracking   | `supabase/usage.ts`            |
-| Migrations       | `supabase/migrations/`         |
-| Request DB       | `supabase/runtime.ts`          |
-| RLS client       | `supabase/rls.ts`              |
-| Service-role DB  | `supabase/service-role.ts`     |
+| Usage tracking           | `supabase/usage.ts`                              |
+| Migrations               | `supabase/migrations/`                           |
+| Request DB               | `supabase/runtime.ts`                            |
+| RLS client               | `supabase/rls.ts`                                |
+| Service-role DB          | `supabase/service-role.ts`                       |
 
 ## Implemented feature coverage
 

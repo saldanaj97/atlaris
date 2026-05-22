@@ -38,12 +38,12 @@
 
 ## Phase 4 - Table and Retention Decisions
 
-- [ ] Classify `oauth_state_tokens`.
-- [ ] Classify `resources` and `task_resources`.
-- [ ] Decide `ai_usage_events` retention or aggregation requirement.
-- [ ] Decide `stripe_webhook_events` retention window.
-- [ ] Wire or defer `job_queue` cleanup scheduling.
-- [ ] Add tests for any retention predicates implemented.
+- [x] Classify `oauth_state_tokens`.
+- [x] Classify `resources` and `task_resources`.
+- [x] Decide `ai_usage_events` retention or aggregation requirement.
+- [x] Decide `stripe_webhook_events` retention window.
+- [x] Wire or defer `job_queue` cleanup scheduling.
+- [x] Add tests for any retention predicates implemented.
 
 ## Phase 5 - Docs and Final Validation
 
