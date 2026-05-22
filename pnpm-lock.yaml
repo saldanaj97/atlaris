@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  js-cookie: '>=3.0.7'
   minimatch: ^10.2.3
   tar: ^7.5.8
   rollup: '>=4.59.0'
@@ -5730,7 +5731,7 @@ packages:
         integrity: sha512-qiaQhtQRw6YrOaOj0v59h3R6hUY9NvxBmmnMfKemkqYmBB0tEc97NbLP7ix44VP5p9/0YHG8Vyhzuo5YBNwviA==,
       }
 
-  js-cookie@3.0.5:
+  js-cookie@3.0.7:
     resolution:
       {
         integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==,
@@ -7914,7 +7915,7 @@ snapshots:
       '@tanstack/query-core': 5.100.8
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
-      js-cookie: 3.0.5
+      js-cookie: 3.0.7
       std-env: 3.10.0
     optionalDependencies:
       react: 19.2.4
@@ -7925,7 +7926,7 @@ snapshots:
       '@tanstack/query-core': 5.100.8
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
-      js-cookie: 3.0.5
+      js-cookie: 3.0.7
       std-env: 3.10.0
     optionalDependencies:
       react: 19.2.4
@@ -11040,7 +11041,7 @@ snapshots:
 
   jose@5.2.1: {}
 
-  js-cookie@3.0.5: {}
+  js-cookie@3.0.7: {}
 
   js-tokens@10.0.0: {}
 
