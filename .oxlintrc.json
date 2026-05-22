@@ -60,6 +60,26 @@
   ],
   "overrides": [
     {
+      "files": [
+        "src/app/**/*.{ts,tsx}",
+        "src/lib/api/**/*.{ts,tsx}",
+        "src/lib/integrations/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@supabase/service-role",
+                "message": "Use request-scoped getDb()/requestBoundary in request-layer code; keep service-role imports in feature-owned server boundaries, workers, tests, or Supabase helpers."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["tests/**/*.{ts,tsx}"],
       "rules": {
         "typescript/no-explicit-any": "off"

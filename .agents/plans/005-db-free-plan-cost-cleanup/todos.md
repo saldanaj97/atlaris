@@ -22,9 +22,9 @@
 ## Phase 2 - Guardrails
 
 - [x] Search and classify all direct service-role imports.
-- [ ] Add a narrow lint/static test guard if current tooling can enforce the boundary cleanly.
-- [ ] Run `pnpm check:lint`.
-- [ ] Run `pnpm test:security` if service-role or RLS guardrails changed.
+- [x] Add a narrow lint/static test guard if current tooling can enforce the boundary cleanly.
+- [x] Run `pnpm check:lint`.
+- [x] Run `pnpm test:security` if service-role or RLS guardrails changed.
 
 ## Phase 3 - Measured Index Work
 
