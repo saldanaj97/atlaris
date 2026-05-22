@@ -9,7 +9,6 @@ import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import {
   expectPlanStartEvent,
   expectStreamingJsonObject,
@@ -67,7 +66,7 @@ function createRetryInvocation(planId: string) {
     request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
       method: 'POST',
     }),
-    context: buildRouteHandlerContext({ planId }),
+    context: { params: Promise.resolve({ planId }) },
   };
 }
 
@@ -158,10 +157,11 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
-    const invocation = createRetryInvocation(plan.id);
+    const invocationA = createRetryInvocation(plan.id);
+    const invocationB = createRetryInvocation(plan.id);
     const [resA, resB] = await Promise.all([
-      POST(invocation.request, invocation.context),
-      POST(invocation.request, invocation.context),
+      POST(invocationA.request, invocationA.context),
+      POST(invocationB.request, invocationB.context),
     ]);
 
     if (resA.status === 200 && resB.status === 200) {
