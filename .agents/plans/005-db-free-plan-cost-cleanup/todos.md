@@ -52,11 +52,11 @@
 
 ## Phase 6 - Docs and Final Validation
 
-- [ ] Update `docs/database/schema-overview.md` for schema/index/table changes.
-- [ ] Update `supabase/AGENTS.md` for ownership/guardrail changes if needed.
-- [ ] Update `.agents/plans/lessons.md` only after a real implementation lesson is learned.
+- [x] Update `docs/database/schema-overview.md` for schema/index/table changes.
+- [x] Update `supabase/AGENTS.md` for ownership/guardrail changes if needed.
+- [x] Leave `.agents/plans/lessons.md` unchanged because no new durable correction surfaced.
 - [x] Run `pnpm test:changed`.
 - [x] Run `pnpm check:full`.
 - [x] Run `git diff --check`.
 - [x] Inspect `git diff -- supabase/config.toml` for tool churn.
-- [ ] Prepare review notes with before/after evidence and rollback notes for migrations.
+- [x] Prepare review notes with before/after evidence and rollback notes for migrations.
