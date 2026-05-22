@@ -86,7 +86,7 @@ export function ProcessingPanel({ attempts }: { attempts: number }) {
           Our AI is crafting personalized modules and tasks tailored to your
           goals. This may take a moment.
         </p>
-        {attempts > 0 ? (
+        {attempts > 1 ? (
           <p className="text-sm text-muted-foreground">
             Attempt {attempts} of {MAX_RETRY_ATTEMPTS}
           </p>
