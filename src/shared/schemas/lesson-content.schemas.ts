@@ -9,21 +9,21 @@ import {
   MAX_MODULE_LESSON_BATCH_TASKS,
 } from '@supabase/schema/constants';
 
-export const LessonHeadingBlockSchema = z
+const LessonHeadingBlockSchema = z
   .object({
     type: z.literal('heading'),
     text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
   })
   .strict();
 
-export const LessonParagraphBlockSchema = z
+const LessonParagraphBlockSchema = z
   .object({
     type: z.literal('paragraph'),
     text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
   })
   .strict();
 
-export const LessonExampleBlockSchema = z
+const LessonExampleBlockSchema = z
   .object({
     type: z.literal('example'),
     title: z.string().max(MAX_LESSON_BLOCK_TITLE_LENGTH),
@@ -31,14 +31,14 @@ export const LessonExampleBlockSchema = z
   })
   .strict();
 
-export const LessonPracticeBlockSchema = z
+const LessonPracticeBlockSchema = z
   .object({
     type: z.literal('practice'),
     text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
   })
   .strict();
 
-export const LessonTakeawaysBlockSchema = z
+const LessonTakeawaysBlockSchema = z
   .object({
     type: z.literal('takeaways'),
     items: z
@@ -48,7 +48,7 @@ export const LessonTakeawaysBlockSchema = z
   })
   .strict();
 
-export const LessonCompletionCriteriaBlockSchema = z
+const LessonCompletionCriteriaBlockSchema = z
   .object({
     type: z.literal('completion_criteria'),
     items: z

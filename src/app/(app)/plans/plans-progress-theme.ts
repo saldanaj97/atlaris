@@ -4,7 +4,7 @@ export type ModuleStatus = ProgressSurfaceKind;
 
 export type PlanFooterStatus = 'complete' | 'incomplete';
 
-export const TIMELINE_MODULE_THEME: Record<
+const TIMELINE_MODULE_THEME: Record<
   ModuleStatus,
   { marker: string; card: string; badge: string; title: string }
 > = {
@@ -56,7 +56,7 @@ export const PLAN_FOOTER_THEME: Record<
   },
 };
 
-export const LESSON_PROGRESS_THEME: Record<
+const LESSON_PROGRESS_THEME: Record<
   ProgressSurfaceKind,
   { marker: string; card: string; title: string; mutedText: string }
 > = {
@@ -96,7 +96,7 @@ export function getTimelineTitleClassName(status: ModuleStatus): string {
   return TIMELINE_MODULE_THEME[status].title;
 }
 
-export function lessonProgressKind(
+function lessonProgressKind(
   isLocked: boolean,
   isCompleted: boolean,
 ): ProgressSurfaceKind {

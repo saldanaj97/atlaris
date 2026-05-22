@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 const PRICING_SHELL_OVERRIDE =
   'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20';
 
-export function isPricingPath(pathname: string): boolean {
+function isPricingPath(pathname: string): boolean {
   return pathname === ROUTES.PRICING;
 }
 

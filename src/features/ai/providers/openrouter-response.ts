@@ -84,9 +84,7 @@ function extractChunkText(event: StreamEventLike): string {
   return fromMessage ?? '';
 }
 
-export function extractModelFromEvent(
-  event: StreamEventLike,
-): string | undefined {
+function extractModelFromEvent(event: StreamEventLike): string | undefined {
   if (typeof event.model === 'string' && event.model.length > 0) {
     return event.model;
   }

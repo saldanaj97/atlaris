@@ -10,7 +10,7 @@ export type AuthSessionData = {
   user?: AuthSessionUser | null;
 };
 
-export type AuthProviderUser = {
+type AuthProviderUser = {
   id: string;
   email: string | null;
   name?: string;
@@ -60,7 +60,7 @@ export async function getSessionSafe(options?: { strict?: boolean }): Promise<{
   }
 }
 
-export async function getCurrentAuthUserSafe(options?: {
+async function getCurrentAuthUserSafe(options?: {
   strict?: boolean;
 }): Promise<AuthProviderUser | null> {
   try {
@@ -78,11 +78,6 @@ export async function getCurrentAuthUserSafe(options?: {
     }
     return null;
   }
-}
-
-export async function getStrictAuthUserId(): Promise<string | null> {
-  const { userId } = await clerkAuth();
-  return userId ?? null;
 }
 
 export const auth = {

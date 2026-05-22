@@ -7,27 +7,14 @@ export {
 } from '@/lib/config/env/ai';
 
 export { appEnv, createAppEnv } from '@/lib/config/env/app';
-export {
-  clerkAuthEnv,
-  createClerkAuthEnv,
-  devAuthEnv,
-} from '@/lib/config/env/auth';
+export { createClerkAuthEnv, devAuthEnv } from '@/lib/config/env/auth';
 export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv } from '@/lib/config/env/observability';
-export {
-  lessonContentEnv,
-  createLessonContentEnvForTests,
-} from '@/lib/config/env/lesson-content';
+export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
-export {
-  createSupabaseEnv,
-  createSupabasePublicEnv,
-  optionalSupabaseServiceRoleKey,
-  supabaseEnv,
-  type SupabasePublicEnv,
-} from '@/lib/config/env/supabase';
+export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,
   createServerEnvAccess,
