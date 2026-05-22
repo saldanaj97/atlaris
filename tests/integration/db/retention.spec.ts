@@ -1,10 +1,4 @@
-import {
-  cleanupExpiredOauthStateTokens,
-  cleanupRetainedJobQueueRows,
-  cleanupRetainedStripeWebhookEvents,
-  JOB_QUEUE_RETENTION_DAYS,
-  STRIPE_WEBHOOK_EVENT_RETENTION_DAYS,
-} from '@/lib/db/queries/admin/retention';
+import { cleanupRetainedDbRows } from '@/lib/db/queries/admin/retention';
 import {
   jobQueue,
   learningPlans,
@@ -54,7 +48,7 @@ async function createPlanFixture(key: string): Promise<{
 }
 
 describe('database retention cleanup', () => {
-  it('deletes expired OAuth state tokens while keeping future tokens', async () => {
+  it('delegates to the canonical SQL retention function', async () => {
     await db.insert(oauthStateTokens).values([
       {
         stateTokenHash: 'expired-oauth-state',
@@ -68,64 +62,24 @@ describe('database retention cleanup', () => {
       },
     ]);
 
-    const deleted = await cleanupExpiredOauthStateTokens({
-      now: NOW,
-      dbClient: db,
-    });
-
-    expect(deleted).toBe(1);
-
-    const remaining = await db
-      .select({ hash: oauthStateTokens.stateTokenHash })
-      .from(oauthStateTokens)
-      .where(
-        inArray(oauthStateTokens.stateTokenHash, [
-          'expired-oauth-state',
-          'future-oauth-state',
-        ]),
-      );
-    expect(remaining).toEqual([{ hash: 'future-oauth-state' }]);
-  });
-
-  it('keeps Stripe webhook idempotency rows inside the replay window', async () => {
     await db.insert(stripeWebhookEvents).values([
       {
         eventId: 'evt_retention_old',
         livemode: false,
         type: 'customer.subscription.updated',
-        createdAt: daysBefore(STRIPE_WEBHOOK_EVENT_RETENTION_DAYS + 1),
+        createdAt: daysBefore(46),
       },
       {
         eventId: 'evt_retention_recent',
         livemode: false,
         type: 'customer.subscription.updated',
-        createdAt: daysBefore(STRIPE_WEBHOOK_EVENT_RETENTION_DAYS - 1),
+        createdAt: daysBefore(44),
       },
     ]);
 
-    const deleted = await cleanupRetainedStripeWebhookEvents({
-      now: NOW,
-      dbClient: db,
-    });
-
-    expect(deleted).toBe(1);
-
-    const remaining = await db
-      .select({ eventId: stripeWebhookEvents.eventId })
-      .from(stripeWebhookEvents)
-      .where(
-        inArray(stripeWebhookEvents.eventId, [
-          'evt_retention_old',
-          'evt_retention_recent',
-        ]),
-      );
-    expect(remaining).toEqual([{ eventId: 'evt_retention_recent' }]);
-  });
-
-  it('deletes old completed and failed jobs without deleting active jobs', async () => {
     const { planId, userId } = await createPlanFixture('jobs');
-    const oldCompletedAt = daysBefore(JOB_QUEUE_RETENTION_DAYS + 1);
-    const recentCompletedAt = daysBefore(JOB_QUEUE_RETENTION_DAYS - 1);
+    const oldCompletedAt = daysBefore(31);
+    const recentCompletedAt = daysBefore(29);
 
     const rows = await db
       .insert(jobQueue)
@@ -173,12 +127,38 @@ describe('database retention cleanup', () => {
       ])
       .returning({ id: jobQueue.id, status: jobQueue.status });
 
-    const deleted = await cleanupRetainedJobQueueRows({
+    const deleted = await cleanupRetainedDbRows({
       now: NOW,
       dbClient: db,
     });
 
-    expect(deleted).toBe(2);
+    expect(deleted).toEqual({
+      expiredOauthStateTokens: 1,
+      oldStripeWebhookEvents: 1,
+      oldJobQueueRows: 2,
+    });
+
+    const remainingOauth = await db
+      .select({ hash: oauthStateTokens.stateTokenHash })
+      .from(oauthStateTokens)
+      .where(
+        inArray(oauthStateTokens.stateTokenHash, [
+          'expired-oauth-state',
+          'future-oauth-state',
+        ]),
+      );
+    expect(remainingOauth).toEqual([{ hash: 'future-oauth-state' }]);
+
+    const remainingStripe = await db
+      .select({ eventId: stripeWebhookEvents.eventId })
+      .from(stripeWebhookEvents)
+      .where(
+        inArray(stripeWebhookEvents.eventId, [
+          'evt_retention_old',
+          'evt_retention_recent',
+        ]),
+      );
+    expect(remainingStripe).toEqual([{ eventId: 'evt_retention_recent' }]);
 
     const remaining = await db
       .select({ id: jobQueue.id, status: jobQueue.status })

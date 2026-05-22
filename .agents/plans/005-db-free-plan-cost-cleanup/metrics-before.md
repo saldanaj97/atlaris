@@ -140,18 +140,19 @@ Additional local verification used `postgresql://postgres:postgres@127.0.0.1:543
 | `idx_ai_usage_user_id` | Drop | Covered by left-prefix of `(user_id, created_at)`; keep `idx_ai_usage_created_at` for retention/time-window work. |
 | `idx_plan_schedules_inputs_hash` | Drop | Schedule cache reads are keyed by `plan_id` primary key; `inputs_hash` is compared after lookup and is not queried directly. |
 | `idx_learning_plans_user_id` | Replace | Local EXPLAIN with 5,000 rows showed `WHERE user_id ORDER BY created_at DESC LIMIT 20` changed from seq scan + top-N sort (`0.777 ms`) to `idx_learning_plans_user_created_at_desc` index scan (`0.027 ms`). |
-| `idx_job_queue_status_scheduled_priority` | Replace | Local EXPLAIN with 10,000 queued rows showed queue claim changed from seq scan + sort (`1.671 ms`) to `idx_job_queue_pending_claim` partial index scan (`0.018 ms`). |
+| `idx_job_queue_status_scheduled_priority` | Replace | Local EXPLAIN with 10,000 queued rows showed queue claim changed from seq scan + sort (`1.671 ms`) to `idx_job_queue_pending_claim` partial index scan (`0.018 ms`) when all rows were immediately eligible. |
+| `idx_job_queue_pending_claim` (initial) | Replace | Follow-up benchmark with 9,000 future-scheduled high-priority pending rows and 1,000 eligible rows: `(job_type, priority DESC, created_at)` scanned ~9,000 ineligible rows (`2.076 ms`); `(job_type, scheduled_for, priority DESC, created_at)` used a bitmap index scan over eligible rows only (`0.227 ms`). Canonical migration: `0034_strong_marten_broadcloak.sql`. |
 | `idx_job_queue_plan_id` | Keep | Full `plan_id` index remains useful for FK/cascade support and tests/admin lookups; active-regeneration partial replacement would add net index cost. |
 | `idx_job_queue_user_id` | Keep | Full `user_id` index remains useful for FK/cascade support and user/job counting. |
 | `idx_job_queue_created_at` | Keep | Monitoring and count windows filter by `created_at`; retention work also benefits from a time index. |
 | Duplicate-topic expression index | Defer | The duplicate detection window is small and not proven costly; no `lower(topic)` index added. |
 
-Migration: `supabase/migrations/20260522214809_db_cost_index_cleanup.sql`.
+Migration: `supabase/migrations/0034_strong_marten_broadcloak.sql` (Drizzle journal; sole path for index cleanup on both `pnpm db:migrate` and `pnpm db:dev:reset`).
 
 Local validation:
 
 - `pnpm check:type`: passed after Drizzle schema edits.
-- `pnpm db:dev:reset`: passed and applied `20260522214809_db_cost_index_cleanup.sql` locally only.
+- `pnpm db:dev:reset`: applies `0034_strong_marten_broadcloak.sql` with the rest of the journal chain.
 - Local post-reset index verification showed only the new `idx_learning_plans_user_created_at_desc` and `idx_job_queue_pending_claim` among the replacement/drop set.
 - `pnpm exec vitest run --project integration tests/integration/db/jobs.queue.spec.ts`: passed, 10 tests.
 - `pnpm exec vitest run --project integration tests/integration/db/usage.spec.ts`: passed, 8 tests.

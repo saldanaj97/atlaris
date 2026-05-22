@@ -1,20 +1,23 @@
 import { timingSafeEqual } from 'node:crypto';
 
 /**
- * Reads bearer or header token for internal regeneration worker trigger.
+ * Reads bearer or custom header token for internal worker triggers.
  */
-export function readWorkerToken(request: Request): string | null {
+export function readInternalWorkerToken(
+  request: Request,
+  headerName: string,
+): string | null {
   const authHeader = request.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
     return authHeader.slice('Bearer '.length).trim();
   }
 
-  return request.headers.get('x-regeneration-worker-token');
+  return request.headers.get(headerName);
 }
 
 /**
  * Compares expected secret to provided token using timing-safe equality on
- * min(length) bytes; returns true only when lengths also match (mirrors prior route).
+ * min(length) bytes; returns true only when lengths also match.
  */
 export function tokensMatch(
   expectedToken: string,

@@ -1,26 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import {
-  readWorkerToken,
+  readInternalWorkerToken,
   tokensMatch,
-} from '@/lib/api/internal/regeneration-worker-token';
+} from '@/lib/api/internal/internal-worker-token';
 
-describe('readWorkerToken', () => {
+describe('readInternalWorkerToken', () => {
   it('reads Bearer header', () => {
-    const r = new Request('http://x', {
+    const request = new Request('http://x', {
       headers: { authorization: 'Bearer abc' },
     });
-    expect(readWorkerToken(r)).toBe('abc');
+    expect(readInternalWorkerToken(request, 'x-maintenance-worker-token')).toBe(
+      'abc',
+    );
   });
 
-  it('reads x-regeneration-worker-token', () => {
-    const r = new Request('http://x', {
+  it('reads custom worker header', () => {
+    const request = new Request('http://x', {
       headers: { 'x-regeneration-worker-token': 'tok' },
     });
-    expect(readWorkerToken(r)).toBe('tok');
+    expect(
+      readInternalWorkerToken(request, 'x-regeneration-worker-token'),
+    ).toBe('tok');
   });
 
   it('returns null when missing', () => {
-    expect(readWorkerToken(new Request('http://x'))).toBeNull();
+    expect(
+      readInternalWorkerToken(new Request('http://x'), 'x-worker-token'),
+    ).toBeNull();
   });
 });
 

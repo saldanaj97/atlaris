@@ -158,12 +158,14 @@ After you obtain the same explicit `dbClient` as for other RLS-sensitive calls (
 
 ## Retention
 
-Admin-owned cleanup helpers live in `src/lib/db/queries/admin/retention.ts` and default to the service-role client. They are intended for workers/scheduled maintenance, not user read paths.
+Admin-owned cleanup is canonicalized in `private.cleanup_retained_db_rows()` and scheduled by Supabase Cron. TypeScript helpers in `src/lib/db/queries/admin/retention.ts` remain available for the internal manual maintenance route. Cleanup must not run from user read paths.
 
 - `oauth_state_tokens`: delete expired rows.
 - `job_queue`: delete terminal `completed`/`failed` rows older than 30 days; keep pending/processing rows.
 - `stripe_webhook_events`: keep processed event IDs for 45 days to cover Stripe automatic retry and manual resend windows.
 - `ai_usage_events`: retain raw rows until a monthly aggregation/accounting model exists.
+
+Scheduled trigger: Supabase Cron job `retention-cleanup` runs `private.cleanup_retained_db_rows()` daily. Manual fallback: `POST /api/internal/maintenance/retention/cleanup` with `MAINTENANCE_WORKER_TOKEN`. See `docs/architecture/retention-cleanup-runbook.md`.
 
 ## Commands
 

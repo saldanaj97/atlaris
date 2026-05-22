@@ -3,6 +3,13 @@
 Date: 2026-05-22
 Status: planning only
 
+## Review Status - 2026-05-22
+
+Post-implementation verification found the main code-proven cleanup slices implemented and covered by targeted tests. The remaining scheduler gap was resolved by moving recurring retention cleanup into Supabase Cron:
+
+- `/plans` render behavior verified locally on 2026-05-22: anon redirect via smoke test; authenticated empty state, count badge (`0 / 3`), and list state (`1 / 3` with plan row) via browser against `http://127.0.0.1:3000/plans` with local product testing auth.
+- Retention cleanup is owned by `private.cleanup_retained_db_rows()` and scheduled by Supabase Cron through migration `20260522223908_schedule_retention_cleanup.sql`. The internal route remains a manual fallback.
+
 ## Goal
 
 Reduce avoidable Supabase/Postgres cost pressure while preserving the app's security invariants and making the database layer simpler to reason about.

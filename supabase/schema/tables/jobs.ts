@@ -47,10 +47,15 @@ export const jobQueue = pgTable(
   (table) => [
     check('attempts_check', sql`${table.attempts} >= 0`),
     check('max_attempts_check', sql`${table.maxAttempts} >= 0`),
-    // Queue polling asks for highest-priority pending jobs first; keep this partial
-    // so completed/failed history does not inflate the hot polling index.
+    // Queue polling asks for highest-priority eligible pending jobs first; include
+    // scheduled_for so future retry/backoff rows do not inflate claim scans.
     index('idx_job_queue_pending_claim')
-      .on(table.jobType, table.priority.desc(), table.createdAt)
+      .on(
+        table.jobType,
+        table.scheduledFor,
+        table.priority.desc(),
+        table.createdAt,
+      )
       .where(sql`${table.status} = 'pending'`),
     index('idx_job_queue_user_id').on(table.userId),
     index('idx_job_queue_plan_id').on(table.planId),

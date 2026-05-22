@@ -8,6 +8,9 @@ import {
 describe('middleware policy', () => {
   it('isProtectedRoute skips stripe webhook', () => {
     expect(isProtectedRoute('/api/v1/stripe/webhook')).toBe(false);
+    expect(isProtectedRoute('/api/internal/jobs/regeneration/process')).toBe(
+      false,
+    );
     expect(isProtectedRoute('/dashboard')).toBe(true);
   });
 

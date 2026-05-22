@@ -2,9 +2,11 @@ import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import type { PlainHandler } from '@/lib/api/auth';
 import { AppError, AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import {
-  readWorkerToken,
+  readInternalWorkerToken,
   tokensMatch,
-} from '@/lib/api/internal/regeneration-worker-token';
+} from '@/lib/api/internal/internal-worker-token';
+
+const REGENERATION_WORKER_HEADER = 'x-regeneration-worker-token';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
@@ -40,7 +42,10 @@ export const POST: PlainHandler = withErrorBoundary(async (request) => {
 
   const expectedToken = regenerationQueueEnv.workerToken;
   if (expectedToken) {
-    const providedToken = readWorkerToken(request);
+    const providedToken = readInternalWorkerToken(
+      request,
+      REGENERATION_WORKER_HEADER,
+    );
     if (!providedToken || !tokensMatch(expectedToken, providedToken)) {
       logger.warn(
         {

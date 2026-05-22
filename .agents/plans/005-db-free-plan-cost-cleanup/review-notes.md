@@ -20,7 +20,7 @@ No commits were pushed.
 
 ## Migration rollback
 
-Migration: `supabase/migrations/20260522214809_db_cost_index_cleanup.sql`.
+Migration: `supabase/migrations/0034_strong_marten_broadcloak.sql`.
 
 If the index migration needs rollback, reverse the replacement in a new migration:
 

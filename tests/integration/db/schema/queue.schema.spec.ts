@@ -49,7 +49,7 @@ describe('Job queue schema integrity', () => {
     const indexNames = new Set(indexRows.map((row) => row.indexname));
 
     for (const requiredIndex of [
-      'idx_job_queue_status_scheduled_priority',
+      'idx_job_queue_pending_claim',
       'idx_job_queue_user_id',
       'idx_job_queue_plan_id',
       'idx_job_queue_created_at',

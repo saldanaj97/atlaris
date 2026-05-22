@@ -14,6 +14,10 @@ export function isProtectedRoute(pathname: string): boolean {
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
     return false;
   }
+  // Internal worker/maintenance routes authenticate via shared worker tokens.
+  if (pathname.startsWith('/api/internal/')) {
+    return false;
+  }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

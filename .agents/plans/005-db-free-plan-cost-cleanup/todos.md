@@ -12,7 +12,7 @@
 ## Phase 1 - Code-Proven Waste
 
 - [x] Consolidate `/plans` page data loading to one shared page-data promise.
-- [ ] Verify `/plans` still renders the count badge, empty state, list state, and sign-in redirect correctly.
+- [x] Verify `/plans` still renders the count badge, empty state, list state, and sign-in redirect correctly.
 - [x] Make `getUsageSummaryForTier` read-only for absent current-month usage rows.
 - [x] Update usage summary tests to expect zero counters without row creation.
 - [x] Keep `incrementUsage` and reservation mutation paths row-creating.
@@ -42,7 +42,7 @@
 - [x] Classify `resources` and `task_resources`.
 - [x] Decide `ai_usage_events` retention or aggregation requirement.
 - [x] Decide `stripe_webhook_events` retention window.
-- [x] Wire or defer `job_queue` cleanup scheduling.
+- [x] Wire retention cleanup into an actual scheduled/maintenance runner. Supabase Cron now runs `private.cleanup_retained_db_rows()` daily; the internal route remains a manual fallback.
 - [x] Add tests for any retention predicates implemented.
 
 ## Phase 5 - RLS Benchmark
