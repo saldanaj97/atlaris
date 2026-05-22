@@ -106,7 +106,7 @@ export function useModelPreferenceSave({
     });
   };
 
-  const useTierDefault = async (): Promise<void> => {
+  const restoreTierDefault = async (): Promise<void> => {
     await runSave(null, {
       errorMessage: 'Failed to clear model preference',
       nextSelectedModel: '',
@@ -126,6 +126,6 @@ export function useModelPreferenceSave({
     saveStatus,
     selectedModel,
     setSelectedModel,
-    useTierDefault,
+    restoreTierDefault,
   };
 }

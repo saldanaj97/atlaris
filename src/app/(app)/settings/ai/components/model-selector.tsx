@@ -51,18 +51,18 @@ const ModelDropdown = ({
     effectiveBaseline,
     hasChanges,
     isSaving,
+    restoreTierDefault,
     saveSelectedModel,
     saveStatus,
     selectedModel,
     setSelectedModel,
-    useTierDefault,
   } = useModelPreferenceSave({ currentModel, onSave });
 
   const selectedModelData = availableModels.find((m) => m.id === selectedModel);
 
   const handleSecondaryAction = () => {
     if (effectiveBaseline !== '') {
-      void useTierDefault();
+      void restoreTierDefault();
     } else {
       clearSelection();
     }
