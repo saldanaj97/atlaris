@@ -9,36 +9,10 @@ export type PlansDbClient = DbClient;
 
 type LearningPlanRecord = OwnedPlanRecord;
 
-function getPlanIdFromUrl(
-  req: Request,
-  position: 'last' | 'second-to-last' = 'last',
-): string | undefined {
-  const url = new URL(req.url);
-  const segments = url.pathname.split('/').filter(Boolean);
-
-  return position === 'last'
-    ? segments[segments.length - 1]
-    : segments[segments.length - 2];
-}
-
 function isUuid(value: string): boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
     value,
   );
-}
-
-export function requirePlanIdFromRequest(
-  req: Request,
-  position: 'last' | 'second-to-last' = 'second-to-last',
-): string {
-  const planId = getPlanIdFromUrl(req, position);
-  if (!planId) {
-    throw new ValidationError('Plan id is required in the request path.');
-  }
-  if (!isUuid(planId)) {
-    throw new ValidationError('Invalid plan id format.');
-  }
-  return planId;
 }
 
 export function requireUuidRouteParam(

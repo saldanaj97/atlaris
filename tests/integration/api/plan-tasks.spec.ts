@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 
@@ -94,7 +95,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -107,13 +108,17 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return 404 for non-existent plan', async () => {
+    const missingPlanId = '00000000-0000-0000-0000-000000000000';
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
-      'http://localhost:3000/api/v1/plans/00000000-0000-0000-0000-000000000000/tasks',
+      `http://localhost:3000/api/v1/plans/${missingPlanId}/tasks`,
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(
+      request,
+      buildRouteHandlerContext({ planId: missingPlanId }),
+    );
 
     expect(response.status).toBe(404);
     const body = await response.json();
@@ -133,7 +138,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(401);
   });
@@ -151,7 +156,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(401);
   });
@@ -168,7 +173,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(404);
   });
@@ -194,7 +199,10 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(
+      request,
+      buildRouteHandlerContext({ planId: emptyPlan.id }),
+    );
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -237,7 +245,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(200);
     const body = await response.json();

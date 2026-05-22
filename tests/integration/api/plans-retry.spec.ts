@@ -9,6 +9,7 @@ import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { readStreamingResponse } from '../../helpers/streaming';
 
 type RetryAttemptOverrides = Partial<
@@ -56,10 +57,13 @@ async function withRunGenerationAttemptSpy<T>(
   }
 }
 
-function createRetryRequest(planId: string): Request {
-  return new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
-    method: 'POST',
-  });
+function createRetryInvocation(planId: string) {
+  return {
+    request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
+      method: 'POST',
+    }),
+    context: buildRouteHandlerContext({ planId }),
+  };
 }
 
 function expectJsonObject(value: unknown): Record<string, unknown> {
@@ -153,7 +157,8 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
-    const response = await POST(createRetryRequest(plan.id));
+    const { request, context } = createRetryInvocation(plan.id);
+    const response = await POST(request, context);
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
@@ -199,9 +204,11 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
+    const invocationA = createRetryInvocation(plan.id);
+    const invocationB = createRetryInvocation(plan.id);
     const [resA, resB] = await Promise.all([
-      POST(createRetryRequest(plan.id)),
-      POST(createRetryRequest(plan.id)),
+      POST(invocationA.request, invocationA.context),
+      POST(invocationB.request, invocationB.context),
     ]);
 
     if (resA.status === 200 && resB.status === 200) {
@@ -254,8 +261,8 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     await seedFailedAttemptsForDurableWindow(plan.id);
 
     await withRunGenerationAttemptSpy(async (runSpy) => {
-      const request = createRetryRequest(plan.id);
-      const response = await POST(request);
+      const { request, context } = createRetryInvocation(plan.id);
+      const response = await POST(request, context);
       expect(response.status).toBe(429);
       expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
@@ -286,7 +293,8 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     });
 
     await withRunGenerationAttemptSpy(async (runSpy) => {
-      const response = await POST(createRetryRequest(plan.id));
+      const { request, context } = createRetryInvocation(plan.id);
+      const response = await POST(request, context);
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error?: string; code?: string };
       expect(body.code).toBe('VALIDATION_ERROR');
