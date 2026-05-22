@@ -21,7 +21,7 @@ import type { DbClient } from './tier';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
-  incrementUsageInTx,
+  incrementExistingUsageInTx,
 } from './usage-metrics';
 
 type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
@@ -56,7 +56,7 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
     column: 'regenerationsUsed',
     resolveLimit: (tier) => TIER_LIMITS[tier].monthlyRegenerations,
     incrementInTx: (tx, userId, month) =>
-      incrementUsageInTx(tx, userId, month, 'regeneration'),
+      incrementExistingUsageInTx(tx, userId, month, 'regeneration'),
     readColumn: (metrics) => metrics.regenerationsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
   },
@@ -64,7 +64,7 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
     column: 'exportsUsed',
     resolveLimit: (tier) => TIER_LIMITS[tier].monthlyExports,
     incrementInTx: (tx, userId, month) =>
-      incrementUsageInTx(tx, userId, month, 'export'),
+      incrementExistingUsageInTx(tx, userId, month, 'export'),
     readColumn: (metrics) => metrics.exportsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.exportsUsed} - 1)`,
   },
@@ -72,7 +72,7 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
     column: 'lessonModulesGenerated',
     resolveLimit: (tier) => TIER_LIMITS[tier].monthlyLessonGenerations,
     incrementInTx: (tx, userId, month) =>
-      incrementUsageInTx(tx, userId, month, 'lesson_generation'),
+      incrementExistingUsageInTx(tx, userId, month, 'lesson_generation'),
     readColumn: (metrics) => metrics.lessonModulesGenerated,
     decrementSql: () =>
       sql`GREATEST(0, ${usageMetrics.lessonModulesGenerated} - 1)`,

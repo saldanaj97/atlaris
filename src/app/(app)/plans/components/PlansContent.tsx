@@ -1,5 +1,6 @@
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -9,10 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
-import { listPlansPageSummaries } from '@/features/plans/read-projection/service';
-import { requestBoundary } from '@/lib/api/request-boundary';
 import { Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -22,10 +20,13 @@ import type { JSX } from 'react';
  * Async component that fetches usage data and renders the plan count badge.
  * Wrapped in its own Suspense boundary by the parent page.
  */
-export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
-  const snapshot = await requestBoundary.component(async ({ actor, db }) =>
-    getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
-  );
+export async function PlanCountBadgeContent({
+  dataPromise,
+}: {
+  dataPromise: Promise<PlansPageData | null>;
+}): Promise<JSX.Element | null> {
+  const result = await dataPromise;
+  const snapshot = result?.snapshot;
 
   if (!snapshot) return null;
 
@@ -45,15 +46,12 @@ export async function PlanCountBadgeContent(): Promise<JSX.Element | null> {
  * Async component that fetches user plans and renders content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function PlansContent(): Promise<JSX.Element> {
-  const result = await requestBoundary.component(async ({ actor, db }) => {
-    const [summaries, snapshot] = await Promise.all([
-      listPlansPageSummaries({ userId: actor.id, dbClient: db }),
-      getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
-    ]);
-    return { summaries, snapshot };
-  });
-
+export async function PlansContent({
+  dataPromise,
+}: {
+  dataPromise: Promise<PlansPageData | null>;
+}): Promise<JSX.Element> {
+  const result = await dataPromise;
   if (!result) {
     redirect(
       `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.PLANS.ROOT)}`,

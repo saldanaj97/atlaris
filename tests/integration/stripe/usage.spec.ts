@@ -513,10 +513,10 @@ describe('Usage Tracking', () => {
       });
     });
 
-    it('creates usage metrics row for current month if not exists', async () => {
+    it('returns zero counters without creating a usage metrics row', async () => {
       const userId = await ensureUser({
-        authUserId: 'user_summary_create',
-        email: 'summary.create@example.com',
+        authUserId: 'user_summary_read_only',
+        email: 'summary.readonly@example.com',
       });
 
       // No metrics yet
@@ -528,17 +528,16 @@ describe('Usage Tracking', () => {
 
       const summary = await getUsageSummary(userId);
 
-      // Metrics created with zeros
       expect(summary.regenerations.used).toBe(0);
       expect(summary.exports.used).toBe(0);
       expect(summary.lessonGenerations.used).toBe(0);
 
-      // Verify in DB
+      // Summary reads should not write a row just to display zeros.
       const after = await db
         .select()
         .from(usageMetrics)
         .where(sql`user_id = ${userId}`);
-      expect(after).toHaveLength(1);
+      expect(after).toHaveLength(0);
     });
   });
 

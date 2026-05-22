@@ -1,4 +1,4 @@
-import { learningPlans, users } from '@supabase/schema';
+import { learningPlans, usageMetrics, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,12 @@ describe('GET /api/v1/user/subscription', () => {
   });
 
   it('should return subscription information for authenticated user', async () => {
+    const before = await db
+      .select()
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+    expect(before).toHaveLength(0);
+
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
@@ -57,6 +63,14 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body.usage).toHaveProperty('activePlans');
     expect(body.usage).toHaveProperty('regenerations');
     expect(body.usage).toHaveProperty('exports');
+    expect(body.usage.regenerations.used).toBe(0);
+    expect(body.usage.exports.used).toBe(0);
+
+    const after = await db
+      .select()
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+    expect(after).toHaveLength(0);
   });
 
   it('should return usage metrics including active plans', async () => {

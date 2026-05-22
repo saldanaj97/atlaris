@@ -67,6 +67,20 @@ export function getCurrentMonth(now?: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+async function selectUsageMetricsForMonth(
+  userId: string,
+  month: string,
+  dbClient: DbClient,
+) {
+  const [metrics] = await dbClient
+    .select()
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .limit(1);
+
+  return metrics ?? null;
+}
+
 /**
  * Get or create usage metrics for current month
  */
@@ -94,11 +108,7 @@ async function getOrCreateUsageMetrics(
     return created;
   }
 
-  const [existing] = await dbClient
-    .select()
-    .from(usageMetrics)
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .limit(1);
+  const existing = await selectUsageMetricsForMonth(userId, month, dbClient);
 
   if (!existing) {
     throw new UsageMetricsLoadError(userId, month);
@@ -159,7 +169,7 @@ export async function getUsageSummaryForTier(args: {
     });
   }
   const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
+  const metrics = await selectUsageMetricsForMonth(userId, month, dbClient);
 
   const [planCount] = await dbClient
     .select({ count: sql`count(*)::int` })
@@ -178,15 +188,15 @@ export async function getUsageSummaryForTier(args: {
       limit: limits.maxActivePlans,
     },
     regenerations: {
-      used: metrics.regenerationsUsed,
+      used: metrics?.regenerationsUsed ?? 0,
       limit: limits.monthlyRegenerations,
     },
     exports: {
-      used: metrics.exportsUsed,
+      used: metrics?.exportsUsed ?? 0,
       limit: limits.monthlyExports,
     },
     lessonGenerations: {
-      used: metrics.lessonModulesGenerated,
+      used: metrics?.lessonModulesGenerated ?? 0,
       limit: limits.monthlyLessonGenerations,
     },
   };
@@ -230,7 +240,15 @@ export async function incrementUsageInTx(
   type: UsageType,
 ): Promise<void> {
   await ensureUsageMetricsExist(tx, userId, month);
+  await incrementExistingUsageInTx(tx, userId, month, type);
+}
 
+export async function incrementExistingUsageInTx(
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
+  type: UsageType,
+): Promise<void> {
   const updateObj = getUsageCounterUpdate(type);
 
   await tx
