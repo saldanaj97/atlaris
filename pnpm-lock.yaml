@@ -5734,9 +5734,9 @@ packages:
   js-cookie@3.0.7:
     resolution:
       {
-        integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==,
+        integrity: sha512-z/wZZgDrkNV1eA0ULjM/F9/50Ya8fbzgKneSpoPsXSGd0KnpdtHfOZWK+GcwLk+EZbS4F9RBhU+K2RgzuDaItw==,
       }
-    engines: { node: '>=14' }
+    engines: { node: '>=20' }
 
   js-tokens@10.0.0:
     resolution:
