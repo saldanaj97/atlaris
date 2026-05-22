@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
@@ -66,7 +67,7 @@ function createRetryInvocation(planId: string) {
     request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
       method: 'POST',
     }),
-    context: { params: Promise.resolve({ planId }) },
+    context: buildRouteHandlerContext({ planId }),
   };
 }
 

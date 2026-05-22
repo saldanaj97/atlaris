@@ -1,6 +1,6 @@
 import {
   requireOwnedPlanById,
-  requirePlanIdFromRequest,
+  requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import {
   createPlanGenerationSessionBoundary,
@@ -43,10 +43,10 @@ function createRetryHandler(deps?: {
 
   return requestBoundary.route(
     { rateLimit: 'aiGeneration' },
-    async ({ req, actor, db, correlationId }): Promise<Response> => {
+    async ({ req, params, actor, db, correlationId }): Promise<Response> => {
       const authUserId = actor.authUserId;
       const internalUserId = actor.id;
-      const planId = requirePlanIdFromRequest(req, 'second-to-last');
+      const planId = requireUuidRouteParam(params, 'planId');
 
       const rateLimit = await checkPlanGenerationRateLimit(internalUserId, db);
       const generationRateLimitHeaders =

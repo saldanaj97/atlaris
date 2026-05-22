@@ -2,6 +2,7 @@ import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route'
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 
@@ -58,6 +59,7 @@ describe('RLS attempt visibility', () => {
     setTestUser(owner.authUserId);
     const ownerResp = await GET_ATTEMPTS(
       new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`),
+      buildRouteHandlerContext({ planId: owner.planId }),
     );
     expect(ownerResp.status).toBe(200);
     const ownerPayload = await ownerResp.json();
@@ -73,6 +75,7 @@ describe('RLS attempt visibility', () => {
 
     const otherResp = await GET_ATTEMPTS(
       new Request(`http://localhost/api/v1/plans/${owner.planId}/attempts`),
+      buildRouteHandlerContext({ planId: owner.planId }),
     );
     // RLS should cause 404 (plan not found in authorized scope)
     expect(otherResp.status).toBe(404);

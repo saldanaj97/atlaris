@@ -4,6 +4,7 @@ import {
 } from '@/features/plans/read-projection/service';
 import type { PlainHandler } from '@/lib/api/auth';
 import { parseListPaginationParams } from '@/lib/api/pagination';
+import { getRequestSearchParams } from '@/lib/api/request-url';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
@@ -15,12 +16,13 @@ import {
 export const GET: PlainHandler = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ req, actor, db }) => {
-    const url = new URL(req.url);
-
-    const { limit, offset } = parseListPaginationParams(url.searchParams, {
-      defaultLimit: getPaginationDefault('limit'),
-      maxLimit: PAGINATION_MAX_LIMIT,
-    });
+    const { limit, offset } = parseListPaginationParams(
+      getRequestSearchParams(req),
+      {
+        defaultLimit: getPaginationDefault('limit'),
+        maxLimit: PAGINATION_MAX_LIMIT,
+      },
+    );
 
     logger.info(
       {
