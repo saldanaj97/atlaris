@@ -204,10 +204,11 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
-    const invocation = createRetryInvocation(plan.id);
+    const invocationA = createRetryInvocation(plan.id);
+    const invocationB = createRetryInvocation(plan.id);
     const [resA, resB] = await Promise.all([
-      POST(invocation.request, invocation.context),
-      POST(invocation.request, invocation.context),
+      POST(invocationA.request, invocationA.context),
+      POST(invocationB.request, invocationB.context),
     ]);
 
     if (resA.status === 200 && resB.status === 200) {
