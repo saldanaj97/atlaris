@@ -40,10 +40,13 @@ import {
 import { count, eq, sql } from 'drizzle-orm';
 
 /**
- * RLS-sensitive query module: approved exception to the default "optional dbClient = getDb()" pattern.
- * This file requires explicit dbClient (AttemptsDbClient) in all params;
- * do not add default getDb() or make dbClient optional — callers must pass request-scoped getDb()
- * so RLS claims are preserved. See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
+ * Server-owned generation persistence: requires explicit dbClient (AttemptsDbClient)
+ * in all params. Do not add default getDb() or make dbClient optional.
+ *
+ * Production callers pass serviceRoleDb from feature-owned generation boundaries
+ * after request auth and ownership checks. JWT claim replay in transactions is a
+ * no-op for service-role; it remains for any legacy RLS-scoped callers/tests.
+ * See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
  */
 
 /**

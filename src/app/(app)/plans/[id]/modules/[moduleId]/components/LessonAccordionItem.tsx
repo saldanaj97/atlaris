@@ -13,7 +13,7 @@ import type { JSX } from 'react';
 import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
-import { getCardClassName } from './lessonAccordionStyles';
+import { getLessonCardClassName } from './lessonAccordionStyles';
 import { TaskStatusButton } from './TaskStatusButton';
 
 interface LessonAccordionItemProps {
@@ -27,18 +27,18 @@ type LessonResources = NonNullable<ModuleDetailTask['resources']>;
 
 function LockedContentOverlay() {
   return (
-    <div className="relative min-h-75 overflow-hidden rounded-xl border border-stone-200/50 dark:border-stone-700/50">
+    <div className="relative min-h-75 overflow-hidden rounded-xl border border-border/50">
       <div className="flex min-h-75 items-center justify-center bg-background/90 p-8 dark:bg-background/85">
         <div className="max-w-sm rounded-2xl border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm">
           <div className="mb-4 flex justify-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-stone-100 dark:bg-stone-800">
-              <Lock className="size-8 text-stone-400 dark:text-stone-500" />
+            <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+              <Lock className="size-8 text-muted-foreground/50" />
             </div>
           </div>
-          <h3 className="mb-2 text-lg font-semibold text-stone-700 dark:text-stone-300">
+          <h3 className="mb-2 text-lg font-semibold text-foreground">
             Lesson Locked
           </h3>
-          <p className="max-w-xs text-sm text-stone-500 dark:text-stone-400">
+          <p className="max-w-xs text-sm text-muted-foreground">
             Complete the previous lessons to unlock this content.
           </p>
         </div>
@@ -89,7 +89,7 @@ export function LessonAccordionItem({
       disabled={isLocked}
       className={cn(
         'rounded-2xl border transition-all duration-300',
-        getCardClassName(isLocked, isCompleted),
+        getLessonCardClassName(isLocked, isCompleted),
       )}
     >
       <AccordionTrigger
@@ -108,7 +108,7 @@ export function LessonAccordionItem({
       </AccordionTrigger>
 
       <AccordionContent className="px-6 pb-6">
-        <div className="border-t border-stone-200/50 pt-6 dark:border-stone-700/50">
+        <div className="border-t border-border/50 pt-6">
           {isLocked ? (
             <LockedContentOverlay />
           ) : (

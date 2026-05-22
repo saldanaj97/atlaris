@@ -25,13 +25,13 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
   switch (block.type) {
     case 'heading':
       return (
-        <h3 className="mt-6 mb-3 text-lg font-semibold text-stone-900 first:mt-0 dark:text-stone-100">
+        <h3 className="mt-6 mb-3 text-lg font-semibold text-foreground first:mt-0">
           {block.text}
         </h3>
       );
     case 'paragraph':
       return (
-        <p className="mb-4 leading-relaxed text-stone-600 dark:text-stone-400">
+        <p className="mb-4 leading-relaxed text-muted-foreground">
           {block.text}
         </p>
       );
@@ -41,29 +41,25 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
           <h4 className="mb-2 text-sm font-semibold text-primary">
             {block.title}
           </h4>
-          <p className="leading-relaxed text-stone-600 dark:text-stone-300">
-            {block.text}
-          </p>
+          <p className="leading-relaxed text-muted-foreground">{block.text}</p>
         </section>
       );
     case 'practice':
       return (
         <section className="my-5 rounded-xl border border-accent/20 bg-accent/10 p-4">
-          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+          <h4 className="mb-2 text-sm font-semibold text-foreground">
             Practice
           </h4>
-          <p className="leading-relaxed text-stone-600 dark:text-stone-300">
-            {block.text}
-          </p>
+          <p className="leading-relaxed text-muted-foreground">{block.text}</p>
         </section>
       );
     case 'takeaways':
       return (
         <section className="my-5">
-          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+          <h4 className="mb-2 text-sm font-semibold text-foreground">
             Key takeaways
           </h4>
-          <ul className="list-disc space-y-2 pl-5 text-stone-600 dark:text-stone-400">
+          <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (
                 <li key={key}>{item}</li>
@@ -75,10 +71,10 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
     case 'completion_criteria':
       return (
         <section className="my-5">
-          <h4 className="mb-2 text-sm font-semibold text-stone-800 dark:text-stone-100">
+          <h4 className="mb-2 text-sm font-semibold text-foreground">
             Completion criteria
           </h4>
-          <ul className="space-y-2 text-stone-600 dark:text-stone-400">
+          <ul className="space-y-2 text-muted-foreground">
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (
                 <li key={key} className="flex gap-2">
@@ -118,10 +114,10 @@ function GeneratedContentPanel({
 function MissingLessonContentPanel() {
   return (
     <div className="rounded-xl border border-dashed border-primary/25 bg-primary/5 p-6 text-center">
-      <h4 className="mb-2 text-base font-semibold text-stone-900 dark:text-stone-100">
+      <h4 className="mb-2 text-base font-semibold text-foreground">
         Lesson content not generated yet
       </h4>
-      <p className="mx-auto max-w-xl text-sm text-stone-600 dark:text-stone-400">
+      <p className="mx-auto max-w-xl text-sm text-muted-foreground">
         Use the module-level generate action to create and cache detailed
         learning material for every lesson in this module.
       </p>

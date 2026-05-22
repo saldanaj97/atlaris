@@ -4,9 +4,9 @@ import { formatMinutes } from '@/features/plans/formatters';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import { cn } from '@/lib/utils';
 import {
-  getMarkerClassName,
-  getMutedTextClassName,
-  getTitleClassName,
+  getLessonMarkerClassName,
+  getLessonMutedTextClassName,
+  getLessonTitleClassName,
 } from './lessonAccordionStyles';
 
 function LessonMarker({
@@ -22,7 +22,7 @@ function LessonMarker({
     <div
       className={cn(
         'flex size-8 shrink-0 items-center justify-center rounded-full',
-        getMarkerClassName(isLocked, isCompleted),
+        getLessonMarkerClassName(isLocked, isCompleted),
       )}
     >
       {isLocked ? (
@@ -51,7 +51,7 @@ function ResourceSummary({
     <div
       className={cn(
         'mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm',
-        getMutedTextClassName(isLocked),
+        getLessonMutedTextClassName(isLocked),
       )}
     >
       <span className="inline-flex items-center gap-1.5">
@@ -85,7 +85,7 @@ export function LessonAccordionTriggerContent({
           <h3
             className={cn(
               'text-lg font-semibold',
-              getTitleClassName(isLocked, isCompleted),
+              getLessonTitleClassName(isLocked, isCompleted),
             )}
           >
             {lesson.title}
@@ -101,7 +101,7 @@ export function LessonAccordionTriggerContent({
           <p
             className={cn(
               'mb-3 ml-11 text-sm leading-relaxed',
-              getMutedTextClassName(isLocked),
+              getLessonMutedTextClassName(isLocked),
             )}
           >
             {lesson.description}
@@ -114,7 +114,7 @@ export function LessonAccordionTriggerContent({
       <span
         className={cn(
           'flex shrink-0 items-center text-sm',
-          getMutedTextClassName(isLocked),
+          getLessonMutedTextClassName(isLocked),
         )}
       >
         <span className="inline-flex items-center gap-1.5">

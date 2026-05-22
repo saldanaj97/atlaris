@@ -1,0 +1,475 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
+import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
+import type { StreamEventLike } from '@/features/ai/providers/openrouter-response';
+import {
+  collectOpenRouterStream,
+  createOpenRouterMockClient,
+  OPENROUTER_SAMPLE_INPUT,
+  OPENROUTER_TEST_MODEL,
+  VALID_PLAN_RESPONSE,
+} from './openrouter-test-helpers';
+
+describe('OpenRouterProvider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  describe('generate', () => {
+    describe('AsyncIterable streaming path', () => {
+      async function* streamEvents(
+        payload: string,
+        usage?: {
+          promptTokens?: number;
+          completionTokens?: number;
+          totalTokens?: number;
+        },
+      ): AsyncIterable<{
+        delta?: string;
+        choices?: Array<{
+          delta?: { content?: string };
+          message?: { content?: string };
+        }>;
+        usage?: typeof usage;
+      }> {
+        const chunkSize = 8;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+          yield { delta: payload.slice(i, i + chunkSize) };
+        }
+        if (usage) {
+          yield { usage };
+        }
+      }
+
+      it('generates plan from AsyncIterable stream (delta chunks)', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(
+          streamEvents(payload, {
+            promptTokens: 100,
+            completionTokens: 500,
+            totalTokens: 600,
+          }),
+        );
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        const rawText = await collectOpenRouterStream(result.stream);
+        const parsed = JSON.parse(rawText);
+
+        expect(parsed.modules).toHaveLength(3);
+        expect(parsed.modules[0].title).toBe('Introduction to TypeScript');
+        expect(result.metadata.usage).toEqual({
+          promptTokens: 100,
+          completionTokens: 500,
+          totalTokens: 600,
+          providerReportedCostUsd: undefined,
+        });
+      });
+
+      it('generates plan when the full payload arrives in a single streaming chunk', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamFullPayloadChunk(): AsyncIterable<StreamEventLike> {
+          yield { delta: payload };
+          yield {
+            usage: {
+              promptTokens: 100,
+              completionTokens: 500,
+              totalTokens: 600,
+            },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamFullPayloadChunk());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        const rawText = await collectOpenRouterStream(result.stream);
+        expect(JSON.parse(rawText).modules).toHaveLength(3);
+        expect(result.metadata.usage).toEqual({
+          promptTokens: 100,
+          completionTokens: 500,
+          totalTokens: 600,
+          providerReportedCostUsd: undefined,
+        });
+      });
+
+      it('generates plan from AsyncIterable stream (choices[0].delta.content)', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamViaChoices(): AsyncIterable<{
+          choices?: Array<{ delta?: { content?: string } }>;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+          };
+        }> {
+          const chunkSize = 10;
+          for (let i = 0; i < payload.length; i += chunkSize) {
+            yield {
+              choices: [
+                { delta: { content: payload.slice(i, i + chunkSize) } },
+              ],
+            };
+          }
+          yield {
+            usage: {
+              promptTokens: 50,
+              completionTokens: 200,
+              totalTokens: 250,
+            },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamViaChoices());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        const rawText = await collectOpenRouterStream(result.stream);
+        const parsed = JSON.parse(rawText);
+
+        expect(parsed.modules).toHaveLength(3);
+        expect(result.metadata.usage).toEqual({
+          promptTokens: 50,
+          completionTokens: 200,
+          totalTokens: 250,
+          providerReportedCostUsd: undefined,
+        });
+      });
+
+      it('updates metadata.model from streaming chunk model metadata', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithModelMetadata(): AsyncIterable<
+          StreamEventLike & { data?: { model?: string } }
+        > {
+          yield {
+            data: { model: AI_DEFAULT_MODEL },
+            delta: payload.slice(0, 40),
+          } as StreamEventLike & { data?: { model?: string } };
+          yield {
+            delta: payload.slice(40),
+          } as StreamEventLike;
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithModelMetadata());
+
+        const provider = new OpenRouterProvider(
+          {
+            model: 'openai/gpt-4o',
+            fallbackModels: [AI_DEFAULT_MODEL],
+          },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
+      });
+
+      it('streams and merges usage from multiple events', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithMidUsage(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+          };
+        }> {
+          yield { delta: payload.slice(0, 20), usage: { promptTokens: 80 } };
+          yield { delta: payload.slice(20, 100) };
+          yield {
+            delta: payload.slice(100),
+            usage: { completionTokens: 400, totalTokens: 480 },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithMidUsage());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        const rawText = await collectOpenRouterStream(result.stream);
+        expect(JSON.parse(rawText).modules).toHaveLength(3);
+        const usage = result.metadata.usage;
+        if (!usage) throw new Error('Expected usage metadata');
+        expect(usage.promptTokens).toBe(80);
+        expect(usage.completionTokens).toBe(400);
+        expect(usage.totalTokens).toBe(480);
+      });
+
+      it('keeps the last streaming usage.cost (USD) on the final event', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithCost(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+            cost?: number;
+          };
+        }> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+          };
+          yield {
+            usage: {
+              promptTokens: 10,
+              completionTokens: 20,
+              totalTokens: 30,
+              cost: 0.01,
+            },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithCost());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
+      });
+
+      it('clears streaming usage.cost when a later chunk has usage without cost', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamCostThenUsageWithoutCost(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+            cost?: number;
+          };
+        }> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.01,
+            },
+          };
+          yield {
+            usage: {
+              promptTokens: 10,
+              completionTokens: 20,
+              totalTokens: 30,
+            },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamCostThenUsageWithoutCost());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBeUndefined();
+      });
+
+      it('retains streaming usage.cost when later chunks omit the usage field', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithTextOnlyAfterCost(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+            cost?: number;
+          };
+        }> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.02,
+            },
+          };
+          yield { delta: payload.slice(40) };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithTextOnlyAfterCost());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.02);
+      });
+
+      it('retains streaming usage.cost when a later chunk has usage: null', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamCostThenNullUsage(): AsyncIterable<StreamEventLike> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.01,
+            },
+          };
+          yield { usage: null };
+          yield { delta: payload.slice(40) };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamCostThenNullUsage());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
+      });
+
+      it('retains streaming usage.cost when a later chunk has a primitive usage value', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamCostThenPrimitiveUsage(): AsyncIterable<StreamEventLike> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.01,
+            },
+          };
+          yield { usage: 1 } as StreamEventLike;
+          yield { delta: payload.slice(40) };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamCostThenPrimitiveUsage());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
+      });
+
+      it('retains streaming usage.cost when a later chunk has an array usage value', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamCostThenArrayUsage(): AsyncIterable<StreamEventLike> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.01,
+            },
+          };
+          yield { usage: [] as never };
+          yield { delta: payload.slice(40) };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamCostThenArrayUsage());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBe(0.01);
+      });
+
+      it('clears streaming usage.cost when a later usage object omits cost after text-only chunks', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithTextOnlyAfterCost(): AsyncIterable<{
+          delta?: string;
+          usage?: {
+            promptTokens?: number;
+            completionTokens?: number;
+            totalTokens?: number;
+            cost?: number;
+          };
+        }> {
+          yield {
+            delta: payload.slice(0, 40),
+            usage: {
+              promptTokens: 1,
+              completionTokens: 2,
+              totalTokens: 3,
+              cost: 0.02,
+            },
+          };
+          yield { delta: payload.slice(40, 120) };
+          yield {
+            usage: {
+              promptTokens: 10,
+              completionTokens: 20,
+              totalTokens: 30,
+            },
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithTextOnlyAfterCost());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+        await collectOpenRouterStream(result.stream);
+
+        expect(result.metadata.usage?.providerReportedCostUsd).toBeUndefined();
+        expect(result.metadata.usage?.promptTokens).toBe(10);
+      });
+    });
+  });
+});

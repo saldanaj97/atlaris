@@ -1,11 +1,11 @@
 'use client';
 
+import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
+import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
 import type { CSSProperties, JSX } from 'react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
-import { cn } from '@/lib/utils';
 
 type DropdownVariant = 'primary';
 
@@ -116,7 +116,7 @@ export function InlineDropdown<TValue extends string>({
           id={componentId}
           aria-label={ariaLabel}
           className={cn(
-            'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm backdrop-blur-sm outline-none sm:w-[var(--inline-dropdown-width)]',
+            'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm outline-none sm:w-[var(--inline-dropdown-width)]',
             'transition-[width,background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
             'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background',
             isPlaceholder
@@ -137,7 +137,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align="start"
             className={cn(
-              'z-50 min-w-[220px] overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl',
+              'z-50 min-w-[220px] overflow-hidden rounded-2xl border bg-popover shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

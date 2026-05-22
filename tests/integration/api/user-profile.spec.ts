@@ -5,22 +5,24 @@ import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
 
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 
-// Mock Auth auth before importing the route
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 describe('GET /api/v1/user/profile', () => {
   const authUserId = 'auth_profile_test_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
 
@@ -78,10 +80,7 @@ describe('PUT /api/v1/user/profile', () => {
   const authUserId = 'auth_profile_update_user';
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
 

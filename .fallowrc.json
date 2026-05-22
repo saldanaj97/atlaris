@@ -14,14 +14,25 @@
     "@radix-ui/react-slot",
     "@radix-ui/react-tabs",
     "@radix-ui/react-tooltip",
+    "@supabase/supabase-js",
     "babel-plugin-react-compiler",
     "class-variance-authority",
     "radix-ui"
   ],
+  "ignoreDependencyOverrides": [
+    {
+      "package": "serialize-javascript",
+      "source": "package.json"
+    }
+  ],
   "ignoreExports": [
     {
-      "file": "src/lib/db/service-role.ts",
+      "file": "supabase/service-role.ts",
       "exports": ["SERVICE_ROLE_DB_MARKER"]
+    },
+    {
+      "file": "src/lib/config/env/auth.ts",
+      "exports": ["clerkAuthEnv"]
     }
   ],
   "usedClassMembers": [

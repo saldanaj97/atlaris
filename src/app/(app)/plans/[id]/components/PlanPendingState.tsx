@@ -23,7 +23,7 @@ interface PlanPendingStateProps {
 }
 
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
-  const router = useRouter();
+  const { refresh } = useRouter();
   const planGenerationSession = usePlanGenerationSession();
   const { status, attempts, error, pollingError, isPolling, revalidate } =
     usePlanStatus(plan.id, plan.status ?? 'pending');
@@ -42,9 +42,9 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
 
   useEffect(() => {
     if (status === 'ready') {
-      router.refresh();
+      refresh();
     }
-  }, [status, router]);
+  }, [status, refresh]);
 
   const viewState = buildPlanPendingViewState({
     status,

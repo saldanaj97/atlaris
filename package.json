@@ -114,6 +114,7 @@
       "supabase"
     ],
     "overrides": {
+      "js-cookie": ">=3.0.7",
       "minimatch": "^10.2.3",
       "tar": "^7.5.8",
       "rollup": ">=4.59.0",

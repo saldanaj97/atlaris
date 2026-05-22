@@ -1,3 +1,4 @@
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
@@ -127,15 +128,18 @@ describe('Plan status parity contract', () => {
     for (const fixture of fixtures) {
       const planId = await createPlanFixture(userId, fixture);
 
+      const routeContext = buildRouteHandlerContext({ planId });
       const detailResponse = await GET_PLAN_DETAIL(
         new Request(`http://localhost/api/v1/plans/${planId}`, {
           method: 'GET',
         }),
+        routeContext,
       );
       const statusResponse = await GET_PLAN_STATUS(
         new Request(`http://localhost/api/v1/plans/${planId}/status`, {
           method: 'GET',
         }),
+        routeContext,
       );
 
       expect(detailResponse.status).toBe(200);

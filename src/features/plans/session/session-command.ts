@@ -1,4 +1,5 @@
 import { resolveUserTier } from '@/features/billing/tier';
+import { getRequestSearchParams } from '@/lib/api/request-url';
 import { logger } from '@/lib/logging/logger';
 
 import type { PlansDbClient } from '@/features/plans/api/route-context';
@@ -218,7 +219,7 @@ function resolveCreateStreamModel({
 }): string | undefined {
   const { modelOverride, resolutionSource, suppliedModel } =
     resolveStreamModelResolution({
-      searchParams: new URL(req.url).searchParams,
+      searchParams: getRequestSearchParams(req),
       tier: createResult.tier,
       savedPreferredAiModel,
     });

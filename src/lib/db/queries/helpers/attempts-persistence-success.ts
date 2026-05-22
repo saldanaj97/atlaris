@@ -42,9 +42,10 @@ export function whereInProgressGenerationAttemptForPlan(params: {
 }
 
 /**
- * Persists success inside an existing transaction whose RLS/JWT claims have
- * already been applied. Callers that need claim setup should use
- * persistSuccessfulAttempt instead.
+ * Persists server-owned generation content inside an existing transaction.
+ * Callers that open their own transaction should use persistSuccessfulAttempt,
+ * which replays JWT claims only when the dbClient is request-scoped RLS
+ * (service-role skips replay).
  */
 export async function persistSuccessfulAttemptInTx(
   tx: DbTransaction,

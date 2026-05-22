@@ -6,25 +6,25 @@ import { learningPlans, taskProgress } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { buildTestPlanInsert } from '../../fixtures/plans';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 
-// Keep this auth-server mock local. Removing it cleanly would require routing
-// requestBoundary.route -> withAuth through injectable auth/session providers in
-// the middleware stack and every route-handler construction site.
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 describe('GET /api/v1/plans pagination', () => {
   const authUserId = 'auth_plans_list_test_user';
   let userId = '';
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
     userId = await ensureUser({

@@ -1,12 +1,9 @@
 import { z } from 'zod';
 
 import {
-  createServerEnvAccess,
   EnvValidationError,
-  optionalEnvFrom,
   requireEnvFrom,
   type EnvSource,
-  type ServerEnvAccess,
 } from '@/lib/config/env/shared';
 
 const SupabasePublicEnvSchema = z.object({
@@ -23,7 +20,7 @@ const SUPABASE_PUBLIC_ENV_KEY_BY_PATH = {
   publishableKey: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
 } as const;
 
-export type SupabasePublicEnv = z.infer<typeof SupabasePublicEnvSchema>;
+type SupabasePublicEnv = z.infer<typeof SupabasePublicEnvSchema>;
 
 export function createSupabasePublicEnv(env: EnvSource): SupabasePublicEnv {
   const parsed = SupabasePublicEnvSchema.safeParse({
@@ -46,31 +43,4 @@ export function createSupabasePublicEnv(env: EnvSource): SupabasePublicEnv {
   }
 
   return parsed.data;
-}
-
-export function createSupabaseEnv(access: ServerEnvAccess) {
-  return {
-    get url(): string {
-      return access.getServerRequired('NEXT_PUBLIC_SUPABASE_URL');
-    },
-    get publishableKey(): string {
-      return access.getServerRequired('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
-    },
-    get serviceRoleKey(): string {
-      return access.getServerRequired('SUPABASE_SERVICE_ROLE_KEY');
-    },
-    get serviceRoleKeyOptional(): string | undefined {
-      return access.getServerOptional('SUPABASE_SERVICE_ROLE_KEY');
-    },
-  };
-}
-
-export const supabaseEnv = createSupabaseEnv(
-  createServerEnvAccess(() => process.env),
-);
-
-export function optionalSupabaseServiceRoleKey(
-  env: EnvSource,
-): string | undefined {
-  return optionalEnvFrom(env, 'SUPABASE_SERVICE_ROLE_KEY');
 }

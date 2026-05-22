@@ -32,12 +32,12 @@ function LearningResourceCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2">
-          <span className="truncate font-medium text-stone-800 group-hover/resource:text-primary dark:text-stone-200 dark:group-hover/resource:text-primary">
+          <span className="truncate font-medium text-foreground group-hover/resource:text-primary">
             {resource.title}
           </span>
           <ExternalLink className="size-3 shrink-0 opacity-50" />
         </div>
-        <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Badge
             className={cn(
               'rounded border-transparent px-1.5',
@@ -51,9 +51,7 @@ function LearningResourceCard({
           ) : null}
         </div>
         {resource.notes ? (
-          <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-            {resource.notes}
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{resource.notes}</p>
         ) : null}
       </div>
     </a>
@@ -71,7 +69,7 @@ export function LessonResourceList({
 
   return (
     <div className="mb-6">
-      <h4 className="mb-3 text-sm font-medium text-stone-700 dark:text-stone-300">
+      <h4 className="mb-3 text-sm font-medium text-foreground">
         Learning Resources
       </h4>
       <div className="grid gap-3 sm:grid-cols-2">

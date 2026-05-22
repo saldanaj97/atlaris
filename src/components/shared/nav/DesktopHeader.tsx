@@ -3,18 +3,18 @@
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
+import { desktopHeaderShellClass } from '@/components/shared/nav/header-shell';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { type NavItem, ROUTES } from '@/features/navigation';
-import { cn } from '@/lib/utils';
+import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import type { JSX } from 'react';
 
 interface DesktopHeaderProps {
+  pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
@@ -27,22 +27,14 @@ interface DesktopHeaderProps {
  * Layout: brand (left) | navigation (center) | auth controls (right)
  */
 export default function DesktopHeader({
+  pathname,
   navItems,
   tier,
   isAuthenticated,
   showClerkUserButton,
 }: DesktopHeaderProps): JSX.Element {
-  const pathname = usePathname();
-  const isPricingPage = pathname === ROUTES.PRICING;
-
   return (
-    <div
-      className={cn(
-        'hidden w-full grid-cols-3 items-center rounded-2xl border border-white/40 bg-black/5 px-5 py-2.5 shadow-lg backdrop-blur-xl md:grid dark:border-white/10 dark:bg-card/50',
-        isPricingPage &&
-          'border border-white/25 bg-white/20 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/20',
-      )}
-    >
+    <div className={desktopHeaderShellClass(pathname)}>
       {/* Brand (left) */}
       <div className="flex items-center">
         <BrandLogo />
@@ -50,7 +42,7 @@ export default function DesktopHeader({
 
       {/* Navigation (center) */}
       <div className="flex justify-center">
-        <DesktopNavigation navItems={navItems} />
+        <DesktopNavigation pathname={pathname} navItems={navItems} />
       </div>
 
       {/* Auth controls (right) */}
