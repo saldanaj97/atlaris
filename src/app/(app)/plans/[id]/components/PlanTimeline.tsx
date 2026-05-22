@@ -1,21 +1,21 @@
 'use client';
 
-import type { TimelineModule } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
 import { TimelineModuleCard } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
 import { getStatusesFromModules } from '@/app/(app)/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
-import { formatMinutes } from '@/features/plans/formatters';
-import {
-  deriveActiveModuleId,
-  deriveCompletedModuleIds,
-  deriveModuleProgressState,
-} from '@/features/plans/task-progress/client';
+import { deriveActiveModuleId } from '@/features/plans/task-progress/client';
 import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import {
+  deriveTimelineModules,
+  getNextExpandedModuleIds,
+  getVisibleExpandedModuleIds,
+  isPlanTimelineComplete,
+} from './plan-timeline-state';
 import { TimelinePlanFooter } from './TimelinePlanFooter';
 
 interface ModuleTimelineProps {
@@ -36,61 +36,27 @@ export function PlanTimeline({
     [statuses, modules],
   );
 
-  const timelineModules: TimelineModule[] = useMemo(() => {
-    return modules.map((mod, index) => {
-      const tasks = mod.tasks;
-      const previousModulesCompleted = modules
-        .slice(0, index)
-        .every((prevMod) => {
-          const prevTasks = prevMod.tasks;
-          return prevTasks.every(
-            (task) =>
-              (effectiveStatuses[task.id] ?? task.status) === 'completed',
-          );
-        });
-      const completedCount = tasks.filter(
-        (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
-      ).length;
-      const status = deriveModuleProgressState(
-        mod,
-        effectiveStatuses,
-        previousModulesCompleted,
-      );
-
-      return {
-        id: mod.id,
-        order: index + 1,
-        title: mod.title,
-        description: mod.description,
-        status,
-        duration: formatMinutes(mod.estimatedMinutes),
-        tasks,
-        completedTasks: completedCount,
-      };
-    });
-  }, [modules, effectiveStatuses]);
+  const timelineModules = useMemo(
+    () => deriveTimelineModules(modules, effectiveStatuses),
+    [modules, effectiveStatuses],
+  );
 
   const activeModuleId = useMemo(
     () => deriveActiveModuleId(modules, effectiveStatuses),
     [modules, effectiveStatuses],
   );
-  const isPlanComplete =
-    modules.length > 0 &&
-    modules.every(
-      (mod) =>
-        mod.tasks.length > 0 &&
-        mod.tasks.every(
-          (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
-        ),
-    );
+  const isPlanComplete = useMemo(
+    () => isPlanTimelineComplete(modules, effectiveStatuses),
+    [modules, effectiveStatuses],
+  );
 
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
     return activeModuleId ? [activeModuleId] : [];
   });
-  const visibleExpandedModuleIds =
-    activeModuleId === null || expandedModuleIds.includes(activeModuleId)
-      ? expandedModuleIds
-      : [...expandedModuleIds, activeModuleId];
+  const visibleExpandedModuleIds = getVisibleExpandedModuleIds(
+    expandedModuleIds,
+    activeModuleId,
+  );
 
   const handleModuleToggle = (moduleId: string) => {
     setExpandedModuleIds((prev) =>
@@ -112,23 +78,14 @@ export function PlanTimeline({
             ...effectiveStatuses,
             [taskId]: nextStatus,
           };
-    const completedModuleIds = deriveCompletedModuleIds(modules, nextStatuses);
-    const nextActiveModuleId = deriveActiveModuleId(modules, nextStatuses);
 
-    setExpandedModuleIds((prev) => {
-      const prevWithoutCompleted = prev.filter(
-        (moduleId) => !completedModuleIds.has(moduleId),
-      );
-
-      if (
-        nextActiveModuleId === null ||
-        prevWithoutCompleted.includes(nextActiveModuleId)
-      ) {
-        return prevWithoutCompleted;
-      }
-
-      return [...prevWithoutCompleted, nextActiveModuleId];
-    });
+    setExpandedModuleIds((prev) =>
+      getNextExpandedModuleIds({
+        previousExpandedModuleIds: prev,
+        modules,
+        nextStatuses,
+      }),
+    );
 
     onStatusChange(taskId, nextStatus);
   };
@@ -157,7 +114,6 @@ export function PlanTimeline({
           className="pointer-events-none absolute top-3 bottom-10 left-8 w-0.5 -translate-x-1/2 bg-linear-to-b from-primary/50 via-primary/90 to-transparent dark:from-primary/70 dark:via-primary dark:to-transparent"
           aria-hidden
         />
-
         <Accordion
           type="multiple"
           value={visibleExpandedModuleIds}
