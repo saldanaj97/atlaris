@@ -1,4 +1,4 @@
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres from 'postgres';

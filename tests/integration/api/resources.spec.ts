@@ -5,7 +5,7 @@ import { resources } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { auth } from '../../mocks/shared/auth-server';
 
 const authUserId = 'auth_resources_test_user';

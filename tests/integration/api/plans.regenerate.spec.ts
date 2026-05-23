@@ -1,5 +1,5 @@
 import { setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

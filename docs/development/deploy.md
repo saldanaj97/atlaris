@@ -12,3 +12,28 @@ Required order:
 4. Run the Supabase migration workflow for the target environment (`staging-db-migrations.yaml` for `develop`, `production-db-migrations.yaml` for `main`), which applies committed migrations with `supabase db push`.
 
 Do not reverse the order. Running the migration first can break rolling deploys or failovers against still-old binaries.
+
+## Database migrations and internal workers
+
+After deploying a release that includes new Supabase migrations:
+
+1. Run the environment workflow (`staging-db-migrations.yaml` for `develop`, `production-db-migrations.yaml` for `main`).
+2. If the CLI reports out-of-order local migrations, use `supabase db push --include-all` against the target project (see `docs/architecture/retention-cleanup-runbook.md`).
+3. Set worker tokens in the target environment:
+   - `REGENERATION_WORKER_TOKEN` for regeneration drains
+   - `MAINTENANCE_WORKER_TOKEN` and `RETENTION_CLEANUP_ENABLED=true` when using the manual retention route
+4. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
+
+```sql
+SELECT jobid, jobname, schedule, active
+FROM cron.job
+WHERE jobname = 'retention-cleanup';
+```
+
+If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
+
+See also:
+
+- `docs/architecture/internal-worker-routes.md`
+- `docs/architecture/regeneration-worker-runbook.md`
+- `docs/architecture/retention-cleanup-runbook.md`

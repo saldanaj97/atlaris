@@ -1,7 +1,7 @@
 import { type InferSelectModel, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { ensureUser } from '@/../tests/helpers/db';
+import { ensureUser } from '@/../tests/helpers/db/users';
 import { usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 
@@ -177,7 +177,7 @@ describe('Stripe DB schema', () => {
       expect(metrics.find((m) => m.userId === userId)).toBeUndefined();
     });
 
-    it('exposes expected indexes for user_id and month', async () => {
+    it('exposes the unique user/month index without redundant single-column indexes', async () => {
       const indexes = await db.execute<{
         schemaname: string;
         tablename: string;
@@ -186,12 +186,9 @@ describe('Stripe DB schema', () => {
         sql`select schemaname, tablename, indexname from pg_indexes where schemaname = 'public' and tablename = 'usage_metrics'`,
       );
 
-      const names = indexes.map((r) => r.indexname);
+      const names = new Set(indexes.map((r) => r.indexname));
       expect(names).toEqual(
-        expect.arrayContaining([
-          'idx_usage_metrics_user_id',
-          'idx_usage_metrics_month',
-        ]),
+        new Set(['usage_metrics_pkey', 'usage_metrics_user_id_month_unique']),
       );
     });
   });

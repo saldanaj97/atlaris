@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
 
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { cleanupTrackedRlsClients } from '../../helpers/rls';
 
 const TEST_INPUT = {

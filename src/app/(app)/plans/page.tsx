@@ -7,6 +7,7 @@ import {
   PlanCountBadgeContent,
   PlansContent,
 } from '@/app/(app)/plans/components/PlansContent';
+import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -32,6 +33,8 @@ export const metadata: Metadata = {
  * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
  */
 export default function PlansPage(): JSX.Element {
+  const plansPageData = loadPlansPageData();
+
   return (
     <>
       {/* Static header - renders immediately; count waits independently. */}
@@ -40,11 +43,11 @@ export default function PlansPage(): JSX.Element {
         actions={
           <>
             <Suspense fallback={<Skeleton className="h-6 w-16 rounded-full" />}>
-              <PlanCountBadgeContent />
+              <PlanCountBadgeContent dataPromise={plansPageData} />
             </Suspense>
             <Button asChild>
               <Link href="/plans/new">
-                <Plus className="h-4 w-4" />
+                <Plus />
                 New Plan
               </Link>
             </Button>
@@ -54,7 +57,7 @@ export default function PlansPage(): JSX.Element {
 
       {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
       <Suspense fallback={<PlansContentSkeleton />}>
-        <PlansContent />
+        <PlansContent dataPromise={plansPageData} />
       </Suspense>
     </>
   );

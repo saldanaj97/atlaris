@@ -154,7 +154,7 @@ This is **intentional convenience** (RLS is tested separately via dedicated RLS 
 
 ### Contradiction 2: Docs say `getCurrentUserRecordSafe` is valid; learnings say don't use it
 
-**Now fixed.** The learnings.md rule was updated in the audit. But `getCurrentUserRecordSafe` is still exported from `auth.ts` and its JSDoc (`auth.ts:116-122`) still describes it as a valid lightweight alternative. The function should either be removed or have its JSDoc updated to mark it as deprecated.
+**Now fixed.** The rule was updated in the audit. But `getCurrentUserRecordSafe` is still exported from `auth.ts` and its JSDoc (`auth.ts:116-122`) still describes it as a valid lightweight alternative. The function should either be removed or have its JSDoc updated to mark it as deprecated.
 
 ### Contradiction 3: `src/lib/db/AGENTS.md` says `getDb()` for "API routes, server actions" but it also works in server components
 

@@ -124,5 +124,8 @@ Integration tests normally rely on Testcontainers. If you intentionally want to 
 - `AGENTS.md`
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/architecture/plan-generation-architecture.md`
+- `docs/architecture/internal-worker-routes.md`
+- `docs/architecture/regeneration-worker-runbook.md`
+- `docs/architecture/retention-cleanup-runbook.md`
 - `docs/api/error-contract.md`
 - `docs/database/schema-overview.md`

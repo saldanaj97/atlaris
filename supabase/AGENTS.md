@@ -147,14 +147,25 @@ After you obtain the same explicit `dbClient` as for other RLS-sensitive calls (
 
 ## Key Tables
 
-| Table                 | Purpose                      | Notes                                                                      |
-| --------------------- | ---------------------------- | -------------------------------------------------------------------------- |
-| `users`               | User accounts                | `auth_user_id` for auth                                                    |
-| `learning_plans`      | Plans with generation status | RLS by `user_id`; origin enum is limited to `ai`, `template`, and `manual` |
-| `modules`             | Plan sections                | `order` starts at 1                                                        |
-| `tasks`               | Learning activities          | `order` starts at 1                                                        |
-| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                             |
-| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows           |
+| Table                 | Purpose                      | Notes                                                                                                                |
+| --------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `users`               | User accounts                | `auth_user_id` for auth                                                                                              |
+| `learning_plans`      | Plans with generation status | RLS by `user_id`; origin enum is limited to `ai`, `template`, and `manual`                                           |
+| `modules`             | Plan sections                | `order` starts at 1                                                                                                  |
+| `tasks`               | Learning activities          | `order` starts at 1                                                                                                  |
+| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                                                                       |
+| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows; prune expired rows through admin retention helpers |
+
+## Retention
+
+Admin-owned cleanup is canonicalized in `private.cleanup_retained_db_rows()` and scheduled by Supabase Cron. TypeScript helpers in `src/lib/db/queries/admin/retention.ts` remain available for the internal manual maintenance route. Cleanup must not run from user read paths.
+
+- `oauth_state_tokens`: delete expired rows.
+- `job_queue`: delete terminal `completed`/`failed` rows older than 30 days; keep pending/processing rows.
+- `stripe_webhook_events`: keep processed event IDs for 45 days to cover Stripe automatic retry and manual resend windows.
+- `ai_usage_events`: retain raw rows until a monthly aggregation/accounting model exists.
+
+Scheduled trigger: Supabase Cron job `retention-cleanup` runs `private.cleanup_retained_db_rows()` daily. Manual fallback: `POST /api/internal/maintenance/retention/cleanup` with `MAINTENANCE_WORKER_TOKEN`. See `docs/architecture/retention-cleanup-runbook.md` and `docs/architecture/internal-worker-routes.md`.
 
 ## Commands
 

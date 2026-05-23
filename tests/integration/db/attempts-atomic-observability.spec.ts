@@ -15,11 +15,7 @@ import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
 import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db';
-import {
-  cleanupTrackedRlsClients,
-  createRlsDbForUser,
-} from '../../helpers/rls';
+import { ensureUser } from '../../helpers/db/users';
 
 const TEST_INPUT = {
   topic: 'Atomic observability',
@@ -56,7 +52,6 @@ describe('Atomic attempt observability', () => {
   });
 
   afterEach(async () => {
-    await cleanupTrackedRlsClients();
     consoleInfoSpy?.mockRestore();
   });
 
@@ -142,7 +137,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('replaces prior modules/tasks atomically and succeeds through an RLS client', async () => {
+  it('replaces prior modules/tasks atomically through the server-owned generation path', async () => {
     const [staleModule] = await db
       .insert(modules)
       .values({
@@ -166,12 +161,11 @@ describe('Atomic attempt observability', () => {
       estimatedMinutes: 5,
     });
 
-    const rlsDb = await createRlsDbForUser(authUserId);
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
       input: TEST_INPUT,
-      dbClient: rlsDb,
+      dbClient: db,
       now: () => new Date('2026-01-03T08:00:00.000Z'),
     });
 
@@ -216,7 +210,7 @@ describe('Atomic attempt observability', () => {
       ],
       durationMs: 321,
       extendedTimeout: false,
-      dbClient: rlsDb,
+      dbClient: db,
       now: () => new Date('2026-01-03T08:00:03.000Z'),
     });
 

@@ -4,6 +4,7 @@ import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { UsageMetricsLoadError } from './errors';
 import { resolveUserTier } from './tier';
 
@@ -66,6 +67,20 @@ export function getCurrentMonth(now?: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+async function selectUsageMetricsForMonth(
+  userId: string,
+  month: string,
+  dbClient: DbClient,
+) {
+  const [metrics] = await dbClient
+    .select()
+    .from(usageMetrics)
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .limit(1);
+
+  return metrics ?? null;
+}
+
 /**
  * Get or create usage metrics for current month
  */
@@ -74,7 +89,7 @@ async function getOrCreateUsageMetrics(
   month: string,
   dbClient: DbClient = getDb(),
 ) {
-  const [created] = await dbClient
+  const [created] = await serviceRoleDb
     .insert(usageMetrics)
     .values({
       userId,
@@ -93,11 +108,7 @@ async function getOrCreateUsageMetrics(
     return created;
   }
 
-  const [existing] = await dbClient
-    .select()
-    .from(usageMetrics)
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
-    .limit(1);
+  const existing = await selectUsageMetricsForMonth(userId, month, dbClient);
 
   if (!existing) {
     throw new UsageMetricsLoadError(userId, month);
@@ -112,7 +123,7 @@ async function getOrCreateUsageMetrics(
 export async function incrementUsage(
   userId: string,
   type: UsageType,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient = serviceRoleDb,
 ): Promise<void> {
   const month = getCurrentMonth();
 
@@ -158,7 +169,7 @@ export async function getUsageSummaryForTier(args: {
     });
   }
   const month = getCurrentMonth();
-  const metrics = await getOrCreateUsageMetrics(userId, month, dbClient);
+  const metrics = await selectUsageMetricsForMonth(userId, month, dbClient);
 
   const [planCount] = await dbClient
     .select({ count: sql`count(*)::int` })
@@ -177,15 +188,15 @@ export async function getUsageSummaryForTier(args: {
       limit: limits.maxActivePlans,
     },
     regenerations: {
-      used: metrics.regenerationsUsed,
+      used: metrics?.regenerationsUsed ?? 0,
       limit: limits.monthlyRegenerations,
     },
     exports: {
-      used: metrics.exportsUsed,
+      used: metrics?.exportsUsed ?? 0,
       limit: limits.monthlyExports,
     },
     lessonGenerations: {
-      used: metrics.lessonModulesGenerated,
+      used: metrics?.lessonModulesGenerated ?? 0,
       limit: limits.monthlyLessonGenerations,
     },
   };
@@ -229,14 +240,27 @@ export async function incrementUsageInTx(
   type: UsageType,
 ): Promise<void> {
   await ensureUsageMetricsExist(tx, userId, month);
+  await incrementExistingUsageInTx(tx, userId, month, type);
+}
 
+export async function incrementExistingUsageInTx(
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
+  type: UsageType,
+): Promise<void> {
   const updateObj = getUsageCounterUpdate(type);
 
-  await tx
+  const updated = await tx
     .update(usageMetrics)
     .set({
       ...updateObj,
       updatedAt: new Date(),
     })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ id: usageMetrics.id });
+
+  if (updated.length === 0) {
+    throw new UsageMetricsLoadError(userId, month);
+  }
 }

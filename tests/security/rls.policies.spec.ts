@@ -17,63 +17,39 @@
 
 import {
   jobQueue,
+  aiUsageEvents,
+  generationAttempts,
   learningPlans,
   modules,
+  planSchedules,
   resources,
+  usageMetrics,
   taskProgress,
+  taskResources,
   tasks,
   users,
 } from '@supabase/schema';
+import { createId } from '@tests/fixtures/ids';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { db } from '@supabase/service-role';
-import { truncateAll } from '../helpers/db';
+import { truncateAll } from '../helpers/db/truncate';
 import {
   cleanupTrackedRlsClients,
   createAnonRlsDb,
   createRlsDbForUser,
   getServiceRoleDb,
 } from '../helpers/rls';
+import {
+  expectedPolicyTables,
+  expectRlsViolation,
+  policyRowSchema,
+  serverOwnedWriteTables,
+} from './rls-test-helpers';
 
-const policyRowSchema = z.object({
-  tablename: z.string(),
-  policyname: z.string(),
-  role: z.string(),
-});
-// Keep this list limited to tables with explicit allow/deny behavior checks in
-// this file. Do not add metadata-only tables here without functional tests.
 // Coverage gap (not functionally exercised in this suite yet):
-// plan_schedules, plan_generations, generation_attempts, task_resources,
-// usage_metrics, ai_usage_events, oauth_state_tokens.
-const expectedPolicyTables = [
-  'users',
-  'learning_plans',
-  'job_queue',
-  'modules',
-  'tasks',
-  'resources',
-  'task_progress',
-] as const;
-
-async function expectRlsViolation(operation: () => Promise<unknown>) {
-  try {
-    await operation();
-    throw new Error('Expected RLS violation but operation succeeded');
-  } catch (error) {
-    const err = error as Error;
-    const message = err.message;
-    const causeMessage = (err.cause as Error)?.message || '';
-    const combinedMessage = `${message} ${causeMessage}`;
-
-    if (!/row.*level.*security|permission/i.test(combinedMessage)) {
-      throw new Error(
-        `Expected RLS violation error but got: ${message}${causeMessage ? ` (cause: ${causeMessage})` : ''}`,
-        { cause: error },
-      );
-    }
-  }
-}
+// plan_generations, oauth_state_tokens.
 
 describe('RLS Policy Verification', () => {
   beforeEach(async () => {
@@ -316,6 +292,25 @@ describe('RLS Policy Verification', () => {
   });
 
   describe('Authenticated User Access', () => {
+    it('authenticated role has no write grants on server-owned billing and generation tables', async () => {
+      const rawRows = await db.execute(sql`
+        SELECT table_name::text, privilege_type::text
+        FROM information_schema.table_privileges
+        WHERE table_schema = 'public'
+          AND grantee = 'authenticated'
+          AND table_name = ANY(ARRAY[${sql.raw(
+            serverOwnedWriteTables.map((name) => `'${name}'`).join(','),
+          )}]::text[])
+          AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE')
+        ORDER BY table_name, privilege_type
+      `);
+      const rows = Array.isArray(rawRows)
+        ? rawRows
+        : (rawRows as { rows: unknown[] }).rows;
+
+      expect(rows).toEqual([]);
+    });
+
     it('authenticated users can read and update only their own user row', async () => {
       const [user1] = await db
         .insert(users)
@@ -587,6 +582,184 @@ describe('RLS Policy Verification', () => {
       );
     });
 
+    it('authenticated users cannot directly mutate their own usage metrics', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'usage_metrics_guard',
+          email: 'usage-metrics-guard@test.com',
+        })
+        .returning({ id: users.id });
+
+      const userDb = await createRlsDbForUser('usage_metrics_guard');
+
+      await expectRlsViolation(() =>
+        userDb.insert(usageMetrics).values({
+          userId: user.id,
+          month: '2026-05',
+          plansGenerated: 0,
+          regenerationsUsed: 0,
+          exportsUsed: 0,
+          lessonModulesGenerated: 0,
+        }),
+      );
+
+      const [metric] = await db
+        .insert(usageMetrics)
+        .values({
+          userId: user.id,
+          month: '2026-05',
+          plansGenerated: 2,
+          regenerationsUsed: 3,
+          exportsUsed: 1,
+          lessonModulesGenerated: 4,
+        })
+        .returning({ id: usageMetrics.id });
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(usageMetrics)
+          .set({ regenerationsUsed: 0, lessonModulesGenerated: 0 })
+          .where(eq(usageMetrics.id, metric.id)),
+      );
+
+      await expectRlsViolation(() =>
+        userDb.delete(usageMetrics).where(eq(usageMetrics.id, metric.id)),
+      );
+
+      const [persisted] = await db
+        .select({
+          regenerationsUsed: usageMetrics.regenerationsUsed,
+          lessonModulesGenerated: usageMetrics.lessonModulesGenerated,
+        })
+        .from(usageMetrics)
+        .where(eq(usageMetrics.id, metric.id));
+
+      expect(persisted).toEqual({
+        regenerationsUsed: 3,
+        lessonModulesGenerated: 4,
+      });
+    });
+
+    it('authenticated users cannot directly write plan schedule cache rows', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'plan_schedules_guard',
+          email: 'plan-schedules-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Schedule Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('plan_schedules_guard');
+
+      await expectRlsViolation(() =>
+        authDb.insert(planSchedules).values({
+          planId: plan.id,
+          scheduleJson: { weeks: [] },
+          inputsHash: 'forged-hash',
+          timezone: 'UTC',
+          weeklyHours: 5,
+          startDate: '2026-05-01',
+        }),
+      );
+    });
+
+    it('authenticated users cannot directly write task resource links', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'task_resources_guard',
+          email: 'task-resources-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Task Resources Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const [module] = await db
+        .insert(modules)
+        .values({
+          planId: plan.id,
+          order: 1,
+          title: 'Module 1',
+          estimatedMinutes: 60,
+        })
+        .returning();
+
+      const [task] = await db
+        .insert(tasks)
+        .values({
+          moduleId: module.id,
+          order: 1,
+          title: 'Task 1',
+          estimatedMinutes: 30,
+        })
+        .returning();
+
+      const [resource] = await db
+        .insert(resources)
+        .values({
+          type: 'article',
+          title: 'Linked Resource',
+          url: `https://example.com/article-${createId('resource')}`,
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('task_resources_guard');
+
+      await expectRlsViolation(() =>
+        authDb.insert(taskResources).values({
+          taskId: task.id,
+          resourceId: resource.id,
+          order: 1,
+        }),
+      );
+    });
+
+    it('authenticated users cannot directly write AI usage event audit rows', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'ai_usage_events_guard',
+          email: 'ai-usage-events-guard@test.com',
+        })
+        .returning({ id: users.id });
+
+      const userDb = await createRlsDbForUser('ai_usage_events_guard');
+
+      await expectRlsViolation(() =>
+        userDb.insert(aiUsageEvents).values({
+          userId: user.id,
+          provider: 'mock',
+          model: 'mock-model',
+          inputTokens: 1,
+          outputTokens: 1,
+          costCents: 0,
+        }),
+      );
+    });
+
     it('authenticated users can read their own learning plans', async () => {
       // Create user in database
       const [user] = await db
@@ -665,37 +838,32 @@ describe('RLS Policy Verification', () => {
       expect(rows[0]?.topic).toBe('User 2 Private Plan');
     });
 
-    it('authenticated users can insert plans for themselves only', async () => {
-      // Create user in database
+    it('authenticated users cannot directly insert learning plans through the client role', async () => {
       const [user] = await db
         .insert(users)
         .values({
-          authUserId: 'user_insert',
-          email: 'insert@test.com',
+          authUserId: 'user_plan_insert_guard',
+          email: 'plan-insert-guard@test.com',
         })
         .returning();
 
-      const authDb = await createRlsDbForUser('user_insert');
+      const authDb = await createRlsDbForUser('user_plan_insert_guard');
 
-      // User should be able to create a plan for themselves
-      const inserted = await authDb
-        .insert(learningPlans)
-        .values({
+      await expectRlsViolation(() =>
+        authDb.insert(learningPlans).values({
           userId: user.id,
           topic: 'New Plan',
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
           visibility: 'private',
-        })
-        .returning({ id: learningPlans.id, topic: learningPlans.topic });
+          generationStatus: 'ready',
+          isQuotaEligible: false,
+        }),
+      );
 
-      expect(inserted).toHaveLength(1);
-      expect(inserted[0]?.topic).toBe('New Plan');
-
-      // Verify the plan was created
       const plans = await authDb.select().from(learningPlans);
-      expect(plans).toHaveLength(1);
+      expect(plans).toHaveLength(0);
     });
 
     it('authenticated users cannot insert plans for other users', async () => {
@@ -732,13 +900,12 @@ describe('RLS Policy Verification', () => {
       );
     });
 
-    it('authenticated users can update their own plans', async () => {
-      // Create user and plan
+    it('authenticated users cannot directly update server-owned plan quota state', async () => {
       const [user] = await db
         .insert(users)
         .values({
-          authUserId: 'user_update',
-          email: 'update@test.com',
+          authUserId: 'user_plan_update_guard',
+          email: 'plan-update-guard@test.com',
         })
         .returning();
 
@@ -751,20 +918,36 @@ describe('RLS Policy Verification', () => {
           weeklyHours: 5,
           learningStyle: 'reading',
           visibility: 'private',
+          generationStatus: 'ready',
+          isQuotaEligible: true,
         })
         .returning();
 
-      const authDb = await createRlsDbForUser('user_update');
+      const authDb = await createRlsDbForUser('user_plan_update_guard');
 
-      // Update the plan
-      const updated = await authDb
-        .update(learningPlans)
-        .set({ topic: 'Updated Topic' })
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ topic: learningPlans.topic });
+      await expectRlsViolation(() =>
+        authDb
+          .update(learningPlans)
+          .set({
+            generationStatus: 'failed',
+            isQuotaEligible: false,
+            finalizedAt: null,
+          })
+          .where(eq(learningPlans.id, plan.id)),
+      );
 
-      expect(updated).toHaveLength(1);
-      expect(updated[0]?.topic).toBe('Updated Topic');
+      const [persisted] = await db
+        .select({
+          generationStatus: learningPlans.generationStatus,
+          isQuotaEligible: learningPlans.isQuotaEligible,
+        })
+        .from(learningPlans)
+        .where(eq(learningPlans.id, plan.id));
+
+      expect(persisted).toEqual({
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+      });
     });
 
     it('authenticated users cannot update other users plans', async () => {
@@ -801,24 +984,20 @@ describe('RLS Policy Verification', () => {
       // Authenticate as user2
       const user2Db = await createRlsDbForUser('user_no_update_2');
 
-      // User2 tries to update user1's plan
-      const updated = await user2Db
-        .update(learningPlans)
-        .set({ topic: 'Hacked!' })
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
-
-      // Should be blocked or return no rows
-      expect(updated).toHaveLength(0);
+      await expectRlsViolation(() =>
+        user2Db
+          .update(learningPlans)
+          .set({ topic: 'Hacked!' })
+          .where(eq(learningPlans.id, plan.id)),
+      );
     });
 
-    it('authenticated users can delete their own plans', async () => {
-      // Create user and plan
+    it('authenticated users cannot directly delete their own learning plans', async () => {
       const [user] = await db
         .insert(users)
         .values({
-          authUserId: 'user_delete',
-          email: 'delete@test.com',
+          authUserId: 'user_plan_delete_guard',
+          email: 'plan-delete-guard@test.com',
         })
         .returning();
 
@@ -834,19 +1013,14 @@ describe('RLS Policy Verification', () => {
         })
         .returning();
 
-      const authDb = await createRlsDbForUser('user_delete');
+      const authDb = await createRlsDbForUser('user_plan_delete_guard');
 
-      // Delete the plan
-      const deleted = await authDb
-        .delete(learningPlans)
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
+      await expectRlsViolation(() =>
+        authDb.delete(learningPlans).where(eq(learningPlans.id, plan.id)),
+      );
 
-      expect(deleted).toHaveLength(1);
-
-      // Verify plan was deleted
       const rows = await authDb.select().from(learningPlans);
-      expect(rows).toHaveLength(0);
+      expect(rows).toHaveLength(1);
     });
 
     it('authenticated users cannot delete other users plans', async () => {
@@ -883,14 +1057,9 @@ describe('RLS Policy Verification', () => {
       // Authenticate as user2
       const user2Db = await createRlsDbForUser('user_no_delete_2');
 
-      // User2 tries to delete user1's plan
-      const deleted = await user2Db
-        .delete(learningPlans)
-        .where(eq(learningPlans.id, plan.id))
-        .returning({ id: learningPlans.id });
-
-      // Should be blocked or affect 0 rows (no error thrown)
-      expect(deleted).toHaveLength(0);
+      await expectRlsViolation(() =>
+        user2Db.delete(learningPlans).where(eq(learningPlans.id, plan.id)),
+      );
 
       // Verify plan still exists using direct DB (bypasses RLS)
       const verification = await db.query.learningPlans.findFirst({
@@ -1022,6 +1191,191 @@ describe('RLS Policy Verification', () => {
 
       expect(rows).toHaveLength(1);
       expect(rows[0]?.title).toBe('Task 1');
+    });
+
+    it('authenticated users cannot directly mutate module lesson-generation bookkeeping', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'module_lesson_guard',
+          email: 'module-lesson-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'My Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const [module] = await db
+        .insert(modules)
+        .values({
+          planId: plan.id,
+          order: 1,
+          title: 'Module 1',
+          estimatedMinutes: 120,
+          lessonGenerationStatus: 'not_generated',
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('module_lesson_guard');
+
+      await expectRlsViolation(() =>
+        authDb
+          .update(modules)
+          .set({
+            lessonGenerationStatus: 'ready',
+            lessonGenerationCompletedAt: new Date(),
+            lessonGenerationMetadata: { version: 1, batchRequestId: 'forged' },
+          })
+          .where(eq(modules.id, module.id)),
+      );
+
+      const [persisted] = await db
+        .select({
+          lessonGenerationStatus: modules.lessonGenerationStatus,
+          lessonGenerationCompletedAt: modules.lessonGenerationCompletedAt,
+          lessonGenerationMetadata: modules.lessonGenerationMetadata,
+        })
+        .from(modules)
+        .where(eq(modules.id, module.id));
+
+      expect(persisted).toEqual({
+        lessonGenerationStatus: 'not_generated',
+        lessonGenerationCompletedAt: null,
+        lessonGenerationMetadata: null,
+      });
+    });
+
+    it('authenticated users cannot directly write generated task lesson content', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'task_lesson_content_guard',
+          email: 'task-lesson-content-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'My Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'practice',
+          visibility: 'private',
+        })
+        .returning();
+
+      const [module] = await db
+        .insert(modules)
+        .values({
+          planId: plan.id,
+          order: 1,
+          title: 'Module 1',
+          estimatedMinutes: 120,
+        })
+        .returning();
+
+      const [task] = await db
+        .insert(tasks)
+        .values({
+          moduleId: module.id,
+          order: 1,
+          title: 'Task 1',
+          estimatedMinutes: 30,
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('task_lesson_content_guard');
+
+      await expectRlsViolation(() =>
+        authDb
+          .update(tasks)
+          .set({
+            lessonContent: {
+              version: 1,
+              blocks: [{ type: 'paragraph', text: 'Forged lesson' }],
+            },
+            lessonContentUpdatedAt: new Date(),
+          })
+          .where(eq(tasks.id, task.id)),
+      );
+
+      const [persisted] = await db
+        .select({
+          lessonContent: tasks.lessonContent,
+          lessonContentUpdatedAt: tasks.lessonContentUpdatedAt,
+        })
+        .from(tasks)
+        .where(eq(tasks.id, task.id));
+
+      expect(persisted).toEqual({
+        lessonContent: null,
+        lessonContentUpdatedAt: null,
+      });
+    });
+
+    it('authenticated users cannot directly insert or update generation attempts', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'generation_attempt_guard',
+          email: 'generation-attempt-guard@test.com',
+        })
+        .returning();
+
+      const [plan] = await db
+        .insert(learningPlans)
+        .values({
+          userId: user.id,
+          topic: 'Attempt Guard Plan',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+          visibility: 'private',
+        })
+        .returning();
+
+      const authDb = await createRlsDbForUser('generation_attempt_guard');
+
+      await expectRlsViolation(() =>
+        authDb.insert(generationAttempts).values({
+          planId: plan.id,
+          status: 'success',
+          classification: null,
+          durationMs: 1,
+          modulesCount: 0,
+          tasksCount: 0,
+        }),
+      );
+
+      const [attempt] = await db
+        .insert(generationAttempts)
+        .values({
+          planId: plan.id,
+          status: 'failure',
+          classification: 'provider_error',
+          durationMs: 100,
+          modulesCount: 0,
+          tasksCount: 0,
+        })
+        .returning();
+
+      await expectRlsViolation(() =>
+        authDb
+          .update(generationAttempts)
+          .set({ status: 'success', classification: null })
+          .where(eq(generationAttempts.id, attempt.id)),
+      );
     });
 
     it('users can only manage progress for their own tasks', async () => {

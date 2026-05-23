@@ -39,7 +39,7 @@ export function PricingCard({
       className={cn(
         'relative gap-0 overflow-hidden p-6 backdrop-blur-xl transition',
         isPopular
-          ? 'border-primary/40 bg-white/40 shadow-[0_0_24px_-4px] ring-1 shadow-primary/25 ring-primary/50 dark:border-primary/30 dark:bg-primary/5 dark:shadow-primary/20 dark:ring-primary/70'
+          ? 'border-primary/40 bg-white/40 shadow-lg ring-1 shadow-primary/25 ring-primary/50 dark:border-primary/30 dark:bg-primary/5 dark:shadow-primary/20 dark:ring-primary/70'
           : 'border-white/40 bg-white/30 shadow-lg dark:border-white/10 dark:bg-stone-900/30',
         className,
       )}

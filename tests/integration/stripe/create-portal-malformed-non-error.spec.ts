@@ -5,7 +5,7 @@ import type { ParseJsonBodyOptions } from '@/lib/api/parse-json-body';
 import { logger } from '@/lib/logging/logger';
 import { makeStripeMock } from '../../fixtures/stripe-mocks';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import { markUserAsSubscribed } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 

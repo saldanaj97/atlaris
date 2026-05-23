@@ -13,11 +13,17 @@ import {
 import { POST } from '@/app/api/v1/plans/stream/route';
 import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { setTestUser } from '../../helpers/auth';
 
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 beforeAll(() => {
   // Use the mock AI provider so the default session boundary completes without
@@ -35,16 +41,10 @@ describe('POST /api/v1/plans/stream user provisioning', () => {
   const authEmail = 'provisioning@example.com';
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: {
-        user: {
-          id: authUserId,
-          email: authEmail,
-          name: 'Auto Provisioned',
-        },
-      },
+    mockServerSession(serverAuth.getSession, {
+      id: authUserId,
+      email: authEmail,
+      name: 'Auto Provisioned',
     });
 
     setTestUser(authUserId);

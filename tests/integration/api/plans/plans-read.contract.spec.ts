@@ -12,15 +12,22 @@ import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { buildTestPlanInsert } from '@tests/fixtures/plans';
 import { clearTestUser, setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { db } from '@supabase/service-role';
 
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 /** Locks lightweight list item shape for GET /api/v1/plans (AC3). */
 const lightweightPlanListItemSchema = z
@@ -112,10 +119,7 @@ describe('Plan read API response contracts', () => {
 
   beforeEach(async () => {
     authUserId = createId('auth-user');
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
     userId = await ensureUser({
@@ -216,6 +220,7 @@ describe('Plan read API response contracts', () => {
       new NextRequest(`http://localhost:3000/api/v1/plans/${plan.id}`, {
         method: 'GET',
       }),
+      buildRouteHandlerContext({ planId: plan.id }),
     );
     expect(detailRes.status).toBe(200);
     const detailJson: unknown = await detailRes.json();
@@ -229,6 +234,7 @@ describe('Plan read API response contracts', () => {
       new NextRequest(`http://localhost:3000/api/v1/plans/${plan.id}/status`, {
         method: 'GET',
       }),
+      buildRouteHandlerContext({ planId: plan.id }),
     );
     expect(statusRes.status).toBe(200);
     const statusJson: unknown = await statusRes.json();
@@ -243,6 +249,7 @@ describe('Plan read API response contracts', () => {
         `http://localhost:3000/api/v1/plans/${plan.id}/attempts`,
         { method: 'GET' },
       ),
+      buildRouteHandlerContext({ planId: plan.id }),
     );
     expect(attemptsRes.status).toBe(200);
     const attemptsJson: unknown = await attemptsRes.json();

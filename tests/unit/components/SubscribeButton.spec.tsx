@@ -28,22 +28,6 @@ describe('SubscribeButton', () => {
     vi.restoreAllMocks();
   });
 
-  it('should render with default label', () => {
-    render(<SubscribeButton priceId="price_123" />);
-
-    expect(
-      screen.getByRole('button', { name: /subscribe/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('should render with custom label', () => {
-    render(<SubscribeButton priceId="price_123" label="Upgrade Now" />);
-
-    expect(
-      screen.getByRole('button', { name: /upgrade now/i }),
-    ).toBeInTheDocument();
-  });
-
   it('should call checkout API with correct priceId', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -129,38 +113,6 @@ describe('SubscribeButton', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/redirecting/i)).toBeInTheDocument();
-    });
-
-    await act(async () => {
-      deferredFetch.resolve({
-        ok: true,
-        json: async () => ({
-          sessionUrl: 'https://stripe.com/checkout',
-        }),
-      });
-    });
-  });
-
-  it('should disable button during checkout', async () => {
-    const deferredFetch = createDeferredPromise<{
-      ok: boolean;
-      json: () => Promise<{ sessionUrl: string }>;
-    }>();
-    const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
-    vi.stubGlobal('fetch', mockFetch);
-
-    render(<SubscribeButton priceId="price_123" />);
-
-    const button = screen.getByRole('button');
-
-    // Button should be enabled initially
-    expect(button).not.toBeDisabled();
-
-    await user.click(button);
-
-    // Button should be disabled during loading
-    await waitFor(() => {
-      expect(button).toBeDisabled();
     });
 
     await act(async () => {

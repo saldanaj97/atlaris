@@ -1,8 +1,8 @@
 'use client';
 
+import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,15 +21,18 @@ import type { NavItem } from '@/features/navigation';
 import BrandLogo from '../BrandLogo';
 
 interface MobileNavigationProps {
+  pathname: string;
   navItems: NavItem[];
 }
 
 /**
  * Mobile navigation component with left-sliding sheet.
  */
-export default function MobileNavigation({ navItems }: MobileNavigationProps) {
+export default function MobileNavigation({
+  pathname,
+  navItems,
+}: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -81,11 +84,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
           </Button>
 
           {navItems.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? pathname === '/'
-                : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
+            const isActive = isNavItemActive(pathname, item);
             return (
               <div key={item.href} className="flex flex-col gap-1">
                 <Link
@@ -103,7 +102,7 @@ export default function MobileNavigation({ navItems }: MobileNavigationProps) {
                 {item.dropdown && (
                   <div className="ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30">
                     {item.dropdown.map((subItem) => {
-                      const isSubActive = pathname === subItem.href;
+                      const isSubActive = isNavItemActive(pathname, subItem);
                       return (
                         <Link
                           key={subItem.href}

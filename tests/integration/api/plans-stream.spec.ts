@@ -6,8 +6,11 @@ import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
+  expectPlanStartEvent,
+  expectStreamingJsonObject,
+  expectTerminalEventAfterStart,
   readStreamingResponse,
   type StreamingEvent,
 } from '../../helpers/streaming';
@@ -30,18 +33,12 @@ function assertNumericHeader(response: Response, name: string): void {
   );
 }
 
-function expectJsonObject(value: unknown): Record<string, unknown> {
-  expect(value).toBeTypeOf('object');
-  expect(value).not.toBeNull();
-  return value as Record<string, unknown>;
-}
-
 async function expectCompletedPlanId(
   events: StreamingEvent[],
 ): Promise<string> {
   const start = expectPlanStartEvent(events, 1);
   const completeEvent = expectTerminalEventAfterStart(events, 'complete');
-  const completeData = expectJsonObject(completeEvent.data);
+  const completeData = expectStreamingJsonObject(completeEvent.data);
   expect(completeData.planId).toBe(start.planId);
   await expect(getPlanGenerationStatus(start.planId)).resolves.toBe('ready');
   await expect(listAttempts(start.planId)).resolves.toMatchObject([
@@ -51,51 +48,6 @@ async function expectCompletedPlanId(
     },
   ]);
   return start.planId;
-}
-
-function expectPlanStartEvent(
-  events: StreamingEvent[],
-  expectedAttemptNumber: number,
-): { planId: string } {
-  const startEvent = events.find((event) => event.type === 'plan_start');
-  if (!startEvent) {
-    throw new Error('Expected plan_start event');
-  }
-
-  const startData = expectJsonObject(startEvent.data);
-  expect(startData.planId).toEqual(expect.any(String));
-  expect(startData.attemptNumber).toBe(expectedAttemptNumber);
-
-  const planId = startData.planId;
-  if (typeof planId !== 'string' || planId.length === 0) {
-    throw new Error('Expected plan_start event to include a planId');
-  }
-
-  return { planId };
-}
-
-function expectTerminalEventAfterStart(
-  events: StreamingEvent[],
-  terminalType: 'complete' | 'error' | 'cancelled',
-): StreamingEvent {
-  const eventTypes = events.map((event) => event.type);
-  const startIndex = eventTypes.indexOf('plan_start');
-  const terminalIndex = eventTypes.indexOf(terminalType);
-
-  expect(startIndex).toBeGreaterThanOrEqual(0);
-  expect(terminalIndex).toBeGreaterThan(startIndex);
-  expect(
-    eventTypes
-      .slice(0, terminalIndex)
-      .filter((type) => ['complete', 'error', 'cancelled'].includes(type)),
-  ).toEqual([]);
-
-  const terminalEvent = events[terminalIndex];
-  if (!terminalEvent) {
-    throw new Error(`Expected ${terminalType} event`);
-  }
-
-  return terminalEvent;
 }
 
 async function listAttempts(planId: string) {
@@ -151,7 +103,7 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
 
     const response = await POST(request);
     expect(response.status).toBe(400);
-    const body = expectJsonObject(await response.json());
+    const body = expectStreamingJsonObject(await response.json());
     expect(body.error).toBe('Invalid request body.');
     expect(body.details).toEqual({
       reason: 'Malformed or invalid JSON payload.',

@@ -1,12 +1,12 @@
 import { stripeEnv } from '@/lib/config/env';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-export interface TierConfig {
+export interface StripeTierConfig {
   key: SubscriptionTier;
   priceId?: string | null;
 }
 
-export const MONTHLY_TIER_CONFIGS: TierConfig[] = [
+export const MONTHLY_TIER_CONFIGS: StripeTierConfig[] = [
   { key: 'free' },
   {
     key: 'starter',
@@ -18,7 +18,7 @@ export const MONTHLY_TIER_CONFIGS: TierConfig[] = [
   },
 ];
 
-export const YEARLY_TIER_CONFIGS: TierConfig[] = [
+export const YEARLY_TIER_CONFIGS: StripeTierConfig[] = [
   { key: 'free' },
   {
     key: 'starter',

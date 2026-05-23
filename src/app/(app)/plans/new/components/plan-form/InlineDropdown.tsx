@@ -1,21 +1,22 @@
 'use client';
 
-import * as SelectPrimitive from '@radix-ui/react-select';
-import { ChevronDown } from 'lucide-react';
-import type { JSX } from 'react';
-import { useId } from 'react';
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
 import { cn } from '@/lib/utils';
+import * as SelectPrimitive from '@radix-ui/react-select';
+import { Check, ChevronDown } from 'lucide-react';
+import type { CSSProperties, JSX } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 
-type DropdownVariant = 'primary' | 'accent' | 'cyan' | 'rose';
+type DropdownVariant = 'primary';
 
 interface InlineDropdownProps<TValue extends string> {
   id?: string;
   ariaLabel?: string;
   options: readonly DropdownOption<TValue>[];
-  value: TValue;
+  value: TValue | null;
   onChange: (value: TValue) => void;
   icon?: React.ReactNode;
+  placeholder?: string;
   variant?: DropdownVariant;
 }
 
@@ -29,26 +30,8 @@ const VARIANT_STYLES: Record<
 > = {
   primary: {
     pill: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown:
-      'border-primary/20 bg-white/70 dark:border-border dark:bg-popover',
-    item: 'text-foreground hover:bg-primary/10 data-[highlighted]:bg-primary/20 data-[highlighted]:text-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
-  },
-  accent: {
-    pill: 'border-accent/30 bg-accent/30 text-accent-foreground hover:bg-accent/50 data-[state=open]:bg-accent/50 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown: 'border-accent/20 bg-white/70 dark:border-border dark:bg-popover',
-    item: 'text-foreground hover:bg-accent/30 data-[highlighted]:bg-accent/50 data-[highlighted]:text-accent-foreground data-[state=checked]:bg-accent/50 data-[state=checked]:text-accent-foreground dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
-  },
-  cyan: {
-    pill: 'border-cyan-200/60 bg-cyan-50/80 text-cyan-700 hover:bg-cyan-100/80 data-[state=open]:bg-cyan-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown:
-      'border-cyan-200/40 bg-white/70 dark:border-border dark:bg-popover',
-    item: 'text-foreground hover:bg-cyan-50/80 data-[highlighted]:bg-cyan-100/80 data-[highlighted]:text-cyan-800 data-[state=checked]:bg-cyan-100/80 data-[state=checked]:text-cyan-800 dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
-  },
-  rose: {
-    pill: 'border-rose-200/60 bg-rose-50/80 text-rose-700 hover:bg-rose-100/80 data-[state=open]:bg-rose-100/80 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown:
-      'border-rose-200/40 bg-white/70 dark:border-border dark:bg-popover',
-    item: 'text-foreground hover:bg-rose-50/80 data-[highlighted]:bg-rose-100/80 data-[highlighted]:text-rose-800 data-[state=checked]:bg-rose-100/80 data-[state=checked]:text-rose-800 dark:text-popover-foreground dark:hover:bg-foreground/10 dark:data-[highlighted]:bg-foreground/15 dark:data-[highlighted]:text-foreground dark:data-[state=checked]:bg-primary/20 dark:data-[state=checked]:text-primary',
+    dropdown: 'border-border/80 bg-popover/95 dark:border-border',
+    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15',
   },
 };
 
@@ -69,6 +52,7 @@ export function InlineDropdown<TValue extends string>({
   options,
   value,
   icon,
+  placeholder,
   onChange,
   variant = 'primary',
 }: InlineDropdownProps<TValue>): JSX.Element {
@@ -76,75 +60,121 @@ export function InlineDropdown<TValue extends string>({
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
   const selectedOption = options.find((opt) => opt.value === value);
+  const isPlaceholder = !selectedOption;
+  const displayLabel = selectedOption?.label ?? placeholder ?? '';
+  const sizerRef = useRef<HTMLDivElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const nextWidth = sizerRef.current?.offsetWidth;
+
+    if (!nextWidth) {
+      return;
+    }
+
+    setTriggerWidth((currentWidth) =>
+      currentWidth === nextWidth ? currentWidth : nextWidth,
+    );
+  }, [displayLabel]);
 
   return (
-    <SelectPrimitive.Root
-      value={value}
-      onValueChange={(nextValue) => {
-        const nextOption = options.find((option) => option.value === nextValue);
-
-        if (nextOption) {
-          onChange(nextOption.value);
-        }
-      }}
+    <div
+      className="relative w-full sm:w-auto"
+      style={
+        {
+          '--inline-dropdown-width': triggerWidth
+            ? `${triggerWidth}px`
+            : undefined,
+        } as CSSProperties
+      }
     >
-      <SelectPrimitive.Trigger
-        id={componentId}
-        aria-label={ariaLabel}
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium shadow-sm backdrop-blur-sm transition outline-none',
-          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background',
-          styles.pill,
-        )}
+      <div
+        ref={sizerRef}
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap"
       >
         {icon}
-        <SelectPrimitive.Value>
-          {selectedOption?.label ?? value}
-        </SelectPrimitive.Value>
-        <SelectPrimitive.Icon asChild>
-          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
-        </SelectPrimitive.Icon>
-      </SelectPrimitive.Trigger>
+        <span
+          data-label={displayLabel}
+          className="after:content-[attr(data-label)]"
+        />
+        <ChevronDown className="size-3.5" />
+      </div>
+      <SelectPrimitive.Root
+        value={value ?? ''}
+        onValueChange={(nextValue) => {
+          const nextOption = options.find(
+            (option) => option.value === nextValue,
+          );
 
-      <SelectPrimitive.Portal>
-        <SelectPrimitive.Content
-          position="popper"
-          sideOffset={8}
-          align="start"
+          if (nextOption) {
+            onChange(nextOption.value);
+          }
+        }}
+      >
+        <SelectPrimitive.Trigger
+          id={componentId}
+          aria-label={ariaLabel}
           className={cn(
-            'z-50 min-w-[180px] overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-2xl',
-            'data-[state=closed]:animate-out data-[state=open]:animate-in',
-            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
-            styles.dropdown,
+            'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm outline-none sm:w-[var(--inline-dropdown-width)]',
+            'transition-[width,background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background',
+            isPlaceholder
+              ? 'border-border/70 bg-muted/30 text-muted-foreground hover:border-border hover:bg-muted/45 data-[state=open]:border-primary/30 data-[state=open]:bg-muted/45 dark:bg-muted/20 dark:hover:bg-muted/30'
+              : styles.pill,
           )}
         >
-          <SelectPrimitive.Viewport className="p-1.5">
-            {options.map((option) => (
-              <SelectPrimitive.Item
-                key={option.value}
-                value={option.value}
-                className={cn(
-                  'w-full cursor-default rounded-xl px-3 py-2 text-left transition-colors outline-none',
-                  styles.item,
-                )}
-              >
-                <SelectPrimitive.ItemText>
-                  <span className="block text-sm font-medium">
-                    {option.label}
-                  </span>
+          {icon}
+          <SelectPrimitive.Value placeholder={placeholder} />
+          <SelectPrimitive.Icon asChild>
+            <ChevronDown className="size-3.5 shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+          </SelectPrimitive.Icon>
+        </SelectPrimitive.Trigger>
+
+        <SelectPrimitive.Portal>
+          <SelectPrimitive.Content
+            position="popper"
+            sideOffset={8}
+            align="start"
+            className={cn(
+              'z-50 min-w-[220px] overflow-hidden rounded-2xl border bg-popover shadow-xl',
+              'data-[state=closed]:animate-out data-[state=open]:animate-in',
+              'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+              'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+              'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+              styles.dropdown,
+            )}
+          >
+            <SelectPrimitive.Viewport className="p-1.5">
+              {options.map((option) => (
+                <SelectPrimitive.Item
+                  key={option.value}
+                  value={option.value}
+                  textValue={option.label}
+                  className={cn(
+                    'relative w-full cursor-default rounded-xl py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
+                    styles.item,
+                  )}
+                >
+                  <SelectPrimitive.ItemText>
+                    <span className="block text-sm font-medium">
+                      {option.label}
+                    </span>
+                  </SelectPrimitive.ItemText>
                   {option.description && (
                     <span className="block text-xs text-muted-foreground">
                       {option.description}
                     </span>
                   )}
-                </SelectPrimitive.ItemText>
-              </SelectPrimitive.Item>
-            ))}
-          </SelectPrimitive.Viewport>
-        </SelectPrimitive.Content>
-      </SelectPrimitive.Portal>
-    </SelectPrimitive.Root>
+                  <SelectPrimitive.ItemIndicator className="absolute top-1/2 right-3 -translate-y-1/2 text-primary">
+                    <Check className="size-4" />
+                  </SelectPrimitive.ItemIndicator>
+                </SelectPrimitive.Item>
+              ))}
+            </SelectPrimitive.Viewport>
+          </SelectPrimitive.Content>
+        </SelectPrimitive.Portal>
+      </SelectPrimitive.Root>
+    </div>
   );
 }

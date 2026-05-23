@@ -4,13 +4,17 @@ import { GET } from '@/app/api/v1/plans/[planId]/route';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function buildRequest(planId: string) {
-  return new Request(`http://localhost/api/v1/plans/${planId}`, {
-    method: 'GET',
-  });
+  return {
+    request: new Request(`http://localhost/api/v1/plans/${planId}`, {
+      method: 'GET',
+    }),
+    context: buildRouteHandlerContext({ planId }),
+  };
 }
 
 describe('GET /api/v1/plans/:planId', () => {
@@ -81,7 +85,8 @@ describe('GET /api/v1/plans/:planId', () => {
       },
     ]);
 
-    const response = await GET(buildRequest(plan.id));
+    const { request, context } = buildRequest(plan.id);
+    const response = await GET(request, context);
     expect(response.status).toBe(200);
 
     const detail = await response.json();
@@ -102,9 +107,10 @@ describe('GET /api/v1/plans/:planId', () => {
       email: buildTestEmail(nonOwnerAuthId),
     });
 
-    const response = await GET(
-      buildRequest('00000000-0000-0000-0000-000000000000'),
+    const { request, context } = buildRequest(
+      '00000000-0000-0000-0000-000000000000',
     );
+    const response = await GET(request, context);
     expect(response.status).toBe(404);
   });
 
@@ -138,7 +144,8 @@ describe('GET /api/v1/plans/:planId', () => {
       email: attackerEmail,
     });
 
-    const response = await GET(buildRequest(ownerPlan.id));
+    const { request, context } = buildRequest(ownerPlan.id);
+    const response = await GET(request, context);
     expect(response.status).toBe(404);
 
     const error = await response.json();

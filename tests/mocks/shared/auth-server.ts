@@ -49,7 +49,3 @@ export const getSessionSafe = vi.fn(
 export const getCurrentAuthUserSafe = vi.fn(
   async (): Promise<AuthProviderUser | null> => defaultAuthUser,
 );
-
-export const getStrictAuthUserId = vi.fn(
-  async (): Promise<string | null> => defaultSession.data?.user?.id ?? null,
-);

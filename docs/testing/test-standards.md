@@ -195,7 +195,7 @@ assertLocalIntegrationDatabaseUrl();
   - persisted data (and only what matters)
   - error mapping
 
-For API error responses, assert the canonical contract from `docs/rules/api/error-contract.md`:
+For API error responses, assert the canonical contract from `docs/api/error-contract.md`:
 
 - `error` must be a string
 - `code` must be present and stable

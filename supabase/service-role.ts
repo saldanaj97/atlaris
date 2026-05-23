@@ -5,26 +5,32 @@
  * Using this in the wrong context creates critical security vulnerabilities.
  *
  * ═══════════════════════════════════════════════════════════════════════
- * ONLY USE FOR:
+ * USE FOR (trusted server-owned writes):
  * ═══════════════════════════════════════════════════════════════════════
  * ✅ Workers and background jobs (src/workers/...)
  * ✅ Database migrations and schema changes
  * ✅ Test setup and seeding (tests/helpers/db/, tests/.../setup.ts)
  * ✅ Administrative scripts (scripts/...)
+ * ✅ Feature-owned server write boundaries after request auth + ownership
+ *    checks (billing meters, generation/cache persistence, plan deletion)
  *
  * ═══════════════════════════════════════════════════════════════════════
- * NEVER USE IN:
+ * DO NOT USE DIRECTLY IN:
  * ═══════════════════════════════════════════════════════════════════════
- * ❌ API routes (src/app/api/...)
+ * ❌ Raw API route handlers (src/app/api/...)
  * ❌ Server actions (src/app/.../actions.ts)
- * ❌ Request handlers (src/lib/api/...)
- * ❌ Any code that handles user requests
+ * ❌ Request-handler glue (src/lib/api/...)
+ * ❌ Arbitrary user-request code paths without a narrow write boundary
+ *
+ * Route/action layers should use getDb() for reads and access checks, then
+ * delegate server-owned mutations to a feature service that receives this
+ * client only after verifying the actor and row ownership.
  *
  * ═══════════════════════════════════════════════════════════════════════
- * FOR REQUEST HANDLERS:
+ * FOR REQUEST-SCOPED READS AND ACCESS CHECKS:
  * ═══════════════════════════════════════════════════════════════════════
- * Use getDb() from @supabase/runtime instead - it automatically returns
- * the correct RLS-enforced client based on request context.
+ * Use getDb() from @supabase/runtime — it returns the RLS-enforced client
+ * for the active request context.
  *
  * Or import RLS clients directly from @/lib/db:
  * import { createAuthenticatedRlsClient } from '@/lib/db';
@@ -113,7 +119,8 @@ export function isServiceRoleDbClient(client: unknown): boolean {
 
 /**
  * Service role database client - BYPASSES RLS (lazily initialized).
- * Use getDb() from @supabase/runtime in request handlers instead.
+ * Prefer getDb() in route/action layers; pass this client only through
+ * feature-owned server write boundaries for server-owned tables.
  */
 export const db: ServiceRoleDb = new Proxy(
   serviceRoleProxyTarget,

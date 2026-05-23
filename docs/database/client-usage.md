@@ -88,9 +88,9 @@ Functions like `atomicCheckAndInsertPlan` may use service-role DB for atomicity,
 
 ## Lint enforcement
 
-Do not import `@supabase/service-role` from request-layer paths (see `supabase/service-role.ts` and architecture docs). Automated import boundaries were previously enforced with ESLint; use Oxlint plus review until equivalent rules land in `.oxlintrc.json`.
+Do not import `@supabase/service-role` from request-layer paths (see `supabase/service-role.ts` and architecture docs). Oxlint enforces this via `eslint/no-restricted-imports` in `.oxlintrc.json` for:
 
-- `src/app/api/**`
+- `src/app/**`
 - `src/lib/api/**`
 - `src/lib/integrations/**`
 

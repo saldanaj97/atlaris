@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
+import { cn } from '@/lib/utils';
 import {
   ArrowRight,
   CheckCircle2,
@@ -68,11 +69,12 @@ export function PlanRow({
         onOpenChange={setDeleteDialogOpen}
       />
       <div
-        className={`group flex items-center gap-4 rounded-2xl px-5 py-4 transition ${
+        className={cn(
+          'group flex items-center gap-4 rounded-2xl px-5 py-4 transition',
           isSelected
             ? 'bg-primary/5 ring-1 ring-primary/30 dark:bg-primary/10'
-            : 'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5'
-        }`}
+            : 'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5',
+        )}
       >
         <Link
           href={`/plans/${plan.id}`}
@@ -81,10 +83,15 @@ export function PlanRow({
         >
           {/* Status indicator */}
           <div className="relative shrink-0">
-            <div className={`h-3 w-3 rounded-full ${STATUS_COLORS[status]}`} />
+            <div
+              className={cn('h-3 w-3 rounded-full', STATUS_COLORS[status])}
+            />
             {status === 'generating' && (
               <div
-                className={`absolute inset-0 animate-ping rounded-full ${STATUS_COLORS[status]} opacity-50`}
+                className={cn(
+                  'absolute inset-0 animate-ping rounded-full opacity-50',
+                  STATUS_COLORS[status],
+                )}
               />
             )}
           </div>

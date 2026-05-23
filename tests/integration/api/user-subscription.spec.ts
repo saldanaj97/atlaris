@@ -1,25 +1,27 @@
-import { learningPlans, users } from '@supabase/schema';
+import { learningPlans, usageMetrics, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
-// Mock auth before importing the route
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 describe('GET /api/v1/user/subscription', () => {
   const authUserId = 'auth_subscription_test_user';
   let userId: string;
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: authUserId } },
-    });
+    mockServerSession(serverAuth.getSession, authUserId);
 
     setTestUser(authUserId);
 
@@ -36,6 +38,12 @@ describe('GET /api/v1/user/subscription', () => {
   });
 
   it('should return subscription information for authenticated user', async () => {
+    const before = await db
+      .select()
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+    expect(before).toHaveLength(0);
+
     const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
@@ -55,6 +63,14 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body.usage).toHaveProperty('activePlans');
     expect(body.usage).toHaveProperty('regenerations');
     expect(body.usage).toHaveProperty('exports');
+    expect(body.usage.regenerations.used).toBe(0);
+    expect(body.usage.exports.used).toBe(0);
+
+    const after = await db
+      .select()
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, userId));
+    expect(after).toHaveLength(0);
   });
 
   it('should return usage metrics including active plans', async () => {
@@ -104,8 +120,7 @@ describe('GET /api/v1/user/subscription', () => {
     clearTestUser();
 
     // Mock auth to return null (unauthenticated)
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
+    serverAuth.getSession.mockResolvedValue({
       data: { user: null },
     });
 

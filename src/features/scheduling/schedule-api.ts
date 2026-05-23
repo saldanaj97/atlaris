@@ -7,6 +7,7 @@ import {
   upsertPlanScheduleCache,
 } from '@/lib/db/queries/schedules';
 import { learningPlans, modules, tasks } from '@supabase/schema';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import type { DbClient } from '@/lib/db/types';
 import type {
   ScheduleInputs,
@@ -196,7 +197,7 @@ export async function getPlanSchedule(
       startDate: inputs.startDate,
       deadline: inputs.deadline,
     },
-    db,
+    serviceRoleDb,
   );
 
   return schedule;

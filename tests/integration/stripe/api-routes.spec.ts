@@ -17,7 +17,7 @@ import Stripe from 'stripe';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
   buildStripeCustomerId,
   buildStripeSubscriptionId,

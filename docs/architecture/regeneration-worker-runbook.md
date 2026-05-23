@@ -1,7 +1,7 @@
 # Regeneration Worker Runbook
 
 **Audience:** Developers and operators running queued plan regeneration.  
-**Last Updated:** February 2026
+**Last Updated:** May 2026
 
 ## Overview
 
@@ -9,7 +9,7 @@ Regeneration requests are enqueued by `POST /api/v1/plans/:planId/regenerate` an
 
 - `POST /api/internal/jobs/regeneration/process`
 
-This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `drainRegenerationQueue()`.
+This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `drainRegenerationQueue()`. Auth is enforced by the shared internal worker helper (`assertInternalWorkerAccess`).
 
 ## Required Environment
 
@@ -27,6 +27,13 @@ Use a scheduler (Cron, GitHub Actions, Vercel cron, etc.) to call:
 ```bash
 curl -X POST "https://<app-host>/api/internal/jobs/regeneration/process" \
   -H "Authorization: Bearer ${REGENERATION_WORKER_TOKEN}"
+```
+
+Alternate auth (Bearer and custom header are mutually exclusive):
+
+```bash
+curl -X POST "https://<app-host>/api/internal/jobs/regeneration/process" \
+  -H "x-regeneration-worker-token: ${REGENERATION_WORKER_TOKEN}"
 ```
 
 In non-production environments, if no worker token is configured, auth is not required.
@@ -53,7 +60,7 @@ Failure shape:
 }
 ```
 
-The endpoint now uses the canonical API error contract (see `docs/rules/api/error-contract.md`) for all non-2xx responses.
+The endpoint now uses the canonical API error contract (see `docs/api/error-contract.md`) for all non-2xx responses.
 
 ## Operational Checks
 
@@ -65,6 +72,6 @@ The endpoint now uses the canonical API error contract (see `docs/rules/api/erro
 ## Incident Response
 
 1. **Queue backed up:** verify scheduler is running and internal endpoint is reachable.
-2. **401 unauthorized:** rotate/redeploy `REGENERATION_WORKER_TOKEN`; confirm scheduler header.
+2. **401 unauthorized:** rotate/redeploy `REGENERATION_WORKER_TOKEN`; confirm Bearer or `x-regeneration-worker-token` on scheduler calls.
 3. **Repeated failed jobs:** inspect worker logs and `job_queue.last_error`, then replay by re-enqueueing or manual retry.
 4. **Emergency load shedding:** temporarily set `REGENERATION_MAX_JOBS_PER_DRAIN=0` (drains become no-op) while investigating.

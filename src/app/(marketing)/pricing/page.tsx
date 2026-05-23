@@ -1,9 +1,7 @@
-import type { Metadata } from 'next';
-import type { ReactElement } from 'react';
 import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/(marketing)/pricing/components/PricingMissingStripeNotice';
-import type { TierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
+import type { StripeTierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
 import {
   MONTHLY_TIER_CONFIGS,
   YEARLY_TIER_CONFIGS,
@@ -18,6 +16,8 @@ import {
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { Metadata } from 'next';
+import type { ReactElement } from 'react';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -33,7 +33,7 @@ interface PaidTierPriceIds {
 interface PricingInterval {
   value: 'monthly' | 'yearly';
   tabLabel: string;
-  configs: TierConfig[];
+  configs: StripeTierConfig[];
   intervalLabel: string;
   subscribeLabel: string;
   badge?: string;
@@ -76,7 +76,9 @@ const EMPTY_BILLING_CATALOG_GRID_DATA = new Map<
   BillingCatalogTierData
 >();
 
-function getPaidTierPriceIds(configs: TierConfig[]): PaidTierPriceIds | null {
+function getPaidTierPriceIds(
+  configs: StripeTierConfig[],
+): PaidTierPriceIds | null {
   const starterId = configs.find((config) => config.key === 'starter')?.priceId;
   const proId = configs.find((config) => config.key === 'pro')?.priceId;
 

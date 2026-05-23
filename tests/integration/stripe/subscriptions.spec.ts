@@ -16,7 +16,7 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
   buildStripeCustomerId,
   buildStripeSubscriptionId,

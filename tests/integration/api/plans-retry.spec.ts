@@ -4,12 +4,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
-import { readStreamingResponse } from '../../helpers/streaming';
+import { ensureUser } from '../../helpers/db/users';
+import {
+  expectPlanStartEvent,
+  expectStreamingJsonObject,
+  expectTerminalEventAfterStart,
+  readStreamingResponse,
+} from '../../helpers/streaming';
 
 type RetryAttemptOverrides = Partial<
   Omit<typeof generationAttempts.$inferInsert, 'planId'>
@@ -56,61 +62,13 @@ async function withRunGenerationAttemptSpy<T>(
   }
 }
 
-function createRetryRequest(planId: string): Request {
-  return new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
-    method: 'POST',
-  });
-}
-
-function expectJsonObject(value: unknown): Record<string, unknown> {
-  expect(value).toBeTypeOf('object');
-  expect(value).not.toBeNull();
-  return value as Record<string, unknown>;
-}
-
-function expectPlanStartEvent(
-  events: Awaited<ReturnType<typeof readStreamingResponse>>,
-  expectedAttemptNumber: number,
-): { planId: string } {
-  const startEvent = events.find((event) => event.type === 'plan_start');
-  if (!startEvent) {
-    throw new Error('Expected plan_start event');
-  }
-
-  const startData = expectJsonObject(startEvent.data);
-  expect(startData.planId).toEqual(expect.any(String));
-  expect(startData.attemptNumber).toBe(expectedAttemptNumber);
-
-  const planId = startData.planId;
-  if (typeof planId !== 'string' || planId.length === 0) {
-    throw new Error('Expected plan_start event to include a planId');
-  }
-
-  return { planId };
-}
-
-function expectTerminalEventAfterStart(
-  events: Awaited<ReturnType<typeof readStreamingResponse>>,
-  terminalType: 'complete' | 'error' | 'cancelled',
-) {
-  const eventTypes = events.map((event) => event.type);
-  const startIndex = eventTypes.indexOf('plan_start');
-  const terminalIndex = eventTypes.indexOf(terminalType);
-
-  expect(startIndex).toBeGreaterThanOrEqual(0);
-  expect(terminalIndex).toBeGreaterThan(startIndex);
-  expect(
-    eventTypes
-      .slice(0, terminalIndex)
-      .filter((type) => ['complete', 'error', 'cancelled'].includes(type)),
-  ).toEqual([]);
-
-  const terminalEvent = events[terminalIndex];
-  if (!terminalEvent) {
-    throw new Error(`Expected ${terminalType} event`);
-  }
-
-  return terminalEvent;
+function createRetryInvocation(planId: string) {
+  return {
+    request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
+      method: 'POST',
+    }),
+    context: buildRouteHandlerContext({ planId }),
+  };
 }
 
 async function listAttempts(planId: string) {
@@ -153,13 +111,14 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
-    const response = await POST(createRetryRequest(plan.id));
+    const { request, context } = createRetryInvocation(plan.id);
+    const response = await POST(request, context);
     expect(response.status).toBe(200);
 
     const events = await readStreamingResponse(response);
     const { planId } = expectPlanStartEvent(events, 2);
     const completeEvent = expectTerminalEventAfterStart(events, 'complete');
-    expect(expectJsonObject(completeEvent.data).planId).toBe(planId);
+    expect(expectStreamingJsonObject(completeEvent.data).planId).toBe(planId);
 
     const attempts = await listAttempts(plan.id);
     const [persistedPlan] = await db
@@ -199,9 +158,11 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
+    const invocationA = createRetryInvocation(plan.id);
+    const invocationB = createRetryInvocation(plan.id);
     const [resA, resB] = await Promise.all([
-      POST(createRetryRequest(plan.id)),
-      POST(createRetryRequest(plan.id)),
+      POST(invocationA.request, invocationA.context),
+      POST(invocationB.request, invocationB.context),
     ]);
 
     if (resA.status === 200 && resB.status === 200) {
@@ -254,8 +215,8 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     await seedFailedAttemptsForDurableWindow(plan.id);
 
     await withRunGenerationAttemptSpy(async (runSpy) => {
-      const request = createRetryRequest(plan.id);
-      const response = await POST(request);
+      const { request, context } = createRetryInvocation(plan.id);
+      const response = await POST(request, context);
       expect(response.status).toBe(429);
       expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
@@ -286,7 +247,8 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     });
 
     await withRunGenerationAttemptSpy(async (runSpy) => {
-      const response = await POST(createRetryRequest(plan.id));
+      const { request, context } = createRetryInvocation(plan.id);
+      const response = await POST(request, context);
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error?: string; code?: string };
       expect(body.code).toBe('VALIDATION_ERROR');

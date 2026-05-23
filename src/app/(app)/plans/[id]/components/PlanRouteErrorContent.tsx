@@ -31,7 +31,7 @@ export function PlanRouteErrorContent({
   return (
     <div
       role="alert"
-      className="flex min-h-screen flex-col items-center justify-center p-4"
+      className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-4"
     >
       <h1 className="mb-4 text-3xl font-bold text-red-600">{title}</h1>
       <p className="mb-6 max-w-md text-center text-muted-foreground">

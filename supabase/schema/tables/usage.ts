@@ -39,8 +39,6 @@ export const usageMetrics = pgTable(
   },
   (table) => [
     unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
-    index('idx_usage_metrics_user_id').on(table.userId),
-    index('idx_usage_metrics_month').on(table.month),
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
     check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
@@ -52,22 +50,6 @@ export const usageMetrics = pgTable(
     // RLS policies
     pgPolicy('usage_metrics_select_own', {
       for: 'select',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_insert_own', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_update_own', {
-      for: 'update',
-      to: 'authenticated',
-      using: recordOwnedByCurrentUser(table.userId),
-      withCheck: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('usage_metrics_delete_own', {
-      for: 'delete',
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
     }),
@@ -104,7 +86,6 @@ export const aiUsageEvents = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index('idx_ai_usage_user_id').on(table.userId),
     index('idx_ai_usage_created_at').on(table.createdAt),
     index('idx_ai_usage_events_user_created_at').on(
       table.userId,
@@ -129,11 +110,6 @@ export const aiUsageEvents = pgTable(
       for: 'select',
       to: 'authenticated',
       using: recordOwnedByCurrentUser(table.userId),
-    }),
-    pgPolicy('ai_usage_events_insert_own', {
-      for: 'insert',
-      to: 'authenticated',
-      withCheck: recordOwnedByCurrentUser(table.userId),
     }),
   ],
 ).enableRLS();

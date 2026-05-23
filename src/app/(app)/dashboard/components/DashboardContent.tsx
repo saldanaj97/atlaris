@@ -50,7 +50,7 @@ export async function DashboardContent(): Promise<JSX.Element> {
         <ActivityFeedClient activities={activities} />
 
         {/* Sidebar - server rendered */}
-        <ActivityStreamSidebar activePlan={activePlan} isVisible />
+        <ActivityStreamSidebar activePlan={activePlan} />
       </div>
     </>
   );
@@ -70,11 +70,11 @@ export function DashboardContentSkeleton(): JSX.Element {
           <div className="flex items-start justify-between gap-4">
             <Skeleton className="h-4 w-28 bg-white/30" />
             {/* Circular progress skeleton */}
-            <Skeleton className="h-16 w-16 rounded-full bg-white/30" />
+            <Skeleton className="size-16 rounded-full bg-white/30" />
           </div>
 
           {/* Bottom row: badges + title + description */}
-          <div className="mt-auto flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0 flex-1 space-y-2">
               {/* Badge skeletons */}
               <div className="flex flex-wrap gap-2">
@@ -116,7 +116,7 @@ export function DashboardContentSkeleton(): JSX.Element {
               >
                 <div className="flex gap-4">
                   {/* Icon skeleton */}
-                  <Skeleton className="h-10 w-10 flex-shrink-0 rounded-lg" />
+                  <Skeleton className="size-10 flex-shrink-0 rounded-lg" />
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex items-center justify-between">
                       <Skeleton className="h-5 w-48" />
@@ -134,36 +134,11 @@ export function DashboardContentSkeleton(): JSX.Element {
         {/* Sidebar skeleton */}
         <aside className="flex w-full flex-col gap-4">
           <Surface>
-            {/* Header */}
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-8 w-8 rounded-lg" />
-                <Skeleton className="h-4 w-28" />
-              </div>
-              <Skeleton className="h-5 w-16 rounded-full" />
-            </div>
-
-            {/* Events skeleton */}
-            <div className="space-y-3">
-              {[1, 2, 3].map((eventSkeletonId) => (
-                <div
-                  key={`dashboard-event-skeleton-${eventSkeletonId}`}
-                  className="flex gap-3"
-                >
-                  <Skeleton className="h-8 w-8 flex-shrink-0 rounded-lg" />
-                  <div className="min-w-0 flex-1 space-y-1.5 pb-3">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-3 w-32" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Action buttons skeleton */}
-            <div className="mt-4 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
-              <Skeleton className="h-10 rounded-lg" />
-              <Skeleton className="h-10 rounded-lg" />
+            <div className="flex flex-col items-center py-6 text-center">
+              <Skeleton className="mb-4 size-12 rounded-full" />
+              <Skeleton className="mb-2 h-5 w-40" />
+              <Skeleton className="mb-4 h-4 w-56" />
+              <Skeleton className="h-10 w-28 rounded-lg" />
             </div>
           </Surface>
         </aside>

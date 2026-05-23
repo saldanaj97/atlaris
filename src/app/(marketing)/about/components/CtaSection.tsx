@@ -23,7 +23,7 @@ export function CtaSection(): JSX.Element {
           <h2 id={headingId} className="marketing-h2 mb-2 text-foreground">
             Ready to Start <span className="gradient-text">Learning</span>?
           </h2>
-          <p className="marketing-subtitle mx-auto mb-8 max-w-xl text-muted-foreground">
+          <p className="marketing-subtitle mx-auto mb-8 max-w-xl">
             Create your first AI-powered learning plan in minutes — completely
             free.
           </p>

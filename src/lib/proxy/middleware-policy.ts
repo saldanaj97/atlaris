@@ -14,6 +14,11 @@ export function isProtectedRoute(pathname: string): boolean {
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
     return false;
   }
+  // Internal worker/maintenance routes bypass Clerk; each route must enforce
+  // its own worker token auth (see assertInternalWorkerAccess).
+  if (pathname.startsWith('/api/internal/')) {
+    return false;
+  }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 

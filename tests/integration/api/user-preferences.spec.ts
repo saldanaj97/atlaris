@@ -8,7 +8,7 @@ import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
 assertLocalIntegrationDatabaseUrl();
 

@@ -10,8 +10,7 @@ import {
 import { getSessionSafe } from '@/lib/auth/server';
 import { logger } from '@/lib/logging/logger';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import DesktopHeader from './nav/DesktopHeader';
-import MobileHeader from './nav/MobileHeader';
+import SiteHeaderChrome from './nav/SiteHeaderChrome';
 
 /**
  * Server component wrapper for the site header.
@@ -79,13 +78,7 @@ export default async function SiteHeader() {
   return (
     <header className="fixed top-0 left-0 z-50 w-full px-4 pt-3 lg:px-6 lg:pt-4">
       <div className="mx-auto max-w-7xl">
-        <MobileHeader
-          navItems={navItems}
-          tier={tier}
-          isAuthenticated={Boolean(authUserId)}
-          showClerkUserButton={showClerkUserButton}
-        />
-        <DesktopHeader
+        <SiteHeaderChrome
           navItems={navItems}
           tier={tier}
           isAuthenticated={Boolean(authUserId)}

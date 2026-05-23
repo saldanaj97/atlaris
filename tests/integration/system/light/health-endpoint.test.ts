@@ -5,7 +5,7 @@ import { JOB_TYPES } from '@/features/jobs/types';
 import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { ensureUser } from '../../../helpers/db';
+import { ensureUser } from '../../../helpers/db/users';
 
 /**
  * Creates a mock Request object for testing the health endpoint.

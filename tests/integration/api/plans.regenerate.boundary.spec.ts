@@ -1,7 +1,7 @@
 import { seedFailedAttemptsForDurableWindow } from '@tests/fixtures/attempts';
 import { createPlan } from '@tests/fixtures/plans';
 import { setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';

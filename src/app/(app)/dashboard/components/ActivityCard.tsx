@@ -1,15 +1,4 @@
-import {
-  BookOpen,
-  Check,
-  Clock,
-  ExternalLink,
-  MoreHorizontal,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Trophy,
-  Zap,
-} from 'lucide-react';
+import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
 import type React from 'react';
 
 import { cn } from '@/lib/utils';
@@ -23,35 +12,15 @@ const typeConfig: Record<
     borderColor: string;
   }
 > = {
-  session: {
-    icon: BookOpen,
-    color: 'bg-indigo-100 text-indigo-600',
-    borderColor: 'border-l-indigo-400',
-  },
   milestone: {
     icon: Trophy,
     color: 'bg-amber-100 text-amber-600',
     borderColor: 'border-l-amber-400',
   },
-  export: {
-    icon: ExternalLink,
-    color: 'bg-emerald-100 text-emerald-600',
-    borderColor: 'border-l-emerald-400',
-  },
-  streak: {
-    icon: Zap,
-    color: 'bg-rose-100 text-rose-600',
-    borderColor: 'border-l-rose-400',
-  },
   progress: {
     icon: TrendingUp,
     color: 'bg-cyan-100 text-cyan-600',
     borderColor: 'border-l-cyan-400',
-  },
-  recommendation: {
-    icon: Sparkles,
-    color: 'bg-violet-100 text-violet-600',
-    borderColor: 'border-l-violet-400',
   },
 };
 
@@ -74,18 +43,6 @@ function ActivityCardMetadata({
           {metadata.progress}% complete
         </span>
       )}
-      {metadata.platform && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Check className="h-3 w-3" />
-          {metadata.platform}
-        </span>
-      )}
-      {metadata.streakCount && (
-        <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-          <Zap className="h-3 w-3" />
-          {metadata.streakCount} days
-        </span>
-      )}
     </div>
   );
 }
@@ -104,7 +61,10 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
       <div className="flex gap-4">
         {/* Icon */}
         <div
-          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${config.color}`}
+          className={cn(
+            'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
+            config.color,
+          )}
         >
           <Icon className="h-5 w-5" />
         </div>
@@ -120,17 +80,9 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
                 {activity.title}
               </h4>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="flex-shrink-0 text-xs text-muted-foreground">
-                {activity.timestamp}
-              </span>
-              <button
-                type="button"
-                className="rounded-lg p-1 text-muted-foreground/60 opacity-0 transition group-hover:opacity-100 hover:bg-accent hover:text-accent-foreground dark:hover:bg-white/10"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </div>
+            <span className="flex-shrink-0 text-xs text-muted-foreground">
+              {activity.timestamp}
+            </span>
           </div>
 
           {activity.description && (

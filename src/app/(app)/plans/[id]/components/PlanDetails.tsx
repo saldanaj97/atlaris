@@ -4,7 +4,6 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactElement, useCallback, useMemo } from 'react';
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
-import { ExportButtons } from '@/app/(app)/plans/[id]/components/ExportButtons';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
@@ -80,12 +79,12 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const isGenerating = isPendingOrProcessing;
 
   return (
-    <div>
+    <div className="pb-12 md:pb-20">
       <header className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/dashboard">
-              <ArrowLeft size={16} aria-hidden="true" />
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to Dashboard
             </Link>
           </Button>
@@ -115,8 +114,6 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         <>
           {/* Plan Overview */}
           <PlanOverviewHeader plan={plan} stats={overviewStats} />
-
-          <ExportButtons planId={plan.id} />
 
           {/* Module Timeline */}
           <PlanTimeline

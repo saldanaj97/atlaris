@@ -2,7 +2,7 @@ import { applyTaskProgressUpdates } from '@/features/plans/task-progress/boundar
 import { taskProgress } from '@supabase/schema';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
-import { ensureUser } from '@tests/helpers/db';
+import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';

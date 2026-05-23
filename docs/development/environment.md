@@ -15,15 +15,15 @@ Prefer the exported grouped configs instead of raw keys:
 - `appEnv` - Runtime mode, app URL, maintenance mode
 - `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
-- `stripeEnv` - Stripe API keys and settings
+- `stripeEnv` - Stripe API keys, settings, and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
-- `stripeEnv` - Stripe keys and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
 - `devAuthEnv` - Development auth overrides
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
+- `maintenanceEnv` - Manual retention cleanup route toggles and shared token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
@@ -42,15 +42,27 @@ The application uses Clerk Auth for UI, route protection, and server session rea
 
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                    | Required |
-| ----------------------------------- | ------------------------------------------------------------------------------------------ | -------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                         | Yes      |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                    | Yes      |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys)                 | No       |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB | No       |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                            | No       |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                             | No       |
+| Variable                            | Purpose                                                                                                                               | Required |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys)                                                            | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB                                            | No       |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
+
+### Internal worker routes
+
+Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`. See `docs/architecture/internal-worker-routes.md`.
+
+| Variable                    | Purpose                                                            | Required in production                 |
+| --------------------------- | ------------------------------------------------------------------ | -------------------------------------- |
+| `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                    |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` when using the manual route |
+| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes (when manual route enabled)        |
+
+Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 
 ### Local product testing (development / test)
 

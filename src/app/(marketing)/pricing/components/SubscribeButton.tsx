@@ -1,13 +1,11 @@
 'use client';
 
+import {
+  getClientErrorMessage,
+  requestPostJson,
+} from '@/app/_shared/client-api';
 import { Button } from '@/components/ui/button';
 import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
-import {
-  clientErrorFieldsFromParsedApi,
-  parseApiErrorUnlessOk,
-  readResponseJsonBody,
-} from '@/lib/api/client-response-body';
-import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import type { ReactElement } from 'react';
 import { useRef, useState } from 'react';
@@ -26,15 +24,11 @@ interface SubscribeButtonProps {
   cancelUrl?: string;
 }
 
-function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  return error instanceof Error ? error.message : fallbackMessage;
-}
-
 function getCheckoutResponseErrorMessage(rawIssue: {
   code?: string;
   message?: string;
   path?: readonly PropertyKey[];
-}): string {
+}): string | undefined {
   if (
     rawIssue.path?.[0] === 'sessionUrl' &&
     (rawIssue.code === 'invalid_type' ||
@@ -43,7 +37,7 @@ function getCheckoutResponseErrorMessage(rawIssue: {
     return 'Missing session URL';
   }
 
-  return rawIssue.message ?? 'Invalid checkout response';
+  return undefined;
 }
 
 const CHECKOUT_TIMEOUT_MS = 15_000;
@@ -53,82 +47,26 @@ async function requestCheckoutSession(params: {
   successUrl?: string;
   cancelUrl?: string;
 }): Promise<CheckoutRequestResult> {
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => {
-    controller.abort();
-  }, CHECKOUT_TIMEOUT_MS);
-
-  const responseResult = await fetch('/api/v1/stripe/create-checkout', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const result = await requestPostJson({
+    url: '/api/v1/stripe/create-checkout',
+    body: {
       priceId: params.priceId,
       successUrl: params.successUrl,
       cancelUrl: params.cancelUrl,
-    }),
-    signal: controller.signal,
-  })
-    .then((response) => {
-      globalThis.clearTimeout(timeoutId);
-      return { kind: 'response' as const, response };
-    })
-    .catch((error: unknown) => {
-      globalThis.clearTimeout(timeoutId);
-      return { kind: 'network-error' as const, error };
-    });
+    },
+    schema: createCheckoutResponseSchema,
+    fallbackMessage: 'Failed to start checkout',
+    timeoutMs: CHECKOUT_TIMEOUT_MS,
+    mapSchemaError: getCheckoutResponseErrorMessage,
+  });
 
-  if (responseResult.kind === 'network-error') {
-    const timedOut = isAbortError(responseResult.error);
-    return {
-      kind: 'error',
-      message: timedOut
-        ? 'Request timed out — please try again'
-        : getErrorMessage(responseResult.error, 'Something went wrong'),
-      error: responseResult.error,
-    };
-  }
-
-  const { response } = responseResult;
-
-  const apiError = await parseApiErrorUnlessOk(
-    response,
-    'Failed to start checkout',
-  );
-  if (apiError !== null) {
-    return {
-      kind: 'error',
-      ...clientErrorFieldsFromParsedApi(apiError),
-    };
-  }
-
-  const bodyResult = await readResponseJsonBody(response);
-
-  if (bodyResult.kind === 'parse-error') {
-    return {
-      kind: 'error',
-      message: 'Invalid checkout response',
-      error: bodyResult.error,
-    };
-  }
-
-  const parsed = createCheckoutResponseSchema.safeParse(bodyResult.raw);
-  if (!parsed.success) {
-    const message = getCheckoutResponseErrorMessage(
-      parsed.error.issues[0] ?? {},
-    );
-
-    return {
-      kind: 'error',
-      message,
-      error: parsed.error,
-    };
+  if (result.kind === 'error') {
+    return result;
   }
 
   return {
     kind: 'success',
-    sessionUrl: parsed.data.sessionUrl,
+    sessionUrl: result.data.sessionUrl,
   };
 }
 
@@ -178,7 +116,7 @@ export default function SubscribeButton({
         successUrl,
       });
       toast.error('Unable to redirect to checkout', {
-        description: getErrorMessage(error, 'Please try again.'),
+        description: getClientErrorMessage(error, 'Please try again.'),
       });
       setLoading(false);
       pendingRef.current = false;
@@ -190,6 +128,7 @@ export default function SubscribeButton({
       variant={variant}
       className={className}
       disabled={loading}
+      aria-busy={loading}
       onClick={() => {
         void handleClick();
       }}

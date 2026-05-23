@@ -26,14 +26,14 @@ export function ValuesSection(): JSX.Element {
         {VALUES.map((value) => (
           <Card
             key={value.title}
-            className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
+            className="group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40"
           >
             <div
               className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30"
               aria-hidden="true"
             />
 
-            <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-2xl shadow-lg">
+            <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-lg">
               {value.icon}
             </div>
             <h3 className="marketing-h3 mb-3 text-foreground">{value.title}</h3>

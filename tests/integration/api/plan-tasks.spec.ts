@@ -1,14 +1,22 @@
+import { randomUUID } from 'node:crypto';
+
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 
-// Mock auth before importing the route
-vi.mock('@/lib/auth/server', () => ({
-  auth: { getSession: vi.fn() },
-}));
+const serverAuth = vi.hoisted(() => {
+  const getSession = vi.fn();
+  return {
+    getSession,
+    module: () => ({ auth: { getSession } }),
+  };
+});
+vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 describe('GET /api/v1/plans/:planId/tasks', () => {
   const ownerAuthId = 'auth_plan_tasks_owner';
@@ -19,10 +27,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   let moduleId: string;
 
   beforeEach(async () => {
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: ownerAuthId } },
-    });
+    mockServerSession(serverAuth.getSession, ownerAuthId);
 
     setTestUser(ownerAuthId);
 
@@ -92,7 +97,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -105,13 +110,17 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return 404 for non-existent plan', async () => {
+    const missingPlanId = randomUUID();
     const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
-      'http://localhost:3000/api/v1/plans/00000000-0000-0000-0000-000000000000/tasks',
+      `http://localhost:3000/api/v1/plans/${missingPlanId}/tasks`,
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(
+      request,
+      buildRouteHandlerContext({ planId: missingPlanId }),
+    );
 
     expect(response.status).toBe(404);
     const body = await response.json();
@@ -121,8 +130,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   it('should return 401 for unauthenticated requests', async () => {
     clearTestUser();
 
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
+    serverAuth.getSession.mockResolvedValue({
       data: { user: null },
     });
 
@@ -132,7 +140,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(401);
   });
@@ -140,8 +148,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   it('should return 401 when session payload is null', async () => {
     clearTestUser();
 
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
+    serverAuth.getSession.mockResolvedValue({
       data: null,
     });
 
@@ -151,17 +158,14 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(401);
   });
 
   it('should return 404 when accessing another users plan', async () => {
     // Switch to another user
-    const { auth } = await import('@/lib/auth/server');
-    vi.mocked(auth.getSession).mockResolvedValue({
-      data: { user: { id: otherAuthId } },
-    });
+    mockServerSession(serverAuth.getSession, otherAuthId);
 
     setTestUser(otherAuthId);
 
@@ -171,7 +175,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(404);
   });
@@ -197,7 +201,10 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(
+      request,
+      buildRouteHandlerContext({ planId: emptyPlan.id }),
+    );
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -240,7 +247,7 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       { method: 'GET' },
     );
 
-    const response = await GET(request);
+    const response = await GET(request, buildRouteHandlerContext({ planId }));
 
     expect(response.status).toBe(200);
     const body = await response.json();

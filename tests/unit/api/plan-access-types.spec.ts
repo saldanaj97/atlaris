@@ -7,11 +7,13 @@
 
 import { buildPlanDetail } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
+import {
+  accessError,
+  accessSuccess,
+  type AccessErrorCode,
+} from '@/app/(app)/plans/access-result';
 import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
-import type {
-  PlanAccessErrorCode,
-  PlanAccessResult,
-} from '@/app/(app)/plans/[id]/types';
+import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
 import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
@@ -31,6 +33,34 @@ function buildClientPlanDetail(
 }
 
 describe('Plan Access Types', () => {
+  describe('accessSuccess', () => {
+    it('should create a success result with arbitrary data', () => {
+      const result = accessSuccess({ id: 'plan-1' });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data).toEqual({ id: 'plan-1' });
+      }
+    });
+  });
+
+  describe('accessError', () => {
+    it.each<{ code: AccessErrorCode; message: string }>([
+      { code: 'UNAUTHORIZED', message: 'You must be signed in.' },
+      { code: 'NOT_FOUND', message: 'Plan does not exist.' },
+      { code: 'FORBIDDEN', message: 'You do not have access.' },
+      { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' },
+    ])('should create error result for $code', ({ code, message }) => {
+      const result = accessError(code, message);
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.code).toBe(code);
+        expect(result.error.message).toBe(message);
+      }
+    });
+  });
+
   describe('planSuccess', () => {
     it('should create a success result with plan data', () => {
       const mockPlanData = buildClientPlanDetail();
@@ -48,13 +78,10 @@ describe('Plan Access Types', () => {
       const mockPlanData = buildClientPlanDetail();
       const result: PlanAccessResult = planSuccess(mockPlanData);
 
-      // TypeScript should narrow the type correctly
       if (result.success) {
-        // This should compile without errors - data is accessible
         expect(result.data.id).toBeDefined();
         expect(result.data.totalTasks).toBeDefined();
       } else {
-        // This branch should have error property
         expect(result.error.code).toBeDefined();
       }
     });
@@ -76,7 +103,7 @@ describe('Plan Access Types', () => {
   });
 
   describe('planError', () => {
-    it.each<{ code: PlanAccessErrorCode; message: string }>([
+    it.each<{ code: AccessErrorCode; message: string }>([
       { code: 'UNAUTHORIZED', message: 'You must be signed in.' },
       { code: 'NOT_FOUND', message: 'Plan does not exist.' },
       { code: 'FORBIDDEN', message: 'You do not have access.' },
@@ -107,23 +134,16 @@ describe('Plan Access Types', () => {
         'Not authenticated',
       );
 
-      // TypeScript should narrow the type correctly
       if (!result.success) {
-        // This should compile without errors - error is accessible
         expect(result.error.code).toBe('UNAUTHORIZED');
         expect(result.error.message).toBeDefined();
       } else {
-        // This branch should have data property
         expect(result.data.id).toBeDefined();
       }
     });
   });
 
-  /** Runtime mapping from PlanAccessErrorCode to HTTP status; used for runtime tests and kept in sync with exhaustiveness switch. */
-  const PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS: Record<
-    PlanAccessErrorCode,
-    number
-  > = {
+  const ACCESS_ERROR_CODE_TO_HTTP_STATUS: Record<AccessErrorCode, number> = {
     UNAUTHORIZED: 401,
     NOT_FOUND: 404,
     FORBIDDEN: 403,
@@ -131,8 +151,8 @@ describe('Plan Access Types', () => {
   };
 
   describe('Result Type Exhaustiveness', () => {
-    it('Compile-time exhaustiveness for PlanAccessErrorCode', () => {
-      const errorCodes: PlanAccessErrorCode[] = [
+    it('Compile-time exhaustiveness for AccessErrorCode', () => {
+      const errorCodes: AccessErrorCode[] = [
         'UNAUTHORIZED',
         'NOT_FOUND',
         'FORBIDDEN',
@@ -143,10 +163,6 @@ describe('Plan Access Types', () => {
         const result = planError(code, 'Test message');
 
         if (!result.success) {
-          // The switch below uses the _exhaustiveCheck: never pattern so that
-          // TypeScript reports a compile error if a new PlanAccessErrorCode is
-          // added and this switch is not updated. This is a compile-time
-          // guarantee for planError and PlanAccessErrorCode, not runtime coverage.
           let httpStatus: number;
           switch (result.error.code) {
             case 'UNAUTHORIZED':
@@ -169,9 +185,7 @@ describe('Plan Access Types', () => {
             }
           }
           expect(httpStatus).toBeGreaterThan(0);
-          // Runtime coverage: assert the shared mapping exists for this code and yields a number
-          const mapped =
-            PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
+          const mapped = ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
           expect(typeof mapped).toBe('number');
           expect(mapped).toBe(httpStatus);
         }
@@ -180,12 +194,11 @@ describe('Plan Access Types', () => {
 
     it('should map error codes to correct HTTP statuses at runtime', () => {
       for (const [code, expectedStatus] of Object.entries(
-        PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS,
+        ACCESS_ERROR_CODE_TO_HTTP_STATUS,
       )) {
-        const result = planError(code as PlanAccessErrorCode, 'Test');
+        const result = planError(code as AccessErrorCode, 'Test');
         if (!result.success) {
-          const status =
-            PLAN_ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
+          const status = ACCESS_ERROR_CODE_TO_HTTP_STATUS[result.error.code];
           expect(typeof status).toBe('number');
           expect(status).toBe(expectedStatus);
         }
@@ -198,12 +211,10 @@ describe('Plan Access Types', () => {
       const successResult = planSuccess(buildClientPlanDetail());
       const errorResult = planError('NOT_FOUND', 'Not found');
 
-      // Success result should have data, not error
       expect(successResult.success).toBe(true);
       expect('data' in successResult).toBe(true);
       expect('error' in successResult).toBe(false);
 
-      // Error result should have error, not data
       expect(errorResult.success).toBe(false);
       expect('error' in errorResult).toBe(true);
       expect('data' in errorResult).toBe(false);

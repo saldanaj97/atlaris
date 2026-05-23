@@ -14,29 +14,6 @@ export type UnhandledGenerationErrorHandler = (
   dbClient: AttemptsDbClient,
 ) => Promise<void>;
 
-/**
- * Idempotent wrapper for stream-scoped DB `cleanup()`.
- */
-export function createSafeStreamCleanup(
-  authUserId: string,
-  cleanup: () => Promise<void>,
-): () => Promise<void> {
-  let closed = false;
-
-  return async () => {
-    if (closed) {
-      return;
-    }
-    closed = true;
-
-    try {
-      await cleanup();
-    } catch (error) {
-      logger.error({ authUserId, error }, 'Failed to close stream DB client');
-    }
-  };
-}
-
 export async function handleUnhandledStreamError({
   error,
   startedAt,

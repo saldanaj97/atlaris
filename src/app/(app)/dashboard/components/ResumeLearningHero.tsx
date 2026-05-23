@@ -2,33 +2,38 @@ import { Play } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 interface ResumeLearningHeroProps {
   plan: PlanSummary;
 }
 
-function formatDuration(totalMinutes: number): string {
-  if (totalMinutes < 60) {
-    return `${Math.max(1, Math.round(totalMinutes))}min`;
+/**
+ * PlanSummary modules omit per-task progress; use completion metrics only.
+ */
+function getUpNextLabel(plan: PlanSummary): string {
+  const progressPercent = Math.round(
+    Math.max(0, Math.min(1, plan.completion)) * 100,
+  );
+
+  if (progressPercent >= 100) {
+    return 'Plan complete';
   }
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = Math.round(totalMinutes % 60);
-  const hourLabel = `${hours}hr${hours !== 1 ? 's' : ''}`;
-  return minutes > 0 ? `${hourLabel} ${minutes}min` : hourLabel;
+
+  if (plan.completedModules === 0) {
+    return plan.modules[0]?.title ?? 'Getting Started';
+  }
+
+  return 'Continue your plan';
 }
 
-function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function resumeHeroSupportingCopy(params: {
-  completedModules: number;
-  moduleCount: number;
-  topic: string | null | undefined;
-}): string {
-  const { completedModules, moduleCount, topic } = params;
+function getResumeHeroDescription(plan: PlanSummary): string {
+  const moduleCount = plan.modules.length;
+  const completedModules = plan.completedModules;
+  const topic = plan.plan.topic;
   const topicLower = (topic ?? 'your topic').toLowerCase();
+
   if (completedModules === 0) {
     return `Start your journey with ${moduleCount} modules covering ${topicLower}.`;
   }
@@ -63,7 +68,7 @@ function HeroCircularProgress({
       aria-label={`Plan progress: ${progressPercent}% complete`}
     >
       <svg
-        className="rotate-[-90deg]"
+        className="-rotate-90"
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
@@ -127,19 +132,15 @@ function HeroCircularProgress({
  * - `totalMinutes`: Total duration of the plan in minutes
  */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
-  const skillLevel = capitalizeFirst(plan.plan.skillLevel ?? 'beginner');
+  const skillLevel = formatSkillLevel(plan.plan.skillLevel ?? 'beginner');
   const weeklyHours = plan.plan.weeklyHours ?? 10;
   const moduleCount = plan.modules.length;
-  const totalDuration = formatDuration(plan.totalMinutes);
+  const totalDuration = formatMinutes(plan.totalMinutes);
   // Clamp completion to [0, 1] to prevent display issues with invalid data
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
-  // Find the next incomplete module (first module that isn't fully completed)
-  const nextModule = plan.modules.find(
-    (_, index) => index >= plan.completedModules,
-  );
-  const nextModuleTitle = nextModule?.title ?? 'Getting Started';
+  const upNextLabel = getUpNextLabel(plan);
 
   return (
     <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg">
@@ -152,7 +153,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
       </div>
 
       {/* Bottom row: badges + title + description (left), Up Next + Continue (right) */}
-      <div className="mt-auto flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         {/* Bottom left: badges, title, description */}
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap gap-2">
@@ -174,26 +175,18 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
             {plan.plan.topic}
           </h2>
           <p className="text-sm text-white/80">
-            {resumeHeroSupportingCopy({
-              completedModules: plan.completedModules,
-              moduleCount,
-              topic: plan.plan.topic,
-            })}
+            {getResumeHeroDescription(plan)}
           </p>
         </div>
 
         {/* Bottom right: Up Next and Continue Learning */}
         <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4">
           <p className="text-sm text-white/90">
-            <span className="font-medium">Up Next:</span> {nextModuleTitle}
+            <span className="font-medium">Up Next:</span> {upNextLabel}
           </p>
-          <Button
-            asChild
-            variant="secondary"
-            className="gap-2 px-5 py-2.5 text-sm font-medium shadow-sm"
-          >
+          <Button asChild variant="secondary" className="px-5 py-2.5 shadow-sm">
             <Link href={`/plans/${plan.plan.id}`}>
-              <Play className="h-4 w-4" />
+              <Play />
               Continue Learning
             </Link>
           </Button>

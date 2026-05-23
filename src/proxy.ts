@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { maintenanceMode } from '@/flags';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import { getCorrelationId } from '@/lib/proxy/correlation';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
   isProtectedRoute,
@@ -10,83 +11,53 @@ import {
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
 import {
+  applyProxySecurityHeaders,
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
 
-const CORRELATION_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
-const CORRELATION_ID_MAX_LENGTH = 64;
-
-const sanitizeCorrelationId = (value: string | null): string | null => {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > CORRELATION_ID_MAX_LENGTH) return null;
-  if (!CORRELATION_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-};
-
-const getCorrelationId = (request: NextRequest): string => {
-  const headerCorrelationId = request.headers.get('x-correlation-id');
-  const sanitized = sanitizeCorrelationId(headerCorrelationId);
-  return sanitized ?? crypto.randomUUID();
-};
-
-const createRequestContentSecurityPolicy = (nonce: string): string =>
-  createContentSecurityPolicy({
+function buildProxyRequestContext(request: NextRequest) {
+  const correlationId = getCorrelationId(request);
+  const nonce = createCspNonce();
+  const contentSecurityPolicy = createContentSecurityPolicy({
     isDevelopment: appEnv.isDevelopment,
     nonce,
   });
+  return { correlationId, nonce, contentSecurityPolicy };
+}
 
-const withSecurityHeaders = (
+function applyProxyDecorations(
   response: NextResponse,
-  contentSecurityPolicy: string,
-): NextResponse => {
-  response.headers.set('Content-Security-Policy', contentSecurityPolicy);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=()',
-  );
-
-  if (appEnv.isProduction) {
-    response.headers.set(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload',
-    );
-  }
-
-  return response;
-};
+  ctx: ReturnType<typeof buildProxyRequestContext>,
+): NextResponse {
+  response.headers.set('x-correlation-id', ctx.correlationId);
+  return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
+    isProduction: appEnv.isProduction,
+  });
+}
 
 const withCorrelationId = (
   request: NextRequest,
   response: NextResponse,
 ): NextResponse => {
-  const correlationId = getCorrelationId(request);
-  const nonce = createCspNonce();
-  response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(
-    response,
-    createRequestContentSecurityPolicy(nonce),
-  );
+  const ctx = buildProxyRequestContext(request);
+  return applyProxyDecorations(response, ctx);
 };
 
-const nextWithCorrelationId = (request: NextRequest): NextResponse => {
-  const correlationId = getCorrelationId(request);
-  const nonce = createCspNonce();
-  const contentSecurityPolicy = createRequestContentSecurityPolicy(nonce);
+const nextWithCorrelationId = (
+  request: NextRequest,
+  existingCtx?: ReturnType<typeof buildProxyRequestContext>,
+): NextResponse => {
+  const ctx = existingCtx ?? buildProxyRequestContext(request);
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-correlation-id', correlationId);
-  requestHeaders.set('x-nonce', nonce);
-  requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
+  requestHeaders.set('x-correlation-id', ctx.correlationId);
+  requestHeaders.set('x-nonce', ctx.nonce);
+  requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   });
-  response.headers.set('x-correlation-id', correlationId);
-  return withSecurityHeaders(response, contentSecurityPolicy);
+  return applyProxyDecorations(response, ctx);
 };
 
 const proxy = clerkMiddleware(
@@ -131,13 +102,14 @@ const proxy = clerkMiddleware(
           pathname,
         })
       ) {
+        const ctx = buildProxyRequestContext(request);
         console.debug('[dev_auth_bypass]', {
           event: 'dev_auth_bypass',
           userId: devAuthEnv.userId,
           pathname,
-          correlationId: getCorrelationId(request),
+          correlationId: ctx.correlationId,
         });
-        return nextWithCorrelationId(request);
+        return nextWithCorrelationId(request, ctx);
       }
 
       await auth.protect();

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { learningPlans } from '@supabase/schema';
 import { createTestPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db';
+import { ensureUser } from '../../helpers/db/users';
 import {
   cleanupTrackedRlsClients,
   createRlsDbForUser,

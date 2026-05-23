@@ -132,7 +132,7 @@ When rate limit is exceeded, the API returns:
 - HTTP Status: `429 Too Many Requests`
 - `retryAfter`: Seconds until the rate limit resets
 
-All error payloads must follow the canonical API error contract in `docs/rules/api/error-contract.md`.
+All error payloads must follow the canonical API error contract in `docs/api/error-contract.md`.
 
 ## Current Endpoint Assignments
 

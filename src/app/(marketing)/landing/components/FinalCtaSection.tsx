@@ -1,17 +1,13 @@
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useId } from 'react';
-import { Button } from '@/components/ui/button';
 
 import { marketingPrimaryCtaClassName } from './marketing-cta';
-
-interface FinalCtaSectionProps {
-  onCtaClick?: () => void;
-}
 
 /**
  * Final call-to-action section with glassmorphism design.
  */
-export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
+export function FinalCtaSection() {
   const headingId = useId();
 
   return (
@@ -24,7 +20,7 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
           <h2 id={headingId} className="marketing-h2 mb-2 text-foreground">
             Ready for Clarity?
           </h2>
-          <p className="marketing-subtitle mx-auto mb-6 max-w-xl text-muted-foreground lg:mb-10">
+          <p className="marketing-subtitle mx-auto mb-6 max-w-xl lg:mb-10">
             Join thousands of learners who&apos;ve found their focus with
             Atlaris. Start your journey today—for free.
           </p>
@@ -33,9 +29,7 @@ export function FinalCtaSection({ onCtaClick }: FinalCtaSectionProps) {
             variant="default"
             className={marketingPrimaryCtaClassName}
           >
-            <Link href="/plans/new" onClick={onCtaClick}>
-              Start Free Trial
-            </Link>
+            <Link href="/plans/new">Get started free</Link>
           </Button>
         </div>
       </div>

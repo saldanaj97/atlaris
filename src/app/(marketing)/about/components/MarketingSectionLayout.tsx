@@ -23,9 +23,7 @@ export function MarketingSectionLayout({
           <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
             {title}
           </h2>
-          <p className="marketing-subtitle mx-auto max-w-2xl text-muted-foreground">
-            {subtitle}
-          </p>
+          <p className="marketing-subtitle mx-auto max-w-2xl">{subtitle}</p>
         </div>
 
         {children}

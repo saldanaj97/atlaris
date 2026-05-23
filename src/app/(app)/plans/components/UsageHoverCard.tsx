@@ -1,9 +1,9 @@
 'use client';
 
 import {
-  formatUsageLimit,
+  formatCompactUsageLimit,
   type UsageData,
-} from '@/app/(app)/plans/components/usage-types';
+} from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
 import {
   HoverCard,
@@ -59,7 +59,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
               </div>
               <span className="font-medium">
                 {usage.activePlans.current} /{' '}
-                {formatUsageLimit(usage.activePlans.limit)}
+                {formatCompactUsageLimit(usage.activePlans.limit)}
               </span>
             </div>
 
@@ -70,7 +70,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
               </div>
               <span className="font-medium">
                 {usage.regenerations.used} /{' '}
-                {formatUsageLimit(usage.regenerations.limit)}
+                {formatCompactUsageLimit(usage.regenerations.limit)}
               </span>
             </div>
 
@@ -80,7 +80,8 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
                 Exports
               </div>
               <span className="font-medium">
-                {usage.exports.used} / {formatUsageLimit(usage.exports.limit)}
+                {usage.exports.used} /{' '}
+                {formatCompactUsageLimit(usage.exports.limit)}
               </span>
             </div>
           </div>

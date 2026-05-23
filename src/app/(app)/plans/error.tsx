@@ -26,12 +26,12 @@ export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
   }, [error]);
 
   return (
-    <div className="mx-auto min-h-screen max-w-7xl px-6 py-8">
+    <div>
       <div className="mb-6 flex items-center justify-between">
         <h1>Learning Plans</h1>
         <Button asChild>
           <Link href="/plans/new">
-            <Plus className="h-4 w-4" />
+            <Plus />
             New Plan
           </Link>
         </Button>

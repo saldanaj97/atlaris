@@ -1,7 +1,7 @@
 'use client';
+import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import type { NavItem } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 
 interface DesktopNavigationProps {
+  pathname: string;
   navItems: NavItem[];
 }
 
@@ -59,21 +60,25 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-40">
-        {item.dropdown?.map((dropdownItem) => (
-          <DropdownMenuItem key={dropdownItem.href} asChild>
-            <Link
-              href={dropdownItem.href}
-              onClick={() => setIsOpen(false)}
-              className={cn(
-                pathname === dropdownItem.href
-                  ? 'font-semibold text-primary'
-                  : 'text-muted-foreground',
-              )}
-            >
-              {dropdownItem.label}
-            </Link>
-          </DropdownMenuItem>
-        ))}
+        {item.dropdown?.map((dropdownItem) => {
+          const isSubActive = isNavItemActive(pathname, dropdownItem);
+          return (
+            <DropdownMenuItem key={dropdownItem.href} asChild>
+              <Link
+                href={dropdownItem.href}
+                onClick={() => setIsOpen(false)}
+                aria-current={isSubActive ? 'page' : undefined}
+                className={cn(
+                  isSubActive
+                    ? 'font-semibold text-primary'
+                    : 'text-muted-foreground',
+                )}
+              >
+                {dropdownItem.label}
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -84,15 +89,11 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
  * Renders horizontal nav items - dropdowns open on click.
  */
 export default function DesktopNavigation({
+  pathname,
   navItems,
 }: DesktopNavigationProps) {
-  const pathname = usePathname();
-
   const renderNavItem = (item: NavItem) => {
-    const isActive =
-      item.href === '/'
-        ? pathname === '/'
-        : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const isActive = isNavItemActive(pathname, item);
 
     if (item.dropdown) {
       return (
@@ -105,12 +106,12 @@ export default function DesktopNavigation({
       );
     }
 
-    // Regular nav item
     return (
       <Link
         href={item.href}
         className={getNavItemClass(isActive)}
         key={item.href}
+        aria-current={isActive ? 'page' : undefined}
       >
         {item.label}
       </Link>
