@@ -16,7 +16,8 @@ const defaultMaintenanceAccess = createServerEnvAccess(getProcessEnvSource);
 
 export const maintenanceEnv: MaintenanceEnv = {
   /**
-   * Master switch for the retention cleanup maintenance endpoint.
+   * Master switch for the manual retention cleanup HTTP endpoint.
+   * Scheduled pg_cron cleanup is controlled separately in Supabase.
    */
   get retentionCleanupEnabled(): boolean {
     return toBoolean(
@@ -25,7 +26,7 @@ export const maintenanceEnv: MaintenanceEnv = {
     );
   },
   /**
-   * Shared bearer token for scheduled retention cleanup triggers.
+   * Bearer token for manual retention cleanup via the internal HTTP route.
    */
   get workerToken(): string | undefined {
     return defaultMaintenanceAccess.getServerRequiredProdOnly(

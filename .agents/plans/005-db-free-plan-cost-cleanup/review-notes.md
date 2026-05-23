@@ -47,7 +47,8 @@ Targeted validation already completed during slices:
 - `pnpm db:dev:reset`
 - `pnpm exec vitest run --project integration tests/integration/db/jobs.queue.spec.ts`
 - `pnpm exec vitest run --project integration tests/integration/db/usage.spec.ts`
-- `pnpm exec vitest run --project integration tests/integration/db/retention.spec.ts`
+- `pnpm exec vitest run --project integration tests/integration/db/retention-cleanup-function.spec.ts`
+- `pnpm exec vitest run --project integration tests/integration/api/retention-cleanup-process.spec.ts`
 
 Final validation is tracked in `todos.md`.
 

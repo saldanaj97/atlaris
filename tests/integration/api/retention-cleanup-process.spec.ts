@@ -1,28 +1,20 @@
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { POST as POST_RETENTION_CLEANUP } from '@/app/api/internal/maintenance/retention/cleanup/route';
 import {
   jobQueue,
-  learningPlans,
   oauthStateTokens,
   stripeWebhookEvents,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 
-import { ensureUser } from '../../helpers/db/users';
-
-const JOB_QUEUE_RETENTION_DAYS = 30;
-const STRIPE_WEBHOOK_EVENT_RETENTION_DAYS = 45;
+import { seedRetentionCleanupRows } from '@tests/helpers/db/retention-fixtures';
 
 const ORIGINAL_ENV = {
   MAINTENANCE_WORKER_TOKEN: process.env.MAINTENANCE_WORKER_TOKEN,
   RETENTION_CLEANUP_ENABLED: process.env.RETENTION_CLEANUP_ENABLED,
 };
-
-function daysBefore(now: Date, days: number): Date {
-  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-}
 
 function restoreEnvVar(name: keyof typeof ORIGINAL_ENV): void {
   const originalValue = ORIGINAL_ENV[name];
@@ -61,77 +53,10 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
     delete process.env.MAINTENANCE_WORKER_TOKEN;
 
     const now = new Date();
-
-    await db.insert(oauthStateTokens).values([
-      {
-        stateTokenHash: 'route-expired-oauth-state',
-        authUserId: 'retention-route',
-        expiresAt: daysBefore(now, 1),
-      },
-      {
-        stateTokenHash: 'route-future-oauth-state',
-        authUserId: 'retention-route',
-        expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
-      },
-    ]);
-
-    await db.insert(stripeWebhookEvents).values([
-      {
-        eventId: 'evt_route_old',
-        livemode: false,
-        type: 'customer.subscription.updated',
-        createdAt: daysBefore(now, STRIPE_WEBHOOK_EVENT_RETENTION_DAYS + 1),
-      },
-      {
-        eventId: 'evt_route_recent',
-        livemode: false,
-        type: 'customer.subscription.updated',
-        createdAt: daysBefore(now, STRIPE_WEBHOOK_EVENT_RETENTION_DAYS - 1),
-      },
-    ]);
-
-    const authUserId = 'retention-route-jobs';
-    const userId = await ensureUser({
-      authUserId,
-      email: `${authUserId}@example.com`,
+    const fixture = await seedRetentionCleanupRows({
+      now,
+      key: 'route',
     });
-    const [plan] = await db
-      .insert(learningPlans)
-      .values({
-        userId,
-        topic: 'Retention route jobs',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        origin: 'ai',
-        generationStatus: 'ready',
-        isQuotaEligible: true,
-      })
-      .returning({ id: learningPlans.id });
-
-    const oldCompletedAt = daysBefore(now, JOB_QUEUE_RETENTION_DAYS + 1);
-    await db.insert(jobQueue).values([
-      {
-        planId: plan!.id,
-        userId,
-        jobType: 'plan_regeneration',
-        status: 'completed',
-        payload: {},
-        completedAt: oldCompletedAt,
-        createdAt: oldCompletedAt,
-        updatedAt: oldCompletedAt,
-      },
-      {
-        planId: plan!.id,
-        userId,
-        jobType: 'plan_regeneration',
-        status: 'pending',
-        payload: {},
-        completedAt: null,
-        createdAt: oldCompletedAt,
-        updatedAt: oldCompletedAt,
-      },
-    ]);
 
     const response = await POST_RETENTION_CLEANUP(
       new Request(
@@ -157,21 +82,37 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
       .from(oauthStateTokens)
       .where(
         inArray(oauthStateTokens.stateTokenHash, [
-          'route-expired-oauth-state',
-          'route-future-oauth-state',
+          fixture.oauth.expiredHash,
+          fixture.oauth.futureHash,
         ]),
       );
-    expect(remainingOauth).toEqual([{ hash: 'route-future-oauth-state' }]);
+    expect(remainingOauth).toEqual([{ hash: fixture.oauth.futureHash }]);
 
     const remainingStripe = await db
       .select({ eventId: stripeWebhookEvents.eventId })
       .from(stripeWebhookEvents)
       .where(
         inArray(stripeWebhookEvents.eventId, [
-          'evt_route_old',
-          'evt_route_recent',
+          fixture.stripe.oldEventId,
+          fixture.stripe.recentEventId,
         ]),
       );
-    expect(remainingStripe).toEqual([{ eventId: 'evt_route_recent' }]);
+    expect(remainingStripe).toEqual([
+      { eventId: fixture.stripe.recentEventId },
+    ]);
+
+    const remainingJobs = await db
+      .select({ id: jobQueue.id, status: jobQueue.status })
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.userId, fixture.userId),
+          inArray(jobQueue.id, fixture.jobRowIds),
+        ),
+      );
+    expect(remainingJobs).toEqual(
+      expect.arrayContaining([expect.objectContaining({ status: 'pending' })]),
+    );
+    expect(remainingJobs).toHaveLength(1);
   });
 });

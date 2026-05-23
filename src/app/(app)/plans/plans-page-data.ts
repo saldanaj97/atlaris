@@ -5,7 +5,7 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 
 export type PlansPageData = {
   summaries: Awaited<ReturnType<typeof listPlansPageSummaries>>;
-  snapshot: { usage: UsageSummary };
+  usage: UsageSummary;
 };
 
 export function loadPlansPageData(): Promise<PlansPageData | null> {
@@ -15,6 +15,9 @@ export function loadPlansPageData(): Promise<PlansPageData | null> {
       getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
     ]);
 
-    return { summaries, snapshot };
+    return {
+      summaries,
+      usage: snapshot.usage,
+    };
   });
 }

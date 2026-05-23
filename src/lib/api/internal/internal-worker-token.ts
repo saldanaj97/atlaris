@@ -7,12 +7,24 @@ export function readInternalWorkerToken(
   request: Request,
   headerName: string,
 ): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice('Bearer '.length).trim();
+  if (!headerName.trim()) {
+    return null;
   }
 
-  return request.headers.get(headerName);
+  const authHeader = request.headers.get('authorization');
+  const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
+  const bearerToken = bearerMatch?.[1]?.trim() ?? null;
+  const customToken = request.headers.get(headerName);
+
+  if (bearerToken && customToken) {
+    return null;
+  }
+
+  if (bearerToken) {
+    return bearerToken;
+  }
+
+  return customToken;
 }
 
 /**

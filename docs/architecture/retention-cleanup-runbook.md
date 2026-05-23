@@ -13,10 +13,10 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 
 ## Required Environment
 
-| Variable                    | Purpose                                            | Production expectation |
-| --------------------------- | -------------------------------------------------- | ---------------------- |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the manual cleanup endpoint      | `true`                 |
-| `MAINTENANCE_WORKER_TOKEN`  | Shared bearer token for manual internal route auth | Required               |
+| Variable                    | Purpose                                                        | Production expectation |
+| --------------------------- | -------------------------------------------------------------- | ---------------------- |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual HTTP cleanup endpoint** only    | `true`                 |
+| `MAINTENANCE_WORKER_TOKEN`  | Bearer token for manual internal route auth (not used by cron) | Required               |
 
 ## Retention Windows
 
@@ -68,10 +68,11 @@ Failure shape follows the canonical API error contract (`docs/rules/api/error-co
 - In Supabase, inspect the `cron.job` and `cron.job_run_details` records for the `retention-cleanup` job.
 - Monitor table growth for `oauth_state_tokens`, `stripe_webhook_events`, and terminal `job_queue` rows if the scheduler stops running.
 - Alert on `401` responses from the internal cleanup endpoint (token mismatch/absence).
-- Alert on `503` responses (`RETENTION_CLEANUP_ENABLED=false` or missing worker token in production).
+- Alert on `503` responses from the manual cleanup endpoint (`RETENTION_CLEANUP_ENABLED=false` or missing worker token in production).
 
 ## Incident Response
 
 1. **Tables growing faster than expected:** verify the Supabase Cron job exists, inspect `cron.job_run_details`, and manually trigger the internal endpoint if needed.
 2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm scheduler header.
-3. **Emergency pause:** set `RETENTION_CLEANUP_ENABLED=false` while investigating.
+3. **Emergency pause (scheduled cleanup):** unschedule the cron job in Supabase (`SELECT cron.unschedule('retention-cleanup');`) or disable it in the Supabase dashboard. Setting `RETENTION_CLEANUP_ENABLED=false` only pauses the manual HTTP route.
+4. **Emergency pause (manual route only):** set `RETENTION_CLEANUP_ENABLED=false` while investigating.

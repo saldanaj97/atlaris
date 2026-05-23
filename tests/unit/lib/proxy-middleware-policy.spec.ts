@@ -8,10 +8,21 @@ import {
 describe('middleware policy', () => {
   it('isProtectedRoute skips stripe webhook', () => {
     expect(isProtectedRoute('/api/v1/stripe/webhook')).toBe(false);
-    expect(isProtectedRoute('/api/internal/jobs/regeneration/process')).toBe(
-      false,
-    );
     expect(isProtectedRoute('/dashboard')).toBe(true);
+  });
+
+  it.each([
+    '/api/internal/',
+    '/api/internal/jobs/regeneration/process',
+    '/api/internal/maintenance/retention/cleanup',
+    '/api/internal/extra-segment',
+  ])('isProtectedRoute skips internal worker prefix %s', (pathname) => {
+    expect(isProtectedRoute(pathname)).toBe(false);
+  });
+
+  it('isProtectedRoute protects non-internal api routes', () => {
+    expect(isProtectedRoute('/api/plans')).toBe(true);
+    expect(isProtectedRoute('/api/v1/plans')).toBe(true);
   });
 
   it('resolveMaintenanceRedirectPath', () => {

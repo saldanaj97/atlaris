@@ -251,11 +251,16 @@ export async function incrementExistingUsageInTx(
 ): Promise<void> {
   const updateObj = getUsageCounterUpdate(type);
 
-  await tx
+  const updated = await tx
     .update(usageMetrics)
     .set({
       ...updateObj,
       updatedAt: new Date(),
     })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ id: usageMetrics.id });
+
+  if (updated.length === 0) {
+    throw new UsageMetricsLoadError(userId, month);
+  }
 }

@@ -26,17 +26,17 @@ export async function PlanCountBadgeContent({
   dataPromise: Promise<PlansPageData | null>;
 }): Promise<JSX.Element | null> {
   const result = await dataPromise;
-  const snapshot = result?.snapshot;
+  const usage = result?.usage;
 
-  if (!snapshot) return null;
+  if (!usage) return null;
 
   return (
     <PlanCountBadge
       usage={{
-        tier: snapshot.usage.tier,
-        activePlans: snapshot.usage.activePlans,
-        regenerations: snapshot.usage.regenerations,
-        exports: snapshot.usage.exports,
+        tier: usage.tier,
+        activePlans: usage.activePlans,
+        regenerations: usage.regenerations,
+        exports: usage.exports,
       }}
     />
   );
@@ -58,7 +58,7 @@ export async function PlansContent({
     );
   }
 
-  const { summaries, snapshot } = result;
+  const { summaries, usage } = result;
   const referenceTimestamp = new Date().toISOString();
 
   if (!summaries.length) {
@@ -92,16 +92,12 @@ export async function PlansContent({
     <PlansList
       summaries={summaries}
       referenceTimestamp={referenceTimestamp}
-      usage={
-        snapshot
-          ? {
-              tier: snapshot.usage.tier,
-              activePlans: snapshot.usage.activePlans,
-              regenerations: snapshot.usage.regenerations,
-              exports: snapshot.usage.exports,
-            }
-          : undefined
-      }
+      usage={{
+        tier: usage.tier,
+        activePlans: usage.activePlans,
+        regenerations: usage.regenerations,
+        exports: usage.exports,
+      }}
     />
   );
 }

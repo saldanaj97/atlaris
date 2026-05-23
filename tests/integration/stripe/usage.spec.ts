@@ -1,4 +1,5 @@
-import { ensureUser } from '@/../tests/helpers/db/users';
+import { ensureUser } from '@tests/helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import {
   getCurrentMonth,
   getUsageSummary,
@@ -218,75 +219,50 @@ describe('Usage Tracking', () => {
       expect(after[0]?.lessonModulesGenerated).toBe(0);
     });
 
-    it('increments regeneration counter for existing row', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_increment_regen',
-        email: 'increment.regen@example.com',
-      });
+    it.each([
+      {
+        type: 'regeneration' as const,
+        field: 'regenerationsUsed' as const,
+        initial: 2,
+        scenario: 'increment-regen',
+      },
+      {
+        type: 'export' as const,
+        field: 'exportsUsed' as const,
+        initial: 5,
+        scenario: 'increment-export',
+      },
+      {
+        type: 'lesson_generation' as const,
+        field: 'lessonModulesGenerated' as const,
+        initial: 1,
+        scenario: 'increment-lesson-gen',
+      },
+    ])(
+      'increments $type counter for existing row',
+      async ({ type, field, initial, scenario }) => {
+        const authUserId = buildTestAuthUserId(scenario);
+        const userId = await ensureUser({
+          authUserId,
+          email: buildTestEmail(authUserId),
+        });
 
-      const month = getCurrentMonth();
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        regenerationsUsed: 2,
-      });
+        const month = getCurrentMonth();
+        await db.insert(usageMetrics).values({
+          userId,
+          month,
+          [field]: initial,
+        });
 
-      // Increment
-      await incrementUsage(userId, 'regeneration');
+        await incrementUsage(userId, type);
 
-      // Counter incremented
-      const after = await db
-        .select()
-        .from(usageMetrics)
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-      expect(after[0]?.regenerationsUsed).toBe(3);
-    });
-
-    it('increments export counter for existing row', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_increment_export',
-        email: 'increment.export@example.com',
-      });
-
-      const month = getCurrentMonth();
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        exportsUsed: 5,
-      });
-
-      // Increment
-      await incrementUsage(userId, 'export');
-
-      // Counter incremented
-      const after = await db
-        .select()
-        .from(usageMetrics)
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-      expect(after[0]?.exportsUsed).toBe(6);
-    });
-
-    it('increments lesson_generation counter for existing row', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_increment_lesson_gen',
-        email: 'increment.lesson@example.com',
-      });
-
-      const month = getCurrentMonth();
-      await db.insert(usageMetrics).values({
-        userId,
-        month,
-        lessonModulesGenerated: 1,
-      });
-
-      await incrementUsage(userId, 'lesson_generation');
-
-      const after = await db
-        .select()
-        .from(usageMetrics)
-        .where(sql`user_id = ${userId} AND month = ${month}`);
-      expect(after[0]?.lessonModulesGenerated).toBe(2);
-    });
+        const after = await db
+          .select()
+          .from(usageMetrics)
+          .where(sql`user_id = ${userId} AND month = ${month}`);
+        expect(after[0]?.[field]).toBe(initial + 1);
+      },
+    );
 
     it('updates updatedAt timestamp', async () => {
       const userId = await ensureUser({
