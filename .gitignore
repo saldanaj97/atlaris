@@ -58,3 +58,4 @@ next-env.d.ts
 
 screenshots/
 .fallow/
+.agents/plans/
