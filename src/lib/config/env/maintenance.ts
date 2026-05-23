@@ -21,7 +21,7 @@ export const maintenanceEnv: MaintenanceEnv = {
   get retentionCleanupEnabled(): boolean {
     return toBoolean(
       defaultMaintenanceAccess.getServerOptional('RETENTION_CLEANUP_ENABLED'),
-      true,
+      false,
     );
   },
   /**

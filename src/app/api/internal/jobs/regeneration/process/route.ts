@@ -5,13 +5,13 @@ import {
   readInternalWorkerToken,
   tokensMatch,
 } from '@/lib/api/internal/internal-worker-token';
-
-const REGENERATION_WORKER_HEADER = 'x-regeneration-worker-token';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
 import { appEnv, regenerationQueueEnv } from '@/lib/config/env';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
+
+const REGENERATION_WORKER_HEADER = 'x-regeneration-worker-token';
 
 function regenerationDrainFailureDiagnostic(
   error: unknown,
