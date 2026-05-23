@@ -1,5 +1,7 @@
 # Metrics Before DB Free-Plan Cost Cleanup
 
+> **Historical baseline only.** Index names listed here include indexes dropped by migration `0034_strong_marten_broadcloak.sql`. Do not treat drops as pending work.
+
 Captured: 2026-05-22 21:25 UTC
 
 Scope:

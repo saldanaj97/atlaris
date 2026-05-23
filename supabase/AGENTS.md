@@ -165,7 +165,7 @@ Admin-owned cleanup is canonicalized in `private.cleanup_retained_db_rows()` and
 - `stripe_webhook_events`: keep processed event IDs for 45 days to cover Stripe automatic retry and manual resend windows.
 - `ai_usage_events`: retain raw rows until a monthly aggregation/accounting model exists.
 
-Scheduled trigger: Supabase Cron job `retention-cleanup` runs `private.cleanup_retained_db_rows()` daily. Manual fallback: `POST /api/internal/maintenance/retention/cleanup` with `MAINTENANCE_WORKER_TOKEN`. See `docs/architecture/retention-cleanup-runbook.md`.
+Scheduled trigger: Supabase Cron job `retention-cleanup` runs `private.cleanup_retained_db_rows()` daily. Manual fallback: `POST /api/internal/maintenance/retention/cleanup` with `MAINTENANCE_WORKER_TOKEN`. See `docs/architecture/retention-cleanup-runbook.md` and `docs/architecture/internal-worker-routes.md`.
 
 ## Commands
 

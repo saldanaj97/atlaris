@@ -13,10 +13,10 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 
 ## Required Environment
 
-| Variable                    | Purpose                                                        | Production expectation |
-| --------------------------- | -------------------------------------------------------------- | ---------------------- |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual HTTP cleanup endpoint** only    | `true`                 |
-| `MAINTENANCE_WORKER_TOKEN`  | Bearer token for manual internal route auth (not used by cron) | Required               |
+| Variable                    | Purpose                                                                                      | Production expectation                 |
+| --------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual HTTP cleanup endpoint** only (defaults to `false` when unset) | Set `true` when using the manual route |
+| `MAINTENANCE_WORKER_TOKEN`  | Bearer token for manual internal route auth (not used by cron)                               | Required                               |
 
 ## Retention Windows
 
@@ -46,6 +46,13 @@ curl -X POST "https://<app-host>/api/internal/maintenance/retention/cleanup" \
   -H "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}"
 ```
 
+Alternate auth (Bearer and custom header are mutually exclusive):
+
+```bash
+curl -X POST "https://<app-host>/api/internal/maintenance/retention/cleanup" \
+  -H "x-maintenance-worker-token: ${MAINTENANCE_WORKER_TOKEN}"
+```
+
 In non-production environments, if no worker token is configured, auth is not required.
 
 ## Expected Response
@@ -61,7 +68,7 @@ Success shape:
 }
 ```
 
-Failure shape follows the canonical API error contract (`docs/rules/api/error-contract.md`).
+Failure shape follows the canonical API error contract (`docs/api/error-contract.md`).
 
 ## Operational Checks
 
@@ -73,6 +80,6 @@ Failure shape follows the canonical API error contract (`docs/rules/api/error-co
 ## Incident Response
 
 1. **Tables growing faster than expected:** verify the Supabase Cron job exists, inspect `cron.job_run_details`, and manually trigger the internal endpoint if needed.
-2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm scheduler header.
+2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm Bearer or `x-maintenance-worker-token` on **manual** triggers (cron does not use HTTP auth).
 3. **Emergency pause (scheduled cleanup):** unschedule the cron job in Supabase (`SELECT cron.unschedule('retention-cleanup');`) or disable it in the Supabase dashboard. Setting `RETENTION_CLEANUP_ENABLED=false` only pauses the manual HTTP route.
 4. **Emergency pause (manual route only):** set `RETENTION_CLEANUP_ENABLED=false` while investigating.

@@ -1,7 +1,7 @@
 # DB Free-Plan Cost Cleanup
 
 Date: 2026-05-22
-Status: planning only
+Status: implemented (merged via PR #337 / #338)
 
 ## Review Status - 2026-05-22
 

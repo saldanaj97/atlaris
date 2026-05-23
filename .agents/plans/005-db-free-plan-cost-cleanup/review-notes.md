@@ -8,7 +8,7 @@
 - `4e454e6c feat(db): add retention cleanup boundaries`
 - `c6ddac07 docs(db): record RLS benchmark evidence`
 
-No commits were pushed.
+No commits were pushed at initial review time; work was subsequently merged to `develop` and `main` via PRs #337 and #338.
 
 ## Before/after evidence
 
