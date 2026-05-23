@@ -239,6 +239,20 @@
       "when": 1778873554537,
       "tag": "0033_flippant_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1779488433446,
+      "tag": "0034_strong_marten_broadcloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779489548000,
+      "tag": "20260522223908_schedule_retention_cleanup",
+      "breakpoints": true
     }
   ]
 }

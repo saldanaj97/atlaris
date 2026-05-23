@@ -90,8 +90,6 @@ export const modules = pgTable(
       ),
       check('module_title_length', sql`char_length(${table.title}) <= 500`),
       unique('modules_plan_id_order_unique').on(table.planId, table.order),
-      index('idx_modules_plan_id').on(table.planId),
-      index('idx_modules_plan_id_order').on(table.planId, table.order),
 
       // RLS Policies
 
@@ -147,8 +145,6 @@ export const tasks = pgTable(
       ),
       check('task_title_length', sql`char_length(${table.title}) <= 500`),
       unique('tasks_module_id_order_unique').on(table.moduleId, table.order),
-      index('idx_tasks_module_id').on(table.moduleId),
-      index('idx_tasks_module_id_order').on(table.moduleId, table.order),
 
       // RLS Policies
 
@@ -234,7 +230,6 @@ export const taskResources = pgTable(
         table.taskId,
         table.resourceId,
       ),
-      index('idx_task_resources_task_id').on(table.taskId),
       index('idx_task_resources_resource_id').on(table.resourceId),
 
       // RLS Policies

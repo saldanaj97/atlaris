@@ -13,6 +13,7 @@ export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv } from '@/lib/config/env/observability';
 export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
+export { maintenanceEnv } from '@/lib/config/env/maintenance';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {

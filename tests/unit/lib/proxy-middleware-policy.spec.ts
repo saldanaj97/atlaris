@@ -11,6 +11,20 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/dashboard')).toBe(true);
   });
 
+  it.each([
+    '/api/internal/',
+    '/api/internal/jobs/regeneration/process',
+    '/api/internal/maintenance/retention/cleanup',
+    '/api/internal/extra-segment',
+  ])('isProtectedRoute skips internal worker prefix %s', (pathname) => {
+    expect(isProtectedRoute(pathname)).toBe(false);
+  });
+
+  it('isProtectedRoute protects non-internal api routes', () => {
+    expect(isProtectedRoute('/api/plans')).toBe(true);
+    expect(isProtectedRoute('/api/v1/plans')).toBe(true);
+  });
+
   it('resolveMaintenanceRedirectPath', () => {
     expect(resolveMaintenanceRedirectPath(true, '/x')).toBe('/maintenance');
     expect(resolveMaintenanceRedirectPath(true, '/maintenance')).toBe(null);

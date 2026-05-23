@@ -1,9 +1,17 @@
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import { incrementUsage } from '@/features/billing/usage-metrics';
+import {
+  compensateMeteredReservation,
+  reserveMeteredUsage,
+} from '@/features/billing/metered-reservation';
+import {
+  getCurrentMonth,
+  incrementUsage,
+} from '@/features/billing/usage-metrics';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
 import {
@@ -194,5 +202,90 @@ describe('usage_metrics lesson_modules_generated', () => {
       .where(eq(usageMetrics.userId, userId));
 
     expect(row?.lessonModulesGenerated).toBe(1);
+  });
+});
+
+describe('metered usage reservations', () => {
+  it('creates an absent current-month row and increments once', async () => {
+    const authUserId = buildTestAuthUserId('usage-reserve-missing');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const month = getCurrentMonth();
+
+    const result = await reserveMeteredUsage(
+      { userId, meter: 'regeneration' },
+      db,
+    );
+
+    expect(result.ok).toBe(true);
+
+    const [row] = await db
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(row?.regenerationsUsed).toBe(1);
+  });
+
+  it('does not increment denied reservations', async () => {
+    const authUserId = buildTestAuthUserId('usage-reserve-denied');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const month = getCurrentMonth();
+    const limit = TIER_LIMITS.free.monthlyRegenerations;
+
+    await db.insert(usageMetrics).values({
+      userId,
+      month,
+      regenerationsUsed: limit,
+    });
+
+    const result = await reserveMeteredUsage(
+      { userId, meter: 'regeneration' },
+      db,
+    );
+
+    expect(result).toEqual({ ok: false, currentCount: limit, limit });
+
+    const [row] = await db
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(row?.regenerationsUsed).toBe(limit);
+  });
+
+  it('compensates a successful reservation back to zero', async () => {
+    const authUserId = buildTestAuthUserId('usage-reserve-compensate');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const month = getCurrentMonth();
+
+    const result = await reserveMeteredUsage(
+      { userId, meter: 'regeneration' },
+      db,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('expected reservation to succeed');
+    }
+
+    await compensateMeteredReservation(result.token, db);
+
+    const [row] = await db
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(row?.regenerationsUsed).toBe(0);
   });
 });

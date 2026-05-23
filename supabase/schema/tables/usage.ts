@@ -39,8 +39,6 @@ export const usageMetrics = pgTable(
   },
   (table) => [
     unique('usage_metrics_user_id_month_unique').on(table.userId, table.month),
-    index('idx_usage_metrics_user_id').on(table.userId),
-    index('idx_usage_metrics_month').on(table.month),
     check('plans_generated_nonneg', sql`${table.plansGenerated} >= 0`),
     check('regenerations_used_nonneg', sql`${table.regenerationsUsed} >= 0`),
     check('exports_used_nonneg', sql`${table.exportsUsed} >= 0`),
@@ -88,7 +86,6 @@ export const aiUsageEvents = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index('idx_ai_usage_user_id').on(table.userId),
     index('idx_ai_usage_created_at').on(table.createdAt),
     index('idx_ai_usage_events_user_created_at').on(
       table.userId,
