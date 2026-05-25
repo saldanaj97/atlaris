@@ -48,17 +48,21 @@ RLS is enforced through request-scoped Postgres session state:
 
 ## Frequently referenced indexes
 
-| Table                | Index / uniqueness                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `learning_plans`     | `(user_id, created_at desc)`, `(user_id, is_quota_eligible, generation_status)`                               |
-| `modules`            | `(plan_id, order)`                                                                                            |
-| `tasks`              | `(module_id, order)`                                                                                          |
-| `task_progress`      | `(user_id, task_id)`                                                                                          |
-| `task_resources`     | `(task_id, resource_id)`                                                                                      |
-| `job_queue`          | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)`                         |
-| `usage_metrics`      | `(user_id, month)` unique; `lesson_modules_generated` counts successful module lesson batches (billing meter) |
-| `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
-| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
+Authoritative definitions live in `supabase/schema/tables/*.ts` and applied migrations under `supabase/migrations/`.
+
+| Table                | Index / uniqueness                                                                                                                                                                                                                                                            |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `learning_plans`     | `(user_id, created_at desc)`; `(user_id, generation_status)`; `(user_id, origin)`; `(user_id, is_quota_eligible, generation_status)`                                                                                                                                           |
+| `modules`            | `UNIQUE (plan_id, order)` (no standalone `(plan_id)` btree after migration `0034`)                                                                                                                                                                                            |
+| `tasks`              | `UNIQUE (module_id, order)` (no standalone `(module_id)` btree after `0034`)                                                                                                                                                                                                    |
+| `task_progress`      | `(user_id, task_id)`                                                                                                                                                                                                                                                          |
+| `task_resources`     | `UNIQUE (task_id, resource_id)`; `(resource_id)` btree (standalone `(task_id)` btree removed in `0034`)                                                                                                                                                                       |
+| `job_queue`          | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)` (definition recreated in `0034`)                                                                                                                                                        |
+| `usage_metrics`      | `UNIQUE (user_id, month)` + PK only at btree level after `0034` dropped redundant `(user_id)` / `(month)` indexes; `lesson_modules_generated` meters successful module lesson batches                                                                                         |
+| `ai_usage_events`    | `(user_id, created_at)`; `(created_at)`; standalone `(user_id)` btree removed in `0034`                                                                                                                                                                                         |
+| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                                                                                                                                                                                          |
+
+Migration `0034_strong_marten_broadcloak.sql` removed redundant btree indexes where uniqueness or composite indexes already covered the same access patterns (see integration expectations in `tests/integration/db/stripe.schema.spec.ts` for `usage_metrics`).
 
 ## Ownership and retention
 
@@ -78,6 +82,7 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 | Enum definitions         | `supabase/enums.ts`                              |
 | Relations                | `supabase/schema/relations.ts`                   |
 | Query modules            | `src/lib/db/queries/`                            |
+| Retention SQL + TS bridge | `supabase/migrations/20260522223908_schedule_retention_cleanup.sql` (`private.cleanup_retained_db_rows`), `src/lib/db/queries/admin/retention.ts` (`cleanupRetainedDbRows`) |
 | Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts` |
 | Usage tracking           | `supabase/usage.ts`                              |
 | Migrations               | `supabase/migrations/`                           |
