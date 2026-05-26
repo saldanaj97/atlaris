@@ -11,15 +11,15 @@ import {
   type JobType,
   type PlanRegenerationJobData,
 } from '@/features/jobs/types';
-import { jobQueue, learningPlans, users } from '@supabase/schema';
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
 } from '@/shared/constants/retry-policy';
+import { jobQueue, learningPlans, users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { and, eq, lt } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
 

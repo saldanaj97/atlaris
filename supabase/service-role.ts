@@ -42,11 +42,10 @@
  * If you're seeing an ESLint error, you're using the wrong client!
  */
 
+import * as schema from './schema';
 import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
-
-import * as schema from './schema';
 
 type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 

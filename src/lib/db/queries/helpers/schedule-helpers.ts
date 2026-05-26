@@ -1,7 +1,8 @@
 import type { PgErrorShape } from '@/lib/db/queries/types/schedule.types';
-import type { planSchedules } from '@supabase/schema';
-import { scheduleJsonSchema } from '@/shared/schemas/scheduling.schemas';
 import type { ScheduleCacheRow } from '@/shared/types/scheduling.types';
+import type { planSchedules } from '@supabase/schema';
+
+import { scheduleJsonSchema } from '@/shared/schemas/scheduling.schemas';
 
 /**
  * Maps a raw `planSchedules` database row to a typed {@link ScheduleCacheRow}.

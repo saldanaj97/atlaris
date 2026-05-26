@@ -1,6 +1,6 @@
+import { safeMarkPlanFailed } from '@/features/plans/session/stream-cleanup';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { safeMarkPlanFailed } from '@/features/plans/session/stream-cleanup';
 
 describe('stream-cleanup safeMarkPlanFailed', () => {
   const planId = createId('plan');

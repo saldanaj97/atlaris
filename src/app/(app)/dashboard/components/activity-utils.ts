@@ -1,8 +1,9 @@
+import type { ActivityItem } from '../types';
+import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
+
 import { formatMinutes } from '@/features/plans/formatters';
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { formatRelativePast } from '@/lib/date/relative-time';
-import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
-import type { ActivityItem } from '../types';
 
 type DatedActivity = {
   activity: ActivityItem;

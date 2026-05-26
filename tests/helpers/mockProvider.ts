@@ -1,9 +1,3 @@
-import {
-  ProviderError,
-  ProviderRateLimitError,
-  ProviderTimeoutError,
-} from '@/features/ai/providers/errors';
-import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -12,6 +6,13 @@ import type {
   ProviderGenerateResult,
   ProviderMetadata,
 } from '@/features/ai/types/provider.types';
+
+import {
+  ProviderError,
+  ProviderRateLimitError,
+  ProviderTimeoutError,
+} from '@/features/ai/providers/errors';
+import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 
 const EMPTY_MODULE_LESSON_BATCH_PAYLOAD = {
   version: 1,

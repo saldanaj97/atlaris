@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
-
-import { createEventStream, formatEvent } from '@/features/ai/streaming/events';
-import { StreamingEventSchema } from '@/features/ai/streaming/schema';
 import type {
   PlanGenerationSessionEvent,
   PlanStartEvent,
 } from '@/features/plans/session/session-events';
+
+import { createEventStream, formatEvent } from '@/features/ai/streaming/events';
+import { StreamingEventSchema } from '@/features/ai/streaming/schema';
+import { describe, expect, it } from 'vitest';
 
 const decoder = new TextDecoder();
 

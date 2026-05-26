@@ -17,8 +17,9 @@
  * - All limits are per-user, not per-IP (authenticated context required).
  */
 
-import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
+
+import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
 
 /**
  * Configuration for user-based rate limiting

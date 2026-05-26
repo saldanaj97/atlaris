@@ -1,11 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { createGenerationInput } from '../../../fixtures/generation-input';
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import {
   type RouterConfig,
   RouterGenerationProvider,
 } from '@/features/ai/providers/router';
-import { createGenerationInput } from '../../../fixtures/generation-input';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const DEFAULT_OPENROUTER_RESPONSE = {
   choices: [

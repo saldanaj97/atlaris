@@ -3,12 +3,12 @@
  * Use these instead of direct db.insert calls to centralize schema changes.
  */
 
+import type { ClientPlanDetail } from '@/shared/types/client.types';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
 
 import { learningPlans } from '@supabase/schema';
-import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { db } from '@supabase/service-role';
+import { nanoid } from 'nanoid';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type LearningPlanInsert = InferInsertModel<typeof learningPlans>;

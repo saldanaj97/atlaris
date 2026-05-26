@@ -1,9 +1,9 @@
-import { createTestPlanDetail } from '@tests/fixtures/plans';
-import { describe, expect, it } from 'vitest';
 import {
   computeDetailsCardStats,
   computeOverviewStats,
 } from '@/app/(app)/plans/[id]/helpers';
+import { createTestPlanDetail } from '@tests/fixtures/plans';
+import { describe, expect, it } from 'vitest';
 
 const plan = createTestPlanDetail({
   completedModules: 1,

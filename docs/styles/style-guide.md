@@ -210,7 +210,7 @@ Glassmorphism is a core visual language: depth through transparency, blur, and l
 **Standard glass card**
 
 ```tsx
-<div className="rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30">
+<div className='rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30'>
   {/* Content */}
 </div>
 ```
@@ -280,7 +280,7 @@ Example pair:
 Warm accent orb (optional third):
 
 ```tsx
-<div className="absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-linear-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl" />
+<div className='absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-linear-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl' />
 ```
 
 ---
@@ -294,9 +294,9 @@ Warm accent orb (optional third):
 #### Heading (`h1`)
 
 ```tsx
-<h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+<h1 className='mb-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl'>
   Invest in your{' '}
-  <span className="bg-linear-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+  <span className='bg-linear-to-r from-primary via-accent to-primary bg-clip-text text-transparent'>
     growth
   </span>
 </h1>
@@ -313,7 +313,7 @@ Warm accent orb (optional third):
 #### Subtitle
 
 ```tsx
-<p className="mx-auto max-w-md text-base text-muted-foreground sm:max-w-xl sm:text-lg">
+<p className='mx-auto max-w-md text-base text-muted-foreground sm:max-w-xl sm:text-lg'>
   Description text here.
 </p>
 ```
@@ -328,7 +328,7 @@ Warm accent orb (optional third):
 #### Header container
 
 ```tsx
-<div className="relative z-10 mb-5 text-center sm:mb-6">
+<div className='relative z-10 mb-5 text-center sm:mb-6'>
   {/* h1 + subtitle */}
 </div>
 ```
@@ -361,9 +361,9 @@ Warm accent orb (optional third):
 #### Page header
 
 ```tsx
-<div className="mb-6">
+<div className='mb-6'>
   <h1>Page Title</h1>
-  <p className="subtitle">Optional description.</p>
+  <p className='subtitle'>Optional description.</p>
 </div>
 ```
 
@@ -372,9 +372,9 @@ Use a plain `<h1>` for the main title—**do not** add `text-xl` or other size o
 #### Settings section header
 
 ```tsx
-<div className="mb-6">
-  <h2 className="text-xl font-semibold">Settings Section</h2>
-  <p className="text-sm text-muted-foreground">Helper description.</p>
+<div className='mb-6'>
+  <h2 className='text-xl font-semibold'>Settings Section</h2>
+  <p className='text-sm text-muted-foreground'>Helper description.</p>
 </div>
 ```
 
@@ -388,10 +388,10 @@ Use a plain `<h1>` for the main title—**do not** add `text-xl` or other size o
 #### Card interior
 
 ```tsx
-<Card className="p-6">
-  <h3 className="mb-4 text-xl font-semibold">Card Title</h3>
-  <p className="text-sm text-muted-foreground">Description</p>
-  <div className="space-y-4">{/* Content */}</div>
+<Card className='p-6'>
+  <h3 className='mb-4 text-xl font-semibold'>Card Title</h3>
+  <p className='text-sm text-muted-foreground'>Description</p>
+  <div className='space-y-4'>{/* Content */}</div>
 </Card>
 ```
 

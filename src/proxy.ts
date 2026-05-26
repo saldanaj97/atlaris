@@ -1,6 +1,3 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
-
 import { maintenanceMode } from '@/flags';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
@@ -15,6 +12,8 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
+import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function buildProxyRequestContext(request: NextRequest) {
   const correlationId = getCorrelationId(request);

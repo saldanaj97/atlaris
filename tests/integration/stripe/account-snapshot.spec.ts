@@ -1,17 +1,17 @@
+import { ensureUser } from '../../helpers/db/users';
+import { markUserAsSubscribed } from '../../helpers/subscription';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import {
   BillingSnapshotNotFoundError,
   getBillingAccountSnapshot,
 } from '@/features/billing/account-snapshot';
-import { users } from '@supabase/schema';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
-import { ensureUser } from '../../helpers/db/users';
-import { markUserAsSubscribed } from '../../helpers/subscription';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 async function createUniqueUser(subscriptionTier?: 'free' | 'starter' | 'pro') {
   const authUserId = buildTestAuthUserId('billing-account-snapshot');

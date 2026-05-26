@@ -1,6 +1,5 @@
-import { z } from 'zod';
-
 import { preferredAiModel } from '../../../../../../supabase/enums';
+import { z } from 'zod';
 
 /**
  * Schema for updating user preferences.

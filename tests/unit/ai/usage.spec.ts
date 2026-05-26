@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 import {
   normalizeToCanonicalUsage,
   safeNormalizeUsage,
 } from '@/features/ai/usage';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import { IncompleteUsageError } from '@/shared/types/ai-usage.types';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock Sentry so safeNormalizeUsage doesn't throw on import
 vi.mock('@sentry/nextjs', () => ({

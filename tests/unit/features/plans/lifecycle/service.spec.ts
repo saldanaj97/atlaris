@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
+import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
 
+import { createMockPorts } from './lifecycle-test-helpers';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
-import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-import type { CreateAiPlanInput } from '@/features/plans/lifecycle/types';
-import { createMockPorts } from './lifecycle-test-helpers';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const validInput: CreateAiPlanInput = {
   userId: 'user-abc',

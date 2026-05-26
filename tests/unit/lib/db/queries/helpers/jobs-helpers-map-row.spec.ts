@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
-
 import type { JobQueueRow } from '@/lib/db/queries/types/jobs.types';
+
 import { mapRowToJob } from '@/lib/db/queries/helpers/jobs-helpers';
 import {
   JOB_TYPES,
   type JobPayload,
   type JobResult,
 } from '@/shared/types/jobs.types';
+import { describe, expect, it } from 'vitest';
 
 describe('mapRowToJob', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');

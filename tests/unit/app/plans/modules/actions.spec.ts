@@ -40,8 +40,9 @@ vi.mock('@/lib/logging/logger', () => ({
   logger: loggerMock,
 }));
 
-import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import type { RequestScope } from '@/lib/api/request-boundary';
+
+import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { buildUserFixture } from '@tests/fixtures/users';
 

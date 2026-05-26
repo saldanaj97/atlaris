@@ -1,6 +1,7 @@
-import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import type { PlainHandler } from '@/lib/api/auth';
+
+import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { RateLimitError } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
 import { createPromptParams } from '../../fixtures/prompts';
+import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { describe, expect, it } from 'vitest';
 
 describe('AI Prompt Builder', () => {
   describe('buildSystemPrompt', () => {

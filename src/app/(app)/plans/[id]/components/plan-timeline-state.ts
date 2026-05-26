@@ -1,12 +1,13 @@
 import type { TimelineModule } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
+import type { ClientModule } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
 import { formatMinutes } from '@/features/plans/formatters';
 import {
   deriveActiveModuleId,
   deriveCompletedModuleIds,
   deriveModuleProgressState,
 } from '@/features/plans/task-progress/client';
-import type { ClientModule } from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
 
 export function deriveTimelineModules(
   modules: ClientModule[],

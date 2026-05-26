@@ -1,12 +1,13 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import type { JSX } from 'react';
-import { ModelSelector } from '@/app/(app)/settings/ai/components/model-selector';
 import type { AvailableModel } from '@/features/ai/types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { JSX } from 'react';
+
+import { ModelSelector } from '@/app/(app)/settings/ai/components/model-selector';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { useRouter } from 'next/navigation';
 
 type ModelPreferencesSelectorProps = {
   currentModel: string | null;

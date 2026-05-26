@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { planSchedules } from '@supabase/schema';
+import { describe, expect, it } from 'vitest';
 
 describe('Plan Schedules Schema', () => {
   it('should have plan_schedules table defined', () => {

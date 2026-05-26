@@ -1,20 +1,21 @@
+import type {
+  StripePriceFields,
+  StripeProductFields,
+} from '@/features/billing/validation/stripe';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { getStripe } from '@/features/billing/client';
 import {
   type LocalBillingCatalogEntry,
   localCatalogEntryFromPriceId,
 } from '@/features/billing/local-catalog';
 import { formatAmount } from '@/features/billing/money';
-import type {
-  StripePriceFields,
-  StripeProductFields,
-} from '@/features/billing/validation/stripe';
 import {
   stripePriceFieldsSchema,
   stripeProductFieldsSchema,
 } from '@/features/billing/validation/stripe';
 import { stripeEnv } from '@/lib/config/env';
 import { logger as appLogger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Display names aligned with marketing `PRICING_TIERS`; billing owns read fallback strings. */
 const BILLING_CATALOG_FALLBACK_PRODUCT_NAMES = {

@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import {
   detectJsonBodyPresence,
   parseJsonBody,
 } from '@/lib/api/parse-json-body';
+import { describe, expect, it, vi } from 'vitest';
 
 function mockRequest(init: {
   json: () => Promise<unknown>;

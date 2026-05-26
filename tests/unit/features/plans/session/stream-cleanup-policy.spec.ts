@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vitest';
-
-import { AppError } from '@/lib/api/errors';
 import {
   DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
   classifyUnhandledGenerationError,
 } from '@/features/plans/session/stream-cleanup-policy';
+import { AppError } from '@/lib/api/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('classifyUnhandledGenerationError', () => {
   it('uses AppError classification when present', () => {

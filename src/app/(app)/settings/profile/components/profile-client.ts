@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { requestJson } from '@/app/_shared/client-api';
+import { z } from 'zod';
 
 const profileSchema = z.object({
   id: z.string(),

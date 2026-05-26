@@ -43,5 +43,5 @@ export default function LandingLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <div className="w-full">{children}</div>;
+  return <div className='w-full'>{children}</div>;
 }

@@ -16,10 +16,10 @@ export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
 
   return (
     <Link
-      href="/"
+      href='/'
       onClick={onClick}
-      className="flex items-center"
-      aria-label="Atlaris - Go to homepage"
+      className='flex items-center'
+      aria-label='Atlaris - Go to homepage'
     >
       <span
         className={`gradient-text font-semibold ${

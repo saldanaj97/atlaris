@@ -1,13 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
-import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
 import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
   OPENROUTER_TEST_MODEL,
 } from './openrouter-test-helpers';
+import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
+import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('OpenRouterProvider', () => {
   beforeEach(() => {

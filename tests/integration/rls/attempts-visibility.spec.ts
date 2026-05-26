@@ -1,10 +1,10 @@
-import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
-import { generationAttempts, learningPlans } from '@supabase/schema';
-import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
-import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route';
+import { generationAttempts, learningPlans } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
+import { describe, expect, it } from 'vitest';
 
 async function createPlanWithAttempt({
   authUserId,

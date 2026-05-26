@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import {
   buildModelPricingSnapshot,
   parseModelPricingSnapshot,
 } from '@/features/ai/model-pricing-snapshot';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { describe, expect, it } from 'vitest';
 
 function baseComplete(overrides?: Partial<CanonicalAIUsage>): CanonicalAIUsage {
   return {

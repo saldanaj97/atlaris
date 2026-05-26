@@ -1,5 +1,11 @@
-import { OpenRouter } from '@openrouter/sdk';
-import * as Sentry from '@sentry/nextjs';
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+  GenerationOptions,
+  ModuleLessonBatchGenerationInput,
+  ProviderGenerateResult,
+  ProviderUsage,
+} from '@/features/ai/types/provider.types';
 
 import { getOutputTokenCeiling } from '@/features/ai/cost';
 import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
@@ -23,16 +29,10 @@ import {
   DEFAULT_GENERATION_EXTENSION_MS,
   DEFAULT_GENERATION_TIMEOUT_MS,
 } from '@/features/ai/timeout';
-import type {
-  AiPlanGenerationProvider,
-  GenerationInput,
-  GenerationOptions,
-  ModuleLessonBatchGenerationInput,
-  ProviderGenerateResult,
-  ProviderUsage,
-} from '@/features/ai/types/provider.types';
 import { openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import { OpenRouter } from '@openrouter/sdk';
+import * as Sentry from '@sentry/nextjs';
 
 export type OpenRouterClient = {
   chat: {

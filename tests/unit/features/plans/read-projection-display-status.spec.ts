@@ -1,8 +1,9 @@
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
+import type { PlanSummary } from '@/shared/types/db.types';
+
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
-import type { PlanReadStatus } from '@/features/plans/read-projection/types';
-import type { PlanSummary } from '@/shared/types/db.types';
 import { createId } from '@tests/fixtures/ids';
 import { buildPlan, buildPlanSummary } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';

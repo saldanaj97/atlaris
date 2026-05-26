@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
+import { describe, expect, it } from 'vitest';
 
 const validBaseInput = {
   topic: 'Learn TypeScript',

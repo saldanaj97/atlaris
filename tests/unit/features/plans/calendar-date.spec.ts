@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
+import { describe, expect, it } from 'vitest';
 
 describe('toPlanCalendarDate', () => {
   it('accepts a real YYYY-MM-DD calendar date', () => {

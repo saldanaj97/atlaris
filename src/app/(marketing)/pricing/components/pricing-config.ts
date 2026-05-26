@@ -1,5 +1,6 @@
-import { stripeEnv } from '@/lib/config/env';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { stripeEnv } from '@/lib/config/env';
 
 export interface StripeTierConfig {
   key: SubscriptionTier;

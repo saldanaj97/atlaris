@@ -1,5 +1,13 @@
 'use client';
 
+import type { PlanFormData } from './types';
+import type { JSX } from 'react';
+
+import {
+  createInitialPlanInputState,
+  planInputReducer,
+} from './plan-input-state';
+import { PreferenceControls } from './PreferenceControls';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,15 +15,7 @@ import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import type { JSX } from 'react';
 import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
-import {
-  createInitialPlanInputState,
-  planInputReducer,
-} from './plan-input-state';
-import { PreferenceControls } from './PreferenceControls';
-
-import type { PlanFormData } from './types';
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -126,13 +126,13 @@ export function UnifiedPlanInput({
   }, []);
 
   return (
-    <div className="w-full max-w-5xl">
+    <div className='w-full max-w-5xl'>
       <Surface
-        padding="none"
-        className="overflow-hidden px-5 py-5 shadow-lg transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40 sm:px-6 sm:py-6 lg:px-8 lg:py-7 dark:bg-input/90"
+        padding='none'
+        className='overflow-hidden px-5 py-5 shadow-lg transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40 sm:px-6 sm:py-6 lg:px-8 lg:py-7 dark:bg-input/90'
       >
-        <div className="pb-6">
-          <label htmlFor={topicInputId} className="sr-only">
+        <div className='pb-6'>
+          <label htmlFor={topicInputId} className='sr-only'>
             What do you want to learn?
           </label>
           <Textarea
@@ -142,8 +142,8 @@ export function UnifiedPlanInput({
               dispatch({ type: 'set-topic', value: e.target.value })
             }
             onKeyDown={handleKeyDown}
-            placeholder="e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…"
-            className="min-h-36 w-full min-w-0 resize-none rounded-xs border-0 p-0 text-base leading-7 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 sm:text-lg md:min-h-40"
+            placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
+            className='min-h-36 w-full min-w-0 resize-none rounded-xs border-0 p-0 text-base leading-7 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 sm:text-lg md:min-h-40'
             rows={5}
             disabled={isSubmitting || disabled}
           />
@@ -151,14 +151,14 @@ export function UnifiedPlanInput({
 
         <div
           className={cn(
-            'flex flex-col gap-5 border-t border-border/60 pt-5',
+            'border-border/60 flex flex-col gap-5 border-t pt-5',
             'xl:flex-row xl:items-end xl:justify-between',
           )}
         >
           <p
             id={submitHintId}
             className={cn(
-              'text-sm text-muted-foreground xl:sr-only',
+              'text-muted-foreground text-sm xl:sr-only',
               !showIncompleteFormHint && 'sr-only',
             )}
           >
@@ -171,33 +171,33 @@ export function UnifiedPlanInput({
             dispatch={dispatch}
           />
           <Button
-            type="button"
-            variant="cta"
-            size="lg"
-            className="w-full shrink-0 xl:w-auto xl:self-end"
+            type='button'
+            variant='cta'
+            size='lg'
+            className='w-full shrink-0 xl:w-auto xl:self-end'
             onClick={handleSubmit}
             disabled={isDisabled}
             aria-describedby={showIncompleteFormHint ? submitHintId : undefined}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
+                <Loader2 className='mr-2 size-4 animate-spin' />
                 <span>Generating…</span>
               </>
             ) : (
               <>
                 <span>Generate My Plan</span>
-                <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
               </>
             )}
           </Button>
         </div>
       </Surface>
 
-      <p className="mt-3 text-center text-xs text-muted-foreground sm:mt-4 sm:text-sm">
+      <p className='mt-3 text-center text-xs text-muted-foreground sm:mt-4 sm:text-sm'>
         Usually ready in about a minute. Press{' '}
         <kbd
-          className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium"
+          className='rounded bg-muted px-1.5 py-0.5 text-xs font-medium'
           suppressHydrationWarning
         >
           {isMac ? '⌘' : 'Ctrl'}+Enter

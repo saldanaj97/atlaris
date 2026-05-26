@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import {
   parseCaptureBaselineArgs,
   stripLeadingDoubleDash,
 } from '../../../scripts/ui/capture-baseline-args';
+import { describe, expect, it } from 'vitest';
 
 describe('stripLeadingDoubleDash', () => {
   it('strips leading --', () => {

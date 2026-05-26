@@ -1,6 +1,7 @@
-import { toErrorResponse } from '@/lib/api/errors';
 import type { AuthHandler, PlainHandler } from '@/lib/api/types/auth.types';
 import type { UserRateLimitCategory } from '@/lib/api/user-rate-limit';
+
+import { toErrorResponse } from '@/lib/api/errors';
 import {
   checkUserRateLimit,
   getUserRateLimitHeaders,

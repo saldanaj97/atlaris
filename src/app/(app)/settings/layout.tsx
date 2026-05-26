@@ -24,16 +24,16 @@ export default function SettingsLayout({
 }): ReactElement {
   return (
     <PageShell>
-      <PageHeader title="Settings" />
+      <PageHeader title='Settings' />
 
-      <div className="flex flex-col gap-6 md:flex-row md:gap-7">
+      <div className='flex flex-col gap-6 md:flex-row md:gap-7'>
         {/* Sidebar */}
-        <aside className="w-full shrink-0 md:w-52">
+        <aside className='w-full shrink-0 md:w-52'>
           <SettingsSidebar />
         </aside>
 
         {/* Content — rendered by the matched sub-route */}
-        <section className="min-w-0 flex-1 lg:max-w-5xl">{children}</section>
+        <section className='min-w-0 flex-1 lg:max-w-5xl'>{children}</section>
       </div>
     </PageShell>
   );

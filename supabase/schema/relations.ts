@@ -1,4 +1,3 @@
-import { relations } from 'drizzle-orm';
 import { jobQueue } from './tables/jobs';
 import {
   generationAttempts,
@@ -14,6 +13,7 @@ import {
 } from './tables/tasks';
 import { aiUsageEvents, usageMetrics } from './tables/usage';
 import { users } from './tables/users';
+import { relations } from 'drizzle-orm';
 
 export const usersRelations = relations(users, ({ many }) => ({
   learningPlans: many(learningPlans),

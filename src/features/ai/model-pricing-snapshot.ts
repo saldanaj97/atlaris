@@ -1,6 +1,7 @@
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
 import { getModelById } from '@/features/ai/ai-models';
 import { isRuntimeOnlyModelId } from '@/features/ai/model-preferences';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import {
   type ModelPricingSnapshot,
   ModelPricingSnapshotSchema,

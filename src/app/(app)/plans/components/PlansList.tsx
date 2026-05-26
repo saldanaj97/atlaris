@@ -1,17 +1,18 @@
 'use client';
 
-import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
-import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
-import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
 import type { UsageData } from '@/app/_shared/usage-formatting';
-import { Button } from '@/components/ui/button';
 import type {
   FilterStatus,
   PlanReadStatus,
 } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
-import { Search } from 'lucide-react';
 import type { JSX } from 'react';
+
+import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
+import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
+import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
+import { Button } from '@/components/ui/button';
+import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface PlansListProps {
@@ -70,20 +71,20 @@ export function PlansList({
   return (
     <>
       {/* Search Bar */}
-      <div className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5">
-        <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+      <div className='mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5'>
+        <Search className='h-4 w-4 text-muted-foreground' aria-hidden='true' />
         <input
-          type="text"
-          placeholder="Search plans..."
-          aria-label="Search learning plans"
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+          type='text'
+          placeholder='Search plans...'
+          aria-label='Search learning plans'
+          className='flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none'
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       {/* Filters Bar */}
-      <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-border pb-4">
+      <div className='mb-5 flex flex-wrap items-center gap-3 border-b border-border pb-4'>
         <Button
           onClick={() => setFilterStatus('all')}
           variant={filterStatus === 'all' ? 'default' : 'outline'}
@@ -96,7 +97,7 @@ export function PlansList({
           variant={filterStatus === 'active' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className='h-2 w-2 rounded-full bg-emerald-500' />
           Active ({statusCounts.active})
         </Button>
         <Button
@@ -104,7 +105,7 @@ export function PlansList({
           variant={filterStatus === 'completed' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span className='h-2 w-2 rounded-full bg-blue-500' />
           Completed ({statusCounts.completed})
         </Button>
         <Button
@@ -112,7 +113,7 @@ export function PlansList({
           variant={filterStatus === 'inactive' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span className='h-2 w-2 rounded-full bg-amber-500' />
           Inactive ({statusCounts.paused})
         </Button>
         <Button
@@ -120,7 +121,7 @@ export function PlansList({
           variant={filterStatus === 'generating' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className="h-2 w-2 rounded-full bg-primary" />
+          <span className='h-2 w-2 rounded-full bg-primary' />
           Generating ({statusCounts.generating})
         </Button>
         <Button
@@ -128,7 +129,7 @@ export function PlansList({
           variant={filterStatus === 'failed' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className="h-2 w-2 rounded-full bg-red-500" />
+          <span className='h-2 w-2 rounded-full bg-red-500' />
           Failed ({statusCounts.failed})
         </Button>
       </div>
@@ -141,7 +142,7 @@ export function PlansList({
             filterStatus={filterStatus}
           />
         ) : (
-          <div className="space-y-2">
+          <div className='space-y-2'>
             {filteredPlans.map((summary, index) => (
               <PlanRow
                 key={summary.plan.id}

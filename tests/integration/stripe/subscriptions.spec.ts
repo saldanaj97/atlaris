@@ -1,21 +1,5 @@
-import {
-  applyPaymentFailed,
-  applySubscriptionDeleted,
-  applySubscriptionSync,
-  type TransitionDeps,
-} from '@/features/billing/stripe-commerce/reconciliation';
-import { createCustomer } from '@/features/billing/subscriptions';
-import { users } from '@supabase/schema';
-import { createLogger } from '@/lib/logging/logger';
-import {
-  makeStripeInvoice,
-  makeStripeMock,
-  makeStripeSubscription,
-} from '@tests/fixtures/stripe-mocks';
-import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
+
 import { ensureUser } from '../../helpers/db/users';
 import {
   buildStripeCustomerId,
@@ -23,6 +7,23 @@ import {
   markUserAsSubscribed,
 } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import {
+  applyPaymentFailed,
+  applySubscriptionDeleted,
+  applySubscriptionSync,
+  type TransitionDeps,
+} from '@/features/billing/stripe-commerce/reconciliation';
+import { createCustomer } from '@/features/billing/subscriptions';
+import { createLogger } from '@/lib/logging/logger';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import {
+  makeStripeInvoice,
+  makeStripeMock,
+  makeStripeSubscription,
+} from '@tests/fixtures/stripe-mocks';
+import { sql } from 'drizzle-orm';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function createUniqueUser() {
   const authUserId = buildTestAuthUserId('stripe-subscriptions');

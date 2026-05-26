@@ -1,10 +1,9 @@
-import { z } from 'zod';
-
 import {
   EnvValidationError,
   requireEnvFrom,
   type EnvSource,
 } from '@/lib/config/env/shared';
+import { z } from 'zod';
 
 const SupabasePublicEnvSchema = z.object({
   url: z.url({

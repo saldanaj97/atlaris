@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import {
   readInternalWorkerToken,
   tokensMatch,
 } from '@/lib/api/internal/internal-worker-token';
+import { describe, expect, it } from 'vitest';
 
 describe('readInternalWorkerToken', () => {
   it('reads Bearer header', () => {

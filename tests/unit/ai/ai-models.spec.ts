@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   AI_DEFAULT_MODEL,
@@ -9,7 +9,7 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/features/ai/ai-models';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { describe, expect, it } from 'vitest';
 
 describe('AI Models Configuration', () => {
   describe('AVAILABLE_MODELS', () => {

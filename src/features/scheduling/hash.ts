@@ -1,6 +1,6 @@
-import { hashSha256 } from '@/lib/crypto/hash';
-
 import type { ScheduleInputs } from '@/shared/types/scheduling.types';
+
+import { hashSha256 } from '@/lib/crypto/hash';
 
 /**
  * Create a deterministic SHA-256 hex digest representing the given schedule inputs for cache validation.

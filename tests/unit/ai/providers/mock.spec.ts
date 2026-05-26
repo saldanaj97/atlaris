@@ -1,10 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { createGenerationInput } from '../../../fixtures/generation-input';
 import { parseGenerationStream } from '@/features/ai/parser';
 import { getGenerationProvider } from '@/features/ai/providers/factory';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
-import { createGenerationInput } from '../../../fixtures/generation-input';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const SAMPLE_INPUT = createGenerationInput({
   topic: 'Machine Learning',

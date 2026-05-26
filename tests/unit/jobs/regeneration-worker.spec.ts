@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import * as regenerationProcess from '@/features/plans/regeneration-orchestration/process';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('drainRegenerationQueue', () => {
   afterEach(() => {

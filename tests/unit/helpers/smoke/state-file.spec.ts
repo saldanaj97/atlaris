@@ -1,6 +1,3 @@
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
 import { buildIncompleteSmokeState } from '@tests/fixtures/smoke-state';
 import {
   buildSmokeStatePayload,
@@ -10,6 +7,8 @@ import {
   type SmokeStateFileDeps,
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 class InMemorySmokeFs {

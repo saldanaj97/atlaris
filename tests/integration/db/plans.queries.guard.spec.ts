@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import {
   getLearningPlanDetailRows,
@@ -7,6 +6,7 @@ import {
   getPlanStatusRowsForUser,
   getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
+import { describe, expect, it } from 'vitest';
 
 type Expect<T extends true> = T;
 type HasRequiredLeadingArgs<

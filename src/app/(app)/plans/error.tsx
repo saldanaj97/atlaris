@@ -1,11 +1,12 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import type { JSX } from 'react';
-import { useEffect } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -27,10 +28,10 @@ export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className='mb-6 flex items-center justify-between'>
         <h1>Learning Plans</h1>
         <Button asChild>
-          <Link href="/plans/new">
+          <Link href='/plans/new'>
             <Plus />
             New Plan
           </Link>
@@ -38,17 +39,17 @@ export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
       </div>
 
       <div
-        role="alert"
-        className="flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950"
+        role='alert'
+        className='flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950'
       >
-        <h2 className="mb-2 text-xl font-semibold text-red-600 dark:text-red-400">
+        <h2 className='mb-2 text-xl font-semibold text-red-600 dark:text-red-400'>
           Error Loading Plans
         </h2>
-        <p className="mb-4 max-w-md text-muted-foreground">
+        <p className='mb-4 max-w-md text-muted-foreground'>
           We couldn&apos;t load your learning plans. This could be a temporary
           issue.
         </p>
-        <Button onClick={reset} variant="default">
+        <Button onClick={reset} variant='default'>
           Try Again
         </Button>
       </div>

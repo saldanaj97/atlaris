@@ -1,9 +1,10 @@
+import type { ModuleLessonGenerationApiResponse } from '@/shared/types/lesson-content.types';
+
+import { clientLogger } from '@/lib/logging/client';
+import { ModuleLessonGenerationApiResponseSchema } from '@/shared/schemas/lesson-content.schemas';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { clientLogger } from '@/lib/logging/client';
-import { ModuleLessonGenerationApiResponseSchema } from '@/shared/schemas/lesson-content.schemas';
-import type { ModuleLessonGenerationApiResponse } from '@/shared/types/lesson-content.types';
 
 const MODULE_LESSON_GENERATION_POLL_MS = 2500;
 const MODULE_LESSON_GENERATION_MAX_POLLS = 20;

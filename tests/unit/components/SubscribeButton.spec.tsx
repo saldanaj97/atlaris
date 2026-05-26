@@ -1,12 +1,13 @@
 // IMPORTANT: Mock imports must come first, before any component or module
 // imports that consume the mocked package (sonner in this case).
-import '../../mocks/unit/sonner.unit';
+import { createDeferredPromise } from '../../helpers/deferred-promise';
+import SubscribeButton from '@/app/(marketing)/pricing/components/SubscribeButton';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import SubscribeButton from '@/app/(marketing)/pricing/components/SubscribeButton';
-import { createDeferredPromise } from '../../helpers/deferred-promise';
+
+import '../../mocks/unit/sonner.unit';
 
 describe('SubscribeButton', () => {
   const mockLocation = { href: '' };
@@ -37,7 +38,7 @@ describe('SubscribeButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -71,9 +72,9 @@ describe('SubscribeButton', () => {
 
     render(
       <SubscribeButton
-        priceId="price_123"
-        successUrl="/success"
-        cancelUrl="/cancel"
+        priceId='price_123'
+        successUrl='/success'
+        cancelUrl='/cancel'
       />,
     );
 
@@ -106,7 +107,7 @@ describe('SubscribeButton', () => {
     const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -134,7 +135,7 @@ describe('SubscribeButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -157,7 +158,7 @@ describe('SubscribeButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -176,7 +177,7 @@ describe('SubscribeButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -192,7 +193,7 @@ describe('SubscribeButton', () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -215,7 +216,7 @@ describe('SubscribeButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
     await user.click(button);
@@ -239,7 +240,7 @@ describe('SubscribeButton', () => {
     const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<SubscribeButton priceId="price_123" />);
+    render(<SubscribeButton priceId='price_123' />);
 
     const button = screen.getByRole('button');
 

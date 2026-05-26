@@ -5,6 +5,19 @@
  * to create results, check success status, and safely extract error information.
  */
 
+import type {
+  PlanAccessError,
+  PlanAccessErrorCode,
+  PlanAccessResult,
+  PlanDetailsCardStats,
+  PlanOverviewStats,
+} from './types';
+import type {
+  ClientModule,
+  ClientPlanDetail,
+} from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
 import {
   accessError,
   accessSuccess,
@@ -16,18 +29,6 @@ import {
   derivePlanDetailsCardStats,
   derivePlanOverviewStats,
 } from '@/features/plans/task-progress/client';
-import type {
-  ClientModule,
-  ClientPlanDetail,
-} from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
-import type {
-  PlanAccessError,
-  PlanAccessErrorCode,
-  PlanAccessResult,
-  PlanDetailsCardStats,
-  PlanOverviewStats,
-} from './types';
 
 /**
  * Builds a task-status lookup from the modules attached to a plan.

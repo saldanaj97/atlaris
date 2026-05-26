@@ -1,9 +1,9 @@
 'use client';
 
+import type { NavItem } from '@/features/navigation';
+
+import BrandLogo from '../BrandLogo';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
-import { Menu, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -16,9 +16,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { NavItem } from '@/features/navigation';
-
-import BrandLogo from '../BrandLogo';
+import { Menu, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface MobileNavigationProps {
   pathname: string;
@@ -39,46 +39,46 @@ export default function MobileNavigation({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="ghost"
-            size="icon-sm"
+            variant='ghost'
+            size='icon-sm'
             onClick={() => setOpen(true)}
-            className="rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20"
-            aria-label="Open menu"
+            className='rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20'
+            aria-label='Open menu'
           >
-            <Menu className="h-5 w-5" />
+            <Menu className='h-5 w-5' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">Menu</TooltipContent>
+        <TooltipContent side='bottom'>Menu</TooltipContent>
       </Tooltip>
 
       {/* Sheet content sliding from left */}
       <SheetContent
-        side="left"
-        className="w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55"
+        side='left'
+        className='w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55'
       >
-        <SheetHeader className="p-6">
-          <BrandLogo size="sm" onClick={() => setOpen(false)} />
-          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+        <SheetHeader className='p-6'>
+          <BrandLogo size='sm' onClick={() => setOpen(false)} />
+          <SheetTitle className='sr-only'>Navigation Menu</SheetTitle>
         </SheetHeader>
 
         {/* Navigation items */}
         <nav
-          className="flex flex-1 flex-col gap-2 px-4"
-          aria-label="Mobile navigation"
+          className='flex flex-1 flex-col gap-2 px-4'
+          aria-label='Mobile navigation'
         >
           {/* Create New Plan - Primary Action */}
           <Button
             asChild
-            variant="default"
-            className="mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg"
+            variant='default'
+            className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
           >
             <Link
-              href="/plans/new"
+              href='/plans/new'
               onClick={() => {
                 setOpen(false);
               }}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className='h-4 w-4' />
               Create New Plan
             </Link>
           </Button>
@@ -86,7 +86,7 @@ export default function MobileNavigation({
           {navItems.map((item) => {
             const isActive = isNavItemActive(pathname, item);
             return (
-              <div key={item.href} className="flex flex-col gap-1">
+              <div key={item.href} className='flex flex-col gap-1'>
                 <Link
                   href={item.href}
                   onClick={() => setOpen(false)}
@@ -100,7 +100,7 @@ export default function MobileNavigation({
                   {item.label}
                 </Link>
                 {item.dropdown && (
-                  <div className="ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30">
+                  <div className='ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30'>
                     {item.dropdown.map((subItem) => {
                       const isSubActive = isNavItemActive(pathname, subItem);
                       return (

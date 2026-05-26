@@ -1,10 +1,11 @@
-import { cleanupRetainedDbRows } from '@/lib/db/queries/admin/retention';
 import type { PlainHandler } from '@/lib/api/auth';
+
 import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-access';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { maintenanceEnv } from '@/lib/config/env';
+import { cleanupRetainedDbRows } from '@/lib/db/queries/admin/retention';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
 
 const MAINTENANCE_WORKER_HEADER = 'x-maintenance-worker-token';

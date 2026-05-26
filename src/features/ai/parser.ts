@@ -1,9 +1,3 @@
-import {
-  MAX_MODULE_COUNT,
-  MAX_RAW_RESPONSE_CHARS,
-  MAX_TASKS_PER_MODULE,
-} from '@/features/ai/constants';
-import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import type {
   ParsedGeneration,
   ParsedModule,
@@ -11,6 +5,13 @@ import type {
   ParserCallbacks,
   ParserErrorKind,
 } from '@/features/ai/types/parser.types';
+
+import {
+  MAX_MODULE_COUNT,
+  MAX_RAW_RESPONSE_CHARS,
+  MAX_TASKS_PER_MODULE,
+} from '@/features/ai/constants';
+import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import {
   MAX_MODULE_TITLE_LENGTH,
   MAX_TASK_TITLE_LENGTH,

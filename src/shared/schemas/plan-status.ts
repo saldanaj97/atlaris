@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { PLAN_STATUSES } from '@/shared/types/client';
+import { z } from 'zod';
 
 /**
  * Wire contract for `GET /api/v1/plans/:planId/status`.

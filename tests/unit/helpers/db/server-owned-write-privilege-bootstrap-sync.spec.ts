@@ -1,3 +1,5 @@
+import { serverOwnedWriteTables } from '../../../security/rls-test-helpers';
+import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '@supabase/privileges/authenticated-table-privileges';
 /**
  * Intentional readFileSync: ensure bootstrap, RLS bootstrap, migration, and
  * security helpers all reference the same server-owned write revoke list.
@@ -5,11 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '@supabase/privileges/authenticated-table-privileges';
 import { describe, expect, it } from 'vitest';
-
-import { serverOwnedWriteTables } from '../../../security/rls-test-helpers';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(TEST_DIR, '../../../../');

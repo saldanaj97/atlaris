@@ -1,21 +1,22 @@
-import * as Sentry from '@sentry/nextjs';
-import { ZodError } from 'zod';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import type { PlainHandler } from '@/lib/api/auth';
+
 import {
   createPlanGenerationSessionBoundary,
   type PlanGenerationSessionBoundary,
 } from '@/features/plans/session/plan-generation-session';
 import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
-import { serializeErrorForLog } from '@/lib/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { serializeErrorForLog } from '@/lib/errors';
 import { type Logger, logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
+import { ZodError } from 'zod';
 
 type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
 

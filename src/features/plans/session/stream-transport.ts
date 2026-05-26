@@ -1,9 +1,4 @@
-import {
-  createEventStream,
-  streamHeaders,
-} from '@/features/ai/streaming/events';
-import { logger } from '@/lib/logging/logger';
-
+import type { PreparedSessionPlan } from './session-command';
 import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
@@ -14,11 +9,15 @@ import type {
   AttemptsDbClient,
 } from '@/lib/db/queries/types/attempts.types';
 
-import type { PreparedSessionPlan } from './session-command';
 import {
   buildPlanStartEvent,
   executeLifecycleGenerationStream,
 } from './stream-emitters';
+import {
+  createEventStream,
+  streamHeaders,
+} from '@/features/ai/streaming/events';
+import { logger } from '@/lib/logging/logger';
 
 export interface RunPlanGenerationSessionStreamParams {
   requestSignal: AbortSignal;

@@ -1,15 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import {
-  type ReactElement,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { toast } from 'sonner';
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +14,15 @@ import {
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
+import { useRouter } from 'next/navigation';
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { toast } from 'sonner';
 
 interface DeletePlanDialogBaseProps {
   planId: string;
@@ -231,7 +230,7 @@ export function DeletePlanDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete plan</AlertDialogTitle>
-          <AlertDialogDescription className="space-y-2">
+          <AlertDialogDescription className='space-y-2'>
             <p>
               This will permanently delete &quot;{planTopic}&quot; and all its
               modules, tasks, and progress. This action cannot be undone and you
@@ -244,7 +243,7 @@ export function DeletePlanDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant='destructive'
             disabled={deleting || isGenerating}
             onClick={(e) => {
               e.preventDefault();

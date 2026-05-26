@@ -1,11 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import {
   MAX_MODULE_COUNT,
   MAX_RAW_RESPONSE_CHARS,
   MAX_TASKS_PER_MODULE,
 } from '@/features/ai/constants';
 import { ParserError, parseGenerationStream } from '@/features/ai/parser';
+import { describe, expect, it, vi } from 'vitest';
 
 async function* streamFromString(value: string) {
   yield value;

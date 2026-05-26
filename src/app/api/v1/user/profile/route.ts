@@ -1,12 +1,13 @@
-import { eq, sql } from 'drizzle-orm';
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+
 import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
+import { users } from '@supabase/schema';
+import { eq, sql } from 'drizzle-orm';
 
 type UserProfileResponse = Pick<
   DbUser,

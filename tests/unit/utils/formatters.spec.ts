@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
 import {
   formatLearningStyle,
   formatMinutes,
   formatSkillLevel,
   formatWeeklyHours,
 } from '@/features/plans/formatters';
+import { describe, expect, it } from 'vitest';
 
 describe('formatMinutes', () => {
   it('should return "0 min" for 0 minutes', () => {

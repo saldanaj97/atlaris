@@ -1,7 +1,9 @@
-import { randomUUID } from 'node:crypto';
-
-import { describe, expect, it } from 'vitest';
-
+import {
+  LessonContentSchema,
+  ModuleLessonBatchProviderOutputSchema,
+  ModuleLessonGenerationApiResponseSchema,
+  ModuleLessonGenerationMetadataSchema,
+} from '@/shared/schemas/lesson-content.schemas';
 import {
   MAX_LESSON_BLOCK_TEXT_LENGTH,
   MAX_LESSON_BLOCKS_PER_TASK,
@@ -9,12 +11,8 @@ import {
   MAX_LESSON_LIST_ITEMS,
   MAX_MODULE_LESSON_BATCH_TASKS,
 } from '@supabase/schema/constants';
-import {
-  LessonContentSchema,
-  ModuleLessonBatchProviderOutputSchema,
-  ModuleLessonGenerationApiResponseSchema,
-  ModuleLessonGenerationMetadataSchema,
-} from '@/shared/schemas/lesson-content.schemas';
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
 
 const sampleBlock = { type: 'heading' as const, text: 'Intro' };
 

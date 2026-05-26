@@ -14,10 +14,10 @@ export function TimelineModuleMarker({ status }: { status: ModuleStatus }) {
       )}
     >
       {status === 'completed' && (
-        <CheckCircle2 size={14} className="fill-success/10" />
+        <CheckCircle2 size={14} className='fill-success/10' />
       )}
       {status === 'active' && (
-        <div className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+        <div className='h-2 w-2 animate-pulse rounded-full bg-primary' />
       )}
       {status === 'locked' && <Lock size={10} />}
     </div>

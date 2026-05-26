@@ -1,6 +1,8 @@
+import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
+import type { JSX } from 'react';
+
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
-import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -14,7 +16,6 @@ import { ROUTES } from '@/features/navigation/routes';
 import { Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { JSX } from 'react';
 
 /**
  * Async component that fetches usage data and renders the plan count badge.
@@ -63,10 +64,10 @@ export async function PlansContent({
 
   if (!summaries.length) {
     return (
-      <section aria-label="No plans found">
-        <Empty className="min-h-100 border">
+      <section aria-label='No plans found'>
+        <Empty className='min-h-100 border'>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
+            <EmptyMedia variant='icon'>
               <Sparkles />
             </EmptyMedia>
             <EmptyTitle>No learning plans yet</EmptyTitle>
@@ -76,8 +77,8 @@ export async function PlansContent({
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button asChild size="lg">
-              <Link href="/plans/new">
+            <Button asChild size='lg'>
+              <Link href='/plans/new'>
                 <Plus />
                 Create your first plan
               </Link>

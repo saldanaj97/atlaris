@@ -1,16 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import {
-  DEFAULT_OUTPUT_TOKEN_CEILING,
-  getOutputTokenCeiling,
-} from '@/features/ai/cost';
-import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
 import {
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
   OPENROUTER_TEST_MODEL,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
+import {
+  DEFAULT_OUTPUT_TOKEN_CEILING,
+  getOutputTokenCeiling,
+} from '@/features/ai/cost';
+import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('OpenRouterProvider', () => {
   beforeEach(() => {

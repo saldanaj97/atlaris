@@ -1,3 +1,6 @@
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
+
+import { createTestUser } from '../../fixtures/users';
 import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
@@ -7,10 +10,8 @@ import {
   insertJobRecord,
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@supabase/schema';
-import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
-import { createTestUser } from '../../fixtures/users';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 type JobInsert = InferInsertModel<typeof jobQueue>;
 

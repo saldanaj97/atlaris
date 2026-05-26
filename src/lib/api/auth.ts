@@ -1,18 +1,19 @@
-import { createRequestContext, withRequestContext } from '@/lib/api/context';
+import type { RlsClient } from '../../../supabase/rls';
 import type {
   AuthHandler,
   AuthHandlerContext,
   PlainHandler,
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
+import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
+import type { DbClient } from '@/lib/db/types';
+
+import { AuthError } from './errors';
+import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
-import type { DbClient } from '@/lib/db/types';
-import type { RlsClient } from '../../../supabase/rls';
 import { getDb } from '@supabase/runtime';
-import { AuthError } from './errors';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
 

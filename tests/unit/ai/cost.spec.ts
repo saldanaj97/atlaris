@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import {
   AVAILABLE_MODELS,
@@ -11,7 +11,7 @@ import {
   DEFAULT_OUTPUT_TOKEN_CEILING,
   getOutputTokenCeiling,
 } from '@/features/ai/cost';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { describe, expect, it } from 'vitest';
 
 // ─── computeCostCents ────────────────────────────────────────────
 

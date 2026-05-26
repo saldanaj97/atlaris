@@ -1,3 +1,4 @@
+import { ensureUser } from '../helpers/db/users';
 import { JOB_TYPES } from '@/features/jobs/types';
 import {
   cleanupOldJobs,
@@ -5,9 +6,8 @@ import {
   getJobStats,
 } from '@/lib/db/queries/jobs';
 import { jobQueue } from '@supabase/schema';
-import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
-import { ensureUser } from '../helpers/db/users';
+import { describe, expect, it } from 'vitest';
 
 describe('Monitoring Queries', () => {
   describe('getJobStats', () => {

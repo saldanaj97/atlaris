@@ -1,3 +1,8 @@
+import type { RegenerationOwnedPlan } from './types';
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
+import type { DbClient } from '@/lib/db/types';
+
 import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
@@ -9,17 +14,12 @@ import {
 } from '@/features/jobs/queue';
 import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
-import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
-
-import type { RegenerationOwnedPlan } from './types';
 
 // Regeneration orchestration owns enqueue/complete/fail via deps.queue and process/request.
 

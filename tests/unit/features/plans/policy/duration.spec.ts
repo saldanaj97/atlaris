@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
   calculateTotalWeeks,
   checkPlanDurationCap,
   normalizePlanDurationForTier,
 } from '@/features/plans/policy/duration';
+import { describe, expect, it } from 'vitest';
 
 describe('calculateTotalWeeks', () => {
   it('returns default weeks when no deadline', () => {

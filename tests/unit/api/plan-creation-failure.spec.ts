@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
-import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
 import type {
   PermanentFailure,
   RetryableFailure,
 } from '@/features/plans/lifecycle/types';
+
+import { throwPlanCreationFailureError } from '@/app/api/v1/plans/plan-creation-failure';
 import { AppError } from '@/lib/api/errors';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/logging/logger', () => ({
   logger: {

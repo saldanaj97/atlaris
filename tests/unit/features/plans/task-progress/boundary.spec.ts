@@ -1,4 +1,5 @@
 import type { TasksDbClient } from '@/lib/db/queries/types/tasks.types';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { setTaskProgressBatchMock } = vi.hoisted(() => ({

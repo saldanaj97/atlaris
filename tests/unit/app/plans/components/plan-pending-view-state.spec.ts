@@ -1,10 +1,11 @@
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+
 import {
   buildPlanPendingViewState,
   formatOrigin,
   getStatusBadgeVariant,
   MAX_RETRY_ATTEMPTS,
 } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
-import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { describe, expect, it } from 'vitest';
 
 describe('formatOrigin', () => {

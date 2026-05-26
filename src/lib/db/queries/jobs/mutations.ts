@@ -1,3 +1,9 @@
+import type {
+  JobEnqueueResult,
+  JobsDbClient,
+} from '@/lib/db/queries/types/jobs.types';
+
+import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -5,11 +11,6 @@ import {
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
 import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import type {
-  JobEnqueueResult,
-  JobsDbClient,
-} from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@supabase/schema';
 import { decideJobRetry } from '@/shared/retry-policy';
 import {
   JOB_TYPES,
@@ -18,9 +19,9 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
-import { jobQueueSelect, runJobMutationIfEditable } from './shared';
+import { jobQueue } from '@supabase/schema';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 
 /**
  * Inserts a new job into the queue. For plan regeneration jobs with a planId,

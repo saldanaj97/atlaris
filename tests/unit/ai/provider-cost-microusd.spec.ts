@@ -1,9 +1,8 @@
-import { describe, expect, it } from 'vitest';
-
 import {
   microusdIntegerToBigint,
   usdCostToMicrousdInteger,
 } from '@/features/ai/provider-cost-microusd';
+import { describe, expect, it } from 'vitest';
 
 describe('usdCostToMicrousdInteger', () => {
   it('maps 0 to 0', () => {

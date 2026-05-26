@@ -1,13 +1,16 @@
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { resolveModelForTier } from '@/features/ai/model-resolver';
-import { ParserError } from '@/features/ai/parser';
 import { generateModuleLessonBatchWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
 import {
   cleanupTimeoutLifecycle,
   resolveTimeoutConfig,
   setupAbortAndTimeout,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
-import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
-import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import { ParserError } from '@/features/ai/parser';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import {
   type LessonGenerationQuotaWorkResult,
@@ -27,9 +30,7 @@ import {
   loadModuleLessonGenerationContext,
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
-import type { DbClient } from '@/lib/db/types';
 import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 function errorToPersistedMessage(error: unknown): string {

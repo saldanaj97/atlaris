@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import {
   MAX_LESSON_BLOCK_TEXT_LENGTH,
   MAX_LESSON_BLOCK_TITLE_LENGTH,
@@ -8,6 +6,7 @@ import {
   MAX_LESSON_LIST_ITEMS,
   MAX_MODULE_LESSON_BATCH_TASKS,
 } from '@supabase/schema/constants';
+import { z } from 'zod';
 
 const LessonHeadingBlockSchema = z
   .object({

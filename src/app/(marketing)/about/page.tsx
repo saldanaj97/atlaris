@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type React from 'react';
+
 import { CtaSection } from '@/app/(marketing)/about/components/CtaSection';
 import { HeroSection } from '@/app/(marketing)/about/components/HeroSection';
 import { MissionSection } from '@/app/(marketing)/about/components/MissionSection';
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function Page(): React.ReactElement {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background font-sans text-foreground">
+    <div className='relative min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background font-sans text-foreground'>
       <HeroSection />
       <MissionSection />
       <ValuesSection />

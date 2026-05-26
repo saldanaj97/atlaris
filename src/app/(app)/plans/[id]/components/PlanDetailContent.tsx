@@ -1,5 +1,7 @@
-import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
+
+import { PlanDetailPageError } from './Error';
+import { PlanDetails } from './PlanDetails';
 import { getPlanForPage } from '@/app/(app)/plans/[id]/actions';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,9 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-
-import { PlanDetailPageError } from './Error';
-import { PlanDetails } from './PlanDetails';
+import { redirect } from 'next/navigation';
 
 interface PlanDetailContentProps {
   planId: string;
@@ -39,16 +39,16 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
       case 'NOT_FOUND':
         return (
-          <PlanDetailPageError message="This plan does not exist or you do not have access to it." />
+          <PlanDetailPageError message='This plan does not exist or you do not have access to it.' />
         );
 
       case 'FORBIDDEN':
         return (
-          <PlanDetailPageError message="You do not have permission to view this plan." />
+          <PlanDetailPageError message='You do not have permission to view this plan.' />
         );
       default:
         return (
-          <PlanDetailPageError message="Something went wrong. Please try again later." />
+          <PlanDetailPageError message='Something went wrong. Please try again later.' />
         );
     }
   }
@@ -64,26 +64,26 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 export function PlanDetailContentSkeleton(): JSX.Element {
   return (
     <>
-      <header className="mb-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-8 w-28" />
+      <header className='mb-6 space-y-4'>
+        <div className='flex flex-wrap items-center justify-between gap-2'>
+          <Skeleton className='h-8 w-40' />
+          <Skeleton className='h-8 w-28' />
         </div>
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-full max-w-2xl" />
-          <Skeleton className="h-4 w-full max-w-md" />
+        <div className='space-y-2'>
+          <Skeleton className='h-8 w-full max-w-2xl' />
+          <Skeleton className='h-4 w-full max-w-md' />
         </div>
       </header>
 
-      <section className="mb-10 space-y-4">
-        <Skeleton className="h-6 w-36" />
-        <div className="flex flex-wrap gap-2">
-          <Skeleton className="h-6 w-24 rounded-full" />
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-6 w-28 rounded-full" />
+      <section className='mb-10 space-y-4'>
+        <Skeleton className='h-6 w-36' />
+        <div className='flex flex-wrap gap-2'>
+          <Skeleton className='h-6 w-24 rounded-full' />
+          <Skeleton className='h-6 w-20 rounded-full' />
+          <Skeleton className='h-6 w-28 rounded-full' />
         </div>
-        <Skeleton className="h-4 w-48" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Skeleton className='h-4 w-48' />
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           {[1, 2, 3, 4].map((statSkeletonId) => (
             <StatCardSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
           ))}
@@ -91,12 +91,12 @@ export function PlanDetailContentSkeleton(): JSX.Element {
       </section>
 
       <section>
-        <div className="mb-6 flex items-center justify-between">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-5 w-24" />
+        <div className='mb-6 flex items-center justify-between'>
+          <Skeleton className='h-8 w-40' />
+          <Skeleton className='h-5 w-24' />
         </div>
 
-        <div className="space-y-4">
+        <div className='space-y-4'>
           {[1, 2, 3, 4, 5].map((moduleSkeletonId) => (
             <ModuleAccordionSkeleton
               key={`plan-module-skeleton-${moduleSkeletonId}`}
@@ -110,13 +110,13 @@ export function PlanDetailContentSkeleton(): JSX.Element {
 
 function StatCardSkeleton() {
   return (
-    <Surface padding="compact">
-      <div className="mb-3 flex items-center gap-2">
-        <Skeleton className="h-5 w-5" />
-        <Skeleton className="h-3 w-16" />
+    <Surface padding='compact'>
+      <div className='mb-3 flex items-center gap-2'>
+        <Skeleton className='h-5 w-5' />
+        <Skeleton className='h-3 w-16' />
       </div>
-      <Skeleton className="mb-1 h-8 w-20" />
-      <Skeleton className="h-3 w-24" />
+      <Skeleton className='mb-1 h-8 w-20' />
+      <Skeleton className='h-3 w-24' />
     </Surface>
   );
 }
@@ -124,21 +124,21 @@ function StatCardSkeleton() {
 function ModuleAccordionSkeleton() {
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="space-y-1.5">
-              <Skeleton className="h-5 w-48" />
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-3.5 w-16" />
-                <Skeleton className="h-3.5 w-20" />
+      <CardContent className='p-5'>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            <Skeleton className='h-10 w-10 rounded-full' />
+            <div className='space-y-1.5'>
+              <Skeleton className='h-5 w-48' />
+              <div className='flex items-center gap-3'>
+                <Skeleton className='h-3.5 w-16' />
+                <Skeleton className='h-3.5 w-20' />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-5 w-5" />
+          <div className='flex items-center gap-4'>
+            <Skeleton className='h-4 w-16' />
+            <Skeleton className='h-5 w-5' />
           </div>
         </div>
       </CardContent>

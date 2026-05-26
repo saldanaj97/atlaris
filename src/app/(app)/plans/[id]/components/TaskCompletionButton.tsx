@@ -1,10 +1,11 @@
 'use client';
 
-import { CheckCircle2, Circle, CircleDashed } from 'lucide-react';
+import type { ProgressStatus } from '@/shared/types/db.types';
 import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ProgressStatus } from '@/shared/types/db.types';
+import { CheckCircle2, Circle, CircleDashed } from 'lucide-react';
 
 interface TaskCompletionButtonProps {
   taskId: string;
@@ -54,9 +55,9 @@ export function TaskCompletionButton({
       )}
     >
       {isCompleted ? (
-        <CheckCircle2 className="h-5 w-5" />
+        <CheckCircle2 className='h-5 w-5' />
       ) : (
-        <IncompleteIcon className="h-5 w-5" />
+        <IncompleteIcon className='h-5 w-5' />
       )}
       {buttonLabel}
     </Button>

@@ -1,12 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
-import { makeAttemptReservation } from '@tests/fixtures/attempts';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
 
 import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { makeAttemptReservation } from '@tests/fixtures/attempts';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const defaultReservation = makeAttemptReservation();
 

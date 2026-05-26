@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
 import { clientLogger } from '@/lib/logging/client';
+import { useEffect, useRef, useState } from 'react';
 
 type ModelPreferenceSaveState = 'idle' | 'success' | 'error';
 

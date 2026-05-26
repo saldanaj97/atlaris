@@ -1,14 +1,15 @@
-import {
-  createFailureResult,
-  createSyntheticFailureAttempt,
-} from '@/features/ai/orchestrator/attempt-failures';
 import type {
   GenerationAttemptContext,
   GenerationFailureResult,
 } from '@/features/ai/types/orchestrator.types';
 import type { AttemptRejection } from '@/lib/db/queries/types/attempts.types';
-import { logger } from '@/lib/logging/logger';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import {
+  createFailureResult,
+  createSyntheticFailureAttempt,
+} from '@/features/ai/orchestrator/attempt-failures';
+import { logger } from '@/lib/logging/logger';
 
 const RESERVATION_REJECTION_DETAILS: Record<
   AttemptRejection['reason'],

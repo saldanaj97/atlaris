@@ -1,3 +1,6 @@
+import { ModuleDetailPageError } from './Error';
+import { ModuleDetail } from './ModuleDetail';
+import { ModuleDetailContentSkeleton } from './ModuleDetailContentSkeleton';
 import { getModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import {
   getModuleError,
@@ -6,10 +9,6 @@ import {
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
-
-import { ModuleDetailPageError } from './Error';
-import { ModuleDetail } from './ModuleDetail';
-import { ModuleDetailContentSkeleton } from './ModuleDetailContentSkeleton';
 
 export { ModuleDetailContentSkeleton };
 
@@ -50,7 +49,7 @@ export async function ModuleDetailContent({
         // Module doesn't exist or user doesn't have access
         return (
           <ModuleDetailPageError
-            message="This module does not exist or you do not have access to it."
+            message='This module does not exist or you do not have access to it.'
             planId={planId}
           />
         );
@@ -59,7 +58,7 @@ export async function ModuleDetailContent({
         // User is authenticated but explicitly not allowed
         return (
           <ModuleDetailPageError
-            message="You do not have permission to view this module."
+            message='You do not have permission to view this module.'
             planId={planId}
           />
         );
@@ -67,7 +66,7 @@ export async function ModuleDetailContent({
         // Unexpected error - show generic message
         return (
           <ModuleDetailPageError
-            message="Something went wrong. Please try again later."
+            message='Something went wrong. Please try again later.'
             planId={planId}
           />
         );

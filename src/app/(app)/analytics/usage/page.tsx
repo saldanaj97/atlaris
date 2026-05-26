@@ -1,4 +1,3 @@
-import { BarChart3, Clock, Flame, Target } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
@@ -6,6 +5,7 @@ import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { PageShell } from '@/components/ui/page-shell';
+import { BarChart3, Clock, Flame, Target } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Usage Analytics | Atlaris',
@@ -53,17 +53,17 @@ export default function UsageAnalyticsPage(): JSX.Element {
   return (
     <PageShell>
       <PageHeader
-        title="Usage"
-        subtitle="Understand how you learn, so you can learn even better"
+        title='Usage'
+        subtitle='Understand how you learn, so you can learn even better'
       />
 
       <ComingSoonAlert
         title="We're building something special"
         description="Usage analytics will give you a clear picture of your learning habits and progress. We're putting the finishing touches on it — we'll let you know when it's ready."
-        className="mb-6"
+        className='mb-6'
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
         {PREVIEW_CARDS.map((card) => (
           <LockedFeatureCard
             key={card.title}

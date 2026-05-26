@@ -1,21 +1,22 @@
 'use client';
 
-import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
+import type { ClientTask } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+import type { JSX } from 'react';
+
+import { TimelineModuleMarker } from './TimelineModuleMarker';
+import { TimelineTaskList } from './TimelineTaskList';
 import {
   getTimelineCardClassName,
   getTimelineTitleClassName,
   getTimelineWeekBadgeClassName,
   type ModuleStatus,
 } from '@/app/(app)/plans/plans-progress-theme';
+import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { ClientTask } from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import type { JSX } from 'react';
-import { TimelineModuleMarker } from './TimelineModuleMarker';
-import { TimelineTaskList } from './TimelineTaskList';
 
 export interface TimelineModule {
   id: string;
@@ -50,9 +51,9 @@ export function TimelineModuleCard({
   return (
     <div
       id={`module-${module.id}`}
-      className="group relative flex items-stretch"
+      className='group relative flex items-stretch'
     >
-      <div className="relative flex w-16 shrink-0 items-center justify-center">
+      <div className='relative flex w-16 shrink-0 items-center justify-center'>
         <TimelineModuleMarker status={module.status} />
       </div>
 
@@ -65,8 +66,8 @@ export function TimelineModuleCard({
         )}
       >
         <Button
-          type="button"
-          variant="ghost"
+          type='button'
+          variant='ghost'
           disabled={isLocked}
           onClick={() => onModuleToggle(module.id)}
           aria-expanded={isOpen}
@@ -76,8 +77,8 @@ export function TimelineModuleCard({
             isLocked ? 'cursor-not-allowed' : 'cursor-pointer',
           )}
         >
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-2">
+          <div className='min-w-0 flex-1'>
+            <div className='mb-2 flex items-center gap-2'>
               <span
                 className={cn(
                   'rounded-md px-2 py-0.5 text-xs font-semibold',
@@ -86,11 +87,11 @@ export function TimelineModuleCard({
               >
                 Week {module.order}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className='text-xs text-muted-foreground'>
                 {module.duration}
               </span>
               {module.tasks.length > 0 && (
-                <span className="text-xs text-muted-foreground">
+                <span className='text-xs text-muted-foreground'>
                   • {module.completedTasks}/{module.tasks.length} tasks
                 </span>
               )}
@@ -104,8 +105,8 @@ export function TimelineModuleCard({
               {module.title}
             </h3>
             {module.description && (
-              <div className="mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none">
-                <p className="text-sm text-muted-foreground">
+              <div className='mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none'>
+                <p className='text-sm text-muted-foreground'>
                   {module.description}
                 </p>
               </div>
@@ -124,17 +125,17 @@ export function TimelineModuleCard({
 
         <AccordionContent
           id={`module-content-${module.id}`}
-          className="px-4 pb-4"
+          className='px-4 pb-4'
         >
-          <div className="border-t border-border pt-4">
+          <div className='border-t border-border pt-4'>
             <TimelineTaskList
               module={module}
               statuses={statuses}
               onTaskStatusChange={onTaskStatusChange}
             />
 
-            <div className="mt-4 flex justify-end">
-              <Button asChild variant="soft-primary" size="sm">
+            <div className='mt-4 flex justify-end'>
+              <Button asChild variant='soft-primary' size='sm'>
                 <Link href={`/plans/${planId}/modules/${module.id}`}>
                   View Full Module
                   <ArrowRight size={16} />

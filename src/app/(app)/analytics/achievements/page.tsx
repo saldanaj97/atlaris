@@ -1,4 +1,3 @@
-import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
@@ -6,6 +5,7 @@ import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { PageShell } from '@/components/ui/page-shell';
+import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Achievements | Atlaris',
@@ -62,18 +62,18 @@ export default function AchievementsPage(): JSX.Element {
   return (
     <PageShell>
       <PageHeader
-        title="Achievements"
-        subtitle="Celebrate every milestone on your learning journey"
+        title='Achievements'
+        subtitle='Celebrate every milestone on your learning journey'
       />
 
       <ComingSoonAlert
-        title="Your achievements are being crafted."
-        description="Earn badges, track milestones, and showcase your progress — launching soon."
+        title='Your achievements are being crafted.'
+        description='Earn badges, track milestones, and showcase your progress — launching soon.'
         icon={Trophy}
-        className="mb-8"
+        className='mb-8'
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
         {ACHIEVEMENTS.map((achievement) => (
           <LockedFeatureCard
             key={achievement.name}

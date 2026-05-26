@@ -1,3 +1,16 @@
+import {
+  type GenerationAttemptStatus,
+  generationStatus,
+  learningStyle,
+  planOrigin,
+  skillLevel,
+} from '../../enums';
+import { timestampFields } from '../helpers';
+import {
+  planOwnedByCurrentUser,
+  recordOwnedByCurrentUser,
+} from '../policy-helpers';
+import { users } from './users';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -12,19 +25,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-import {
-  type GenerationAttemptStatus,
-  generationStatus,
-  learningStyle,
-  planOrigin,
-  skillLevel,
-} from '../../enums';
-import { timestampFields } from '../helpers';
-import {
-  planOwnedByCurrentUser,
-  recordOwnedByCurrentUser,
-} from '../policy-helpers';
-import { users } from './users';
 
 // Learning plans and related tables
 

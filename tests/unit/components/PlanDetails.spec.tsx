@@ -1,9 +1,10 @@
-import '@testing-library/jest-dom';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+
 import { cleanup, render, screen } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ClientPlanDetail } from '@/shared/types/client.types';
+import '@testing-library/jest-dom';
 
 vi.mock('next/navigation', async (orig) => {
   const actual = (await orig) as unknown as typeof import('next/navigation');
@@ -15,7 +16,7 @@ vi.mock('next/navigation', async (orig) => {
 
 vi.mock('@/app/(app)/plans/[id]/components/PlanPendingState', () => ({
   PlanPendingState: () => (
-    <div data-testid="plan-pending-state">Plan is generating...</div>
+    <div data-testid='plan-pending-state'>Plan is generating...</div>
   ),
 }));
 

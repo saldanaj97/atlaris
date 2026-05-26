@@ -1,16 +1,16 @@
-import { formatSkillLevel } from '@/features/plans/formatters';
-import type {
-  ClientModule,
-  ClientPlanDetail,
-} from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
-
 import type {
   ModuleCompletionSummary,
   PlanDetailsCardStats,
   PlanModuleTimelineStatus,
   PlanOverviewStats,
 } from './types';
+import type {
+  ClientModule,
+  ClientPlanDetail,
+} from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { formatSkillLevel } from '@/features/plans/formatters';
 
 const DEFAULT_PROGRESS_STATUS: ProgressStatus = 'not_started';
 

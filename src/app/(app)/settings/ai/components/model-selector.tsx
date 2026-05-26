@@ -1,9 +1,9 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
-import Link from 'next/link';
+import type { AvailableModel } from '@/features/ai/types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { JSX } from 'react';
-import { useId } from 'react';
+
 import { useModelPreferenceSave } from '@/app/(app)/settings/ai/components/useModelPreferenceSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,9 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { AvailableModel } from '@/features/ai/types/model.types';
 import { ROUTES } from '@/features/navigation/routes';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { useId } from 'react';
 
 /** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
 const NO_MODEL_VALUE = '__no_model_selected__';
@@ -74,23 +75,23 @@ const ModelDropdown = ({
     !hasChanges || isSaving || selectedModel === '' || !selectedModelData;
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className='space-y-4'>
+      <div className='space-y-2'>
         <Label htmlFor={triggerId}>Preferred AI Model</Label>
         <Select
           value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
           onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
         >
-          <SelectTrigger id={triggerId} className="w-full">
-            <SelectValue placeholder="Select a model" />
+          <SelectTrigger id={triggerId} className='w-full'>
+            <SelectValue placeholder='Select a model' />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_MODEL_VALUE}>
-              <span className="text-muted-foreground">Select a model</span>
+              <span className='text-muted-foreground'>Select a model</span>
             </SelectItem>
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
-                <div className="flex items-center gap-2">
+                <div className='flex items-center gap-2'>
                   <span>{model.name}</span>
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
@@ -105,12 +106,12 @@ const ModelDropdown = ({
       </div>
 
       {selectedModelData && (
-        <Card className="p-4">
-          <div className="space-y-3">
-            <div className="flex items-start justify-between">
+        <Card className='p-4'>
+          <div className='space-y-3'>
+            <div className='flex items-start justify-between'>
               <div>
-                <h3 className="font-semibold">{selectedModelData.name}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className='font-semibold'>{selectedModelData.name}</h3>
+                <p className='text-sm text-muted-foreground'>
                   by {selectedModelData.provider}
                 </p>
               </div>
@@ -123,18 +124,18 @@ const ModelDropdown = ({
               </Badge>
             </div>
 
-            <p className="text-sm">{selectedModelData.description}</p>
+            <p className='text-sm'>{selectedModelData.description}</p>
 
-            <div className="grid grid-cols-4 gap-4 pt-2">
+            <div className='grid grid-cols-4 gap-4 pt-2'>
               <div>
-                <p className="text-xs text-muted-foreground">Context Window</p>
-                <p className="text-sm font-medium">
+                <p className='text-xs text-muted-foreground'>Context Window</p>
+                <p className='text-sm font-medium'>
                   {(selectedModelData.contextWindow / 1000).toFixed(0)}K tokens
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Max Output</p>
-                <p className="text-sm font-medium">
+                <p className='text-xs text-muted-foreground'>Max Output</p>
+                <p className='text-sm font-medium'>
                   {(
                     (selectedModelData.maxOutputTokens ??
                       selectedModelData.contextWindow / 2) / 1000
@@ -143,16 +144,16 @@ const ModelDropdown = ({
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Input Cost</p>
-                <p className="text-sm font-medium">
+                <p className='text-xs text-muted-foreground'>Input Cost</p>
+                <p className='text-sm font-medium'>
                   {selectedModelData.inputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.inputCostPerMillion}/M`}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Output Cost</p>
-                <p className="text-sm font-medium">
+                <p className='text-xs text-muted-foreground'>Output Cost</p>
+                <p className='text-sm font-medium'>
                   {selectedModelData.outputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.outputCostPerMillion}/M`}
@@ -165,8 +166,8 @@ const ModelDropdown = ({
 
       {saveStatus === 'error' && (
         <div
-          role="alert"
-          className="rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive"
+          role='alert'
+          className='rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive'
         >
           Failed to save preferences. Please try again.
         </div>
@@ -174,9 +175,9 @@ const ModelDropdown = ({
 
       {saveStatus === 'success' && (
         <div
-          role="status"
-          aria-live="polite"
-          className="rounded-lg border-2 border-success bg-success/10 p-3 text-sm text-success dark:text-success-foreground"
+          role='status'
+          aria-live='polite'
+          className='rounded-lg border-2 border-success bg-success/10 p-3 text-sm text-success dark:text-success-foreground'
         >
           Preferences saved successfully!
         </div>
@@ -184,9 +185,9 @@ const ModelDropdown = ({
 
       {showSecondaryAction && (
         <Button
-          type="button"
-          variant="outline"
-          className="w-full"
+          type='button'
+          variant='outline'
+          className='w-full'
           disabled={isSaving}
           onClick={handleSecondaryAction}
         >
@@ -195,23 +196,23 @@ const ModelDropdown = ({
       )}
 
       <Button
-        type="button"
+        type='button'
         onClick={() => void saveSelectedModel()}
         disabled={saveDisabled}
-        className="w-full"
+        className='w-full'
       >
         {isSaving ? 'Saving...' : 'Save Preferences'}
       </Button>
 
       {userTier !== 'pro' && (
-        <div className="rounded-lg border-2 border-border bg-muted p-4">
-          <h4 className="mb-2 font-semibold">Unlock Premium Models</h4>
-          <p className="mb-3 text-sm text-muted-foreground">
+        <div className='rounded-lg border-2 border-border bg-muted p-4'>
+          <h4 className='mb-2 font-semibold'>Unlock Premium Models</h4>
+          <p className='mb-3 text-sm text-muted-foreground'>
             Upgrade to Pro to access advanced models like Claude Sonnet 4.5,
             GPT-5.2, and more with larger context windows and better
             performance.
           </p>
-          <Button variant="default" className="w-full" asChild>
+          <Button variant='default' className='w-full' asChild>
             <Link href={ROUTES.PRICING}>Upgrade to Pro</Link>
           </Button>
         </div>
@@ -230,8 +231,8 @@ export function ModelSelector({
     return (
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <AlertCircle className="size-6" aria-hidden="true" />
+          <EmptyMedia variant='icon'>
+            <AlertCircle className='size-6' aria-hidden='true' />
           </EmptyMedia>
           <EmptyTitle>No models available</EmptyTitle>
           <EmptyDescription>
@@ -241,7 +242,7 @@ export function ModelSelector({
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button asChild variant="default">
+          <Button asChild variant='default'>
             <Link href={ROUTES.PRICING}>View Pricing Plans</Link>
           </Button>
         </EmptyContent>

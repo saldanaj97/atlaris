@@ -1,9 +1,17 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import type { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 
+import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route';
+import {
+  clearAllUserRateLimiters,
+  USER_RATE_LIMIT_CONFIGS,
+} from '@/lib/api/user-rate-limit';
+import { learningPlans } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { setTestUser, clearTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   afterEach,
   beforeEach,
@@ -13,15 +21,6 @@ import {
   vi,
   type MockedFunction,
 } from 'vitest';
-
-import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route';
-import type { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
-import { learningPlans } from '@supabase/schema';
-import { db } from '@supabase/service-role';
-import {
-  clearAllUserRateLimiters,
-  USER_RATE_LIMIT_CONFIGS,
-} from '@/lib/api/user-rate-limit';
 
 const mockGenerateModuleLessons = vi.fn() as MockedFunction<
   typeof generateModuleLessons

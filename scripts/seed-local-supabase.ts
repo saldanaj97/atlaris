@@ -1,3 +1,4 @@
+import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 /**
  * Seed the Supabase local database with the deterministic product-testing user.
  * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
@@ -7,8 +8,6 @@
  */
 import dotenv from 'dotenv';
 import postgres from 'postgres';
-
-import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 
 const DEFAULT_LOCAL_SUPABASE_URL =
   'postgresql://postgres:postgres@127.0.0.1:54322/postgres';

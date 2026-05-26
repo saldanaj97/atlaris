@@ -1,3 +1,10 @@
+import type { DbClient } from '@/lib/db/types';
+import type { Sql } from 'postgres';
+
+import * as schema from './schema';
+import { databaseEnv } from '@/lib/config/env';
+import { logger } from '@/lib/logging/logger';
+import { drizzle } from 'drizzle-orm/postgres-js';
 /**
  * RLS-enforced Drizzle client for PostgreSQL
  *
@@ -30,14 +37,6 @@
  * Note: In test environments, BYPASSRLS allows tests to access tables directly.
  */
 import postgres from 'postgres';
-import * as schema from './schema';
-
-import { databaseEnv } from '@/lib/config/env';
-import { logger } from '@/lib/logging/logger';
-import { drizzle } from 'drizzle-orm/postgres-js';
-
-import type { DbClient } from '@/lib/db/types';
-import type { Sql } from 'postgres';
 
 function createIdempotentPostgresCleanup(
   sql: Sql,

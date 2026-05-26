@@ -1,14 +1,14 @@
-import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import { countMetric } from '@/lib/observability/metrics';
-import { PROGRESS_STATUSES } from '@/shared/types/db';
-import type { ProgressStatus } from '@/shared/types/db.types';
-
 import type {
   ApplyTaskProgressUpdatesInput,
   TaskProgressUpdate,
   TaskProgressUpdateResult,
   TaskProgressVisibleState,
 } from './types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
+import { countMetric } from '@/lib/observability/metrics';
+import { PROGRESS_STATUSES } from '@/shared/types/db';
 
 export const TASK_PROGRESS_MAX_BATCH = 500;
 

@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-import { Suspense } from 'react';
 
 import { PlanDetailPageError } from '@/app/(app)/plans/[id]/components/Error';
 import {
   PlanDetailContent,
   PlanDetailContentSkeleton,
 } from '@/app/(app)/plans/[id]/components/PlanDetailContent';
+import { Suspense } from 'react';
 
 interface PlanPageProps {
   params: Promise<{ id: string }>;

@@ -16,9 +16,9 @@ export default function ModuleDetailError({ error, reset }: ErrorProps) {
     <PlanRouteErrorContent
       error={error}
       reset={reset}
-      logMessage="Module detail error:"
-      title="Error Loading Module"
-      message="Something went wrong while loading this module. This could be a temporary issue."
+      logMessage='Module detail error:'
+      title='Error Loading Module'
+      message='Something went wrong while loading this module. This could be a temporary issue.'
     />
   );
 }

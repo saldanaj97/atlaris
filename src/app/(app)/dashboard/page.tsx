@@ -1,12 +1,10 @@
-import { Suspense } from 'react';
-
-import { PageHeader } from '@/components/ui/page-header';
-import { PageShell } from '@/components/ui/page-shell';
-
 import {
   DashboardContent,
   DashboardContentSkeleton,
 } from './components/DashboardContent';
+import { PageHeader } from '@/components/ui/page-header';
+import { PageShell } from '@/components/ui/page-shell';
+import { Suspense } from 'react';
 
 /**
  * Dashboard page with Suspense boundary for data-dependent content.
@@ -18,8 +16,8 @@ export default function DashboardPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Activity Feed"
-        subtitle="Your learning journey, moment by moment"
+        title='Activity Feed'
+        subtitle='Your learning journey, moment by moment'
       />
 
       {/* Data-dependent content - wrapped in Suspense */}

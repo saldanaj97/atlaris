@@ -1,10 +1,10 @@
 // sonner mock must load before the component under test.
-import '../../mocks/unit/sonner.unit';
-
 import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import '../../mocks/unit/sonner.unit';
 
 describe('ManageSubscriptionButton', () => {
   beforeEach(() => {
@@ -59,7 +59,7 @@ describe('ManageSubscriptionButton', () => {
     render(
       <ManageSubscriptionButton
         canOpenBillingPortal={true}
-        returnUrl="/dashboard"
+        returnUrl='/dashboard'
       />,
     );
 

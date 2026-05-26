@@ -13,16 +13,16 @@
  * Keep this port for callers that still need standalone usage recording.
  */
 
-import { incrementUsage } from '@/features/billing/usage-metrics';
-import { logger } from '@/lib/logging/logger';
+import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
+import type { DbClient } from '@/lib/db/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
 import {
   canonicalUsageToRecordParams,
   recordUsage,
 } from '../../../../../supabase/usage';
-
-import type { UsageRecordingPort } from '@/features/plans/lifecycle/ports';
-import type { DbClient } from '@/lib/db/types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { incrementUsage } from '@/features/billing/usage-metrics';
+import { logger } from '@/lib/logging/logger';
 
 type UsageRecordingAdapterDependencies = {
   readonly recordUsage?: typeof recordUsage;

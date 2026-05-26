@@ -6,16 +6,14 @@
  */
 
 // Mock sonner before component imports
-import '../../../mocks/unit/sonner.unit';
-
+import { buildProfile } from '../../../fixtures/profile';
+import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
-
-import { buildProfile } from '../../../fixtures/profile';
+import '../../../mocks/unit/sonner.unit';
 
 const MOCK_PROFILE = buildProfile();
 

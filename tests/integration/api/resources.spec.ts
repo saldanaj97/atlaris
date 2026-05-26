@@ -1,12 +1,10 @@
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { resources } from '@supabase/schema';
-import { db } from '@supabase/service-role';
-
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { auth } from '../../mocks/shared/auth-server';
+import { resources } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authUserId = 'auth_resources_test_user';
 

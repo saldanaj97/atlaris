@@ -1,9 +1,10 @@
-import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
 import type { ClientModule } from '@/shared/types/client.types';
-import { createId } from '@tests/fixtures/ids';
+import type React from 'react';
+
+import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type React from 'react';
+import { createId } from '@tests/fixtures/ids';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/link', () => ({

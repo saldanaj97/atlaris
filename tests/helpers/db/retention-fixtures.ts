@@ -5,7 +5,6 @@ import {
   stripeWebhookEvents,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-
 import { ensureUser } from '@tests/helpers/db/users';
 
 export const JOB_QUEUE_RETENTION_DAYS = 30;

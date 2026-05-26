@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import {
   BACKOFF_MULTIPLIER,
   computeNextDelay,
@@ -6,6 +5,7 @@ import {
   JITTER_FACTOR,
   MAX_POLL_MS,
 } from '@/shared/constants/polling';
+import { describe, expect, it } from 'vitest';
 
 describe('computeNextDelay', () => {
   it('multiplies the current delay by the backoff multiplier', () => {

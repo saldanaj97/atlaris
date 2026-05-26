@@ -3,13 +3,13 @@ import {
   MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH,
   MAX_TASK_LESSON_CONTENT_JSON_CHARS,
 } from '@supabase/schema/constants';
+import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 function hasCheckViolation(err: unknown): boolean {
   let current: unknown = err;

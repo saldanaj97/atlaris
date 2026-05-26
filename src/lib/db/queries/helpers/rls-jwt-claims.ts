@@ -1,7 +1,7 @@
-import { sql } from 'drizzle-orm';
-
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+
 import { isServiceRoleDbClient } from '@supabase/service-role';
+import { sql } from 'drizzle-orm';
 
 /**
  * Session snapshot for replaying `request.jwt.claims` on the connection Drizzle uses inside `transaction()`.

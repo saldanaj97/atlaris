@@ -1,10 +1,11 @@
 'use client';
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useState } from 'react';
 import type { ActivityFilter, ActivityItem } from '../types';
+
 import { ActivityCard } from './ActivityCard';
 import { EmptyActivityState } from './EmptyActivityState';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from 'react';
 
 interface ActivityFeedClientProps {
   activities: ActivityItem[];
@@ -24,15 +25,15 @@ export function ActivityFeedClient({ activities }: ActivityFeedClientProps) {
       : activities.filter((activity) => activity.type === filter);
 
   return (
-    <section aria-label="Activity feed" className="lg:col-span-2">
-      <div className="mb-6 flex items-center gap-2 border-b border-border pb-4">
+    <section aria-label='Activity feed' className='lg:col-span-2'>
+      <div className='mb-6 flex items-center gap-2 border-b border-border pb-4'>
         <Tabs
           value={filter}
           onValueChange={(value) => setFilter(value as ActivityFilter)}
         >
-          <TabsList className="h-auto gap-1 bg-transparent p-0">
+          <TabsList className='h-auto gap-1 bg-transparent p-0'>
             {FILTER_TABS.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} className="rounded-lg">
+              <TabsTrigger key={tab.id} value={tab.id} className='rounded-lg'>
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -40,7 +41,7 @@ export function ActivityFeedClient({ activities }: ActivityFeedClientProps) {
         </Tabs>
       </div>
 
-      <div className="space-y-4">
+      <div className='space-y-4'>
         {filteredActivities.length === 0 ? (
           <EmptyActivityState filter={filter} />
         ) : (

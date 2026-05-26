@@ -9,18 +9,18 @@
  * Normalizes raw provider metadata into CanonicalAIUsage at the boundary.
  */
 
-import { resolveModelForTier } from '@/features/ai/model-resolver';
-import { runGenerationExecution } from '@/features/ai/orchestrator';
-import { safeNormalizeUsage } from '@/features/ai/usage';
-
-import type { GenerationInput } from '@/features/ai/types/provider.types';
-import type { DbClient } from '@/lib/db/types';
 import type {
   GenerationPort,
   GenerationRunParams,
   GenerationRunResult,
 } from '../ports';
 import type { GeneratedModule } from '../types';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type { DbClient } from '@/lib/db/types';
+
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { runGenerationExecution } from '@/features/ai/orchestrator';
+import { safeNormalizeUsage } from '@/features/ai/usage';
 
 export class GenerationAdapter implements GenerationPort {
   constructor(private readonly dbClient: DbClient) {}

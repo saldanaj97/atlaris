@@ -1,11 +1,10 @@
-import { describe, expect, it } from 'vitest';
-
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import {
   isUsageShape,
   normalizeUsage,
   validateNonStreamingResponse,
 } from '@/features/ai/providers/openrouter-response';
+import { describe, expect, it } from 'vitest';
 
 describe('normalizeUsage (OpenRouter cost)', () => {
   it('maps usage.cost to providerReportedCostUsd', () => {

@@ -1,10 +1,3 @@
-import { createAbortError } from '@/features/ai/abort';
-import {
-  ProviderError,
-  ProviderRateLimitError,
-  ProviderTimeoutError,
-} from '@/features/ai/providers/errors';
-import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -12,6 +5,14 @@ import type {
   ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
+
+import { createAbortError } from '@/features/ai/abort';
+import {
+  ProviderError,
+  ProviderRateLimitError,
+  ProviderTimeoutError,
+} from '@/features/ai/providers/errors';
+import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import { aiEnv } from '@/lib/config/env';
 
 // Timing thresholds for test mode behavior

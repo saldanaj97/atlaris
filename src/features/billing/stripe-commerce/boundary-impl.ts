@@ -1,12 +1,5 @@
 // fallow-ignore-file unused-class-member
-import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
-import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
-import { applyVerifiedEvent } from '@/features/billing/stripe-commerce/reconciliation';
-import {
-  isValidRedirectUrl,
-  resolveRedirectUrl,
-} from '@/features/billing/stripe-commerce/redirect';
 import type {
   AcceptWebhookInput,
   BeginCheckoutInput,
@@ -14,14 +7,22 @@ import type {
   StripeCommerceBoundary,
   StripeWebhookResponse,
 } from '@/features/billing/stripe-commerce/types';
+import type { DbClient } from '@/lib/db/types';
+import type { users } from '@supabase/schema';
+import type { db as serviceRoleDb } from '@supabase/service-role';
+
+import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
+import { assertCheckoutPriceAllowed } from '@/features/billing/stripe-commerce/price-policy';
+import { applyVerifiedEvent } from '@/features/billing/stripe-commerce/reconciliation';
+import {
+  isValidRedirectUrl,
+  resolveRedirectUrl,
+} from '@/features/billing/stripe-commerce/redirect';
 import { createCustomer } from '@/features/billing/subscriptions';
 import { AppError, extractErrorCode, ValidationError } from '@/lib/api/errors';
-import type { users } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
 import { countMetric } from '@/lib/observability/metrics';
 import Stripe from 'stripe';
 import { z } from 'zod';
-import type { db as serviceRoleDb } from '@supabase/service-role';
 
 const DEFAULT_CHECKOUT_SUCCESS =
   '/settings/billing?session_id={CHECKOUT_SESSION_ID}';

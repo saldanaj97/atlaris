@@ -1,3 +1,10 @@
+import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
+import type { DbClient } from '@/lib/db/types';
+
+import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
+import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import {
   beforeEach,
   describe,
@@ -6,13 +13,6 @@ import {
   type MockedFunction,
   vi,
 } from 'vitest';
-
-import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
-import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
-import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
-import { generationAttempts, modules, tasks } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
-import { db } from '@supabase/service-role';
 
 // Minimal mock attempt record returned by the generationAttempts update
 const mockAttemptRecord = {

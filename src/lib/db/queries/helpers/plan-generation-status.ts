@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import type { DbClient } from '@/lib/db/types';
 
 import { learningPlans } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
+import { eq } from 'drizzle-orm';
 
 type LearningPlanInsert = typeof learningPlans.$inferInsert;
 

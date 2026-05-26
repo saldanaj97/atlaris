@@ -1,22 +1,23 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
-import { usePlanStatus } from '@/hooks/usePlanStatus';
-import { useRetryGeneration } from '@/hooks/useRetryGeneration';
-import { clientLogger } from '@/lib/logging/client';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+
+import {
+  buildPlanPendingViewState,
+  MAX_RETRY_ATTEMPTS,
+} from './plan-pending-view-state';
 import {
   GenerationStatusContent,
   PendingPlanDetails,
   PlanStatusHeader,
 } from './PlanPendingPanels';
-import {
-  buildPlanPendingViewState,
-  MAX_RETRY_ATTEMPTS,
-} from './plan-pending-view-state';
+import { Card, CardContent } from '@/components/ui/card';
+import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
+import { usePlanStatus } from '@/hooks/usePlanStatus';
+import { useRetryGeneration } from '@/hooks/useRetryGeneration';
+import { clientLogger } from '@/lib/logging/client';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 interface PlanPendingStateProps {
   plan: ClientPlanDetail;
@@ -56,7 +57,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   });
 
   return (
-    <div className="space-y-6">
+    <div className='space-y-6'>
       <Card>
         <PlanStatusHeader
           plan={plan}
@@ -64,7 +65,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
           viewState={viewState}
         />
 
-        <CardContent className="space-y-6" aria-live="polite">
+        <CardContent className='space-y-6' aria-live='polite'>
           <GenerationStatusContent
             viewState={viewState}
             isRetryDisabled={isRetryDisabled}
@@ -90,7 +91,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
         </CardContent>
       </Card>
 
-      <Card className="text-center text-muted-foreground">
+      <Card className='text-center text-muted-foreground'>
         <CardContent>
           <p>
             Once generation is complete, your personalized learning modules and

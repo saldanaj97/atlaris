@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
 import {
   type BillingCatalogStripeClient,
   readBillingCatalogTierData,
 } from '@/features/billing/catalog-read';
 import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
 import { buildMockLocalStripePrice } from '@/features/billing/stripe-commerce/local-gateway';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('readBillingCatalogTierData', () => {
   function baseLogger() {

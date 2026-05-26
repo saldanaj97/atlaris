@@ -1,5 +1,3 @@
-import { type SQL, sql } from 'drizzle-orm';
-
 import {
   aiUsageEvents,
   generationAttempts,
@@ -17,6 +15,7 @@ import {
   users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { type SQL, sql } from 'drizzle-orm';
 
 function assertSafeToTruncate() {
   const url = process.env.POSTGRES_URL;

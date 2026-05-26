@@ -1,7 +1,7 @@
 // Import centralized test env defaults first
-import '../setup/test-env';
-
 import { vi } from 'vitest';
+
+import '../setup/test-env';
 
 // Set NODE_ENV to 'test' if not already set
 if (!process.env.NODE_ENV) {

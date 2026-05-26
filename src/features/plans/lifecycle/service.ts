@@ -1,10 +1,3 @@
-import { logger } from '@/lib/logging/logger';
-import { countMetric, distributionMetric } from '@/lib/observability/metrics';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
-import { checkCreationGate } from './creation-pipeline';
-import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
-
-import { type CreationGatePorts } from './creation-pipeline';
 import type {
   GenerationFinalizationPort,
   GenerationPort,
@@ -18,6 +11,13 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from './types';
+
+import { checkCreationGate } from './creation-pipeline';
+import { type CreationGatePorts } from './creation-pipeline';
+import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
+import { logger } from '@/lib/logging/logger';
+import { countMetric, distributionMetric } from '@/lib/observability/metrics';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
 
 /**
  * PlanLifecycleService — orchestrates plan creation through port interfaces.

@@ -1,3 +1,13 @@
+import type {
+  AttemptMetadata,
+  FinalizeFailureParams,
+  FinalizeSuccessParams,
+  GenerationAttemptRecord,
+  ReserveAttemptResult,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
+import type { DbTransaction } from '@/lib/db/types';
+
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { hashSha256 } from '@/lib/crypto/hash';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
@@ -22,21 +32,12 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-import type {
-  AttemptMetadata,
-  FinalizeFailureParams,
-  FinalizeSuccessParams,
-  GenerationAttemptRecord,
-  ReserveAttemptResult,
-  ReserveAttemptSlotParams,
-} from '@/lib/db/queries/types/attempts.types';
-import type { DbTransaction } from '@/lib/db/types';
-import { generationAttempts } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
+import { generationAttempts } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
 
 /**

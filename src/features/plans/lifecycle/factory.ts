@@ -15,13 +15,13 @@
  *   - Reads and pre-write access checks: request-scoped RLS via getDb()
  */
 
+import type { DbClient } from '@/lib/db/types';
+
 import { GenerationAdapter } from './adapters/generation-adapter';
 import { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
 import { QuotaAdapter } from './adapters/quota-adapter';
 import { GenerationFinalizationAdapter } from './generation-finalization/adapter';
 import { PlanLifecycleService } from './service';
-
-import type { DbClient } from '@/lib/db/types';
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;

@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { Accordion } from '@/components/ui/accordion';
-import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
+import { render, screen } from '@testing-library/react';
 import { createId } from '@tests/fixtures/ids';
+import { describe, expect, it, vi } from 'vitest';
 
 const baseLesson: ModuleDetailTask = {
   id: createId('task'),
@@ -30,7 +30,7 @@ const baseLesson: ModuleDetailTask = {
 
 function renderLesson(lesson: ModuleDetailTask, isLocked = false) {
   return render(
-    <Accordion type="single" defaultValue={lesson.id}>
+    <Accordion type='single' defaultValue={lesson.id}>
       <LessonAccordionItem
         lesson={lesson}
         status={lesson.status}

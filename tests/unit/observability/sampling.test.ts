@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import {
   getEnvironment,
   getReplayErrorSampleRate,
@@ -7,6 +5,7 @@ import {
   shouldEnableLogs,
   tracesSampler,
 } from '@/lib/observability/sampling';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,3 +1,9 @@
+import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
+import { getCurrentMonth } from '@/features/billing/usage-metrics';
+import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { jobQueue, usageMetrics } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { seedFailedAttemptsForDurableWindow } from '@tests/fixtures/attempts';
 import { createPlan } from '@tests/fixtures/plans';
 import { setTestUser } from '@tests/helpers/auth';
@@ -5,13 +11,6 @@ import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
-import { jobQueue, usageMetrics } from '@supabase/schema';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { db } from '@supabase/service-role';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import { computeInputsHash } from '@/features/scheduling/hash';
 import type { ScheduleInputs } from '@/shared/types/scheduling.types';
+
+import { computeInputsHash } from '@/features/scheduling/hash';
+import { describe, expect, it } from 'vitest';
 
 function createTwoTaskScheduleInputs(): ScheduleInputs {
   return {

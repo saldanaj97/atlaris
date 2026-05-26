@@ -1,10 +1,3 @@
-import { desc, eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-
-import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
-import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
-import { generationAttempts, learningPlans, modules } from '@supabase/schema';
-import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import {
@@ -15,6 +8,12 @@ import {
   type StreamingEvent,
 } from '../../helpers/streaming';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
+import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { desc, eq } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(

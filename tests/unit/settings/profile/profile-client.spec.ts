@@ -1,10 +1,9 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
-
+import { buildProfile } from '../../../fixtures/profile';
 import {
   requestProfile,
   saveProfileName,
 } from '@/app/(app)/settings/profile/components/profile-client';
-import { buildProfile } from '../../../fixtures/profile';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 
 const PROFILE = buildProfile();
 

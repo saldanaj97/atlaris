@@ -1,12 +1,11 @@
-import { describe, expect, it } from 'vitest';
-
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { GET } from '@/app/api/v1/plans/[planId]/route';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { describe, expect, it } from 'vitest';
 
 function buildRequest(planId: string) {
   return {

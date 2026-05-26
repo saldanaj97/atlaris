@@ -1,3 +1,8 @@
+import {
+  MAX_MODULE_TITLE_LENGTH,
+  MAX_RESOURCE_TITLE_LENGTH,
+  MAX_TASK_TITLE_LENGTH,
+} from '@supabase/schema/constants';
 /**
  * Validates that the title-length CHECK constraints in the migration match
  * the canonical constants, so DB and application limits stay in sync.
@@ -6,12 +11,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-
-import {
-  MAX_MODULE_TITLE_LENGTH,
-  MAX_RESOURCE_TITLE_LENGTH,
-  MAX_TASK_TITLE_LENGTH,
-} from '@supabase/schema/constants';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 

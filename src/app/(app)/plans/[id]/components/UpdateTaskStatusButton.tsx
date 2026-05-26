@@ -1,7 +1,8 @@
 'use client';
 
-import type { JSX } from 'react';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import type { JSX } from 'react';
+
 import { TaskCompletionButton } from './TaskCompletionButton';
 
 interface UpdateTaskStatusButtonProps {
@@ -25,7 +26,7 @@ export const UpdateTaskStatusButton = (
       taskId={taskId}
       status={status}
       onStatusChange={onStatusChange}
-      variant="timeline"
+      variant='timeline'
     />
   );
 };

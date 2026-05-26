@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { parseAllCommandOptions } from '../../../scripts/tests/shared/all-command-options';
+import { describe, expect, it } from 'vitest';
 
 describe('parseAllCommandOptions', () => {
   it('returns help kind', () => {

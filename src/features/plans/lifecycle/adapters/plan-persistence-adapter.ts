@@ -2,11 +2,10 @@
  * PlanPersistenceAdapter — production implementation of PlanPersistencePort.
  */
 
-import { PlanLimitReachedError } from '@/features/plans/errors';
-import type { DbClient } from '@/lib/db/types';
-
 import type { PlanPersistencePort } from '../ports';
 import type { AtomicInsertResult, PlanInsertData } from '../types';
+import type { DbClient } from '@/lib/db/types';
+
 import {
   atomicCheckAndInsertPlan,
   findCappedPlanWithoutModules,
@@ -14,6 +13,7 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from './plan-persistence-store';
+import { PlanLimitReachedError } from '@/features/plans/errors';
 
 export class PlanPersistenceAdapter implements PlanPersistencePort {
   constructor(private readonly dbClient: DbClient) {}

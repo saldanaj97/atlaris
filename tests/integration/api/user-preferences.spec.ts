@@ -1,14 +1,13 @@
-import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
+import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
+import { eq } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 assertLocalIntegrationDatabaseUrl();
 

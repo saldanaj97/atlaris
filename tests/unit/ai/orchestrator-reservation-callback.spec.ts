@@ -1,7 +1,3 @@
-import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
-import { createId } from '@tests/fixtures/ids';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -13,6 +9,11 @@ import type {
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
+import { createId } from '@tests/fixtures/ids';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOperationsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;

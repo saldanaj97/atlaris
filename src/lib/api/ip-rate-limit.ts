@@ -13,12 +13,12 @@
  *   deployments (each instance enforces its own limits).
  */
 
-import { isIP } from 'node:net';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
-import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
+import { isIP } from 'node:net';
 
 /**
  * Configuration for IP rate limiting

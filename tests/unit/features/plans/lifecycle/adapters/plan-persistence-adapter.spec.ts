@@ -8,10 +8,10 @@ vi.mock('@/features/plans/lifecycle/adapters/plan-persistence-store', () => ({
   markPlanGenerationSuccess: vi.fn(),
 }));
 
-import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { PlanLimitReachedError } from '@/features/plans/errors';
 import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import * as persistenceStore from '@/features/plans/lifecycle/adapters/plan-persistence-store';
+import { makeDbClient } from '@tests/fixtures/db-mocks';
 
 const planData = {
   topic: 't',

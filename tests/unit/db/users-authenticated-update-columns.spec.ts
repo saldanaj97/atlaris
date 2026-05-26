@@ -1,3 +1,4 @@
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 /**
  * Intentional readFileSync: compares on-disk migration, workflows, and bootstrap
  * sources to the canonical allowlist so privilege drift fails in CI.
@@ -6,8 +7,6 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 

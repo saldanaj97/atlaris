@@ -1,10 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import AuthControls from '@/components/shared/AuthControls';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@clerk/nextjs', () => ({
-  UserButton: () => <div data-testid="user-button">Mocked UserButton</div>,
+  UserButton: () => <div data-testid='user-button'>Mocked UserButton</div>,
 }));
 
 afterEach(() => {

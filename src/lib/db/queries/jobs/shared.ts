@@ -1,11 +1,12 @@
-import { eq } from 'drizzle-orm';
-import { mapRowToJob } from '@/lib/db/queries/helpers/jobs-helpers';
 import type {
   JobQueueRow,
   JobsDbClient,
 } from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@supabase/schema';
 import type { Job } from '@/shared/types/jobs.types';
+
+import { mapRowToJob } from '@/lib/db/queries/helpers/jobs-helpers';
+import { jobQueue } from '@supabase/schema';
+import { eq } from 'drizzle-orm';
 
 export const jobQueueSelect = {
   id: jobQueue.id,

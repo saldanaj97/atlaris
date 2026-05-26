@@ -11,15 +11,16 @@
  */
 
 import type { DbClient } from '@/lib/db/types';
-import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
-import { db as serviceRoleDb } from '@supabase/service-role';
+
 import {
   compensateMeteredReservation,
   type MeteredReservationToken,
   type ReserveMeteredResult,
   reserveMeteredUsage,
 } from './metered-reservation';
+import { logger } from '@/lib/logging/logger';
+import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 /**
  * Outcome the caller's `work()` function returns to describe what should

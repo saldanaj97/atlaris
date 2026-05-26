@@ -22,12 +22,12 @@ export function ModuleRoundNavLink({
   if (!targetModuleId) {
     return (
       <button
-        type="button"
-        className="cursor-not-allowed rounded-full bg-muted p-2 text-muted-foreground/40"
+        type='button'
+        className='cursor-not-allowed rounded-full bg-muted p-2 text-muted-foreground/40'
         disabled
         aria-label={disabledAriaLabel}
       >
-        <Icon className="size-4" />
+        <Icon className='size-4' />
       </button>
     );
   }
@@ -41,7 +41,7 @@ export function ModuleRoundNavLink({
       )}
       aria-label={ariaLabel}
     >
-      <Icon className="size-4" />
+      <Icon className='size-4' />
     </Link>
   );
 }

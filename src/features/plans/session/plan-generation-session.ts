@@ -1,6 +1,3 @@
-import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { db as serviceRoleDb } from '@supabase/service-role';
-
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
@@ -11,6 +8,8 @@ import {
   type SessionCommand,
 } from './session-command';
 import { runPlanGenerationSessionStream } from './stream-transport';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 export {
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,

@@ -1,6 +1,7 @@
+import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
+
 import { attachAbortListener } from '@/features/ai/abort';
 import { createAdaptiveTimeout } from '@/features/ai/timeout';
-import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
 import { aiTimeoutEnv } from '@/lib/config/env';
 
 export type TimeoutLifecycle = {

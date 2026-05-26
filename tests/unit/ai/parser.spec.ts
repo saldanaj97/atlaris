@@ -1,8 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
-import { ParserError, parseGenerationStream } from '@/features/ai/parser';
 import type { ParserCallbacks } from '@/features/ai/types/parser.types';
-import { MAX_TITLE_LENGTH } from '@supabase/schema/constants';
+
 import { createDeferredPromise } from '../../helpers/deferred-promise';
+import { ParserError, parseGenerationStream } from '@/features/ai/parser';
+import { MAX_TITLE_LENGTH } from '@supabase/schema/constants';
+import { describe, expect, it, vi } from 'vitest';
 
 // Helper to create async iterable from string chunks
 async function* createStream(chunks: string[]): AsyncIterable<string> {

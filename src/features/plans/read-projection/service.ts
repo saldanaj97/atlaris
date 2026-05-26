@@ -1,3 +1,17 @@
+import type {
+  ModuleDetailReadModel,
+  PlanDbClient,
+} from '@/features/plans/read-projection/types';
+import type { PaginationOptions } from '@/shared/constants/pagination';
+import type {
+  ClientGenerationAttempt,
+  ClientPlanDetail,
+} from '@/shared/types/client.types';
+import type {
+  LightweightPlanSummary,
+  PlanSummary,
+} from '@/shared/types/db.types';
+
 import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
   toClientGenerationAttempts,
@@ -12,10 +26,6 @@ import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
-import type {
-  ModuleDetailReadModel,
-  PlanDbClient,
-} from '@/features/plans/read-projection/types';
 import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import {
   getLearningPlanDetailRows,
@@ -26,15 +36,6 @@ import {
   getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
 import { logger } from '@/lib/logging/logger';
-import type { PaginationOptions } from '@/shared/constants/pagination';
-import type {
-  ClientGenerationAttempt,
-  ClientPlanDetail,
-} from '@/shared/types/client.types';
-import type {
-  LightweightPlanSummary,
-  PlanSummary,
-} from '@/shared/types/db.types';
 
 async function listPlanSummaries(params: {
   userId: string;

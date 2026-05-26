@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getShellAuthUserId,
   isLocalProductTestingAuthEnabled,
   shouldUseClerkUi,
 } from '@/lib/auth/local-identity';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const localAuthUserId = '00000000-0000-4000-8000-000000000001';
 

@@ -1,7 +1,8 @@
-import Link from 'next/link';
 import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import Link from 'next/link';
 
 interface PlanDetailPageErrorProps {
   message?: string;
@@ -20,16 +21,16 @@ export function PlanDetailPageError({
   message,
 }: PlanDetailPageErrorProps): JSX.Element {
   return (
-    <div className="mx-auto max-w-2xl py-10">
+    <div className='mx-auto max-w-2xl py-10'>
       <Card>
-        <CardContent className="space-y-5 p-6" role="alert">
+        <CardContent className='space-y-5 p-6' role='alert'>
           <h1>Error Loading Plan</h1>
-          <p className="text-muted-foreground">
+          <p className='text-muted-foreground'>
             {message ??
               'There was an error loading the learning plan. Please try again later.'}
           </p>
           <Button asChild>
-            <Link href="/plans">Back to Plans</Link>
+            <Link href='/plans'>Back to Plans</Link>
           </Button>
         </CardContent>
       </Card>

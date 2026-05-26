@@ -1,3 +1,11 @@
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
+import {
+  canonicalUsageToRecordParams,
+  recordUsage,
+} from '../../../supabase/usage';
+import { ensureUser } from '../../helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import {
   compensateMeteredReservation,
@@ -9,18 +17,10 @@ import {
 } from '@/features/billing/usage-metrics';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import { db } from '@supabase/service-role';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { and, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
-import {
-  canonicalUsageToRecordParams,
-  recordUsage,
-} from '../../../supabase/usage';
-
-import { ensureUser } from '../../helpers/db/users';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 function hasConstraintViolation(err: unknown, constraintName: string): boolean {
   const parts: string[] = [];

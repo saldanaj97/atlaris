@@ -2,12 +2,12 @@
  * Plan quota checks (active plan count) — shared by persistence store and billing tests.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import type { DbClient } from '@/lib/db/types';
 
 import { resolveUserTier } from '@/features/billing/tier';
-import { learningPlans } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { learningPlans } from '@supabase/schema';
+import { eq, sql } from 'drizzle-orm';
 
 /**
  * Count plans that consume the user's plan quota (eligible + in-flight generating).

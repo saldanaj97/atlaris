@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { getLoggableErrorDetails, normalizeThrown } from '@/lib/errors';
+import { describe, expect, it } from 'vitest';
 
 class CustomTestError extends Error {
   constructor(message: string) {

@@ -6,11 +6,8 @@
  * Infra-only: `SMOKE_INFRA_ONLY=1` or `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db`
  * Full: run DB lifecycle, then invoke Playwright with launcher-owned app servers.
  */
-import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
-import { rmSync } from 'node:fs';
-
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import type { ChildProcess } from 'node:child_process';
 
 import { prepareSmokeDatabase } from '@tests/helpers/smoke/db-pipeline';
 import {
@@ -25,6 +22,8 @@ import {
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
 import { assertSeededSmokeUserPresent } from '@tests/helpers/smoke/verify-seed';
+import { spawn } from 'node:child_process';
+import { rmSync } from 'node:fs';
 
 const CHILD_EXIT_TIMEOUT_MS = 5_000;
 

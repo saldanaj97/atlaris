@@ -8,21 +8,21 @@
  * - Module ownership is validated through plan ownership
  */
 
-import { revalidatePath } from 'next/cache';
+import type { ModuleAccessResult } from '@/app/(app)/plans/[id]/modules/[moduleId]/types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
 import {
   moduleError,
   moduleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
-import type { ModuleAccessResult } from '@/app/(app)/plans/[id]/modules/[moduleId]/types';
+import { getModuleDetailForRead } from '@/features/plans/read-projection/service';
 import {
   applyTaskProgressUpdates,
   validateTaskProgressBatchInput,
 } from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getModuleDetailForRead } from '@/features/plans/read-projection/service';
 import { logger } from '@/lib/logging/logger';
-import type { ProgressStatus } from '@/shared/types/db.types';
+import { revalidatePath } from 'next/cache';
 
 export async function getModuleForPage(
   planId: string,

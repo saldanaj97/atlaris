@@ -1,5 +1,3 @@
-import { ensureUser } from '@tests/helpers/db/users';
-import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import {
   getCurrentMonth,
   getUsageSummary,
@@ -8,9 +6,11 @@ import {
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
 import { learningPlans, usageMetrics, users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { ensureUser } from '@tests/helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 describe('Usage Tracking', () => {
   describe('checkPlanLimit', () => {

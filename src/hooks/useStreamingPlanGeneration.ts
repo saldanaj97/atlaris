@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback } from 'react';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 import {
   type PlanGenerationResult,
   type PlanGenerationSessionState,
   usePlanGenerationSession,
 } from '@/features/plans/session/usePlanGenerationSession';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import { useCallback } from 'react';
 
 type GenerationStatus = PlanGenerationSessionState['status'];
 

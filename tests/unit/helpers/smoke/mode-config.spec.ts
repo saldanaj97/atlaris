@@ -1,3 +1,5 @@
+import type { SmokeStatePayload } from '@tests/helpers/smoke/state-file';
+
 import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
 import {
   buildAnonModeLayer,
@@ -9,7 +11,6 @@ import {
   smokeAnonAppUrl,
   smokeAuthAppUrl,
 } from '@tests/helpers/smoke/mode-config';
-import type { SmokeStatePayload } from '@tests/helpers/smoke/state-file';
 import { describe, expect, it } from 'vitest';
 
 const INVALID_MODE_ERROR =

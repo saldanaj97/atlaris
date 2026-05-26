@@ -1,8 +1,8 @@
 'use client';
 
+import type { IntegrationCardProps } from './IntegrationCard';
 import type { JSX } from 'react';
 
-import type { IntegrationCardProps } from './IntegrationCard';
 import { IntegrationCard } from './IntegrationCard';
 
 type IntegrationDef = Omit<IntegrationCardProps, 'onConnect' | 'loading'> & {
@@ -70,7 +70,7 @@ const INTEGRATIONS: IntegrationDef[] = [
 
 export function IntegrationGrid(): JSX.Element {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className='grid gap-6 md:grid-cols-2'>
       {INTEGRATIONS.map((def) => (
         <IntegrationCard
           key={def.id}

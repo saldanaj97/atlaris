@@ -1,11 +1,3 @@
-import { classifyFailure } from '@/features/ai/classification';
-import {
-  cleanupTimeoutLifecycle,
-  type TimeoutLifecycle,
-} from '@/features/ai/orchestrator/timeout-lifecycle';
-import { ProviderTimeoutError } from '@/features/ai/providers/errors';
-import { logger } from '@/lib/logging/logger';
-
 import type {
   AttemptOperations,
   GenerationAttemptContext,
@@ -21,6 +13,14 @@ import type {
   FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import { classifyFailure } from '@/features/ai/classification';
+import {
+  cleanupTimeoutLifecycle,
+  type TimeoutLifecycle,
+} from '@/features/ai/orchestrator/timeout-lifecycle';
+import { ProviderTimeoutError } from '@/features/ai/providers/errors';
+import { logger } from '@/lib/logging/logger';
 
 const SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS = {
   id: null,

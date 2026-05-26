@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { PlanGenerationSessionEvent } from '@/features/plans/session/session-events';
+
 import { consumePlanGenerationSseStream } from '@/features/plans/session/stream-reader';
+import { describe, expect, it, vi } from 'vitest';
 
 const encoder = new TextEncoder();
 

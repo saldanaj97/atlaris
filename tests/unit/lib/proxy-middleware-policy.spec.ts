@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
+import { describe, expect, it } from 'vitest';
 
 describe('middleware policy', () => {
   it('isProtectedRoute skips stripe webhook', () => {

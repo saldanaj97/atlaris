@@ -1,14 +1,14 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { z } from 'zod';
-import { usePlanStatus } from '@/hooks/usePlanStatus';
-import { clientLogger } from '@/lib/logging/client';
-import { INITIAL_POLL_MS } from '@/shared/constants/polling';
-import { PLAN_STATUSES } from '@/shared/types/client';
 import {
   createMockFetchResponse,
   createPlanStatusResponse,
 } from '../../fixtures/plan-status';
+import { usePlanStatus } from '@/hooks/usePlanStatus';
+import { clientLogger } from '@/lib/logging/client';
+import { INITIAL_POLL_MS } from '@/shared/constants/polling';
+import { PLAN_STATUSES } from '@/shared/types/client';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 /**
  * With Math.random() mocked to 0.5, jitter factor is exactly 1.0

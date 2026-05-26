@@ -12,9 +12,10 @@
  * @module features/ai/cost
  */
 
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
 import { getModelById } from '@/features/ai/ai-models';
 import { logger } from '@/lib/logging/logger';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 /**
  * Default output-token ceiling applied to models that do not declare

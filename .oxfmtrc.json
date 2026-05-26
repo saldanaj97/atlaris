@@ -3,8 +3,42 @@
   "sortTailwindcss": {
     "stylesheet": "./src/app/globals.css"
   },
-  "singleQuote": true,
   "printWidth": 80,
+  "singleQuote": true,
+  "jsxSingleQuote": true,
+  "sortImports": {
+    "groups": [
+      [
+        "type-builtin",
+        "type-external",
+        "type-subpath",
+        "type-internal",
+        "type-parent",
+        "type-sibling",
+        "type-index"
+      ],
+      {
+        "newlinesBetween": true
+      },
+      [
+        "builtin",
+        "external",
+        "subpath",
+        "internal",
+        "parent",
+        "sibling",
+        "index"
+      ],
+      {
+        "newlinesBetween": true
+      },
+      ["side_effect", "side_effect_style", "style"],
+      "unknown"
+    ],
+    "internalPattern": ["@/"],
+    "newlinesBetween": false,
+    "partitionByComment": true
+  },
   "sortPackageJson": false,
   "ignorePatterns": [
     "node_modules",

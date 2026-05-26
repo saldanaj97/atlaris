@@ -1,12 +1,12 @@
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts, modules, tasks } from '@supabase/schema';
-import { asc, eq, inArray } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { asc, eq, inArray } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 const authUserId = 'auth_generation_success';
 const authEmail = 'generation-success@example.com';

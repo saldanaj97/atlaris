@@ -1,3 +1,7 @@
+import type { MockInstance } from 'vitest';
+
+import { createPlan } from '../../fixtures/plans';
+import { ensureUser } from '../../helpers/db/users';
 import {
   finalizeAttemptFailure,
   finalizeAttemptSuccess,
@@ -9,13 +13,10 @@ import {
   modules,
   tasks,
 } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { asc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
-import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
-import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db/users';
 
 const TEST_INPUT = {
   topic: 'Atomic observability',

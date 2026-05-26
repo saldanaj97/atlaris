@@ -6,10 +6,10 @@
  * two modules and makes the window logic easier to test in isolation.
  */
 
-import { LRUCache } from 'lru-cache';
+import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 import { RateLimitError } from '@/lib/api/errors';
-import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
+import { LRUCache } from 'lru-cache';
 
 interface WindowEntry {
   timestamps: number[];

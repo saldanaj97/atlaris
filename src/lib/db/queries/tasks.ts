@@ -1,14 +1,14 @@
-import type { SQL } from 'drizzle-orm';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-
 import type {
   DbTask,
   DbTaskProgress,
   TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
-import { learningPlans, modules, taskProgress, tasks } from '@supabase/schema';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import type { SQL } from 'drizzle-orm';
+
 import { getDb } from '@supabase/runtime';
+import { learningPlans, modules, taskProgress, tasks } from '@supabase/schema';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 interface TaskProgressBatchScope {
   planId?: string;

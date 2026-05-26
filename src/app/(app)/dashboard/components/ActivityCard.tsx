@@ -1,8 +1,8 @@
-import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
+import type { ActivityItem } from '../types';
 import type React from 'react';
 
 import { cn } from '@/lib/utils';
-import type { ActivityItem } from '../types';
+import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
 
 const typeConfig: Record<
   ActivityItem['type'],
@@ -30,16 +30,16 @@ function ActivityCardMetadata({
   metadata: NonNullable<ActivityItem['metadata']>;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className='flex flex-wrap items-center gap-3'>
       {metadata.duration && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
+        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
+          <Clock className='h-3 w-3' />
           {metadata.duration}
         </span>
       )}
       {metadata.progress !== undefined && (
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Target className="h-3 w-3" />
+        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
+          <Target className='h-3 w-3' />
           {metadata.progress}% complete
         </span>
       )}
@@ -58,7 +58,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
         config.borderColor,
       )}
     >
-      <div className="flex gap-4">
+      <div className='flex gap-4'>
         {/* Icon */}
         <div
           className={cn(
@@ -66,27 +66,27 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
             config.color,
           )}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className='h-5 w-5' />
         </div>
 
         {/* Content */}
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-start justify-between gap-2">
+        <div className='min-w-0 flex-1'>
+          <div className='mb-1 flex items-start justify-between gap-2'>
             <div>
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className='text-xs font-medium text-muted-foreground'>
                 {activity.planTitle}
               </span>
-              <h4 className="font-semibold text-foreground">
+              <h4 className='font-semibold text-foreground'>
                 {activity.title}
               </h4>
             </div>
-            <span className="flex-shrink-0 text-xs text-muted-foreground">
+            <span className='flex-shrink-0 text-xs text-muted-foreground'>
               {activity.timestamp}
             </span>
           </div>
 
           {activity.description && (
-            <p className="mb-3 text-sm text-muted-foreground">
+            <p className='mb-3 text-sm text-muted-foreground'>
               {activity.description}
             </p>
           )}

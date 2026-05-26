@@ -1,7 +1,6 @@
+import { db } from '@supabase/service-role';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-
-import { db } from '@supabase/service-role';
 
 /**
  * T001: Validates that the job_queue table exposes the expected columns and indexes

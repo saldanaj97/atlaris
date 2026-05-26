@@ -1,24 +1,24 @@
-import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
+import type { DbClient } from '@/lib/db/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type {
   LessonContent,
   ModuleLessonBatchProviderOutput,
   ModuleLessonGenerationMetadata,
 } from '@/shared/types/lesson-content.types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
-import { learningPlans, modules, tasks } from '@supabase/schema';
-import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
+import {
+  canonicalUsageToRecordParams,
+  recordUsageInTx,
+} from '../../../../supabase/usage';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
-import type { DbClient } from '@/lib/db/types';
-import {
-  canonicalUsageToRecordParams,
-  recordUsageInTx,
-} from '../../../../supabase/usage';
+import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
+import { learningPlans, modules, tasks } from '@supabase/schema';
+import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
+import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
 type GenerationDb = Pick<
   DbClient,

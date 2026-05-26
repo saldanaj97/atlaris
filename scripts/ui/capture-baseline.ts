@@ -1,3 +1,4 @@
+import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 /**
  * Capture trustworthy UI baseline screenshots: fixed viewports, manifest, dimension checks.
  *
@@ -10,13 +11,9 @@
  *   pnpm ui:capture-baseline -- --anon-base=http://127.0.0.1:3100 --auth-base=http://127.0.0.1:3101
  */
 import type { ChildProcess } from 'node:child_process';
-import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
 
-import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import { parseCaptureBaselineArgs } from './capture-baseline-args';
 import { chromium, type BrowserContext, type Page } from '@playwright/test';
-
 import { prepareSmokeDatabase } from '@tests/helpers/smoke/db-pipeline';
 import {
   smokeAnonAppUrl,
@@ -34,7 +31,9 @@ import {
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
 import { assertSeededSmokeUserPresent } from '@tests/helpers/smoke/verify-seed';
-import { parseCaptureBaselineArgs } from './capture-baseline-args';
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1440, height: 1000 },

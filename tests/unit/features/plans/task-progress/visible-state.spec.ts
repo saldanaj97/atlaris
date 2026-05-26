@@ -1,6 +1,5 @@
-import { buildModule, buildTask } from '@tests/fixtures/plan-detail';
-import { createTestPlanDetail } from '@tests/fixtures/plans';
-import { describe, expect, it } from 'vitest';
+import type { ClientModule } from '@/shared/types/client.types';
+
 import {
   buildTaskStatusMap,
   deriveActiveModuleId,
@@ -12,7 +11,9 @@ import {
   derivePlanDetailsCardStats,
   derivePlanOverviewStats,
 } from '@/features/plans/task-progress/client';
-import type { ClientModule } from '@/shared/types/client.types';
+import { buildModule, buildTask } from '@tests/fixtures/plan-detail';
+import { createTestPlanDetail } from '@tests/fixtures/plans';
+import { describe, expect, it } from 'vitest';
 
 const plan = createTestPlanDetail();
 

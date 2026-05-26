@@ -1,8 +1,9 @@
 'use client';
 
-import type { JSX } from 'react';
-import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import type { ProgressStatus } from '@/shared/types/db.types';
+import type { JSX } from 'react';
+
+import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 
 interface TaskStatusButtonProps {
   taskId: string;
@@ -27,7 +28,7 @@ export function TaskStatusButton({
       status={status}
       onStatusChange={onStatusChange}
       disabled={disabled}
-      variant="lesson"
+      variant='lesson'
     />
   );
 }

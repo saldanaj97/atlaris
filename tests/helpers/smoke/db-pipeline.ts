@@ -1,3 +1,8 @@
+import {
+  bootstrapDatabase,
+  grantRlsPermissions,
+} from '@tests/helpers/db/bootstrap';
+import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 /**
  * Bootstrap, migrate, grant, and seed the disposable smoke database.
  * Uses `NODE_ENV=test` only inside the migration subprocess (matches Vitest Testcontainers).
@@ -5,12 +10,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-
-import {
-  bootstrapDatabase,
-  grantRlsPermissions,
-} from '@tests/helpers/db/bootstrap';
-import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 
 function resolveDrizzleKitCli(): string {
   const binCjs = join(process.cwd(), 'node_modules/drizzle-kit/bin.cjs');

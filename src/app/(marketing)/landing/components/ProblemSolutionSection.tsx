@@ -1,8 +1,8 @@
-import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useId } from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
+import { useId } from 'react';
 
 /**
  * Problem vs Solution section highlighting the contrast between
@@ -16,43 +16,43 @@ export function ProblemSolutionSection() {
   const solutionCardHeadingId = `${sectionId}-solution-card-heading`;
 
   return (
-    <section className="relative lg:py-32" aria-labelledby={headingId}>
-      <div className="relative z-10 mx-auto max-w-screen-xl px-6">
-        <div className="mb-16 text-center">
+    <section className='relative lg:py-32' aria-labelledby={headingId}>
+      <div className='relative z-10 mx-auto max-w-screen-xl px-6'>
+        <div className='mb-16 text-center'>
           <Badge
-            variant="glassmorphic"
-            className="mb-4 bg-destructive/10 px-4 py-1.5 text-destructive"
+            variant='glassmorphic'
+            className='mb-4 bg-destructive/10 px-4 py-1.5 text-destructive'
           >
             The Challenge
           </Badge>
-          <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
+          <h2 id={headingId} className='marketing-h2 mb-4 text-foreground'>
             Most people don&apos;t fail to learn.{' '}
-            <span className="gradient-text">They fail to start.</span>
+            <span className='gradient-text'>They fail to start.</span>
           </h2>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className='grid gap-8 md:grid-cols-2'>
           {/* Problem Card */}
           <section
-            className="group relative overflow-hidden rounded-3xl border border-destructive/30 bg-linear-to-br from-destructive/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40"
+            className='group relative overflow-hidden rounded-3xl border border-destructive/30 bg-linear-to-br from-destructive/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40'
             aria-labelledby={problemCardHeadingId}
           >
             {/* Decorative glow */}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-destructive/30 to-destructive/20 opacity-30 blur-2xl"></div>
+            <div className='absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-destructive/30 to-destructive/20 opacity-30 blur-2xl'></div>
 
-            <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-destructive to-destructive/80 shadow-lg">
+            <div className='mb-6 flex items-center gap-4'>
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-destructive to-destructive/80 shadow-lg'>
                 <ArrowDownCircle
-                  className="h-6 w-6 text-white"
-                  aria-hidden="true"
+                  className='h-6 w-6 text-white'
+                  aria-hidden='true'
                 />
               </div>
-              <h3 id={problemCardHeadingId} className="marketing-card-title">
+              <h3 id={problemCardHeadingId} className='marketing-card-title'>
                 The Manual Spiral
               </h3>
             </div>
 
-            <ul className="space-y-4">
+            <ul className='space-y-4'>
               <ProblemItem>
                 Endless searches across YouTube, blogs, and courses
               </ProblemItem>
@@ -68,22 +68,22 @@ export function ProblemSolutionSection() {
 
           {/* Solution Card */}
           <section
-            className="group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40"
+            className='group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40'
             aria-labelledby={solutionCardHeadingId}
           >
             {/* Decorative glow */}
-            <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-primary/30 to-accent/20 opacity-30 blur-2xl"></div>
+            <div className='absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-primary/30 to-accent/20 opacity-30 blur-2xl'></div>
 
-            <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent shadow-lg">
-                <Calendar className="h-6 w-6 text-white" aria-hidden="true" />
+            <div className='mb-6 flex items-center gap-4'>
+              <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent shadow-lg'>
+                <Calendar className='h-6 w-6 text-white' aria-hidden='true' />
               </div>
-              <h3 id={solutionCardHeadingId} className="marketing-card-title">
+              <h3 id={solutionCardHeadingId} className='marketing-card-title'>
                 Execution, Scheduled
               </h3>
             </div>
 
-            <ul className="space-y-4">
+            <ul className='space-y-4'>
               <SolutionItem>Coherent roadmap from day one</SolutionItem>
               <SolutionItem>Time-blocked in your calendar</SolutionItem>
               <SolutionItem>Resources attached to every session</SolutionItem>
@@ -108,11 +108,11 @@ interface ItemProps {
  */
 function ProblemItem({ children }: ItemProps) {
   return (
-    <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-destructive/10 shadow-sm">
-        <X className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+    <li className='flex items-start gap-3'>
+      <div className='mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-destructive/10 shadow-sm'>
+        <X className='h-3.5 w-3.5 text-destructive' aria-hidden='true' />
       </div>
-      <span className="leading-relaxed text-muted-foreground">{children}</span>
+      <span className='leading-relaxed text-muted-foreground'>{children}</span>
     </li>
   );
 }
@@ -125,11 +125,11 @@ function ProblemItem({ children }: ItemProps) {
  */
 function SolutionItem({ children }: ItemProps) {
   return (
-    <li className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 shadow-sm">
-        <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+    <li className='flex items-start gap-3'>
+      <div className='mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10 shadow-sm'>
+        <Check className='h-3.5 w-3.5 text-primary' aria-hidden='true' />
       </div>
-      <span className="leading-relaxed text-muted-foreground">{children}</span>
+      <span className='leading-relaxed text-muted-foreground'>{children}</span>
     </li>
   );
 }

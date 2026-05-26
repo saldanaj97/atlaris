@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createLogger, logger } from '@/lib/logging/logger';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('Logger', () => {
   // Store original env values

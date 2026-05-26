@@ -7,8 +7,6 @@
  *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=anon
  *   SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=auth
  */
-import { spawn } from 'node:child_process';
-
 import {
   buildAnonModeLayer,
   buildAuthModeLayer,
@@ -16,6 +14,7 @@ import {
   parseSmokeAppMode,
 } from '@tests/helpers/smoke/mode-config';
 import { readSmokeStateFromEnv } from '@tests/helpers/smoke/state-file';
+import { spawn } from 'node:child_process';
 
 const NEXT_DEV_COMMAND = ['exec', 'next', 'dev', '--turbopack'] as const;
 const FORWARDED_SIGNALS = ['SIGINT', 'SIGTERM'] as const;

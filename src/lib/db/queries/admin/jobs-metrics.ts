@@ -5,10 +5,10 @@
  * Do not import them into user-scoped request flows.
  */
 
-import { jobQueue } from '@supabase/schema';
 import { JOB_TYPES } from '@/shared/types/jobs.types';
-import { eq, lt, sql } from 'drizzle-orm';
+import { jobQueue } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
+import { eq, lt, sql } from 'drizzle-orm';
 
 type SystemWideJobMetrics = {
   stuckJobsCount: number;

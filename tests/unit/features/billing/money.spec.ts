@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { formatAmount } from '@/features/billing/money';
+import { describe, expect, it } from 'vitest';
 
 describe('formatAmount', () => {
   it('em dash for non-finite cents', () => {

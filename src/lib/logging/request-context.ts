@@ -1,9 +1,8 @@
-import * as Sentry from '@sentry/nextjs';
-
-import { ensureCorrelationId } from '@/lib/api/context';
-
 import type { Logger } from './logger';
+
 import { createLogger } from './logger';
+import { ensureCorrelationId } from '@/lib/api/context';
+import * as Sentry from '@sentry/nextjs';
 
 export const REQUEST_ID_HEADER = 'x-correlation-id';
 

@@ -1,7 +1,7 @@
+import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
+
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { vi } from 'vitest';
-
-import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 
 type MergeableDepsKey = Exclude<
   keyof RegenerationOrchestrationDeps,

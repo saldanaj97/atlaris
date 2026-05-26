@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
@@ -9,6 +7,7 @@ import {
   SKILL_LEVEL_ENUM,
   weeklyHoursSchema,
 } from '@/shared/schemas/plan-validation.schemas';
+import { z } from 'zod';
 
 function enforceMaxLength(
   value: string,

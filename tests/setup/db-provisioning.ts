@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-
 import postgres, { type Sql } from 'postgres';
 
 const TEST_DB_PREFIX = 'atlaris_test';

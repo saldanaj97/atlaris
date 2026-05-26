@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { users } from '@supabase/schema';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { db } from '@supabase/service-role';
+import { eq } from 'drizzle-orm';
 
 type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 

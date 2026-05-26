@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { parseRunnerArgs } from '../../../scripts/tests/shared/cli';
+import { describe, expect, it } from 'vitest';
 
 describe('parseRunnerArgs', () => {
   it('uses default path when argv empty', () => {

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import {
   isAttemptErrorLike,
   toAttemptError,
 } from '@/lib/api/error-normalization';
+import { describe, expect, it } from 'vitest';
 
 describe('isAttemptErrorLike', () => {
   it('rejects wrong field types', () => {

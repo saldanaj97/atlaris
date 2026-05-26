@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import {
   type EnvSource,
   EnvValidationError,
@@ -6,6 +5,7 @@ import {
   getServerOptional,
   requireEnvFrom,
 } from '@/lib/config/env/shared';
+import { z } from 'zod';
 
 const CLERK_PUBLISHABLE_KEY_PATTERN = /^pk_(test|live)_[A-Za-z0-9_-]+/;
 const CLERK_SECRET_KEY_PATTERN = /^sk_(test|live)_[A-Za-z0-9_-]+/;

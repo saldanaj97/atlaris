@@ -1,10 +1,11 @@
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
 import type {
   PlanStatus as ClientPlanStatus,
   FailureClassification,
 } from '@/shared/types/client.types';
 import type { GenerationAttempt, LearningPlan } from '@/shared/types/db.types';
+
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
 import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 
 function toStatusClassification(

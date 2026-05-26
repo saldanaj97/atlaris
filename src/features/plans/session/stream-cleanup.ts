@@ -1,7 +1,8 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
 import type { DbClient } from '@/lib/db/types';
+
+import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
 import {
   safeStringifyUnknown,
   unknownThrownCore,

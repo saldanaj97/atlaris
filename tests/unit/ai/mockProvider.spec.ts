@@ -1,12 +1,11 @@
-import { describe, expect, it } from 'vitest';
-
+import { createGenerationInput } from '../../fixtures/generation-input';
+import { createMockProvider } from '../../helpers/mockProvider';
 import {
   ProviderError,
   ProviderRateLimitError,
 } from '@/features/ai/providers/errors';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
-import { createGenerationInput } from '../../fixtures/generation-input';
-import { createMockProvider } from '../../helpers/mockProvider';
+import { describe, expect, it } from 'vitest';
 
 const SAMPLE_INPUT = createGenerationInput({
   topic: 'Sample Topic',

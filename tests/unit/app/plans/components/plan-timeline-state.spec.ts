@@ -1,8 +1,9 @@
+import type { ClientModule } from '@/shared/types/client.types';
+
 import {
   getNextExpandedModuleIds,
   getVisibleExpandedModuleIds,
 } from '@/app/(app)/plans/[id]/components/plan-timeline-state';
-import type { ClientModule } from '@/shared/types/client.types';
 import { describe, expect, it } from 'vitest';
 
 function createModule(id: string, tasks: ClientModule['tasks']): ClientModule {

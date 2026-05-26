@@ -1,14 +1,13 @@
 // Sentry browser SDK init (Next.js client instrumentation entry).
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import * as Sentry from '@sentry/nextjs';
-
 import {
   getReplayErrorSampleRate,
   getReplaySessionSampleRate,
   shouldEnableLogs,
   tracesSampler,
 } from '@/lib/observability/sampling';
+import * as Sentry from '@sentry/nextjs';
 
 // NOTE: We read `process.env` directly here instead of importing from
 // `@/lib/config/env` because that module eagerly validates server-only

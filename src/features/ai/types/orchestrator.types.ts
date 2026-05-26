@@ -1,3 +1,10 @@
+import type { ParsedModule } from './parser.types';
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+  ProviderMetadata,
+} from './provider.types';
+import type { AdaptiveTimeoutConfig } from './timeout.types';
 import type {
   AttemptRejection,
   AttemptReservation,
@@ -9,13 +16,6 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
-import type { ParsedModule } from './parser.types';
-import type {
-  AiPlanGenerationProvider,
-  GenerationInput,
-  ProviderMetadata,
-} from './provider.types';
-import type { AdaptiveTimeoutConfig } from './timeout.types';
 
 export type GenerationAttemptContext = {
   planId: string;

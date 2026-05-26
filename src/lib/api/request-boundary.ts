@@ -1,12 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
-import {
-  withAuth,
-  withServerActionContext,
-  withServerComponentContext,
-} from '@/lib/api/auth';
-import { getCorrelationId } from '@/lib/api/context';
-import { withErrorBoundary, withRateLimit } from '@/lib/api/route-wrappers';
 import type {
   AuthHandler,
   PlainHandler,
@@ -15,7 +6,16 @@ import type {
 import type { UserRateLimitCategory } from '@/lib/api/user-rate-limit';
 import type { DbUser } from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
+
+import {
+  withAuth,
+  withServerActionContext,
+  withServerComponentContext,
+} from '@/lib/api/auth';
+import { getCorrelationId } from '@/lib/api/context';
+import { withErrorBoundary, withRateLimit } from '@/lib/api/route-wrappers';
 import { getDb } from '@supabase/runtime';
+import { randomUUID } from 'node:crypto';
 
 export type RequestScope = Readonly<{
   actor: DbUser;

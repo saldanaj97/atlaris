@@ -1,6 +1,7 @@
-import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
-import { MAX_RETRY_ATTEMPTS } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
 import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
+
+import { MAX_RETRY_ATTEMPTS } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
+import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createTestPlanDetail } from '@tests/fixtures/plans';

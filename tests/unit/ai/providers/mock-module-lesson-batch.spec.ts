@@ -1,10 +1,8 @@
-import { randomUUID } from 'node:crypto';
-
-import { describe, expect, it } from 'vitest';
-
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import { ModuleLessonBatchProviderOutputSchema } from '@/shared/schemas/lesson-content.schemas';
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
 
 const TASK_IDS = [randomUUID(), randomUUID()] as const;
 

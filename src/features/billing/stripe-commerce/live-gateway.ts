@@ -1,8 +1,9 @@
 // fallow-ignore-file unused-class-member
-import Stripe from 'stripe';
 import type { CommerceWebhookEvent } from '@/features/billing/stripe-commerce/dtos';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+
 import { stripeSubscriptionToCommerceSnapshot } from '@/features/billing/stripe-commerce/subscription-snapshot';
+import Stripe from 'stripe';
 
 export class LiveStripeGateway implements StripeGateway {
   constructor(private readonly stripe: Stripe) {}

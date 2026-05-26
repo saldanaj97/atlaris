@@ -2,9 +2,8 @@
 // The config you add here will be used whenever the server handles a request.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
-import * as Sentry from '@sentry/nextjs';
-
 import { shouldEnableLogs, tracesSampler } from '@/lib/observability/sampling';
+import * as Sentry from '@sentry/nextjs';
 
 Sentry.init({
   dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',

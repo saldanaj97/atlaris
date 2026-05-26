@@ -3,7 +3,8 @@
  * Do not import outside lifecycle adapters / composition roots.
  */
 
-import { and, count, eq, gte, notExists, sql } from 'drizzle-orm';
+import type { DbClient, DbTransaction } from '@/lib/db/types';
+import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
@@ -13,12 +14,10 @@ import {
 } from '@/features/plans/errors';
 import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
-import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-
-import type { DbClient, DbTransaction } from '@/lib/db/types';
-import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { and, count, eq, gte, notExists, sql } from 'drizzle-orm';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;

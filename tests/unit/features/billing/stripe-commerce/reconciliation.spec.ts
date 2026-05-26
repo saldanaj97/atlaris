@@ -4,6 +4,15 @@
  * Focus: idempotency insert + rollback uses deps.db (injected), not module-global.
  */
 
+import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+import type Stripe from 'stripe';
+
+import {
+  applyVerifiedEvent,
+  type StripeReconciliationDeps,
+} from '@/features/billing/stripe-commerce/reconciliation';
+import { createLogger } from '@/lib/logging/logger';
+import { users } from '@supabase/schema';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import {
@@ -11,15 +20,7 @@ import {
   makeStripeMock,
   makeStripeSubscription,
 } from '@tests/fixtures/stripe-mocks';
-import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
-import {
-  applyVerifiedEvent,
-  type StripeReconciliationDeps,
-} from '@/features/billing/stripe-commerce/reconciliation';
-import { users } from '@supabase/schema';
-import { createLogger } from '@/lib/logging/logger';
 
 function makeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
   return {

@@ -1,3 +1,7 @@
+import {
+  MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH,
+  MAX_TASK_LESSON_CONTENT_JSON_CHARS,
+} from '@supabase/schema/constants';
 /**
  * Ensures lesson-content CHECK limits in generated migrations match
  * `supabase/schema/constants.ts` (single source of truth).
@@ -6,11 +10,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-
-import {
-  MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH,
-  MAX_TASK_LESSON_CONTENT_JSON_CHARS,
-} from '@supabase/schema/constants';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 

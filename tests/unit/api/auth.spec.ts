@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { buildUserFixture } from '../../fixtures/users';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
 import {
   requireCurrentUserRecord,
   withServerActionContext,
@@ -8,8 +8,7 @@ import {
 import { getRequestContext } from '@/lib/api/context';
 import { AuthError } from '@/lib/api/errors';
 import { db as serviceDb } from '@supabase/service-role';
-import { buildUserFixture } from '../../fixtures/users';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),

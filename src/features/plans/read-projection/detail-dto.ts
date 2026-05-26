@@ -1,3 +1,8 @@
+import type {
+  GenerationAttempt,
+  LearningPlanDetail,
+} from '@/shared/types/db.types';
+
 import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-projection/detail-status';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -6,10 +11,6 @@ import {
   type ClientGenerationAttempt,
   type ClientPlanDetail,
 } from '@/shared/types/client.types';
-import type {
-  GenerationAttempt,
-  LearningPlanDetail,
-} from '@/shared/types/db.types';
 import {
   FAILURE_CLASSIFICATIONS,
   type FailureClassification,

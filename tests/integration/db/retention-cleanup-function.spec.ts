@@ -1,10 +1,8 @@
-import { sql, and, eq, inArray } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-
 import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-
 import { seedRetentionCleanupRows } from '@tests/helpers/db/retention-fixtures';
+import { sql, and, eq, inArray } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 describe('private.cleanup_retained_db_rows', () => {
   it('prunes only expired OAuth state, old Stripe events, and old terminal jobs', async () => {

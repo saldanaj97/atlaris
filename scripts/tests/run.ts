@@ -1,8 +1,8 @@
+import { runIntegrationCommand } from './integration/runner';
+import { runSecurityCommand } from './security/runner';
 import { parseAllCommandOptions } from './shared/all-command-options';
 import { logError, logInfo, logStep, logWarn } from './shared/log';
 import { runCommand, runVitest } from './shared/vitest-runner';
-import { runIntegrationCommand } from './integration/runner';
-import { runSecurityCommand } from './security/runner';
 import { runUnitCommand } from './unit/runner';
 
 function printHelp(): void {

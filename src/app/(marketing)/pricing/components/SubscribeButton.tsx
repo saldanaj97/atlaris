@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactElement } from 'react';
+
 import {
   getClientErrorMessage,
   requestPostJson,
@@ -7,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { createCheckoutResponseSchema } from '@/features/billing/validation/stripe';
 import { clientLogger } from '@/lib/logging/client';
-import type { ReactElement } from 'react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 

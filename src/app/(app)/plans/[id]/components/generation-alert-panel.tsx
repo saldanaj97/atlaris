@@ -1,5 +1,6 @@
-import { AlertCircle } from 'lucide-react';
 import type { ReactNode } from 'react';
+
+import { AlertCircle } from 'lucide-react';
 
 const ALERT_VARIANT_CLASSES = {
   warning: {
@@ -35,9 +36,9 @@ export function GenerationAlertPanel({
     <div className={footer ? 'space-y-4' : undefined}>
       <div className={classes.container}>
         <AlertCircle className={classes.icon} />
-        <div className="space-y-1">
+        <div className='space-y-1'>
           <p className={classes.title}>{title}</p>
-          <p className="text-sm text-muted-foreground">{body}</p>
+          <p className='text-sm text-muted-foreground'>{body}</p>
           {meta}
         </div>
       </div>

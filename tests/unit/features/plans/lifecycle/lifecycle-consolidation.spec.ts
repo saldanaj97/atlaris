@@ -19,12 +19,13 @@ vi.mock('@/lib/observability/metrics', () => ({
 }));
 
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
+
+import { createMockPorts } from './lifecycle-test-helpers';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
-import { createMockPorts } from './lifecycle-test-helpers';
 
 // ─── Inputs simulating different entry points ────────────────────
 

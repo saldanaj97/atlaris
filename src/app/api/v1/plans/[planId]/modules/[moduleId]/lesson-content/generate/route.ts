@@ -1,10 +1,11 @@
+import type { PlainHandler } from '@/lib/api/auth';
+
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import {
   requireOwnedPlanById,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
-import type { PlainHandler } from '@/lib/api/auth';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';

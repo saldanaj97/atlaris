@@ -1,3 +1,5 @@
+import type { PlainHandler } from '@/lib/api/auth';
+
 import {
   requireOwnedPlanById,
   requireUuidRouteParam,
@@ -7,7 +9,6 @@ import {
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
   type PlanGenerationSessionBoundary,
 } from '@/features/plans/session/plan-generation-session';
-import type { PlainHandler } from '@/lib/api/auth';
 import { AppError } from '@/lib/api/errors';
 import {
   checkPlanGenerationRateLimit,

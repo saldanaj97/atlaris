@@ -1,9 +1,7 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger)
 import { createDeferredPromise } from '../../helpers/deferred-promise';
-import '../../mocks/unit/client-logger.unit';
-import '../../mocks/unit/sonner.unit';
-
+import { RegenerateButton } from '@/app/(app)/plans/components/RegenerateButton';
 import {
   act,
   fireEvent,
@@ -13,7 +11,9 @@ import {
 } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { RegenerateButton } from '@/app/(app)/plans/components/RegenerateButton';
+
+import '../../mocks/unit/client-logger.unit';
+import '../../mocks/unit/sonner.unit';
 
 describe('RegenerateButton', () => {
   beforeEach(() => {
@@ -32,7 +32,7 @@ describe('RegenerateButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
@@ -52,7 +52,7 @@ describe('RegenerateButton', () => {
     const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
@@ -77,7 +77,7 @@ describe('RegenerateButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
@@ -94,7 +94,7 @@ describe('RegenerateButton', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
@@ -110,7 +110,7 @@ describe('RegenerateButton', () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
     fireEvent.click(button);
@@ -127,7 +127,7 @@ describe('RegenerateButton', () => {
     const mockFetch = vi.fn().mockReturnValue(deferredFetch.promise);
     vi.stubGlobal('fetch', mockFetch);
 
-    render(<RegenerateButton planId="test-plan-123" />);
+    render(<RegenerateButton planId='test-plan-123' />);
 
     const button = screen.getByRole('button', { name: /regenerate plan/i });
 

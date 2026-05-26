@@ -7,10 +7,10 @@ import {
 import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
 
 const createTestBoundary = (stripe: ReturnType<typeof makeStripeMock>) =>
   createStripeCommerceBoundary({ gateway: new LiveStripeGateway(stripe) });

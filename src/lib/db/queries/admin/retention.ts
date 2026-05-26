@@ -1,6 +1,7 @@
 import type { DbClient } from '@/lib/db/types';
-import { sql } from 'drizzle-orm';
+
 import { db as serviceRoleDb } from '@supabase/service-role';
+import { sql } from 'drizzle-orm';
 
 export async function cleanupRetainedDbRows({
   now = new Date(),

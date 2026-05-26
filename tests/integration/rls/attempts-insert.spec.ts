@@ -1,15 +1,14 @@
-import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts } from '@supabase/schema';
-import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
 import { createRlsDbForUser } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { generationAttempts } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 /**
  * This test uses application path to insert an attempt via orchestrator

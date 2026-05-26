@@ -1,6 +1,8 @@
 'use client';
 
-import { UserButton } from '@clerk/nextjs';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { ReactElement } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,9 +11,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ROUTES } from '@/features/navigation';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
-import type { ReactElement } from 'react';
 
 interface AuthControlsProps {
   isAuthenticated: boolean;
@@ -37,18 +38,18 @@ export default function AuthControls({
     tier && tier !== 'free' ? (
       <Badge
         variant={tierVariants[tier]}
-        className="pointer-events-none absolute -right-1.5 -bottom-1 hidden px-1 py-0 text-[10px] leading-tight capitalize md:inline-flex"
+        className='pointer-events-none absolute -right-1.5 -bottom-1 hidden px-1 py-0 text-[10px] leading-tight capitalize md:inline-flex'
       >
         {tier}
       </Badge>
     ) : null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className='flex items-center gap-2'>
       {isAuthenticated && showClerkUserButton ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="relative inline-flex">
+            <div className='relative inline-flex'>
               <UserButton
                 appearance={{
                   elements: {
@@ -59,11 +60,11 @@ export default function AuthControls({
               {tierBadge}
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Account</TooltipContent>
+          <TooltipContent side='bottom'>Account</TooltipContent>
         </Tooltip>
       ) : isAuthenticated ? (
-        <div className="relative inline-flex">
-          <Button variant="ghost" size="sm" className="text-xs" asChild>
+        <div className='relative inline-flex'>
+          <Button variant='ghost' size='sm' className='text-xs' asChild>
             <Link href={ROUTES.SETTINGS.PROFILE}>Account</Link>
           </Button>
           {tierBadge}
@@ -71,15 +72,15 @@ export default function AuthControls({
       ) : (
         <>
           <Button
-            variant="ghost"
-            size="sm"
-            className="hidden text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+            variant='ghost'
+            size='sm'
+            className='hidden text-xs text-muted-foreground hover:text-foreground sm:inline-flex'
             asChild
           >
-            <Link href="/auth/sign-in">Sign In</Link>
+            <Link href='/auth/sign-in'>Sign In</Link>
           </Button>
-          <Button variant="default" size="sm" className="text-xs" asChild>
-            <Link href="/auth/sign-up">Sign Up</Link>
+          <Button variant='default' size='sm' className='text-xs' asChild>
+            <Link href='/auth/sign-up'>Sign Up</Link>
           </Button>
         </>
       )}

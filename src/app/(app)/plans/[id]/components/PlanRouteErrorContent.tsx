@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { clientLogger } from '@/lib/logging/client';
+import Link from 'next/link';
+import { useEffect } from 'react';
 
 type PlanRouteErrorContentProps = {
   error: Error & { digest?: string };
@@ -30,19 +30,19 @@ export function PlanRouteErrorContent({
 
   return (
     <div
-      role="alert"
-      className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-4"
+      role='alert'
+      className='flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-4'
     >
-      <h1 className="mb-4 text-3xl font-bold text-red-600">{title}</h1>
-      <p className="mb-6 max-w-md text-center text-muted-foreground">
+      <h1 className='mb-4 text-3xl font-bold text-red-600'>{title}</h1>
+      <p className='mb-6 max-w-md text-center text-muted-foreground'>
         {message}
       </p>
-      <div className="flex gap-4">
-        <Button onClick={reset} variant="default">
+      <div className='flex gap-4'>
+        <Button onClick={reset} variant='default'>
           Try Again
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/plans">Back to Plans</Link>
+        <Button asChild variant='outline'>
+          <Link href='/plans'>Back to Plans</Link>
         </Button>
       </div>
     </div>

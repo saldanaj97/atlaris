@@ -1,14 +1,14 @@
 'use client';
 
-import { type JSX, useCallback } from 'react';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 
+import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
 import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
-import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 import { clientLogger } from '@/lib/logging/client';
-import type { ProgressStatus } from '@/shared/types/db.types';
+import { type JSX, useCallback } from 'react';
 
 interface ModuleDetailClientProps {
   moduleData: ModuleDetailReadModel;
@@ -62,7 +62,7 @@ export function ModuleDetailClient({
   });
 
   return (
-    <div className="space-y-8">
+    <div className='space-y-8'>
       <ModuleHeader
         module={module}
         planId={planId}

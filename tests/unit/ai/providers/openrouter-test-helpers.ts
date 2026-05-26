@@ -1,5 +1,6 @@
 import type { OpenRouterClient } from '@/features/ai/providers/openrouter';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
+
 import { vi } from 'vitest';
 
 export const OPENROUTER_TEST_MODEL = 'google/gemini-2.0-flash-exp:free';

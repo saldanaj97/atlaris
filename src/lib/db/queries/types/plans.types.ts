@@ -1,6 +1,5 @@
-import type { InferSelectModel } from 'drizzle-orm';
-
 import type { learningPlans, taskProgress, tasks } from '@supabase/schema';
+import type { InferSelectModel } from 'drizzle-orm';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type TaskProgressRow = InferSelectModel<typeof taskProgress>;

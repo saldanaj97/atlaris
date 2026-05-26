@@ -1,6 +1,6 @@
-import { and, asc, countDistinct, eq, inArray, sql } from 'drizzle-orm';
-
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+
+import { getDb } from '@supabase/runtime';
 import {
   modules,
   resources,
@@ -8,7 +8,7 @@ import {
   taskResources,
   tasks,
 } from '@supabase/schema';
-import { getDb } from '@supabase/runtime';
+import { and, asc, countDistinct, eq, inArray, sql } from 'drizzle-orm';
 
 type TaskRelationsClient = Pick<ReturnType<typeof getDb>, 'select'>;
 

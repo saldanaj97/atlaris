@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vitest';
-
 import {
   PLAN_GENERATING_INSERT_DEFAULTS,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import { learningPlans } from '@supabase/schema';
+import { describe, expect, it } from 'vitest';
 
 describe('plan-generation-status helpers', () => {
   describe('PLAN_GENERATING_INSERT_DEFAULTS', () => {

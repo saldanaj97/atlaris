@@ -16,6 +16,8 @@ import type {
   JobResult,
   JobType,
 } from '@/features/jobs/types';
+import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
+
 import {
   claimNextPendingJob,
   completeJobRecord,
@@ -23,7 +25,6 @@ import {
   failJobRecord,
   insertJobRecord,
 } from '@/lib/db/queries/jobs';
-import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 import { db } from '@supabase/service-role';
 
 type FailJobOptions = {

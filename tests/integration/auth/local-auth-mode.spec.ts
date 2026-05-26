@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearTestUser, setTestUser } from '@/../tests/helpers/auth';
 import { requireCurrentUserRecord } from '@/lib/api/auth';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('local product testing identity', () => {
   beforeEach(() => {

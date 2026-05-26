@@ -4,20 +4,15 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "plugins": [
-    "eslint",
-    "typescript",
-    "import",
-    "react",
-    "jsx-a11y",
-    "nextjs",
-    "vitest",
-    "oxc"
-  ],
+  "plugins": ["import", "react", "jsx-a11y", "nextjs", "vitest"],
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
   "env": {
     "browser": true,
-    "node": true,
-    "es2024": true
+    "builtin": true,
+    "node": true
   },
   "settings": {
     "next": {

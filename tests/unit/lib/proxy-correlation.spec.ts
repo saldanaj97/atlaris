@@ -1,10 +1,9 @@
-import { NextRequest } from 'next/server';
-import { describe, expect, it } from 'vitest';
-
 import {
   getCorrelationId,
   sanitizeCorrelationId,
 } from '@/lib/proxy/correlation';
+import { NextRequest } from 'next/server';
+import { describe, expect, it } from 'vitest';
 
 describe('proxy correlation', () => {
   describe('sanitizeCorrelationId', () => {

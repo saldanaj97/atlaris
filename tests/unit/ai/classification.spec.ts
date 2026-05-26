@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import { classifyFailure } from '@/features/ai/classification';
 import { ParserError } from '@/features/ai/parser';
 import {
@@ -7,6 +5,7 @@ import {
   ProviderRateLimitError,
   ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('Failure classification', () => {
   it('returns timeout classification when timedOut flag is set', () => {

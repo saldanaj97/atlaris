@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import { describe, expect, it } from 'vitest';
 
 describe('Prompts with deadline and start date context', () => {
   it('includes start date in user prompt when provided', () => {

@@ -1,13 +1,12 @@
-import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 

@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import type { Module } from '@/shared/types/db.types';
+
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
 } from '@/features/plans/read-projection/read-status';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
-import type { Module } from '@/shared/types/db.types';
+import { describe, expect, it } from 'vitest';
 
 describe('plan summary status boundaries', () => {
   it('maps pending and processing read states to generating summary state', () => {

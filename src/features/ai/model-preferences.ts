@@ -3,13 +3,14 @@
  * runtime-only defaults (e.g. `openrouter/free`).
  */
 
+import type { AvailableModel } from '@/features/ai/types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { preferredAiModel } from '../../../supabase/enums';
 import { getModelsForTier } from '@/features/ai/ai-models';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import type { AvailableModel } from '@/features/ai/types/model.types';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { preferredAiModel } from '../../../supabase/enums';
 
 const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 

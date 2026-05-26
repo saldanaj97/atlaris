@@ -1,17 +1,18 @@
-import { Plus } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import type { JSX } from 'react';
-import { Suspense } from 'react';
+
 import {
   PlanCountBadgeContent,
   PlansContent,
 } from '@/app/(app)/plans/components/PlansContent';
-import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
+import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Your Plans | Atlaris',
@@ -39,14 +40,14 @@ export default function PlansPage(): JSX.Element {
     <>
       {/* Static header - renders immediately; count waits independently. */}
       <PageHeader
-        title="Your Plans"
+        title='Your Plans'
         actions={
           <>
-            <Suspense fallback={<Skeleton className="h-6 w-16 rounded-full" />}>
+            <Suspense fallback={<Skeleton className='h-6 w-16 rounded-full' />}>
               <PlanCountBadgeContent dataPromise={plansPageData} />
             </Suspense>
             <Button asChild>
-              <Link href="/plans/new">
+              <Link href='/plans/new'>
                 <Plus />
                 New Plan
               </Link>

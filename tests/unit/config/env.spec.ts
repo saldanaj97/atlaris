@@ -1,5 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import {
   aiEnv,
@@ -19,6 +17,7 @@ import {
   requireEnv,
   toBoolean,
 } from '@/lib/config/env';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Environment Configuration', () => {
   beforeEach(() => {

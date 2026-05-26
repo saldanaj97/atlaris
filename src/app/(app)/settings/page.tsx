@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation';
-
 import { ROUTES } from '@/features/navigation/routes';
+import { redirect } from 'next/navigation';
 
 /**
  * /settings root redirects to the Profile tab.

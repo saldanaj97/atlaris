@@ -1,15 +1,15 @@
-import { ValidationError } from '@/lib/api/errors';
-import { learningPlans, usageMetrics } from '@supabase/schema';
-import { logger } from '@/lib/logging/logger';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { and, eq, sql } from 'drizzle-orm';
-import { getDb } from '@supabase/runtime';
-import { db as serviceRoleDb } from '@supabase/service-role';
-import { UsageMetricsLoadError } from './errors';
-import { resolveUserTier } from './tier';
-
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { UsageMetricsLoadError } from './errors';
+import { resolveUserTier } from './tier';
+import { ValidationError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { getDb } from '@supabase/runtime';
+import { learningPlans, usageMetrics } from '@supabase/schema';
+import { db as serviceRoleDb } from '@supabase/service-role';
+import { and, eq, sql } from 'drizzle-orm';
 
 // Usage type for incrementing counters
 export type UsageType =

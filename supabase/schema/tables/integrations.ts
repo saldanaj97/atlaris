@@ -1,3 +1,4 @@
+import { currentUserId } from './common';
 import { sql } from 'drizzle-orm';
 import {
   index,
@@ -7,8 +8,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import { currentUserId } from './common';
 
 /**
  * OAuth state tokens for CSRF protection during OAuth flows.

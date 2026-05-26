@@ -1,6 +1,7 @@
-import { FileText, Link as LinkIcon, PlayCircle, Target } from 'lucide-react';
-import type { ElementType } from 'react';
 import type { ResourceType } from '@/shared/types/db.types';
+import type { ElementType } from 'react';
+
+import { FileText, Link as LinkIcon, PlayCircle, Target } from 'lucide-react';
 
 export const PLAN_RESOURCE_DISPLAY: Record<
   ResourceType,

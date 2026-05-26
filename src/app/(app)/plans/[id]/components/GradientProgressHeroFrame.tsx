@@ -1,5 +1,6 @@
-import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
+
+import { cn } from '@/lib/utils';
 
 interface GradientProgressHeroFrameProps {
   children: ReactNode;
@@ -32,11 +33,11 @@ export function GradientProgressHeroFrame({
       </div>
 
       <div
-        className="absolute right-0 bottom-0 left-0 h-1 bg-muted"
+        className='absolute right-0 bottom-0 left-0 h-1 bg-muted'
         aria-hidden
       >
         <div
-          className="h-full bg-primary transition-all duration-500"
+          className='h-full bg-primary transition-all duration-500'
           style={{ width: `${completion}%` }}
         />
       </div>

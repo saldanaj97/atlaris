@@ -1,3 +1,18 @@
+import type {
+  FinalizeGenerationFailureParams,
+  FinalizeGenerationSuccessInput,
+  GenerationFinalizationStoreDeps,
+} from './types';
+import type {
+  AttemptsDbClient,
+  GenerationAttemptRecord,
+} from '@/lib/db/queries/types/attempts.types';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
+
+import {
+  canonicalUsageToRecordParams,
+  recordUsageInTx,
+} from '../../../../../supabase/usage';
 import {
   getCurrentMonth,
   incrementUsageInTx,
@@ -18,21 +33,6 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-import {
-  canonicalUsageToRecordParams,
-  recordUsageInTx,
-} from '../../../../../supabase/usage';
-
-import type {
-  AttemptsDbClient,
-  GenerationAttemptRecord,
-} from '@/lib/db/queries/types/attempts.types';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
-import type {
-  FinalizeGenerationFailureParams,
-  FinalizeGenerationSuccessInput,
-  GenerationFinalizationStoreDeps,
-} from './types';
 
 function asProviderMetadata(value: Record<string, unknown>): ProviderMetadata {
   return value as ProviderMetadata;

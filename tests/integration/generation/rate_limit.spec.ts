@@ -1,12 +1,12 @@
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts, learningPlans } from '@supabase/schema';
-import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-import { getDb } from '@supabase/runtime';
-import { db } from '@supabase/service-role';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { getDb } from '@supabase/runtime';
+import { generationAttempts, learningPlans } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 const authUserId = 'auth_generation_rate_limit';
 const authEmail = 'generation-rate-limit@example.com';

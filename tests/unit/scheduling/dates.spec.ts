@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import { addDaysToDate, getWeekBoundaries } from '@/features/scheduling/dates';
+import { describe, expect, it } from 'vitest';
 
 describe('Date Utilities', () => {
   describe('addDaysToDate', () => {

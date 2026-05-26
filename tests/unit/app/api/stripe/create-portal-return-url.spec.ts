@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { getReturnUrlForLog } from '@/app/api/v1/stripe/create-portal/route';
+import { describe, expect, it } from 'vitest';
 
 describe('getReturnUrlForLog', () => {
   it('returns string returnUrl when body is shaped', () => {

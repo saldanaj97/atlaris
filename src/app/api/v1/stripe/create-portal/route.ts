@@ -1,16 +1,17 @@
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
+import type Stripe from 'stripe';
+
 import {
   createStripeCommerceBoundary,
   getStripeCommerceBoundary,
 } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { logger } from '@/lib/logging/logger';
-import type Stripe from 'stripe';
 import { z } from 'zod';
 
 const createPortalBodySchema = z.object({
