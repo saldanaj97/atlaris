@@ -11,7 +11,7 @@
   "editor.formatOnSave": true,
   "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "oxc.enable.oxlint": true,
   "[typescript]": {

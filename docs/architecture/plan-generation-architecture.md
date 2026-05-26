@@ -49,15 +49,15 @@ This separation between external auth identity and internal app user row is not 
 
 ### API layer
 
-| File                                                | Responsibility                             |
-| --------------------------------------------------- | ------------------------------------------ |
-| `src/app/api/v1/plans/stream/route.ts`              | Start streamed plan generation             |
-| `src/app/api/v1/plans/stream/helpers.ts`            | Stream-side success/failure handling       |
-| `src/app/api/v1/plans/[planId]/status/route.ts`     | Return plan generation status              |
-| `src/app/api/v1/plans/[planId]/attempts/route.ts`   | Return attempt history                     |
-| `src/app/api/v1/plans/[planId]/retry/route.ts`      | Retry a failed or pending-retry generation |
-| `src/app/api/v1/plans/[planId]/regenerate/route.ts` | Regenerate an existing plan                |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation |
+| File                                                                                | Responsibility                             |
+| ----------------------------------------------------------------------------------- | ------------------------------------------ |
+| `src/app/api/v1/plans/stream/route.ts`                                              | Start streamed plan generation             |
+| `src/app/api/v1/plans/stream/helpers.ts`                                            | Stream-side success/failure handling       |
+| `src/app/api/v1/plans/[planId]/status/route.ts`                                     | Return plan generation status              |
+| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                   | Return attempt history                     |
+| `src/app/api/v1/plans/[planId]/retry/route.ts`                                      | Retry a failed or pending-retry generation |
+| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                 | Regenerate an existing plan                |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation       |
 
 ### AI layer
 
