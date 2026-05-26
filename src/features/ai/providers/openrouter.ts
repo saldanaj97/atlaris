@@ -71,10 +71,12 @@ function buildRouteModels(
   fallbackModels: readonly string[] = [],
 ): string[] {
   const routeModels: string[] = [];
+  const seenModels = new Set<string>();
   for (const model of [primaryModel, ...fallbackModels]) {
-    if (!model || routeModels.includes(model)) {
+    if (!model || seenModels.has(model)) {
       continue;
     }
+    seenModels.add(model);
     routeModels.push(model);
   }
   return routeModels;

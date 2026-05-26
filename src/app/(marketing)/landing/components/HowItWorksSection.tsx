@@ -72,7 +72,7 @@ function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
     <div className='group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40'>
       <div className='mb-4 flex items-center gap-3'>
         <span
-          className='flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent text-sm font-bold text-white shadow-lg'
+          className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent text-sm font-bold text-white shadow-lg'
           aria-hidden='true'
         >
           {stepNumber}
@@ -107,7 +107,7 @@ function CurriculumVisual() {
     <div className='overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
       <div className='border-b border-primary/20 bg-linear-to-r from-primary/10 to-accent/10 px-4 py-3'>
         <div className='flex items-center gap-2'>
-          <FileText className='h-4 w-4 text-primary' />
+          <FileText className='size-4 text-primary' />
           <span className='text-sm font-medium text-foreground'>
             TypeScript Roadmap
           </span>
@@ -125,7 +125,7 @@ function CurriculumVisual() {
                 key={`${module.title}-${item}`}
                 className='ml-5 flex items-center gap-2 text-sm text-muted-foreground'
               >
-                <div className='h-1.5 w-1.5 rounded-full bg-linear-to-r from-primary to-accent' />
+                <div className='size-1.5 rounded-full bg-linear-to-r from-primary to-accent' />
                 {item}
               </div>
             ))}
@@ -153,7 +153,7 @@ function ResourcesVisual() {
       {/* Event details */}
       <div className='space-y-3 p-4'>
         <div className='flex items-center gap-2 text-sm text-muted-foreground'>
-          <CalendarCheck className='h-4 w-4 text-primary' />
+          <CalendarCheck className='size-4 text-primary' />
           <span>1 hour · Focus time</span>
         </div>
 
@@ -186,7 +186,7 @@ function ResourceLinkMock({ label, type }: { label: string; type: string }) {
     <div className='flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary'>
       <span>{icons[type]}</span>
       <span className='truncate'>{label}</span>
-      <ExternalLink className='ml-auto h-3.5 w-3.5 shrink-0 text-primary/60' />
+      <ExternalLink className='ml-auto size-3.5 shrink-0 text-primary/60' />
     </div>
   );
 }
@@ -210,8 +210,8 @@ function SyncVisual() {
       {/* Sync toast notification */}
       <div className='mx-auto max-w-56 overflow-hidden rounded-2xl border border-primary/30 bg-linear-to-r from-primary/10 to-accent/10 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
         <div className='flex items-center gap-3 px-4 py-3'>
-          <div className='brand-fill flex h-8 w-8 items-center justify-center rounded-xl shadow-md'>
-            <Check className='h-4 w-4 text-foreground' />
+          <div className='brand-fill flex size-8 items-center justify-center rounded-xl shadow-md'>
+            <Check className='size-4 text-foreground' />
           </div>
           <div>
             <p className='text-sm font-medium text-primary'>Schedule synced</p>
@@ -232,7 +232,7 @@ function SyncVisual() {
         <div className='p-3'>
           <div className='rounded-xl border border-white/60 bg-white/80 p-3 shadow-md backdrop-blur-sm dark:border-white/20 dark:bg-card/60'>
             <div className='flex items-center gap-2'>
-              <CalendarCheck className='h-4 w-4 text-primary' />
+              <CalendarCheck className='size-4 text-primary' />
               <span className='text-xs font-medium text-foreground'>
                 Coming up
               </span>
@@ -250,7 +250,7 @@ function SyncVisual() {
 function IntegrationIcon({ name, color }: { name: string; color: string }) {
   return (
     <div
-      className={`flex h-12 w-12 items-center justify-center rounded-xl ${color} shadow-lg transition hover:scale-105 hover:shadow-xl`}
+      className={`flex size-12 items-center justify-center rounded-xl ${color} shadow-lg transition hover:scale-105 hover:shadow-xl`}
       title={name}
       role='img'
       aria-label={name}

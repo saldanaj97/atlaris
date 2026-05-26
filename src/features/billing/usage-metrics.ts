@@ -169,17 +169,18 @@ export async function getUsageSummaryForTier(args: {
     });
   }
   const month = getCurrentMonth();
-  const metrics = await selectUsageMetricsForMonth(userId, month, dbClient);
-
-  const [planCount] = await dbClient
-    .select({ count: sql`count(*)::int` })
-    .from(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        eq(learningPlans.isQuotaEligible, true),
+  const [metrics, [planCount]] = await Promise.all([
+    selectUsageMetricsForMonth(userId, month, dbClient),
+    dbClient
+      .select({ count: sql`count(*)::int` })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          eq(learningPlans.isQuotaEligible, true),
+        ),
       ),
-    );
+  ]);
 
   return {
     tier,

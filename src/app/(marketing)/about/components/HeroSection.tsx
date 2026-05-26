@@ -13,7 +13,7 @@ export function HeroSection(): JSX.Element {
     <section className='relative py-24 lg:py-32' aria-labelledby={headingId}>
       <div className='relative z-10 mx-auto max-w-screen-xl px-6 text-center'>
         <Badge variant='glassmorphic' className='mb-6 px-4 py-2'>
-          <span className='mr-2 h-2 w-2 rounded-full bg-linear-to-r from-primary to-accent' />
+          <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent' />
           About Atlaris
         </Badge>
 

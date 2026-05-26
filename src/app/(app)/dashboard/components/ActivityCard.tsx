@@ -33,13 +33,13 @@ function ActivityCardMetadata({
     <div className='flex flex-wrap items-center gap-3'>
       {metadata.duration && (
         <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Clock className='h-3 w-3' />
+          <Clock className='size-3' />
           {metadata.duration}
         </span>
       )}
       {metadata.progress !== undefined && (
         <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Target className='h-3 w-3' />
+          <Target className='size-3' />
           {metadata.progress}% complete
         </span>
       )}
@@ -62,11 +62,11 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
         {/* Icon */}
         <div
           className={cn(
-            'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
+            'flex size-10 flex-shrink-0 items-center justify-center rounded-xl',
             config.color,
           )}
         >
-          <Icon className='h-5 w-5' />
+          <Icon className='size-5' />
         </div>
 
         {/* Content */}

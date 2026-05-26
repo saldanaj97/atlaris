@@ -23,7 +23,7 @@ export function RequestIntegration(): JSX.Element {
       <CardContent>
         <div className='mt-5'>
           <Button variant='outline' disabled>
-            <MessageSquare className='mr-2 h-4 w-4' />
+            <MessageSquare className='mr-2 size-4' />
             Request Integration
           </Button>
         </div>

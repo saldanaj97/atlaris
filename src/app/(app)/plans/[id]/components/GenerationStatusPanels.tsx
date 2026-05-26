@@ -68,7 +68,7 @@ export function ConnectionIssuePanel({
       body={displayError}
       footer={
         <Button onClick={onRefresh} className='w-full' variant='outline'>
-          <RefreshCw className='mr-2 h-4 w-4' />
+          <RefreshCw className='mr-2 size-4' />
           Refresh
         </Button>
       }
@@ -79,7 +79,7 @@ export function ConnectionIssuePanel({
 export function ProcessingPanel({ attempts }: { attempts: number }) {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary' />
       <div className='space-y-1'>
         <p className='font-semibold'>Generating Your Learning Plan</p>
         <p className='text-sm text-muted-foreground'>
@@ -99,7 +99,7 @@ export function ProcessingPanel({ attempts }: { attempts: number }) {
 export function PendingPanel() {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-muted/50 p-4'>
-      <Loader2 className='mt-0.5 h-5 w-5 shrink-0 animate-spin text-muted-foreground' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground' />
       <div className='space-y-1'>
         <p className='font-semibold'>Queued for Generation</p>
         <p className='text-sm text-muted-foreground'>
@@ -113,7 +113,7 @@ export function PendingPanel() {
 export function ReadyPanel() {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary' />
       <div className='space-y-1'>
         <p className='font-semibold'>Loading…</p>
         <p className='text-sm text-muted-foreground'>
@@ -136,7 +136,7 @@ export function UnsupportedStatusPanel({
       body='This plan reported an unsupported status. Refresh to check for the latest state.'
       footer={
         <Button onClick={onRefresh} className='w-full' variant='outline'>
-          <RefreshCw className='mr-2 h-4 w-4' />
+          <RefreshCw className='mr-2 size-4' />
           Refresh
         </Button>
       }

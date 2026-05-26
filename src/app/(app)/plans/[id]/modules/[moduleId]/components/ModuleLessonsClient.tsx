@@ -47,9 +47,12 @@ export function ModuleLessonsClient({
 
   const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
     const total = lessons.length;
-    const completed = lessons.filter(
-      (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
-    ).length;
+    let completed = 0;
+    for (const lesson of lessons) {
+      if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
+        completed++;
+      }
+    }
 
     return {
       completedLessons: completed,

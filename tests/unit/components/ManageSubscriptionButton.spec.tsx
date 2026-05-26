@@ -1,4 +1,5 @@
-// sonner mock must load before the component under test.
+// IMPORTANT: Mock imports must come first, before any component imports
+// that use the mocked modules (sonner).
 import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';

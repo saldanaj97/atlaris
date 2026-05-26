@@ -39,14 +39,14 @@ export function MissionSection(): JSX.Element {
 
         <Card className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-card/40'>
           <div
-            className='gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30'
+            className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30'
             aria-hidden='true'
           />
 
           <div className='space-y-6'>
             {HIGHLIGHTS.map((item) => (
               <div key={item.title} className='flex items-start gap-4'>
-                <div className='gradient-brand inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg'>
+                <div className='gradient-brand inline-flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-lg'>
                   {item.icon}
                 </div>
                 <div>
@@ -74,19 +74,19 @@ interface Highlight {
 
 const HIGHLIGHTS: Highlight[] = [
   {
-    icon: <Sparkles className='h-5 w-5 text-white' aria-hidden='true' />,
+    icon: <Sparkles className='size-5 text-white' aria-hidden='true' />,
     title: 'AI-Powered Plans',
     description:
       'Intelligent scheduling that adapts to your pace, goals, and availability.',
   },
   {
-    icon: <CalendarDays className='h-5 w-5 text-white' aria-hidden='true' />,
+    icon: <CalendarDays className='size-5 text-white' aria-hidden='true' />,
     title: 'Calendar Sync',
     description:
       'Plans sync directly to Google Calendar so learning fits your life.',
   },
   {
-    icon: <Library className='h-5 w-5 text-white' aria-hidden='true' />,
+    icon: <Library className='size-5 text-white' aria-hidden='true' />,
     title: 'Curated Resources',
     description:
       'Top-ranked videos, articles, and docs selected for each topic.',

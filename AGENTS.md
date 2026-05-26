@@ -4,44 +4,75 @@
 
 **Agent memory:** Recurring preferences and durable workspace facts live in `.agents/plans/lessons.md`. Read that file whenever you read or apply this file.
 
-We will primarily be utilizing the `.agents/plans/` directory to organize prds, plans, todos, and lessons learned. This structure allows for clear documentation and easy access to relevant information throughout the development process. Make sure to keep this directory updated with your work and insights as you progress through your tasks as this will be crucial for tracking your progress and learning from your experiences.
+Repo-writable planning artifacts are local-only and belong under `.agents/plans/`. Use that directory for PRDs, plans, todos, trackers, and lessons learned. Do not create or update planning artifacts under legacy `prds/`, legacy `.plans/`, or Cursor-native `.cursor/plans/` unless the user explicitly asks for that path; `.cursor/plans/` is treated as a read-only export/import surface. Keep `.agents/plans/` updated with task progress, verification notes, and durable lessons when the work calls for it.
 
-## 1. Plan Mode Default
+## Karpathy behavioral guidelines
 
-- Enter plan mode or invoke planning agent for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## 2. Subagent Strategy
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents with cheaper/lightweight models
-- For complex problems, throw more compute at it via subagents and ONLY use the same model as the parent
-- One task per subagent for focused execution
+### 1. Think Before Coding
 
-## 3. Self-Improvement Loop
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-- After ANY corrections whether from our agent or the user: update `.agents/plans/lessons.md` with the pattern
-- Write rules and lessons for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-## 5. Demand Elegance (Balanced)
+### 2. Simplicity First
 
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes -- don't over-engineer
-- Challenge your own work before presenting it
+**Minimum code that solves the problem. Nothing speculative.**
 
-## 6. Autonomous Bug Fixing
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
 
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests -- then resolve them
-- Zero context switching required from the user
-- Go fix failing Cl tests without being told how
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 7. Testing
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## Testing
 
 - Use TDD for new features and bug fixes when applicable
 - Ensure tests cover relevant scenarios and edge cases
@@ -58,38 +89,3 @@ We will primarily be utilizing the `.agents/plans/` directory to organize prds, 
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test:changed` and `pnpm check:full`.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
-
-## Cursor Cloud specific instructions
-
-### Services overview
-
-**Atlaris** is a single Next.js 16 app (Turbopack) with PostgreSQL 17, mock AI, and local Stripe mode. See `README.md` and `docs/development/commands.md` for all standard commands.
-
-### Starting services
-
-1. **Supabase local stack** — `pnpm db:dev:start` (Postgres on `127.0.0.1:54322`; API on `127.0.0.1:54321`).
-2. **Docker daemon** — `dockerd &>/var/log/dockerd.log &` (needed for Supabase local and integration/security tests via Testcontainers).
-3. **Next.js dev server** — `pnpm dev` (Turbopack, port 3000).
-
-### Environment
-
-`.env.local` is not committed. Cloud setup creates it dynamically from source constants in `src/lib/config/local-product-testing.ts`. Key flags:
-
-- `LOCAL_PRODUCT_TESTING=true` + `DEV_AUTH_USER_ID` = seeded local user (bypasses Clerk for local dev)
-- `STRIPE_LOCAL_MODE=true` = in-process Stripe mock
-- `AI_PROVIDER=mock` = mock AI generation
-- `ENABLE_SENTRY=false` = no Sentry telemetry
-
-### Gotchas
-
-- The `pnpm db:dev:*` scripts use the Supabase CLI local stack. Use `pnpm db:dev:start`, `pnpm db:dev:reset`, and `pnpm db:dev:stop` for local DB lifecycle.
-- `pnpm check:type` uses `tsgo` (from `@typescript/native-preview`), not `tsc`. Keep that devDep installed.
-- Integration/security tests need Docker running. Unit tests do not.
-- `pnpm.onlyBuiltDependencies` in `package.json` must include `esbuild`, `@sentry/cli`, `sharp`, etc. for native binaries to build during `pnpm install`.
-- The `env.spec.ts` unit tests may show failures when `AI_PROVIDER` or other env vars are set in `.env.local`; this is expected — those tests validate default parsing behavior and use `vi.stubEnv` internally.
-- Docker daemon needs `sudo` in Cloud Agent VMs: `sudo nohup dockerd > /var/log/dockerd.log 2>&1 &`. Before Supabase CLI can connect, ensure your user can access the socket without world-writable permissions (e.g. `sudo usermod -aG docker "$USER"` then a new login/shell, or `sudo chgrp docker /var/run/docker.sock && sudo chmod 660 /var/run/docker.sock`). Avoid `chmod 666` on the socket — it is effectively root-equivalent for any local user.
-- `.env.local` requires Supabase keys from `pnpm exec supabase status` (specifically `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SERVICE_ROLE_KEY`). Run `db:dev:start` first, then extract keys.
-
-## Learned User Preferences
-
-- When removing or consolidating database connection env vars, sweep application code, tests, and documentation together; avoid compatibility aliases, dual read paths, and extra abstraction layers unless an external constraint forces them.

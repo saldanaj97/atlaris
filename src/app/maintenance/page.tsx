@@ -27,7 +27,7 @@ export default function MaintenancePage(): JSX.Element {
           <div className='flex justify-center'>
             <div className='animate-pulse rounded-full border-2 border-border bg-primary p-5 shadow-lg motion-reduce:animate-none'>
               <ShieldAlert
-                className='h-10 w-10 text-primary-foreground'
+                className='size-10 text-primary-foreground'
                 aria-hidden='true'
               />
             </div>
@@ -36,9 +36,9 @@ export default function MaintenancePage(): JSX.Element {
           {/* Status Badge */}
           <div className='flex justify-center'>
             <Badge variant='default' className='gap-2'>
-              <span className='relative flex h-2 w-2'>
+              <span className='relative flex size-2'>
                 <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground opacity-75 motion-reduce:animate-none'></span>
-                <span className='relative inline-flex h-2 w-2 rounded-full bg-primary-foreground'></span>
+                <span className='relative inline-flex size-2 rounded-full bg-primary-foreground'></span>
               </span>
               System Maintenance in Progress
             </Badge>

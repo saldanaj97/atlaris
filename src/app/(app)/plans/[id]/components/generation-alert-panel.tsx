@@ -6,13 +6,13 @@ const ALERT_VARIANT_CLASSES = {
   warning: {
     container:
       'flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4',
-    icon: 'mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400',
+    icon: 'mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400',
     title: 'font-semibold text-amber-600 dark:text-amber-400',
   },
   destructive: {
     container:
       'flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4',
-    icon: 'mt-0.5 h-5 w-5 shrink-0 text-destructive',
+    icon: 'mt-0.5 size-5 shrink-0 text-destructive',
     title: 'font-semibold text-destructive',
   },
 } as const;

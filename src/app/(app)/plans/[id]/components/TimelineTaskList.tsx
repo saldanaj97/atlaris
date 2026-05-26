@@ -1,8 +1,8 @@
-import type { TimelineModule } from './TimelineModuleCard';
+import type { TimelineModule } from './plan-timeline-state';
 import type { ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { UpdateTaskStatusButton } from '@/app/(app)/plans/[id]/components/UpdateTaskStatusButton';
+import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/features/plans/formatters';
@@ -86,10 +86,11 @@ function TimelineTaskCard({
           )}
         </div>
         <div className='flex shrink-0 items-center self-end sm:self-auto'>
-          <UpdateTaskStatusButton
+          <TaskCompletionButton
             taskId={task.id}
             status={status}
             onStatusChange={onTaskStatusChange}
+            variant='timeline'
           />
         </div>
       </div>

@@ -195,7 +195,7 @@ export default async function PricingPage(): Promise<ReactElement> {
       <div className='pointer-events-none absolute inset-0 -z-10'>
         <div className='absolute -top-24 -left-40 h-[32rem] w-[32rem] rounded-full bg-linear-to-br from-primary/30 to-accent/20 opacity-45 blur-3xl dark:opacity-20' />
         <div className='absolute top-36 -right-40 h-[28rem] w-[28rem] rounded-full bg-linear-to-br from-primary/25 to-accent/25 opacity-45 blur-3xl dark:opacity-15' />
-        <div className='absolute right-1/4 bottom-0 h-80 w-80 rounded-full bg-linear-to-br from-accent/15 to-primary/15 opacity-35 blur-3xl dark:opacity-10' />
+        <div className='absolute right-1/4 bottom-0 size-80 rounded-full bg-linear-to-br from-accent/15 to-primary/15 opacity-35 blur-3xl dark:opacity-10' />
       </div>
 
       <div className='mx-auto flex max-w-7xl flex-col items-center justify-start gap-y-10'>

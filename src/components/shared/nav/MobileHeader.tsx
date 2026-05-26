@@ -64,7 +64,7 @@ export default function MobileHeader({
                 href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
                 aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
               >
-                <Plus className='h-4 w-4' />
+                <Plus className='size-4' />
               </Link>
             </Button>
           </TooltipTrigger>

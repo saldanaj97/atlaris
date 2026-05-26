@@ -66,11 +66,11 @@ export function FeaturesSection() {
               className='group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40'
             >
               <div
-                className='gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30'
+                className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30'
                 aria-hidden='true'
               ></div>
 
-              <div className='brand-fill-interactive mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
+              <div className='brand-fill-interactive mb-6 inline-flex size-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
                 <span aria-hidden='true'>{feature.icon}</span>
               </div>
               <h3 className='marketing-card-title mb-3'>{feature.title}</h3>

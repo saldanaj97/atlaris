@@ -1,186 +1,58 @@
-# Database Module
+# Supabase Guidelines
 
-**Parent:** [Root AGENTS.md](../../../AGENTS.md)
+**Parent:** [Root AGENTS.md](../AGENTS.md)
 
-## Overview
+This directory owns local Supabase configuration, SQL migrations, and Drizzle schema definitions. Keep this file short; put durable architecture detail in `docs/architecture/` and task notes in `.agents/plans/`.
 
-Drizzle ORM + PostgreSQL with Row Level Security (RLS). Two client types: RLS-enforced (default) and service-role (bypass). User-facing policies are explicitly scoped to `authenticated` (never implicit `PUBLIC`).
+## Client Boundaries
 
-## Client Selection (CRITICAL)
+- Request handlers, server actions, and server components must use the request-scoped RLS client exposed through `getDb()` from `@supabase/runtime`.
+- New request code should enter through `requestBoundary.route`, `requestBoundary.action`, or `requestBoundary.component` from `@/lib/api/request-boundary`; those boundaries set up auth, RLS context, and cleanup.
+- Service-role access bypasses RLS. Keep `@supabase/service-role` out of user request paths (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`) unless the path is explicitly admin/system-owned and reviewed.
+- Tests, workers, migrations, and admin maintenance helpers may use service-role when they intentionally need bypass privileges.
 
-| Context                    | Client       | Import                             |
-| -------------------------- | ------------ | ---------------------------------- |
-| API routes, server actions | RLS-enforced | `getDb()` from `@supabase/runtime` |
-| Tests, workers, migrations | Service-role | `db` from `@supabase/service-role` |
+## RLS Rules
 
-```typescript
-// REQUEST HANDLERS - always use this:
-import { getDb } from '@supabase/runtime';
-const db = getDb();
-
-// TESTS/WORKERS ONLY:
-import { db } from '@supabase/service-role';
-```
-
-**Why?** Service-role bypasses RLS → security vulnerability if used in request handlers.  
-Keep service-role imports out of these paths; align with layer rules and Oxlint checks in `.oxlintrc.json` (`src/app/api/**`, `src/lib/api/**`, `src/lib/integrations/**`).
-
-## Request boundary and auth (how `getDb()` is established)
-
-`getDb()` requires an active request context — it doesn't work in isolation. **Default pattern:** `requestBoundary` from `@/lib/api/request-boundary` — `requestBoundary.route`, `requestBoundary.component`, and `requestBoundary.action` set up the same RLS + request context.
-
-| Consumer          | API                                   | When to use              |
-| ----------------- | ------------------------------------- | ------------------------ |
-| API routes        | `withAuth` or `requestBoundary.route` | `src/app/api/**`         |
-| Server actions    | `requestBoundary.action`              | `'use server'` functions |
-| Server components | `requestBoundary.component`           | Async server components  |
-
-`withServerComponentContext` and `withServerActionContext` in `@/lib/api/auth` are **compatibility shims** (used inside `requestBoundary` and by older call sites). New code should prefer `requestBoundary`.
-
-All paths create an RLS client, set up request context, resolve the DB user, and guarantee cleanup.  
-**Never call `getDb()` or query functions outside one of these** — it will throw `MissingRequestDbContextError`.
-
-Full architecture: `docs/architecture/auth-and-data-layer.md` (from repo root)
-
-## Structure
-
-```
-supabase/
-├── runtime.ts       # getDb() - context-aware client selector
-├── service-role.ts  # Bypasses RLS (tests/workers only)
-├── rls.ts           # RLS client factory (authenticated/anon)
-├── schema/
-│   ├── tables/      # Table definitions (plans.ts, users.ts, etc.)
-│   ├── constants.ts # Shared numeric/string limits (single source of truth)
-│   ├── relations.ts # Drizzle relations
-│   └── index.ts     # Barrel export
-├── queries/         # Query modules by entity
-│   ├── plans.ts     # Plan CRUD
-│   ├── users.ts     # User operations
-│   ├── attempts.ts  # Generation attempt tracking
-│   └── ...
-├── enums.ts         # PostgreSQL enum definitions
-└── migrations/      # Committed Supabase SQL migrations for local/hosted DBs
-```
-
-## RLS Architecture
-
-```typescript
-// rls.ts creates clients that:
-// 1. Switch to role: authenticated OR anon
-// 2. Set session variable: request.jwt.claims = {"sub": "<authUserId>"} (or null for anon)
-//    via SELECT set_config('request.jwt.claims', '{"sub":"..."}', false)
-// 3. Execute queries (RLS filters by request.jwt.claims->>'sub')
-// 4. Must call cleanup() when done
-
-const { db, cleanup } = await createAuthenticatedRlsClient(userId);
-try {
-  // queries here see only user's data
-} finally {
-  await cleanup(); // CRITICAL: releases connection
-}
-```
+- Every `pgPolicy(...)` must include an explicit `to`, usually `to: 'authenticated'`.
+- Do not omit `to`; PostgreSQL treats omitted policy roles as `PUBLIC`.
+- Current product posture has no anonymous app-data policies.
+- Query helpers that are RLS-sensitive must require an explicit `dbClient` parameter instead of defaulting to `getDb()`. This makes the caller prove which request or service-role context is being used.
+- If an RLS-sensitive flow opens a transaction, use `prepareRlsTransactionContext(dbClient)` before `transaction()` and `reapplyJwtClaimsInTransaction(tx, ctx)` inside the transaction when required.
+- Helpers that lock rows, such as `lockOwnedPlanById`, must run on the same explicit `dbClient` as the surrounding transaction.
 
 ## Schema Constants
 
-All numeric limits, string length caps, and other DB-layer constants **must** live in `supabase/schema/constants.ts`. Never hardcode these values inline in table definitions, query helpers, or application code.
+Put DB-related numeric limits, string length caps, and shared constraint values in `supabase/schema/constants.ts`.
 
-```typescript
-// CORRECT — import from the single source of truth:
-import { MAX_RESOURCE_TITLE_LENGTH } from '@supabase/schema/constants';
+- Import constants into table definitions, query helpers, and application validation instead of duplicating magic numbers.
+- When adding a constant, document what enforces it: app-layer validation, DB constraint, or both.
+- Keep DB CHECK constraints and application sanitization aligned.
 
-// WRONG — do NOT do this:
-const MAX_TITLE = 500; // local magic number
-```
+## Migrations
 
-**Why?** Application-level sanitization (query helpers) and DB-level CHECK constraints must use the same value. A local constant silently diverges when one side is updated.
+- Use committed SQL migrations under `supabase/migrations/`.
+- Prefer `pnpm exec supabase migration new <name>` for new migrations.
+- Use `pnpm exec supabase db diff -f <name>` only after verifying the local DB state represents the intended schema.
+- Use `pnpm db:dev:reset` to rebuild local Supabase from migrations and seed data.
 
-### Current constants
+## Retention Cleanup
 
-| Constant                    | Value | Used in                                         | DB constraint status            |
-| --------------------------- | ----- | ----------------------------------------------- | ------------------------------- |
-| `MAX_RESOURCE_TITLE_LENGTH` | `500` | `schema/tables/tasks.ts` (constraint reference) | TODO ([RESOURCE-HARDENING] tag) |
+Retention cleanup is database-owned through `private.cleanup_retained_db_rows()` and the Supabase Cron job `retention-cleanup`.
 
-**Adding a new constant:** add it to `schema/constants.ts` with a JSDoc comment explaining what enforces it (app-layer, DB CHECK, or both), then import it wherever it is used.
+- The manual HTTP fallback is `POST /api/internal/maintenance/retention/cleanup`.
+- Enable the manual route with `RETENTION_CLEANUP_ENABLED=true`.
+- In production, the manual route requires `MAINTENANCE_WORKER_TOKEN`.
+- Cron does not use the HTTP route or worker token.
+- Cleanup must not run from user read paths.
 
-## RLS Policy Rules
-
-- Always include explicit `to` in every `pgPolicy(...)`:
-  - `to: 'authenticated'` for user-owned tables and authenticated reads
-- Current product posture: no anonymous app-data policies
-- Never omit `to` (omitted means `TO PUBLIC` in PostgreSQL)
-
-## Queries Pattern
-
-Most query functions accept optional `dbClient` parameter for DI (default `getDb()`). **Exception:** RLS-sensitive modules (see below).
-
-```typescript
-export async function getPlanById(
-  planId: string,
-  dbClient: DbClient = getDb(),
-): Promise<Plan | null> {
-  return dbClient.query.learningPlans.findFirst({
-    where: eq(learningPlans.id, planId),
-  });
-}
-```
-
-### RLS-sensitive query modules (required dbClient)
-
-Query modules that must enforce RLS on every call (e.g. generation attempts, audit flows) **must require** an explicit `dbClient` in their params and **must not** default to `getDb()` internally. This forces callers to pass the request-scoped client from `getDb()` so RLS claims flow through; making `dbClient` optional or defaulting to `getDb()` inside the module would mask missing dependency injection and is a security footgun.
-
-- **Rule:** Params types (e.g. `StartAttemptParams`) and function signatures that use a db client type (e.g. `AttemptsDbClient`) in these modules must declare `dbClient` as **required**.
-- **Example:** `src/lib/db/queries/attempts.ts` — `StartAttemptParams.dbClient`, `AttemptsDbClient`; callers pass `getDb()` from the request handler.
-- **Do not:** Add `dbClient = getDb()` or make `dbClient` optional in these modules.
-
-### JWT claim replay inside `transaction()`
-
-After you obtain the same explicit `dbClient` as for other RLS-sensitive calls (see above), call `prepareRlsTransactionContext(dbClient)` before `transaction()`, then `reapplyJwtClaimsInTransaction(tx, ctx)` when `ctx.requiresJwtClaimReplay && ctx.requestJwtClaims !== null`. Service-role skips claim capture; replay uses transaction-local `set_config(..., true)`. Type and helpers: [`queries/helpers/rls-jwt-claims.ts`](./queries/helpers/rls-jwt-claims.ts).
-
-### Row-lock helpers (`for('update')`)
-
-`lockOwnedPlanById` in `queries/helpers/plans-helpers.ts` requires an explicit `dbClient` argument (no optional/default) because `FOR UPDATE` must run on the same connection as the surrounding transaction.
-
-### Admin metrics (`service-role` default)
-
-`queries/admin/jobs-metrics.ts` aggregates queue-wide counts and defaults to the service-role client only—do not add `getDb()` fallback or wire these helpers into user-scoped routes without an explicit audit.
-
-## Key Tables
-
-| Table                 | Purpose                      | Notes                                                                                                                |
-| --------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `users`               | User accounts                | `auth_user_id` for auth                                                                                              |
-| `learning_plans`      | Plans with generation status | RLS by `user_id`; origin enum is limited to `ai`, `template`, and `manual`                                           |
-| `modules`             | Plan sections                | `order` starts at 1                                                                                                  |
-| `tasks`               | Learning activities          | `order` starts at 1                                                                                                  |
-| `generation_attempts` | AI attempt audit log         | Max 3 per plan                                                                                                       |
-| `oauth_state_tokens`  | Short-lived proof/state rows | Single-use state/proof token storage for OAuth and similar flows; prune expired rows through admin retention helpers |
-
-## Retention
-
-Admin-owned cleanup is canonicalized in `private.cleanup_retained_db_rows()` and scheduled by Supabase Cron. TypeScript helpers in `src/lib/db/queries/admin/retention.ts` remain available for the internal manual maintenance route. Cleanup must not run from user read paths.
-
-- `oauth_state_tokens`: delete expired rows.
-- `job_queue`: delete terminal `completed`/`failed` rows older than 30 days; keep pending/processing rows.
-- `stripe_webhook_events`: keep processed event IDs for 45 days to cover Stripe automatic retry and manual resend windows.
-- `ai_usage_events`: retain raw rows until a monthly aggregation/accounting model exists.
-
-Scheduled trigger: Supabase Cron job `retention-cleanup` runs `private.cleanup_retained_db_rows()` daily. Manual fallback: `POST /api/internal/maintenance/retention/cleanup` with `MAINTENANCE_WORKER_TOKEN`. See `docs/architecture/retention-cleanup-runbook.md` and `docs/architecture/internal-worker-routes.md`.
-
-## Commands
-
-```bash
-supabase migration new <name> # Create a new SQL migration file
-supabase db diff -f <name>    # Generate a migration from local DB changes
-supabase db reset             # Recreate local DB from migrations + seed.sql
-```
+See `docs/architecture/retention-cleanup-runbook.md` and `docs/architecture/internal-worker-routes.md` for operator detail.
 
 ## Anti-Patterns
 
-- Defining DB-related numeric/string limits outside `schema/constants.ts` (hardcoded magic numbers)
-- Importing `@supabase/service-role` in API routes
-- Omitting `to` in `pgPolicy(...)` (defaults to insecure `PUBLIC` scope)
-- Forgetting `cleanup()` after RLS client use
-- Direct SQL without parameterization
-- Hardcoding user IDs instead of using session context
-- In RLS-sensitive query modules (e.g. attempts): making `dbClient` optional or defaulting to `getDb()` — keep `dbClient` required so callers pass request-scoped `getDb()` and RLS is preserved
+- Importing `@supabase/service-role` into user request paths.
+- Calling `getDb()` outside an auth/request boundary.
+- Omitting `to` in `pgPolicy(...)`.
+- Forgetting `cleanup()` when manually creating RLS clients.
+- Adding local DB limit constants outside `supabase/schema/constants.ts`.
+- Defaulting RLS-sensitive query modules to `getDb()` internally.
+- Running admin cleanup or queue-wide metrics from tenant-scoped read paths.

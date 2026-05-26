@@ -6,6 +6,7 @@ import {
   createAiEnvFacets,
   createAppEnv,
   createLessonContentEnvForTests,
+  createMaintenanceEnvForTests,
   createServerEnvAccess,
   createSupabasePublicEnv,
   EnvValidationError,
@@ -574,6 +575,30 @@ describe('Environment Configuration', () => {
       vi.stubEnv('REGENERATION_MAX_JOBS_PER_DRAIN', '0');
 
       expect(regenerationQueueEnv.maxJobsPerDrain).toBe(0);
+    });
+  });
+
+  describe('maintenanceEnv', () => {
+    it('does not require a worker token when manual retention cleanup is disabled in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        RETENTION_CLEANUP_ENABLED: 'false',
+      });
+
+      expect(maintenance.retentionCleanupEnabled).toBe(false);
+      expect(maintenance.workerToken).toBeUndefined();
+    });
+
+    it('requires a worker token when manual retention cleanup is enabled in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        RETENTION_CLEANUP_ENABLED: 'true',
+      });
+
+      expect(maintenance.retentionCleanupEnabled).toBe(true);
+      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
   });
 

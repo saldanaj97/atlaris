@@ -12,7 +12,7 @@ export function PlansContentSkeleton(): JSX.Element {
     <>
       {/* Search Bar skeleton */}
       <div className='mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5'>
-        <Search className='h-4 w-4 text-muted-foreground' />
+        <Search className='size-4 text-muted-foreground' />
         <Skeleton className='h-5 w-48' />
       </div>
 
@@ -40,7 +40,7 @@ function PlanRowSkeleton(): JSX.Element {
   return (
     <div className='flex items-center gap-4 rounded-2xl px-5 py-4'>
       {/* Status indicator skeleton */}
-      <Skeleton className='h-2.5 w-2.5 shrink-0 rounded-full' />
+      <Skeleton className='size-2.5 shrink-0 rounded-full' />
 
       {/* Plan info skeleton */}
       <div className='min-w-0 flex-1 space-y-1.5'>
@@ -62,7 +62,7 @@ function PlanRowSkeleton(): JSX.Element {
       <Skeleton className='h-4 w-20 shrink-0' />
 
       {/* Arrow skeleton */}
-      <Skeleton className='h-4 w-4 shrink-0' />
+      <Skeleton className='size-4 shrink-0' />
     </div>
   );
 }

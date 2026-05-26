@@ -49,7 +49,9 @@ export function createClerkAuthEnv(env: EnvSource): ClerkAuthEnv {
       };
     });
     const envKeys = [
-      ...new Set(issues.map((issue) => issue.envKey).filter(Boolean)),
+      ...new Set(
+        issues.flatMap((issue) => (issue.envKey ? [issue.envKey] : [])),
+      ),
     ];
     throw new EnvValidationError(
       issues.length > 0

@@ -30,8 +30,8 @@ export function ComingSoonAlert({
       aria-label='Coming soon'
       className={cn('flex items-start gap-4', className)}
     >
-      <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-panel-border bg-panel text-primary shadow-none'>
-        <Icon className='h-4 w-4' aria-hidden='true' />
+      <div className='flex size-9 shrink-0 items-center justify-center rounded-lg border border-panel-border bg-panel text-primary shadow-none'>
+        <Icon className='size-4' aria-hidden='true' />
       </div>
       <div className='min-w-0 space-y-0.5'>
         <p className='text-sm font-medium text-foreground'>{title}</p>

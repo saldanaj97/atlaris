@@ -15,8 +15,8 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 
 | Variable                    | Purpose                                                                                      | Production expectation                 |
 | --------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual HTTP cleanup endpoint** only (defaults to `false` when unset) | Set `true` when using the manual route |
-| `MAINTENANCE_WORKER_TOKEN`  | Bearer token for manual internal route auth (not used by cron)                               | Required                               |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual HTTP cleanup endpoint** only (defaults to `false` when unset) | Set `true` only when enabling manual route access |
+| `MAINTENANCE_WORKER_TOKEN`  | Bearer token for manual internal route auth (not used by cron)                               | Required only when the manual route is enabled    |
 
 ## Retention Windows
 
@@ -39,7 +39,7 @@ The migration uses `cron.schedule`/`cron.unschedule` and skips schedule registra
 
 ## Manual Cleanup
 
-Operators can still trigger the same retention policy through the internal route:
+Operators can still trigger the same retention policy through the internal route when `RETENTION_CLEANUP_ENABLED=true`:
 
 ```bash
 curl -X POST "https://<app-host>/api/internal/maintenance/retention/cleanup" \
@@ -53,7 +53,7 @@ curl -X POST "https://<app-host>/api/internal/maintenance/retention/cleanup" \
   -H "x-maintenance-worker-token: ${MAINTENANCE_WORKER_TOKEN}"
 ```
 
-In non-production environments, if no worker token is configured, auth is not required.
+In non-production environments, if the manual route is enabled and no worker token is configured, auth is not required.
 
 ## Expected Response
 

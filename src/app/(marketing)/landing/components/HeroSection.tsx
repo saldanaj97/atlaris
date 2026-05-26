@@ -19,7 +19,7 @@ export function HeroSection(): JSX.Element {
         {/* Heading Text Section - positioned in upper portion with balanced spacing */}
         <div className='flex flex-col items-center space-y-6 lg:flex-1 lg:justify-center'>
           <Badge variant='glassmorphic' className='px-4 py-2'>
-            <span className='mr-2 h-2 w-2 rounded-full bg-linear-to-r from-primary to-accent'></span>
+            <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent'></span>
             Now with AI-powered insights
           </Badge>
 
@@ -41,7 +41,7 @@ export function HeroSection(): JSX.Element {
           >
             <Link href='/plans/new'>
               Get started free
-              <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover:translate-x-1' />
+              <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
             </Link>
           </Button>
         </div>
@@ -56,9 +56,9 @@ export function HeroSection(): JSX.Element {
             <div className='rounded-2xl bg-linear-to-br from-white/80 to-white/40 p-6 dark:from-card/60 dark:to-card/40'>
               <div className='flex aspect-video items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-accent/20'>
                 <div className='text-center'>
-                  <div className='brand-fill mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full shadow-lg'>
+                  <div className='brand-fill mx-auto mb-4 flex size-16 items-center justify-center rounded-full shadow-lg'>
                     <LayoutDashboard
-                      className='h-8 w-8 text-white'
+                      className='size-8 text-white'
                       aria-hidden='true'
                     />
                   </div>

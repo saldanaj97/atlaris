@@ -46,7 +46,7 @@ export function PricingCard({
       )}
     >
       {isPopular && (
-        <div className='gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30' />
+        <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
       )}
       <CardHeader className='relative gap-1 p-0'>
         {badge && (
@@ -79,7 +79,7 @@ export function PricingCard({
         <ul className='flex-1 space-y-3'>
           {features.map((feature) => (
             <li key={feature} className='flex items-start gap-3 text-sm'>
-              <Check className='mt-0.5 h-4 w-4 shrink-0 text-primary' />
+              <Check className='mt-0.5 size-4 shrink-0 text-primary' />
               <span>{feature}</span>
             </li>
           ))}

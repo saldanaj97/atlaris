@@ -67,6 +67,15 @@ export function BillingCardsSkeleton(): JSX.Element {
             </div>
             <Skeleton className='h-2 w-full rounded-full' />
           </div>
+
+          {/* Lesson generations usage */}
+          <div>
+            <div className='mb-1 flex items-center justify-between text-sm'>
+              <Skeleton className='h-4 w-44' />
+              <Skeleton className='h-4 w-12' />
+            </div>
+            <Skeleton className='h-2 w-full rounded-full' />
+          </div>
         </div>
       </Card>
     </>

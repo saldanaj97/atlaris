@@ -36,7 +36,7 @@ export function LockedFeatureCard({
     >
       <CardContent className='relative'>
         <div className='absolute top-4 right-4' aria-hidden='true'>
-          <Lock className='h-4 w-4 text-muted-foreground' />
+          <Lock className='size-4 text-muted-foreground' />
         </div>
 
         <div className='flex flex-col gap-3 pr-8'>

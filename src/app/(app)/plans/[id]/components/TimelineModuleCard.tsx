@@ -1,6 +1,6 @@
 'use client';
 
-import type { ClientTask } from '@/shared/types/client.types';
+import type { TimelineModule } from './plan-timeline-state';
 import type { ProgressStatus } from '@/shared/types/db.types';
 import type { JSX } from 'react';
 
@@ -10,24 +10,12 @@ import {
   getTimelineCardClassName,
   getTimelineTitleClassName,
   getTimelineWeekBadgeClassName,
-  type ModuleStatus,
 } from '@/app/(app)/plans/plans-progress-theme';
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-
-export interface TimelineModule {
-  id: string;
-  order: number;
-  title: string;
-  description: string | null;
-  status: ModuleStatus;
-  duration: string;
-  tasks: ClientTask[];
-  completedTasks: number;
-}
 
 interface TimelineModuleCardProps {
   planId: string;

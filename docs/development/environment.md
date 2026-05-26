@@ -23,7 +23,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
-- `maintenanceEnv` - Manual retention cleanup route toggles and shared token
+- `maintenanceEnv` - Manual retention cleanup route toggle and token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
@@ -59,8 +59,8 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | Variable                    | Purpose                                                            | Required in production                 |
 | --------------------------- | ------------------------------------------------------------------ | -------------------------------------- |
 | `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                    |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` when using the manual route |
-| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes (when manual route enabled)        |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
+| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes only when manual route is enabled          |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 

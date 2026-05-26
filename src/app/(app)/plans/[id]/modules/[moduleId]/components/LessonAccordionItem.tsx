@@ -8,7 +8,7 @@ import { getLessonCardClassName } from './lessonAccordionStyles';
 import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
-import { TaskStatusButton } from './TaskStatusButton';
+import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import {
   AccordionContent,
   AccordionItem,
@@ -65,10 +65,11 @@ function LessonContent({
       <LessonBodyPanel lesson={lesson} />
 
       <div className='mt-6 flex justify-end'>
-        <TaskStatusButton
+        <TaskCompletionButton
           taskId={lesson.id}
           status={status}
           onStatusChange={onStatusChange}
+          variant='lesson'
         />
       </div>
     </>

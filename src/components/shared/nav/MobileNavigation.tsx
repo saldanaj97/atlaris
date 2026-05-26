@@ -45,7 +45,7 @@ export default function MobileNavigation({
             className='rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20'
             aria-label='Open menu'
           >
-            <Menu className='h-5 w-5' />
+            <Menu className='size-5' />
           </Button>
         </TooltipTrigger>
         <TooltipContent side='bottom'>Menu</TooltipContent>
@@ -78,7 +78,7 @@ export default function MobileNavigation({
                 setOpen(false);
               }}
             >
-              <Plus className='h-4 w-4' />
+              <Plus className='size-4' />
               Create New Plan
             </Link>
           </Button>

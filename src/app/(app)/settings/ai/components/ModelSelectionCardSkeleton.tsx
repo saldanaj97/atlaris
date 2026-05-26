@@ -24,7 +24,7 @@ export function ModelSelectionCardSkeleton(): JSX.Element {
           >
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-3'>
-                <Skeleton className='h-8 w-8 rounded-lg' />
+                <Skeleton className='size-8 rounded-lg' />
                 <div>
                   <Skeleton className='mb-1 h-4 w-32' />
                   <Skeleton className='h-3 w-20' />

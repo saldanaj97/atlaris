@@ -1,8 +1,19 @@
-import type { TimelineModule } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
-import type { ClientModule } from '@/shared/types/client.types';
+import type { ModuleStatus } from '@/app/(app)/plans/plans-progress-theme';
+import type { ClientModule, ClientTask } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { formatMinutes } from '@/features/plans/formatters';
+
+export interface TimelineModule {
+  id: string;
+  order: number;
+  title: string;
+  description: string | null;
+  status: ModuleStatus;
+  duration: string;
+  tasks: ClientTask[];
+  completedTasks: number;
+}
 import {
   deriveActiveModuleId,
   deriveCompletedModuleIds,
@@ -13,16 +24,10 @@ export function deriveTimelineModules(
   modules: ClientModule[],
   effectiveStatuses: Record<string, ProgressStatus>,
 ): TimelineModule[] {
+  let previousModulesCompleted = true;
+
   return modules.map((mod, index) => {
     const tasks = mod.tasks;
-    const previousModulesCompleted = modules
-      .slice(0, index)
-      .every((prevMod) => {
-        const prevTasks = prevMod.tasks;
-        return prevTasks.every(
-          (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
-        );
-      });
     const completedCount = tasks.filter(
       (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
     ).length;
@@ -31,6 +36,12 @@ export function deriveTimelineModules(
       effectiveStatuses,
       previousModulesCompleted,
     );
+
+    previousModulesCompleted =
+      previousModulesCompleted &&
+      tasks.every(
+        (task) => (effectiveStatuses[task.id] ?? task.status) === 'completed',
+      );
 
     return {
       id: mod.id,

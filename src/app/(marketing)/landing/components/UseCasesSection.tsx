@@ -100,12 +100,12 @@ function QuoteCard({
   return (
     <figure className='group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40'>
       <div
-        className='absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-20 blur-2xl transition group-hover:opacity-40 motion-reduce:transition-none'
+        className='absolute -top-12 -right-12 size-32 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-20 blur-2xl transition group-hover:opacity-40 motion-reduce:transition-none'
         aria-hidden='true'
       ></div>
 
       <Quote
-        className='absolute top-6 right-6 h-10 w-10 text-primary/30'
+        className='absolute top-6 right-6 size-10 text-primary/30'
         aria-hidden='true'
       />
 
@@ -122,7 +122,7 @@ function QuoteCard({
       <figcaption className='mt-6 flex items-center gap-4 border-t border-primary/20 pt-6'>
         <div
           className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br text-sm font-bold text-white shadow-lg',
+            'flex size-12 items-center justify-center rounded-xl bg-linear-to-br text-sm font-bold text-white shadow-lg',
             gradient,
           )}
           aria-hidden='true'
@@ -144,7 +144,7 @@ function DecorativeStars() {
       {DECORATIVE_STAR_KEYS.map((starKey) => (
         <svg
           key={starKey}
-          className='h-5 w-5 text-amber-400'
+          className='size-5 text-amber-400'
           fill='currentColor'
           viewBox='0 0 20 20'
           aria-hidden='true'

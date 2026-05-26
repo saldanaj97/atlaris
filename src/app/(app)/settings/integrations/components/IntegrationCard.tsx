@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
     case 'connected':
       return (
         <Badge variant='default' role='status' aria-label='Connected'>
-          <span className='mr-1 inline-block h-2 w-2 rounded-full bg-success' />
+          <span className='mr-1 inline-block size-2 rounded-full bg-success' />
           Connected
         </Badge>
       );
@@ -64,7 +64,7 @@ function ActionButton({
         <Button variant='default' onClick={onConnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin' />
               Connecting…
             </>
           ) : (
@@ -83,7 +83,7 @@ function ActionButton({
         <Button variant='outline' onClick={onDisconnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin' />
               Disconnecting…
             </>
           ) : (
@@ -110,13 +110,13 @@ export function IntegrationCard({
       aria-label={name}
       className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
     >
-      <div className='gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30' />
+      <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
 
       <div className='relative flex flex-col gap-5'>
         {/* Header */}
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-4'>
-            <div className='brand-fill-interactive inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
+            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
               {icon}
             </div>
             <h3 className='text-lg font-semibold'>{name}</h3>
@@ -136,7 +136,7 @@ export function IntegrationCard({
               key={feature}
               className='flex items-center gap-2 text-sm text-muted-foreground'
             >
-              <Check className='h-4 w-4 shrink-0 text-success' />
+              <Check className='size-4 shrink-0 text-success' />
               {feature}
             </li>
           ))}

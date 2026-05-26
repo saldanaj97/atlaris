@@ -25,7 +25,7 @@ export function TimelinePlanFooter({
       <div className='relative flex w-16 shrink-0 items-center justify-center'>
         <div
           className={cn(
-            'z-10 flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-panel shadow-sm',
+            'z-10 flex size-8 items-center justify-center rounded-full border-[3px] bg-panel shadow-sm',
             theme.marker,
           )}
         >

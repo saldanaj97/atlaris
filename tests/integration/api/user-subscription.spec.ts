@@ -63,8 +63,10 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body.usage).toHaveProperty('activePlans');
     expect(body.usage).toHaveProperty('regenerations');
     expect(body.usage).toHaveProperty('exports');
+    expect(body.usage).toHaveProperty('lessonGenerations');
     expect(body.usage.regenerations.used).toBe(0);
     expect(body.usage.exports.used).toBe(0);
+    expect(body.usage.lessonGenerations.used).toBe(0);
 
     const after = await db
       .select()

@@ -1,11 +1,11 @@
 # Internal Worker Routes
 
-**Audience:** Developers and operators triggering background maintenance from schedulers.  
+**Audience:** Developers and operators triggering internal worker or manual maintenance routes.
 **Last Updated:** May 2026
 
 ## Overview
 
-Two unauthenticated POST routes live under `/api/internal/`. They bypass Clerk middleware and authenticate callers with shared worker tokens instead.
+Two POST routes live under `/api/internal/`. They bypass Clerk middleware and authenticate callers with shared worker tokens when enabled.
 
 | Route                                              | Purpose                             | Env config             |
 | -------------------------------------------------- | ----------------------------------- | ---------------------- |
@@ -30,8 +30,8 @@ Requests that supply both Bearer and the custom header are rejected.
 
 ### Production vs non-production
 
-- **Production:** worker token must be configured or the route returns `503`.
-- **Non-production:** missing token allows unauthenticated access (local/staging convenience only).
+- **Production:** enabled routes require a worker token or return `503`. Disabled routes return `503` before token validation.
+- **Non-production:** enabled routes without a token allow unauthenticated access (local/staging convenience only).
 
 ## Middleware
 

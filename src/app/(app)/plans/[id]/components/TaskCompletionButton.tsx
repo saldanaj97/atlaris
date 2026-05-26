@@ -55,9 +55,9 @@ export function TaskCompletionButton({
       )}
     >
       {isCompleted ? (
-        <CheckCircle2 className='h-5 w-5' />
+        <CheckCircle2 className='size-5' />
       ) : (
-        <IncompleteIcon className='h-5 w-5' />
+        <IncompleteIcon className='size-5' />
       )}
       {buttonLabel}
     </Button>

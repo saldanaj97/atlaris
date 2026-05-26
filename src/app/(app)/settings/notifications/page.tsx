@@ -50,7 +50,7 @@ export default function NotificationsSettingsPage(): ReactElement {
         {/* Learning Reminders */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
-            <Clock className='h-5 w-5 text-muted-foreground' />
+            <Clock className='size-5 text-muted-foreground' />
             <h3 className='text-xl font-semibold'>Learning Reminders</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>
@@ -76,7 +76,7 @@ export default function NotificationsSettingsPage(): ReactElement {
         {/* Plan Updates */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
-            <BookOpen className='h-5 w-5 text-muted-foreground' />
+            <BookOpen className='size-5 text-muted-foreground' />
             <h3 className='text-xl font-semibold'>Plan Updates</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>
@@ -102,7 +102,7 @@ export default function NotificationsSettingsPage(): ReactElement {
         {/* Account & Billing */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
-            <CreditCard className='h-5 w-5 text-muted-foreground' />
+            <CreditCard className='size-5 text-muted-foreground' />
             <h3 className='text-xl font-semibold'>Account & Billing</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>

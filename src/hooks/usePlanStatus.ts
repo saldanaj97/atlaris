@@ -47,7 +47,6 @@ export function usePlanStatus(
   const consecutiveFailuresRef = useRef(0);
   const previousStatusRef = useRef<PlanStatus>(initialStatus);
   const delayRef = useRef(INITIAL_POLL_MS);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousPlanIdRef = useRef(planId);
   // Track latest initialStatus without making planId-reset effect depend on it.
   // This prevents a spurious full reset when initialStatus changes on the same plan.
@@ -148,10 +147,11 @@ export function usePlanStatus(
     delayRef.current = INITIAL_POLL_MS;
 
     let cancelled = false;
+    let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const schedulePoll = () => {
       if (cancelled) return;
-      timeoutRef.current = setTimeout(() => {
+      pollTimeoutId = setTimeout(() => {
         if (cancelled) return;
         const prevStatus = previousStatusRef.current;
         void fetchStatus().then(() => {
@@ -178,9 +178,9 @@ export function usePlanStatus(
 
     return () => {
       cancelled = true;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId);
+        pollTimeoutId = null;
       }
       setIsPolling(false);
     };

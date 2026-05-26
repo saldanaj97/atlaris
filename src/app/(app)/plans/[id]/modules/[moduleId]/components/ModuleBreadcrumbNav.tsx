@@ -82,18 +82,18 @@ export function ModuleBreadcrumbNav({
             href={`/plans/${planId}`}
             className='inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary'
           >
-            <ArrowLeft className='h-3.5 w-3.5' />
+            <ArrowLeft className='size-3.5' />
             <span className='max-w-56 truncate sm:max-w-88'>{planTopic}</span>
           </Link>
         </li>
         <li className='text-muted-foreground/40'>
-          <ChevronRight className='h-4 w-4' />
+          <ChevronRight className='size-4' />
         </li>
         <li>
           <DropdownMenu>
             <DropdownMenuTrigger className='inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 font-medium text-primary transition-colors hover:bg-primary/20 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background focus:outline-none dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'>
               Module {moduleOrder}
-              <ChevronDown className='h-3.5 w-3.5' />
+              <ChevronDown className='size-3.5' />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align='start'

@@ -66,6 +66,10 @@ export async function BillingCards(): Promise<JSX.Element> {
     snapshot.usage.exports.used,
     snapshot.usage.exports.limit,
   );
+  const lessonGenerationValue = getUsagePercent(
+    snapshot.usage.lessonGenerations.used,
+    snapshot.usage.lessonGenerations.limit,
+  );
 
   return (
     <>
@@ -149,6 +153,22 @@ export async function BillingCards(): Promise<JSX.Element> {
             <Progress
               value={exportValue}
               aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatUsageLimitLabel(snapshot.usage.exports.limit)}`}
+            />
+          </div>
+
+          <div>
+            <div className='mb-1 flex items-center justify-between text-sm'>
+              <span>Lesson generations (monthly)</span>
+              <span className='text-muted-foreground'>
+                {snapshot.usage.lessonGenerations.used}/
+                {formatCompactUsageLimit(
+                  snapshot.usage.lessonGenerations.limit,
+                )}
+              </span>
+            </div>
+            <Progress
+              value={lessonGenerationValue}
+              aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
             />
           </div>
         </div>

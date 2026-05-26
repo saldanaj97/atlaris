@@ -1,5 +1,5 @@
 // IMPORTANT: Mock imports must come first, before any component imports
-// that use the mocked modules (sonner, client-logger)
+// that use the mocked modules (sonner, client-logger).
 import { createDeferredPromise } from '../../helpers/deferred-promise';
 import { RegenerateButton } from '@/app/(app)/plans/components/RegenerateButton';
 import {

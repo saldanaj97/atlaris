@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
 };
 
-const iconClass = 'text-primary h-8 w-8 shrink-0';
+const iconClass = 'text-primary size-8 shrink-0';
 
 const ACHIEVEMENTS = [
   {

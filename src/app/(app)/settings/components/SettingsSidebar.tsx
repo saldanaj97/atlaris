@@ -48,7 +48,7 @@ export function SettingsSidebar(): React.ReactElement {
                 : 'text-sidebar-foreground hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             )}
           >
-            <Icon className='h-4 w-4 shrink-0' />
+            <Icon className='size-4 shrink-0' />
             {item.label}
           </Link>
         );

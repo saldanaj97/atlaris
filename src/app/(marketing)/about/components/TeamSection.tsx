@@ -26,13 +26,13 @@ export function TeamSection(): JSX.Element {
             className='group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 text-center shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40'
           >
             <div
-              className='gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30'
+              className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30'
               aria-hidden='true'
             />
 
-            <Avatar className='brand-fill-interactive mx-auto mb-4 h-16 w-16 shadow-lg'>
+            <Avatar className='brand-fill-interactive mx-auto mb-4 size-16 shadow-lg'>
               <AvatarFallback className='bg-transparent'>
-                <User className='h-7 w-7 text-white' aria-hidden='true' />
+                <User className='size-7 text-white' aria-hidden='true' />
               </AvatarFallback>
             </Avatar>
             <h3 className='mb-1 font-semibold text-foreground'>

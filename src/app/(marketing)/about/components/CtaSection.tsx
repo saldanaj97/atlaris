@@ -33,7 +33,7 @@ export function CtaSection(): JSX.Element {
           >
             <Link href='/plans/new'>
               Get Started
-              <ArrowRight className='ml-2 h-4 w-4 transition-transform group-hover:translate-x-1' />
+              <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
             </Link>
           </Button>
         </Card>

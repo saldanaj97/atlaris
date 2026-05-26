@@ -34,11 +34,12 @@ export function PlansList({
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
   const filteredPlans = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.toLowerCase();
     return summaries.filter((summary) => {
       // Search filter
       const matchesSearch =
         searchQuery === '' ||
-        summary.plan.topic.toLowerCase().includes(searchQuery.toLowerCase());
+        summary.plan.topic.toLowerCase().includes(normalizedSearchQuery);
 
       // Status filter
       const status = getPlanStatus(summary, effectiveReferenceTimestamp);
@@ -72,7 +73,7 @@ export function PlansList({
     <>
       {/* Search Bar */}
       <div className='mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5'>
-        <Search className='h-4 w-4 text-muted-foreground' aria-hidden='true' />
+        <Search className='size-4 text-muted-foreground' aria-hidden='true' />
         <input
           type='text'
           placeholder='Search plans...'
@@ -97,7 +98,7 @@ export function PlansList({
           variant={filterStatus === 'active' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className='h-2 w-2 rounded-full bg-emerald-500' />
+          <span className='size-2 rounded-full bg-emerald-500' />
           Active ({statusCounts.active})
         </Button>
         <Button
@@ -105,7 +106,7 @@ export function PlansList({
           variant={filterStatus === 'completed' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className='h-2 w-2 rounded-full bg-blue-500' />
+          <span className='size-2 rounded-full bg-blue-500' />
           Completed ({statusCounts.completed})
         </Button>
         <Button
@@ -113,7 +114,7 @@ export function PlansList({
           variant={filterStatus === 'inactive' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className='h-2 w-2 rounded-full bg-amber-500' />
+          <span className='size-2 rounded-full bg-amber-500' />
           Inactive ({statusCounts.paused})
         </Button>
         <Button
@@ -121,7 +122,7 @@ export function PlansList({
           variant={filterStatus === 'generating' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className='h-2 w-2 rounded-full bg-primary' />
+          <span className='size-2 rounded-full bg-primary' />
           Generating ({statusCounts.generating})
         </Button>
         <Button
@@ -129,7 +130,7 @@ export function PlansList({
           variant={filterStatus === 'failed' ? 'default' : 'outline'}
           className={filterButtonClassName}
         >
-          <span className='h-2 w-2 rounded-full bg-red-500' />
+          <span className='size-2 rounded-full bg-red-500' />
           Failed ({statusCounts.failed})
         </Button>
       </div>

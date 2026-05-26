@@ -598,6 +598,8 @@ describe('Stripe API Routes', () => {
       expect(body.usage.activePlans).toBeDefined();
       expect(body.usage.regenerations).toBeDefined();
       expect(body.usage.exports).toBeDefined();
+      expect(body.usage.lessonGenerations).toBeDefined();
+      expect(body.usage.lessonGenerations.used).toBe(0);
     });
 
     it('returns 401 when not authenticated', async () => {

@@ -43,7 +43,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
           {/* Tier Header */}
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
-              <Trophy className='h-4 w-4 text-muted-foreground' />
+              <Trophy className='size-4 text-muted-foreground' />
               <span className='text-sm font-medium'>Subscription</span>
             </div>
             <Badge variant={tierVariants[tier]} className='capitalize'>
@@ -55,7 +55,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
           <div className='space-y-3'>
             <div className='flex items-center justify-between text-sm'>
               <div className='flex items-center gap-2 text-muted-foreground'>
-                <BookOpen className='h-3.5 w-3.5' />
+                <BookOpen className='size-3.5' />
                 Active Plans
               </div>
               <span className='font-medium'>
@@ -66,7 +66,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
 
             <div className='flex items-center justify-between text-sm'>
               <div className='flex items-center gap-2 text-muted-foreground'>
-                <RefreshCw className='h-3.5 w-3.5' />
+                <RefreshCw className='size-3.5' />
                 Regenerations
               </div>
               <span className='font-medium'>
@@ -77,7 +77,7 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
 
             <div className='flex items-center justify-between text-sm'>
               <div className='flex items-center gap-2 text-muted-foreground'>
-                <Share2 className='h-3.5 w-3.5' />
+                <Share2 className='size-3.5' />
                 Exports
               </div>
               <span className='font-medium'>

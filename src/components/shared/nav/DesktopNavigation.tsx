@@ -57,7 +57,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           )}
         >
           <span>{item.label}</span>
-          <ChevronDown className='h-3.5 w-3.5' />
+          <ChevronDown className='size-3.5' />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align='start' className='min-w-40'>

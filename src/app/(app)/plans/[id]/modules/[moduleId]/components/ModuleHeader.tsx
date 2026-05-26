@@ -82,10 +82,10 @@ export function ModuleHeader({
           <h1 className='mb-2 flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl'>
             {module.title}
             {!previousModulesComplete && (
-              <Lock className='h-6 w-6 text-muted-foreground md:h-7 md:w-7' />
+              <Lock className='size-6 text-muted-foreground md:size-7' />
             )}
             {completion === 100 && (
-              <CheckCircle2 className='h-6 w-6 text-success md:h-7 md:w-7' />
+              <CheckCircle2 className='size-6 text-success md:size-7' />
             )}
           </h1>
           {module.description && (

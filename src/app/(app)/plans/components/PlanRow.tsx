@@ -84,9 +84,7 @@ export function PlanRow({
         >
           {/* Status indicator */}
           <div className='relative shrink-0'>
-            <div
-              className={cn('h-3 w-3 rounded-full', STATUS_COLORS[status])}
-            />
+            <div className={cn('size-3 rounded-full', STATUS_COLORS[status])} />
             {status === 'generating' && (
               <div
                 className={cn(
@@ -104,11 +102,11 @@ export function PlanRow({
                 {plan.topic}
               </span>
               {progressPercent >= 80 && (
-                <Sparkles className='h-3.5 w-3.5 shrink-0 text-amber-500' />
+                <Sparkles className='size-3.5 shrink-0 text-amber-500' />
               )}
               {/* Tasks count */}
               <div className='hidden w-[3.75rem] shrink-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex'>
-                <CheckCircle2 className='h-3.5 w-3.5' />
+                <CheckCircle2 className='size-3.5' />
                 <span>
                   {summary.completedTasks}/{summary.totalTasks}
                 </span>
@@ -118,7 +116,7 @@ export function PlanRow({
               {summary.completedTasks > 0 &&
                 nextTask !== 'Not started' &&
                 nextTask !== 'All tasks completed' && (
-                  <ArrowRight className='h-3 w-3' />
+                  <ArrowRight className='size-3' />
                 )}
               <span className='truncate'>{nextTask}</span>
             </div>
@@ -139,7 +137,7 @@ export function PlanRow({
 
           {/* Last activity */}
           <div className='hidden w-48 shrink-0 items-center justify-end gap-1.5 text-xs text-muted-foreground md:flex'>
-            <Clock className='h-3.5 w-3.5' />
+            <Clock className='size-3.5' />
             {lastActivity}
           </div>
         </Link>
@@ -153,7 +151,7 @@ export function PlanRow({
               title='Plan actions'
               aria-label='Plan actions'
             >
-              <MoreVertical className='h-4 w-4' />
+              <MoreVertical className='size-4' />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
@@ -162,7 +160,7 @@ export function PlanRow({
               disabled={status === 'generating'}
               onSelect={() => setDeleteDialogOpen(true)}
             >
-              <Trash2 className='mr-2 h-4 w-4' />
+              <Trash2 className='mr-2 size-4' />
               Delete plan
             </DropdownMenuItem>
           </DropdownMenuContent>

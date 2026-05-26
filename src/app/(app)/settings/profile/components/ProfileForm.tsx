@@ -276,7 +276,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 >
                   {state.name || 'No name set'}
                 </span>
-                <Pencil className='h-4 w-4 shrink-0 text-muted-foreground' />
+                <Pencil className='size-4 shrink-0 text-muted-foreground' />
               </Button>
             )}
           </div>
