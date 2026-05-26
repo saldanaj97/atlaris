@@ -7,14 +7,11 @@
     "**/dist": true,
     "**/.pnpm-store": true
   },
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
   "[typescriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "oxc.enable.oxlint": true,
-  "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  "typescript.tsdk": "node_modules/typescript/lib"
 }
