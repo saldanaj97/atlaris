@@ -52,9 +52,8 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
-| `MODULE_LESSON_WORKFLOW_ENABLED`    | When `true`, module lesson generation runs via Workflow SDK instead of the request thread (see `workflowEnv`)                        | No       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | When `true`, queued plan regeneration runs via Workflow SDK instead of inline drain processing (see `workflowEnv`)                  | No       |
-| `PLAN_GENERATION_WORKFLOW_ENABLED`   | When `true`, plan create/retry SSE generation runs provider work in a durable workflow after in-process reservation (see `workflowEnv`) | No       |
+
+Workflow SDK feature flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`) are documented in [Workflow SDK](#workflow-sdk) below (see `workflowEnv`).
 
 ### Workflow SDK
 
