@@ -62,6 +62,12 @@ export class GenerationAdapter implements GenerationPort {
         ...(params.onAttemptReserved !== undefined
           ? { onAttemptReserved: params.onAttemptReserved }
           : {}),
+        ...(params.reservation !== undefined
+          ? { reservation: params.reservation }
+          : {}),
+        ...(params.modelOverride !== undefined
+          ? { modelOverride: params.modelOverride }
+          : {}),
       },
     );
 

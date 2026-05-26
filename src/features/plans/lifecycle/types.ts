@@ -7,6 +7,7 @@
 
 import type {
   AttemptReservation,
+  AttemptWorkflowMetadata,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type {
@@ -138,6 +139,7 @@ export type ProcessGenerationInput = {
   readonly requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   /** Invoked once after DB reservation succeeds, before provider generation. */
   readonly onAttemptReserved?: (reservation: AttemptReservation) => void;
+  readonly workflowMetadata?: AttemptWorkflowMetadata;
 };
 
 /** Data returned on a successful generation. */

@@ -25,6 +25,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual retention cleanup route toggle and token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
+- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
 
@@ -51,6 +52,18 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
+| `MODULE_LESSON_WORKFLOW_ENABLED`    | When `true`, module lesson generation runs via Workflow SDK instead of the request thread (see `workflowEnv`)                        | No       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | When `true`, queued plan regeneration runs via Workflow SDK instead of inline drain processing (see `workflowEnv`)                  | No       |
+| `PLAN_GENERATION_WORKFLOW_ENABLED`   | When `true`, plan create/retry SSE generation runs provider work in a durable workflow after in-process reservation (see `workflowEnv`) | No       |
+
+### Workflow SDK
+
+| Variable                  | Purpose                                                                                                                                                                                                 | Required |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `WORKFLOW_SOURCEMAP`      | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime, not parsed in app code.                                      | No       |
+| `MODULE_LESSON_WORKFLOW_ENABLED` | Routes `POST .../lesson-content/generate` through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                        | No       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration worker drains through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                            | No       |
+| `PLAN_GENERATION_WORKFLOW_ENABLED` | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged; defaults **off**. See `workflowEnv`.                                              | No       |
 
 ### Internal worker routes
 

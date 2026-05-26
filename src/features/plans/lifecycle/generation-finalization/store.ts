@@ -60,6 +60,7 @@ export async function commitPlanGenerationSuccess(
   const metadata = buildMetadata({
     sanitized: input.preparation.sanitized,
     providerMetadata: asProviderMetadata(input.providerMetadata),
+    workflowMetadata: input.workflowMetadata,
     modulesClamped: normalizationFlags.modulesClamped,
     tasksClamped: normalizationFlags.tasksClamped,
     startedAt: input.preparation.startedAt,

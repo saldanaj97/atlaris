@@ -1,9 +1,4 @@
-import { vi } from 'vitest';
-
-vi.mock('@/lib/logging/client', () => ({
-  clientLogger: {
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
+/**
+ * Client logger is mocked globally in `tests/unit/setup.ts` (Vitest only hoists
+ * `vi.mock` from setup files and the spec under test).
+ */

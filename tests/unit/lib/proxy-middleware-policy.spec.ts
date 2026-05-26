@@ -31,6 +31,9 @@ describe('middleware policy', () => {
     expect(
       resolveMaintenanceRedirectPath(true, '/.well-known/vercel/flags'),
     ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(true, '/.well-known/workflow/v1/flow'),
+    ).toBe(null);
     expect(resolveMaintenanceRedirectPath(false, '/maintenance')).toBe('/');
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
   });

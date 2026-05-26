@@ -20,10 +20,13 @@ import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 
 import {
   claimNextPendingJob,
+  claimRegenerationJobById,
   completeJobRecord,
   countUserJobsSince,
   failJobRecord,
+  getJobById,
   insertJobRecord,
+  updateRegenerationJobPayload,
 } from '@/lib/db/queries/jobs';
 import { db } from '@supabase/service-role';
 
@@ -62,6 +65,20 @@ export async function getNextJob(types: JobType[]): Promise<Job | null> {
   return claimNextPendingJob(types, db);
 }
 
+export async function claimRegenerationJob(
+  jobId: string,
+  expected: { planId: string; userId: string },
+): Promise<Job | null> {
+  return claimRegenerationJobById(jobId, expected, db);
+}
+
+export async function updateJobPayload(
+  jobId: string,
+  payload: JobPayload,
+): Promise<Job | null> {
+  return updateRegenerationJobPayload(jobId, payload, db);
+}
+
 export async function completeJob(
   jobId: string,
   result: JobResult,
@@ -83,4 +100,8 @@ export async function getUserJobCount(
   since: Date,
 ): Promise<number> {
   return countUserJobsSince(userId, type, since, db);
+}
+
+export async function loadJobById(jobId: string): Promise<Job | null> {
+  return getJobById(jobId, db);
 }

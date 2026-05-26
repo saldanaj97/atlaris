@@ -96,7 +96,15 @@ interface AttemptMetadataFailure {
   timedOut: boolean;
 }
 
+export interface AttemptWorkflowMetadata {
+  provider: 'workflow-sdk';
+  runId: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface AttemptMetadata {
+  workflow?: AttemptWorkflowMetadata;
   input: {
     topic: {
       truncated: boolean;
@@ -124,6 +132,7 @@ export interface AttemptMetadata {
 export interface MetadataParams {
   sanitized: SanitizedInput;
   providerMetadata?: ProviderMetadata;
+  workflowMetadata?: AttemptWorkflowMetadata;
   modulesClamped: boolean;
   tasksClamped: boolean;
   startedAt: Date;

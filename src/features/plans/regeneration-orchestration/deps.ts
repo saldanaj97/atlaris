@@ -11,6 +11,7 @@ import {
   enqueueJobWithResult,
   failJob,
   getNextJob,
+  updateJobPayload,
 } from '@/features/jobs/queue';
 import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
@@ -31,6 +32,7 @@ export interface RegenerationOrchestrationDeps {
     getNextJob: typeof getNextJob;
     completeJob: typeof completeJob;
     failJob: typeof failJob;
+    updateRegenerationJobPayload: typeof updateJobPayload;
   };
   quota: {
     runReserved: typeof runRegenerationQuotaReserved;
@@ -96,6 +98,7 @@ export function createDefaultRegenerationOrchestrationDeps(
       getNextJob,
       completeJob,
       failJob,
+      updateRegenerationJobPayload: updateJobPayload,
     },
     quota: { runReserved: runRegenerationQuotaReserved },
     plans: {

@@ -9,6 +9,8 @@ import {
 } from './deps';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
+import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
+import { workflowEnv } from '@/lib/config/env/workflow';
 import { getDb } from '@supabase/runtime';
 
 export async function requestPlanRegeneration(
@@ -110,10 +112,33 @@ export async function requestPlanRegeneration(
   const acceptedJobId = boundaryResult.value.jobId;
   let inlineDrainScheduled = false;
 
-  // When inlineProcessingEnabled and tryRegister succeeds, drain is scheduled
-  // fire-and-forget: it runs async, failures are logged, response returns at
-  // once with inlineDrainScheduled=true (caller does not await drain).
-  if (inlineProcessingEnabled) {
+  if (workflowEnv.planRegenerationWorkflowEnabled) {
+    const correlationId = `regen-${acceptedJobId}`;
+    try {
+      await startPlanRegenerationWorkflow({
+        jobId: acceptedJobId,
+        planId,
+        userId,
+        correlationId,
+      });
+    } catch (error: unknown) {
+      d.logger.error(
+        {
+          acceptedJobId,
+          planId,
+          userId,
+          correlationId,
+          error,
+        },
+        'Failed to start plan regeneration workflow',
+      );
+      await d.queue.failJob(
+        acceptedJobId,
+        'Failed to start plan regeneration workflow.',
+        { retryable: true },
+      );
+    }
+  } else if (inlineProcessingEnabled) {
     const registered = d.inlineDrain.tryRegister(() => {
       return (async () => {
         try {

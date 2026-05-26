@@ -93,10 +93,20 @@ export const ModuleLessonBatchProviderOutputSchema = z
   })
   .strict();
 
+export const ModuleLessonWorkflowMetadataSchema = z
+  .object({
+    provider: z.literal('workflow-sdk'),
+    runId: z.string().min(1).max(256),
+    startedAt: z.string().datetime().optional(),
+    completedAt: z.string().datetime().optional(),
+  })
+  .strict();
+
 export const ModuleLessonGenerationMetadataSchema = z
   .object({
     version: z.literal(1),
     batchRequestId: z.string().max(128).optional(),
+    workflow: ModuleLessonWorkflowMetadataSchema.optional(),
   })
   .strict();
 

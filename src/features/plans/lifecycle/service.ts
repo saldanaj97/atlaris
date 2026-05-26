@@ -11,6 +11,7 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from './types';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
 import { checkCreationGate } from './creation-pipeline';
 import { type CreationGatePorts } from './creation-pipeline';
@@ -42,6 +43,10 @@ function shouldMarkPlanFailedAfterGenerationFailure(
 ): boolean {
   const reason = result.reservationRejectionReason;
   return reason !== 'in_progress' && reason !== 'invalid_status';
+}
+
+function deterministicCompletedAt(startedAt: Date, durationMs: number): string {
+  return new Date(startedAt.getTime() + Math.max(0, durationMs)).toISOString();
 }
 
 export class PlanLifecycleService {
@@ -103,6 +108,24 @@ export class PlanLifecycleService {
   async processGenerationAttempt(
     input: ProcessGenerationInput,
   ): Promise<GenerationAttemptResult> {
+    return this.processGenerationAttemptInternal(input);
+  }
+
+  /**
+   * Same as {@link processGenerationAttempt} but reuses an existing reservation
+   * (for Workflow SDK replay after claim).
+   */
+  async processGenerationAttemptWithReservation(
+    input: ProcessGenerationInput,
+    reservation: AttemptReservation,
+  ): Promise<GenerationAttemptResult> {
+    return this.processGenerationAttemptInternal(input, reservation);
+  }
+
+  private async processGenerationAttemptInternal(
+    input: ProcessGenerationInput,
+    existingReservation?: AttemptReservation,
+  ): Promise<GenerationAttemptResult> {
     const { planId, userId, tier } = input;
 
     logger.info(
@@ -110,7 +133,31 @@ export class PlanLifecycleService {
       'plan.lifecycle.generation: attempt started',
     );
 
-    const generationResult = await this.ports.generation.runGeneration(input);
+    const generationResult = await this.ports.generation.runGeneration({
+      planId: input.planId,
+      userId: input.userId,
+      tier: input.tier,
+      input: input.input,
+      signal: input.signal,
+      allowedGenerationStatuses: input.allowedGenerationStatuses,
+      requiredGenerationStatus: input.requiredGenerationStatus,
+      onAttemptReserved: input.onAttemptReserved,
+      ...(existingReservation ? { reservation: existingReservation } : {}),
+      ...(input.modelOverride !== undefined
+        ? { modelOverride: input.modelOverride }
+        : {}),
+    });
+
+    if (generationResult.status === 'already_finalized') {
+      logger.info(
+        { planId, userId },
+        'plan.lifecycle.generation: already finalized — skipping provider work',
+      );
+      return {
+        status: 'already_finalized',
+        planId: generationResult.planId,
+      };
+    }
 
     if (generationResult.status === 'success') {
       const {
@@ -132,6 +179,17 @@ export class PlanLifecycleService {
         usage,
         durationMs,
         extendedTimeout,
+        ...(input.workflowMetadata
+          ? {
+              workflowMetadata: {
+                ...input.workflowMetadata,
+                completedAt: deterministicCompletedAt(
+                  reservation.startedAt,
+                  durationMs,
+                ),
+              },
+            }
+          : {}),
         usageKind: 'plan',
       });
 

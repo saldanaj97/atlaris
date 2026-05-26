@@ -533,6 +533,48 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
 
   // ─── Usage metadata extraction ───────────────────────────────
 
+  it('forwards an existing reservation through processGenerationAttemptWithReservation', async () => {
+    const reservation = makeAttemptReservation({ attemptId: 'att-reserved' });
+    await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      reservation,
+    );
+
+    expect(vi.mocked(ports.generation.runGeneration)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reservation,
+      }),
+    );
+  });
+
+  it('returns already_finalized without finalizing when generation port short-circuits', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toEqual({
+      status: 'already_finalized',
+      planId: 'plan-gen-001',
+    });
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeSuccess),
+    ).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
   it('falls back to "unknown" provider/model when metadata is sparse', async () => {
     ports = createMockPorts({
       generation: {
