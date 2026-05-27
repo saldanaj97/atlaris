@@ -210,7 +210,12 @@ export async function updateRegenerationJobPayload(
         payload,
         updatedAt,
       })
-      .where(eq(jobQueue.id, jobId))
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+        ),
+      )
       .returning(jobQueueSelect);
 
     return updated ? mapRowToJob(updated) : null;

@@ -46,7 +46,10 @@ function shouldMarkPlanFailedAfterGenerationFailure(
 }
 
 function deterministicCompletedAt(startedAt: Date, durationMs: number): string {
-  return new Date(startedAt.getTime() + Math.max(0, durationMs)).toISOString();
+  const safeDurationMs = Number.isFinite(durationMs) ? durationMs : 0;
+  return new Date(
+    startedAt.getTime() + Math.max(0, safeDurationMs),
+  ).toISOString();
 }
 
 export class PlanLifecycleService {
@@ -114,6 +117,10 @@ export class PlanLifecycleService {
   /**
    * Same as {@link processGenerationAttempt} but reuses an existing reservation
    * (for Workflow SDK replay after claim).
+   *
+   * Safe for workflow replay because it does not call `reserveAttemptSlot`
+   * again; the generation port validates the reservation against current DB
+   * state before provider work.
    */
   async processGenerationAttemptWithReservation(
     input: ProcessGenerationInput,

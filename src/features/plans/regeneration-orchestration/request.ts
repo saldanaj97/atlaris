@@ -10,7 +10,7 @@ import {
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
-import { workflowEnv } from '@/lib/config/env/workflow';
+import { workflowEnv } from '@/lib/config/env';
 import { getDb } from '@supabase/runtime';
 
 export async function requestPlanRegeneration(
@@ -115,12 +115,17 @@ export async function requestPlanRegeneration(
   if (workflowEnv.planRegenerationWorkflowEnabled) {
     const correlationId = `regen-${acceptedJobId}`;
     try {
-      await startPlanRegenerationWorkflow({
+      const workflowStarted = await startPlanRegenerationWorkflow({
         jobId: acceptedJobId,
         planId,
         userId,
         correlationId,
       });
+      if (!workflowStarted) {
+        throw new Error(
+          `Failed to start plan regeneration workflow for job ${acceptedJobId}.`,
+        );
+      }
     } catch (error: unknown) {
       d.logger.error(
         {
@@ -137,6 +142,7 @@ export async function requestPlanRegeneration(
         'Failed to start plan regeneration workflow.',
         { retryable: true },
       );
+      throw error;
     }
   } else if (inlineProcessingEnabled) {
     const registered = d.inlineDrain.tryRegister(() => {

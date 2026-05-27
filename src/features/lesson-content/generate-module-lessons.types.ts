@@ -44,7 +44,9 @@ export type GenerateModuleLessonsResult =
 
 export type ModuleLessonGenerationWorkResult = Exclude<
   GenerateModuleLessonsResult,
-  'not_found' | 'locked' | 'already_ready' | 'in_flight'
+  {
+    readonly kind: 'not_found' | 'locked' | 'already_ready' | 'in_flight';
+  }
 >;
 
 export type RunModuleLessonGenerationAfterClaimParams = {

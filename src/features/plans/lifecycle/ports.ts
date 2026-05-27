@@ -104,11 +104,9 @@ export type GenerationRunParams = {
   onAttemptReserved?: (reservation: AttemptReservation) => void;
   /**
    * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
-   * worker recovery) does not double-reserve. The caller must validate this
-   * `AttemptReservation` against current DB state before passing it in — if the
-   * reservation is stale (plan status changed, attempt finalized elsewhere), the
-   * orchestrator may reject the run or leave reservation/plan state out of sync.
-   * See `reserveAttemptSlot` and `AttemptReservation`.
+   * worker recovery) does not double-reserve. GenerationPort implementations
+   * must validate this `AttemptReservation` against current DB state before
+   * provider work so stale reservations fail clearly instead of proceeding.
    */
   reservation?: AttemptReservation;
 };

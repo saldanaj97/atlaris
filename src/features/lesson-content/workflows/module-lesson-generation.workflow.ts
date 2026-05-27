@@ -7,20 +7,36 @@ import {
   claimModuleLessonGenerationStep,
   runModuleLessonGenerationStep,
 } from './module-lesson-generation.steps';
-/**
- * Workflow SDK `'use workflow'` entrypoints require static step imports; tests
- * mock `@/features/lesson-content/workflows/module-lesson-generation.steps`.
- */
+
+export type ModuleLessonGenerationWorkflowDeps = {
+  readonly claim: typeof claimModuleLessonGenerationStep;
+  readonly run: typeof runModuleLessonGenerationStep;
+};
+
+export function createModuleLessonGenerationWorkflow(
+  deps: ModuleLessonGenerationWorkflowDeps,
+): (input: ModuleLessonWorkflowInput) => Promise<ModuleLessonWorkflowResult> {
+  return async function generatedModuleLessonGenerationWorkflow(
+    input: ModuleLessonWorkflowInput,
+  ): Promise<ModuleLessonWorkflowResult> {
+    const claim = await deps.claim(input);
+    if (claim.kind !== 'claimed') {
+      return claim;
+    }
+
+    return deps.run(input, claim.load, claim.runId);
+  };
+}
+
+const runModuleLessonGenerationWorkflow = createModuleLessonGenerationWorkflow({
+  claim: claimModuleLessonGenerationStep,
+  run: runModuleLessonGenerationStep,
+});
 
 export async function moduleLessonGenerationWorkflow(
   input: ModuleLessonWorkflowInput,
 ): Promise<ModuleLessonWorkflowResult> {
   'use workflow';
 
-  const claim = await claimModuleLessonGenerationStep(input);
-  if (claim.kind !== 'claimed') {
-    return claim;
-  }
-
-  return runModuleLessonGenerationStep(input, claim.load, claim.runId);
+  return runModuleLessonGenerationWorkflow(input);
 }

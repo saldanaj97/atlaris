@@ -23,17 +23,32 @@ export type StartPlanRegenerationWorkflowDeps = {
 export async function startPlanRegenerationWorkflow(
   input: StartPlanRegenerationWorkflowInput,
   deps: StartPlanRegenerationWorkflowDeps = {},
-): Promise<void> {
+): Promise<boolean> {
   const isEnabled =
     deps.isEnabled ?? (() => workflowEnv.planRegenerationWorkflowEnabled);
   if (!isEnabled()) {
-    return;
+    return false;
   }
 
   const workflowStart = deps.workflowStart ?? start;
   const log = deps.log ?? logger;
 
-  const run = await workflowStart(planRegenerationWorkflow, [input]);
+  let run: Awaited<ReturnType<typeof workflowStart>>;
+  try {
+    run = await workflowStart(planRegenerationWorkflow, [input]);
+  } catch (error: unknown) {
+    log.error(
+      {
+        err: error,
+        jobId: input.jobId,
+        planId: input.planId,
+        userId: input.userId,
+        correlationId: input.correlationId,
+      },
+      'Plan regeneration workflow failed to start',
+    );
+    return false;
+  }
   log.info(
     {
       jobId: input.jobId,
@@ -58,4 +73,6 @@ export async function startPlanRegenerationWorkflow(
       'Plan regeneration workflow failed',
     );
   });
+
+  return true;
 }
