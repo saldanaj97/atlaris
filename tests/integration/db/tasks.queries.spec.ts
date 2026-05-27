@@ -1,12 +1,12 @@
 import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { taskProgress } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 const RECENT_TIMESTAMP_THRESHOLD_MS = 10_000;
 

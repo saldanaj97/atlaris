@@ -1,12 +1,13 @@
-import { render, screen } from '@testing-library/react';
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { PlansList } from '@/app/(app)/plans/components/PlansList';
+
 import {
   buildModuleRows,
   buildPlan,
   buildPlanSummary,
 } from '../../fixtures/plan-detail';
+import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/link', () => ({
   default: ({

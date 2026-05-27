@@ -1,12 +1,13 @@
-import { UpdateTaskStatusButton } from '@/app/(app)/plans/[id]/components/UpdateTaskStatusButton';
+import type { TimelineModule } from './plan-timeline-state';
+import type { ClientTask } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { Button } from '@/components/ui/button';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
-import type { ClientTask } from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
-import type { TimelineModule } from './TimelineModuleCard';
 
 function TimelineResourceLink({
   resource,
@@ -17,14 +18,14 @@ function TimelineResourceLink({
 
   return (
     <Button
-      variant="outline"
+      variant='outline'
       asChild
-      className="h-auto max-w-full justify-start rounded-lg px-2.5 py-1.5 text-left text-xs whitespace-normal"
+      className='h-auto max-w-full justify-start rounded-lg px-2.5 py-1.5 text-left text-xs whitespace-normal'
     >
-      <a href={resource.url} target="_blank" rel="noopener noreferrer">
-        <Icon size={14} className="shrink-0" />
-        <span className="wrap-break-word">{resource.title}</span>
-        <ExternalLink size={12} className="shrink-0 opacity-50" />
+      <a href={resource.url} target='_blank' rel='noopener noreferrer'>
+        <Icon size={14} className='shrink-0' />
+        <span className='wrap-break-word'>{resource.title}</span>
+        <ExternalLink size={12} className='shrink-0 opacity-50' />
       </a>
     </Button>
   );
@@ -51,8 +52,8 @@ function TimelineTaskCard({
           : 'border-border bg-muted/30 hover:border-primary/30 dark:bg-muted/25 dark:hover:border-primary/50',
       )}
     >
-      <div className="flex h-full flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex shrink-0 items-center">
+      <div className='flex h-full flex-col gap-3 sm:flex-row sm:items-center'>
+        <div className='flex shrink-0 items-center'>
           <CheckCircle2
             size={18}
             className={cn(
@@ -62,8 +63,8 @@ function TimelineTaskCard({
             )}
           />
         </div>
-        <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className='flex min-w-0 flex-1 flex-col items-start justify-center'>
+          <div className='flex flex-wrap items-center gap-2'>
             <p
               className={cn(
                 'font-medium wrap-break-word',
@@ -74,27 +75,28 @@ function TimelineTaskCard({
             >
               {task.title}
             </p>
-            <span className="text-xs text-muted-foreground">
+            <span className='text-xs text-muted-foreground'>
               {formatMinutes(task.estimatedMinutes)}
             </span>
           </div>
           {task.description && (
-            <p className="mt-1 text-sm wrap-break-word text-muted-foreground">
+            <p className='mt-1 text-sm wrap-break-word text-muted-foreground'>
               {task.description}
             </p>
           )}
         </div>
-        <div className="flex shrink-0 items-center self-end sm:self-auto">
-          <UpdateTaskStatusButton
+        <div className='flex shrink-0 items-center self-end sm:self-auto'>
+          <TaskCompletionButton
             taskId={task.id}
             status={status}
             onStatusChange={onTaskStatusChange}
+            variant='timeline'
           />
         </div>
       </div>
 
       {resources.length > 0 && (
-        <div className="mt-3 ml-0 flex flex-wrap gap-2 sm:ml-6">
+        <div className='mt-3 ml-0 flex flex-wrap gap-2 sm:ml-6'>
           {resources.map((resource) => (
             <TimelineResourceLink key={resource.id} resource={resource} />
           ))}
@@ -115,12 +117,12 @@ export function TimelineTaskList({
 }) {
   if (module.tasks.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No tasks in this module.</p>
+      <p className='text-sm text-muted-foreground'>No tasks in this module.</p>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className='space-y-3'>
       {module.tasks.map((task) => (
         <TimelineTaskCard
           key={task.id}

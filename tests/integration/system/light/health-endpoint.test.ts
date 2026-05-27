@@ -1,11 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
+import { ensureUser } from '../../../helpers/db/users';
 import { GET } from '@/app/api/health/worker/route';
 import { JOB_TYPES } from '@/features/jobs/types';
 import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { ensureUser } from '../../../helpers/db/users';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 /**
  * Creates a mock Request object for testing the health endpoint.

@@ -1,13 +1,13 @@
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts, modules, tasks } from '@supabase/schema';
-import { desc, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 import { createFailedAttempts } from '../../fixtures/attempts';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { generationAttempts, modules, tasks } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { desc, eq } from 'drizzle-orm';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const authUserId = 'auth_generation_cap_boundary';
 const authEmail = 'generation-cap-boundary@example.com';

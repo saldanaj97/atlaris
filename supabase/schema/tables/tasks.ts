@@ -1,19 +1,3 @@
-import { sql } from 'drizzle-orm';
-import {
-  type AnyPgColumn,
-  boolean,
-  check,
-  index,
-  integer,
-  jsonb,
-  pgPolicy,
-  pgTable,
-  text,
-  timestamp,
-  unique,
-  uuid,
-} from 'drizzle-orm/pg-core';
-
 import type {
   LessonContent,
   ModuleLessonGenerationMetadata,
@@ -36,6 +20,21 @@ import {
 } from '../policy-helpers';
 import { learningPlans } from './plans';
 import { users } from './users';
+import { sql } from 'drizzle-orm';
+import {
+  type AnyPgColumn,
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 // Modules, tasks, and supporting tables
 

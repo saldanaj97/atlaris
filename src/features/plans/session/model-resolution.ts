@@ -1,7 +1,8 @@
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { resolveSavedPreferenceForSettings } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 type StreamModelResolution = {
   modelOverride?: string;

@@ -1,15 +1,14 @@
-import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
+import { buildTestAuthUserId } from '../../helpers/testIds';
 import { GET as GET_PLAN_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_PLAN_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { learningPlans, modules } from '@supabase/schema';
-import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
-import { describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
-
-import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
-import { buildTestAuthUserId } from '../../helpers/testIds';
+import { createFailedAttemptsInDb } from '@tests/fixtures/attempts';
+import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
+import { describe, expect, it } from 'vitest';
 
 type StatusFixture = {
   generationStatus: 'generating' | 'pending_retry' | 'ready' | 'failed';

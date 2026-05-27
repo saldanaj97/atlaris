@@ -1,12 +1,12 @@
+import { createTestModule, createTestTask } from '../../fixtures/modules';
+import { createTestPlan } from '../../fixtures/plans';
+import { createTestUser } from '../../fixtures/users';
 import {
   getPlanDetailForRead,
   listLightweightPlansForApi,
 } from '@/features/plans/read-projection/service';
 import { getPlanAttemptsForUser } from '@/lib/db/queries/plans';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createTestModule, createTestTask } from '../../fixtures/modules';
-import { createTestPlan } from '../../fixtures/plans';
-import { createTestUser } from '../../fixtures/users';
 
 const NON_EXISTENT_PLAN_ID = '00000000-0000-0000-0000-000000000000';
 

@@ -1,15 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type {
+  ParsedModule,
+  ParsedTask,
+} from '@/features/ai/types/parser.types';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
+
 import {
   computeCapacity,
   type PacingParams,
   pacePlan,
   trimModulesToCapacity,
 } from '@/features/ai/pacing';
-import type {
-  ParsedModule,
-  ParsedTask,
-} from '@/features/ai/types/parser.types';
-import type { GenerationInput } from '@/features/ai/types/provider.types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('pacing module', () => {
   beforeEach(() => {

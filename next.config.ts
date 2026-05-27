@@ -1,5 +1,7 @@
-import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from 'next';
+
+import { withSentryConfig } from '@sentry/nextjs';
+import { withWorkflow } from 'workflow/next';
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -40,7 +42,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const workflowNextConfig = withWorkflow(nextConfig, {
+  workflows: {
+    lazyDiscovery: true,
+  },
+});
+
+export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 

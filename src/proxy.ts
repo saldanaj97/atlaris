@@ -1,6 +1,3 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
-
 import { maintenanceMode } from '@/flags';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
@@ -15,6 +12,8 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
+import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 function buildProxyRequestContext(request: NextRequest) {
   const correlationId = getCorrelationId(request);
@@ -127,7 +126,9 @@ export default proxy;
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Workflow SDK webhook/callback routes under `/.well-known/workflow/` must stay
+    // outside Clerk, maintenance redirects, and CSP middleware (see workflow-sdk.md).
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)|\\.well-known/workflow/).*)',
     '/(api|trpc)(.*)',
   ],
 };

@@ -1,5 +1,9 @@
-import { format } from 'date-fns';
-import { and, asc, eq } from 'drizzle-orm';
+import type { DbClient } from '@/lib/db/types';
+import type {
+  ScheduleInputs,
+  ScheduleJson,
+} from '@/shared/types/scheduling.types';
+
 import { distributeTasksToSessions } from '@/features/scheduling/distribute';
 import { computeInputsHash } from '@/features/scheduling/hash';
 import {
@@ -8,11 +12,8 @@ import {
 } from '@/lib/db/queries/schedules';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import type { DbClient } from '@/lib/db/types';
-import type {
-  ScheduleInputs,
-  ScheduleJson,
-} from '@/shared/types/scheduling.types';
+import { format } from 'date-fns';
+import { and, asc, eq } from 'drizzle-orm';
 
 interface GetPlanScheduleParams {
   planId: string;

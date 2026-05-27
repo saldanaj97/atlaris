@@ -1,9 +1,16 @@
-import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+import type Stripe from 'stripe';
+
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { ValidationError } from '@/lib/api/errors';
-import { stripeWebhookEvents, users } from '@supabase/schema';
 import { logger } from '@/lib/logging/logger';
+import { getDb } from '@supabase/runtime';
+import { stripeWebhookEvents, users } from '@supabase/schema';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { createId } from '@tests/fixtures/ids';
 import {
   buildMockCustomerProvisioningDb,
@@ -11,13 +18,7 @@ import {
 } from '@tests/fixtures/stripe-commerce-db-mocks';
 import { makeStripeMock } from '@tests/fixtures/stripe-mocks';
 import { eq } from 'drizzle-orm';
-import type Stripe from 'stripe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDb } from '@supabase/runtime';
-import { db as serviceRoleDb } from '@supabase/service-role';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 describe('StripeCommerceBoundary', () => {
   beforeEach(() => {

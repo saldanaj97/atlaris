@@ -1,8 +1,8 @@
-import { type SQL, sql } from 'drizzle-orm';
 import type { AnyPgColumn, AnyPgTable } from 'drizzle-orm/pg-core';
 
 import { currentUserId } from './tables/common';
 import { users } from './tables/users';
+import { type SQL, sql } from 'drizzle-orm';
 
 type BasePlanParams = {
   planIdColumn: AnyPgColumn;

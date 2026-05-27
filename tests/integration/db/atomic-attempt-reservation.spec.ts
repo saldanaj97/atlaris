@@ -1,3 +1,9 @@
+import {
+  createFailedAttemptsInDb,
+  getDurableWindowSeedCount,
+} from '../../fixtures/attempts';
+import { createPlan } from '../../fixtures/plans';
+import { ensureUser } from '../../helpers/db/users';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   finalizeAttemptFailure,
@@ -5,16 +11,10 @@ import {
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
-import {
-  createFailedAttemptsInDb,
-  getDurableWindowSeedCount,
-} from '../../fixtures/attempts';
-import { createPlan } from '../../fixtures/plans';
-import { ensureUser } from '../../helpers/db/users';
 
 describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   const attemptCap = getGenerationAttemptCap();

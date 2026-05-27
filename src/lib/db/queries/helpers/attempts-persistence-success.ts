@@ -1,7 +1,3 @@
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import type {
   AttemptReservation,
   FinalizeSuccessPersistenceInTxParams,
@@ -10,6 +6,11 @@ import type {
   NormalizedModuleData,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
+
+import {
+  prepareRlsTransactionContext,
+  reapplyJwtClaimsInTransaction,
+} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { generationAttempts, modules, tasks } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 

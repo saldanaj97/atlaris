@@ -1,8 +1,3 @@
-import { z } from 'zod';
-import {
-  createLearningPlanNotesSchema,
-  topicSchema,
-} from '@/shared/schemas/learning-plans.schemas';
 import {
   LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
@@ -10,6 +5,11 @@ import {
   TOPIC_MAX_LENGTH,
   weeklyHoursSchema,
 } from './shared';
+import {
+  createLearningPlanNotesSchema,
+  topicSchema,
+} from '@/shared/schemas/learning-plans.schemas';
+import { z } from 'zod';
 
 const planNotesOverrideSchema = z
   .string()

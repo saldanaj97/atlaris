@@ -1,10 +1,11 @@
-import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import type { PlainHandler } from '@/lib/api/auth';
+
+import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { AppError } from '@/lib/api/errors';
 import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-access';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { json } from '@/lib/api/response';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { regenerationQueueEnv } from '@/lib/config/env';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
 

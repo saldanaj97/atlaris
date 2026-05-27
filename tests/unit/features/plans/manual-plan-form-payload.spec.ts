@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlanFormData } from '@/features/plans/plan-form.types';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockMapOnboardingToCreateInput } = vi.hoisted(() => ({
   mockMapOnboardingToCreateInput: vi.fn(),

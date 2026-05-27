@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { createContentSecurityPolicy } from '@/lib/proxy/security-headers';
+import { describe, expect, it } from 'vitest';
 
 describe('proxy security headers', () => {
   it('allows Clerk assets required by hosted auth components', () => {

@@ -1,7 +1,6 @@
-import { and, eq } from 'drizzle-orm';
-
-import { learningPlans } from '@supabase/schema';
 import { getDb } from '@supabase/runtime';
+import { learningPlans } from '@supabase/schema';
+import { and, eq } from 'drizzle-orm';
 
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 

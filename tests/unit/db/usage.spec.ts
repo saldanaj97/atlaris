@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
-
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+
 import { canonicalUsageToRecordParams } from '../../../supabase/usage';
+import { describe, expect, it } from 'vitest';
 
 function makeCanonicalUsage(
   overrides?: Partial<CanonicalAIUsage>,

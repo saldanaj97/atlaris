@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-
-import { getModuleDetailRows } from '@/lib/db/queries/modules';
 import { createTestModule, createTestTask } from '../../fixtures/modules';
 import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { getModuleDetailRows } from '@/lib/db/queries/modules';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Module Queries', () => {
   let userId: string;

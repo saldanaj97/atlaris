@@ -1,11 +1,12 @@
-import { eq } from 'drizzle-orm';
+import type { DbClient } from '@/lib/db/types';
 import type Stripe from 'stripe';
+
 import { getStripe } from '@/features/billing/client';
 import { mapStripeSubscriptionStatus } from '@/features/billing/stripe-commerce/subscription-status';
-import { users } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
 import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
+import { users } from '@supabase/schema';
+import { eq } from 'drizzle-orm';
 
 /**
  * Subscription sync call-site dependencies. `stripe` is optional: when omitted, production

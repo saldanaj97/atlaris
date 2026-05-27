@@ -1,13 +1,12 @@
-import { randomUUID } from 'node:crypto';
-
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
+import { randomUUID } from 'node:crypto';
+import { toast } from 'sonner';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 const PLAN_ID = randomUUID();
 const MODULE_ID = randomUUID();
@@ -18,12 +17,6 @@ const toastErrorMock = vi.mocked(toast.error);
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
-}));
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-  },
 }));
 
 const lesson: ModuleDetailTask = {

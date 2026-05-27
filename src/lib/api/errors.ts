@@ -1,9 +1,10 @@
 // Centralized error types and helpers for API layer
 
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
 import { getCorrelationId } from '@/lib/api/context';
 import { jsonError } from '@/lib/api/response';
 import { createLogger, logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 function hasStringCode(value: unknown): value is { code: string } {
   if (typeof value !== 'object' || value === null) {

@@ -1,8 +1,3 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { DEFAULT_OUTPUT_TOKEN_CEILING } from '@/features/ai/cost';
-import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
-import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
 import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
@@ -10,6 +5,10 @@ import {
   OPENROUTER_TEST_MODEL,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
+import { DEFAULT_OUTPUT_TOKEN_CEILING } from '@/features/ai/cost';
+import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('OpenRouterProvider', () => {
   beforeEach(() => {

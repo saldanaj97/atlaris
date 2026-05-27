@@ -1,5 +1,5 @@
-import { clerk, clerkSetup } from '@clerk/testing/playwright';
 import { expect, test } from './fixtures';
+import { clerk, clerkSetup } from '@clerk/testing/playwright';
 
 function getClerkSmokeUserEmail(): string | undefined {
   return process.env.CLERK_E2E_USER_EMAIL;

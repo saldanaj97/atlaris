@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
+import { describe, expect, it } from 'vitest';
 
 describe('middleware policy', () => {
   it('isProtectedRoute skips stripe webhook', () => {
@@ -30,6 +30,9 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(true, '/maintenance')).toBe(null);
     expect(
       resolveMaintenanceRedirectPath(true, '/.well-known/vercel/flags'),
+    ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(true, '/.well-known/workflow/v1/flow'),
     ).toBe(null);
     expect(resolveMaintenanceRedirectPath(false, '/maintenance')).toBe('/');
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);

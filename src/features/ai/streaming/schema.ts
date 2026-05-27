@@ -1,9 +1,8 @@
-import { z } from 'zod';
-
 import {
   LEARNING_STYLE_ENUM,
   SKILL_LEVEL_ENUM,
 } from '@/shared/schemas/plan-validation.schemas';
+import { z } from 'zod';
 
 const planStartDataSchema = z.object({
   planId: z.string(),

@@ -1,9 +1,10 @@
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import {
   formatMarketingLimit,
   formatMarketingSchedulingHorizon,
 } from '@/app/_shared/usage-formatting';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 interface PricingTierDisplay {
   name: string;

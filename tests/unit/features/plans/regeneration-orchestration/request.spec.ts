@@ -1,16 +1,17 @@
+import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
+import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
+import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
+
+import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
+import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
+import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
+import { RateLimitError } from '@/lib/api/errors';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import {
   makeRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDepsOverrides,
 } from '@tests/helpers/regeneration-orchestration-deps';
 import { describe, expect, it, vi } from 'vitest';
-import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
-import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
-import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
-import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
-import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
-import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
-import { RateLimitError } from '@/lib/api/errors';
 
 const fakeDb = makeDbClient();
 

@@ -1,13 +1,11 @@
-import { describe, expect, it } from 'vitest';
-
-import { MAX_LESSON_BLOCK_TEXT_LENGTH } from '@supabase/schema/constants';
-
 import {
   buildModuleLessonBatchSystemPrompt,
   buildModuleLessonBatchUserPrompt,
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
+import { MAX_LESSON_BLOCK_TEXT_LENGTH } from '@supabase/schema/constants';
 import { createId } from '@tests/fixtures/ids';
+import { describe, expect, it } from 'vitest';
 
 describe('module lesson batch prompts', () => {
   const taskA = createId('task');

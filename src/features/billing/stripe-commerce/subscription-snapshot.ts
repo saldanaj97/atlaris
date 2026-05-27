@@ -1,5 +1,5 @@
-import type Stripe from 'stripe';
 import type { CommerceSubscriptionSnapshot } from '@/features/billing/stripe-commerce/dtos';
+import type Stripe from 'stripe';
 
 /**
  * Maps a Stripe subscription object into the commerce gateway snapshot shape.

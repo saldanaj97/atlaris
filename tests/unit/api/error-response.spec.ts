@@ -1,5 +1,3 @@
-import { describe, expect, it } from 'vitest';
-
 import {
   buildApiErrorResponse,
   getDefaultErrorCode,
@@ -7,6 +5,7 @@ import {
   parseApiErrorResponse,
   toApiErrorJsonResponse,
 } from '@/lib/api/error-response';
+import { describe, expect, it } from 'vitest';
 
 describe('error-response', () => {
   describe('getDefaultErrorCode', () => {

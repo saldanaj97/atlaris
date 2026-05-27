@@ -1,17 +1,17 @@
-import { and, asc, eq } from 'drizzle-orm';
-
-import {
-  fetchModuleTaskMetricsRows,
-  fetchTaskRelationRows,
-} from '@/lib/db/queries/helpers/task-relations-helpers';
 import type {
   ModuleDetailRows,
   ModuleTaskMetricRow,
   TaskProgress,
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
-import { learningPlans, modules, tasks } from '@supabase/schema';
+
+import {
+  fetchModuleTaskMetricsRows,
+  fetchTaskRelationRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
 import { getDb } from '@supabase/runtime';
+import { learningPlans, modules, tasks } from '@supabase/schema';
+import { and, asc, eq } from 'drizzle-orm';
 
 type ModulesDbClient = ReturnType<typeof getDb>;
 

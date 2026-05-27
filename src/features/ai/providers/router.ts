@@ -1,10 +1,3 @@
-import pRetry from 'p-retry';
-import {
-  ProviderError,
-  ProviderInvalidResponseError,
-} from '@/features/ai/providers/errors';
-import { MockGenerationProvider } from '@/features/ai/providers/mock';
-import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
 import type {
   AiPlanGenerationProvider,
   GenerationInput,
@@ -12,14 +5,22 @@ import type {
   ModuleLessonBatchGenerationInput,
   ProviderGenerateResult,
 } from '@/features/ai/types/provider.types';
+
+import {
+  ProviderError,
+  ProviderInvalidResponseError,
+} from '@/features/ai/providers/errors';
+import { MockGenerationProvider } from '@/features/ai/providers/mock';
+import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
+import { aiEnv, appEnv } from '@/lib/config/env';
+import { isAbortError } from '@/lib/errors';
+import { logger } from '@/lib/logging/logger';
 import {
   MAX_PROVIDER_RETRIES,
   PROVIDER_RETRY_MAX_MS,
   PROVIDER_RETRY_MIN_MS,
 } from '@/shared/constants/retry-policy';
-import { aiEnv, appEnv } from '@/lib/config/env';
-import { isAbortError } from '@/lib/errors';
-import { logger } from '@/lib/logging/logger';
+import pRetry from 'p-retry';
 
 export type RouterConfig = {
   useMock?: boolean;

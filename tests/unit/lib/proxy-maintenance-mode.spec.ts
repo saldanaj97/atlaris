@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-
-import * as Sentry from '@sentry/nextjs';
-
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
+import * as Sentry from '@sentry/nextjs';
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@sentry/nextjs', () => ({
   withScope: vi.fn(

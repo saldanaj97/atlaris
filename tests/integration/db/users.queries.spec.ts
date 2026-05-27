@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { describe, expect, it } from 'vitest';
 
 describe('User Queries', () => {
   describe('createUser', () => {

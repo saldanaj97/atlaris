@@ -1,3 +1,7 @@
+import type { AvailableModel } from '@/features/ai/types/model.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { createTestModel } from '../../fixtures/model.factory';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
@@ -9,12 +13,9 @@ import {
   it,
   vi,
 } from 'vitest';
+
 import '../../mocks/unit/client-logger.unit';
 import '../../mocks/unit/sonner.unit';
-
-import type { AvailableModel } from '@/features/ai/types/model.types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { createTestModel } from '../../fixtures/model.factory';
 
 const FREE_MODELS: AvailableModel[] = [
   createTestModel({
@@ -82,7 +83,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={defaultOnSave}
       />,
@@ -95,7 +96,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="pro"
+        userTier='pro'
         availableModels={MODELS_BY_TIER.pro}
         onSave={defaultOnSave}
       />,
@@ -110,7 +111,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={FIRST_FREE_MODEL.id}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={defaultOnSave}
       />,
@@ -126,7 +127,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={defaultOnSave}
       />,
@@ -153,7 +154,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={mockOnSave}
       />,
@@ -176,7 +177,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={FIRST_FREE_MODEL.id}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={mockOnSave}
       />,
@@ -195,7 +196,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={defaultOnSave}
       />,
@@ -225,7 +226,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={mockOnSave}
       />,
@@ -248,7 +249,7 @@ describe('ModelSelector', () => {
     render(
       <ModelSelector
         currentModel={null}
-        userTier="free"
+        userTier='free'
         availableModels={MODELS_BY_TIER.free}
         onSave={mockOnSave}
       />,

@@ -1,8 +1,7 @@
-import { Quote } from 'lucide-react';
-import { useId } from 'react';
-
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Quote } from 'lucide-react';
+import { useId } from 'react';
 
 type AvatarGradient =
   | 'from-primary to-accent'
@@ -61,27 +60,27 @@ export function UseCasesSection() {
 
   return (
     <section
-      className="relative overflow-hidden lg:py-32"
+      className='relative overflow-hidden lg:py-32'
       aria-labelledby={headingId}
     >
-      <div className="relative z-10 mx-auto max-w-screen-xl px-6">
-        <div className="mb-16 text-center">
+      <div className='relative z-10 mx-auto max-w-screen-xl px-6'>
+        <div className='mb-16 text-center'>
           <Badge
-            variant="glassmorphic"
-            className="mb-4 bg-accent/10 px-4 py-1.5 text-accent-foreground"
+            variant='glassmorphic'
+            className='mb-4 bg-accent/10 px-4 py-1.5 text-accent-foreground'
           >
             Real Stories
           </Badge>
-          <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
+          <h2 id={headingId} className='marketing-h2 mb-4 text-foreground'>
             Built for people with{' '}
-            <span className="gradient-text">limited time</span>
+            <span className='gradient-text'>limited time</span>
           </h2>
-          <p className="marketing-subtitle mx-auto max-w-2xl">
+          <p className='marketing-subtitle mx-auto max-w-2xl'>
             Not infinite motivation—just a schedule that actually works
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className='grid gap-6 md:grid-cols-3'>
           {TESTIMONIALS.map((testimonial) => (
             <QuoteCard key={testimonial.persona} {...testimonial} />
           ))}
@@ -99,40 +98,40 @@ function QuoteCard({
   gradient,
 }: QuoteCardProps) {
   return (
-    <figure className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40">
+    <figure className='group relative flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40'>
       <div
-        className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-20 blur-2xl transition group-hover:opacity-40 motion-reduce:transition-none"
-        aria-hidden="true"
+        className='absolute -top-12 -right-12 size-32 rounded-full bg-linear-to-br from-primary/30 to-accent/30 opacity-20 blur-2xl transition group-hover:opacity-40 motion-reduce:transition-none'
+        aria-hidden='true'
       ></div>
 
       <Quote
-        className="absolute top-6 right-6 h-10 w-10 text-primary/30"
-        aria-hidden="true"
+        className='absolute top-6 right-6 size-10 text-primary/30'
+        aria-hidden='true'
       />
 
-      <div className="mb-4">
+      <div className='mb-4'>
         <DecorativeStars />
       </div>
 
-      <blockquote className="relative flex-1">
-        <p className="text-lg leading-relaxed text-foreground">
+      <blockquote className='relative flex-1'>
+        <p className='text-lg leading-relaxed text-foreground'>
           &ldquo;{quote}&rdquo;
         </p>
       </blockquote>
 
-      <figcaption className="mt-6 flex items-center gap-4 border-t border-primary/20 pt-6">
+      <figcaption className='mt-6 flex items-center gap-4 border-t border-primary/20 pt-6'>
         <div
           className={cn(
-            'flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br text-sm font-bold text-white shadow-lg',
+            'flex size-12 items-center justify-center rounded-xl bg-linear-to-br text-sm font-bold text-white shadow-lg',
             gradient,
           )}
-          aria-hidden="true"
+          aria-hidden='true'
         >
           {avatarInitials}
         </div>
         <div>
-          <p className="font-semibold text-foreground">{persona}</p>
-          <p className="text-sm text-primary">{detail}</p>
+          <p className='font-semibold text-foreground'>{persona}</p>
+          <p className='text-sm text-primary'>{detail}</p>
         </div>
       </figcaption>
     </figure>
@@ -141,17 +140,17 @@ function QuoteCard({
 
 function DecorativeStars() {
   return (
-    <div className="flex" aria-hidden="true">
+    <div className='flex' aria-hidden='true'>
       {DECORATIVE_STAR_KEYS.map((starKey) => (
         <svg
           key={starKey}
-          className="h-5 w-5 text-amber-400"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-          aria-hidden="true"
-          focusable="false"
+          className='size-5 text-amber-400'
+          fill='currentColor'
+          viewBox='0 0 20 20'
+          aria-hidden='true'
+          focusable='false'
         >
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+          <path d='M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z' />
         </svg>
       ))}
     </div>

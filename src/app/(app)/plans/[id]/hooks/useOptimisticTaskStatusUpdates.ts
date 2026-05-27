@@ -1,5 +1,8 @@
 'use client';
 
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
 import {
   useCallback,
   useLayoutEffect,
@@ -7,8 +10,6 @@ import {
   useRef,
   useTransition,
 } from 'react';
-import { useTaskStatusBatcher } from '@/hooks/useTaskStatusBatcher';
-import type { ProgressStatus } from '@/shared/types/db.types';
 
 type TaskStatusUpdateErrorContext = {
   error: unknown;

@@ -1,8 +1,8 @@
 'use client';
 
-import { ArrowLeft, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { type ReactElement, useCallback, useMemo } from 'react';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
@@ -16,9 +16,9 @@ import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog'
 import { Button } from '@/components/ui/button';
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-
-import type { ClientPlanDetail } from '@/shared/types/client.types';
-import type { ProgressStatus } from '@/shared/types/db.types';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { type ReactElement, useCallback, useMemo } from 'react';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -79,12 +79,12 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const isGenerating = isPendingOrProcessing;
 
   return (
-    <div className="pb-12 md:pb-20">
-      <header className="mb-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+    <div className='pb-12 md:pb-20'>
+      <header className='mb-6'>
+        <div className='flex flex-wrap items-center justify-between gap-2'>
+          <Button variant='ghost' size='sm' asChild>
+            <Link href='/dashboard'>
+              <ArrowLeft className='size-4' aria-hidden='true' />
               Back to Dashboard
             </Link>
           </Button>
@@ -93,15 +93,15 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
             planId={plan.id}
             planTopic={plan.topic}
             isGenerating={isGenerating}
-            redirectTo="/plans"
+            redirectTo='/plans'
           >
             <Button
-              variant="ghost"
-              size="sm"
+              variant='ghost'
+              size='sm'
               disabled={isGenerating}
-              className="text-muted-foreground hover:text-destructive"
+              className='text-muted-foreground hover:text-destructive'
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className='mr-2 size-4' />
               Delete plan
             </Button>
           </DeletePlanDialog>

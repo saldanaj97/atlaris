@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest';
-
 import { ProviderError } from '@/features/ai/providers/errors';
 import { AttemptCapExceededError, toErrorResponse } from '@/lib/api/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('API error redaction', () => {
   it('redacts unexpected provider errors to a generic payload', async () => {

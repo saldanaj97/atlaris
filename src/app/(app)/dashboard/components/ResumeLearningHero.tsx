@@ -1,9 +1,9 @@
-import { Play } from 'lucide-react';
-import Link from 'next/link';
+import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
-import type { PlanSummary } from '@/shared/types/db.types';
+import { Play } from 'lucide-react';
+import Link from 'next/link';
 
 interface ResumeLearningHeroProps {
   plan: PlanSummary;
@@ -59,46 +59,46 @@ function HeroCircularProgress({
   const strokeDashoffset = circumference * (1 - progressPercent / 100);
   return (
     <div
-      className="relative flex-shrink-0"
+      className='relative flex-shrink-0'
       style={{ width: size, height: size }}
-      role="progressbar"
+      role='progressbar'
       aria-valuenow={progressPercent}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={`Plan progress: ${progressPercent}% complete`}
     >
       <svg
-        className="-rotate-90"
+        className='-rotate-90'
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        aria-hidden="true"
+        aria-hidden='true'
       >
         <title>Progress indicator</title>
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.2)"
+          fill='none'
+          stroke='rgba(255,255,255,0.2)'
           strokeWidth={strokeWidth}
         />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          fill="none"
-          stroke="white"
+          fill='none'
+          stroke='white'
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          className="transition-all duration-300"
+          strokeLinecap='round'
+          className='transition-all duration-300'
         />
       </svg>
       <span
-        className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white"
-        aria-hidden="true"
+        className='absolute inset-0 flex items-center justify-center text-sm font-bold text-white'
+        aria-hidden='true'
       >
         {progressPercent}%
       </span>
@@ -143,20 +143,20 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const upNextLabel = getUpNextLabel(plan);
 
   return (
-    <div className="relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg">
+    <div className='relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg'>
       {/* Top row: label (left) and circular progress (right) */}
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-xs font-medium tracking-wider text-white/70 uppercase">
+      <div className='flex items-start justify-between gap-4'>
+        <p className='text-xs font-medium tracking-wider text-white/70 uppercase'>
           Most Recent Plan
         </p>
         <HeroCircularProgress progressPercent={progressPercent} />
       </div>
 
       {/* Bottom row: badges + title + description (left), Up Next + Continue (right) */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className='flex flex-wrap items-end justify-between gap-4'>
         {/* Bottom left: badges, title, description */}
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap gap-2">
+        <div className='min-w-0 flex-1 space-y-2'>
+          <div className='flex flex-wrap gap-2'>
             {[
               skillLevel,
               `${weeklyHours}h/week`,
@@ -165,26 +165,26 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
             ].map((label) => (
               <span
                 key={label}
-                className="rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white"
+                className='rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white'
               >
                 {label}
               </span>
             ))}
           </div>
-          <h2 className="text-2xl font-bold text-white md:text-3xl">
+          <h2 className='text-2xl font-bold text-white md:text-3xl'>
             {plan.plan.topic}
           </h2>
-          <p className="text-sm text-white/80">
+          <p className='text-sm text-white/80'>
             {getResumeHeroDescription(plan)}
           </p>
         </div>
 
         {/* Bottom right: Up Next and Continue Learning */}
-        <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4">
-          <p className="text-sm text-white/90">
-            <span className="font-medium">Up Next:</span> {upNextLabel}
+        <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
+          <p className='text-sm text-white/90'>
+            <span className='font-medium'>Up Next:</span> {upNextLabel}
           </p>
-          <Button asChild variant="secondary" className="px-5 py-2.5 shadow-sm">
+          <Button asChild variant='secondary' className='px-5 py-2.5 shadow-sm'>
             <Link href={`/plans/${plan.plan.id}`}>
               <Play />
               Continue Learning

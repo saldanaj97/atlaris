@@ -1,16 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import type { PlanFormData } from '@/app/(app)/plans/new/components/plan-form/types';
+import type React from 'react';
+
 import { UnifiedPlanInput } from '@/app/(app)/plans/new/components/plan-form/UnifiedPlanInput';
 import { handleStreamingPlanError } from '@/app/(app)/plans/new/components/streamingPlanError';
 import { buildManualCreatePayloadFromPlanForm } from '@/features/plans/manual-plan-form-payload';
 import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { clientLogger } from '@/lib/logging/client';
-
-import type React from 'react';
-import type { PlanFormData } from '@/app/(app)/plans/new/components/plan-form/types';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface ManualCreatePanelProps {
   initialTopic?: string | null;

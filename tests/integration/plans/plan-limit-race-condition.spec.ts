@@ -6,10 +6,10 @@
  */
 
 import { learningPlans, users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 describe('Plan Limit Race Condition Prevention (T200)', () => {
   let testUserId: string;

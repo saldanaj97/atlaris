@@ -1,14 +1,4 @@
 import type {
-  AttemptRejection,
-  AttemptReservation,
-  GenerationAttemptRecord,
-  ReserveAttemptSlotParams,
-} from '@/lib/db/queries/types/attempts.types';
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
-import type {
   FinalizeGenerationFailureParams,
   FinalizeGenerationSuccessInput,
 } from './generation-finalization/types';
@@ -19,6 +9,16 @@ import type {
   NormalizedDuration,
   PlanInsertData,
 } from './types';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  GenerationAttemptRecord,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 /**
  * Persistence operations required by the plan lifecycle module.
@@ -102,6 +102,13 @@ export type GenerationRunParams = {
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   onAttemptReserved?: (reservation: AttemptReservation) => void;
+  /**
+   * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
+   * worker recovery) does not double-reserve. GenerationPort implementations
+   * must validate this `AttemptReservation` against current DB state before
+   * provider work so stale reservations fail clearly instead of proceeding.
+   */
+  reservation?: AttemptReservation;
 };
 
 type GenerationRunSuccess = {
@@ -127,7 +134,15 @@ type GenerationRunFailure = {
   reservationRejectionReason?: AttemptRejection['reason'];
 };
 
-export type GenerationRunResult = GenerationRunSuccess | GenerationRunFailure;
+type GenerationRunAlreadyFinalized = {
+  status: 'already_finalized';
+  planId: string;
+};
+
+export type GenerationRunResult =
+  | GenerationRunSuccess
+  | GenerationRunFailure
+  | GenerationRunAlreadyFinalized;
 
 export interface GenerationPort {
   runGeneration(

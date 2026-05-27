@@ -1,9 +1,10 @@
+import type { RecordUsageParams } from '../../../../../../supabase/usage';
+import type { DbClient } from '@/lib/db/types';
+
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import { UsageRecordingAdapter } from '@/features/plans/lifecycle/adapters/usage-recording-adapter';
-import type { DbClient } from '@/lib/db/types';
 import { makeOpenRouterGpt4oProviderMetadata } from '@tests/fixtures/canonical-usage.factory';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecordUsageParams } from '../../../../../../supabase/usage';
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),

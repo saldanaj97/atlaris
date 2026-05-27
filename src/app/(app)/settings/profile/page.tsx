@@ -1,8 +1,8 @@
-import { headers } from 'next/headers';
 import type { ReactElement } from 'react';
 
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { PageHeader } from '@/components/ui/page-header';
+import { headers } from 'next/headers';
 
 function getSupportedLocale(acceptLanguage: string | null): string | undefined {
   if (!acceptLanguage) {
@@ -30,12 +30,12 @@ export default async function ProfileSettingsPage(): Promise<ReactElement> {
   return (
     <>
       <PageHeader
-        title="Profile"
-        titleAs="h2"
-        subtitle="Manage your personal information and view your account details"
+        title='Profile'
+        titleAs='h2'
+        subtitle='Manage your personal information and view your account details'
       />
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className='grid gap-6 md:grid-cols-2'>
         <ProfileForm locale={locale} />
       </div>
     </>

@@ -1,12 +1,12 @@
 import { applyTaskProgressUpdates } from '@/features/plans/task-progress/boundary';
 import { taskProgress } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 function expectDate(value: unknown, label: string): asserts value is Date {
   expect(value).toBeInstanceOf(Date);

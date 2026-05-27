@@ -1,13 +1,11 @@
+import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../../supabase/privileges/authenticated-table-privileges';
+import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
+import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 /**
  * Shared Supabase-like bootstrap for isolated Testcontainers Postgres.
  * Keep in sync with migration + privilege rules.
  */
 import postgres from 'postgres';
-
-import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../../supabase/privileges/authenticated-table-privileges';
-import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
-
-import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 
 /**
  * Bootstrap a freshly-started Postgres instance with the roles, extensions,

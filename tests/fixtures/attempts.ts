@@ -3,10 +3,10 @@
  * Use these instead of direct db.insert calls to centralize schema changes.
  */
 
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { PLAN_GENERATION_LIMIT } from '@/features/ai/generation-policy';
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { generationAttempts } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 

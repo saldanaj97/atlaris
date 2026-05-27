@@ -1,6 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
-import type { LessonContent } from '@/shared/types/lesson-content.types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
+import type { LessonContent } from '@/shared/types/lesson-content.types';
 
 export type PlanDbClient = DbClient;
 

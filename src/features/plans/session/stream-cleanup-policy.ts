@@ -1,9 +1,10 @@
+import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import { safeMarkPlanFailedWithDbClient } from './stream-cleanup';
 import { AppError } from '@/lib/api/errors';
 import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
-import { safeMarkPlanFailedWithDbClient } from './stream-cleanup';
 
 export const DEFAULT_PROVIDER_FAILURE_CLASSIFICATION =
   'provider_error' as const;

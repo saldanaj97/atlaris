@@ -1,10 +1,11 @@
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
+import type { PlanSummary } from '@/shared/types/db.types';
+
 import {
   derivePlanSummaryDisplayStatus,
   isPlanSummaryFullyComplete,
 } from '@/features/plans/read-projection/client';
-import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
-import type { PlanSummary } from '@/shared/types/db.types';
 
 type DateInput = Date | string | null | undefined;
 

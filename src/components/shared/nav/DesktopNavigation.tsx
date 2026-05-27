@@ -1,8 +1,7 @@
 'use client';
+import type { NavItem } from '@/features/navigation';
+
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
-import { ChevronDown } from 'lucide-react';
-import Link from 'next/link';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,8 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { NavItem } from '@/features/navigation';
 import { cn } from '@/lib/utils';
+import { ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface DesktopNavigationProps {
   pathname: string;
@@ -46,9 +47,9 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          type="button"
-          aria-haspopup="menu"
+          variant='ghost'
+          type='button'
+          aria-haspopup='menu'
           aria-expanded={isOpen}
           className={cn(
             getNavItemClass(isActive),
@@ -56,10 +57,10 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           )}
         >
           <span>{item.label}</span>
-          <ChevronDown className="h-3.5 w-3.5" />
+          <ChevronDown className='size-3.5' />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="min-w-40">
+      <DropdownMenuContent align='start' className='min-w-40'>
         {item.dropdown?.map((dropdownItem) => {
           const isSubActive = isNavItemActive(pathname, dropdownItem);
           return (
@@ -119,7 +120,7 @@ export default function DesktopNavigation({
   };
 
   return (
-    <nav className="hidden items-center gap-6 md:flex">
+    <nav className='hidden items-center gap-6 md:flex'>
       {navItems.map((item) => renderNavItem(item))}
     </nav>
   );

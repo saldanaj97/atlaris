@@ -23,8 +23,9 @@ Prefer the exported grouped configs instead of raw keys:
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
-- `maintenanceEnv` - Manual retention cleanup route toggles and shared token
+- `maintenanceEnv` - Manual retention cleanup route toggle and token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
+- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
 
@@ -52,6 +53,17 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
 
+Workflow SDK feature flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`) are documented in [Workflow SDK](#workflow-sdk) below (see `workflowEnv`).
+
+### Workflow SDK
+
+| Variable                  | Purpose                                                                                                                                                                                                 | Required |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `WORKFLOW_SOURCEMAP`      | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime, not parsed in app code.                                      | No       |
+| `MODULE_LESSON_WORKFLOW_ENABLED` | Routes `POST .../lesson-content/generate` through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                        | No       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration worker drains through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                            | No       |
+| `PLAN_GENERATION_WORKFLOW_ENABLED` | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged; defaults **off**. See `workflowEnv`.                                              | No       |
+
 ### Internal worker routes
 
 Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`. See `docs/architecture/internal-worker-routes.md`.
@@ -59,8 +71,8 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | Variable                    | Purpose                                                            | Required in production                 |
 | --------------------------- | ------------------------------------------------------------------ | -------------------------------------- |
 | `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                    |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` when using the manual route |
-| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes (when manual route enabled)        |
+| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
+| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes only when manual route is enabled          |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 

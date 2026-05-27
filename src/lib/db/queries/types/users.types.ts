@@ -1,7 +1,6 @@
-import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-
-import type { users } from '@supabase/schema';
 import type { getDb } from '@supabase/runtime';
+import type { users } from '@supabase/schema';
+import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 /** Full user row from the `users` table. */
 export type DbUser = InferSelectModel<typeof users>;

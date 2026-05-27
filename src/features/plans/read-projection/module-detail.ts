@@ -1,11 +1,3 @@
-import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
-import type {
-  ModuleDetailRows,
-  ModuleTaskMetricRow,
-} from '@/lib/db/queries/types/modules.types';
-import type { ResourceType } from '@/shared/types/db.types';
-import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
-
 import type {
   ModuleDetailModule,
   ModuleDetailNavItem,
@@ -13,6 +5,14 @@ import type {
   ModuleDetailResource,
   ModuleDetailTask,
 } from './types';
+import type {
+  ModuleDetailRows,
+  ModuleTaskMetricRow,
+} from '@/lib/db/queries/types/modules.types';
+import type { ResourceType } from '@/shared/types/db.types';
+
+import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
+import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
 /** Row shape consumed by sequential lock / nav derivation. */
 export type ModuleNavMetricRow = Pick<

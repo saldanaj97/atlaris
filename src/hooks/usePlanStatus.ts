@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ZodError } from 'zod';
+import type { PlanStatus } from '@/shared/types/client.types';
+
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { computeNextDelay, INITIAL_POLL_MS } from '@/shared/constants/polling';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
-import type { PlanStatus } from '@/shared/types/client.types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ZodError } from 'zod';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 
@@ -46,7 +47,6 @@ export function usePlanStatus(
   const consecutiveFailuresRef = useRef(0);
   const previousStatusRef = useRef<PlanStatus>(initialStatus);
   const delayRef = useRef(INITIAL_POLL_MS);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousPlanIdRef = useRef(planId);
   // Track latest initialStatus without making planId-reset effect depend on it.
   // This prevents a spurious full reset when initialStatus changes on the same plan.
@@ -147,10 +147,11 @@ export function usePlanStatus(
     delayRef.current = INITIAL_POLL_MS;
 
     let cancelled = false;
+    let pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const schedulePoll = () => {
       if (cancelled) return;
-      timeoutRef.current = setTimeout(() => {
+      pollTimeoutId = setTimeout(() => {
         if (cancelled) return;
         const prevStatus = previousStatusRef.current;
         void fetchStatus().then(() => {
@@ -177,9 +178,9 @@ export function usePlanStatus(
 
     return () => {
       cancelled = true;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      if (pollTimeoutId) {
+        clearTimeout(pollTimeoutId);
+        pollTimeoutId = null;
       }
       setIsPolling(false);
     };

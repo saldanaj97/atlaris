@@ -11,9 +11,10 @@ import type {
 } from '@/features/plans/session/plan-generation-session';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+
+import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { db } from '@supabase/service-role';
 import { vi } from 'vitest';
 
 export interface MockProcessLifecycleHandle {

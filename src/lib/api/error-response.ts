@@ -1,5 +1,6 @@
-import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 
 type ApiErrorResponse = {
   error: string;

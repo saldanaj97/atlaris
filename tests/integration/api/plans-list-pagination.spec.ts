@@ -1,14 +1,13 @@
-import { NextRequest } from 'next/server';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
+import { createTestModule, createTestTask } from '../../fixtures/modules';
+import { buildTestPlanInsert } from '../../fixtures/plans';
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
 import { GET } from '@/app/api/v1/plans/route';
 import { learningPlans, taskProgress } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { createTestModule, createTestTask } from '../../fixtures/modules';
-import { buildTestPlanInsert } from '../../fixtures/plans';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
+import { NextRequest } from 'next/server';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const serverAuth = vi.hoisted(() => {
   const getSession = vi.fn();

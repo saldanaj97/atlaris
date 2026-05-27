@@ -13,11 +13,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }, { "name": "workflow" }],
     "paths": {
       "@/*": ["./src/*"],
       "@tests/*": ["./tests/*"],
@@ -28,6 +24,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "src/app/.well-known/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next-smoke-anon/types/**/*.ts",

@@ -7,14 +7,26 @@
     "**/dist": true,
     "**/.pnpm-store": true
   },
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnSave": true,
   "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
+  "typescript.tsdk": "node_modules/typescript/lib",
   "oxc.enable.oxlint": true,
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "never",
+    "source.organizeImports": "never"
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
   }
 }

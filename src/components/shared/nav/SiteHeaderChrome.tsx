@@ -2,10 +2,11 @@
 
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { usePathname } from 'next/navigation';
 import type { JSX } from 'react';
+
 import DesktopHeader from './DesktopHeader';
 import MobileHeader from './MobileHeader';
+import { usePathname } from 'next/navigation';
 
 interface SiteHeaderChromeProps {
   navItems: NavItem[];

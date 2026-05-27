@@ -1,3 +1,10 @@
+import {
+  preferredAiModel as preferredAiModelEnum,
+  subscriptionStatus,
+  subscriptionTier,
+} from '../../enums';
+import { timestampFields } from '../helpers';
+import { currentUserId } from './common';
 import { sql } from 'drizzle-orm';
 import {
   boolean,
@@ -8,14 +15,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import {
-  preferredAiModel as preferredAiModelEnum,
-  subscriptionStatus,
-  subscriptionTier,
-} from '../../enums';
-import { timestampFields } from '../helpers';
-import { currentUserId } from './common';
 
 // Users table
 

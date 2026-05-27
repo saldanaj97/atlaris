@@ -1,3 +1,5 @@
+import type { ProviderUsage } from '@/features/ai/types/provider.types';
+
 import {
   OPENROUTER_USAGE_COST_FIELD,
   type OpenRouterStreamChunk,
@@ -5,7 +7,6 @@ import {
 } from '@/features/ai/openrouter-cost-contract';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
-import type { ProviderUsage } from '@/features/ai/types/provider.types';
 
 type TextPart = {
   type: string;

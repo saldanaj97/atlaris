@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
 import {
   BACKLOG_THRESHOLD,
   buildHealthyWorkerHealthBody,
   buildStuckJobsCheck,
   buildWorkerHealthMonitoringErrorBody,
 } from '@/lib/api/health/worker-health-checks';
+import { describe, expect, it } from 'vitest';
 
 describe('worker health check builders', () => {
   it('marks healthy when all metrics clear', () => {

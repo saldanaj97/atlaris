@@ -1,9 +1,3 @@
-import { randomUUID } from 'node:crypto';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { pacePlan } from '@/features/ai/pacing';
-import { ProviderTimeoutError } from '@/features/ai/providers/errors';
 import type {
   GenerationAttemptContext,
   RunGenerationOptions,
@@ -23,6 +17,12 @@ import type {
   AttemptsDbClient,
   GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
+
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { pacePlan } from '@/features/ai/pacing';
+import { ProviderTimeoutError } from '@/features/ai/providers/errors';
+import { randomUUID } from 'node:crypto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOpsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;

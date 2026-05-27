@@ -1,9 +1,9 @@
-import { Check, Loader2 } from 'lucide-react';
 import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Check, Loader2 } from 'lucide-react';
 
 type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
 
@@ -22,20 +22,20 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
   switch (status) {
     case 'available':
       return (
-        <Badge variant="secondary" role="status" aria-label="Available">
+        <Badge variant='secondary' role='status' aria-label='Available'>
           Available
         </Badge>
       );
     case 'coming_soon':
       return (
-        <Badge variant="outline" role="status" aria-label="Coming Soon">
+        <Badge variant='outline' role='status' aria-label='Coming Soon'>
           Coming Soon
         </Badge>
       );
     case 'connected':
       return (
-        <Badge variant="default" role="status" aria-label="Connected">
-          <span className="mr-1 inline-block h-2 w-2 rounded-full bg-success" />
+        <Badge variant='default' role='status' aria-label='Connected'>
+          <span className='mr-1 inline-block size-2 rounded-full bg-success' />
           Connected
         </Badge>
       );
@@ -61,10 +61,10 @@ function ActionButton({
   switch (status) {
     case 'available':
       return (
-        <Button variant="default" onClick={onConnect} disabled={isDisabled}>
+        <Button variant='default' onClick={onConnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className='mr-2 size-4 animate-spin' />
               Connecting…
             </>
           ) : (
@@ -74,16 +74,16 @@ function ActionButton({
       );
     case 'coming_soon':
       return (
-        <Button variant="outline" disabled>
+        <Button variant='outline' disabled>
           Coming Soon
         </Button>
       );
     case 'connected':
       return (
-        <Button variant="outline" onClick={onDisconnect} disabled={isDisabled}>
+        <Button variant='outline' onClick={onDisconnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className='mr-2 size-4 animate-spin' />
               Disconnecting…
             </>
           ) : (
@@ -106,44 +106,44 @@ export function IntegrationCard({
 }: IntegrationCardProps): JSX.Element {
   return (
     <Card
-      role="region"
+      role='region'
       aria-label={name}
-      className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40"
+      className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
     >
-      <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
+      <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
 
-      <div className="relative flex flex-col gap-5">
+      <div className='relative flex flex-col gap-5'>
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="brand-fill-interactive inline-flex h-14 w-14 items-center justify-center rounded-2xl text-2xl shadow-lg">
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-4'>
+            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
               {icon}
             </div>
-            <h3 className="text-lg font-semibold">{name}</h3>
+            <h3 className='text-lg font-semibold'>{name}</h3>
           </div>
           <StatusBadge status={status} />
         </div>
 
         {/* Description */}
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className='text-sm leading-relaxed text-muted-foreground'>
           {description}
         </p>
 
         {/* Features */}
-        <ul className="grid grid-cols-2 gap-2">
+        <ul className='grid grid-cols-2 gap-2'>
           {features.map((feature) => (
             <li
               key={feature}
-              className="flex items-center gap-2 text-sm text-muted-foreground"
+              className='flex items-center gap-2 text-sm text-muted-foreground'
             >
-              <Check className="h-4 w-4 shrink-0 text-success" />
+              <Check className='size-4 shrink-0 text-success' />
               {feature}
             </li>
           ))}
         </ul>
 
         {/* Action */}
-        <div className="pt-2">
+        <div className='pt-2'>
           <ActionButton
             status={status}
             onConnect={onConnect}

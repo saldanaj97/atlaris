@@ -1,8 +1,9 @@
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+
 import {
   NOTES_PROMPT_MAX_CHARS,
   TOPIC_PROMPT_MAX_CHARS,
 } from '@/features/ai/constants';
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 type PromptSchemaField = {
   readonly name: string;

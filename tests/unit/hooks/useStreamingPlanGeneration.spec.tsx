@@ -1,7 +1,8 @@
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+
+import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
 
 const encoder = new TextEncoder();
 

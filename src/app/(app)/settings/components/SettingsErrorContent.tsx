@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { clientLogger } from '@/lib/logging/client';
+import { useEffect } from 'react';
 
 type SettingsErrorContentProps = {
   error: Error & { digest?: string };
@@ -35,13 +35,13 @@ export function SettingsErrorContent({
 
   return (
     <>
-      <PageHeader title={title} titleAs="h2" subtitle={subtitle} />
-      <Card className="p-6" role="alert">
-        <h3 className="mb-2 text-xl font-semibold text-red-600">
+      <PageHeader title={title} titleAs='h2' subtitle={subtitle} />
+      <Card className='p-6' role='alert'>
+        <h3 className='mb-2 text-xl font-semibold text-red-600'>
           {errorTitle}
         </h3>
-        <p className="mb-4 text-muted-foreground">{errorMessage}</p>
-        <Button onClick={reset} variant="default">
+        <p className='mb-4 text-muted-foreground'>{errorMessage}</p>
+        <Button onClick={reset} variant='default'>
           Try Again
         </Button>
       </Card>

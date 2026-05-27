@@ -15,6 +15,11 @@ type VitestRunOptions = {
   changed?: boolean;
 };
 
+type VitestConfigRunOptions = Omit<VitestRunOptions, 'project'> & {
+  config: string;
+  passWithNoTests?: boolean;
+};
+
 export async function runCommand({
   command,
   args,
@@ -60,6 +65,43 @@ export async function runVitest({
 
   if (changed) {
     args.push('--changed');
+  }
+
+  args.push(testPath, ...extraArgs);
+
+  console.log(`Running: pnpm ${args.join(' ')}`);
+
+  return await runCommand({
+    command: 'pnpm',
+    args,
+    env: {
+      NODE_ENV: 'test',
+      ...env,
+    },
+  });
+}
+
+export async function runVitestConfig({
+  config,
+  testPath,
+  extraArgs = [],
+  env,
+  watch = false,
+  changed = false,
+  passWithNoTests = false,
+}: VitestConfigRunOptions): Promise<number> {
+  const args = ['vitest', '--config', config];
+
+  if (!watch) {
+    args.push('run');
+  }
+
+  if (changed) {
+    args.push('--changed');
+  }
+
+  if (passWithNoTests) {
+    args.push('--passWithNoTests');
   }
 
   args.push(testPath, ...extraArgs);

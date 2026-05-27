@@ -8,10 +8,6 @@
  * require the re-apply workaround until verified there.
  */
 
-import { eq, type SQLWrapper, sql } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-import { learningPlans } from '@supabase/schema';
 import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import {
@@ -19,6 +15,9 @@ import {
   createRlsDbForUser,
 } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { learningPlans } from '@supabase/schema';
+import { eq, type SQLWrapper, sql } from 'drizzle-orm';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const LOG_PREFIX = '[rls-claim-stability]';
 

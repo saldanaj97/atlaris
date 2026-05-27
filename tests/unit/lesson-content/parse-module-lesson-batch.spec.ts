@@ -1,13 +1,11 @@
-import { randomUUID } from 'node:crypto';
-
-import { describe, expect, it } from 'vitest';
-
 import { ParserError } from '@/features/ai/parser';
-import { MAX_LESSON_BLOCK_TEXT_LENGTH } from '@supabase/schema/constants';
 import {
   parseModuleLessonBatchFromStream,
   parseModuleLessonBatchText,
 } from '@/features/lesson-content/parse-module-lesson-batch';
+import { MAX_LESSON_BLOCK_TEXT_LENGTH } from '@supabase/schema/constants';
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
 
 const taskA = randomUUID();
 const taskB = randomUUID();

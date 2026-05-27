@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import type { PlanGenerationSessionEvent } from '@/features/plans/session/session-events';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
 import { parseSsePlanEventLine } from '@/features/plans/session/parse-sse-plan-event';
-import type { PlanGenerationSessionEvent } from '@/features/plans/session/session-events';
 import { consumePlanGenerationSseStream } from '@/features/plans/session/stream-reader';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
+import { useCallback, useRef, useState } from 'react';
 
 type SessionStatus =
   | 'idle'

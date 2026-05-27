@@ -1,8 +1,8 @@
 import { getPlanSchedule } from '@/features/scheduling/schedule-api';
 import { learningPlans, modules, tasks, users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
 
 describe('getPlanSchedule API', () => {
   let testUserId: string;

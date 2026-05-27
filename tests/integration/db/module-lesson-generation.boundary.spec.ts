@@ -1,7 +1,8 @@
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
-import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
+import { getCurrentMonth } from '@/features/billing/usage-metrics';
+import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -12,7 +13,6 @@ import {
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
 
 describe('module lesson generation boundary (integration)', () => {
   afterEach(async () => {

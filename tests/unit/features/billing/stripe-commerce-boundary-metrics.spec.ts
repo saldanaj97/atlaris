@@ -8,9 +8,10 @@ vi.mock('@/lib/observability/metrics', () => ({
   countMetric: vi.fn(),
 }));
 
-import { DefaultStripeCommerceBoundary } from '@/features/billing/stripe-commerce/boundary-impl';
 import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+
 import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import { DefaultStripeCommerceBoundary } from '@/features/billing/stripe-commerce/boundary-impl';
 import { countMetric } from '@/lib/observability/metrics';
 
 function createGateway(): StripeGateway {

@@ -17,13 +17,13 @@ export function MarketingSectionLayout({
   children,
 }: MarketingSectionLayoutProps): JSX.Element {
   return (
-    <section className="relative py-24 lg:py-32" aria-labelledby={headingId}>
-      <div className="relative z-10 mx-auto max-w-screen-xl px-6">
-        <div className="mb-16 text-center">
-          <h2 id={headingId} className="marketing-h2 mb-4 text-foreground">
+    <section className='relative py-24 lg:py-32' aria-labelledby={headingId}>
+      <div className='relative z-10 mx-auto max-w-screen-xl px-6'>
+        <div className='mb-16 text-center'>
+          <h2 id={headingId} className='marketing-h2 mb-4 text-foreground'>
             {title}
           </h2>
-          <p className="marketing-subtitle mx-auto max-w-2xl">{subtitle}</p>
+          <p className='marketing-subtitle mx-auto max-w-2xl'>{subtitle}</p>
         </div>
 
         {children}

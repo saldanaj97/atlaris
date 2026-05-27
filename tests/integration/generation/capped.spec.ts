@@ -1,3 +1,7 @@
+import { setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
+import { createMockProvider } from '../../helpers/mockProvider';
+import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
@@ -5,13 +9,9 @@ import {
   modules,
   tasks,
 } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db } from '@supabase/service-role';
-import { setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 
 const authUserId = buildTestAuthUserId('generation-capped');
 const authEmail = buildTestEmail(authUserId);

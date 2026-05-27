@@ -1,4 +1,3 @@
-import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-projection/completion-metrics';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
@@ -8,6 +7,8 @@ import type {
   Task,
   TaskProgress,
 } from '@/shared/types/db.types';
+
+import { computeCompletionMetricsFromNestedModules } from '@/features/plans/read-projection/completion-metrics';
 
 type ModuleTasks = LearningPlanDetail['plan']['modules'][number]['tasks'];
 

@@ -1,10 +1,8 @@
-import { sql } from 'drizzle-orm';
-
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL } from '../../../supabase/privileges/authenticated-table-privileges';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/users-authenticated-update-columns';
-import { db } from '@supabase/service-role';
-
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
+import { db } from '@supabase/service-role';
+import { sql } from 'drizzle-orm';
 
 /**
  * Ensure RLS roles exist and have the necessary permissions to query tables.

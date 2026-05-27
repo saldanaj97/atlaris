@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
-import { Suspense } from 'react';
 
 import { ModuleDetailPageError } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/Error';
 import {
   ModuleDetailContent,
   ModuleDetailContentSkeleton,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleDetailContent';
+import { Suspense } from 'react';
 
 interface ModulePageProps {
   params: Promise<{ id: string; moduleId: string }>;

@@ -1,7 +1,3 @@
-import { resolveUserTier } from '@/features/billing/tier';
-import { getRequestSearchParams } from '@/lib/api/request-url';
-import { logger } from '@/lib/logging/logger';
-
 import type { PlansDbClient } from '@/features/plans/api/route-context';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
@@ -24,6 +20,9 @@ import {
   type UnhandledGenerationErrorHandler,
   classifyUnhandledGenerationError,
 } from './stream-cleanup-policy';
+import { resolveUserTier } from '@/features/billing/tier';
+import { getRequestSearchParams } from '@/lib/api/request-url';
+import { logger } from '@/lib/logging/logger';
 
 /** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
 export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [

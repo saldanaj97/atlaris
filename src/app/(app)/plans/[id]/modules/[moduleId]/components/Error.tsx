@@ -1,8 +1,7 @@
-import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 interface ModuleDetailPageErrorProps {
   message?: string;
@@ -25,21 +24,21 @@ export function ModuleDetailPageError({
 }: ModuleDetailPageErrorProps) {
   return (
     <div
-      role="alert"
-      className="flex min-h-[60vh] flex-col items-center justify-center p-4"
+      role='alert'
+      className='flex min-h-[60vh] flex-col items-center justify-center p-4'
     >
       <Surface
-        padding="none"
-        className="max-w-lg rounded-3xl p-8 text-center shadow-md"
+        padding='none'
+        className='max-w-lg rounded-3xl p-8 text-center shadow-md'
       >
-        <h1 className="mb-4 text-2xl font-bold text-red-600 dark:text-red-400">
+        <h1 className='mb-4 text-2xl font-bold text-red-600 dark:text-red-400'>
           Error Loading Module
         </h1>
-        <p className="mb-6 max-w-md text-foreground/90">
+        <p className='mb-6 max-w-md text-foreground/90'>
           {message ??
             'There was an error loading the module. Please try again later.'}
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className='flex flex-col gap-3 sm:flex-row sm:justify-center'>
           {planId && (
             <Button asChild>
               <Link href={`/plans/${planId}`}>
@@ -48,8 +47,8 @@ export function ModuleDetailPageError({
               </Link>
             </Button>
           )}
-          <Button asChild variant="outline">
-            <Link href="/plans">View All Plans</Link>
+          <Button asChild variant='outline'>
+            <Link href='/plans'>View All Plans</Link>
           </Button>
         </div>
       </Surface>

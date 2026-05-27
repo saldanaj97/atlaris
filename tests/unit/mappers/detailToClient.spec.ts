@@ -1,8 +1,3 @@
-import { describe, expect, it } from 'vitest';
-import {
-  toClientGenerationAttempts,
-  toClientPlanDetail,
-} from '@/features/plans/read-projection/detail-dto';
 import type {
   ModuleWithTasks,
   TaskWithRelations,
@@ -13,6 +8,7 @@ import type {
   LearningPlanDetail,
   TaskProgress,
 } from '@/shared/types/db.types';
+
 import {
   buildGenerationAttempt,
   buildModule,
@@ -22,6 +18,11 @@ import {
   buildTask,
   buildTaskResource,
 } from '../../fixtures/plan-detail';
+import {
+  toClientGenerationAttempts,
+  toClientPlanDetail,
+} from '@/features/plans/read-projection/detail-dto';
+import { describe, expect, it } from 'vitest';
 
 describe('mapDetailToClient', () => {
   it('should map complete plan detail to client format', () => {

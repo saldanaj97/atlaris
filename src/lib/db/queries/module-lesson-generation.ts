@@ -1,24 +1,24 @@
-import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
+import type { DbClient } from '@/lib/db/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type {
   LessonContent,
   ModuleLessonBatchProviderOutput,
   ModuleLessonGenerationMetadata,
 } from '@/shared/types/lesson-content.types';
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
-import { learningPlans, modules, tasks } from '@supabase/schema';
-import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
+import {
+  canonicalUsageToRecordParams,
+  recordUsageInTx,
+} from '../../../../supabase/usage';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
-import type { DbClient } from '@/lib/db/types';
-import {
-  canonicalUsageToRecordParams,
-  recordUsageInTx,
-} from '../../../../supabase/usage';
+import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
+import { learningPlans, modules, tasks } from '@supabase/schema';
+import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
+import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
 type GenerationDb = Pick<
   DbClient,
@@ -164,6 +164,14 @@ export type LessonGenerationClaimResult =
   | { readonly kind: 'in_flight' }
   | { readonly kind: 'not_found' };
 
+export type PersistModuleLessonWorkflowRunInput = {
+  readonly userId: string;
+  readonly planId: string;
+  readonly moduleId: string;
+  readonly runId: string;
+  readonly startedAt?: string;
+};
+
 function truncateGenerationError(message: string): string {
   return message.slice(0, MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH);
 }
@@ -241,6 +249,42 @@ async function readScopedModuleStatus(
     .limit(1);
 
   return row?.status ?? null;
+}
+
+/**
+ * Records Workflow SDK run metadata on a module already in `generating` state.
+ */
+export async function persistModuleLessonWorkflowRunMetadata(
+  dbClient: GenerationDb,
+  input: PersistModuleLessonWorkflowRunInput,
+): Promise<void> {
+  const metadata = ModuleLessonGenerationMetadataSchema.parse({
+    version: 1,
+    workflow: {
+      provider: 'workflow-sdk',
+      runId: input.runId,
+      startedAt: input.startedAt,
+    },
+  });
+
+  const updated = await dbClient
+    .update(modules)
+    .set({ lessonGenerationMetadata: metadata })
+    .where(
+      and(
+        eq(modules.id, input.moduleId),
+        eq(modules.planId, input.planId),
+        eq(modules.lessonGenerationStatus, 'generating'),
+        moduleOwnedByUser(input.userId),
+      ),
+    )
+    .returning({ id: modules.id });
+
+  if (updated.length !== 1) {
+    throw new Error(
+      'Module lesson workflow metadata update did not match exactly one row',
+    );
+  }
 }
 
 /**

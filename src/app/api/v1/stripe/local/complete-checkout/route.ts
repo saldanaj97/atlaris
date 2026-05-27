@@ -1,3 +1,5 @@
+import type { PlainHandler } from '@/lib/api/auth';
+
 import { isValidRedirectUrl } from '@/app/api/v1/stripe/_shared/redirect';
 import {
   isLocalPriceId,
@@ -7,7 +9,6 @@ import {
   executeLocalSubscriptionReplay,
   isLocalStripeCompletionRouteEnabled,
 } from '@/features/billing/stripe-commerce/factory';
-import type { PlainHandler } from '@/lib/api/auth';
 import { ValidationError } from '@/lib/api/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { appEnv } from '@/lib/config/env';

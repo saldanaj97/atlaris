@@ -1,5 +1,6 @@
-import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
+
+import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
 
 export const JOB_TYPES = JOB_TYPE_MAP;
 
@@ -13,8 +14,16 @@ export interface JobErrorHistoryEntry {
   timestamp: string;
 }
 
+export interface PlanRegenerationWorkflowMetadata {
+  provider: 'workflow-sdk';
+  runId: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface PlanRegenerationJobData {
   planId: string;
+  workflow?: PlanRegenerationWorkflowMetadata;
   overrides?: Partial<{
     topic: string;
     notes: string | null;

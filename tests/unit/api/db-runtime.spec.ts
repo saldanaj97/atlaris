@@ -1,8 +1,8 @@
+import { makeDbClient } from '../../fixtures/db-mocks';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDb, MissingRequestDbContextError } from '@supabase/runtime';
 import { db as serviceDb } from '@supabase/service-role';
-import { makeDbClient } from '../../fixtures/db-mocks';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 const ORIGINAL_VITEST_WORKER_ID = process.env.VITEST_WORKER_ID;

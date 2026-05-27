@@ -1,8 +1,9 @@
-import { differenceInDays } from 'date-fns';
-import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
-import { toValidDate } from '@/lib/date/relative-time';
 import type { PlanSummary } from '@/shared/types/db.types';
+
+import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
+import { toValidDate } from '@/lib/date/relative-time';
+import { differenceInDays } from 'date-fns';
 
 /**
  * UI-facing plan status for list/dashboard: canonical summary status plus

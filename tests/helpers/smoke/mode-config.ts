@@ -1,10 +1,10 @@
+import type { SmokeStatePayload } from './state-file';
+
 /**
  * Single source of truth for anon vs auth smoke launcher env.
  * Ports match Phase 2 Playwright `baseURL` expectations — change only here.
  */
 import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
-
-import type { SmokeStatePayload } from './state-file';
 
 /** Anon Playwright project / app server port */
 export const SMOKE_ANON_PORT = 3100 as const;

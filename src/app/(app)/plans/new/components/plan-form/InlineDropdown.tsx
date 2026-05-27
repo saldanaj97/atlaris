@@ -1,10 +1,11 @@
 'use client';
 
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
+import type { CSSProperties, JSX } from 'react';
+
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
-import type { CSSProperties, JSX } from 'react';
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 
 type DropdownVariant = 'primary';
@@ -79,7 +80,7 @@ export function InlineDropdown<TValue extends string>({
 
   return (
     <div
-      className="relative w-full sm:w-auto"
+      className='relative w-full sm:w-auto'
       style={
         {
           '--inline-dropdown-width': triggerWidth
@@ -90,15 +91,15 @@ export function InlineDropdown<TValue extends string>({
     >
       <div
         ref={sizerRef}
-        aria-hidden="true"
-        className="pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap"
+        aria-hidden='true'
+        className='pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap'
       >
         {icon}
         <span
           data-label={displayLabel}
-          className="after:content-[attr(data-label)]"
+          className='after:content-[attr(data-label)]'
         />
-        <ChevronDown className="size-3.5" />
+        <ChevronDown className='size-3.5' />
       </div>
       <SelectPrimitive.Root
         value={value ?? ''}
@@ -127,15 +128,15 @@ export function InlineDropdown<TValue extends string>({
           {icon}
           <SelectPrimitive.Value placeholder={placeholder} />
           <SelectPrimitive.Icon asChild>
-            <ChevronDown className="size-3.5 shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+            <ChevronDown className='size-3.5 shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180' />
           </SelectPrimitive.Icon>
         </SelectPrimitive.Trigger>
 
         <SelectPrimitive.Portal>
           <SelectPrimitive.Content
-            position="popper"
+            position='popper'
             sideOffset={8}
-            align="start"
+            align='start'
             className={cn(
               'z-50 min-w-[220px] overflow-hidden rounded-2xl border bg-popover shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
@@ -145,7 +146,7 @@ export function InlineDropdown<TValue extends string>({
               styles.dropdown,
             )}
           >
-            <SelectPrimitive.Viewport className="p-1.5">
+            <SelectPrimitive.Viewport className='p-1.5'>
               {options.map((option) => (
                 <SelectPrimitive.Item
                   key={option.value}
@@ -157,17 +158,17 @@ export function InlineDropdown<TValue extends string>({
                   )}
                 >
                   <SelectPrimitive.ItemText>
-                    <span className="block text-sm font-medium">
+                    <span className='block text-sm font-medium'>
                       {option.label}
                     </span>
                   </SelectPrimitive.ItemText>
                   {option.description && (
-                    <span className="block text-xs text-muted-foreground">
+                    <span className='block text-xs text-muted-foreground'>
                       {option.description}
                     </span>
                   )}
-                  <SelectPrimitive.ItemIndicator className="absolute top-1/2 right-3 -translate-y-1/2 text-primary">
-                    <Check className="size-4" />
+                  <SelectPrimitive.ItemIndicator className='absolute top-1/2 right-3 -translate-y-1/2 text-primary'>
+                    <Check className='size-4' />
                   </SelectPrimitive.ItemIndicator>
                 </SelectPrimitive.Item>
               ))}

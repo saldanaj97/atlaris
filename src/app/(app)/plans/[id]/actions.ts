@@ -1,5 +1,9 @@
 'use server';
 
+import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { planError, planSuccess } from './helpers';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import {
   applyTaskProgressUpdates,
@@ -8,10 +12,6 @@ import {
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 import { revalidatePath } from 'next/cache';
-import { planError, planSuccess } from './helpers';
-
-import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
-import type { ProgressStatus } from '@/shared/types/db.types';
 
 interface BatchUpdateTaskProgressInput {
   planId: string;
@@ -22,17 +22,15 @@ interface BatchUpdateTaskProgressInput {
  * Server action to batch update multiple task progress records from the plan overview page.
  * Delegates validation, scope checks, persistence, and path selection to `applyTaskProgressUpdates`.
  *
- * RLS enforcement note:
- * - RLS policies exist and are tested, but request/server actions currently use
- *   the service-role Drizzle client via getDb() unless a request-scoped RLS client
- *   is injected into the request context.
- * - Until an RLS-capable Drizzle client is available and wired, request-layer code
- *   must validate ownership in queries (e.g. batch updates via `applyTaskProgressUpdates`).
+ * Auth and RLS boundary:
+ * - Wrapped by `requestBoundary.action()`, which runs `withServerActionContext()` before the callback.
+ * - That boundary authenticates via `getEffectiveAuthUserId({ strict: true })` and, outside test runtime,
+ *   installs a request-scoped RLS Drizzle client into request context (`runWithAuthenticatedContext`).
+ * - The callback receives `actor` and `db` from the boundary; pass `db` to query functions instead of
+ *   calling `getDb()` ad hoc inside the action.
+ * - Query-layer ownership checks (e.g. in `applyTaskProgressUpdates`) remain required for defense in depth.
  *
- * Source of truth:
- * - supabase/runtime.ts — getDb() returns the request-scoped DB when present,
- *   otherwise the service-role DB.
- * - src/lib/api/auth.ts — commentary on current non-RLS behavior in request handlers.
+ * React Doctor note: `server-auth-actions` is a false positive for actions using this wrapper.
  */
 export async function batchUpdateTaskProgressAction({
   planId,
@@ -77,6 +75,7 @@ export async function batchUpdateTaskProgressAction({
 
 /**
  * Server action to fetch plan detail data with RLS enforcement.
+ * Uses `requestBoundary.action()` for auth and a request-scoped RLS `db` (see batch action comment).
  * Returns a typed result with explicit error codes for proper handling.
  *
  * Error codes:

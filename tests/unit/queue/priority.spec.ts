@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
 import {
   computeJobPriority,
   isPriorityTopic,
   PRIORITY_TOPICS,
 } from '@/features/jobs/priority';
+import { describe, expect, it } from 'vitest';
 
 describe('computeJobPriority', () => {
   it('gives higher base priority to paid tiers', () => {

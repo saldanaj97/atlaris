@@ -16,9 +16,9 @@ export default function PlanDetailError({ error, reset }: ErrorProps) {
     <PlanRouteErrorContent
       error={error}
       reset={reset}
-      logMessage="Plan detail error:"
-      title="Error Loading Plan"
-      message="Something went wrong while loading this plan. This could be a temporary issue."
+      logMessage='Plan detail error:'
+      title='Error Loading Plan'
+      message='Something went wrong while loading this plan. This could be a temporary issue.'
     />
   );
 }

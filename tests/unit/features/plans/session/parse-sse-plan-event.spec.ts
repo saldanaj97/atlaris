@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
 import {
   type ParseSsePlanEventHandlers,
   parseSsePlanEventLine,
 } from '@/features/plans/session/parse-sse-plan-event';
+import { describe, expect, it, vi } from 'vitest';
 
 function createHandlers(): ParseSsePlanEventHandlers {
   return {

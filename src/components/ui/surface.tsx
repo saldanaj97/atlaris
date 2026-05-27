@@ -1,7 +1,6 @@
+import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
-
-import { cn } from '@/lib/utils';
 
 const surfaceVariants = cva(
   'rounded-2xl border text-panel-foreground transition-[box-shadow,background-color]',
@@ -37,7 +36,7 @@ function Surface({
 }: React.ComponentProps<'div'> & VariantProps<typeof surfaceVariants>) {
   return (
     <div
-      data-slot="surface"
+      data-slot='surface'
       className={cn(surfaceVariants({ variant, padding }), className)}
       {...props}
     />

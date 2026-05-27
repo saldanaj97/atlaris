@@ -1,16 +1,20 @@
-import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
-import { countMetric } from '@/lib/observability/metrics';
-import { PROGRESS_STATUSES } from '@/shared/types/db';
-import type { ProgressStatus } from '@/shared/types/db.types';
-
 import type {
   ApplyTaskProgressUpdatesInput,
   TaskProgressUpdate,
   TaskProgressUpdateResult,
   TaskProgressVisibleState,
 } from './types';
+import type { ProgressStatus } from '@/shared/types/db.types';
+
+import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
+import { countMetric } from '@/lib/observability/metrics';
+import { PROGRESS_STATUSES } from '@/shared/types/db';
 
 export const TASK_PROGRESS_MAX_BATCH = 500;
+
+const PROGRESS_STATUS_SET: ReadonlySet<ProgressStatus> = new Set(
+  PROGRESS_STATUSES,
+);
 
 function assertNonEmpty(value: string | undefined, message: string) {
   if (!value || value.trim().length === 0) {
@@ -61,7 +65,7 @@ export function validateTaskProgressBatchInput(params: {
       taskId,
       `A task id is required to update progress for update at index ${index} (taskId="${taskId || '<missing>'}", status="${update.status}").`,
     );
-    if (!PROGRESS_STATUSES.includes(update.status)) {
+    if (!PROGRESS_STATUS_SET.has(update.status)) {
       throw new Error(
         `Invalid progress status for update at index ${index} (taskId="${taskId}", status="${update.status}").`,
       );

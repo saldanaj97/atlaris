@@ -1,3 +1,9 @@
+import type {
+  JobEnqueueResult,
+  JobsDbClient,
+} from '@/lib/db/queries/types/jobs.types';
+
+import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
@@ -5,11 +11,6 @@ import {
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
 import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import type {
-  JobEnqueueResult,
-  JobsDbClient,
-} from '@/lib/db/queries/types/jobs.types';
-import { jobQueue } from '@supabase/schema';
 import { decideJobRetry } from '@/shared/retry-policy';
 import {
   JOB_TYPES,
@@ -18,9 +19,9 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
-import { jobQueueSelect, runJobMutationIfEditable } from './shared';
+import { jobQueue } from '@supabase/schema';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 
 /**
  * Inserts a new job into the queue. For plan regeneration jobs with a planId,
@@ -145,6 +146,79 @@ export async function claimNextPendingJob(
       .returning(jobQueueSelect);
 
     return claimed ? mapRowToJob(claimed) : null;
+  });
+}
+
+/**
+ * Claims a specific pending regeneration job by id. Returns null when the job is
+ * missing, not pending, or not owned by the expected user/plan.
+ */
+export async function claimRegenerationJobById(
+  jobId: string,
+  expected: { planId: string; userId: string },
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+  const startTime = new Date();
+
+  return client.transaction(async (tx) => {
+    const [candidate] = await tx
+      .select()
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.status, 'pending'),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+          eq(jobQueue.planId, expected.planId),
+          eq(jobQueue.userId, expected.userId),
+        ),
+      )
+      .limit(1)
+      .for('update');
+
+    if (!candidate) {
+      return null;
+    }
+
+    const [claimed] = await tx
+      .update(jobQueue)
+      .set({
+        status: 'processing',
+        startedAt: startTime,
+        updatedAt: startTime,
+      })
+      .where(eq(jobQueue.id, jobId))
+      .returning(jobQueueSelect);
+
+    return claimed ? mapRowToJob(claimed) : null;
+  });
+}
+
+export async function updateRegenerationJobPayload(
+  jobId: string,
+  payload: JobPayload,
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+
+  return runJobMutationIfEditable(client, jobId, async (tx) => {
+    const updatedAt = new Date();
+    const [updated] = await tx
+      .update(jobQueue)
+      .set({
+        payload,
+        updatedAt,
+      })
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+        ),
+      )
+      .returning(jobQueueSelect);
+
+    return updated ? mapRowToJob(updated) : null;
   });
 }
 

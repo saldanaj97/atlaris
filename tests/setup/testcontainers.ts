@@ -14,22 +14,6 @@
  */
 
 import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import { execSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-import { resetServiceRoleClientForTests } from '@supabase/service-role';
-import {
-  bootstrapDatabase,
-  grantRlsPermissions,
-} from '@tests/helpers/db/bootstrap';
-import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
-
-import {
   buildTestDbRuntimeState,
   createAdminDatabaseUrl,
   createDatabaseUrl,
@@ -38,6 +22,20 @@ import {
   getBaseDbName,
   getTemplateDbName,
 } from './db-provisioning';
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
+import {
+  PostgreSqlContainer,
+  type StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
+import {
+  bootstrapDatabase,
+  grantRlsPermissions,
+} from '@tests/helpers/db/bootstrap';
+import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 let container: StartedPostgreSqlContainer | null = null;
 const testDbPassword = randomUUID();

@@ -1,12 +1,12 @@
+import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
+
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
 import {
   extendZodWithOpenApi,
   OpenAPIRegistry,
   OpenApiGeneratorV3,
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
-
-import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
-import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 // Initialize OpenAPI extension for Zod (must be called once)
 extendZodWithOpenApi(z);

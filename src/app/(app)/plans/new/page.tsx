@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
+
 import { CreatePlanPageClient } from '@/app/(app)/plans/new/components/CreatePlanPageClient';
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function CreateNewPlanPage(): Promise<JSX.Element> {
   return (
-    <div className="flex flex-col items-center pt-6 sm:pt-10">
+    <div className='flex flex-col items-center pt-6 sm:pt-10'>
       <CreatePlanPageClient />
     </div>
   );

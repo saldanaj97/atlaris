@@ -16,9 +16,9 @@ export default function BillingError({ error, reset }: ErrorProps) {
     <SettingsErrorContent
       error={error}
       reset={reset}
-      logMessage="Billing page error:"
-      title="Billing"
-      errorTitle="Error Loading Billing Information"
+      logMessage='Billing page error:'
+      title='Billing'
+      errorTitle='Error Loading Billing Information'
       errorMessage="We couldn't load your billing information. This could be a temporary issue."
     />
   );

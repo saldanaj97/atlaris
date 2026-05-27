@@ -1,7 +1,7 @@
-import * as Sentry from '@sentry/nextjs';
-
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
+
+import * as Sentry from '@sentry/nextjs';
 
 type ProviderResultWithMetadata = {
   metadata: ProviderMetadata;

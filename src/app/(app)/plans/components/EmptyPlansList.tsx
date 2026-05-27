@@ -1,3 +1,5 @@
+import type { FilterStatus } from '@/features/plans/read-projection/types';
+
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -7,7 +9,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import type { FilterStatus } from '@/features/plans/read-projection/types';
 import { FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -25,7 +26,7 @@ export function EmptyPlansList({
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant='icon'>
           <FileText />
         </EmptyMedia>
         <EmptyTitle>No Plans Found</EmptyTitle>
@@ -37,7 +38,7 @@ export function EmptyPlansList({
       </EmptyHeader>
       <EmptyContent>
         <Button asChild>
-          <Link href="/plans/new">
+          <Link href='/plans/new'>
             <Plus />
             New Plan
           </Link>

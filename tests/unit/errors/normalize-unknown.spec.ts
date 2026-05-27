@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
 import {
   coerceUnknownToMessage,
   omitCircularFields,
   safeStringifyUnknown,
   unknownThrownCore,
 } from '@/lib/errors/normalize-unknown';
+import { describe, expect, it } from 'vitest';
 
 describe('normalize-unknown', () => {
   describe('unknownThrownCore', () => {

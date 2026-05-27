@@ -1,9 +1,10 @@
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 /**
  * Canonical local billing catalog — price ids, tier mapping, cents, display strings.
  * Used when STRIPE_LOCAL_MODE is enabled (development/test only).
  */
 import { formatAmount } from '@/features/billing/money';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export const LOCAL_PRICE_IDS = {
   starterMonthly: 'price_local_starter_monthly',

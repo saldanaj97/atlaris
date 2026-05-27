@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { logger } from '@/lib/logging/logger';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('withErrorBoundary', () => {
   beforeEach(() => {

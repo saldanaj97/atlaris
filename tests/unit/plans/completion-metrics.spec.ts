@@ -1,6 +1,3 @@
-import { createId } from '@tests/fixtures/ids';
-import { buildModuleRows, buildPlan } from '@tests/fixtures/plan-detail';
-import { describe, expect, it } from 'vitest';
 import {
   accumulateLightweightModuleMetricsRowInPlace,
   computeCompletionMetricsFromNestedModules,
@@ -8,6 +5,9 @@ import {
   countCompletedModulesFromFlatTasks,
 } from '@/features/plans/read-projection/completion-metrics';
 import { buildPlanSummaries } from '@/features/plans/read-projection/summary-projection';
+import { createId } from '@tests/fixtures/ids';
+import { buildModuleRows, buildPlan } from '@tests/fixtures/plan-detail';
+import { describe, expect, it } from 'vitest';
 
 type SummaryTaskRow = {
   id: string;

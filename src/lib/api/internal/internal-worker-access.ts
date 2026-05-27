@@ -1,10 +1,11 @@
+import type { Logger } from '@/lib/logging/logger';
+
 import { AuthError, ServiceUnavailableError } from '@/lib/api/errors';
 import {
   readInternalWorkerToken,
   tokensMatch,
 } from '@/lib/api/internal/internal-worker-token';
 import { appEnv } from '@/lib/config/env';
-import type { Logger } from '@/lib/logging/logger';
 
 export type AssertInternalWorkerAccessArgs = {
   request: Request;

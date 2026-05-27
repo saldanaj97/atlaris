@@ -19,6 +19,17 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 | `REGENERATION_MAX_JOBS_PER_DRAIN` | Max jobs processed per drain call             | Set to a safe bounded value |
 | `REGENERATION_WORKER_TOKEN`       | Shared bearer token for internal drain auth   | Required                    |
 | `REGENERATION_INLINE_PROCESSING`  | Inline processing fallback from enqueue route | `false` in production       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default) |
+
+## Workflow-backed regeneration
+
+When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
+
+- Successful enqueue calls `startPlanRegenerationWorkflow()` (fire-and-forget).
+- The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
+- Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
+
+Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See `docs/architecture/workflow-sdk.md`.
 
 ## Triggering the Worker
 

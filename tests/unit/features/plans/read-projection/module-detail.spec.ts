@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import type { ModuleDetailRows } from '@/lib/db/queries/types/modules.types';
 
 import {
   buildModuleDetailNavItems,
   buildModuleDetailReadModel,
 } from '@/features/plans/read-projection/module-detail';
-import type { ModuleDetailRows } from '@/lib/db/queries/types/modules.types';
+import { describe, expect, it } from 'vitest';
 
 const BASE = new Date('2025-06-01T00:00:00.000Z');
 

@@ -1,8 +1,9 @@
+import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
+import type { PlainHandler } from '@/lib/api/auth';
+
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
-import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
-import type { PlainHandler } from '@/lib/api/auth';
 import {
   AppError,
   NotFoundError,

@@ -1,7 +1,12 @@
 'use client';
 
+import type {
+  ModuleDetailModule,
+  ModuleDetailTask,
+} from '@/features/plans/read-projection/types';
+import type { ProgressStatus } from '@/shared/types/db.types';
 import type { JSX } from 'react';
-import { useMemo } from 'react';
+
 import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { ModuleCompletePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleCompletePanel';
@@ -9,11 +14,7 @@ import { useModuleLessonGeneration } from '@/app/(app)/plans/[id]/modules/[modul
 import { Accordion } from '@/components/ui/accordion';
 import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
-import type {
-  ModuleDetailModule,
-  ModuleDetailTask,
-} from '@/features/plans/read-projection/types';
-import type { ProgressStatus } from '@/shared/types/db.types';
+import { useMemo } from 'react';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -46,9 +47,12 @@ export function ModuleLessonsClient({
 
   const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
     const total = lessons.length;
-    const completed = lessons.filter(
-      (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
-    ).length;
+    let completed = 0;
+    for (const lesson of lessons) {
+      if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
+        completed++;
+      }
+    }
 
     return {
       completedLessons: completed,
@@ -65,9 +69,9 @@ export function ModuleLessonsClient({
   return (
     <>
       <section>
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-foreground">Lessons</h2>
-          <span className="text-sm text-muted-foreground">
+        <div className='mb-6 flex items-center justify-between'>
+          <h2 className='text-2xl font-semibold text-foreground'>Lessons</h2>
+          <span className='text-sm text-muted-foreground'>
             {completedLessons}/{totalLessons} completed
           </span>
         </div>
@@ -82,17 +86,17 @@ export function ModuleLessonsClient({
         />
 
         {lessons.length === 0 ? (
-          <Surface variant="default" padding="none" className="p-8 text-center">
-            <p className="text-muted-foreground">
+          <Surface variant='default' padding='none' className='p-8 text-center'>
+            <p className='text-muted-foreground'>
               No lessons available for this module.
             </p>
           </Surface>
         ) : (
           <Accordion
-            type="single"
+            type='single'
             collapsible
             defaultValue={firstUnlockedIncompleteLessonId}
-            className="space-y-4"
+            className='space-y-4'
           >
             {lessons.map((lesson, index) => {
               const locked = lessonLocks[index] ?? true;

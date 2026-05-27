@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
-
 import { createGetAttemptCap } from '@/features/ai/generation-policy';
 import {
   DEFAULT_ATTEMPT_CAP,
   resolveAttemptCap,
 } from '@/shared/constants/generation';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('generation policy attempt-cap wiring', () => {
   it('delegates getAttemptCap to the injected reader', () => {

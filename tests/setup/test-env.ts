@@ -1,5 +1,3 @@
-import { resetServiceRoleClientForTests } from '@supabase/service-role';
-
 import {
   createAdminDatabaseUrl,
   createDatabaseUrl,
@@ -10,6 +8,7 @@ import {
   shouldLogTestDbDebug,
   workerDatabaseExists,
 } from './db-provisioning';
+import { resetServiceRoleClientForTests } from '@supabase/service-role';
 
 await setupWorkerDatabaseEnv();
 

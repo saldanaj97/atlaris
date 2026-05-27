@@ -1,7 +1,7 @@
+import type { DbClient } from '@/lib/db/types';
+
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
-
-import type { DbClient } from '@/lib/db/types';
 
 type RequestContext = {
   correlationId: string;

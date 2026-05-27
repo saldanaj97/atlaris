@@ -1,8 +1,3 @@
-import {
-  accumulateLightweightModuleMetricsRowInPlace,
-  computeTaskRowCompletionMetrics,
-  countCompletedModulesFromFlatTasks,
-} from '@/features/plans/read-projection/completion-metrics';
 import type {
   LightweightModuleMetricsRow,
   LightweightPlanListRow,
@@ -15,6 +10,12 @@ import type {
   Module,
   PlanSummary,
 } from '@/shared/types/db.types';
+
+import {
+  accumulateLightweightModuleMetricsRowInPlace,
+  computeTaskRowCompletionMetrics,
+  countCompletedModulesFromFlatTasks,
+} from '@/features/plans/read-projection/completion-metrics';
 
 type LightweightPlanMetrics = Pick<
   LightweightPlanSummary,

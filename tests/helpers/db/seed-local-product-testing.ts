@@ -1,15 +1,14 @@
-/**
- * Inserts the canonical local product-testing user after migrations (service-role / postgres).
- * Idempotent: ON CONFLICT DO NOTHING on auth_user_id.
- */
-import postgres from 'postgres';
-
 import {
   LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
   LOCAL_PRODUCT_TESTING_SEED_EMAIL,
   LOCAL_PRODUCT_TESTING_SEED_NAME,
   LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID,
 } from '@/lib/config/local-product-testing';
+/**
+ * Inserts the canonical local product-testing user after migrations (service-role / postgres).
+ * Idempotent: ON CONFLICT DO NOTHING on auth_user_id.
+ */
+import postgres from 'postgres';
 
 export async function seedLocalProductTestingUser(
   connectionUrl: string,

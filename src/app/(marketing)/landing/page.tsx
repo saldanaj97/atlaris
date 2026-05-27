@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 
+import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 import { FeaturesSection } from '@/app/(marketing)/landing/components/FeaturesSection';
 import { FinalCtaSection } from '@/app/(marketing)/landing/components/FinalCtaSection';
 import { HeroSection } from '@/app/(marketing)/landing/components/HeroSection';
 import { HowItWorksSection } from '@/app/(marketing)/landing/components/HowItWorksSection';
 import { ProblemSolutionSection } from '@/app/(marketing)/landing/components/ProblemSolutionSection';
 import { UseCasesSection } from '@/app/(marketing)/landing/components/UseCasesSection';
-import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
 
 export const metadata: Metadata = {
   title: LANDING_CANONICAL_TITLE,
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
  */
 export default function LandingPage() {
   return (
-    <div className="relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background pt-16 font-sans text-foreground">
-      <div className="relative">
+    <div className='relative -mt-16 min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background pt-16 font-sans text-foreground'>
+      <div className='relative'>
         <HeroSection />
         <ProblemSolutionSection />
         <FeaturesSection />

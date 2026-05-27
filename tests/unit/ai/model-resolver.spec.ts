@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
@@ -6,8 +8,7 @@ import {
   resolveModelForTier,
   validateModelForTier,
 } from '@/features/ai/model-resolver';
-import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('Model resolver (Task 2 - Phase 2)', () => {
   const getModelIdBy = (

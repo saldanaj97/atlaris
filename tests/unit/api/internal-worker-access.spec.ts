@@ -1,8 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-access';
 import { AuthError, ServiceUnavailableError } from '@/lib/api/errors';
+import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-access';
 import { createLogger } from '@/lib/logging/logger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 function createAccessArgs(
   overrides: Partial<Parameters<typeof assertInternalWorkerAccess>[0]> = {},

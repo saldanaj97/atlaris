@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
 import {
   LOCAL_PRICE_IDS,
   localCatalogEntryForTierInterval,
   localCatalogEntryFromPriceId,
   localDisplayAmountForTier,
 } from '@/features/billing/local-catalog';
+import { describe, expect, it } from 'vitest';
 
 describe('local-catalog', () => {
   const cases = [

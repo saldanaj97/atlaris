@@ -71,4 +71,5 @@ export type ProcessPlanRegenerationJobResult =
    * infer whether a plan id exists. Keep this combined; do not split the union.
    */
   | { kind: 'plan-not-found-or-unauthorized'; jobId: string; planId: string }
-  | { kind: 'invalid-payload'; jobId: string };
+  | { kind: 'invalid-payload'; jobId: string }
+  | { kind: 'workflow-in-flight'; jobId: string; planId: string };

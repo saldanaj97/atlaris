@@ -1,10 +1,10 @@
 'use client';
 
+import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
+
+import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
-import { clientLogger } from '@/lib/logging/client';
 
 const RETRY_COOLDOWN_MS = 5000;
 

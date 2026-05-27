@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveStreamModelResolution } from '@/features/plans/session/model-resolution';
 import { logger } from '@/lib/logging/logger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;

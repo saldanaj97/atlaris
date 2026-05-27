@@ -1,9 +1,3 @@
-import { describe, expect, it } from 'vitest';
-import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
-import {
-  buildLightweightPlanSummaries,
-  buildPlanSummaries,
-} from '@/features/plans/read-projection/summary-projection';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   GenerationAttempt,
@@ -14,6 +8,12 @@ import type {
 } from '@/shared/types/db.types';
 
 import { createId } from '../../fixtures/ids';
+import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
+import {
+  buildLightweightPlanSummaries,
+  buildPlanSummaries,
+} from '@/features/plans/read-projection/summary-projection';
+import { describe, expect, it } from 'vitest';
 
 type SummaryTaskRow = {
   id: string;

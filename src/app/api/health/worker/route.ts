@@ -1,5 +1,3 @@
-import { NextResponse } from 'next/server';
-
 import { toErrorResponse } from '@/lib/api/errors';
 import {
   STUCK_JOB_THRESHOLD_MS,
@@ -9,6 +7,7 @@ import {
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { getSystemWideJobMetrics } from '@/lib/db/queries/admin/jobs-metrics';
 import { logger } from '@/lib/logging/logger';
+import { NextResponse } from 'next/server';
 
 export async function GET(request: Request): Promise<Response> {
   try {

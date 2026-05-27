@@ -1,10 +1,10 @@
-import Stripe from 'stripe';
 import {
   getLocalStripeMock,
   resolveStripeClientBaseUrl,
 } from '@/features/billing/stripe-commerce/local-gateway';
 import { stripeEnv } from '@/lib/config/env';
 import { EnvValidationError } from '@/lib/config/env/shared';
+import Stripe from 'stripe';
 
 /**
  * Stripe client singleton for billing features.

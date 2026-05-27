@@ -1,10 +1,11 @@
-import { users } from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
-import { logger } from '@/lib/logging/logger';
-import { eq, sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
-import { getDb } from '@supabase/runtime';
+
 import { getStripe } from './client';
+import { logger } from '@/lib/logging/logger';
+import { getDb } from '@supabase/runtime';
+import { users } from '@supabase/schema';
+import { eq, sql } from 'drizzle-orm';
 
 const CUSTOMER_PROVISION_LOCK_KEY = 2;
 const CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS = 10_000;

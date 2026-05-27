@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
 import type { JSX } from 'react';
+
+import ManageSubscriptionButton from './ManageSubscriptionButton';
 import {
   formatCompactUsageLimit,
   formatUsageLimitLabel,
@@ -11,7 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import ManageSubscriptionButton from './ManageSubscriptionButton';
+import { redirect } from 'next/navigation';
 
 /**
  * Async component that fetches subscription and usage data.
@@ -36,9 +37,9 @@ export async function BillingCards(): Promise<JSX.Element> {
 
   if (!snapshot) {
     return (
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold">Billing unavailable</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <Card className='p-6'>
+        <h2 className='text-xl font-semibold'>Billing unavailable</h2>
+        <p className='mt-2 text-sm text-muted-foreground'>
           We couldn&apos;t load your billing details right now.
         </p>
       </Card>
@@ -65,54 +66,58 @@ export async function BillingCards(): Promise<JSX.Element> {
     snapshot.usage.exports.used,
     snapshot.usage.exports.limit,
   );
+  const lessonGenerationValue = getUsagePercent(
+    snapshot.usage.lessonGenerations.used,
+    snapshot.usage.lessonGenerations.limit,
+  );
 
   return (
     <>
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className='p-6'>
+        <div className='mb-4 flex items-center justify-between'>
           <div>
-            <h2 className="text-xl font-semibold">Current Plan</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className='text-xl font-semibold'>Current Plan</h2>
+            <p className='text-sm text-muted-foreground'>
               Manage your subscription
             </p>
           </div>
-          <Badge variant="product">{snapshot.tier.toUpperCase()}</Badge>
+          <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
         </div>
 
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
+        <div className='space-y-2 text-sm'>
+          <div className='flex items-center justify-between'>
             <span>Status</span>
-            <span className="text-muted-foreground">
+            <span className='text-muted-foreground'>
               {snapshot.subscriptionStatus ?? '—'}
             </span>
           </div>
-          <div className="flex items-center justify-between">
+          <div className='flex items-center justify-between'>
             <span>Next billing date</span>
-            <span className="text-muted-foreground">{nextBilling}</span>
+            <span className='text-muted-foreground'>{nextBilling}</span>
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className='mt-4'>
           <ManageSubscriptionButton
-            className="w-full"
+            className='w-full'
             canOpenBillingPortal={snapshot.canOpenBillingPortal}
           />
           {!snapshot.canOpenBillingPortal && (
-            <p className="mt-2 text-center text-sm text-muted-foreground">
+            <p className='mt-2 text-center text-sm text-muted-foreground'>
               Billing features are unavailable.
             </p>
           )}
         </div>
       </Card>
 
-      <Card className="p-6">
-        <h2 className="mb-4 text-xl font-semibold">Usage</h2>
+      <Card className='p-6'>
+        <h2 className='mb-4 text-xl font-semibold'>Usage</h2>
 
-        <div className="space-y-5">
+        <div className='space-y-5'>
           <div>
-            <div className="mb-1 flex items-center justify-between text-sm">
+            <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Active plans</span>
-              <span className="text-muted-foreground">
+              <span className='text-muted-foreground'>
                 {snapshot.usage.activePlans.current}/
                 {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
               </span>
@@ -124,9 +129,9 @@ export async function BillingCards(): Promise<JSX.Element> {
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between text-sm">
+            <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Regenerations (monthly)</span>
-              <span className="text-muted-foreground">
+              <span className='text-muted-foreground'>
                 {snapshot.usage.regenerations.used}/
                 {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
               </span>
@@ -138,9 +143,9 @@ export async function BillingCards(): Promise<JSX.Element> {
           </div>
 
           <div>
-            <div className="mb-1 flex items-center justify-between text-sm">
+            <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Exports (monthly)</span>
-              <span className="text-muted-foreground">
+              <span className='text-muted-foreground'>
                 {snapshot.usage.exports.used}/
                 {formatCompactUsageLimit(snapshot.usage.exports.limit)}
               </span>
@@ -148,6 +153,22 @@ export async function BillingCards(): Promise<JSX.Element> {
             <Progress
               value={exportValue}
               aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatUsageLimitLabel(snapshot.usage.exports.limit)}`}
+            />
+          </div>
+
+          <div>
+            <div className='mb-1 flex items-center justify-between text-sm'>
+              <span>Lesson generations (monthly)</span>
+              <span className='text-muted-foreground'>
+                {snapshot.usage.lessonGenerations.used}/
+                {formatCompactUsageLimit(
+                  snapshot.usage.lessonGenerations.limit,
+                )}
+              </span>
+            </div>
+            <Progress
+              value={lessonGenerationValue}
+              aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
             />
           </div>
         </div>

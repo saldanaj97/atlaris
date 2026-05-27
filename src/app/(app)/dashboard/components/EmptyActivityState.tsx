@@ -1,3 +1,5 @@
+import type { ActivityFilter } from '../types';
+
 import { Button } from '@/components/ui/button';
 import {
   Empty,
@@ -10,8 +12,6 @@ import {
 import { ROUTES } from '@/features/navigation/routes';
 import { Activity, Plus } from 'lucide-react';
 import Link from 'next/link';
-
-import type { ActivityFilter } from '../types';
 
 interface EmptyActivityStateProps {
   filter: ActivityFilter;
@@ -46,7 +46,7 @@ export function EmptyActivityState({ filter }: EmptyActivityStateProps) {
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant='icon'>
           <Activity />
         </EmptyMedia>
         <EmptyTitle>

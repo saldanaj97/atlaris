@@ -9,16 +9,17 @@
  * source of truth for pricing and output-token ceilings.
  */
 
-import * as Sentry from '@sentry/nextjs';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
+
 import { computeCostCents, UnknownModelError } from '@/features/ai/cost';
 import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { logger } from '@/lib/logging/logger';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import {
   type CanonicalAIUsage,
   type CanonicalUsageMissingField,
   IncompleteUsageError,
 } from '@/shared/types/ai-usage.types';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Strictly normalize provider metadata into a CanonicalAIUsage.

@@ -1,12 +1,11 @@
-import { setTestUser } from '@tests/helpers/auth';
-import { ensureUser } from '@tests/helpers/db/users';
-import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { RateLimitError } from '@/lib/api/errors';
 import { clearAllUserRateLimiters } from '@/lib/api/user-rate-limit';
+import { setTestUser } from '@tests/helpers/auth';
+import { ensureUser } from '@tests/helpers/db/users';
+import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock(
   '@/features/plans/regeneration-orchestration/request',

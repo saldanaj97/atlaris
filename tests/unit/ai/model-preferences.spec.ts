@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   getPersistableModelsForTier,
@@ -6,7 +6,7 @@ import {
   resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { describe, expect, it } from 'vitest';
 
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const PRO_PERSISTABLE_MODELS = getPersistableModelsForTier('pro');

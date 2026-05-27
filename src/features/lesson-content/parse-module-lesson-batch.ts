@@ -1,8 +1,9 @@
-import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
+import type { ModuleLessonBatchProviderOutput } from '@/shared/types/lesson-content.types';
+
 import { MAX_RAW_RESPONSE_CHARS } from '@/features/ai/constants';
 import { ParserError } from '@/features/ai/parser';
+import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
 import { ModuleLessonBatchProviderOutputSchema } from '@/shared/schemas/lesson-content.schemas';
-import type { ModuleLessonBatchProviderOutput } from '@/shared/types/lesson-content.types';
 
 function assertExpectedIdsWellFormed(
   expectedOrderedTaskIds: readonly string[],

@@ -1,10 +1,10 @@
-import { assertNever } from '@/lib/errors';
 import {
   DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from './constants';
+import { assertNever } from '@/lib/errors';
 
 export type SkillLevel = (typeof SKILL_LEVEL_OPTIONS)[number]['value'];
 export type WeeklyHours = (typeof WEEKLY_HOURS_OPTIONS)[number]['value'];

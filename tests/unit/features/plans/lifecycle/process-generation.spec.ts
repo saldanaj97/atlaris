@@ -1,12 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/service';
-import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
-import { makeAttemptReservation } from '@tests/fixtures/attempts';
-import { isRetryableClassification } from '@/shared/types/failure-classification';
 
 import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
+import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import { isRetryableClassification } from '@/shared/types/failure-classification';
+import { makeAttemptReservation } from '@tests/fixtures/attempts';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const defaultReservation = makeAttemptReservation();
 
@@ -533,6 +532,48 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
   });
 
   // ─── Usage metadata extraction ───────────────────────────────
+
+  it('forwards an existing reservation through processGenerationAttemptWithReservation', async () => {
+    const reservation = makeAttemptReservation({ attemptId: 'att-reserved' });
+    await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      reservation,
+    );
+
+    expect(vi.mocked(ports.generation.runGeneration)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reservation,
+      }),
+    );
+  });
+
+  it('returns already_finalized without finalizing when generation port short-circuits', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toEqual({
+      status: 'already_finalized',
+      planId: 'plan-gen-001',
+    });
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeSuccess),
+    ).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
 
   it('falls back to "unknown" provider/model when metadata is sparse', async () => {
     ports = createMockPorts({

@@ -1,10 +1,11 @@
-// sonner mock must load before the component under test.
-import '../../mocks/unit/sonner.unit';
-
+// IMPORTANT: Mock imports must come first, before any component imports
+// that use the mocked modules (sonner).
 import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import '../../mocks/unit/sonner.unit';
 
 describe('ManageSubscriptionButton', () => {
   beforeEach(() => {
@@ -17,7 +18,8 @@ describe('ManageSubscriptionButton', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('should call portal API when clicked', async () => {
@@ -59,7 +61,7 @@ describe('ManageSubscriptionButton', () => {
     render(
       <ManageSubscriptionButton
         canOpenBillingPortal={true}
-        returnUrl="/dashboard"
+        returnUrl='/dashboard'
       />,
     );
 

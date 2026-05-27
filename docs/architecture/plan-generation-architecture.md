@@ -49,15 +49,15 @@ This separation between external auth identity and internal app user row is not 
 
 ### API layer
 
-| File                                                | Responsibility                             |
-| --------------------------------------------------- | ------------------------------------------ |
-| `src/app/api/v1/plans/stream/route.ts`              | Start streamed plan generation             |
-| `src/app/api/v1/plans/stream/helpers.ts`            | Stream-side success/failure handling       |
-| `src/app/api/v1/plans/[planId]/status/route.ts`     | Return plan generation status              |
-| `src/app/api/v1/plans/[planId]/attempts/route.ts`   | Return attempt history                     |
-| `src/app/api/v1/plans/[planId]/retry/route.ts`      | Retry a failed or pending-retry generation |
-| `src/app/api/v1/plans/[planId]/regenerate/route.ts` | Regenerate an existing plan                |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation |
+| File                                                                                | Responsibility                             |
+| ----------------------------------------------------------------------------------- | ------------------------------------------ |
+| `src/app/api/v1/plans/stream/route.ts`                                              | Start streamed plan generation             |
+| `src/app/api/v1/plans/stream/helpers.ts`                                            | Stream-side success/failure handling       |
+| `src/app/api/v1/plans/[planId]/status/route.ts`                                     | Return plan generation status              |
+| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                   | Return attempt history                     |
+| `src/app/api/v1/plans/[planId]/retry/route.ts`                                      | Retry a failed or pending-retry generation |
+| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                 | Regenerate an existing plan                |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation       |
 
 ### AI layer
 
@@ -159,6 +159,12 @@ The generation pipeline uses stable classifications including:
 
 These classifications drive logging, user messaging, and retry decisions.
 
+## Durable workflows (optional)
+
+When `PLAN_GENERATION_WORKFLOW_ENABLED=true`, the session boundary (`plan-generation-session.ts`) still reserves the attempt and emits `plan_start` on the SSE connection, then runs provider work and lifecycle finalization inside `planGenerationWorkflow`. The client protocol is unchanged; only backend durability changes.
+
+Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For flags and file layout, see `docs/architecture/workflow-sdk.md`.
+
 ## Module lesson generation (separate pipeline)
 
 This path is **not** the streamed plan creator. It fills structured lesson content for **one module** in a single provider batch (all tasks in that module), after the plan exists and tasks are laid out.
@@ -166,7 +172,7 @@ This path is **not** the streamed plan creator. It fills structured lesson conte
 ### Entry point
 
 - `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate`
-- Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`
+- Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts`
 - Core orchestration: `generateModuleLessons` in `src/features/lesson-content/generate-module-lessons.ts`
 
 ### Preconditions and guards
@@ -175,6 +181,7 @@ This path is **not** the streamed plan creator. It fills structured lesson conte
 - **Unlock rule:** `loadModuleLessonGenerationContext` in `src/lib/db/queries/module-lesson-generation.ts` marks the module unlocked only when every **earlier** module (by plan order) has all tasks completed; otherwise generation returns `locked` (HTTP 409).
 - **Claimable states:** module `lesson_generation_status` must be `not_generated` or `failed` to move to `generating` via compare-and-set; `ready` short-circuits as `already_ready`; concurrent `generating` returns `in_flight` (HTTP 202).
 - **Feature flag:** `lessonContentEnv.generationEnabled` reads `LESSON_GENERATION_ENABLED` (`src/lib/config/env/lesson-content.ts`). When false, API returns `disabled` (HTTP 503).
+- **Workflow flag:** `MODULE_LESSON_WORKFLOW_ENABLED` routes generation through `moduleLessonGenerationWorkflow` (HTTP 202 while in flight). See `docs/architecture/workflow-sdk.md`.
 - **Rate limit:** `requestBoundary.route` uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user, in-memory limiter).
 - **Monthly meter:** `runLessonGenerationQuotaReserved` in `src/features/billing/lesson-generation-quota-boundary.ts` reserves the `lessonGeneration` meter **after** a successful DB claim and **before** provider work. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` in `src/shared/constants/tier-limits.ts` (free: 3, starter: 25, pro: unlimited). On quota denial the module row is reverted from `generating` to `not_generated` and the API returns 429 with counts.
 
@@ -222,6 +229,7 @@ If someone imports the service-role DB into a request handler, they are not bein
 
 ## Related documents
 
+- `docs/architecture/workflow-sdk.md`
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/api/rate-limiting.md`
 - `docs/database/schema-overview.md`

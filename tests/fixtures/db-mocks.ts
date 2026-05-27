@@ -1,6 +1,7 @@
-import { vi } from 'vitest';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import type { DbClient } from '@/lib/db/types';
+
+import { vi } from 'vitest';
 
 /**
  * Build a typed `DbClient` stub for tests that don't need the real database.

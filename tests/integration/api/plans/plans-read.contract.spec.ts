@@ -2,12 +2,13 @@ import { GET as GET_ATTEMPTS } from '@/app/api/v1/plans/[planId]/attempts/route'
 import { GET as GET_DETAIL } from '@/app/api/v1/plans/[planId]/route';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
 import { GET as GET_LIST } from '@/app/api/v1/plans/route';
+import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 import {
   generationAttempts,
   learningPlans,
   taskProgress,
 } from '@supabase/schema';
-import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
+import { db } from '@supabase/service-role';
 import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { buildTestPlanInsert } from '@tests/fixtures/plans';
@@ -18,7 +19,6 @@ import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { db } from '@supabase/service-role';
 
 const serverAuth = vi.hoisted(() => {
   const getSession = vi.fn();

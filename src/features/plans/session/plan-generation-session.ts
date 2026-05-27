@@ -1,6 +1,3 @@
-import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { db as serviceRoleDb } from '@supabase/service-role';
-
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
@@ -11,6 +8,10 @@ import {
   type SessionCommand,
 } from './session-command';
 import { runPlanGenerationSessionStream } from './stream-transport';
+import { createWorkflowBackedProcessGeneration } from '@/features/plans/create-workflow-backed-process-generation';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { workflowEnv } from '@/lib/config/env/workflow';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 export {
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -76,6 +77,14 @@ async function run(
     lifecycleService,
   });
 
+  const processGeneration = workflowEnv.planGenerationWorkflowEnabled
+    ? createWorkflowBackedProcessGeneration(
+        lifecycleService,
+        serviceRoleDb,
+        command.requestId ?? `plan-gen-${prepared.planId}`,
+      )
+    : lifecycleService.processGenerationAttempt.bind(lifecycleService);
+
   return await runPlanGenerationSessionStream({
     requestSignal: command.req.signal,
     requestId: command.requestId,
@@ -83,8 +92,7 @@ async function run(
     dbClient: serviceRoleDb,
     cleanup: async () => {},
     prepared,
-    processGeneration:
-      lifecycleService.processGenerationAttempt.bind(lifecycleService),
+    processGeneration,
     responseHeaders: command.responseHeaders,
   });
 }

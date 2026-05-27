@@ -1,10 +1,11 @@
 import type { NormalizedModulesResult } from '@/lib/db/queries/types/attempts.types';
+import type { ParsedModule } from '@/shared/types/ai-parser.types';
+
 import {
   aggregateNormalizationFlags,
   normalizeModuleMinutes,
   normalizeTaskMinutes,
 } from '@/shared/constants/effort';
-import type { ParsedModule } from '@/shared/types/ai-parser.types';
 
 export function normalizeParsedModules(
   modulesInput: ParsedModule[],

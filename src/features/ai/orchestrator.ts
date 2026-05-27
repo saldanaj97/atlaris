@@ -1,3 +1,13 @@
+import type {
+  AttemptOperations,
+  AttemptOperationsOverrides,
+  GenerationAttemptContext,
+  GenerationExecutionResult,
+  GenerationResult,
+  RunGenerationOptions,
+} from '@/features/ai/types/orchestrator.types';
+import type { ProviderMetadata } from '@/features/ai/types/provider.types';
+
 import {
   buildUnfinalizedReservedFailure,
   finalizeReservedExecutionFailure,
@@ -19,16 +29,6 @@ import {
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-db-client';
-
-import type {
-  AttemptOperations,
-  AttemptOperationsOverrides,
-  GenerationAttemptContext,
-  GenerationExecutionResult,
-  GenerationResult,
-  RunGenerationOptions,
-} from '@/features/ai/types/orchestrator.types';
-import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 
 const DEFAULT_CLOCK = () => Date.now();
 

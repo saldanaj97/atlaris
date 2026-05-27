@@ -1,13 +1,13 @@
-import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
-import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
-import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
-
 import type {
   CreatePlanResult,
   PermanentFailure,
   RetryableFailure,
 } from '@/features/plans/lifecycle/types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
+import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
+import { logger } from '@/lib/logging/logger';
 
 export function throwCreatePlanResultError(
   createResult: Exclude<CreatePlanResult, { status: 'success' }>,

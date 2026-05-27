@@ -1,19 +1,21 @@
-import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 import type {
   AttemptMetadata,
   MetadataParams,
   SanitizedInput,
 } from '@/lib/db/queries/types/attempts.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+
+import { truncateToLength } from '@/lib/db/queries/helpers/truncation';
 import {
   NOTES_MAX_LENGTH,
   TOPIC_MAX_LENGTH,
 } from '@/shared/constants/learning-plans';
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 export function buildMetadata(params: MetadataParams): AttemptMetadata {
   const {
     sanitized,
     providerMetadata,
+    workflowMetadata,
     modulesClamped,
     tasksClamped,
     startedAt,
@@ -23,6 +25,7 @@ export function buildMetadata(params: MetadataParams): AttemptMetadata {
   } = params;
 
   return {
+    ...(workflowMetadata ? { workflow: workflowMetadata } : {}),
     input: {
       topic: {
         truncated: sanitized.topic.truncated,

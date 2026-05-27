@@ -1,14 +1,15 @@
-import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
 import type { StripeTierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
 import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { render, screen } from '@testing-library/react';
 import type React from 'react';
+
+import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/app/(marketing)/pricing/components/SubscribeButton', () => ({
   default: ({ priceId, label }: { priceId: string; label: string }) => (
-    <button type="button" data-testid={`subscribe-${priceId}`}>
+    <button type='button' data-testid={`subscribe-${priceId}`}>
       {label}
     </button>
   ),
@@ -41,9 +42,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={configs}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={stripeData}
-        subscribeLabel="Get Started"
+        subscribeLabel='Get Started'
       />,
     );
 
@@ -59,9 +60,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={configs}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={stripeData}
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 
@@ -74,9 +75,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={configs}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={new Map<SubscriptionTier, BillingCatalogTierData>()}
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 
@@ -89,9 +90,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={[{ key: 'starter', priceId: 'price_starter_monthly' }]}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={stripeData}
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 
@@ -103,9 +104,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={[{ key: 'starter' }]}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={stripeData}
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 
@@ -116,9 +117,9 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={[{ key: 'starter', priceId: '' }]}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={stripeData}
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 
@@ -130,13 +131,13 @@ describe('PricingGrid', () => {
     render(
       <PricingGrid
         configs={configs}
-        intervalLabel="/month"
+        intervalLabel='/month'
         tierDisplayMap={
           new Map<SubscriptionTier, BillingCatalogTierData>([
             ['free', { name: 'Free', amount: '$0' }],
           ])
         }
-        subscribeLabel="Subscribe"
+        subscribeLabel='Subscribe'
       />,
     );
 

@@ -5,10 +5,10 @@
  */
 
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
 
 import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { nanoid } from 'nanoid';
 
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DbClient } from '@/lib/db/types';
 
 import {
   cleanupOrphanedAttempts,
@@ -6,7 +6,7 @@ import {
   ORPHANED_ATTEMPT_THRESHOLD_MS,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
-import type { DbClient } from '@/lib/db/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to avoid console noise and allow assertion
 vi.mock('@/lib/logging/logger', () => ({

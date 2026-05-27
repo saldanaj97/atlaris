@@ -1,5 +1,6 @@
-import { processNextPlanRegenerationJob } from '@/features/plans/regeneration-orchestration/process';
 import type { ProcessPlanRegenerationJobResult } from '@/features/plans/regeneration-orchestration/types';
+
+import { processNextPlanRegenerationJob } from '@/features/plans/regeneration-orchestration/process';
 import { assertNever } from '@/lib/errors';
 
 export {
@@ -49,6 +50,8 @@ function mapBoundaryResultToDrain(
         jobId: result.jobId,
         status: 'failed',
       };
+    case 'workflow-in-flight':
+      return { processed: false };
     default:
       assertNever(result);
   }

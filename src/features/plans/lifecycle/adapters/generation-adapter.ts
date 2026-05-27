@@ -9,18 +9,64 @@
  * Normalizes raw provider metadata into CanonicalAIUsage at the boundary.
  */
 
-import { resolveModelForTier } from '@/features/ai/model-resolver';
-import { runGenerationExecution } from '@/features/ai/orchestrator';
-import { safeNormalizeUsage } from '@/features/ai/usage';
-
-import type { GenerationInput } from '@/features/ai/types/provider.types';
-import type { DbClient } from '@/lib/db/types';
 import type {
   GenerationPort,
   GenerationRunParams,
   GenerationRunResult,
 } from '../ports';
 import type { GeneratedModule } from '../types';
+import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type { DbClient } from '@/lib/db/types';
+
+import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { runGenerationExecution } from '@/features/ai/orchestrator';
+import { safeNormalizeUsage } from '@/features/ai/usage';
+import { generationAttempts, learningPlans } from '@supabase/schema';
+import { and, eq } from 'drizzle-orm';
+
+async function validateReservation(
+  dbClient: DbClient,
+  params: GenerationRunParams,
+): Promise<void> {
+  if (!params.reservation) {
+    return;
+  }
+
+  const [row] = await dbClient
+    .select({
+      attemptId: generationAttempts.id,
+      attemptStatus: generationAttempts.status,
+      planStatus: learningPlans.generationStatus,
+    })
+    .from(generationAttempts)
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(
+      and(
+        eq(generationAttempts.id, params.reservation.attemptId),
+        eq(generationAttempts.planId, params.planId),
+        eq(learningPlans.userId, params.userId),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    throw new Error(
+      `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: attempt was not found for the requested plan/user.`,
+    );
+  }
+
+  if (row.attemptStatus !== 'in_progress') {
+    throw new Error(
+      `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: attempt status is ${row.attemptStatus}.`,
+    );
+  }
+
+  if (row.planStatus !== 'generating') {
+    throw new Error(
+      `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: plan status is ${row.planStatus}.`,
+    );
+  }
+}
 
 export class GenerationAdapter implements GenerationPort {
   constructor(private readonly dbClient: DbClient) {}
@@ -28,6 +74,8 @@ export class GenerationAdapter implements GenerationPort {
   async runGeneration(
     params: GenerationRunParams,
   ): Promise<GenerationRunResult> {
+    await validateReservation(this.dbClient, params);
+
     const { provider } = resolveModelForTier(
       params.tier,
       params.modelOverride ?? undefined,
@@ -61,6 +109,12 @@ export class GenerationAdapter implements GenerationPort {
           : {}),
         ...(params.onAttemptReserved !== undefined
           ? { onAttemptReserved: params.onAttemptReserved }
+          : {}),
+        ...(params.reservation !== undefined
+          ? { reservation: params.reservation }
+          : {}),
+        ...(params.modelOverride !== undefined
+          ? { modelOverride: params.modelOverride }
           : {}),
       },
     );

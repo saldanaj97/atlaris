@@ -1,12 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DbClient } from '@/lib/db/types';
+
+import { makeDbClient } from '../../fixtures/db-mocks';
+import { buildUserFixture } from '../../fixtures/users';
 import {
   createUser,
   getUserByAuthId,
   updateUserPreferredAiModel,
 } from '@/lib/db/queries/users';
-import type { DbClient } from '@/lib/db/types';
-import { makeDbClient } from '../../fixtures/db-mocks';
-import { buildUserFixture } from '../../fixtures/users';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockedGetRequestContext = vi.fn();
 const mockedGetDb = vi.fn();

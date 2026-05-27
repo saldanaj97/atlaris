@@ -1,5 +1,6 @@
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import type { UsageSummary } from '@/features/billing/usage-metrics';
+
+import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { listPlansPageSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 

@@ -5,18 +5,19 @@
  * to create results, check success status, and safely extract error information.
  */
 
+import type {
+  ModuleAccessError,
+  ModuleAccessErrorCode,
+  ModuleAccessResult,
+} from './types';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
+
 import {
   accessError,
   accessSuccess,
   getAccessError,
   isAccessSuccess,
 } from '@/app/(app)/plans/access-result';
-import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
-import type {
-  ModuleAccessError,
-  ModuleAccessErrorCode,
-  ModuleAccessResult,
-} from './types';
 
 export function moduleSuccess(data: ModuleDetailReadModel): ModuleAccessResult {
   return accessSuccess(data);

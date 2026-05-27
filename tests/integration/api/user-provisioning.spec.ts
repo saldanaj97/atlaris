@@ -1,3 +1,8 @@
+import { setTestUser } from '../../helpers/auth';
+import { POST } from '@/app/api/v1/plans/stream/route';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { eq } from 'drizzle-orm';
 import {
   afterAll,
@@ -9,12 +14,6 @@ import {
   it,
   vi,
 } from 'vitest';
-
-import { POST } from '@/app/api/v1/plans/stream/route';
-import { users } from '@supabase/schema';
-import { db } from '@supabase/service-role';
-import { mockServerSession } from '@tests/helpers/mock-server-auth';
-import { setTestUser } from '../../helpers/auth';
 
 const serverAuth = vi.hoisted(() => {
   const getSession = vi.fn();

@@ -1,4 +1,8 @@
 import {
+  NOTES_PROMPT_MAX_CHARS,
+  TOPIC_PROMPT_MAX_CHARS,
+} from '@/features/ai/constants';
+import {
   MAX_LESSON_BLOCKS_PER_TASK,
   MAX_LESSON_BLOCK_TEXT_LENGTH,
   MAX_LESSON_BLOCK_TITLE_LENGTH,
@@ -8,11 +12,6 @@ import {
   MAX_MODULE_TITLE_LENGTH,
   MAX_TASK_TITLE_LENGTH,
 } from '@supabase/schema/constants';
-
-import {
-  NOTES_PROMPT_MAX_CHARS,
-  TOPIC_PROMPT_MAX_CHARS,
-} from '@/features/ai/constants';
 
 /** Plan fields loaded for batch lesson generation (prompt context). */
 export type ModuleLessonBatchPromptPlan = {

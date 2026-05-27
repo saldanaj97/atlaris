@@ -1,15 +1,16 @@
+import type { JobStats, JobsDbClient } from '@/lib/db/queries/types/jobs.types';
+import type { Job, JobType } from '@/shared/types/jobs.types';
+
+import { jobQueueSelect, normalizeMutationCount } from './shared';
 import {
   activeRegenerationJobWhere,
   clampLimit,
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
-import type { JobStats, JobsDbClient } from '@/lib/db/queries/types/jobs.types';
+import { getDb } from '@supabase/runtime';
 import { jobQueue } from '@supabase/schema';
 import { MAX_JOB_MONITORING_ROWS } from '@supabase/schema/constants';
-import type { Job, JobType } from '@/shared/types/jobs.types';
 import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
-import { getDb } from '@supabase/runtime';
-import { jobQueueSelect, normalizeMutationCount } from './shared';
 
 /**
  * Retrieves recent failed jobs for debugging and monitoring.
@@ -110,6 +111,23 @@ export async function cleanupOldJobs(
     );
 
   return normalizeMutationCount(result);
+}
+
+/**
+ * Loads a job row by id.
+ */
+export async function getJobById(
+  jobId: string,
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+
+  const [row] = await client
+    .select(jobQueueSelect)
+    .from(jobQueue)
+    .where(eq(jobQueue.id, jobId));
+
+  return row ? mapRowToJob(row) : null;
 }
 
 /**

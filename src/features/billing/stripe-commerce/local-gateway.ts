@@ -1,6 +1,6 @@
-import Stripe from 'stripe';
 import { localCatalogEntryFromPriceId } from '@/features/billing/local-catalog';
 import { appEnv } from '@/lib/config/env';
+import Stripe from 'stripe';
 
 let localStripeMock: Stripe | null = null;
 

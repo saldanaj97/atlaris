@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest';
-
 import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
 import { coerceUnknownToMessage as coerceFromCore } from '@/lib/errors/normalize-unknown';
+import { describe, expect, it } from 'vitest';
 
 describe('coerceUnknownToMessage', () => {
   it('api re-export points at the same implementation as normalize-unknown', () => {

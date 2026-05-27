@@ -1,3 +1,5 @@
+import type { z } from 'zod';
+
 import {
   LessonContentBlockSchema,
   LessonContentSchema,
@@ -5,7 +7,6 @@ import {
   ModuleLessonGenerationApiResponseSchema,
   ModuleLessonGenerationMetadataSchema,
 } from '@/shared/schemas/lesson-content.schemas';
-import type { z } from 'zod';
 
 export type LessonContentBlock = z.infer<typeof LessonContentBlockSchema>;
 export type LessonContent = z.infer<typeof LessonContentSchema>;

@@ -1,13 +1,12 @@
-import { describe, expect, it } from 'vitest';
-
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
 import {
   buildGenerationAttempt,
   buildModule,
   buildPlan,
   buildPlanDetail,
 } from '../../fixtures/plan-detail';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
+import { describe, expect, it } from 'vitest';
 
 describe('derived plan status mapping', () => {
   const cap = getGenerationAttemptCap();

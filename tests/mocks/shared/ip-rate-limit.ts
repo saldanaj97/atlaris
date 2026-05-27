@@ -1,5 +1,6 @@
-import { RateLimitError } from '@/lib/api/errors';
 import type { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+
+import { RateLimitError } from '@/lib/api/errors';
 
 export function mockRateLimitExceeded(
   retryAfter: number,

@@ -1,13 +1,14 @@
-import { CheckCircle2, Clock, Link as LinkIcon, Lock } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { formatMinutes } from '@/features/plans/formatters';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
-import { cn } from '@/lib/utils';
+
 import {
   getLessonMarkerClassName,
   getLessonMutedTextClassName,
   getLessonTitleClassName,
 } from './lessonAccordionStyles';
+import { Badge } from '@/components/ui/badge';
+import { formatMinutes } from '@/features/plans/formatters';
+import { cn } from '@/lib/utils';
+import { CheckCircle2, Clock, Link as LinkIcon, Lock } from 'lucide-react';
 
 function LessonMarker({
   lesson,
@@ -26,11 +27,11 @@ function LessonMarker({
       )}
     >
       {isLocked ? (
-        <Lock className="size-4" />
+        <Lock className='size-4' />
       ) : isCompleted ? (
-        <CheckCircle2 className="size-5" />
+        <CheckCircle2 className='size-5' />
       ) : (
-        <span className="text-sm font-semibold">{lesson.order}</span>
+        <span className='text-sm font-semibold'>{lesson.order}</span>
       )}
     </div>
   );
@@ -54,8 +55,8 @@ function ResourceSummary({
         getLessonMutedTextClassName(isLocked),
       )}
     >
-      <span className="inline-flex items-center gap-1.5">
-        <LinkIcon className="size-4" />
+      <span className='inline-flex items-center gap-1.5'>
+        <LinkIcon className='size-4' />
         {resourceCount} resource{resourceCount !== 1 ? 's' : ''}
       </span>
     </div>
@@ -75,8 +76,8 @@ export function LessonAccordionTriggerContent({
 }) {
   return (
     <>
-      <div className="flex-1 text-left">
-        <div className="mb-2 flex items-center gap-3">
+      <div className='flex-1 text-left'>
+        <div className='mb-2 flex items-center gap-3'>
           <LessonMarker
             lesson={lesson}
             isCompleted={isCompleted}
@@ -91,7 +92,7 @@ export function LessonAccordionTriggerContent({
             {lesson.title}
           </h3>
           {isLocked ? (
-            <Badge variant="secondary" className="border-transparent">
+            <Badge variant='secondary' className='border-transparent'>
               Locked
             </Badge>
           ) : null}
@@ -117,8 +118,8 @@ export function LessonAccordionTriggerContent({
           getLessonMutedTextClassName(isLocked),
         )}
       >
-        <span className="inline-flex items-center gap-1.5">
-          <Clock className="size-4" />
+        <span className='inline-flex items-center gap-1.5'>
+          <Clock className='size-4' />
           {formatMinutes(lesson.estimatedMinutes)}
         </span>
       </span>

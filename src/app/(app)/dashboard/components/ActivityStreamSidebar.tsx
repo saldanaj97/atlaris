@@ -1,10 +1,11 @@
+import type { PlanSummary } from '@/shared/types/db.types';
+import type { JSX } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import type { PlanSummary } from '@/shared/types/db.types';
 import { BookOpen, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import type { JSX } from 'react';
 
 interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
@@ -17,11 +18,11 @@ const SIDEBAR_SECONDARY_TEXT_CLASS = 'text-sidebar-foreground/70';
 function EmptyStateCard() {
   return (
     <div className={SIDEBAR_CARD_CLASS}>
-      <div className="flex flex-col items-center py-6 text-center">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground">
-          <BookOpen className="size-6" />
+      <div className='flex flex-col items-center py-6 text-center'>
+        <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground'>
+          <BookOpen className='size-6' />
         </div>
-        <h3 className="mb-2 font-medium text-sidebar-foreground">
+        <h3 className='mb-2 font-medium text-sidebar-foreground'>
           No active learning plan
         </h3>
         <p className={cn('mb-4 text-sm', SIDEBAR_SECONDARY_TEXT_CLASS)}>
@@ -38,11 +39,11 @@ function EmptyStateCard() {
 function NoUpcomingEventsCard() {
   return (
     <div className={SIDEBAR_CARD_CLASS}>
-      <div className="flex flex-col items-center py-6 text-center">
-        <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground">
-          <Calendar className="size-6" />
+      <div className='flex flex-col items-center py-6 text-center'>
+        <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground'>
+          <Calendar className='size-6' />
         </div>
-        <h3 className="mb-2 font-medium text-sidebar-foreground">
+        <h3 className='mb-2 font-medium text-sidebar-foreground'>
           No upcoming events
         </h3>
         <p className={cn('mb-4 text-sm', SIDEBAR_SECONDARY_TEXT_CLASS)}>
@@ -60,7 +61,7 @@ export function ActivityStreamSidebar({
   activePlan,
 }: ActivityStreamSidebarProps): JSX.Element {
   return (
-    <aside className="flex w-full flex-col gap-4">
+    <aside className='flex w-full flex-col gap-4'>
       {activePlan ? <NoUpcomingEventsCard /> : <EmptyStateCard />}
     </aside>
   );

@@ -7,8 +7,8 @@ import {
   tasks,
   users,
 } from '@supabase/schema';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '@supabase/service-role';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('End-to-End Schedule Flow', () => {
   let testUserId: string;

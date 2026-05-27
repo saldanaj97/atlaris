@@ -6,15 +6,16 @@
  */
 
 import type { DbClient } from '@/lib/db/types';
-import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
-import { db as serviceRoleDb } from '@supabase/service-role';
+
 import {
   compensateMeteredReservation,
   type MeteredReservationToken,
   type ReserveMeteredResult,
   reserveMeteredUsage,
 } from './metered-reservation';
+import { logger } from '@/lib/logging/logger';
+import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 export type LessonGenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
   | { disposition: 'consumed'; value: TConsumed }

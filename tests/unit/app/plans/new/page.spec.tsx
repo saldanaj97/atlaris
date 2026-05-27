@@ -1,21 +1,22 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger, next/navigation).
-import '@tests/mocks/unit/client-logger.unit';
-import '@tests/mocks/unit/sonner.unit';
-
-import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
   PlanGenerationResult,
   StreamingPlanState,
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
+
+import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
 import { clientLogger } from '@/lib/logging/client';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import '@tests/mocks/unit/client-logger.unit';
+import '@tests/mocks/unit/sonner.unit';
 
 const pushMock = vi.fn<(href: string) => void>();
 

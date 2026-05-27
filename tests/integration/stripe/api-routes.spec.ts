@@ -1,21 +1,5 @@
-import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
-import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
-import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
-import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
-import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
-import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
-import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
-import { users } from '@supabase/schema';
-import {
-  makeStripeInvoice,
-  makeStripeMock,
-  makeStripeSubscription,
-} from '@tests/fixtures/stripe-mocks';
-import { sql } from 'drizzle-orm';
-import Stripe from 'stripe';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
+
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import {
@@ -24,6 +8,23 @@ import {
   markUserAsSubscribed,
 } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
+import { GET as localCompleteCheckoutGET } from '@/app/api/v1/stripe/local/complete-checkout/route';
+import { createWebhookHandler } from '@/app/api/v1/stripe/webhook/route';
+import { GET as subscriptionGET } from '@/app/api/v1/user/subscription/route';
+import { LOCAL_PRICE_IDS } from '@/features/billing/local-catalog';
+import { createStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
+import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
+import { users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import {
+  makeStripeInvoice,
+  makeStripeMock,
+  makeStripeSubscription,
+} from '@tests/fixtures/stripe-mocks';
+import { sql } from 'drizzle-orm';
+import Stripe from 'stripe';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 async function createAuthTestUser() {
   const authUserId = buildTestAuthUserId('stripe-api');
@@ -597,6 +598,8 @@ describe('Stripe API Routes', () => {
       expect(body.usage.activePlans).toBeDefined();
       expect(body.usage.regenerations).toBeDefined();
       expect(body.usage.exports).toBeDefined();
+      expect(body.usage.lessonGenerations).toBeDefined();
+      expect(body.usage.lessonGenerations.used).toBe(0);
     });
 
     it('returns 401 when not authenticated', async () => {

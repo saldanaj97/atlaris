@@ -1,3 +1,8 @@
+import { jobStatus, jobType } from '../../enums';
+import { timestampFields } from '../helpers';
+import { currentUserId } from './common';
+import { learningPlans } from './plans';
+import { users } from './users';
 import { sql } from 'drizzle-orm';
 import {
   check,
@@ -10,12 +15,6 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import { jobStatus, jobType } from '../../enums';
-import { timestampFields } from '../helpers';
-import { currentUserId } from './common';
-import { learningPlans } from './plans';
-import { users } from './users';
 
 // Background job queue
 

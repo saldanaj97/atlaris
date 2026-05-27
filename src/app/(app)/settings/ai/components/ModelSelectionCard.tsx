@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { JSX } from 'react';
+
 import { ModelPreferencesSelector } from '@/app/(app)/settings/ai/components/ModelPreferencesSelector';
 import {
   Card,
@@ -16,7 +17,7 @@ import {
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
+import { redirect } from 'next/navigation';
 
 /**
  * Async component that fetches user subscription data and renders the model selector.
@@ -58,7 +59,7 @@ export async function ModelSelectionCard(): Promise<JSX.Element> {
           {currentModel !== null ? (
             <>
               Your saved choice is used for new plan generations. You can still
-              use a one-off <code className="font-mono text-xs">?model=</code>{' '}
+              use a one-off <code className='font-mono text-xs'>?model=</code>{' '}
               query on a generation request to override it for that run only.
             </>
           ) : (

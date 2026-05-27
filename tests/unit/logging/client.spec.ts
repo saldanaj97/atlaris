@@ -1,6 +1,6 @@
+import { clientLogger } from '@/lib/logging/client';
 import { spyOnConsole } from '@tests/helpers/console-spy';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { clientLogger } from '@/lib/logging/client';
 
 describe('Client Logger', () => {
   let consoleError: ReturnType<typeof spyOnConsole>;

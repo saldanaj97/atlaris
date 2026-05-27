@@ -1,5 +1,5 @@
-import { Check } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
+
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 interface PricingCardProps {
   name: string;
@@ -45,11 +46,11 @@ export function PricingCard({
       )}
     >
       {isPopular && (
-        <div className="gradient-glow absolute -top-12 -right-12 h-32 w-32 opacity-30" />
+        <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
       )}
-      <CardHeader className="relative gap-1 p-0">
+      <CardHeader className='relative gap-1 p-0'>
         {badge && (
-          <div className="mb-4">
+          <div className='mb-4'>
             <Badge
               variant={isPopular ? 'default' : 'secondary'}
               className={cn(
@@ -61,24 +62,24 @@ export function PricingCard({
             </Badge>
           </div>
         )}
-        <CardTitle className="text-xl font-bold">{name}</CardTitle>
+        <CardTitle className='text-xl font-bold'>{name}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
 
-      <CardContent className="p-0">
-        <div className="mt-6 flex items-baseline gap-1">
-          <span className="text-4xl font-bold tracking-tight">{price}</span>
-          <span className="text-sm text-muted-foreground">{intervalLabel}</span>
+      <CardContent className='p-0'>
+        <div className='mt-6 flex items-baseline gap-1'>
+          <span className='text-4xl font-bold tracking-tight'>{price}</span>
+          <span className='text-sm text-muted-foreground'>{intervalLabel}</span>
         </div>
 
-        <div className="mt-6">{cta}</div>
+        <div className='mt-6'>{cta}</div>
 
-        <Separator className="my-6" />
+        <Separator className='my-6' />
 
-        <ul className="flex-1 space-y-3">
+        <ul className='flex-1 space-y-3'>
           {features.map((feature) => (
-            <li key={feature} className="flex items-start gap-3 text-sm">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <li key={feature} className='flex items-start gap-3 text-sm'>
+              <Check className='mt-0.5 size-4 shrink-0 text-primary' />
               <span>{feature}</span>
             </li>
           ))}

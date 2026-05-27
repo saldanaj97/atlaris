@@ -11,18 +11,19 @@
  * or another dedicated boundary; do not import this file from routes.
  */
 
-import { usageMetrics, users } from '@supabase/schema';
-import { logger } from '@/lib/logging/logger';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { and, eq, sql } from 'drizzle-orm';
-import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import type { DbClient } from './tier';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { UsageMetricsLockError, UserNotFoundError } from './errors';
 import {
   ensureUsageMetricsExist,
   getCurrentMonth,
   incrementExistingUsageInTx,
 } from './usage-metrics';
+import { logger } from '@/lib/logging/logger';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { usageMetrics, users } from '@supabase/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
 type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
 

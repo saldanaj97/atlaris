@@ -1,6 +1,7 @@
-import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import type { PlainHandler } from '@/lib/api/auth';
+
+import { getLazyStripeCommerceBoundary } from '@/features/billing/stripe-commerce/factory';
 import { ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';

@@ -1,5 +1,6 @@
 'use client';
 
+import { cn } from '@/lib/utils';
 import {
   Bell,
   Bot,
@@ -10,7 +11,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
 interface SettingsNavItem {
   label: string;
@@ -30,7 +30,7 @@ export function SettingsSidebar(): React.ReactElement {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Settings" className="flex flex-col gap-1">
+    <nav aria-label='Settings' className='flex flex-col gap-1'>
       {SETTINGS_NAV_ITEMS.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -48,7 +48,7 @@ export function SettingsSidebar(): React.ReactElement {
                 : 'text-sidebar-foreground hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon className='size-4 shrink-0' />
             {item.label}
           </Link>
         );

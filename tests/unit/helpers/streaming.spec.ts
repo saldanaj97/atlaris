@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { readStreamingResponse } from '@tests/helpers/streaming';
+import { describe, expect, it } from 'vitest';
 
 function responseFromSseChunks(chunks: string[]): Response {
   let offset = 0;

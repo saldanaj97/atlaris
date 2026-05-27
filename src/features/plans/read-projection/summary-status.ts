@@ -1,10 +1,11 @@
+import type { LearningPlan } from '@/shared/types/db.types';
+
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   derivePlanReadStatus,
   derivePlanSummaryStatus,
   type PlanSummaryReadStatus,
 } from '@/features/plans/read-projection/read-status';
-import type { LearningPlan } from '@/shared/types/db.types';
 
 /**
  * Minimal plan summary inputs for canonical list-layer status (no UI staleness).

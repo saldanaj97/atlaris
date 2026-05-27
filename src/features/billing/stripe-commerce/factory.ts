@@ -1,19 +1,20 @@
+import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
+import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
+import type { createLogger } from '@/lib/logging/logger';
+import type Stripe from 'stripe';
+
 import { getStripe } from '@/features/billing/client';
 import {
   DefaultStripeCommerceBoundary,
   type StripeCommerceBoundaryDeps,
   type StripeCommercePrivilegedDbDeps,
 } from '@/features/billing/stripe-commerce/boundary-impl';
-import type { StripeGateway } from '@/features/billing/stripe-commerce/gateway';
 import { LiveStripeGateway } from '@/features/billing/stripe-commerce/live-gateway';
 import { replaySyntheticSubscriptionCreated } from '@/features/billing/stripe-commerce/reconciliation';
-import type { StripeCommerceBoundary } from '@/features/billing/stripe-commerce/types';
 import { appEnv, localProductTestingEnv, stripeEnv } from '@/lib/config/env';
-import { users } from '@supabase/schema';
-import type { createLogger } from '@/lib/logging/logger';
 import { logger } from '@/lib/logging/logger';
-import type Stripe from 'stripe';
 import { getDb } from '@supabase/runtime';
+import { users } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 type AppLogger = ReturnType<typeof createLogger>;

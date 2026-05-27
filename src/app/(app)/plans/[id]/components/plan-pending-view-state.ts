@@ -1,6 +1,7 @@
+import type { ClientPlanDetail, PlanStatus } from '@/shared/types/client.types';
+
 import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
 import { PLAN_STATUSES } from '@/shared/types/client';
-import type { ClientPlanDetail, PlanStatus } from '@/shared/types/client.types';
 
 export const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 

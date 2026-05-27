@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, it } from 'vitest';
 import {
   _resetInlineDrainStateForTesting,
   isInlineDrainFree,
@@ -6,6 +5,7 @@ import {
   tryRegisterInlineDrain,
   waitForInlineRegenerationDrains,
 } from '@/features/jobs/regeneration-worker';
+import { afterEach, describe, expect, it } from 'vitest';
 
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;

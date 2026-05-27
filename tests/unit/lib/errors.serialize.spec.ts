@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest';
-
 import { serializeErrorForLog } from '@/lib/errors';
+import { describe, expect, it } from 'vitest';
 
 describe('serializeErrorForLog', () => {
   it('serializes Error with cause chain and clips long message', () => {

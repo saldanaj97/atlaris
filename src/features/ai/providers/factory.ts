@@ -1,10 +1,11 @@
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { getFallbackModelsForTier } from '@/features/ai/ai-models';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { RouterGenerationProvider } from '@/features/ai/providers/router';
-import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { aiEnv, appEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 function parseMockSeed(): number | undefined {
   return typeof aiEnv.mockSeed === 'number' && !Number.isNaN(aiEnv.mockSeed)

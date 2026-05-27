@@ -3,12 +3,6 @@
  * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
  */
 
-import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import {
-  fetchModuleTaskMetricsRows,
-  fetchTaskProgressRows,
-  fetchTaskRelationRows,
-} from '@/lib/db/queries/helpers/task-relations-helpers';
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   LightweightModuleMetricsRow,
@@ -17,17 +11,7 @@ import type {
   PlanProgressStatusRow,
   PlanSummaryTaskRow,
 } from '@/lib/db/queries/types/plans.types';
-import {
-  generationAttempts,
-  learningPlans,
-  modules,
-  tasks,
-} from '@supabase/schema';
 import type { DbClient } from '@/lib/db/types';
-import {
-  assertValidPaginationOptions,
-  type PaginationOptions,
-} from '@/shared/constants/pagination';
 import type {
   GenerationAttempt,
   LearningPlan,
@@ -35,9 +19,26 @@ import type {
   Task,
   TaskProgress,
 } from '@/shared/types/db.types';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  fetchModuleTaskMetricsRows,
+  fetchTaskProgressRows,
+  fetchTaskRelationRows,
+} from '@/lib/db/queries/helpers/task-relations-helpers';
+import {
+  assertValidPaginationOptions,
+  type PaginationOptions,
+} from '@/shared/constants/pagination';
 import { getDb } from '@supabase/runtime';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+} from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
+import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 

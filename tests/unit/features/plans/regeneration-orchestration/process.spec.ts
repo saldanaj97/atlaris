@@ -1,18 +1,18 @@
-import { describe, expect, it, vi } from 'vitest';
+import type { Job } from '@/features/jobs/types';
+import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
+import type { DbClient } from '@/lib/db/types';
 
+import { JOB_TYPES } from '@/features/jobs/types';
+import {
+  processNextPlanRegenerationJob,
+  processPlanRegenerationJob,
+} from '@/features/plans/regeneration-orchestration/process';
 import {
   makeLifecycleServiceMock,
   makeRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDepsOverrides,
 } from '@tests/helpers/regeneration-orchestration-deps';
-import type { Job } from '@/features/jobs/types';
-import { JOB_TYPES } from '@/features/jobs/types';
-import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
-import {
-  processNextPlanRegenerationJob,
-  processPlanRegenerationJob,
-} from '@/features/plans/regeneration-orchestration/process';
-import type { DbClient } from '@/lib/db/types';
+import { describe, expect, it, vi } from 'vitest';
 
 const planRow = {
   id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',

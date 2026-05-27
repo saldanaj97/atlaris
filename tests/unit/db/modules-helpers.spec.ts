@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import type { ModuleResourceRow } from '@/lib/db/queries/types/modules.types';
 
 import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
-import type { ModuleResourceRow } from '@/lib/db/queries/types/modules.types';
+import { describe, expect, it } from 'vitest';
 
 const BASE_DATE = new Date('2026-01-01T00:00:00.000Z');
 

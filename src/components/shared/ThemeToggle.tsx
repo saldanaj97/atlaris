@@ -1,14 +1,14 @@
 'use client';
 
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 
 interface ThemeToggleProps {
   /** Button size variant */
@@ -42,13 +42,13 @@ export function ThemeToggle({
   if (!mounted) {
     return (
       <Button
-        variant="ghost"
+        variant='ghost'
         size={size}
         className={className}
         disabled
-        aria-label="Toggle theme"
+        aria-label='Toggle theme'
       >
-        <Sun className="size-5" />
+        <Sun className='size-5' />
       </Button>
     );
   }
@@ -59,16 +59,16 @@ export function ThemeToggle({
 
   const button = (
     <Button
-      variant="ghost"
+      variant='ghost'
       size={size}
       onClick={toggleTheme}
       className={className}
       aria-label={label}
     >
       {isDark ? (
-        <Sun className="size-5 transition-transform" />
+        <Sun className='size-5 transition-transform' />
       ) : (
-        <Moon className="size-5 transition-transform" />
+        <Moon className='size-5 transition-transform' />
       )}
     </Button>
   );
@@ -80,7 +80,7 @@ export function ThemeToggle({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side='bottom'>{label}</TooltipContent>
     </Tooltip>
   );
 }

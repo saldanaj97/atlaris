@@ -1,6 +1,3 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import { decideJobRetry, getJobRetryDelayMs } from '@/shared/retry-policy';
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
@@ -8,6 +5,8 @@ import {
   MAX_PROVIDER_RETRIES,
   MAX_TOTAL_AI_CALLS_PER_JOB,
 } from '@/shared/constants/retry-policy';
+import { decideJobRetry, getJobRetryDelayMs } from '@/shared/retry-policy';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('shared retry-policy', () => {
   describe('decideJobRetry', () => {

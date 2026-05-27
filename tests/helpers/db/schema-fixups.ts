@@ -1,7 +1,6 @@
-import { sql } from 'drizzle-orm';
-
 import { stripeWebhookEvents } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { sql } from 'drizzle-orm';
 
 export async function ensureStripeWebhookEvents() {
   await db.select().from(stripeWebhookEvents).limit(1);

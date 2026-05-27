@@ -15,6 +15,19 @@
  * 4. Verify data isolation between users
  */
 
+import { truncateAll } from '../helpers/db/truncate';
+import {
+  cleanupTrackedRlsClients,
+  createAnonRlsDb,
+  createRlsDbForUser,
+  getServiceRoleDb,
+} from '../helpers/rls';
+import {
+  expectedPolicyTables,
+  expectRlsViolation,
+  policyRowSchema,
+  serverOwnedWriteTables,
+} from './rls-test-helpers';
 import {
   jobQueue,
   aiUsageEvents,
@@ -29,24 +42,11 @@ import {
   tasks,
   users,
 } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createId } from '@tests/fixtures/ids';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { db } from '@supabase/service-role';
-import { truncateAll } from '../helpers/db/truncate';
-import {
-  cleanupTrackedRlsClients,
-  createAnonRlsDb,
-  createRlsDbForUser,
-  getServiceRoleDb,
-} from '../helpers/rls';
-import {
-  expectedPolicyTables,
-  expectRlsViolation,
-  policyRowSchema,
-  serverOwnedWriteTables,
-} from './rls-test-helpers';
 
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_generations, oauth_state_tokens.

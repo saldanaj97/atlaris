@@ -1,8 +1,8 @@
-import type Stripe from 'stripe';
 import type {
   CommerceSubscriptionSnapshot,
   CommerceWebhookEvent,
 } from '@/features/billing/stripe-commerce/dtos';
+import type Stripe from 'stripe';
 
 /**
  * Stripe SDK port used by the commerce boundary (live, local mock, or test fake).

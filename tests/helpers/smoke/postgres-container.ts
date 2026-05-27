@@ -1,13 +1,12 @@
+import {
+  PostgreSqlContainer,
+  type StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
 /**
  * Ephemeral Postgres 17 for local smoke — mirrors Vitest Testcontainers setup
  * without writing state into the repo.
  */
 import { randomUUID } from 'node:crypto';
-
-import {
-  PostgreSqlContainer,
-  type StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
 
 const TEST_DB_PASSWORD = randomUUID();
 

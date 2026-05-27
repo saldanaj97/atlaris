@@ -6,6 +6,9 @@
  *
  */
 
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import {
   getDefaultModelForTier,
   getModelsForTier,
@@ -13,9 +16,7 @@ import {
 } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
-import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import { type Logger, logger } from '@/lib/logging/logger';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 export type ModelResolution = {
   modelId: string;

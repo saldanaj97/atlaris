@@ -1,16 +1,7 @@
-import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
-import * as streamCleanup from '@/features/plans/session/stream-cleanup';
-import { createPlanGenerationSessionBoundary } from '@/features/plans/session/plan-generation-session';
-import {
-  findStreamingEvent,
-  readStreamingResponse,
-} from '@tests/helpers/streaming';
-import { buildTestAuthUserId } from '@tests/helpers/testIds';
-import { describe, expect, it, vi } from 'vitest';
-
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
+
 import {
   BASE_CREATE_BODY,
   buildCreateStreamArgs,
@@ -19,6 +10,15 @@ import {
   SUCCESS_CREATE_ATTEMPT_RESULT,
   SUCCESS_CREATE_RESULT,
 } from './stream-session-test-helpers';
+import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { createPlanGenerationSessionBoundary } from '@/features/plans/session/plan-generation-session';
+import * as streamCleanup from '@/features/plans/session/stream-cleanup';
+import {
+  findStreamingEvent,
+  readStreamingResponse,
+} from '@tests/helpers/streaming';
+import { buildTestAuthUserId } from '@tests/helpers/testIds';
+import { describe, expect, it, vi } from 'vitest';
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 

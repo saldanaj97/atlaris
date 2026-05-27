@@ -1,8 +1,9 @@
-import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
+import type { ClientPlanDetail } from '@/shared/types/client.types';
+
+import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
-import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { BookOpen, Calendar, Clock, TrendingUp } from 'lucide-react';
 
 interface PlanOverviewProps {
@@ -25,18 +26,18 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
   } = stats;
 
   return (
-    <article className="lg:col-span-2">
+    <article className='lg:col-span-2'>
       <GradientProgressHeroFrame
-        className="mb-6"
-        contentClassName="min-h-88"
+        className='mb-6'
+        contentClassName='min-h-88'
         completion={completion}
       >
-        <div className="flex items-start justify-between">
-          <div className="flex flex-wrap gap-2">
+        <div className='flex items-start justify-between'>
+          <div className='flex flex-wrap gap-2'>
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-border/60 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                className='rounded-full border border-border/60 bg-muted px-3 py-1 text-xs font-medium text-muted-foreground'
               >
                 {tag}
               </span>
@@ -45,41 +46,41 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-medium tracking-wider text-muted-foreground uppercase">
+          <p className='mb-2 text-sm font-medium tracking-wider text-muted-foreground uppercase'>
             Learning Plan
           </p>
-          <h2 className="mb-1 text-3xl font-bold text-foreground md:text-4xl lg:text-5xl">
+          <h2 className='mb-1 text-3xl font-bold text-foreground md:text-4xl lg:text-5xl'>
             {plan.topic}
           </h2>
-          <p className="text-lg text-muted-foreground md:text-xl">
+          <p className='text-lg text-muted-foreground md:text-xl'>
             {formatSkillLevel(plan.skillLevel)} • {formatMinutes(totalMinutes)}{' '}
             total
           </p>
         </div>
       </GradientProgressHeroFrame>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
         <MetricCard
           icon={<BookOpen />}
-          label="Modules"
+          label='Modules'
           value={`${completedModules}/${totalModules}`}
-          sublabel="Completed"
+          sublabel='Completed'
         />
         <MetricCard
           icon={<Clock />}
-          label="Progress"
+          label='Progress'
           value={`${completion}%`}
           sublabel={`${completedTasks}/${totalTasks} tasks`}
         />
         <MetricCard
           icon={<TrendingUp />}
-          label="Total Effort"
+          label='Total Effort'
           value={formatMinutes(totalMinutes)}
           sublabel={plan.weeklyHours ? `${plan.weeklyHours}h/week` : '—'}
         />
         <MetricCard
           icon={<Calendar />}
-          label="Est. Finish"
+          label='Est. Finish'
           value={estimatedCompletionDate ?? '—'}
           sublabel={
             estimatedWeeks

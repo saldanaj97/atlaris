@@ -7,7 +7,12 @@ const PROTECTED_PREFIXES = [
   '/analytics',
 ] as const;
 
-const MAINTENANCE_MODE_BYPASS_PREFIXES = ['/.well-known/vercel/flags'] as const;
+/** Public routes required by platform integrations (not user app surfaces). */
+const MAINTENANCE_MODE_BYPASS_PREFIXES = [
+  '/.well-known/vercel/flags',
+  /** Workflow SDK runtime callbacks; also excluded from Clerk in `src/proxy.ts`. */
+  '/.well-known/workflow/',
+] as const;
 
 export function isProtectedRoute(pathname: string): boolean {
   // Stripe webhooks bypass all checks

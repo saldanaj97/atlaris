@@ -1,5 +1,7 @@
 'use client';
 
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import {
   formatCompactUsageLimit,
   type UsageData,
@@ -10,7 +12,6 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
 import Link from 'next/link';
 
@@ -35,51 +36,51 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
       <HoverCardContent
-        className="w-72 border-white/40 bg-white/70 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-black/30"
-        align="start"
+        className='w-72 border-white/40 bg-white/70 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-black/30'
+        align='start'
       >
-        <div className="space-y-4">
+        <div className='space-y-4'>
           {/* Tier Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Subscription</span>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center gap-2'>
+              <Trophy className='size-4 text-muted-foreground' />
+              <span className='text-sm font-medium'>Subscription</span>
             </div>
-            <Badge variant={tierVariants[tier]} className="capitalize">
+            <Badge variant={tierVariants[tier]} className='capitalize'>
               {tier}
             </Badge>
           </div>
 
           {/* Usage Stats */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5" />
+          <div className='space-y-3'>
+            <div className='flex items-center justify-between text-sm'>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <BookOpen className='size-3.5' />
                 Active Plans
               </div>
-              <span className="font-medium">
+              <span className='font-medium'>
                 {usage.activePlans.current} /{' '}
                 {formatCompactUsageLimit(usage.activePlans.limit)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <RefreshCw className="h-3.5 w-3.5" />
+            <div className='flex items-center justify-between text-sm'>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <RefreshCw className='size-3.5' />
                 Regenerations
               </div>
-              <span className="font-medium">
+              <span className='font-medium'>
                 {usage.regenerations.used} /{' '}
                 {formatCompactUsageLimit(usage.regenerations.limit)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Share2 className="h-3.5 w-3.5" />
+            <div className='flex items-center justify-between text-sm'>
+              <div className='flex items-center gap-2 text-muted-foreground'>
+                <Share2 className='size-3.5' />
                 Exports
               </div>
-              <span className="font-medium">
+              <span className='font-medium'>
                 {usage.exports.used} /{' '}
                 {formatCompactUsageLimit(usage.exports.limit)}
               </span>
@@ -88,10 +89,10 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
 
           {/* Upgrade CTA for non-pro users */}
           {tier !== 'pro' && (
-            <div className="border-t pt-3">
+            <div className='border-t pt-3'>
               <Link
-                href="/pricing"
-                className="text-xs font-medium text-primary transition-colors hover:text-primary/80"
+                href='/pricing'
+                className='text-xs font-medium text-primary transition-colors hover:text-primary/80'
               >
                 Upgrade for more →
               </Link>

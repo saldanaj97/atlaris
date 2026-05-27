@@ -1,4 +1,5 @@
 import type { StreamingEvent } from '@/features/plans/session/session-events';
+
 import { logger } from '@/lib/logging/logger';
 
 const encoder = new TextEncoder();

@@ -1,4 +1,3 @@
-import { describe, expect, it, vi } from 'vitest';
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import {
   AI_DEFAULT_MODEL,
@@ -7,6 +6,7 @@ import {
 } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
+import { describe, expect, it, vi } from 'vitest';
 
 const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
 const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;

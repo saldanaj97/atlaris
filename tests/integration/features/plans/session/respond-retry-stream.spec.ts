@@ -1,4 +1,14 @@
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
+
+import {
+  BASE_RETRY_PLAN_SNAPSHOT,
+  buildMockProcessLifecycle,
+  buildRetryStreamArgs,
+  buildRetryStreamRequest,
+  setupPlanSessionUser,
+  SUCCESS_RETRY_ATTEMPT_RESULT,
+  type MockProcessLifecycleHandle,
+} from './stream-session-test-helpers';
 import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -9,15 +19,6 @@ import {
   readStreamingResponse,
 } from '@tests/helpers/streaming';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  BASE_RETRY_PLAN_SNAPSHOT,
-  buildMockProcessLifecycle,
-  buildRetryStreamArgs,
-  buildRetryStreamRequest,
-  setupPlanSessionUser,
-  SUCCESS_RETRY_ATTEMPT_RESULT,
-  type MockProcessLifecycleHandle,
-} from './stream-session-test-helpers';
 
 describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
   it('emits plan_start with retry attempt number then complete on success', async () => {

@@ -33,6 +33,35 @@ function normalizeFractionDigits(fractionDigits: number): number {
   return Math.min(20, Math.max(0, Math.floor(fractionDigits)));
 }
 
+const formatterCache = new Map<string, Intl.NumberFormat>();
+
+function getFormatterCacheKey(
+  locale: string,
+  currency: string,
+  fractionDigits: number,
+): string {
+  return `${locale}\0${currency}\0${fractionDigits}`;
+}
+
+function getCachedNumberFormatter(
+  locale: string,
+  formatOptions: Intl.NumberFormatOptions,
+): Intl.NumberFormat {
+  const cacheKey = getFormatterCacheKey(
+    locale,
+    formatOptions.currency ?? '',
+    formatOptions.minimumFractionDigits ?? 2,
+  );
+  const cached = formatterCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const formatter = new Intl.NumberFormat(locale, formatOptions);
+  formatterCache.set(cacheKey, formatter);
+  return formatter;
+}
+
 export function formatAmount(
   cents?: number | null,
   currency: string = 'USD',
@@ -57,12 +86,13 @@ export function formatAmount(
   };
 
   try {
-    return new Intl.NumberFormat(resolveLocale(locale), formatOptions).format(
-      amount,
-    );
+    return getCachedNumberFormatter(
+      resolveLocale(locale),
+      formatOptions,
+    ).format(amount);
   } catch {
     try {
-      return new Intl.NumberFormat(DEFAULT_LOCALE, formatOptions).format(
+      return getCachedNumberFormatter(DEFAULT_LOCALE, formatOptions).format(
         amount,
       );
     } catch {

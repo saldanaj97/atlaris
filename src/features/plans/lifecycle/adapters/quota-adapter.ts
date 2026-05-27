@@ -5,16 +5,16 @@
  * Thin wrapper around existing billing and plan utility functions.
  */
 
+import type { QuotaPort } from '../ports';
+import type { DurationCapResult, NormalizedDuration } from '../types';
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   checkPlanDurationCap,
   normalizePlanDurationForTier,
 } from '@/features/plans/policy/duration';
-import type { DbClient } from '@/lib/db/types';
-
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { QuotaPort } from '../ports';
-import type { DurationCapResult, NormalizedDuration } from '../types';
 
 export class QuotaAdapter implements QuotaPort {
   constructor(private readonly dbClient: DbClient) {}

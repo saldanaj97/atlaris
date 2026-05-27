@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/generation-policy';
 import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
+import { describe, expect, it } from 'vitest';
 
 describe('derivePlanReadStatus', () => {
   it('returns ready when modules exist even if status is generating', () => {

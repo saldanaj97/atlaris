@@ -1,3 +1,7 @@
+import type { DbUser } from '@/lib/db/queries/types/users.types';
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { canOpenBillingPortalForUser } from '@/features/billing/portal-eligibility';
 import {
   getUsageSummaryForTier,
@@ -5,12 +9,9 @@ import {
 } from '@/features/billing/usage-metrics';
 import { getCorrelationId } from '@/lib/api/context';
 import { AppError } from '@/lib/api/errors';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
-import { users } from '@supabase/schema';
-import type { DbClient } from '@/lib/db/types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-import { eq } from 'drizzle-orm';
 import { getDb } from '@supabase/runtime';
+import { users } from '@supabase/schema';
+import { eq } from 'drizzle-orm';
 
 export class BillingSnapshotNotFoundError extends AppError {
   constructor(userId: string, correlationId?: string) {

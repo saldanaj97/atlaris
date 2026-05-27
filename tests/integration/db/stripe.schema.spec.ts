@@ -1,9 +1,8 @@
-import { type InferSelectModel, sql } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
-
 import { ensureUser } from '@/../tests/helpers/db/users';
 import { usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { type InferSelectModel, sql } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 
 describe('Stripe DB schema', () => {
   describe('users (subscription + Stripe fields)', () => {

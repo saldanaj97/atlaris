@@ -1,11 +1,11 @@
+import { clearTestUser, setTestUser } from '../../helpers/auth';
+import { ensureUser } from '../../helpers/db/users';
 import { learningPlans, usageMetrics, users } from '@supabase/schema';
+import { db } from '@supabase/service-role';
+import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { eq } from 'drizzle-orm';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { db } from '@supabase/service-role';
-import { mockServerSession } from '@tests/helpers/mock-server-auth';
-import { clearTestUser, setTestUser } from '../../helpers/auth';
-import { ensureUser } from '../../helpers/db/users';
 
 const serverAuth = vi.hoisted(() => {
   const getSession = vi.fn();
@@ -63,8 +63,10 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body.usage).toHaveProperty('activePlans');
     expect(body.usage).toHaveProperty('regenerations');
     expect(body.usage).toHaveProperty('exports');
+    expect(body.usage).toHaveProperty('lessonGenerations');
     expect(body.usage.regenerations.used).toBe(0);
     expect(body.usage.exports.used).toBe(0);
+    expect(body.usage.lessonGenerations.used).toBe(0);
 
     const after = await db
       .select()

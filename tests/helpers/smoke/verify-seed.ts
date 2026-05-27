@@ -1,9 +1,8 @@
+import { LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID } from '@/lib/config/local-product-testing';
 /**
  * Infra-only validation: confirm the canonical product-testing user row exists.
  */
 import postgres from 'postgres';
-
-import { LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID } from '@/lib/config/local-product-testing';
 
 export async function assertSeededSmokeUserPresent(
   connectionUrl: string,

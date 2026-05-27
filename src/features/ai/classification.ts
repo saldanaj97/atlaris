@@ -1,3 +1,5 @@
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
 import { DEFAULT_CLASSIFICATION } from '@/features/ai/constants';
 import { ParserError } from '@/features/ai/parser';
 import {
@@ -5,8 +7,6 @@ import {
   ProviderRateLimitError,
   ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
-
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 type ClassificationContext = {
   error: unknown;

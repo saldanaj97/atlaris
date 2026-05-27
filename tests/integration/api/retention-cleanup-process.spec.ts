@@ -1,6 +1,3 @@
-import { and, eq, inArray } from 'drizzle-orm';
-import { afterEach, describe, expect, it } from 'vitest';
-
 import { POST as POST_RETENTION_CLEANUP } from '@/app/api/internal/maintenance/retention/cleanup/route';
 import {
   jobQueue,
@@ -8,8 +5,9 @@ import {
   stripeWebhookEvents,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-
 import { seedRetentionCleanupRows } from '@tests/helpers/db/retention-fixtures';
+import { and, eq, inArray } from 'drizzle-orm';
+import { afterEach, describe, expect, it } from 'vitest';
 
 const ORIGINAL_ENV = {
   MAINTENANCE_WORKER_TOKEN: process.env.MAINTENANCE_WORKER_TOKEN,

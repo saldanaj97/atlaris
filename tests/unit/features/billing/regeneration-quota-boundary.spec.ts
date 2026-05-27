@@ -1,15 +1,16 @@
-import { makeDbClient } from '@tests/fixtures/db-mocks';
-import { createId } from '@tests/fixtures/ids';
-import { describe, expect, it, vi } from 'vitest';
 import type {
   MeteredReservationToken,
   ReserveMeteredResult,
 } from '@/features/billing/metered-reservation';
+
 import {
   type RegenerationQuotaBoundaryDeps,
   type RegenerationQuotaWorkResult,
   runRegenerationQuotaReserved,
 } from '@/features/billing/regeneration-quota-boundary';
+import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { createId } from '@tests/fixtures/ids';
+import { describe, expect, it, vi } from 'vitest';
 
 const fakeDb = makeDbClient();
 const userId = createId('user');

@@ -1,7 +1,7 @@
+import { IntegrationCard } from '@/app/(app)/settings/integrations/components/IntegrationCard';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { IntegrationCard } from '@/app/(app)/settings/integrations/components/IntegrationCard';
 
 const baseProps = {
   name: 'Google Calendar',
@@ -18,7 +18,7 @@ describe('IntegrationCard', () => {
     render(
       <IntegrationCard
         {...baseProps}
-        status="available"
+        status='available'
         onConnect={onConnect}
       />,
     );
@@ -37,7 +37,7 @@ describe('IntegrationCard', () => {
     render(
       <IntegrationCard
         {...baseProps}
-        status="connected"
+        status='connected'
         onDisconnect={onDisconnect}
       />,
     );
@@ -52,7 +52,7 @@ describe('IntegrationCard', () => {
   it('keeps connect disabled and harmless when no handler is provided', async () => {
     const user = userEvent.setup();
 
-    render(<IntegrationCard {...baseProps} status="available" />);
+    render(<IntegrationCard {...baseProps} status='available' />);
 
     const card = screen.getByRole('region', { name: 'Google Calendar' });
     const button = within(card).getByRole('button', { name: 'Connect' });

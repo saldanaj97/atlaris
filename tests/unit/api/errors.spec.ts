@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AppError,
   AttemptCapExceededError,
@@ -11,6 +10,7 @@ import {
   toErrorResponse,
   ValidationError,
 } from '@/lib/api/errors';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/logging/logger', () => ({
   logger: {

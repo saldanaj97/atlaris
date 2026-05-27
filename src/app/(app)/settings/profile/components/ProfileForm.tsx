@@ -1,5 +1,17 @@
 'use client';
 
+import {
+  type ProfileData,
+  requestProfile,
+  saveProfileName,
+} from '@/app/(app)/settings/profile/components/profile-client';
+import { ProfileFormSkeleton } from '@/app/(app)/settings/profile/components/ProfileFormSkeleton';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { clientLogger } from '@/lib/logging/client';
 import { Pencil } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -11,18 +23,6 @@ import {
   useRef,
 } from 'react';
 import { toast } from 'sonner';
-import { ProfileFormSkeleton } from '@/app/(app)/settings/profile/components/ProfileFormSkeleton';
-import {
-  type ProfileData,
-  requestProfile,
-  saveProfileName,
-} from '@/app/(app)/settings/profile/components/profile-client';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { clientLogger } from '@/lib/logging/client';
 
 interface ProfileFormProps {
   locale?: string;
@@ -211,14 +211,14 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
   if (state.error || !state.profile) {
     return (
-      <Card className="col-span-full space-y-4 p-6">
-        <p className="text-sm text-muted-foreground">
+      <Card className='col-span-full space-y-4 p-6'>
+        <p className='text-sm text-muted-foreground'>
           {state.error ?? 'Unable to load profile data.'}
         </p>
         <div>
           <Button
-            type="button"
-            variant="outline"
+            type='button'
+            variant='outline'
             onClick={() => {
               profileFetchControllerRef.current?.abort();
               profileFetchControllerRef.current = fetchProfile();
@@ -234,14 +234,14 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   return (
     <>
       {/* Personal Information */}
-      <Card className="flex min-h-80 flex-col p-6">
-        <h2 className="mb-4 text-xl font-semibold">Personal Information</h2>
-        <div className="space-y-4">
+      <Card className='flex min-h-80 flex-col p-6'>
+        <h2 className='mb-4 text-xl font-semibold'>Personal Information</h2>
+        <div className='space-y-4'>
           <div>
             <Label
               id={profileNameLabelId}
               htmlFor={profileNameInputId}
-              className="mb-1 text-muted-foreground"
+              className='mb-1 text-muted-foreground'
             >
               Name
             </Label>
@@ -249,7 +249,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               <Input
                 ref={nameInputCallbackRef}
                 id={profileNameInputId}
-                type="text"
+                type='text'
                 value={state.name}
                 onChange={(event) =>
                   dispatch({ type: 'name-changed', name: event.target.value })
@@ -262,10 +262,10 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               />
             ) : (
               <Button
-                type="button"
-                variant="outline"
+                type='button'
+                variant='outline'
                 aria-labelledby={`${profileNameLabelId} ${profileNameValueId}`}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal"
+                className='flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal'
                 onClick={() => {
                   dispatch({ type: 'start-editing' });
                 }}
@@ -276,23 +276,23 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 >
                   {state.name || 'No name set'}
                 </span>
-                <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Pencil className='size-4 shrink-0 text-muted-foreground' />
               </Button>
             )}
           </div>
           <div>
-            <span className="mb-1 block text-sm text-muted-foreground">
+            <span className='mb-1 block text-sm text-muted-foreground'>
               Email
             </span>
-            <p className="text-sm">{state.profile.email}</p>
+            <p className='text-sm'>{state.profile.email}</p>
           </div>
         </div>
 
         {state.editingName && (
-          <div className="mt-auto flex justify-end gap-2 pt-4">
+          <div className='mt-auto flex justify-end gap-2 pt-4'>
             <Button
-              type="button"
-              variant="ghost"
+              type='button'
+              variant='ghost'
               disabled={state.saving}
               onClick={() => {
                 dispatch({ type: 'cancel-editing' });
@@ -315,19 +315,19 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
       </Card>
 
       {/* Account Details */}
-      <Card className="p-6">
-        <h2 className="mb-4 text-xl font-semibold">Account Details</h2>
-        <div className="space-y-4 text-sm text-muted-foreground">
+      <Card className='p-6'>
+        <h2 className='mb-4 text-xl font-semibold'>Account Details</h2>
+        <div className='space-y-4 text-sm text-muted-foreground'>
           <div>
-            <span className="mb-1 block">Subscription Tier</span>
-            <Badge variant="product">{state.profile.subscriptionTier}</Badge>
+            <span className='mb-1 block'>Subscription Tier</span>
+            <Badge variant='product'>{state.profile.subscriptionTier}</Badge>
           </div>
           <div>
-            <span className="mb-1 block">Status</span>
+            <span className='mb-1 block'>Status</span>
             <p>{state.profile.subscriptionStatus ?? 'N/A'}</p>
           </div>
           <div>
-            <span className="mb-1 block">Member Since</span>
+            <span className='mb-1 block'>Member Since</span>
             <p>
               {new Date(state.profile.createdAt).toLocaleDateString(locale, {
                 year: 'numeric',
@@ -336,12 +336,12 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               })}
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-muted/50 p-3">
-            <p className="text-xs">
+          <div className='rounded-lg border border-border bg-muted/50 p-3'>
+            <p className='text-xs'>
               <strong>Note:</strong> To manage your subscription, visit the{' '}
               <Link
-                href="/settings/billing"
-                className="text-primary underline underline-offset-2"
+                href='/settings/billing'
+                className='text-primary underline underline-offset-2'
               >
                 billing settings
               </Link>{' '}

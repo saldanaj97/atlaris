@@ -2,12 +2,13 @@
  * Pure plan duration / tier cap policy — no DB or Drizzle.
  */
 
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/features/plans/validation/learningPlans';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 // Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {

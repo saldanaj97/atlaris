@@ -1,8 +1,9 @@
+import type { ReadBillingCatalogInput } from '@/features/billing/catalog-read';
+
 import { render, screen } from '@testing-library/react';
 import { createStripeTierMap } from '@tests/fixtures/pricing';
 import { buildUserFixture } from '@tests/fixtures/users';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReadBillingCatalogInput } from '@/features/billing/catalog-read';
 type PricingPageUser = ReturnType<typeof buildUserFixture>;
 
 const mocks = vi.hoisted(() => ({
@@ -86,7 +87,7 @@ vi.mock(
       mocks.manageSubscriptionButtonMock(props);
       return (
         <div
-          data-testid="manage-subscription-button"
+          data-testid='manage-subscription-button'
           data-can-open-billing-portal={String(props.canOpenBillingPortal)}
         />
       );

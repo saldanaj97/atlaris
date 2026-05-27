@@ -1,11 +1,10 @@
-import { describe, expect, it } from 'vitest';
-
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { db } from '@supabase/service-role';
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { createMockProvider } from '../../helpers/mockProvider';
+import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { db } from '@supabase/service-role';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Simulates a provider stall by creating a mock provider that never yields a module

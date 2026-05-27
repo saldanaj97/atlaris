@@ -1,9 +1,10 @@
-import { mapOnboardingToCreateInput } from '@/features/plans/create-mapper';
 import type { PlanFormData } from '@/features/plans/plan-form.types';
 import type {
   CreateLearningPlanInput,
   OnboardingFormValues,
 } from '@/features/plans/validation/learningPlans.types';
+
+import { mapOnboardingToCreateInput } from '@/features/plans/create-mapper';
 import {
   deadlineWeeksToDate,
   formatDateToYmd,

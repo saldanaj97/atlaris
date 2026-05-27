@@ -14,14 +14,14 @@ export default function SettingsIntegrationsPage(): JSX.Element {
   return (
     <>
       <PageHeader
-        title="Integrations"
-        titleAs="h2"
-        subtitle="Connect your favorite tools to supercharge your learning workflow"
+        title='Integrations'
+        titleAs='h2'
+        subtitle='Connect your favorite tools to supercharge your learning workflow'
       />
 
       <IntegrationGrid />
 
-      <div className="mt-10">
+      <div className='mt-10'>
         <RequestIntegration />
       </div>
     </>

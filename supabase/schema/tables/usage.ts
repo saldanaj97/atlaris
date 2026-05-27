@@ -1,3 +1,8 @@
+import type { ModelPricingSnapshot } from '@/shared/types/model-pricing-snapshot.types';
+
+import { timestampFields } from '../helpers';
+import { recordOwnedByCurrentUser } from '../policy-helpers';
+import { users } from './users';
 import { sql } from 'drizzle-orm';
 import {
   bigint,
@@ -12,12 +17,6 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-import type { ModelPricingSnapshot } from '@/shared/types/model-pricing-snapshot.types';
-
-import { timestampFields } from '../helpers';
-import { recordOwnedByCurrentUser } from '../policy-helpers';
-import { users } from './users';
 
 // Usage tracking tables
 

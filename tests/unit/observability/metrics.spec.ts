@@ -1,12 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import * as Sentry from '@sentry/nextjs';
-
 import {
   countMetric,
   distributionMetric,
   gaugeMetric,
 } from '@/lib/observability/metrics';
+import * as Sentry from '@sentry/nextjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@sentry/nextjs', () => ({
   metrics: {

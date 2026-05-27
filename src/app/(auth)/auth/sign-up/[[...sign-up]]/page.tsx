@@ -1,8 +1,8 @@
-import { SignUp } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import type { JSX } from 'react';
 
 import { PageShell } from '@/components/ui/page-shell';
+import { SignUp } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
   title: 'Create Account | Atlaris',
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function SignUpPage(): JSX.Element {
   return (
-    <PageShell className="flex flex-col items-center justify-center gap-6">
-      <SignUp fallbackRedirectUrl="/dashboard" signInUrl="/auth/sign-in" />
+    <PageShell className='flex flex-col items-center justify-center gap-6'>
+      <SignUp fallbackRedirectUrl='/dashboard' signInUrl='/auth/sign-in' />
     </PageShell>
   );
 }

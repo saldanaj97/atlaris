@@ -1,16 +1,17 @@
+import type { ParsedModule } from '@/features/ai/types/parser.types';
+import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import type { StreamingEvent } from '@/features/plans/session/session-events';
+import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
+
+import { toFallbackErrorLike } from './stream-cleanup';
 import {
   type ErrorLike,
   type GenerationError,
   sanitizeSseError,
 } from '@/features/ai/streaming/error-sanitizer';
-import type { ParsedModule } from '@/features/ai/types/parser.types';
-import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
-import type { StreamingEvent } from '@/features/plans/session/session-events';
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
-import { toFallbackErrorLike } from './stream-cleanup';
 
 type SessionEmitFn = (event: StreamingEvent) => void;
 

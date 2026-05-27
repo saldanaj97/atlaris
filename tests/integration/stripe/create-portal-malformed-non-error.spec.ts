@@ -1,13 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
 import type { ParseJsonBodyOptions } from '@/lib/api/parse-json-body';
-import { logger } from '@/lib/logging/logger';
+
 import { makeStripeMock } from '../../fixtures/stripe-mocks';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { markUserAsSubscribed } from '../../helpers/subscription';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
+import { createCreatePortalHandler } from '@/app/api/v1/stripe/create-portal/route';
+import { logger } from '@/lib/logging/logger';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type ParseJsonBody = (
   req: Request,

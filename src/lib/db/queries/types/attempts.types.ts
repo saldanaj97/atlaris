@@ -1,5 +1,3 @@
-import type { InferSelectModel } from 'drizzle-orm';
-
 import type { DbClient } from '@/lib/db/types';
 import type { EffortNormalizationFlags } from '@/shared/constants/effort';
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
@@ -8,6 +6,7 @@ import type {
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@supabase/schema');
 
@@ -97,7 +96,15 @@ interface AttemptMetadataFailure {
   timedOut: boolean;
 }
 
+export interface AttemptWorkflowMetadata {
+  provider: 'workflow-sdk';
+  runId: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface AttemptMetadata {
+  workflow?: AttemptWorkflowMetadata;
   input: {
     topic: {
       truncated: boolean;
@@ -125,6 +132,7 @@ export interface AttemptMetadata {
 export interface MetadataParams {
   sanitized: SanitizedInput;
   providerMetadata?: ProviderMetadata;
+  workflowMetadata?: AttemptWorkflowMetadata;
   modulesClamped: boolean;
   tasksClamped: boolean;
   startedAt: Date;

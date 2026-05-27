@@ -1,6 +1,6 @@
-import { BookOpen, Clock, ListTodo } from 'lucide-react';
 import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes } from '@/features/plans/formatters';
+import { BookOpen, Clock, ListTodo } from 'lucide-react';
 
 export function ModuleStatsGrid({
   completedTasks,
@@ -16,22 +16,22 @@ export function ModuleStatsGrid({
   completion: number;
 }) {
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-3">
+    <div className='mt-4 grid gap-4 sm:grid-cols-3'>
       <MetricCard
         icon={<ListTodo />}
-        label="Lessons"
+        label='Lessons'
         value={`${completedTasks}/${totalTasks}`}
-        sublabel="Completed"
+        sublabel='Completed'
       />
       <MetricCard
         icon={<Clock />}
-        label="Duration"
+        label='Duration'
         value={formatMinutes(totalMinutes)}
         sublabel={formatMinutes(estimatedMinutes)}
       />
       <MetricCard
         icon={<BookOpen />}
-        label="Progress"
+        label='Progress'
         value={`${completion}%`}
         sublabel={
           completion === 100

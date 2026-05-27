@@ -1,9 +1,4 @@
-import { vi } from 'vitest';
-
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-    success: vi.fn(),
-    info: vi.fn(),
-  },
-}));
+/**
+ * Sonner is mocked globally in `tests/unit/setup.ts` (Vitest only hoists `vi.mock`
+ * from setup files and the spec under test, not from imported side-effect modules).
+ */
