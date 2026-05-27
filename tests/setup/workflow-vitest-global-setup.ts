@@ -6,9 +6,9 @@ import { join } from 'node:path';
 const outDir = join(process.cwd(), '.workflow-vitest');
 const dataDir = join(process.cwd(), '.workflow-data');
 
-const workflowDirs = process.env.WORKFLOW_VITEST_DIRS?.split(',').map((dir) =>
-  dir.trim(),
-) ?? ['tests/helpers/workflow'];
+const workflowDirs = process.env.WORKFLOW_VITEST_DIRS?.split(',')
+  .map((dir) => dir.trim())
+  .filter(Boolean) ?? ['tests/helpers/workflow'];
 
 /**
  * Matches @workflow/vitest's builder, with configurable discovery roots.

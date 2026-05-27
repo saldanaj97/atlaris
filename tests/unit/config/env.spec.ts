@@ -704,6 +704,26 @@ describe('Environment Configuration', () => {
         () => createWorkflowEnvForTests(access).moduleLessonWorkflowEnabled,
       ).toThrow(EnvValidationError);
     });
+
+    it('throws EnvValidationError for invalid plan regeneration workflow flag values', () => {
+      const access = createServerEnvAccess(() => ({
+        PLAN_REGENERATION_WORKFLOW_ENABLED: 'maybe',
+      }));
+
+      expect(
+        () => createWorkflowEnvForTests(access).planRegenerationWorkflowEnabled,
+      ).toThrow(EnvValidationError);
+    });
+
+    it('throws EnvValidationError for invalid plan generation workflow flag values', () => {
+      const access = createServerEnvAccess(() => ({
+        PLAN_GENERATION_WORKFLOW_ENABLED: 'maybe',
+      }));
+
+      expect(
+        () => createWorkflowEnvForTests(access).planGenerationWorkflowEnabled,
+      ).toThrow(EnvValidationError);
+    });
   });
 
   describe('barrel surface', () => {

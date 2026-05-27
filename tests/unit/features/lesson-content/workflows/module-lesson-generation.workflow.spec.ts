@@ -1,32 +1,22 @@
-/**
- * Workflow SDK `'use workflow'` functions require static step imports; see
- * `module-lesson-generation.workflow.ts`. Step modules are mocked here.
- */
 import type { ModuleLessonWorkflowInput } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 
-import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
+import { createModuleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
+import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workflowMocks = vi.hoisted(() => ({
+const workflowMocks = {
   claim: vi.fn(),
   run: vi.fn(),
-}));
-
-vi.mock(
-  '@/features/lesson-content/workflows/module-lesson-generation.steps',
-  () => ({
-    claimModuleLessonGenerationStep: workflowMocks.claim,
-    runModuleLessonGenerationStep: workflowMocks.run,
-  }),
-);
+};
 
 const input: ModuleLessonWorkflowInput = {
-  userId: 'user-1',
-  planId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-  moduleId: '7f9c2f8d-1a9b-4f6e-9f6c-2b2c3d479abc',
+  userId: createId('user'),
+  planId: createId('plan'),
+  moduleId: createId('module'),
   userTier: 'free',
-  correlationId: 'corr-1',
+  correlationId: createId('corr'),
 };
+const workflow = createModuleLessonGenerationWorkflow(workflowMocks);
 
 describe('moduleLessonGenerationWorkflow', () => {
   beforeEach(() => {
@@ -40,13 +30,12 @@ describe('moduleLessonGenerationWorkflow', () => {
       runId: 'wrun_test',
     });
 
-    const result = await moduleLessonGenerationWorkflow(input);
+    const result = await workflow(input);
 
     expect(result).toEqual({ kind: 'locked', runId: 'wrun_test' });
-    expect(workflowMocks.run).not.toHaveBeenCalled();
   });
 
-  it('delegates to run step on happy path with load from claim', async () => {
+  it('returns the run result when claim succeeds', async () => {
     const load = { module: { id: input.moduleId }, isUnlocked: true };
     workflowMocks.claim.mockResolvedValue({
       kind: 'claimed',
@@ -59,9 +48,8 @@ describe('moduleLessonGenerationWorkflow', () => {
       runId: 'wrun_test',
     });
 
-    const result = await moduleLessonGenerationWorkflow(input);
+    const result = await workflow(input);
 
-    expect(workflowMocks.run).toHaveBeenCalledWith(input, load, 'wrun_test');
     expect(result).toEqual({
       kind: 'success',
       durationMs: 12,

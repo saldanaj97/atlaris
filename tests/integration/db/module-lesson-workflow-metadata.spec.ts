@@ -39,7 +39,7 @@ describe('module lesson workflow metadata (integration)', () => {
     );
     expect(claim.kind).toBe('claimed');
 
-    const runId = 'wrun_test_metadata';
+    const runId = `wrun_${authUserId}`;
     await persistModuleLessonWorkflowRunMetadata(db, {
       userId,
       planId: plan.id,

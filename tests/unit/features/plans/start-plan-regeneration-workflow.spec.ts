@@ -1,5 +1,6 @@
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
+import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = {
@@ -12,6 +13,13 @@ const mocks = {
 };
 
 describe('startPlanRegenerationWorkflow', () => {
+  const input = {
+    jobId: createId('job'),
+    planId: createId('plan'),
+    userId: createId('user'),
+    correlationId: createId('corr'),
+  };
+
   beforeEach(() => {
     mocks.isEnabled.mockReset();
     mocks.isEnabled.mockReturnValue(false);
@@ -21,20 +29,13 @@ describe('startPlanRegenerationWorkflow', () => {
   });
 
   it('no-ops when regeneration workflow flag is off', async () => {
-    await startPlanRegenerationWorkflow(
-      {
-        jobId: 'job-1',
-        planId: 'plan-1',
-        userId: 'user-1',
-        correlationId: 'corr-1',
-      },
-      {
-        isEnabled: mocks.isEnabled,
-        workflowStart: mocks.workflowStart,
-        log: mocks.log,
-      },
-    );
+    const result = await startPlanRegenerationWorkflow(input, {
+      isEnabled: mocks.isEnabled,
+      workflowStart: mocks.workflowStart,
+      log: mocks.log,
+    });
 
+    expect(result).toBe(false);
     expect(mocks.workflowStart).not.toHaveBeenCalled();
   });
 
@@ -44,39 +45,59 @@ describe('startPlanRegenerationWorkflow', () => {
       runId: 'wrun_regen',
       returnValue: Promise.resolve({
         kind: 'completed',
-        jobId: 'job-1',
-        planId: 'plan-1',
+        jobId: input.jobId,
+        planId: input.planId,
       }),
     });
 
-    await startPlanRegenerationWorkflow(
-      {
-        jobId: 'job-1',
-        planId: 'plan-1',
-        userId: 'user-1',
-        correlationId: 'corr-2',
-      },
-      {
-        isEnabled: mocks.isEnabled,
-        workflowStart: mocks.workflowStart,
-        log: mocks.log,
-      },
-    );
+    const result = await startPlanRegenerationWorkflow(input, {
+      isEnabled: mocks.isEnabled,
+      workflowStart: mocks.workflowStart,
+      log: mocks.log,
+    });
 
+    expect(result).toBe(true);
     expect(mocks.workflowStart).toHaveBeenCalledWith(planRegenerationWorkflow, [
       {
-        jobId: 'job-1',
-        planId: 'plan-1',
-        userId: 'user-1',
-        correlationId: 'corr-2',
+        jobId: input.jobId,
+        planId: input.planId,
+        userId: input.userId,
+        correlationId: input.correlationId,
       },
     ]);
     expect(mocks.log.info).toHaveBeenCalledWith(
       expect.objectContaining({
         workflowRunId: 'wrun_regen',
-        jobId: 'job-1',
+        jobId: input.jobId,
       }),
       expect.stringContaining('started'),
+    );
+  });
+
+  it('logs workflow startup failures without throwing', async () => {
+    const error = new Error('start-failed');
+    mocks.isEnabled.mockReturnValue(true);
+    mocks.workflowStart.mockRejectedValue(error);
+
+    await expect(
+      startPlanRegenerationWorkflow(input, {
+        isEnabled: mocks.isEnabled,
+        workflowStart: mocks.workflowStart,
+        log: mocks.log,
+      }),
+    ).resolves.toBe(false);
+
+    expect(mocks.workflowStart).toHaveBeenCalledWith(planRegenerationWorkflow, [
+      input,
+    ]);
+    expect(mocks.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: error,
+        jobId: input.jobId,
+        planId: input.planId,
+        correlationId: input.correlationId,
+      }),
+      expect.stringContaining('failed to start'),
     );
   });
 });

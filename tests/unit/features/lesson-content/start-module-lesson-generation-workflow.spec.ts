@@ -2,6 +2,7 @@ import type { DbClient } from '@/lib/db/types';
 
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
+import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = {
@@ -14,11 +15,11 @@ const mocks = {
 
 const params = {
   dbClient: {} as DbClient,
-  userId: 'user-1',
-  planId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-  moduleId: '7f9c2f8d-1a9b-4f6e-9f6c-2b2c3d479abc',
+  userId: createId('user'),
+  planId: createId('plan'),
+  moduleId: createId('module'),
   userTier: 'free' as const,
-  correlationId: 'corr-lesson',
+  correlationId: createId('corr'),
 };
 
 const deps = {
@@ -78,11 +79,37 @@ describe('startModuleLessonGeneration', () => {
       moduleLessonGenerationWorkflow,
       [
         expect.objectContaining({
-          userId: 'user-1',
+          userId: params.userId,
           planId: params.planId,
           moduleId: params.moduleId,
           userTier: 'free',
-          correlationId: 'corr-lesson',
+          correlationId: params.correlationId,
+        }),
+      ],
+    );
+  });
+
+  it('surfaces workflow startup failures', async () => {
+    const error = new Error('start-fail');
+    mocks.isWorkflowEnabled.mockReturnValue(true);
+    mocks.loadContext.mockResolvedValue({
+      module: { lessonGenerationStatus: 'not_generated' },
+      isUnlocked: true,
+    });
+    mocks.workflowStart.mockRejectedValue(error);
+
+    await expect(startModuleLessonGeneration(params, deps)).rejects.toThrow(
+      error,
+    );
+    expect(mocks.workflowStart).toHaveBeenCalledWith(
+      moduleLessonGenerationWorkflow,
+      [
+        expect.objectContaining({
+          userId: params.userId,
+          planId: params.planId,
+          moduleId: params.moduleId,
+          userTier: 'free',
+          correlationId: params.correlationId,
         }),
       ],
     );

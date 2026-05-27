@@ -6,6 +6,7 @@ import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
 
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
+import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const workflowMocks = vi.hoisted(() => ({
@@ -21,10 +22,10 @@ vi.mock('@/features/plans/workflows/plan-regeneration.steps', () => ({
 }));
 
 const input: PlanRegenerationWorkflowInput = {
-  jobId: 'job-1',
-  planId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-  userId: 'user-1',
-  correlationId: 'corr-regen',
+  jobId: createId('job'),
+  planId: createId('plan'),
+  userId: createId('user'),
+  correlationId: createId('corr'),
 };
 
 describe('planRegenerationWorkflow', () => {
@@ -37,12 +38,15 @@ describe('planRegenerationWorkflow', () => {
   it('returns early when claim is not claimed', async () => {
     workflowMocks.claim.mockResolvedValue({
       kind: 'already-completed',
-      jobId: 'job-1',
+      jobId: input.jobId,
     });
 
     const result = await planRegenerationWorkflow(input);
 
-    expect(result).toEqual({ kind: 'already-completed', jobId: 'job-1' });
+    expect(result).toEqual({
+      kind: 'already-completed',
+      jobId: input.jobId,
+    });
     expect(workflowMocks.process).not.toHaveBeenCalled();
     expect(workflowMocks.finalize).not.toHaveBeenCalled();
   });
@@ -60,7 +64,7 @@ describe('planRegenerationWorkflow', () => {
     workflowMocks.process.mockResolvedValue(generationResult);
     workflowMocks.finalize.mockResolvedValue({
       kind: 'completed',
-      jobId: 'job-1',
+      jobId: input.jobId,
       planId: input.planId,
     });
 
@@ -73,7 +77,7 @@ describe('planRegenerationWorkflow', () => {
     );
     expect(result).toEqual({
       kind: 'completed',
-      jobId: 'job-1',
+      jobId: input.jobId,
       planId: input.planId,
     });
   });
