@@ -10,8 +10,9 @@ import {
   validateTaskProgressBatchInput,
 } from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import { revalidatePath } from 'next/cache';
+import { revalidatePathsBestEffort } from '@/lib/next/revalidate-paths';
 
 interface BatchUpdateTaskProgressInput {
   planId: string;
@@ -48,9 +49,7 @@ export async function batchUpdateTaskProgressAction({
         updates,
         dbClient: db,
       });
-      for (const path of outcome.revalidatePaths) {
-        revalidatePath(path);
-      }
+      revalidatePathsBestEffort(outcome.revalidatePaths);
     } catch (error) {
       logger.error(
         {
@@ -58,7 +57,7 @@ export async function batchUpdateTaskProgressAction({
           userId: actor.id,
           updateCount: updates.length,
           taskIds: updates.map((update) => update.taskId),
-          err: error,
+          err: serializeErrorForLog(error),
         },
         'Failed to batch update task progress',
       );

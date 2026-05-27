@@ -7,6 +7,17 @@ import {
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const { clientLoggerWarnMock } = vi.hoisted(() => ({
+  clientLoggerWarnMock: vi.fn(),
+}));
+
+vi.mock('@/lib/logging/client', () => ({
+  clientLogger: {
+    error: vi.fn(),
+    warn: clientLoggerWarnMock,
+  },
+}));
+
 const NOT_STARTED: ProgressStatus = 'not_started';
 const IN_PROGRESS: ProgressStatus = 'in_progress';
 const COMPLETED: ProgressStatus = 'completed';
@@ -157,5 +168,73 @@ describe('useTaskStatusBatcher', () => {
     ]);
 
     await expect(nextBatchPromise).resolves.toBeUndefined();
+  });
+
+  it('drops out-of-scope pending updates when scoped task ids change', async () => {
+    vi.useFakeTimers();
+
+    const flushAction = vi.fn<(updates: TaskStatusUpdate[]) => Promise<void>>();
+    flushAction.mockResolvedValue(undefined);
+
+    const scopedTaskIds = new Set(['task-1']);
+    const { result, rerender } = renderHook(
+      ({ scoped }) =>
+        useTaskStatusBatcher({
+          flushAction,
+          scopedTaskIds: scoped,
+          debounceMs: 100,
+          maxWaitMs: 250,
+        }),
+      { initialProps: { scoped: scopedTaskIds } },
+    );
+
+    let stalePromise: Promise<void> = Promise.resolve();
+    act(() => {
+      stalePromise = result.current.queue('task-stale', COMPLETED, NOT_STARTED);
+    });
+
+    rerender({ scoped: new Set(['task-2']) });
+
+    await expect(stalePromise).resolves.toBeUndefined();
+    expect(flushAction).not.toHaveBeenCalled();
+    expect(clientLoggerWarnMock).toHaveBeenCalledWith(
+      'Dropped out-of-scope task progress updates',
+      expect.objectContaining({ droppedCount: 1 }),
+    );
+  });
+
+  it('flushes only in-scope updates when scoped task ids are provided', async () => {
+    vi.useFakeTimers();
+
+    const flushAction = vi.fn<(updates: TaskStatusUpdate[]) => Promise<void>>();
+    flushAction.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useTaskStatusBatcher({
+        flushAction,
+        scopedTaskIds: new Set(['task-1']),
+        debounceMs: 100,
+        maxWaitMs: 250,
+      }),
+    );
+
+    let inScopePromise: Promise<void> = Promise.resolve();
+    let stalePromise: Promise<void> = Promise.resolve();
+    act(() => {
+      inScopePromise = result.current.queue('task-1', COMPLETED, NOT_STARTED);
+      stalePromise = result.current.queue('task-stale', COMPLETED, NOT_STARTED);
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(flushAction).toHaveBeenCalledWith([
+      { taskId: 'task-1', status: COMPLETED },
+    ]);
+    await expect(Promise.all([inScopePromise, stalePromise])).resolves.toEqual([
+      undefined,
+      undefined,
+    ]);
   });
 });
