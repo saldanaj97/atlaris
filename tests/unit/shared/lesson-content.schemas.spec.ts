@@ -150,8 +150,26 @@ describe('lesson content Zod contracts', () => {
       }),
     ).not.toThrow();
     expect(() =>
+      ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+      }),
+    ).not.toThrow();
+    expect(() =>
       ModuleLessonGenerationMetadataSchema.parse({ version: 1, x: 1 }),
     ).toThrow();
+  });
+
+  it('accepts workflow metadata in ModuleLessonGenerationMetadataSchema', () => {
+    expect(() =>
+      ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: 'wrun_test',
+          startedAt: '2026-01-01T00:00:00.000Z',
+        },
+      }),
+    ).not.toThrow();
   });
 
   it('accepts module lesson generation API responses for every state variant', () => {

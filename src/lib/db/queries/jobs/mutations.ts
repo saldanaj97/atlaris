@@ -150,6 +150,79 @@ export async function claimNextPendingJob(
 }
 
 /**
+ * Claims a specific pending regeneration job by id. Returns null when the job is
+ * missing, not pending, or not owned by the expected user/plan.
+ */
+export async function claimRegenerationJobById(
+  jobId: string,
+  expected: { planId: string; userId: string },
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+  const startTime = new Date();
+
+  return client.transaction(async (tx) => {
+    const [candidate] = await tx
+      .select()
+      .from(jobQueue)
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.status, 'pending'),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+          eq(jobQueue.planId, expected.planId),
+          eq(jobQueue.userId, expected.userId),
+        ),
+      )
+      .limit(1)
+      .for('update');
+
+    if (!candidate) {
+      return null;
+    }
+
+    const [claimed] = await tx
+      .update(jobQueue)
+      .set({
+        status: 'processing',
+        startedAt: startTime,
+        updatedAt: startTime,
+      })
+      .where(eq(jobQueue.id, jobId))
+      .returning(jobQueueSelect);
+
+    return claimed ? mapRowToJob(claimed) : null;
+  });
+}
+
+export async function updateRegenerationJobPayload(
+  jobId: string,
+  payload: JobPayload,
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+
+  return runJobMutationIfEditable(client, jobId, async (tx) => {
+    const updatedAt = new Date();
+    const [updated] = await tx
+      .update(jobQueue)
+      .set({
+        payload,
+        updatedAt,
+      })
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+        ),
+      )
+      .returning(jobQueueSelect);
+
+    return updated ? mapRowToJob(updated) : null;
+  });
+}
+
+/**
  * Marks a job as completed and stores the result. Idempotent: if the job is already
  * completed or failed, returns the current row without updating.
  */

@@ -26,7 +26,8 @@ describe('SubscribeButton', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('should call checkout API with correct priceId', async () => {

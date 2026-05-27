@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build --turbopack",
     "dev": "next dev --turbopack",
+    "dev:workflow": "next dev --webpack",
     "dev:full": "pnpm db:dev:start && pnpm dev",
     "start": "next start",
     "check:full": "concurrently --kill-others-on-fail --names lint,type --prefix-colors blue,magenta \"pnpm check:lint\" \"pnpm check:type\"",
@@ -25,6 +26,7 @@
     "test:unit:changed": "tsx scripts/tests/run.ts unit --changed",
     "test:integration": "tsx scripts/tests/run.ts integration",
     "test:integration:changed": "tsx scripts/tests/run.ts integration --changed",
+    "test:workflow": "tsx scripts/tests/run.ts workflow",
     "test:security": "tsx scripts/tests/run.ts security",
     "test:smoke": "tsx scripts/tests/run.ts smoke",
     "ui:capture-baseline": "tsx scripts/ui/capture-baseline.ts",
@@ -68,6 +70,7 @@
     "sonner": "^2.0.7",
     "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
+    "workflow": "^4.2.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -83,6 +86,10 @@
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260421.2",
     "@vitest/coverage-v8": "^4.1.4",
+    "@workflow/builders": "^4.0.6",
+    "@workflow/rollup": "^4.0.5",
+    "@workflow/vitest": "^4.0.6",
+    "@workflow/world-local": "^4.0.6",
     "babel-plugin-react-compiler": "^1.0.0",
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.10",
@@ -119,7 +126,9 @@
       "rollup": ">=4.59.0",
       "serialize-javascript": "^7.0.3",
       "fast-uri": "^3.1.2",
-      "kysely": "^0.28.17"
+      "kysely": "^0.28.17",
+      "undici": ">=7.24.0",
+      "devalue": ">=5.8.1"
     }
   },
   "lint-staged": {

@@ -28,6 +28,7 @@ ALWAYS refer to these docs for testing standards and patterns when writing, audi
 tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
 ├── integration/       # DB + service (sequential, isolated)
+├── workflow/          # Workflow SDK runtime smoke (separate Vitest config)
 ├── e2e/               # User journeys (sequential)
 ├── playwright/        # Browser smoke tests (Playwright + disposable DB)
 ├── security/          # RLS policy verification (sequential)
@@ -53,6 +54,7 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
+| Workflow    | Workflow SDK harness  | In-process SDK runtime                | No                  | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s    |
@@ -60,15 +62,16 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 ## Commands
 
 ```bash
-pnpm test                              # Changed unit + integration bundle
-pnpm test:changed                      # Explicit alias for changed unit + integration bundle
+pnpm test                              # Changed unit + integration-class bundle
+pnpm test:changed                      # Explicit alias for changed unit + integration-class bundle
 pnpm test:unit                         # Unit tests only
 pnpm test:unit:changed                 # Changed unit tests
 pnpm test:unit:watch                   # Watch unit tests
 pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
 pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
-pnpm test:integration:changed          # Changed integration tests
-pnpm test:integration                  # Full integration suite
+pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase
+pnpm test:integration                  # Full integration suite + Workflow SDK phase
+pnpm test:workflow                     # Workflow SDK tests only
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
 pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
 pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
@@ -78,6 +81,14 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 
 **Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
 **Prerequisite for smoke tests:** Docker must be running and Playwright Chromium must be installed (`pnpm exec playwright install chromium`).
+
+## Workflow SDK Tests
+
+- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary, even though it does not use Testcontainers.
+- Keep `vitest.workflow.config.ts` separate from DB/API integration tests so the Workflow SDK harness does not inherit global Testcontainers setup.
+- Use `pnpm test:integration` or `pnpm test:integration:changed` when validating the full integration-class test surface; these commands run the DB/API integration phase first and then the workflow phase.
+- Use `pnpm test:workflow` for targeted Workflow SDK iteration.
+- Keep unit tests for workflow helpers, wrappers, and orchestration under `tests/unit/**`; reserve `tests/workflow/**` for runtime wiring and SDK behavior.
 
 ## Browser Smoke Ownership
 

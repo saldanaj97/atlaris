@@ -2,7 +2,10 @@
  * Types for lifecycle generation finalization (single-transaction settlement).
  */
 
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptReservation,
+  AttemptWorkflowMetadata,
+} from '@/lib/db/queries/types/attempts.types';
 import type { ParsedModule } from '@/shared/types/ai-parser.types';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
@@ -27,6 +30,7 @@ export type FinalizeGenerationSuccessInput = {
   readonly usage: CanonicalAIUsage;
   readonly durationMs: number;
   readonly extendedTimeout: boolean;
+  readonly workflowMetadata?: AttemptWorkflowMetadata;
   /** Today only `'plan'` is used for this flow; kept for parity with prior usage recording. */
   readonly usageKind: 'plan';
   readonly now?: () => Date;

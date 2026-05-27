@@ -1,3 +1,5 @@
+import type { AttemptMetadata } from '@/lib/db/queries/types/attempts.types';
+
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import { cleanupTrackedRlsClients } from '../../helpers/rls';
@@ -102,6 +104,12 @@ describe('plan generation finalization (single transaction)', () => {
       durationMs: 500,
       extendedTimeout: false,
       usageKind: 'plan',
+      workflowMetadata: {
+        provider: 'workflow-sdk',
+        runId: 'run-plan-generation-1',
+        startedAt: '2026-03-01T10:00:00.000Z',
+        completedAt: '2026-03-01T10:00:00.500Z',
+      },
       now: () => new Date('2026-03-01T10:00:05.000Z'),
     });
 
@@ -116,6 +124,13 @@ describe('plan generation finalization (single transaction)', () => {
       where: eq(generationAttempts.id, reservation.attemptId),
     });
     expect(attempt?.status).toBe('success');
+    const attemptMetadata = attempt?.metadata as AttemptMetadata | undefined;
+    expect(attemptMetadata?.workflow).toEqual({
+      provider: 'workflow-sdk',
+      runId: 'run-plan-generation-1',
+      startedAt: '2026-03-01T10:00:00.000Z',
+      completedAt: '2026-03-01T10:00:00.500Z',
+    });
 
     const planModules = await db
       .select()

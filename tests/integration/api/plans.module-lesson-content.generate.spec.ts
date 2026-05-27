@@ -1,6 +1,6 @@
-import type { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import type { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 
-import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route';
+import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler';
 import {
   clearAllUserRateLimiters,
   USER_RATE_LIMIT_CONFIGS,
@@ -22,11 +22,11 @@ import {
   type MockedFunction,
 } from 'vitest';
 
-const mockGenerateModuleLessons = vi.fn() as MockedFunction<
-  typeof generateModuleLessons
+const mockStartModuleLessonGeneration = vi.fn() as MockedFunction<
+  typeof startModuleLessonGeneration
 >;
 const POST = createModuleLessonContentGenerateHandler(
-  mockGenerateModuleLessons,
+  mockStartModuleLessonGeneration,
 );
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -73,7 +73,7 @@ async function authenticateTestUser(
 describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate', () => {
   beforeEach(() => {
     clearAllUserRateLimiters();
-    mockGenerateModuleLessons.mockReset();
+    mockStartModuleLessonGeneration.mockReset();
   });
 
   afterEach(() => {
@@ -83,7 +83,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps successful generation to ready state and passes scoped inputs', async () => {
     const userId = await authenticateTestUser('success', 'starter');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({
+    mockStartModuleLessonGeneration.mockResolvedValue({
       kind: 'success',
       durationMs: 1234,
     });
@@ -102,13 +102,14 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       moduleId: VALID_MODULE_ID,
       durationMs: 1234,
     });
-    expect(mockGenerateModuleLessons).toHaveBeenCalledWith(
+    expect(mockStartModuleLessonGeneration).toHaveBeenCalledWith(
       expect.objectContaining({
         userId,
         planId: VALID_PLAN_ID,
         moduleId: VALID_MODULE_ID,
         userTier: 'starter',
         signal: request.signal,
+        correlationId: expect.any(String),
       }),
     );
   });
@@ -116,7 +117,9 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps cached ready modules to ready state', async () => {
     const userId = await authenticateTestUser('cached');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({ kind: 'already_ready' });
+    mockStartModuleLessonGeneration.mockResolvedValue({
+      kind: 'already_ready',
+    });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
@@ -130,10 +133,30 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
     });
   });
 
+  it('maps workflow start to generating state', async () => {
+    const userId = await authenticateTestUser('workflow-started');
+    await seedOwnedPlanForLessonContentApi(userId);
+    mockStartModuleLessonGeneration.mockResolvedValue({
+      kind: 'workflow_started',
+      runId: 'wrun_test123',
+    });
+
+    const { request, context } = createRequest();
+    const response = await POST(request, context);
+    const body = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(body).toEqual({
+      state: 'generating',
+      planId: VALID_PLAN_ID,
+      moduleId: VALID_MODULE_ID,
+    });
+  });
+
   it('maps duplicate in-flight generation to generating state', async () => {
     const userId = await authenticateTestUser('in-flight');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({ kind: 'in_flight' });
+    mockStartModuleLessonGeneration.mockResolvedValue({ kind: 'in_flight' });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
@@ -150,7 +173,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps quota denial to quota_denied state', async () => {
     const userId = await authenticateTestUser('quota', 'free');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({
+    mockStartModuleLessonGeneration.mockResolvedValue({
       kind: 'quota_denied',
       currentCount: 3,
       limit: 3,
@@ -173,7 +196,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps provider failure to provider_failure state', async () => {
     const userId = await authenticateTestUser('provider-failure');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({
+    mockStartModuleLessonGeneration.mockResolvedValue({
       kind: 'failed',
       message: 'Provider output was invalid.',
     });
@@ -194,7 +217,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps disabled generation to disabled state', async () => {
     const userId = await authenticateTestUser('disabled');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({ kind: 'disabled' });
+    mockStartModuleLessonGeneration.mockResolvedValue({ kind: 'disabled' });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
@@ -211,7 +234,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps missing or unauthorized modules to not_found state', async () => {
     const userId = await authenticateTestUser('not-found');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({ kind: 'not_found' });
+    mockStartModuleLessonGeneration.mockResolvedValue({ kind: 'not_found' });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
@@ -228,7 +251,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   it('maps locked modules to locked conflict state', async () => {
     const userId = await authenticateTestUser('locked');
     await seedOwnedPlanForLessonContentApi(userId);
-    mockGenerateModuleLessons.mockResolvedValue({ kind: 'locked' });
+    mockStartModuleLessonGeneration.mockResolvedValue({ kind: 'locked' });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
@@ -253,7 +276,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
     expect(failureBody).toMatchObject({
       error: 'Learning plan not found.',
     });
-    expect(mockGenerateModuleLessons).not.toHaveBeenCalled();
+    expect(mockStartModuleLessonGeneration).not.toHaveBeenCalled();
   });
 
   it('rejects invalid UUID params before calling the feature boundary', async () => {
@@ -265,7 +288,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
 
     expect(response.status).toBe(400);
     expect(body.error).toBe('Invalid planId format.');
-    expect(mockGenerateModuleLessons).not.toHaveBeenCalled();
+    expect(mockStartModuleLessonGeneration).not.toHaveBeenCalled();
   });
 
   it('returns canonical unauthorized response without calling the feature boundary', async () => {
@@ -280,7 +303,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       error: 'Unauthorized',
       code: 'UNAUTHORIZED',
     });
-    expect(mockGenerateModuleLessons).not.toHaveBeenCalled();
+    expect(mockStartModuleLessonGeneration).not.toHaveBeenCalled();
   });
 
   it('keeps service-role imports out of the user-facing route', () => {

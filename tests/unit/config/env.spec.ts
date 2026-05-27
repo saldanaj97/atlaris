@@ -7,6 +7,7 @@ import {
   createAppEnv,
   createLessonContentEnvForTests,
   createMaintenanceEnvForTests,
+  createWorkflowEnvForTests,
   createServerEnvAccess,
   createSupabasePublicEnv,
   EnvValidationError,
@@ -17,6 +18,7 @@ import {
   regenerationQueueEnv,
   requireEnv,
   toBoolean,
+  workflowEnv,
 } from '@/lib/config/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -661,6 +663,69 @@ describe('Environment Configuration', () => {
     });
   });
 
+  describe('workflowEnv', () => {
+    it('defaults module lesson workflow flag to false', () => {
+      vi.stubEnv('MODULE_LESSON_WORKFLOW_ENABLED', undefined);
+      expect(workflowEnv.moduleLessonWorkflowEnabled).toBe(false);
+    });
+
+    it('parses MODULE_LESSON_WORKFLOW_ENABLED as boolean', () => {
+      const access = createServerEnvAccess(() => ({
+        MODULE_LESSON_WORKFLOW_ENABLED: 'true',
+      }));
+      expect(
+        createWorkflowEnvForTests(access).moduleLessonWorkflowEnabled,
+      ).toBe(true);
+    });
+
+    it('defaults plan regeneration and plan generation workflow flags to false', () => {
+      vi.stubEnv('PLAN_REGENERATION_WORKFLOW_ENABLED', undefined);
+      vi.stubEnv('PLAN_GENERATION_WORKFLOW_ENABLED', undefined);
+      expect(workflowEnv.planRegenerationWorkflowEnabled).toBe(false);
+      expect(workflowEnv.planGenerationWorkflowEnabled).toBe(false);
+    });
+
+    it('parses plan workflow flags as booleans', () => {
+      const access = createServerEnvAccess(() => ({
+        PLAN_REGENERATION_WORKFLOW_ENABLED: 'true',
+        PLAN_GENERATION_WORKFLOW_ENABLED: '1',
+      }));
+      const env = createWorkflowEnvForTests(access);
+      expect(env.planRegenerationWorkflowEnabled).toBe(true);
+      expect(env.planGenerationWorkflowEnabled).toBe(true);
+    });
+
+    it('throws EnvValidationError for invalid workflow flag values', () => {
+      const access = createServerEnvAccess(() => ({
+        MODULE_LESSON_WORKFLOW_ENABLED: 'maybe',
+      }));
+
+      expect(
+        () => createWorkflowEnvForTests(access).moduleLessonWorkflowEnabled,
+      ).toThrow(EnvValidationError);
+    });
+
+    it('throws EnvValidationError for invalid plan regeneration workflow flag values', () => {
+      const access = createServerEnvAccess(() => ({
+        PLAN_REGENERATION_WORKFLOW_ENABLED: 'maybe',
+      }));
+
+      expect(
+        () => createWorkflowEnvForTests(access).planRegenerationWorkflowEnabled,
+      ).toThrow(EnvValidationError);
+    });
+
+    it('throws EnvValidationError for invalid plan generation workflow flag values', () => {
+      const access = createServerEnvAccess(() => ({
+        PLAN_GENERATION_WORKFLOW_ENABLED: 'maybe',
+      }));
+
+      expect(
+        () => createWorkflowEnvForTests(access).planGenerationWorkflowEnabled,
+      ).toThrow(EnvValidationError);
+    });
+  });
+
   describe('barrel surface', () => {
     it('re-exports core config symbols from @/lib/config/env', async () => {
       const env = await import('@/lib/config/env');
@@ -669,6 +734,7 @@ describe('Environment Configuration', () => {
       expect(env.databaseEnv).toBeDefined();
       expect(env.stripeEnv).toBeDefined();
       expect(env.aiEnv).toBeDefined();
+      expect(env.workflowEnv).toBeDefined();
       expect(env.getAttemptCap).toBeTypeOf('function');
       expect(env.setDevAuthUserIdForTests).toBeTypeOf('function');
       expect(env.clearDevAuthUserIdForTests).toBeTypeOf('function');

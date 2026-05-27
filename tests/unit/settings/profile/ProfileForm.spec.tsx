@@ -57,7 +57,8 @@ describe('ProfileForm', () => {
 
   afterEach(() => {
     cleanup();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('displays profile data after successful fetch', async () => {

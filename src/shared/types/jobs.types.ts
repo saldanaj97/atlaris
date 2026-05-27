@@ -14,8 +14,16 @@ export interface JobErrorHistoryEntry {
   timestamp: string;
 }
 
+export interface PlanRegenerationWorkflowMetadata {
+  provider: 'workflow-sdk';
+  runId: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export interface PlanRegenerationJobData {
   planId: string;
+  workflow?: PlanRegenerationWorkflowMetadata;
   overrides?: Partial<{
     topic: string;
     notes: string | null;

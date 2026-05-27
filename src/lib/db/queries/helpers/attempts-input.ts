@@ -15,6 +15,7 @@ export function buildMetadata(params: MetadataParams): AttemptMetadata {
   const {
     sanitized,
     providerMetadata,
+    workflowMetadata,
     modulesClamped,
     tasksClamped,
     startedAt,
@@ -24,6 +25,7 @@ export function buildMetadata(params: MetadataParams): AttemptMetadata {
   } = params;
 
   return {
+    ...(workflowMetadata ? { workflow: workflowMetadata } : {}),
     input: {
       topic: {
         truncated: sanitized.topic.truncated,

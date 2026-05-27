@@ -114,6 +114,23 @@ export async function cleanupOldJobs(
 }
 
 /**
+ * Loads a job row by id.
+ */
+export async function getJobById(
+  jobId: string,
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+
+  const [row] = await client
+    .select(jobQueueSelect)
+    .from(jobQueue)
+    .where(eq(jobQueue.id, jobId));
+
+  return row ? mapRowToJob(row) : null;
+}
+
+/**
  * Returns the single active (pending or processing) regeneration job for a plan and user, if any.
  */
 export async function getActiveRegenerationJob(

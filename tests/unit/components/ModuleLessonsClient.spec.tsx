@@ -19,12 +19,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
 }));
 
-vi.mock('sonner', () => ({
-  toast: {
-    error: vi.fn(),
-  },
-}));
-
 const lesson: ModuleDetailTask = {
   id: createId('task'),
   order: 1,

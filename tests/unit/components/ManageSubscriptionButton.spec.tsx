@@ -18,7 +18,8 @@ describe('ManageSubscriptionButton', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('should call portal API when clicked', async () => {
