@@ -11,7 +11,13 @@ import {
   makeRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDepsOverrides,
 } from '@tests/helpers/regeneration-orchestration-deps';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const startPlanRegenerationWorkflowMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/plans/start-plan-regeneration-workflow', () => ({
+  startPlanRegenerationWorkflow: startPlanRegenerationWorkflowMock,
+}));
 
 const fakeDb = makeDbClient();
 
@@ -432,6 +438,79 @@ describe('requestPlanRegeneration', () => {
     ).rejects.toSatisfy(
       (err: unknown) => err instanceof RateLimitError && err.status() === 429,
     );
+  });
+
+  describe('workflow-enabled enqueue', () => {
+    beforeEach(() => {
+      vi.stubEnv('PLAN_REGENERATION_WORKFLOW_ENABLED', 'true');
+      startPlanRegenerationWorkflowMock.mockReset();
+      startPlanRegenerationWorkflowMock.mockResolvedValue({
+        started: true,
+        runId: 'wrun_enqueue',
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('starts workflow once, persists runId, and skips inline drain', async () => {
+      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const deps = buildDeps({
+        queue: { updateRegenerationJobPayload },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: true,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'enqueued',
+        jobId: 'job-1',
+        inlineDrainScheduled: false,
+      });
+      expect(startPlanRegenerationWorkflowMock).toHaveBeenCalledTimes(1);
+      expect(updateRegenerationJobPayload).toHaveBeenCalledWith(
+        'job-1',
+        expect.objectContaining({
+          planId: ownedPlan.id,
+          workflow: expect.objectContaining({
+            provider: 'workflow-sdk',
+            runId: 'wrun_enqueue',
+            startedAt: expect.any(String),
+          }),
+        }),
+      );
+      expect(deps.inlineDrain.tryRegister).not.toHaveBeenCalled();
+    });
+
+    it('fails retryably when enqueue-time workflow start returns not started', async () => {
+      startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
+      const failJob = vi.fn(async () => null);
+      const deps = buildDeps({ queue: { failJob } });
+
+      await expect(
+        requestPlanRegeneration(
+          {
+            userId: 'user-1',
+            planId: ownedPlan.id,
+            inlineProcessingEnabled: false,
+          },
+          deps,
+        ),
+      ).rejects.toThrow(/Failed to start plan regeneration workflow/);
+
+      expect(failJob).toHaveBeenCalledWith(
+        'job-1',
+        'Failed to start plan regeneration workflow.',
+        { retryable: true },
+      );
+    });
   });
 
   it('registers guarded drain promise that absorbs rejection', async () => {

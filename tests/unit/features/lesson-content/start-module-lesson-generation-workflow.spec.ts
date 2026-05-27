@@ -89,18 +89,20 @@ describe('startModuleLessonGeneration', () => {
     );
   });
 
-  it('surfaces workflow startup failures', async () => {
-    const error = new Error('start-fail');
+  it('returns workflow_start_failed when workflow startup throws', async () => {
     mocks.isWorkflowEnabled.mockReturnValue(true);
     mocks.loadContext.mockResolvedValue({
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,
     });
-    mocks.workflowStart.mockRejectedValue(error);
+    mocks.workflowStart.mockRejectedValue(new Error('start-fail'));
 
-    await expect(startModuleLessonGeneration(params, deps)).rejects.toThrow(
-      error,
-    );
+    const result = await startModuleLessonGeneration(params, deps);
+
+    expect(result).toEqual({
+      kind: 'workflow_start_failed',
+      message: 'Module lesson generation could not be started.',
+    });
     expect(mocks.workflowStart).toHaveBeenCalledWith(
       moduleLessonGenerationWorkflow,
       [

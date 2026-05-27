@@ -37,10 +37,12 @@ describe('moduleLessonGenerationWorkflow', () => {
 
   it('returns the run result when claim succeeds', async () => {
     const load = { module: { id: input.moduleId }, isUnlocked: true };
+    const startedAt = '2026-05-27T12:00:00.000Z';
     workflowMocks.claim.mockResolvedValue({
       kind: 'claimed',
       runId: 'wrun_test',
       load,
+      startedAt,
     });
     workflowMocks.run.mockResolvedValue({
       kind: 'success',
@@ -55,5 +57,11 @@ describe('moduleLessonGenerationWorkflow', () => {
       durationMs: 12,
       runId: 'wrun_test',
     });
+    expect(workflowMocks.run).toHaveBeenCalledWith(
+      input,
+      load,
+      'wrun_test',
+      startedAt,
+    );
   });
 });

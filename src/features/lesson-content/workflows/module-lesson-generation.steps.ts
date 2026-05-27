@@ -64,22 +64,24 @@ export async function claimModuleLessonGenerationStep(
   }
 
   const claimedLoad = preflight.load;
+  const startedAt = new Date().toISOString();
 
   await persistModuleLessonWorkflowRunMetadata(serviceRoleDb, {
     userId: input.userId,
     planId: input.planId,
     moduleId: input.moduleId,
     runId,
-    startedAt: new Date().toISOString(),
+    startedAt,
   });
 
-  return { kind: 'claimed', runId, load: claimedLoad };
+  return { kind: 'claimed', runId, load: claimedLoad, startedAt };
 }
 
 export async function runModuleLessonGenerationStep(
   input: ModuleLessonWorkflowInput,
   load: ModuleLessonGenerationContext,
   runId: string,
+  startedAt: string,
 ) {
   'use step';
 
@@ -88,7 +90,7 @@ export async function runModuleLessonGenerationStep(
     workflow: {
       provider: 'workflow-sdk' as const,
       runId,
-      startedAt: new Date().toISOString(),
+      startedAt,
     },
   };
 

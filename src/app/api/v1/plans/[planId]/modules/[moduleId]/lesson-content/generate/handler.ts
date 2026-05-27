@@ -104,6 +104,7 @@ function mapModuleLessonGenerationResult(
         }),
       );
     case 'failed':
+    case 'workflow_start_failed':
       return json(
         ModuleLessonGenerationApiResponseSchema.parse({
           state: 'provider_failure',

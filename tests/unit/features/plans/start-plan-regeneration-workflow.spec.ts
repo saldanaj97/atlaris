@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = {
   isEnabled: vi.fn(() => false),
   workflowStart: vi.fn(),
+  failJob: vi.fn(async () => null),
   log: {
     info: vi.fn(),
     error: vi.fn(),
@@ -24,6 +25,8 @@ describe('startPlanRegenerationWorkflow', () => {
     mocks.isEnabled.mockReset();
     mocks.isEnabled.mockReturnValue(false);
     mocks.workflowStart.mockReset();
+    mocks.failJob.mockReset();
+    mocks.failJob.mockResolvedValue(null);
     mocks.log.info.mockReset();
     mocks.log.error.mockReset();
   });
@@ -32,10 +35,11 @@ describe('startPlanRegenerationWorkflow', () => {
     const result = await startPlanRegenerationWorkflow(input, {
       isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
+      failJob: mocks.failJob,
       log: mocks.log,
     });
 
-    expect(result).toBe(false);
+    expect(result).toEqual({ started: false });
     expect(mocks.workflowStart).not.toHaveBeenCalled();
   });
 
@@ -53,10 +57,11 @@ describe('startPlanRegenerationWorkflow', () => {
     const result = await startPlanRegenerationWorkflow(input, {
       isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
+      failJob: mocks.failJob,
       log: mocks.log,
     });
 
-    expect(result).toBe(true);
+    expect(result).toEqual({ started: true, runId: 'wrun_regen' });
     expect(mocks.workflowStart).toHaveBeenCalledWith(planRegenerationWorkflow, [
       {
         jobId: input.jobId,
@@ -83,9 +88,10 @@ describe('startPlanRegenerationWorkflow', () => {
       startPlanRegenerationWorkflow(input, {
         isEnabled: mocks.isEnabled,
         workflowStart: mocks.workflowStart,
+        failJob: mocks.failJob,
         log: mocks.log,
       }),
-    ).resolves.toBe(false);
+    ).resolves.toEqual({ started: false });
 
     expect(mocks.workflowStart).toHaveBeenCalledWith(planRegenerationWorkflow, [
       input,
@@ -99,5 +105,60 @@ describe('startPlanRegenerationWorkflow', () => {
       }),
       expect.stringContaining('failed to start'),
     );
+  });
+
+  it('terminalizes the job when returnValue rejects', async () => {
+    const rejection = new Error('workflow-fatal');
+    mocks.isEnabled.mockReturnValue(true);
+    mocks.workflowStart.mockResolvedValue({
+      runId: 'wrun_regen',
+      returnValue: Promise.reject(rejection),
+    });
+
+    const result = await startPlanRegenerationWorkflow(input, {
+      isEnabled: mocks.isEnabled,
+      workflowStart: mocks.workflowStart,
+      failJob: mocks.failJob,
+      log: mocks.log,
+    });
+
+    expect(result).toEqual({ started: true, runId: 'wrun_regen' });
+    await vi.waitFor(() => {
+      expect(mocks.failJob).toHaveBeenCalledWith(
+        input.jobId,
+        'Queued plan regeneration failed.',
+        { retryable: false },
+      );
+    });
+    expect(mocks.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: rejection,
+        workflowRunId: 'wrun_regen',
+      }),
+      expect.stringContaining('workflow failed'),
+    );
+  });
+
+  it('does not fail the job when returnValue resolves in-flight', async () => {
+    mocks.isEnabled.mockReturnValue(true);
+    mocks.workflowStart.mockResolvedValue({
+      runId: 'wrun_regen',
+      returnValue: Promise.resolve({
+        kind: 'in-flight',
+        jobId: input.jobId,
+        runId: 'other-run',
+      }),
+    });
+
+    const result = await startPlanRegenerationWorkflow(input, {
+      isEnabled: mocks.isEnabled,
+      workflowStart: mocks.workflowStart,
+      failJob: mocks.failJob,
+      log: mocks.log,
+    });
+
+    expect(result).toEqual({ started: true, runId: 'wrun_regen' });
+    await Promise.resolve();
+    expect(mocks.failJob).not.toHaveBeenCalled();
   });
 });

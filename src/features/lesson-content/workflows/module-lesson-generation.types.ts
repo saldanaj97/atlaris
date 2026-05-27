@@ -19,6 +19,7 @@ export type ModuleLessonWorkflowClaimStepResult =
   | (ModuleLessonWorkflowRunResultBase & {
       readonly kind: 'claimed';
       readonly load: ModuleLessonGenerationContext;
+      readonly startedAt: string;
     })
   | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'already_ready' })
   | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'in_flight' })

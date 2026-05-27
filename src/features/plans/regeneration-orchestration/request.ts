@@ -9,6 +9,7 @@ import {
 } from './deps';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
+import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 import { workflowEnv } from '@/lib/config/env';
 import { getDb } from '@supabase/runtime';
@@ -115,17 +116,30 @@ export async function requestPlanRegeneration(
   if (workflowEnv.planRegenerationWorkflowEnabled) {
     const correlationId = `regen-${acceptedJobId}`;
     try {
-      const workflowStarted = await startPlanRegenerationWorkflow({
+      const workflowStart = await startPlanRegenerationWorkflow({
         jobId: acceptedJobId,
         planId,
         userId,
         correlationId,
       });
-      if (!workflowStarted) {
+      if (!workflowStart.started) {
         throw new Error(
           `Failed to start plan regeneration workflow for job ${acceptedJobId}.`,
         );
       }
+
+      const launchedPayload = planRegenerationJobPayloadSchema.parse({
+        ...payload,
+        workflow: {
+          provider: 'workflow-sdk' as const,
+          runId: workflowStart.runId,
+          startedAt: new Date().toISOString(),
+        },
+      });
+      await d.queue.updateRegenerationJobPayload(
+        acceptedJobId,
+        launchedPayload,
+      );
     } catch (error: unknown) {
       d.logger.error(
         {

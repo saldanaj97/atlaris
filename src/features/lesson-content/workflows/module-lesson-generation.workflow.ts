@@ -24,7 +24,7 @@ export function createModuleLessonGenerationWorkflow(
       return claim;
     }
 
-    return deps.run(input, claim.load, claim.runId);
+    return deps.run(input, claim.load, claim.runId, claim.startedAt);
   };
 }
 
