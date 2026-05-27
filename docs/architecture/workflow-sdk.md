@@ -11,7 +11,7 @@ Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin 
 
 ## Feature flags (`workflowEnv`)
 
-All default **off** in production unless explicitly enabled.
+Flag names, accepted values (`true`/`false`/`1`/`0`), and default-off behavior: [environment variables](../development/environment.md#workflow-sdk) (`workflowEnv` in [`src/lib/config/env/workflow.ts`](../../src/lib/config/env/workflow.ts)).
 
 | Env variable                         | Behavior when `true`                                                                                                                                                      |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,7 +19,7 @@ All default **off** in production unless explicitly enabled.
 | `PLAN_REGENERATION_WORKFLOW_ENABLED` | Enqueue path and worker drain start `planRegenerationWorkflow`; drain may return `workflow-in-flight` while a run is active.                                              |
 | `PLAN_GENERATION_WORKFLOW_ENABLED`   | Create/retry SSE sessions reserve the attempt in-process, then run provider/finalization in `planGenerationWorkflow` (`await run.returnValue` — SSE transport unchanged). |
 
-See `docs/development/environment.md` and `src/lib/config/env/workflow.ts`.
+Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
 
 ## Workflow file layout
 
@@ -85,12 +85,12 @@ Workflow data for dev lives under `.next/workflow-data/` (not `.workflow-data/`,
 
 Workflow SDK tests use a **separate** Vitest config so they do not share Testcontainers setup with DB/API integration tests. The unified integration runner still includes them as a workflow phase for full and changed integration-class runs:
 
-| Command                                      | Purpose                                                                                              |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `pnpm test:integration`                      | DB/API integration tests, then the Workflow SDK Vitest harness                                       |
-| `pnpm test:integration:changed`              | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
-| `pnpm test:workflow`                         | Only the in-process Workflow SDK smoke (`tests/workflow/*.workflow.spec.ts`)                         |
-| `pnpm exec tsx scripts/tests/run.ts unit ...` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin)                     |
+| Command                                       | Purpose                                                                                               |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pnpm test:integration`                       | DB/API integration tests, then the Workflow SDK Vitest harness                                        |
+| `pnpm test:integration:changed`               | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
+| `pnpm test:workflow`                          | Only the in-process Workflow SDK smoke (`tests/workflow/*.workflow.spec.ts`)                          |
+| `pnpm exec tsx scripts/tests/run.ts unit ...` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin)                      |
 
 - Config: `vitest.workflow.config.ts`
 - Bundle output: `.workflow-vitest/` (default discovery scope: `tests/helpers/workflow` only)
@@ -100,6 +100,9 @@ Orchestration for product workflows is covered in `tests/unit/features/**/workfl
 
 ## Related docs
 
-- `docs/architecture/regeneration-worker-runbook.md`
-- `docs/architecture/plan-generation-architecture.md`
-- `.agents/plans/008-workflow-sdk-integration/plans.md`
+- [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows-optional)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
+- [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and workflow-backed drain
+- [Environment variables](../development/environment.md#workflow-sdk) — feature flags, `WORKFLOW_LOCAL_BASE_URL`, and `workflowEnv`
+- [Development commands](../development/commands.md) — `pnpm dev:workflow` and workflow test commands
+- [Test guidance](../../tests/AGENTS.md#workflow-sdk-tests) — Workflow SDK Vitest harness and changed-test workflow phase
+- [README testing](../../README.md#testing) — default changed bundle includes the workflow test phase

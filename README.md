@@ -114,6 +114,8 @@ pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.sp
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.
 
+Workflow SDK runtime, local dev (`pnpm dev:workflow`), feature flags, and correlation: [docs/architecture/workflow-sdk.md](docs/architecture/workflow-sdk.md).
+
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
@@ -123,6 +125,7 @@ Integration tests normally rely on Testcontainers. If you intentionally want to 
 ## Related documentation
 
 - `AGENTS.md`
+- `docs/architecture/workflow-sdk.md`
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/architecture/plan-generation-architecture.md`
 - `docs/architecture/internal-worker-routes.md`

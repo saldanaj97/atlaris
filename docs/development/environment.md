@@ -25,7 +25,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual retention cleanup route toggle and token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
-- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
+- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging configuration
 - `observabilityEnv` - Sentry and telemetry configuration
 
@@ -53,24 +53,48 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
 
-Workflow SDK feature flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`) are documented in [Workflow SDK](#workflow-sdk) below (see `workflowEnv`).
-
 ### Workflow SDK
 
-| Variable                  | Purpose                                                                                                                                                                                                 | Required |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `WORKFLOW_SOURCEMAP`      | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime, not parsed in app code.                                      | No       |
-| `MODULE_LESSON_WORKFLOW_ENABLED` | Routes `POST .../lesson-content/generate` through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                        | No       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration worker drains through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                            | No       |
-| `PLAN_GENERATION_WORKFLOW_ENABLED` | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged; defaults **off**. See `workflowEnv`.                                              | No       |
+**Source of truth for workflow env vars.** Local runtime setup (`PORT`, `WORKFLOW_LOCAL_BASE_URL`, `pnpm dev:workflow`, health checks) is in [`docs/architecture/workflow-sdk.md`](../architecture/workflow-sdk.md#local-development).
+
+#### App-parsed product flags (`workflowEnv`)
+
+Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off** when unset or empty. These opt into durable workflow paths; they are not production defaults.
+
+| Variable                             | Purpose                                                                                               | Required |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------- |
+| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)       | No       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                               | No       |
+| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged | No       |
+
+**Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
+
+#### SDK-read variables (not parsed in app code)
+
+| Variable             | Purpose                                                                                                                                                              | Required |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
+
+#### Local-only runtime variables
+
+Not parsed in `workflowEnv`. Set in `.env.local` only when testing workflow flags locally (see `.env.local.example`):
+
+| Variable                  | Purpose                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `PORT`                    | Port the dev server listens on (commonly `3000`)                                               |
+| `WORKFLOW_LOCAL_BASE_URL` | Base URL for the local workflow self-fetch loop; must be `http://127.0.0.1:<PORT>` (same port) |
+
+When any workflow flag is `true`, run **`pnpm dev:workflow`** (webpack dev) instead of `pnpm dev` (Turbopack).
+
+Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 
 ### Internal worker routes
 
 Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`. See `docs/architecture/internal-worker-routes.md`.
 
-| Variable                    | Purpose                                                            | Required in production                 |
-| --------------------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                    |
+| Variable                    | Purpose                                                            | Required in production                         |
+| --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
+| `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                            |
 | `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
 | `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes only when manual route is enabled          |
 

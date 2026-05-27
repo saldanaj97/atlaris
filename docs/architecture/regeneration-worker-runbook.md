@@ -13,13 +13,13 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 
 ## Required Environment
 
-| Variable                          | Purpose                                       | Production expectation      |
-| --------------------------------- | --------------------------------------------- | --------------------------- |
-| `REGENERATION_QUEUE_ENABLED`      | Master switch for enqueue/drain behavior      | `true`                      |
-| `REGENERATION_MAX_JOBS_PER_DRAIN` | Max jobs processed per drain call             | Set to a safe bounded value |
-| `REGENERATION_WORKER_TOKEN`       | Shared bearer token for internal drain auth   | Required                    |
-| `REGENERATION_INLINE_PROCESSING`  | Inline processing fallback from enqueue route | `false` in production       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default) |
+| Variable                             | Purpose                                                                | Production expectation      |
+| ------------------------------------ | ---------------------------------------------------------------------- | --------------------------- |
+| `REGENERATION_QUEUE_ENABLED`         | Master switch for enqueue/drain behavior                               | `true`                      |
+| `REGENERATION_MAX_JOBS_PER_DRAIN`    | Max jobs processed per drain call                                      | Set to a safe bounded value |
+| `REGENERATION_WORKER_TOKEN`          | Shared bearer token for internal drain auth                            | Required                    |
+| `REGENERATION_INLINE_PROCESSING`     | Inline processing fallback from enqueue route                          | `false` in production       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default)           |
 
 ## Workflow-backed regeneration
 
@@ -29,7 +29,7 @@ When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 - The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
 
-Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See `docs/architecture/workflow-sdk.md`.
+Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and local dev). Env flags: [environment variables](../development/environment.md#workflow-sdk). Local workflow testing: [development commands](../development/commands.md) (`pnpm dev:workflow`).
 
 ## Triggering the Worker
 
@@ -86,3 +86,10 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 2. **401 unauthorized:** rotate/redeploy `REGENERATION_WORKER_TOKEN`; confirm Bearer or `x-regeneration-worker-token` on scheduler calls.
 3. **Repeated failed jobs:** inspect worker logs and `job_queue.last_error`, then replay by re-enqueueing or manual retry.
 4. **Emergency load shedding:** temporarily set `REGENERATION_MAX_JOBS_PER_DRAIN=0` (drains become no-op) while investigating.
+
+## Related docs
+
+- [Workflow SDK](./workflow-sdk.md) — `PLAN_REGENERATION_WORKFLOW_ENABLED`, run correlation, and local runtime setup
+- [Plan generation architecture](./plan-generation-architecture.md) — create/retry and module lesson pipelines (separate from queued regeneration)
+- [Environment variables](../development/environment.md#workflow-sdk) — workflow and regeneration queue env vars
+- [Development commands](../development/commands.md) — `pnpm dev:workflow` and workflow test commands

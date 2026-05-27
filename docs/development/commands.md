@@ -10,8 +10,11 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
+pnpm dev:workflow     # Webpack dev server — use when testing Workflow SDK flags locally
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
 ```
+
+When any workflow feature flag is enabled, prefer `pnpm dev:workflow` over `pnpm dev`; see [environment variables](./environment.md#workflow-sdk) and [Workflow SDK local development](../architecture/workflow-sdk.md#local-development).
 
 ## Build & Production
 
@@ -72,6 +75,8 @@ pnpm test:security            # Run RLS policy tests
 pnpm test:smoke               # Run Playwright smoke coverage
 pnpm test:all                 # Run lint, typecheck, unit, integration, workflow, and security suites
 ```
+
+Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-sdk.md#testing) · [tests/AGENTS.md](../../tests/AGENTS.md#workflow-sdk-tests).
 
 ### Direct Script Usage
 
