@@ -4,6 +4,7 @@ import { parseAllCommandOptions } from './shared/all-command-options';
 import { logError, logInfo, logStep, logWarn } from './shared/log';
 import { runCommand, runVitest } from './shared/vitest-runner';
 import { runUnitCommand } from './unit/runner';
+import { runWorkflowCommand } from './workflow/runner';
 
 function printHelp(): void {
   console.log('Usage: tsx scripts/tests/run.ts <command> [options]');
@@ -14,10 +15,11 @@ function printHelp(): void {
   );
   console.log('  unit [test-path]         Run unit tests');
   console.log('  integration [test-path]  Run integration tests');
+  console.log('  workflow [test-path]     Run Workflow SDK integration tests');
   console.log('  security [test-path]     Run security tests');
   console.log('  smoke [-- ...args]       Run smoke tests');
   console.log(
-    '  all                      Run lint, typecheck, unit, integration, and security tests',
+    '  all                      Run lint, typecheck, unit, integration, workflow, and security tests',
   );
   console.log('');
   console.log('changed options:');
@@ -35,6 +37,7 @@ function printHelp(): void {
   console.log(
     '  tsx scripts/tests/run.ts integration tests/integration/foo.spec.ts',
   );
+  console.log('  tsx scripts/tests/run.ts workflow');
   console.log('  tsx scripts/tests/run.ts smoke -- --project smoke-auth');
   console.log('  tsx scripts/tests/run.ts all --with-e2e');
 }
@@ -229,6 +232,7 @@ const TEST_RUN_MAIN_HANDLERS: Record<
   changed: runChangedCommand,
   unit: runUnitCommand,
   integration: runIntegrationCommand,
+  workflow: runWorkflowCommand,
   security: runSecurityCommand,
   smoke: runSmokeCommand,
   all: runAllCommand,

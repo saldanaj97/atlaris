@@ -93,7 +93,7 @@ supabase/
 
 ## Testing
 
-The default `pnpm test` command runs a lightweight changed-only bundle: unit tests plus integration tests filtered to changed files.
+The default `pnpm test` command runs a lightweight changed-only bundle: unit tests plus integration-class tests filtered to changed files. Integration-class coverage includes DB/API integration tests and the Workflow SDK Vitest harness.
 
 Use the explicit scoped commands for day-to-day work, and prefer targeted integration runs instead of the full suite whenever possible:
 
@@ -101,6 +101,7 @@ Use the explicit scoped commands for day-to-day work, and prefer targeted integr
 pnpm test:changed
 pnpm test:unit:changed
 pnpm test:integration:changed
+pnpm test:workflow
 ```
 
 For direct file targeting:

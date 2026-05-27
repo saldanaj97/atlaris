@@ -83,12 +83,14 @@ Workflow data for dev lives under `.next/workflow-data/` (not `.workflow-data/`,
 
 ## Testing
 
-Workflow SDK tests use a **separate** Vitest config so they do not share Testcontainers setup with integration tests:
+Workflow SDK tests use a **separate** Vitest config so they do not share Testcontainers setup with DB/API integration tests. The unified integration runner still includes them as a workflow phase for full and changed integration-class runs:
 
-| Command                                     | Purpose                                                                          |
-| ------------------------------------------- | -------------------------------------------------------------------------------- |
-| `pnpm test:workflow`                        | In-process Workflow SDK smoke (`tests/workflow/*.workflow.spec.ts`)              |
-| `pnpm exec tsx scripts/tests/run.ts unit …` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin) |
+| Command                                      | Purpose                                                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `pnpm test:integration`                      | DB/API integration tests, then the Workflow SDK Vitest harness                                       |
+| `pnpm test:integration:changed`              | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
+| `pnpm test:workflow`                         | Only the in-process Workflow SDK smoke (`tests/workflow/*.workflow.spec.ts`)                         |
+| `pnpm exec tsx scripts/tests/run.ts unit ...` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin)                     |
 
 - Config: `vitest.workflow.config.ts`
 - Bundle output: `.workflow-vitest/` (default discovery scope: `tests/helpers/workflow` only)

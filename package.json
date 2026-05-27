@@ -26,7 +26,7 @@
     "test:unit:changed": "tsx scripts/tests/run.ts unit --changed",
     "test:integration": "tsx scripts/tests/run.ts integration",
     "test:integration:changed": "tsx scripts/tests/run.ts integration --changed",
-    "test:workflow": "vitest run --config vitest.workflow.config.ts",
+    "test:workflow": "tsx scripts/tests/run.ts workflow",
     "test:security": "tsx scripts/tests/run.ts security",
     "test:smoke": "tsx scripts/tests/run.ts smoke",
     "ui:capture-baseline": "tsx scripts/ui/capture-baseline.ts",
