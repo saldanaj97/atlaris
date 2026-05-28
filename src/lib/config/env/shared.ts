@@ -264,7 +264,7 @@ export function getServerOptional(key: string): string | undefined {
 
 const HOSTED_DEPLOY_ENV_KEYS = ['VERCEL'] as const;
 
-function isHostedDeployEnv(env: EnvSource): boolean {
+export function isHostedDeployEnv(env: EnvSource): boolean {
   return HOSTED_DEPLOY_ENV_KEYS.some((key) =>
     toBoolean(optionalEnvFrom(env, key), false),
   );

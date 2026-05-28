@@ -27,6 +27,7 @@ export {
   createServerEnvAccess,
   EnvValidationError,
   getSmokeStateFileEnv,
+  isHostedDeployEnv,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,

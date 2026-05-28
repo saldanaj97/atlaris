@@ -1,5 +1,11 @@
 import { maintenanceMode } from '@/flags';
-import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import {
+  appEnv,
+  devAuthEnv,
+  isHostedDeployEnv,
+  localProductTestingEnv,
+  workflowEnv,
+} from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
@@ -12,6 +18,10 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
+import {
+  isWorkflowCallbackPath,
+  resolveWorkflowCallbackAccess,
+} from '@/lib/proxy/workflow-callback-auth';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -62,6 +72,32 @@ const nextWithCorrelationId = (
 const proxy = clerkMiddleware(
   async (auth, request: NextRequest) => {
     const { pathname } = request.nextUrl;
+
+    if (isWorkflowCallbackPath(pathname)) {
+      const callbackAccess = resolveWorkflowCallbackAccess(
+        {
+          method: request.method,
+          pathname,
+          searchParams: request.nextUrl.searchParams,
+          headers: request.headers,
+        },
+        {
+          isProduction: appEnv.isProduction,
+          isHostedVercelDeploy: isHostedDeployEnv(process.env),
+          callbackToken: workflowEnv.callbackToken,
+        },
+      );
+
+      if (callbackAccess.status === 'allow') {
+        return NextResponse.next();
+      }
+
+      if (callbackAccess.status === 'misconfigured') {
+        return new NextResponse(null, { status: 503 });
+      }
+
+      return new NextResponse(null, { status: 401 });
+    }
 
     // Stripe webhooks bypass all checks including maintenance mode
     if (pathname.startsWith('/api/v1/stripe/webhook')) {
@@ -126,9 +162,8 @@ export default proxy;
 
 export const config = {
   matcher: [
-    // Workflow SDK webhook/callback routes under `/.well-known/workflow/` must stay
-    // outside Clerk, maintenance redirects, and CSP middleware (see workflow-sdk.md).
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)|\\.well-known/workflow/).*)',
+    // Workflow SDK machine routes run an early auth branch before Clerk/CSP.
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],
 };

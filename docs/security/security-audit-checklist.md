@@ -83,6 +83,7 @@
 - [ ] API versioning doesn't accidentally expose deprecated insecure endpoints.
 - [ ] OPTIONS/HEAD methods don't bypass auth checks.
 - [ ] Verify no sensitive operations possible via GET requests (all mutations use POST/PUT/DELETE).
+- [ ] Workflow SDK callback routes (`/.well-known/workflow/v1/flow`, `/step`) are not reachable via unauthenticated forged POSTs outside Vercel queue consumer security; self-hosted production sets `WORKFLOW_CALLBACK_TOKEN`.
 
 ### 8) Error handling & information leakage
 

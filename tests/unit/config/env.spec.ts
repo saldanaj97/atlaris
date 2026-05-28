@@ -724,6 +724,26 @@ describe('Environment Configuration', () => {
         () => createWorkflowEnvForTests(access).planGenerationWorkflowEnabled,
       ).toThrow(EnvValidationError);
     });
+
+    it('reads WORKFLOW_CALLBACK_TOKEN only in production', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: 'prod-secret',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
+        'prod-secret',
+      );
+    });
+
+    it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'development',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
   });
 
   describe('barrel surface', () => {

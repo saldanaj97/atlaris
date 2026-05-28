@@ -12,6 +12,11 @@ interface WorkflowEnv {
   readonly planRegenerationWorkflowEnabled: boolean;
   /** `PLAN_GENERATION_WORKFLOW_ENABLED`; defaults to false. */
   readonly planGenerationWorkflowEnabled: boolean;
+  /**
+   * Shared bearer token for non-Vercel workflow callback routes.
+   * Undefined outside production; Vercel-hosted deploys rely on queue consumer security.
+   */
+  readonly callbackToken: string | undefined;
 }
 
 function parseWorkflowFlag(
@@ -62,6 +67,9 @@ function readWorkflowEnv(access: ServerEnvAccess): WorkflowEnv {
         'PLAN_GENERATION_WORKFLOW_ENABLED',
         false,
       );
+    },
+    get callbackToken(): string | undefined {
+      return access.getServerRequiredProdOnly('WORKFLOW_CALLBACK_TOKEN');
     },
   };
 }
