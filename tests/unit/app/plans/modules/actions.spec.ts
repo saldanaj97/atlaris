@@ -158,7 +158,17 @@ describe('batchUpdateModuleTaskProgressAction', () => {
       revalidatePaths: ['/plans/p1/modules/m1', '/plans/p1', '/plans'],
       visibleState: { appliedByTaskId: {} },
     });
-    revalidatePathMock.mockImplementation((path: string) => {
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans/p1') {
+        throw new Error('revalidate failed');
+      }
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans/p1') {
+        throw new Error('revalidate failed');
+      }
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
       if (path === '/plans/p1') {
         throw new Error('revalidate failed');
       }
