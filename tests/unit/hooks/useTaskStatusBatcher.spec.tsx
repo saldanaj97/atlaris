@@ -5,6 +5,7 @@ import {
   useTaskStatusBatcher,
 } from '@/hooks/useTaskStatusBatcher';
 import { act, renderHook } from '@testing-library/react';
+import { createId } from '@tests/fixtures/ids';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const { clientLoggerWarnMock } = vi.hoisted(() => ({
@@ -176,7 +177,10 @@ describe('useTaskStatusBatcher', () => {
     const flushAction = vi.fn<(updates: TaskStatusUpdate[]) => Promise<void>>();
     flushAction.mockResolvedValue(undefined);
 
-    const scopedTaskIds = new Set(['task-1']);
+    const id1 = createId('task');
+    const id2 = createId('task');
+    const staleId = createId('task');
+    const scopedTaskIds = new Set([id1]);
     const { result, rerender } = renderHook(
       ({ scoped }) =>
         useTaskStatusBatcher({
@@ -190,10 +194,10 @@ describe('useTaskStatusBatcher', () => {
 
     let stalePromise: Promise<void> = Promise.resolve();
     act(() => {
-      stalePromise = result.current.queue('task-stale', COMPLETED, NOT_STARTED);
+      stalePromise = result.current.queue(staleId, COMPLETED, NOT_STARTED);
     });
 
-    rerender({ scoped: new Set(['task-2']) });
+    rerender({ scoped: new Set([id2]) });
 
     await expect(stalePromise).resolves.toBeUndefined();
     expect(flushAction).not.toHaveBeenCalled();
@@ -209,10 +213,12 @@ describe('useTaskStatusBatcher', () => {
     const flushAction = vi.fn<(updates: TaskStatusUpdate[]) => Promise<void>>();
     flushAction.mockResolvedValue(undefined);
 
+    const id1 = createId('task');
+    const staleId = createId('task');
     const { result } = renderHook(() =>
       useTaskStatusBatcher({
         flushAction,
-        scopedTaskIds: new Set(['task-1']),
+        scopedTaskIds: new Set([id1]),
         debounceMs: 100,
         maxWaitMs: 250,
       }),
@@ -221,8 +227,8 @@ describe('useTaskStatusBatcher', () => {
     let inScopePromise: Promise<void> = Promise.resolve();
     let stalePromise: Promise<void> = Promise.resolve();
     act(() => {
-      inScopePromise = result.current.queue('task-1', COMPLETED, NOT_STARTED);
-      stalePromise = result.current.queue('task-stale', COMPLETED, NOT_STARTED);
+      inScopePromise = result.current.queue(id1, COMPLETED, NOT_STARTED);
+      stalePromise = result.current.queue(staleId, COMPLETED, NOT_STARTED);
     });
 
     await act(async () => {
@@ -230,7 +236,7 @@ describe('useTaskStatusBatcher', () => {
     });
 
     expect(flushAction).toHaveBeenCalledWith([
-      { taskId: 'task-1', status: COMPLETED },
+      { taskId: id1, status: COMPLETED },
     ]);
     await expect(Promise.all([inScopePromise, stalePromise])).resolves.toEqual([
       undefined,

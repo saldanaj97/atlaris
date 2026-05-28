@@ -1,3 +1,4 @@
+import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import { revalidatePath } from 'next/cache';
 
@@ -11,7 +12,7 @@ export function revalidatePathsBestEffort(paths: readonly string[]): void {
       revalidatePath(path);
     } catch (error) {
       logger.warn(
-        { path, err: error },
+        { path, err: serializeErrorForLog(error) },
         'Failed to revalidate path after mutation',
       );
     }
