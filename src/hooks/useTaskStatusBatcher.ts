@@ -25,6 +25,8 @@ export interface TaskStatusUpdate {
 
 interface UseTaskStatusBatcherOptions {
   flushAction: (updates: TaskStatusUpdate[]) => Promise<void>;
+  /** When set, pending/flushed updates for unknown task ids are dropped (navigation/regen). */
+  scopedTaskIds?: ReadonlySet<string>;
   debounceMs?: number;
   maxWaitMs?: number;
 }
@@ -44,6 +46,7 @@ const DEFAULT_MAX_WAIT_MS = 5000;
  */
 export function useTaskStatusBatcher({
   flushAction,
+  scopedTaskIds,
   debounceMs = DEFAULT_DEBOUNCE_MS,
   maxWaitMs = DEFAULT_MAX_WAIT_MS,
 }: UseTaskStatusBatcherOptions): {
@@ -59,6 +62,8 @@ export function useTaskStatusBatcher({
   const firstQueuedAtRef = useRef<number | null>(null);
   const flushActionRef = useRef(flushAction);
   flushActionRef.current = flushAction;
+  const scopedTaskIdsRef = useRef(scopedTaskIds);
+  scopedTaskIdsRef.current = scopedTaskIds;
 
   const clearScheduledFlush = useCallback(() => {
     if (timerRef.current) {
@@ -74,6 +79,32 @@ export function useTaskStatusBatcher({
     firstQueuedAtRef.current = null;
   }, []);
 
+  const dropOutOfScopePending = useCallback(() => {
+    const allowed = scopedTaskIdsRef.current;
+    if (!allowed) return;
+
+    const pending = pendingRef.current;
+    let droppedCount = 0;
+
+    for (const [taskId, entry] of pending) {
+      if (allowed.has(taskId)) continue;
+      droppedCount += 1;
+      for (const resolver of entry.resolvers) {
+        resolver.resolve();
+      }
+      pending.delete(taskId);
+    }
+
+    if (droppedCount > 0) {
+      clientLogger.warn('Dropped out-of-scope task progress updates', {
+        droppedCount,
+      });
+      if (pending.size === 0) {
+        clearScheduledFlush();
+      }
+    }
+  }, [clearScheduledFlush]);
+
   const flush = useCallback(async () => {
     clearScheduledFlush();
 
@@ -83,17 +114,40 @@ export function useTaskStatusBatcher({
     const snapshot = new Map(pending);
     pending.clear();
 
-    const updates: TaskStatusUpdate[] = Array.from(snapshot.entries()).map(
+    const allowed = scopedTaskIdsRef.current;
+    const inScopeEntries: Array<[string, PendingUpdate]> = [];
+    let skippedCount = 0;
+
+    for (const entry of snapshot) {
+      if (!allowed || allowed.has(entry[0])) {
+        inScopeEntries.push(entry);
+        continue;
+      }
+      skippedCount += 1;
+      for (const resolver of entry[1].resolvers) {
+        resolver.resolve();
+      }
+    }
+
+    if (skippedCount > 0) {
+      clientLogger.warn('Skipped out-of-scope task progress flush', {
+        skippedCount,
+      });
+    }
+
+    if (inScopeEntries.length === 0) return;
+
+    const updates: TaskStatusUpdate[] = inScopeEntries.map(
       ([taskId, { targetStatus }]) => ({ taskId, status: targetStatus }),
     );
 
     try {
       await flushActionRef.current(updates);
-      for (const [, { resolvers }] of snapshot) {
+      for (const [, { resolvers }] of inScopeEntries) {
         for (const r of resolvers) r.resolve();
       }
     } catch (error) {
-      for (const [, { resolvers }] of snapshot) {
+      for (const [, { resolvers }] of inScopeEntries) {
         for (const r of resolvers) r.reject(error);
       }
       const { errorMessage, errorStack } = getLoggableErrorDetails(error);
@@ -162,6 +216,10 @@ export function useTaskStatusBatcher({
     },
     [clearScheduledFlush, debounceMs, flush, maxWaitMs],
   );
+
+  useEffect(() => {
+    dropOutOfScopePending();
+  }, [dropOutOfScopePending, scopedTaskIds]);
 
   useEffect(() => {
     return () => {

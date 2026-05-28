@@ -148,4 +148,67 @@ describe('batchUpdateModuleTaskProgressAction', () => {
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1');
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
   });
+
+  it('succeeds when persistence succeeds but revalidatePath throws', async () => {
+    requestBoundaryActionMock.mockImplementationOnce(
+      mockRequestBoundaryAction(makeActionTestScope()),
+    );
+    applyTaskProgressUpdatesMock.mockResolvedValueOnce({
+      progress: [],
+      revalidatePaths: ['/plans/p1/modules/m1', '/plans/p1', '/plans'],
+      visibleState: { appliedByTaskId: {} },
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans/p1') {
+        throw new Error('revalidate failed');
+      }
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans/p1') {
+        throw new Error('revalidate failed');
+      }
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans/p1') {
+        throw new Error('revalidate failed');
+      }
+    });
+
+    await expect(
+      batchUpdateModuleTaskProgressAction({
+        planId: 'p1',
+        moduleId: 'm1',
+        updates: [{ taskId: 't1', status: 'completed' }],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/plans/p1' }),
+      'Failed to revalidate path after mutation',
+    );
+  });
+
+  it('maps boundary persistence errors to generic user message', async () => {
+    requestBoundaryActionMock.mockImplementationOnce(
+      mockRequestBoundaryAction(makeActionTestScope()),
+    );
+    const persistenceError = new Error('db exploded');
+    applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
+
+    await expect(
+      batchUpdateModuleTaskProgressAction({
+        planId: 'p1',
+        moduleId: 'm1',
+        updates: [{ taskId: 't1', status: 'completed' }],
+      }),
+    ).rejects.toThrow('Unable to update task progress right now.');
+
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskIds: ['t1'],
+        err: expect.objectContaining({ message: 'db exploded' }),
+      }),
+      'Failed to batch update module task progress',
+    );
+  });
 });

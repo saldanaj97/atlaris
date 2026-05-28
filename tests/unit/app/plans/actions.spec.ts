@@ -150,6 +150,43 @@ describe('batchUpdateTaskProgressAction', () => {
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
   });
 
+  it('succeeds when persistence succeeds but revalidatePath throws', async () => {
+    requestBoundaryActionMock.mockImplementationOnce(
+      async (fn: (scope: RequestScope) => Promise<void>) =>
+        fn(makeActionTestScope()),
+    );
+    applyTaskProgressUpdatesMock.mockResolvedValueOnce({
+      progress: [],
+      revalidatePaths: ['/plans/plan-123', '/plans'],
+      visibleState: { appliedByTaskId: {} },
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans') {
+        throw new Error('revalidate failed');
+      }
+    });
+    revalidatePathMock.mockImplementationOnce((path: string) => {
+      if (path === '/plans') {
+        throw new Error('revalidate failed');
+      }
+    });
+
+    await expect(
+      batchUpdateTaskProgressAction({
+        planId: 'plan-123',
+        updates: [{ taskId: 't1', status: 'completed' }],
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(applyTaskProgressUpdatesMock).toHaveBeenCalledOnce();
+    expect(revalidatePathMock).toHaveBeenCalledWith('/plans/plan-123');
+    expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
+    expect(loggerMock.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/plans' }),
+      'Failed to revalidate path after mutation',
+    );
+  });
+
   it('maps boundary persistence errors to generic user message', async () => {
     requestBoundaryActionMock.mockImplementationOnce(
       async (fn: (scope: RequestScope) => Promise<void>) =>
@@ -166,7 +203,11 @@ describe('batchUpdateTaskProgressAction', () => {
     ).rejects.toThrow('Unable to update task progress right now.');
 
     expect(loggerMock.error).toHaveBeenCalledWith(
-      expect.objectContaining({ err: persistenceError }),
+      expect.objectContaining({
+        err: expect.objectContaining({
+          message: 'db exploded',
+        }),
+      }),
       'Failed to batch update task progress',
     );
   });

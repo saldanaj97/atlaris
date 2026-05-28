@@ -30,6 +30,11 @@ interface PlanDetailClientProps {
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
+  const scopedTaskIds = useMemo(
+    () =>
+      new Set(modules.flatMap((module) => module.tasks.map((task) => task.id))),
+    [modules],
+  );
 
   const flushTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
@@ -64,6 +69,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
 
   const { statuses, handleStatusChange } = useOptimisticTaskStatusUpdates({
     initialStatuses,
+    scopedTaskIds,
     flushAction: flushTaskProgress,
     onError: handleTaskStatusError,
   });

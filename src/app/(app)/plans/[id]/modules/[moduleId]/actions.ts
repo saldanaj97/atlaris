@@ -21,8 +21,9 @@ import {
   validateTaskProgressBatchInput,
 } from '@/features/plans/task-progress/boundary';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
-import { revalidatePath } from 'next/cache';
+import { revalidatePathsBestEffort } from '@/lib/next/revalidate-paths';
 
 export async function getModuleForPage(
   planId: string,
@@ -86,9 +87,7 @@ export async function batchUpdateModuleTaskProgressAction({
         updates,
         dbClient: db,
       });
-      for (const path of outcome.revalidatePaths) {
-        revalidatePath(path);
-      }
+      revalidatePathsBestEffort(outcome.revalidatePaths);
     } catch (error) {
       logger.error(
         {
@@ -96,7 +95,8 @@ export async function batchUpdateModuleTaskProgressAction({
           moduleId,
           userId: actor.id,
           updateCount: updates.length,
-          err: error,
+          taskIds: updates.map((update) => update.taskId),
+          err: serializeErrorForLog(error),
         },
         'Failed to batch update module task progress',
       );
