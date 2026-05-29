@@ -1,10 +1,7 @@
 'use server';
 
-import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { planError, planSuccess } from './helpers';
-import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import {
   applyTaskProgressUpdates,
   validateTaskProgressBatchInput,
@@ -70,46 +67,4 @@ export async function batchUpdateTaskProgressAction({
   if (result === null) {
     throw new Error('You must be signed in to update progress.');
   }
-}
-
-/**
- * Server action to fetch plan detail data with RLS enforcement.
- * Uses `requestBoundary.action()` for auth and a request-scoped RLS `db` (see batch action comment).
- * Returns a typed result with explicit error codes for proper handling.
- *
- * Error codes:
- * - UNAUTHORIZED: User is not authenticated
- * - NOT_FOUND: Plan does not exist or user doesn't have access
- * - INTERNAL_ERROR: Unexpected error during fetch
- */
-export async function getPlanForPage(
-  planId: string,
-): Promise<PlanAccessResult> {
-  const boundaryResult = await requestBoundary.action(async ({ actor, db }) => {
-    const plan = await getPlanDetailForRead({
-      planId,
-      userId: actor.id,
-      dbClient: db,
-    });
-    if (!plan) {
-      logger.debug(
-        { planId, userId: actor.id },
-        'Plan not found or user does not have access',
-      );
-      return planError(
-        'NOT_FOUND',
-        'This plan does not exist or you do not have access to it.',
-      );
-    }
-    return planSuccess(plan);
-  });
-
-  if (!boundaryResult) {
-    logger.debug({ planId }, 'Plan access denied: user not authenticated');
-    return planError(
-      'UNAUTHORIZED',
-      'You must be signed in to view this plan.',
-    );
-  }
-  return boundaryResult;
 }
