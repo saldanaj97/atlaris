@@ -19,6 +19,8 @@ export {
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export {
   createWorkflowEnvForTests,
+  parseWorkflowCallbackToken,
+  WORKFLOW_CALLBACK_TOKEN_ENV_KEY,
   workflowEnv,
 } from '@/lib/config/env/workflow';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';

@@ -185,6 +185,8 @@ function getCachedServerRequired(
 export interface ServerEnvAccess {
   getServerRequired(key: string): string;
   getServerOptional(key: string): string | undefined;
+  /** Raw env value before trim/empty normalization. */
+  getServerEnvRaw(key: string): string | undefined;
   getServerRequiredProdOnly(key: string): string | undefined;
   getProductionCached<T>(key: string, loader: () => T): T;
 }
@@ -229,6 +231,10 @@ export function createServerEnvAccess(
         optionalCache.set(key, optionalEnvFrom(env, key));
       }
       return optionalCache.get(key);
+    },
+    getServerEnvRaw(key: string): string | undefined {
+      const { env } = getServerState();
+      return env[key];
     },
     getServerRequiredProdOnly(key: string): string | undefined {
       const { env, isNonProduction } = getServerState();

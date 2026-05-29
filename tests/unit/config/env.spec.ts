@@ -737,6 +737,40 @@ describe('Environment Configuration', () => {
       );
     });
 
+    it('trims WORKFLOW_CALLBACK_TOKEN when configured', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '  prod-secret  ',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
+        'prod-secret',
+      );
+    });
+
+    it('throws EnvValidationError for whitespace-only WORKFLOW_CALLBACK_TOKEN', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '   ',
+      }));
+
+      expect(() => createWorkflowEnvForTests(access).callbackToken).toThrow(
+        EnvValidationError,
+      );
+    });
+
+    it('treats empty WORKFLOW_CALLBACK_TOKEN as unset', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
+
     it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
       const access = createServerEnvAccess(() => ({
         NODE_ENV: 'development',

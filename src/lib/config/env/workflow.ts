@@ -4,6 +4,16 @@ import {
   getProcessEnvSource,
   type ServerEnvAccess,
 } from '@/lib/config/env/shared';
+import { z } from 'zod';
+
+export const WORKFLOW_CALLBACK_TOKEN_ENV_KEY = 'WORKFLOW_CALLBACK_TOKEN';
+
+const workflowCallbackTokenSchema = z
+  .string()
+  .trim()
+  .min(1, {
+    message: `${WORKFLOW_CALLBACK_TOKEN_ENV_KEY} must not be empty or whitespace-only`,
+  });
 
 interface WorkflowEnv {
   /** `MODULE_LESSON_WORKFLOW_ENABLED`; defaults to false. */
@@ -45,6 +55,26 @@ function parseWorkflowFlag(
   );
 }
 
+/** Parses optional workflow callback token; unset/blank env is undefined. */
+export function parseWorkflowCallbackToken(
+  raw: string | undefined,
+): string | undefined {
+  if (raw === undefined || raw === '') {
+    return undefined;
+  }
+
+  const parsed = workflowCallbackTokenSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new EnvValidationError(
+      parsed.error.issues[0]?.message ??
+        `Invalid ${WORKFLOW_CALLBACK_TOKEN_ENV_KEY}`,
+      WORKFLOW_CALLBACK_TOKEN_ENV_KEY,
+    );
+  }
+
+  return parsed.data;
+}
+
 function readWorkflowEnv(access: ServerEnvAccess): WorkflowEnv {
   return {
     get moduleLessonWorkflowEnabled(): boolean {
@@ -69,7 +99,9 @@ function readWorkflowEnv(access: ServerEnvAccess): WorkflowEnv {
       );
     },
     get callbackToken(): string | undefined {
-      return access.getServerOptional('WORKFLOW_CALLBACK_TOKEN');
+      return parseWorkflowCallbackToken(
+        access.getServerEnvRaw(WORKFLOW_CALLBACK_TOKEN_ENV_KEY),
+      );
     },
   };
 }
