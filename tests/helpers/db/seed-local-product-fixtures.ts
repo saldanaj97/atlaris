@@ -7,6 +7,14 @@ export const LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_ID =
 export const LOCAL_PRODUCT_BROWSER_FIXTURE_MODULE_ONE_ID =
   '33333333-3333-4333-8333-333333333333' as const;
 
+export const LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_TOPIC =
+  'Local fixture: browser progress and regeneration' as const;
+
+export const LOCAL_PRODUCT_BROWSER_FIXTURE_TASK_TITLES = {
+  planNavigate: 'Toggle a plan task and navigate',
+  moduleNavigate: 'Toggle a module lesson and return',
+} as const;
+
 const FIXTURE_MODULE_TWO_ID = '44444444-4444-4444-8444-444444444444';
 const FIXTURE_TASK_ONE_ID = '55555555-5555-4555-8555-555555555555';
 const FIXTURE_TASK_TWO_ID = '66666666-6666-4666-8666-666666666666';
@@ -50,7 +58,7 @@ export async function seedLocalProductBrowserFixtures(
         VALUES (
           ${LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_ID}::uuid,
           ${LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID}::uuid,
-          'Local fixture: browser progress and regeneration',
+          ${LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_TOPIC},
           'intermediate',
           5,
           'mixed',
@@ -161,7 +169,7 @@ export async function seedLocalProductBrowserFixtures(
             ${FIXTURE_TASK_ONE_ID}::uuid,
             ${LOCAL_PRODUCT_BROWSER_FIXTURE_MODULE_ONE_ID}::uuid,
             1,
-            'Toggle a plan task and navigate',
+            ${LOCAL_PRODUCT_BROWSER_FIXTURE_TASK_TITLES.planNavigate},
             'Use this task to confirm pending plan-level task progress survives route changes.',
             20,
             true,
@@ -172,7 +180,7 @@ export async function seedLocalProductBrowserFixtures(
             ${FIXTURE_TASK_TWO_ID}::uuid,
             ${LOCAL_PRODUCT_BROWSER_FIXTURE_MODULE_ONE_ID}::uuid,
             2,
-            'Toggle a module lesson and return',
+            ${LOCAL_PRODUCT_BROWSER_FIXTURE_TASK_TITLES.moduleNavigate},
             'Use this task to confirm module-level task progress survives navigation back to the plan.',
             40,
             true,

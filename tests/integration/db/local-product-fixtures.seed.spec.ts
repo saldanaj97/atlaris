@@ -8,6 +8,7 @@ import { db } from '@supabase/service-role';
 import {
   LOCAL_PRODUCT_BROWSER_FIXTURE_MODULE_ONE_ID,
   LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_ID,
+  LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_TOPIC,
   seedLocalProductBrowserFixtures,
 } from '@tests/helpers/db/seed-local-product-fixtures';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
@@ -22,7 +23,7 @@ const FIXTURE_TASK_IDS = [
   '88888888-8888-4888-8888-888888888888',
 ] as const;
 
-const FIXTURE_TOPIC = 'Local fixture: browser progress and regeneration';
+const FIXTURE_TOPIC = LOCAL_PRODUCT_BROWSER_FIXTURE_PLAN_TOPIC;
 
 describe('seedLocalProductBrowserFixtures', () => {
   const connectionUrl = process.env.POSTGRES_URL;

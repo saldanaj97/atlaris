@@ -2,6 +2,7 @@ import {
   bootstrapDatabase,
   grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
+import { seedLocalProductBrowserFixtures } from '@tests/helpers/db/seed-local-product-fixtures';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 /**
  * Bootstrap, migrate, grant, and seed the disposable smoke database.
@@ -56,4 +57,7 @@ export async function prepareSmokeDatabase(
 
   console.log('[smoke] Seeding local product-testing user…');
   await seedLocalProductTestingUser(connectionUrl);
+
+  console.log('[smoke] Seeding browser progress/regeneration fixtures…');
+  await seedLocalProductBrowserFixtures(connectionUrl);
 }
