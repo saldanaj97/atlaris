@@ -106,7 +106,7 @@ export async function resolveWorkflowCallbackAccess(
     return { status: 'allow' };
   }
 
-  if (isWorkflowHealthCheck(input)) {
+  if (isWorkflowHealthCheck(input) && !config.isProduction) {
     return { status: 'allow' };
   }
 

@@ -26,7 +26,7 @@ describe('workflow callback auth', () => {
     expect(isWorkflowCallbackPath('/.well-known/vercel/flags')).toBe(false);
   });
 
-  it('allows workflow health checks', async () => {
+  it('allows workflow health checks in non-production', async () => {
     expect(
       await resolveWorkflowCallbackAccess(
         {
@@ -50,6 +50,40 @@ describe('workflow callback auth', () => {
         baseConfig,
       ),
     ).toEqual({ status: 'deny' });
+  });
+
+  it('requires token for health checks in self-hosted production', async () => {
+    const config = {
+      ...baseConfig,
+      isProduction: true,
+      callbackToken: 'secret-token',
+    };
+
+    expect(
+      await resolveWorkflowCallbackAccess(
+        {
+          method: 'HEAD',
+          pathname: '/.well-known/workflow/v1/flow',
+          searchParams: new URLSearchParams('__health'),
+          headers: createHeaders(),
+        },
+        config,
+      ),
+    ).toEqual({ status: 'deny' });
+
+    expect(
+      await resolveWorkflowCallbackAccess(
+        {
+          method: 'HEAD',
+          pathname: '/.well-known/workflow/v1/flow',
+          searchParams: new URLSearchParams('__health'),
+          headers: createHeaders({
+            authorization: 'Bearer secret-token',
+          }),
+        },
+        config,
+      ),
+    ).toEqual({ status: 'allow' });
   });
 
   it('allows webhook resume routes without callback token auth', async () => {
