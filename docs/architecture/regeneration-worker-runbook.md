@@ -25,8 +25,9 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 
 When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 
-- Successful enqueue calls `startPlanRegenerationWorkflow()` (fire-and-forget).
+- Both enqueue and drain launch via `startPlanRegenerationWorkflow()` (fire-and-forget after the run is created).
 - The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
+- Rejected workflow runs are terminalized via `failJob(..., { retryable: false })` when `run.returnValue` rejects, even if finalization never runs.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
 
 Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and local dev). Env flags: [environment variables](../development/environment.md#workflow-sdk). Local workflow testing: [development commands](../development/commands.md) (`pnpm dev:workflow`).
