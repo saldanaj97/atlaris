@@ -2,8 +2,8 @@ import type { JSX } from 'react';
 
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
-import { getPlanForPage } from '@/app/(app)/plans/[id]/actions';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
+import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
@@ -20,7 +20,7 @@ interface PlanDetailContentProps {
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
-  const planResult = await getPlanForPage(planId);
+  const planResult = await loadPlanForPage(planId);
 
   if (!isPlanSuccess(planResult)) {
     const error = getPlanError(planResult);
