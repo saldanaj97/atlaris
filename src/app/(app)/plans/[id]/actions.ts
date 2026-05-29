@@ -30,10 +30,14 @@ interface BatchUpdateTaskProgressInput {
  *
  * React Doctor note: `server-auth-actions` is a false positive for actions using this wrapper.
  */
+export type BatchUpdateTaskProgressResult = {
+  readonly revalidateFailed: boolean;
+};
+
 export async function batchUpdateTaskProgressAction({
   planId,
   updates,
-}: BatchUpdateTaskProgressInput): Promise<void> {
+}: BatchUpdateTaskProgressInput): Promise<BatchUpdateTaskProgressResult | void> {
   if (updates.length === 0) return;
 
   const result = await requestBoundary.action(async ({ actor, db }) => {
@@ -46,7 +50,10 @@ export async function batchUpdateTaskProgressAction({
         updates,
         dbClient: db,
       });
-      revalidatePathsBestEffort(outcome.revalidatePaths);
+      const { failedPaths } = revalidatePathsBestEffort(
+        outcome.revalidatePaths,
+      );
+      return { revalidateFailed: failedPaths.length > 0 };
     } catch (error) {
       logger.error(
         {
@@ -67,4 +74,6 @@ export async function batchUpdateTaskProgressAction({
   if (result === null) {
     throw new Error('You must be signed in to update progress.');
   }
+
+  return result;
 }

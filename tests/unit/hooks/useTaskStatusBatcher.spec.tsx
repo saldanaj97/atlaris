@@ -8,14 +8,22 @@ import { act, renderHook } from '@testing-library/react';
 import { createId } from '@tests/fixtures/ids';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { clientLoggerWarnMock } = vi.hoisted(() => ({
+const { clientLoggerWarnMock, toastMessageMock } = vi.hoisted(() => ({
   clientLoggerWarnMock: vi.fn(),
+  toastMessageMock: vi.fn(),
 }));
 
 vi.mock('@/lib/logging/client', () => ({
   clientLogger: {
     error: vi.fn(),
     warn: clientLoggerWarnMock,
+  },
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    error: vi.fn(),
+    message: toastMessageMock,
   },
 }));
 
@@ -202,7 +210,7 @@ describe('useTaskStatusBatcher', () => {
     await expect(stalePromise).resolves.toBeUndefined();
     expect(flushAction).not.toHaveBeenCalled();
     expect(clientLoggerWarnMock).toHaveBeenCalledWith(
-      'Dropped out-of-scope task progress updates',
+      expect.stringContaining('Dropped out-of-scope task progress updates'),
       expect.objectContaining({ droppedCount: 1 }),
     );
   });

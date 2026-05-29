@@ -2,6 +2,7 @@ import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
 
 import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
+import { finalizePageBoundaryResult } from '@/lib/api/page-boundary-result';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 
@@ -29,14 +30,17 @@ export function loadPlanForPage(planId: string): Promise<PlanAccessResult> {
       }
       return planSuccess(plan);
     })
-    .then((boundaryResult) => {
-      if (!boundaryResult) {
-        logger.debug({ planId }, 'Plan access denied: user not authenticated');
-        return planError(
-          'UNAUTHORIZED',
-          'You must be signed in to view this plan.',
-        );
-      }
-      return boundaryResult;
-    });
+    .then((boundaryResult) =>
+      finalizePageBoundaryResult(boundaryResult, {
+        entityId: planId,
+        unauthenticatedMessage: 'You must be signed in to view this plan.',
+        unauthenticated: (message) => {
+          logger.debug(
+            { planId },
+            'Plan access denied: user not authenticated',
+          );
+          return planError('UNAUTHORIZED', message);
+        },
+      }),
+    );
 }

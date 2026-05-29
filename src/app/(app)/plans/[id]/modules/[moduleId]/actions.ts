@@ -29,11 +29,15 @@ interface BatchUpdateModuleTaskProgressInput {
  * Server action to batch update multiple task progress records from the module detail page.
  * Delegates validation, scope checks, persistence, and path selection to `applyTaskProgressUpdates`.
  */
+export type BatchUpdateModuleTaskProgressResult = {
+  readonly revalidateFailed: boolean;
+};
+
 export async function batchUpdateModuleTaskProgressAction({
   planId,
   moduleId,
   updates,
-}: BatchUpdateModuleTaskProgressInput): Promise<void> {
+}: BatchUpdateModuleTaskProgressInput): Promise<BatchUpdateModuleTaskProgressResult | void> {
   if (updates.length === 0) return;
 
   const result = await requestBoundary.action(async ({ actor, db }) => {
@@ -47,7 +51,10 @@ export async function batchUpdateModuleTaskProgressAction({
         updates,
         dbClient: db,
       });
-      revalidatePathsBestEffort(outcome.revalidatePaths);
+      const { failedPaths } = revalidatePathsBestEffort(
+        outcome.revalidatePaths,
+      );
+      return { revalidateFailed: failedPaths.length > 0 };
     } catch (error) {
       logger.error(
         {
@@ -69,4 +76,6 @@ export async function batchUpdateModuleTaskProgressAction({
   if (result === null) {
     throw new Error('You must be signed in to update progress.');
   }
+
+  return result;
 }

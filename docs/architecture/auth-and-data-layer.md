@@ -48,15 +48,22 @@ export const GET = withAuth(async ({ user }) => {
 
 // Server action (preferred) — requestBoundary.action
 import { requestBoundary } from '@/lib/api/request-boundary';
-export async function getPlanForPage(planId: string) {
-  const result = await requestBoundary.action(async ({ actor }) => {
-    return getLearningPlanDetail(planId, actor.id);
+export async function updatePlanAction(planId: string) {
+  const result = await requestBoundary.action(async ({ actor, db }) => {
+    return updatePlan(planId, actor.id, db);
   });
-  if (result === null) return unauthorized();
+  if (result === null) throw new Error('You must be signed in.');
   return result;
 }
 
-// Server component (preferred) — requestBoundary.component
+// Server component (preferred) — requestBoundary.component + page data module
+import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
+export async function PlanDetailContent({ planId }: { planId: string }) {
+  const planResult = await loadPlanForPage(planId);
+  // handle planResult (success / NOT_FOUND / UNAUTHORIZED)
+}
+
+// Lower-level component boundary (same as loadPlanForPage internally)
 import { requestBoundary } from '@/lib/api/request-boundary';
 const tier = await requestBoundary.component(
   async ({ actor }) => actor.subscriptionTier,

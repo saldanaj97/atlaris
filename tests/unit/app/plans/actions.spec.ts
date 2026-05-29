@@ -152,8 +152,11 @@ describe('batchUpdateTaskProgressAction', () => {
 
   it('succeeds when persistence succeeds but revalidatePath throws', async () => {
     requestBoundaryActionMock.mockImplementationOnce(
-      async (fn: (scope: RequestScope) => Promise<void>) =>
-        fn(makeActionTestScope()),
+      async (
+        fn: (
+          scope: RequestScope,
+        ) => Promise<{ revalidateFailed: boolean } | void>,
+      ) => fn(makeActionTestScope()),
     );
     applyTaskProgressUpdatesMock.mockResolvedValueOnce({
       progress: [],
@@ -176,7 +179,7 @@ describe('batchUpdateTaskProgressAction', () => {
         planId: 'plan-123',
         updates: [{ taskId: 't1', status: 'completed' }],
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ revalidateFailed: true });
 
     expect(applyTaskProgressUpdatesMock).toHaveBeenCalledOnce();
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans/plan-123');

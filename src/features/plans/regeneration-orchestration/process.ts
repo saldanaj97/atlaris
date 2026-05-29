@@ -12,11 +12,12 @@ import {
 } from './process-workflow-support';
 import { planRegenerationJobPayloadSchema } from './schema';
 import { JOB_TYPES } from '@/features/jobs/types';
-import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
+import {
+  PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+  startPlanRegenerationWorkflow,
+} from '@/features/plans/start-plan-regeneration-workflow';
 import { workflowEnv } from '@/lib/config/env/workflow';
 import { db as serviceRoleDb } from '@supabase/service-role';
-
-const UNSAFE_WORKER_FAILURE_MESSAGE = 'Queued plan regeneration failed.';
 
 export async function processNextPlanRegenerationJob(
   deps?: RegenerationOrchestrationDeps,
@@ -80,9 +81,13 @@ export async function processPlanRegenerationJob(
       );
 
       if (!workflowStart.started) {
-        await d.queue.failJob(job.id, UNSAFE_WORKER_FAILURE_MESSAGE, {
-          retryable: false,
-        });
+        await d.queue.failJob(
+          job.id,
+          PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+          {
+            retryable: false,
+          },
+        );
         return {
           kind: 'permanent-failure',
           jobId: job.id,
@@ -125,9 +130,13 @@ export async function processPlanRegenerationJob(
     );
 
     try {
-      await d.queue.failJob(job.id, UNSAFE_WORKER_FAILURE_MESSAGE, {
-        retryable: false,
-      });
+      await d.queue.failJob(
+        job.id,
+        PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+        {
+          retryable: false,
+        },
+      );
     } catch (secondaryError) {
       d.logger.error(
         { jobId: job.id, error: secondaryError },

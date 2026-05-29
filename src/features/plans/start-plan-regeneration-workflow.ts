@@ -4,7 +4,8 @@ import { workflowEnv } from '@/lib/config/env/workflow';
 import { logger } from '@/lib/logging/logger';
 import { start } from 'workflow/api';
 
-const WORKFLOW_REJECTION_FAILURE_MESSAGE = 'Queued plan regeneration failed.';
+export const PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE =
+  'Queued plan regeneration failed.';
 
 export type StartPlanRegenerationWorkflowInput = {
   readonly jobId: string;
@@ -82,7 +83,7 @@ export async function startPlanRegenerationWorkflow(
       'Plan regeneration workflow failed',
     );
 
-    void queueFailJob(input.jobId, WORKFLOW_REJECTION_FAILURE_MESSAGE, {
+    void queueFailJob(input.jobId, PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE, {
       retryable: false,
     }).catch((failError: unknown) => {
       log.error(

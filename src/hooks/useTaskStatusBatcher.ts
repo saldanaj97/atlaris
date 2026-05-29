@@ -4,7 +4,7 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface Resolver {
@@ -33,6 +33,52 @@ interface UseTaskStatusBatcherOptions {
 
 const DEFAULT_DEBOUNCE_MS = 2000;
 const DEFAULT_MAX_WAIT_MS = 5000;
+
+function scopedTaskIdsKey(
+  scopedTaskIds: ReadonlySet<string> | undefined,
+): string {
+  if (!scopedTaskIds) return '';
+  return [...scopedTaskIds].sort().join('\0');
+}
+
+function partitionPendingByScope(
+  entries: Array<[string, PendingUpdate]>,
+  allowed: ReadonlySet<string> | undefined,
+): {
+  inScope: Array<[string, PendingUpdate]>;
+  droppedCount: number;
+} {
+  if (!allowed) {
+    return { inScope: entries, droppedCount: 0 };
+  }
+
+  const inScope: Array<[string, PendingUpdate]> = [];
+  let droppedCount = 0;
+
+  for (const entry of entries) {
+    if (allowed.has(entry[0])) {
+      inScope.push(entry);
+      continue;
+    }
+    droppedCount += 1;
+    for (const resolver of entry[1].resolvers) {
+      resolver.resolve();
+    }
+  }
+
+  return { inScope, droppedCount };
+}
+
+function notifyDroppedTaskUpdates(droppedCount: number, context: string): void {
+  if (droppedCount === 0) return;
+
+  clientLogger.warn(`Dropped out-of-scope task progress updates (${context})`, {
+    droppedCount,
+  });
+  toast.message('Some progress changes were not saved after navigation.', {
+    description: 'Refresh the page if totals look out of date.',
+  });
+}
 
 /**
  * Batches task status updates within a debounce window into a single server request.
@@ -64,6 +110,11 @@ export function useTaskStatusBatcher({
   flushActionRef.current = flushAction;
   const scopedTaskIdsRef = useRef(scopedTaskIds);
   scopedTaskIdsRef.current = scopedTaskIds;
+  const scopeKey = useMemo(
+    () => scopedTaskIdsKey(scopedTaskIds),
+    [scopedTaskIds],
+  );
+  const previousScopeKeyRef = useRef('');
 
   const clearScheduledFlush = useCallback(() => {
     if (timerRef.current) {
@@ -79,32 +130,6 @@ export function useTaskStatusBatcher({
     firstQueuedAtRef.current = null;
   }, []);
 
-  const dropOutOfScopePending = useCallback(() => {
-    const allowed = scopedTaskIdsRef.current;
-    if (!allowed) return;
-
-    const pending = pendingRef.current;
-    let droppedCount = 0;
-
-    for (const [taskId, entry] of pending) {
-      if (allowed.has(taskId)) continue;
-      droppedCount += 1;
-      for (const resolver of entry.resolvers) {
-        resolver.resolve();
-      }
-      pending.delete(taskId);
-    }
-
-    if (droppedCount > 0) {
-      clientLogger.warn('Dropped out-of-scope task progress updates', {
-        droppedCount,
-      });
-      if (pending.size === 0) {
-        clearScheduledFlush();
-      }
-    }
-  }, [clearScheduledFlush]);
-
   const flush = useCallback(async () => {
     clearScheduledFlush();
 
@@ -114,26 +139,11 @@ export function useTaskStatusBatcher({
     const snapshot = new Map(pending);
     pending.clear();
 
-    const allowed = scopedTaskIdsRef.current;
-    const inScopeEntries: Array<[string, PendingUpdate]> = [];
-    let skippedCount = 0;
-
-    for (const entry of snapshot) {
-      if (!allowed || allowed.has(entry[0])) {
-        inScopeEntries.push(entry);
-        continue;
-      }
-      skippedCount += 1;
-      for (const resolver of entry[1].resolvers) {
-        resolver.resolve();
-      }
-    }
-
-    if (skippedCount > 0) {
-      clientLogger.warn('Skipped out-of-scope task progress flush', {
-        skippedCount,
-      });
-    }
+    const { inScope: inScopeEntries, droppedCount } = partitionPendingByScope(
+      Array.from(snapshot.entries()),
+      scopedTaskIdsRef.current,
+    );
+    notifyDroppedTaskUpdates(droppedCount, 'flush');
 
     if (inScopeEntries.length === 0) return;
 
@@ -157,6 +167,27 @@ export function useTaskStatusBatcher({
         updateCount: updates.length,
       });
       toast.error('Failed to update task status. Please try again.');
+    }
+  }, [clearScheduledFlush]);
+
+  const dropOutOfScopePending = useCallback(() => {
+    const pending = pendingRef.current;
+    if (pending.size === 0) return;
+
+    const { inScope, droppedCount } = partitionPendingByScope(
+      Array.from(pending.entries()),
+      scopedTaskIdsRef.current,
+    );
+
+    pending.clear();
+    for (const [taskId, entry] of inScope) {
+      pending.set(taskId, entry);
+    }
+
+    notifyDroppedTaskUpdates(droppedCount, 'scope-change');
+
+    if (pending.size === 0) {
+      clearScheduledFlush();
     }
   }, [clearScheduledFlush]);
 
@@ -218,8 +249,16 @@ export function useTaskStatusBatcher({
   );
 
   useEffect(() => {
-    dropOutOfScopePending();
-  }, [dropOutOfScopePending, scopedTaskIds]);
+    const previousScopeKey = previousScopeKeyRef.current;
+    if (previousScopeKey !== scopeKey && previousScopeKey !== '') {
+      void flush().then(() => {
+        dropOutOfScopePending();
+      });
+    } else {
+      dropOutOfScopePending();
+    }
+    previousScopeKeyRef.current = scopeKey;
+  }, [dropOutOfScopePending, flush, scopeKey]);
 
   useEffect(() => {
     return () => {

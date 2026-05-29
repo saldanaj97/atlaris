@@ -211,7 +211,7 @@ export async function withServerComponentContext<T>(
     );
   }
 
-  const authUserId = await getEffectiveAuthUserId();
+  const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
 
   if (appEnv.isTest) {

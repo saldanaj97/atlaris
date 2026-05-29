@@ -5,6 +5,7 @@ import {
   moduleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
 import { getModuleDetailForRead } from '@/features/plans/read-projection/service';
+import { finalizePageBoundaryResult } from '@/lib/api/page-boundary-result';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
 
@@ -36,17 +37,17 @@ export function loadModuleForPage(
       }
       return moduleSuccess(moduleData);
     })
-    .then((boundaryResult) => {
-      if (!boundaryResult) {
-        logger.debug(
-          { moduleId },
-          'Module access denied: user not authenticated',
-        );
-        return moduleError(
-          'UNAUTHORIZED',
-          'You must be signed in to view this module.',
-        );
-      }
-      return boundaryResult;
-    });
+    .then((boundaryResult) =>
+      finalizePageBoundaryResult(boundaryResult, {
+        entityId: moduleId,
+        unauthenticatedMessage: 'You must be signed in to view this module.',
+        unauthenticated: (message) => {
+          logger.debug(
+            { moduleId },
+            'Module access denied: user not authenticated',
+          );
+          return moduleError('UNAUTHORIZED', message);
+        },
+      }),
+    );
 }
