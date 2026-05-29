@@ -12,10 +12,9 @@ import {
 } from './process-workflow-support';
 import { planRegenerationJobPayloadSchema } from './schema';
 import { JOB_TYPES } from '@/features/jobs/types';
-import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
+import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 import { workflowEnv } from '@/lib/config/env/workflow';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { start } from 'workflow/api';
 
 const UNSAFE_WORKER_FAILURE_MESSAGE = 'Queued plan regeneration failed.';
 
@@ -70,20 +69,32 @@ export async function processPlanRegenerationJob(
         };
       }
 
-      const run = await start(planRegenerationWorkflow, [
+      const workflowStart = await startPlanRegenerationWorkflow(
         {
           jobId: job.id,
           planId: payload.planId,
           userId: job.userId,
           correlationId: `regen-drain-${job.id}`,
         },
-      ]);
+        { failJob: d.queue.failJob },
+      );
+
+      if (!workflowStart.started) {
+        await d.queue.failJob(job.id, UNSAFE_WORKER_FAILURE_MESSAGE, {
+          retryable: false,
+        });
+        return {
+          kind: 'permanent-failure',
+          jobId: job.id,
+          planId: payload.planId,
+        };
+      }
 
       const launchedPayload = planRegenerationJobPayloadSchema.parse({
         ...payload,
         workflow: {
           provider: 'workflow-sdk' as const,
-          runId: run.runId,
+          runId: workflowStart.runId,
           startedAt: payload.workflow?.startedAt ?? new Date().toISOString(),
         },
       });
