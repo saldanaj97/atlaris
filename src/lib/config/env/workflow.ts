@@ -55,6 +55,30 @@ function parseWorkflowFlag(
   );
 }
 
+export type WorkflowCallbackTokenConfigRead =
+  | { readonly status: 'valid'; readonly token: string | undefined }
+  | { readonly status: 'invalid' };
+
+/** Reads callback token config without throwing on whitespace-only values. */
+export function readWorkflowCallbackTokenConfig(
+  access?: ServerEnvAccess,
+): WorkflowCallbackTokenConfigRead {
+  const envAccess = access ?? createServerEnvAccess(getProcessEnvSource);
+  try {
+    return {
+      status: 'valid',
+      token: parseWorkflowCallbackToken(
+        envAccess.getServerEnvRaw(WORKFLOW_CALLBACK_TOKEN_ENV_KEY),
+      ),
+    };
+  } catch (error) {
+    if (error instanceof EnvValidationError) {
+      return { status: 'invalid' };
+    }
+    throw error;
+  }
+}
+
 /** Parses optional workflow callback token; unset/blank env is undefined. */
 export function parseWorkflowCallbackToken(
   raw: string | undefined,

@@ -20,6 +20,7 @@ export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export {
   createWorkflowEnvForTests,
   parseWorkflowCallbackToken,
+  readWorkflowCallbackTokenConfig,
   WORKFLOW_CALLBACK_TOKEN_ENV_KEY,
   workflowEnv,
 } from '@/lib/config/env/workflow';

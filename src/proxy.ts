@@ -4,7 +4,7 @@ import {
   devAuthEnv,
   isHostedDeployEnv,
   localProductTestingEnv,
-  workflowEnv,
+  readWorkflowCallbackTokenConfig,
 } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
@@ -53,6 +53,19 @@ const withCorrelationId = (
   return applyProxyDecorations(response, ctx);
 };
 
+/** Machine workflow callbacks skip CSP/nonce decoration (SDK queue consumer). */
+const nextForWorkflowCallback = (request: NextRequest): NextResponse => {
+  const correlationId = getCorrelationId(request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-correlation-id', correlationId);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set('x-correlation-id', correlationId);
+  return response;
+};
+
 const nextWithCorrelationId = (
   request: NextRequest,
   existingCtx?: ReturnType<typeof buildProxyRequestContext>,
@@ -74,6 +87,11 @@ const proxy = clerkMiddleware(
     const { pathname } = request.nextUrl;
 
     if (isWorkflowCallbackPath(pathname)) {
+      const tokenConfig = readWorkflowCallbackTokenConfig();
+      if (tokenConfig.status === 'invalid') {
+        return new NextResponse(null, { status: 503 });
+      }
+
       const callbackAccess = await resolveWorkflowCallbackAccess(
         {
           method: request.method,
@@ -84,12 +102,12 @@ const proxy = clerkMiddleware(
         {
           isProduction: appEnv.isProduction,
           isHostedVercelDeploy: isHostedDeployEnv(process.env),
-          callbackToken: workflowEnv.callbackToken,
+          callbackToken: tokenConfig.token,
         },
       );
 
       if (callbackAccess.status === 'allow') {
-        return nextWithCorrelationId(request);
+        return nextForWorkflowCallback(request);
       }
 
       if (callbackAccess.status === 'misconfigured') {

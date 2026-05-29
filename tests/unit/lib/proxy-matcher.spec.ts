@@ -1,14 +1,11 @@
 import { config as proxyConfig } from '@/proxy';
+import { getPathMatch } from 'next/dist/shared/lib/router/utils/path-match';
 import { describe, expect, it } from 'vitest';
 
 function matchesProxyMatcher(pathname: string): boolean {
   return proxyConfig.matcher.some((pattern) => {
-    const normalizedPattern = pattern.startsWith('/')
-      ? pattern.slice(1)
-      : pattern;
-    const regexSource = normalizedPattern.replace(/\//g, '\\/');
-    const regex = new RegExp(`^${regexSource}$`);
-    return regex.test(pathname);
+    const match = getPathMatch(pattern);
+    return match(pathname);
   });
 }
 

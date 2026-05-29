@@ -15,6 +15,7 @@ import {
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
+  readWorkflowCallbackTokenConfig,
   regenerationQueueEnv,
   requireEnv,
   toBoolean,
@@ -759,6 +760,18 @@ describe('Environment Configuration', () => {
       expect(() => createWorkflowEnvForTests(access).callbackToken).toThrow(
         EnvValidationError,
       );
+    });
+
+    it('readWorkflowCallbackTokenConfig returns invalid for whitespace-only token', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '   ',
+      }));
+
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'invalid',
+      });
     });
 
     it('treats empty WORKFLOW_CALLBACK_TOKEN as unset', () => {

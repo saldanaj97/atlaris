@@ -61,7 +61,7 @@ export function readWorkflowCallbackToken(
   const authHeader = headers.get('authorization');
   const bearerMatch = authHeader?.match(/^Bearer\s+(.+)$/i);
   const bearerToken = bearerMatch?.[1]?.trim() ?? null;
-  const customToken = headers.get(headerName);
+  const customToken = headers.get(headerName)?.trim() ?? null;
 
   if (bearerToken && customToken) {
     return null;
@@ -71,7 +71,7 @@ export function readWorkflowCallbackToken(
     return bearerToken;
   }
 
-  return customToken;
+  return customToken === '' ? null : customToken;
 }
 
 /**
