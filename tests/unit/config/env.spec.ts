@@ -725,7 +725,7 @@ describe('Environment Configuration', () => {
       ).toThrow(EnvValidationError);
     });
 
-    it('reads WORKFLOW_CALLBACK_TOKEN only in production', () => {
+    it('reads WORKFLOW_CALLBACK_TOKEN when configured', () => {
       vi.stubGlobal('window', undefined);
       const access = createServerEnvAccess(() => ({
         NODE_ENV: 'production',
@@ -740,6 +740,15 @@ describe('Environment Configuration', () => {
     it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
       const access = createServerEnvAccess(() => ({
         NODE_ENV: 'development',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
+
+    it('does not require WORKFLOW_CALLBACK_TOKEN in production env reads', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
       }));
 
       expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();

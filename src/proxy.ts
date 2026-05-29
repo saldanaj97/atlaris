@@ -74,7 +74,7 @@ const proxy = clerkMiddleware(
     const { pathname } = request.nextUrl;
 
     if (isWorkflowCallbackPath(pathname)) {
-      const callbackAccess = resolveWorkflowCallbackAccess(
+      const callbackAccess = await resolveWorkflowCallbackAccess(
         {
           method: request.method,
           pathname,
@@ -89,7 +89,7 @@ const proxy = clerkMiddleware(
       );
 
       if (callbackAccess.status === 'allow') {
-        return NextResponse.next();
+        return nextWithCorrelationId(request);
       }
 
       if (callbackAccess.status === 'misconfigured') {

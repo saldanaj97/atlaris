@@ -76,17 +76,19 @@ export function readWorkflowCallbackToken(
 
 /**
  * Edge-safe timing-safe string compare for shared-secret tokens.
+ * Uses fixed-length SHA-256 digests so token length cannot short-circuit compare.
  */
-export function workflowCallbackTokensMatch(
+export async function workflowCallbackTokensMatch(
   expectedToken: string,
   providedToken: string,
-): boolean {
-  const expected = new TextEncoder().encode(expectedToken);
-  const provided = new TextEncoder().encode(providedToken);
-
-  if (provided.length !== expected.length) {
-    return false;
-  }
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [expectedHash, providedHash] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(expectedToken)),
+    crypto.subtle.digest('SHA-256', encoder.encode(providedToken)),
+  ]);
+  const expected = new Uint8Array(expectedHash);
+  const provided = new Uint8Array(providedHash);
 
   let mismatch = 0;
   for (let index = 0; index < expected.length; index += 1) {
@@ -96,10 +98,10 @@ export function workflowCallbackTokensMatch(
   return mismatch === 0;
 }
 
-export function resolveWorkflowCallbackAccess(
+export async function resolveWorkflowCallbackAccess(
   input: WorkflowCallbackAuthInput,
   config: WorkflowCallbackAuthConfig,
-): WorkflowCallbackAuthResult {
+): Promise<WorkflowCallbackAuthResult> {
   if (!isWorkflowCallbackPath(input.pathname)) {
     return { status: 'allow' };
   }
@@ -122,7 +124,7 @@ export function resolveWorkflowCallbackAccess(
     const providedToken = readWorkflowCallbackToken(input.headers, headerName);
     if (
       providedToken &&
-      workflowCallbackTokensMatch(config.callbackToken, providedToken)
+      (await workflowCallbackTokensMatch(config.callbackToken, providedToken))
     ) {
       return { status: 'allow' };
     }

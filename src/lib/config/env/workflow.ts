@@ -14,7 +14,7 @@ interface WorkflowEnv {
   readonly planGenerationWorkflowEnabled: boolean;
   /**
    * Shared bearer token for non-Vercel workflow callback routes.
-   * Undefined outside production; Vercel-hosted deploys rely on queue consumer security.
+   * Undefined when not configured; callback auth enforces production requirements.
    */
   readonly callbackToken: string | undefined;
 }
@@ -69,7 +69,7 @@ function readWorkflowEnv(access: ServerEnvAccess): WorkflowEnv {
       );
     },
     get callbackToken(): string | undefined {
-      return access.getServerRequiredProdOnly('WORKFLOW_CALLBACK_TOKEN');
+      return access.getServerOptional('WORKFLOW_CALLBACK_TOKEN');
     },
   };
 }

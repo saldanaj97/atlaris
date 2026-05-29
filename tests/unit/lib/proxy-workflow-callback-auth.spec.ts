@@ -26,9 +26,9 @@ describe('workflow callback auth', () => {
     expect(isWorkflowCallbackPath('/.well-known/vercel/flags')).toBe(false);
   });
 
-  it('allows workflow health checks', () => {
+  it('allows workflow health checks', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'HEAD',
           pathname: '/.well-known/workflow/v1/flow',
@@ -40,7 +40,7 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
 
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -52,9 +52,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'deny' });
   });
 
-  it('allows webhook resume routes without callback token auth', () => {
+  it('allows webhook resume routes without callback token auth', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/webhook/resume-token',
@@ -66,9 +66,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
   });
 
-  it('allows Vercel-hosted callbacks without a configured token', () => {
+  it('allows Vercel-hosted callbacks without a configured token', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -80,14 +80,14 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
   });
 
-  it('requires a matching token when configured', () => {
+  it('requires a matching token when configured', async () => {
     const config = {
       ...baseConfig,
       callbackToken: 'secret-token',
     };
 
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -101,7 +101,7 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
 
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/step',
@@ -115,7 +115,7 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
 
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -127,9 +127,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'deny' });
   });
 
-  it('rejects requests that supply both bearer and custom callback tokens', () => {
+  it('rejects requests that supply both bearer and custom callback tokens', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -144,9 +144,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'deny' });
   });
 
-  it('allows local-world queue callbacks in non-production without a token', () => {
+  it('allows local-world queue callbacks in non-production without a token', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -162,9 +162,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'allow' });
   });
 
-  it('denies forged local callback POSTs without queue headers or token', () => {
+  it('denies forged local callback POSTs without queue headers or token', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -176,7 +176,7 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'deny' });
 
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/step',
@@ -188,9 +188,9 @@ describe('workflow callback auth', () => {
     ).toEqual({ status: 'deny' });
   });
 
-  it('fails closed in non-Vercel production when no token is configured', () => {
+  it('fails closed in non-Vercel production when no token is configured', async () => {
     expect(
-      resolveWorkflowCallbackAccess(
+      await resolveWorkflowCallbackAccess(
         {
           method: 'POST',
           pathname: '/.well-known/workflow/v1/flow',
@@ -218,10 +218,10 @@ describe('workflow callback auth', () => {
     expect(readWorkflowCallbackToken(customHeaders)).toBe('custom-token');
   });
 
-  it('matches callback tokens with timing-safe equality', () => {
-    expect(workflowCallbackTokensMatch('secret', 'secret')).toBe(true);
-    expect(workflowCallbackTokensMatch('secret', 'other')).toBe(false);
-    expect(workflowCallbackTokensMatch('secret', 'secre')).toBe(false);
+  it('matches callback tokens with timing-safe equality', async () => {
+    expect(await workflowCallbackTokensMatch('secret', 'secret')).toBe(true);
+    expect(await workflowCallbackTokensMatch('secret', 'other')).toBe(false);
+    expect(await workflowCallbackTokensMatch('secret', 'secre')).toBe(false);
   });
 
   it('detects local-world queue headers', () => {
