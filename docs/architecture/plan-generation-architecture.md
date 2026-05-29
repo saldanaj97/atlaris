@@ -75,6 +75,15 @@ This separation between external auth identity and internal app user row is not 
 | `src/lib/ai/generation-policy.ts`                       | Durable generation-window enforcement     |
 | `src/features/plans/lifecycle/generation-finalization/` | Durable settlement after provider run     |
 
+### Client layer
+
+| File                                                                                | Responsibility                                      |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `src/hooks/usePlanStatus.ts`                                                        | Poll plan status with exponential backoff           |
+| `src/app/(app)/plans/[id]/components/PlanPendingState.tsx`                          | Pending-plan UI; refreshes on `ready`               |
+| `src/shared/constants/polling.ts`                                                   | Hardcoded poll interval and backoff constants       |
+| `src/features/plans/session/usePlanGenerationSession.ts`                            | SSE create/retry session while stream is connected  |
+
 ### Database layer
 
 | File                             | Responsibility                                 |
@@ -146,6 +155,46 @@ The SSE endpoint emits client-safe events such as:
 - `error`
 
 Client-facing errors are sanitized and serialized into the canonical API error shape instead of leaking raw provider or infrastructure failures.
+
+## Client status updates
+
+Generation progress is streamed over SSE while the create/retry session stays open. Users often navigate to the plan detail page before generation finishes (the stream route is intentionally decoupled from the browser connection). In that case the pending-plan UI polls for status instead of relying on the SSE connection.
+
+### When polling runs
+
+`PlanPendingState` (`src/app/(app)/plans/[id]/components/PlanPendingState.tsx`) mounts when the plan is not yet `ready`. It calls `usePlanStatus` (`src/hooks/usePlanStatus.ts`), which polls `GET /api/v1/plans/:planId/status` while the mapped client status is `pending` or `processing`. Polling stops when the status becomes `ready` or `failed`, or when repeated retriable HTTP failures exhaust the hook’s retry budget.
+
+On `ready`, the component triggers a router refresh so the server-rendered plan detail replaces the pending view.
+
+### Status mapping
+
+The status route reads `learning_plans.generation_status` via `getPlanGenerationStatusSnapshot` and maps DB values to the wire contract in `PlanStatusResponseSchema` (`src/shared/schemas/plan-status.ts`). Mapping logic lives in `src/features/plans/read-projection/read-status.ts`:
+
+| Client status (`PLAN_STATUSES`) | When                                                                 |
+| ------------------------------- | -------------------------------------------------------------------- |
+| `ready`                         | Plan has persisted modules                                           |
+| `processing`                    | `generating` or `pending_retry` with attempts remaining              |
+| `pending`                       | Transitional read state (e.g. `ready` row without modules yet)       |
+| `failed`                        | `failed`, or attempt cap exhausted                                   |
+
+### Backoff and limits
+
+Poll timing is **not** env-configurable. Intervals are hardcoded in `src/shared/constants/polling.ts`:
+
+| Constant              | Value   | Role                                      |
+| --------------------- | ------- | ----------------------------------------- |
+| `INITIAL_POLL_MS`     | 1000 ms | First delay; reset after status change    |
+| `MAX_POLL_MS`         | 10000 ms| Upper bound per poll interval             |
+| `BACKOFF_MULTIPLIER`  | 1.5     | Exponential backoff between polls         |
+| `JITTER_FACTOR`       | 0.2     | ±20% jitter to reduce synchronized bursts |
+
+`usePlanStatus` applies `computeNextDelay()` between polls. There is **no max-poll counter** — the client keeps polling until a terminal status or connection failure. Transient 429/5xx responses retry up to three consecutive failures before surfacing a connection error; the user can manually refresh via `revalidate()`.
+
+Enabling `PLAN_GENERATION_WORKFLOW_ENABLED` does not change this client behavior; it only makes provider work durable on the server.
+
+### Related client polling
+
+Module lesson generation uses a **separate** client poll loop (`useModuleLessonGeneration.ts`) with its own hardcoded interval and max attempts. See [Module lesson generation](#module-lesson-generation-separate-pipeline) below.
 
 ## Failure classes
 
