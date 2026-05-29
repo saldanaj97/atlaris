@@ -16,6 +16,41 @@ function expectDate(value: unknown, label: string): asserts value is Date {
 }
 
 describe('applyTaskProgressUpdates (integration)', () => {
+  it('applies multiple task updates in one batch and returns visible state', async () => {
+    const authUserId = buildTestAuthUserId('tp-multi');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const plan = await createTestPlan({ userId, topic: 'multi batch plan' });
+    const mod = await createTestModule({ planId: plan.id });
+    const completedTask = await createTestTask({ moduleId: mod.id, order: 1 });
+    const startedTask = await createTestTask({ moduleId: mod.id, order: 2 });
+
+    const result = await applyTaskProgressUpdates({
+      userId,
+      planId: plan.id,
+      updates: [
+        { taskId: completedTask.id, status: 'completed' },
+        { taskId: startedTask.id, status: 'in_progress' },
+      ],
+      dbClient: db,
+    });
+
+    expect(result.progress).toHaveLength(2);
+    expect(result.visibleState.appliedByTaskId).toEqual({
+      [completedTask.id]: 'completed',
+      [startedTask.id]: 'in_progress',
+    });
+
+    const rows = await db
+      .select()
+      .from(taskProgress)
+      .where(eq(taskProgress.userId, userId));
+
+    expect(rows).toHaveLength(2);
+  });
+
   it('returns empty result without writes when updates array is empty', async () => {
     const authUserId = buildTestAuthUserId('tp-empty');
     const userId = await ensureUser({

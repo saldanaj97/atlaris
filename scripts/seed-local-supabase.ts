@@ -1,6 +1,11 @@
+import {
+  getLocalProductBrowserFixtureUrls,
+  seedLocalProductBrowserFixtures,
+} from '@tests/helpers/db/seed-local-product-fixtures';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
 /**
- * Seed the Supabase local database with the deterministic product-testing user.
+ * Seed the Supabase local database with the deterministic product-testing user
+ * and browser fixture plan (modules + tasks).
  * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
  *
  * `supabase db reset` also applies `supabase/seed.sql`; this helper exists for
@@ -16,6 +21,14 @@ const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 function resolveDatabaseUrl(): string {
   return process.env.POSTGRES_URL?.trim() || DEFAULT_LOCAL_SUPABASE_URL;
+}
+
+function resolveAppUrl(): string {
+  const appUrl = process.env.APP_URL?.trim();
+  if (appUrl) {
+    return appUrl.replace(/\/$/, '');
+  }
+  return `http://127.0.0.1:${process.env.PORT?.trim() || '3000'}`;
 }
 
 function assertLocalhostOnly(connectionUrl: string): void {
@@ -64,8 +77,14 @@ async function main(): Promise<void> {
   console.log('[seed-local-supabase] Seeding local product-testing user...');
   await seedLocalProductTestingUser(databaseUrl);
 
+  console.log('[seed-local-supabase] Seeding browser fixture plan...');
+  await seedLocalProductBrowserFixtures(databaseUrl);
+
+  const fixtureUrls = getLocalProductBrowserFixtureUrls(resolveAppUrl());
   console.log('[seed-local-supabase] Done.');
   console.log(`[seed-local-supabase] POSTGRES_URL=${databaseUrl}`);
+  console.log(`[seed-local-supabase] plan=${fixtureUrls.plan}`);
+  console.log(`[seed-local-supabase] module=${fixtureUrls.module}`);
 }
 
 main().catch((err) => {

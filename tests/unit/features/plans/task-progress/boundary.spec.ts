@@ -19,6 +19,42 @@ describe('applyTaskProgressUpdates', () => {
     vi.clearAllMocks();
   });
 
+  it('returns early for empty updates without persistence', async () => {
+    const result = await applyTaskProgressUpdates({
+      userId: 'user-1',
+      planId: 'plan-1',
+      updates: [],
+      dbClient,
+    });
+
+    expect(setTaskProgressBatchMock).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      progress: [],
+      revalidatePaths: [],
+      visibleState: { appliedByTaskId: {} },
+    });
+  });
+
+  it('passes an explicit clock into the transactional batch write', async () => {
+    const now = new Date('2026-05-29T12:00:00.000Z');
+    setTaskProgressBatchMock.mockResolvedValueOnce([]);
+
+    await applyTaskProgressUpdates({
+      userId: 'user-1',
+      planId: 'plan-1',
+      updates: [{ taskId: 'task-1', status: 'completed' }],
+      dbClient,
+      now,
+    });
+
+    expect(setTaskProgressBatchMock).toHaveBeenCalledWith(
+      'user-1',
+      [{ taskId: 'task-1', status: 'completed' }],
+      dbClient,
+      { planId: 'plan-1', moduleId: undefined, now },
+    );
+  });
+
   it('validates direct callers before scope checks or persistence', async () => {
     await expect(
       applyTaskProgressUpdates({

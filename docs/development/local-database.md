@@ -13,7 +13,11 @@ LOCAL_PRODUCT_TESTING=true
 DEV_AUTH_USER_ID=00000000-0000-4000-8000-000000000001
 ```
 
-That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`. Use `pnpm db:dev:seed` only when you need to re-run the seed without resetting the database.
+That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`. Use `pnpm db:dev:seed` when you need to re-run the seed without resetting the database.
+
+`pnpm db:dev:seed` reseeds the deterministic product-testing user, resets a single
+deterministic fixture plan (modules + tasks), and prints direct plan/module URLs.
+It refuses non-localhost `POSTGRES_URL` values.
 
 ## Manual smoke checklist
 
@@ -98,15 +102,15 @@ supabase db reset
 
 ## Scripts
 
-| Script            | Command                 |
-| ----------------- | ----------------------- |
-| Start Supabase    | `pnpm db:dev:start`     |
-| Stop Supabase     | `pnpm db:dev:stop`      |
-| Reset DB + seed   | `pnpm db:dev:reset`     |
-| Re-run seed only  | `pnpm db:dev:seed`      |
-| Legacy seed alias | `pnpm db:dev:bootstrap` |
+| Script                | Command                       |
+| --------------------- | ----------------------------- |
+| Start Supabase        | `pnpm db:dev:start`           |
+| Stop Supabase         | `pnpm db:dev:stop`            |
+| Reset DB + seed       | `pnpm db:dev:reset`           |
+| Re-run seed + fixtures | `pnpm db:dev:seed`            |
+| Legacy seed alias      | `pnpm db:dev:bootstrap`       |
 
-`pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
+`pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases. It is intended for repeatable local product-testing browser checks.
 
 ## Hosted Supabase migrations
 

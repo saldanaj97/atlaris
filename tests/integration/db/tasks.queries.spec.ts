@@ -24,6 +24,138 @@ function expectRecentTimestamp(value: Date) {
 }
 
 describe('Task Queries', () => {
+  it('returns an empty result without touching the database for empty batches', async () => {
+    const authUserId = buildTestAuthUserId('db-tasks-empty');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    await expect(setTaskProgressBatch(userId, [], db)).resolves.toEqual([]);
+  });
+
+  it('rejects duplicate task ids before writing', async () => {
+    const authUserId = buildTestAuthUserId('db-tasks-dup');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const plan = await createTestPlan({ userId, topic: 'duplicate guard' });
+    const mod = await createTestModule({ planId: plan.id });
+    const task = await createTestTask({ moduleId: mod.id });
+
+    await expect(
+      setTaskProgressBatch(
+        userId,
+        [
+          { taskId: task.id, status: 'in_progress' },
+          { taskId: task.id, status: 'completed' },
+        ],
+        db,
+        { planId: plan.id },
+      ),
+    ).rejects.toThrow(`Duplicate taskIds in updates: ${task.id}`);
+
+    const rows = await db
+      .select()
+      .from(taskProgress)
+      .where(eq(taskProgress.taskId, task.id));
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it('persists multiple task updates in one unscoped batch', async () => {
+    const authUserId = buildTestAuthUserId('db-tasks-multi');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const plan = await createTestPlan({ userId, topic: 'multi batch' });
+    const mod = await createTestModule({ planId: plan.id });
+    const completedTask = await createTestTask({ moduleId: mod.id, order: 1 });
+    const startedTask = await createTestTask({ moduleId: mod.id, order: 2 });
+
+    const rows = await setTaskProgressBatch(
+      userId,
+      [
+        { taskId: completedTask.id, status: 'completed' },
+        { taskId: startedTask.id, status: 'in_progress' },
+      ],
+      db,
+    );
+
+    expect(rows).toHaveLength(2);
+    const rowsByTaskId = new Map(rows.map((row) => [row.taskId, row]));
+    expect(rowsByTaskId.get(completedTask.id)?.status).toBe('completed');
+    expect(rowsByTaskId.get(startedTask.id)?.status).toBe('in_progress');
+
+    const persisted = await db
+      .select()
+      .from(taskProgress)
+      .where(eq(taskProgress.userId, userId));
+
+    expect(persisted).toHaveLength(2);
+  });
+
+  it('rejects batches when plan scope does not match task ownership', async () => {
+    const authUserId = buildTestAuthUserId('db-tasks-plan-scope');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const planA = await createTestPlan({ userId, topic: 'plan scope A' });
+    const planB = await createTestPlan({ userId, topic: 'plan scope B' });
+    const modB = await createTestModule({ planId: planB.id });
+    const taskB = await createTestTask({ moduleId: modB.id });
+
+    await expect(
+      setTaskProgressBatch(
+        userId,
+        [{ taskId: taskB.id, status: 'completed' }],
+        db,
+        { planId: planA.id },
+      ),
+    ).rejects.toThrow('One or more tasks not found.');
+
+    const rows = await db
+      .select()
+      .from(taskProgress)
+      .where(eq(taskProgress.taskId, taskB.id));
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it('rejects batches for tasks owned by another user', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('db-tasks-owner');
+    const ownerId = await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+    const otherAuthUserId = buildTestAuthUserId('db-tasks-other');
+    const otherUserId = await ensureUser({
+      authUserId: otherAuthUserId,
+      email: buildTestEmail(otherAuthUserId),
+    });
+    const plan = await createTestPlan({ userId: ownerId, topic: 'owner plan' });
+    const mod = await createTestModule({ planId: plan.id });
+    const task = await createTestTask({ moduleId: mod.id });
+
+    await expect(
+      setTaskProgressBatch(
+        otherUserId,
+        [{ taskId: task.id, status: 'completed' }],
+        db,
+      ),
+    ).rejects.toThrow('Task not found or access denied');
+
+    const rows = await db
+      .select()
+      .from(taskProgress)
+      .where(eq(taskProgress.taskId, task.id));
+
+    expect(rows).toHaveLength(0);
+  });
+
   it('rejects single-item writes when module scope does not match the task module', async () => {
     const authUserId = buildTestAuthUserId('db-tasks-scope');
     const userId = await ensureUser({

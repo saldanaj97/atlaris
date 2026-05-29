@@ -49,11 +49,11 @@ supabase db reset             # Recreate local Supabase DB from migrations + see
 See [local-database.md](./local-database.md) for ports, env vars, and local vs hosted Supabase.
 
 ```bash
-pnpm db:dev:start     # Start Supabase local stack
-pnpm db:dev:stop      # Stop Supabase local stack
-pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
-pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
-pnpm db:dev:bootstrap # Backward-compatible alias for db:dev:seed
+pnpm db:dev:start         # Start Supabase local stack
+pnpm db:dev:stop          # Stop Supabase local stack
+pnpm db:dev:reset         # Recreate local Supabase DB from migrations + seed.sql
+pnpm db:dev:seed          # Re-seed product-testing user + browser fixtures; prints plan URLs
+pnpm db:dev:bootstrap     # Backward-compatible alias for db:dev:seed
 ```
 
 ## Testing

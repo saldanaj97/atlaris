@@ -6,7 +6,7 @@ import {
 } from '@/lib/config/local-product-testing';
 /**
  * Inserts the canonical local product-testing user after migrations (service-role / postgres).
- * Idempotent: ON CONFLICT DO NOTHING on auth_user_id.
+ * Idempotent: updates the deterministic seed row when it already exists.
  */
 import postgres from 'postgres';
 
@@ -35,7 +35,10 @@ export async function seedLocalProductTestingUser(
         false,
         0
       )
-      ON CONFLICT (auth_user_id) DO NOTHING
+      ON CONFLICT (id) DO UPDATE SET
+        auth_user_id = excluded.auth_user_id,
+        email = excluded.email,
+        name = excluded.name
     `;
   } finally {
     await sql.end();
