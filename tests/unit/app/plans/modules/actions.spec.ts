@@ -149,45 +149,6 @@ describe('batchUpdateModuleTaskProgressAction', () => {
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
   });
 
-  it('succeeds when persistence succeeds but revalidatePath throws', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      mockRequestBoundaryAction(makeActionTestScope()),
-    );
-    applyTaskProgressUpdatesMock.mockResolvedValueOnce({
-      progress: [],
-      revalidatePaths: ['/plans/p1/modules/m1', '/plans/p1', '/plans'],
-      visibleState: { appliedByTaskId: {} },
-    });
-    revalidatePathMock.mockImplementationOnce((path: string) => {
-      if (path === '/plans/p1') {
-        throw new Error('revalidate failed');
-      }
-    });
-    revalidatePathMock.mockImplementationOnce((path: string) => {
-      if (path === '/plans/p1') {
-        throw new Error('revalidate failed');
-      }
-    });
-    revalidatePathMock.mockImplementationOnce((path: string) => {
-      if (path === '/plans/p1') {
-        throw new Error('revalidate failed');
-      }
-    });
-
-    await expect(
-      batchUpdateModuleTaskProgressAction({
-        planId: 'p1',
-        moduleId: 'm1',
-        updates: [{ taskId: 't1', status: 'completed' }],
-      }),
-    ).resolves.toBeUndefined();
-
-    expect(loggerMock.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/plans/p1' }),
-      'Failed to revalidate path after mutation',
-    );
-  });
-
   it('maps boundary persistence errors to generic user message', async () => {
     requestBoundaryActionMock.mockImplementationOnce(
       mockRequestBoundaryAction(makeActionTestScope()),

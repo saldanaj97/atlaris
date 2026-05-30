@@ -7,7 +7,21 @@
 
 Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe orchestration behind feature flags. Postgres remains the source of truth for user-visible status; workflow run IDs are stored for correlation only.
 
-Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin in `tsconfig.json`, and `/.well-known/workflow/` excluded from `src/proxy.ts` / maintenance redirects.
+Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin in `tsconfig.json`, and `/.well-known/workflow/` handled by an early proxy auth branch (see [Callback security](#callback-security)).
+
+## Callback security
+
+Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK runtime, not from end users.
+
+| Deployment | Protection |
+| ---------- | ---------- |
+| **Vercel (production/preview)** | Workflow SDK registers handlers with `experimentalTriggers` so only [Vercel Queue](https://vercel.com/docs/queues) can invoke them. Proxy allows these routes through without an app token. |
+| **Local dev (`pnpm dev:workflow`)** | Proxy allows health checks (`HEAD`/`GET`/`OPTIONS` with `?__health`) and local-world queue callbacks that include `x-vqs-*` headers. Bare forged POSTs without those headers are rejected with `401`. |
+| **Self-hosted / non-Vercel production** | Proxy requires `WORKFLOW_CALLBACK_TOKEN` via `Authorization: Bearer` or `x-workflow-callback-token`. Missing token configuration returns `503`. |
+
+Webhook resume routes (`/.well-known/workflow/v1/webhook/:token`) keep the SDK's URL-token auth and bypass the callback token gate.
+
+Implementation: `resolveWorkflowCallbackAccess()` in `src/lib/proxy/workflow-callback-auth.ts`, invoked from `src/proxy.ts` before Clerk, maintenance mode, and CSP decoration. The proxy matcher includes `/.well-known/workflow/*`; maintenance bypass for that prefix remains in `middleware-policy.ts`.
 
 ## Feature flags (`workflowEnv`)
 

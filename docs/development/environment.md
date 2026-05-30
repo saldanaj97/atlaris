@@ -66,6 +66,7 @@ Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off*
 | `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)       | No       |
 | `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                               | No       |
 | `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged | No       |
+| `WORKFLOW_CALLBACK_TOKEN`            | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
 
 **Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
 

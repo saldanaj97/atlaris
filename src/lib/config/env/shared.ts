@@ -185,6 +185,8 @@ function getCachedServerRequired(
 export interface ServerEnvAccess {
   getServerRequired(key: string): string;
   getServerOptional(key: string): string | undefined;
+  /** Raw env value before trim/empty normalization. */
+  getServerEnvRaw(key: string): string | undefined;
   getServerRequiredProdOnly(key: string): string | undefined;
   getProductionCached<T>(key: string, loader: () => T): T;
 }
@@ -230,6 +232,10 @@ export function createServerEnvAccess(
       }
       return optionalCache.get(key);
     },
+    getServerEnvRaw(key: string): string | undefined {
+      const { env } = getServerState();
+      return env[key];
+    },
     getServerRequiredProdOnly(key: string): string | undefined {
       const { env, isNonProduction } = getServerState();
       if (isNonProduction) {
@@ -264,7 +270,7 @@ export function getServerOptional(key: string): string | undefined {
 
 const HOSTED_DEPLOY_ENV_KEYS = ['VERCEL'] as const;
 
-function isHostedDeployEnv(env: EnvSource): boolean {
+export function isHostedDeployEnv(env: EnvSource): boolean {
   return HOSTED_DEPLOY_ENV_KEYS.some((key) =>
     toBoolean(optionalEnvFrom(env, key), false),
   );

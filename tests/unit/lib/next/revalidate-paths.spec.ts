@@ -29,11 +29,19 @@ describe('revalidatePathsBestEffort', () => {
       }
     });
 
-    revalidatePathsBestEffort(['/plans/ok', '/plans/bad', '/plans']);
+    const result = revalidatePathsBestEffort([
+      '/plans/ok',
+      '/plans/bad',
+      '/plans',
+    ]);
 
     expect(revalidatePathMock).toHaveBeenCalledTimes(3);
+    expect(result.failedPaths).toEqual(['/plans/bad']);
     expect(loggerWarnMock).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/plans/bad' }),
+      expect.objectContaining({
+        path: '/plans/bad',
+        revalidatePartialFailure: true,
+      }),
       'Failed to revalidate path after mutation',
     );
   });

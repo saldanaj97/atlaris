@@ -9,6 +9,7 @@ import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/componen
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import { clientLogger } from '@/lib/logging/client';
 import { type JSX, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 
 interface ModuleDetailClientProps {
   moduleData: ModuleDetailReadModel;
@@ -38,11 +39,14 @@ export function ModuleDetailClient({
 
   const flushModuleTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
-      await batchUpdateModuleTaskProgressAction({
+      const result = await batchUpdateModuleTaskProgressAction({
         planId,
         moduleId: module.id,
         updates,
       });
+      if (result?.revalidateFailed) {
+        toast.message('Progress saved. Refresh if the page looks stale.');
+      }
     },
     [module.id, planId],
   );

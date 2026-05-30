@@ -19,6 +19,7 @@ import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactElement, useCallback, useMemo } from 'react';
+import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
@@ -38,7 +39,13 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
 
   const flushTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
-      await batchUpdateTaskProgressAction({ planId: plan.id, updates });
+      const result = await batchUpdateTaskProgressAction({
+        planId: plan.id,
+        updates,
+      });
+      if (result?.revalidateFailed) {
+        toast.message('Progress saved. Refresh if the page looks stale.');
+      }
     },
     [plan.id],
   );
