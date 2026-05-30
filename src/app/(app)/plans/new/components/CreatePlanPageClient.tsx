@@ -2,7 +2,7 @@
 
 import type React from 'react';
 
-import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
+import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
 import { PageHeader } from '@/components/ui/page-header';
 
 export function CreatePlanPageClient(): React.ReactElement {
@@ -15,7 +15,7 @@ export function CreatePlanPageClient(): React.ReactElement {
         subtitle="Describe your learning goal. We'll create a personalized, time-blocked schedule that syncs to your calendar."
       />
 
-      <ManualCreatePanel />
+      <AiPlanGenerationPanel />
     </>
   );
 }

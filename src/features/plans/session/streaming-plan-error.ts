@@ -1,6 +1,7 @@
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { MutableRefObject } from 'react';
 
+import { ROUTES, planDetailPath } from '@/features/navigation/routes';
 import { isStreamingError } from '@/hooks/useStreamingPlanGeneration';
 import { isAbortError, normalizeThrown } from '@/lib/errors';
 
@@ -61,7 +62,7 @@ export function handleStreamingPlanError({
   if (isAuthRequired) {
     toast.error('Please sign in to create a learning plan.');
     router.push(
-      `/auth/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(redirectPath)}`,
     );
     return { handled: true, normalizedError, message: 'Auth required' };
   }
@@ -81,7 +82,7 @@ export function handleStreamingPlanError({
 
   if (typeof extractedPlanId === 'string' && extractedPlanId.length > 0) {
     toast.error('Generation failed. You can retry from the plan page.');
-    router.push(`/plans/${extractedPlanId}`);
+    router.push(planDetailPath(extractedPlanId));
     return { handled: true, normalizedError, message };
   }
 

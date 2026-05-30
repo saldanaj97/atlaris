@@ -11,19 +11,17 @@ import {
 } from '@/lib/date/format-local-ymd';
 import { normalizeThrown } from '@/lib/errors';
 
-type ManualCreatePayloadResult =
+export type PlanFormPayloadResult =
   | { ok: true; payload: CreateLearningPlanInput }
-  | { ok: false; error: ManualCreatePayloadError };
+  | { ok: false; error: PlanFormPayloadError };
 
-type ManualCreatePayloadError = {
+export type PlanFormPayloadError = {
   message: string;
   name: string;
   stack?: string;
 };
 
-function normalizeManualCreatePayloadError(
-  error: unknown,
-): ManualCreatePayloadError {
+function normalizePlanFormPayloadError(error: unknown): PlanFormPayloadError {
   const normalized = normalizeThrown(error);
 
   if (normalized instanceof Error) {
@@ -54,9 +52,9 @@ function convertPlanFormToOnboardingValues(
   };
 }
 
-export function buildManualCreatePayloadFromPlanForm(
+export function buildCreatePlanPayloadFromForm(
   data: PlanFormData,
-): ManualCreatePayloadResult {
+): PlanFormPayloadResult {
   try {
     const onboardingValues = convertPlanFormToOnboardingValues(data);
     return {
@@ -64,6 +62,17 @@ export function buildManualCreatePayloadFromPlanForm(
       payload: mapOnboardingToCreateInput(onboardingValues),
     };
   } catch (error) {
-    return { ok: false, error: normalizeManualCreatePayloadError(error) };
+    return { ok: false, error: normalizePlanFormPayloadError(error) };
   }
+}
+
+/** User-safe message for form → API mapping failures (no stack traces). */
+export function planFormPayloadErrorMessage(
+  error: PlanFormPayloadError,
+): string {
+  const trimmed = error.message.trim();
+  if (trimmed.length > 0 && trimmed.length <= 200) {
+    return trimmed;
+  }
+  return 'Please double-check the form and try again.';
 }

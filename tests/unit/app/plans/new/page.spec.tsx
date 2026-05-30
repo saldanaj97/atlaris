@@ -7,7 +7,7 @@ import type {
   UseStreamingPlanGenerationResult,
 } from '@/hooks/useStreamingPlanGeneration';
 
-import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
+import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
 import { clientLogger } from '@/lib/logging/client';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -54,7 +54,7 @@ const mockState: StreamingPlanState = {
   error: undefined,
 };
 
-describe('ManualCreatePanel', () => {
+describe('AiPlanGenerationPanel', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
@@ -107,7 +107,7 @@ describe('ManualCreatePanel', () => {
 
   describe('form validity', () => {
     it('keeps submit disabled until the topic and all preferences are selected', async () => {
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       expect(
         screen.getByRole('button', { name: /generate my plan/i }),
@@ -137,7 +137,7 @@ describe('ManualCreatePanel', () => {
           result: 'plan-keyboard',
         });
 
-        render(<ManualCreatePanel />);
+        render(<AiPlanGenerationPanel />);
 
         const topicInput = screen.getByLabelText(/what do you want to learn/i);
         await user.type(topicInput, 'Keyboard topic');
@@ -158,7 +158,7 @@ describe('ManualCreatePanel', () => {
 
   describe('defaults', () => {
     it('shows preference placeholders before selection', async () => {
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
       expect(deadline).toHaveTextContent('Finish by');
@@ -182,7 +182,7 @@ describe('ManualCreatePanel', () => {
         return { status: 'completed', planId, result: planId };
       });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Test Topic');
       await chooseDefaultPreferences();
@@ -222,7 +222,7 @@ describe('ManualCreatePanel', () => {
         result: 'plan-456',
       });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('  Learn Rust  ');
       await chooseOption('Experience', 'Advanced');
@@ -255,7 +255,7 @@ describe('ManualCreatePanel', () => {
         new DOMException('Aborted', 'AbortError'),
       );
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Cancelled topic');
       await chooseDefaultPreferences();
@@ -287,7 +287,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithPlanId);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery topic');
       await chooseDefaultPreferences();
@@ -324,7 +324,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithData);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery from error data');
       await chooseDefaultPreferences();
@@ -349,7 +349,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithoutPlanId);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery from state');
       await chooseDefaultPreferences();
@@ -366,7 +366,7 @@ describe('ManualCreatePanel', () => {
       const genericError = new Error('Network error');
       mockStartGeneration.mockRejectedValue(genericError);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Generic error topic');
       await chooseDefaultPreferences();
@@ -390,7 +390,7 @@ describe('ManualCreatePanel', () => {
     it('falls back to the generic error toast when the thrown value has no message', async () => {
       mockStartGeneration.mockRejectedValue({ status: 500 });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Fallback error topic');
       await chooseDefaultPreferences();
@@ -409,7 +409,7 @@ describe('ManualCreatePanel', () => {
       const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Long running topic');
       await chooseDefaultPreferences();

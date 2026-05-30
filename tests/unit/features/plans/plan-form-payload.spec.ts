@@ -10,7 +10,10 @@ vi.mock('@/features/plans/create-mapper', () => ({
   mapOnboardingToCreateInput: mockMapOnboardingToCreateInput,
 }));
 
-import { buildManualCreatePayloadFromPlanForm } from '@/features/plans/manual-plan-form-payload';
+import {
+  buildCreatePlanPayloadFromForm,
+  planFormPayloadErrorMessage,
+} from '@/features/plans/plan-form-payload';
 
 const baseFormData: PlanFormData = {
   topic: 'TypeScript',
@@ -20,7 +23,7 @@ const baseFormData: PlanFormData = {
   deadlineWeeks: '2',
 };
 
-describe('buildManualCreatePayloadFromPlanForm', () => {
+describe('buildCreatePlanPayloadFromForm', () => {
   beforeEach(() => {
     mockMapOnboardingToCreateInput.mockReset();
   });
@@ -30,7 +33,7 @@ describe('buildManualCreatePayloadFromPlanForm', () => {
       throw new Error('validation failed');
     });
 
-    const result = buildManualCreatePayloadFromPlanForm(baseFormData);
+    const result = buildCreatePlanPayloadFromForm(baseFormData);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -49,12 +52,36 @@ describe('buildManualCreatePayloadFromPlanForm', () => {
       throw 'boom';
     });
 
-    expect(buildManualCreatePayloadFromPlanForm(baseFormData)).toEqual({
+    expect(buildCreatePlanPayloadFromForm(baseFormData)).toEqual({
       ok: false,
       error: {
         message: 'boom',
         name: 'Error',
       },
     });
+  });
+});
+
+describe('planFormPayloadErrorMessage', () => {
+  it('returns the error message when it is short and non-empty', () => {
+    expect(
+      planFormPayloadErrorMessage({
+        message: 'Deadline must be in the future',
+        name: 'Error',
+      }),
+    ).toBe('Deadline must be in the future');
+  });
+
+  it('falls back for empty or overly long messages', () => {
+    expect(planFormPayloadErrorMessage({ message: '', name: 'Error' })).toBe(
+      'Please double-check the form and try again.',
+    );
+
+    expect(
+      planFormPayloadErrorMessage({
+        message: 'x'.repeat(201),
+        name: 'Error',
+      }),
+    ).toBe('Please double-check the form and try again.');
   });
 });
