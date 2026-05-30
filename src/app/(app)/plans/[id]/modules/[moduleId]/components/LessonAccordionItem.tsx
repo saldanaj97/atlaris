@@ -30,7 +30,7 @@ function LockedContentOverlay() {
   return (
     <div className='relative min-h-75 overflow-hidden rounded-xl border border-border/50'>
       <div className='flex min-h-75 items-center justify-center bg-background/90 p-8 dark:bg-background/85'>
-        <div className='max-w-sm rounded-2xl border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm'>
+        <div className='max-w-sm rounded-lg border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm'>
           <div className='mb-4 flex justify-center'>
             <div className='flex size-16 items-center justify-center rounded-full bg-muted'>
               <Lock className='size-8 text-muted-foreground/50' />

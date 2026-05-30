@@ -25,7 +25,7 @@ function LearningResourceCard({
     >
       <div
         className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-lg',
+          'flex size-10 shrink-0 items-center justify-center rounded-md',
           config.badgeClass,
         )}
       >

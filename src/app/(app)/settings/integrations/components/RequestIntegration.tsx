@@ -12,7 +12,7 @@ import { MessageSquare } from 'lucide-react';
 
 export function RequestIntegration(): JSX.Element {
   return (
-    <Card className='relative overflow-hidden rounded-3xl border-white/30 bg-white/30 text-center backdrop-blur-sm dark:border-white/5 dark:bg-card/40'>
+    <Card className='relative overflow-hidden border-white/30 bg-white/30 text-center backdrop-blur-sm dark:border-white/5 dark:bg-card/40'>
       <CardHeader className='gap-1'>
         <CardTitle className='text-lg'>Don&apos;t see what you need?</CardTitle>
         <CardDescription className='mx-auto max-w-md'>

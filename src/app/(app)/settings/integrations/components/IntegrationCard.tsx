@@ -108,7 +108,7 @@ export function IntegrationCard({
     <Card
       role='region'
       aria-label={name}
-      className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
+      className='relative overflow-hidden border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
     >
       <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
 
@@ -116,7 +116,7 @@ export function IntegrationCard({
         {/* Header */}
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-4'>
-            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
+            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-xl text-2xl shadow-lg'>
               {icon}
             </div>
             <h3 className='text-lg font-semibold'>{name}</h3>

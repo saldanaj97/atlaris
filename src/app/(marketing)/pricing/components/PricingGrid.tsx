@@ -43,11 +43,7 @@ export function PricingGrid({
             badge={tier.badge}
             cta={
               config.key === 'free' ? (
-                <Button
-                  asChild
-                  variant='outline'
-                  className='w-full rounded-full'
-                >
+                <Button asChild variant='outline' className='w-full rounded-lg'>
                   <Link href='/plans/new'>Get started free</Link>
                 </Button>
               ) : priceId ? (
@@ -55,12 +51,12 @@ export function PricingGrid({
                   priceId={priceId}
                   label={subscribeLabel}
                   variant={tier.recommended ? 'default' : 'outline'}
-                  className='w-full rounded-full'
+                  className='w-full rounded-lg'
                 />
               ) : (
                 <Button
                   variant='outline'
-                  className='w-full rounded-full'
+                  className='w-full rounded-lg'
                   disabled
                 >
                   Unavailable

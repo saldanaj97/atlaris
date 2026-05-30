@@ -40,7 +40,10 @@ export function LockedFeatureCard({
         </div>
 
         <div className='flex flex-col gap-3 pr-8'>
-          <span className='shrink-0' aria-hidden='true'>
+          <span
+            className='flex size-10 shrink-0 items-center justify-center rounded-md bg-muted'
+            aria-hidden='true'
+          >
             {icon}
           </span>
           <div>

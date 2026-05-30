@@ -62,7 +62,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
         {/* Icon */}
         <div
           className={cn(
-            'flex size-10 flex-shrink-0 items-center justify-center rounded-xl',
+            'flex size-10 flex-shrink-0 items-center justify-center rounded-lg',
             config.color,
           )}
         >

@@ -20,7 +20,7 @@ function TimelineResourceLink({
     <Button
       variant='outline'
       asChild
-      className='h-auto max-w-full justify-start rounded-lg px-2.5 py-1.5 text-left text-xs whitespace-normal'
+      className='h-auto max-w-full justify-start rounded-md px-2.5 py-1.5 text-left text-xs whitespace-normal'
     >
       <a href={resource.url} target='_blank' rel='noopener noreferrer'>
         <Icon size={14} className='shrink-0' />
@@ -46,7 +46,7 @@ function TimelineTaskCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border p-4 transition-colors',
+        'rounded-xl border p-4 transition-colors',
         isCompleted
           ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
           : 'border-border bg-muted/30 hover:border-primary/30 dark:bg-muted/25 dark:hover:border-primary/50',

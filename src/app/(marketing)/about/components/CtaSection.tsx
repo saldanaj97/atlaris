@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 
+import { marketingPrimaryCtaClassName } from '@/app/(marketing)/landing/components/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
@@ -29,7 +30,7 @@ export function CtaSection(): JSX.Element {
           <Button
             asChild
             variant='default'
-            className='group h-auto rounded-2xl px-8 py-4 font-semibold shadow-lg transition hover:shadow-xl'
+            className={marketingPrimaryCtaClassName}
           >
             <Link href='/plans/new'>
               Get Started

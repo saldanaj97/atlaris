@@ -106,7 +106,7 @@ const ModelDropdown = ({
       </div>
 
       {selectedModelData && (
-        <Card className='p-4'>
+        <Card className='rounded-xl p-4'>
           <div className='space-y-3'>
             <div className='flex items-start justify-between'>
               <div>

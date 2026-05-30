@@ -29,7 +29,7 @@ function LockedGenerationPanel(): JSX.Element {
   return (
     <Surface variant='default' padding='none' className='mb-6 p-5'>
       <div className='flex items-start gap-3'>
-        <div className='rounded-xl bg-muted p-2 text-muted-foreground'>
+        <div className='rounded-lg bg-muted p-2 text-muted-foreground'>
           <Sparkles className='size-5' />
         </div>
         <div>

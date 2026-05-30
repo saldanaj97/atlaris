@@ -109,7 +109,7 @@ export default function MobileNavigation({
                           href={subItem.href}
                           onClick={() => setOpen(false)}
                           aria-current={isSubActive ? 'page' : undefined}
-                          className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                             isSubActive
                               ? 'text-primary dark:text-primary'
                               : 'text-muted-foreground hover:text-primary dark:hover:text-primary'

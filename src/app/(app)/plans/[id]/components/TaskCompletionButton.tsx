@@ -43,7 +43,7 @@ export function TaskCompletionButton({
         isCompleted ? 'Mark task as incomplete' : 'Mark task as complete'
       }
       className={cn(
-        'rounded-xl px-4',
+        'rounded-lg px-4',
         variant === 'timeline' ? 'border text-left' : 'transition-all',
         isCompleted
           ? variant === 'timeline'
