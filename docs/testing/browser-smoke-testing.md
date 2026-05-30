@@ -17,8 +17,8 @@ Historical references that still matter:
 
 ## What To Do Now
 
-- For committed browser smoke: run `pnpm test:smoke`
-- For anonymous-only smoke iteration: run `pnpm test:smoke -- --project smoke-anon`
+- For committed browser smoke: run `pnpm test:smoke` (sequential server groups; see [playwright-local-smoke.md](./playwright-local-smoke.md#memory-and-local-resources))
+- For anonymous-only smoke iteration (lowest RAM): run `pnpm test:smoke -- --project smoke-anon`
 - For authenticated-only smoke iteration: run `pnpm test:smoke -- --project smoke-auth`
 - For disposable DB smoke infra only: run `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db`
 - For legacy manual comparison or ad hoc investigation: use the historical notes here only as background, not as the current testing standard

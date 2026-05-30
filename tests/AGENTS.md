@@ -57,7 +57,7 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | Workflow    | Workflow SDK harness  | In-process SDK runtime                | No                  | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s    |
+| Smoke       | Playwright            | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |
 
 ## Commands
 
@@ -73,9 +73,9 @@ pnpm test:integration:changed          # Changed integration tests + Workflow SD
 pnpm test:integration                  # Full integration suite + Workflow SDK phase
 pnpm test:workflow                     # Workflow SDK tests only
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
-pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
-pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
-pnpm test:smoke -- --project smoke-auth  # Auth-only smoke iteration
+pnpm test:smoke                        # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
+pnpm test:smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
+pnpm test:smoke -- --project smoke-auth  # Auth-only (single auth server)
 pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
 ```
 
@@ -96,13 +96,13 @@ See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for featur
 
 - `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
 - **UI audit baselines** (`pnpm ui:capture-baseline`): see [UI baseline capture](../docs/testing/ui-baseline-capture.md) — separate from smoke; disposable DB + dual dev servers or `--anon-base` / `--auth-base`.
-- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
-- Playwright owns both app servers; do not start smoke servers manually for normal runs.
+- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle, clears `.test-dist/next-smoke-*`, and passes `SMOKE_STATE_FILE` to Playwright. A full run invokes Playwright twice (anon+clerk, then auth) so only one Turbopack dev server is alive at a time.
+- Playwright owns app servers via `webServer`; a single `--project` starts only the server that project needs. Do not start smoke servers manually for normal runs.
 - `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
 - Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` limited to entrypoints.
 - Do not touch `.env.local` for smoke runs. Mode selection comes from launcher-owned process env only.
 - Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
-- Keep the auth browser lane deterministic. The current local runner stays serial for stability; do not re-enable project-level parallelism casually.
+- Keep the auth browser lane deterministic. The local runner stays serial for stability; do not re-enable project-level parallelism or concurrent dual dev servers without documenting RAM impact (see [Playwright local smoke](../docs/testing/playwright-local-smoke.md#memory-and-local-resources)).
 
 To skip Testcontainers and use an existing database (e.g. CI):
 

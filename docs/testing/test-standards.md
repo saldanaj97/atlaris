@@ -258,7 +258,8 @@ Canonical reference: [playwright-local-smoke.md](./playwright-local-smoke.md)
 - Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` reserved for executable entrypoints.
 - Keep smoke coverage narrow and launch-blocker focused. Browser smoke is not the place for broad matrix coverage.
 - Use Playwright `request` for proxy/redirect assertions and `page` for user flows.
-- The current local smoke runner stays serial for stability. Within the shared authenticated journey, keep execution serial and deterministic.
+- The current local smoke runner stays serial for stability. A full `pnpm test:smoke` runs Playwright in sequential server groups (anon+clerk, then auth) so only one Turbopack dev server is alive at a time; pass `--project` after `--` to iterate with a single server. See [playwright-local-smoke.md](./playwright-local-smoke.md#memory-and-local-resources).
+- Within the shared authenticated journey, keep execution serial and deterministic.
 - Prefer exact URLs, headings, labels, and aria labels that already exist in the product over brittle DOM structure selectors.
 
 ---

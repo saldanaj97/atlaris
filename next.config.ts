@@ -15,6 +15,7 @@ const securityHeaders = [
 ];
 
 const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
+const isSmokeRun = Boolean(smokeDistDir && smokeDistDir.length > 0);
 const allowedDevOrigins = ['127.0.0.1', 'localhost'];
 
 const nextConfig: NextConfig = {
@@ -23,6 +24,11 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns'],
+    // Turbopack's dev filesystem cache (.next/dev/cache/turbopack) grows
+    // unbounded and is loaded into resident memory. The smoke lane runs two
+    // disposable dev servers, so disable the cache there to cap memory. Normal
+    // `pnpm dev` keeps the cache for fast rebuilds.
+    ...(isSmokeRun ? { turbopackFileSystemCacheForDev: false } : {}),
   },
   serverExternalPackages: [
     'postgres',

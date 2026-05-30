@@ -12,7 +12,7 @@ pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27
 ## Infra (default)
 
 - Ephemeral Postgres (Testcontainers), migrate + smoke seed (same as smoke).
-- Two `next dev --turbopack` instances: **anon** `http://127.0.0.1:3100`, **auth** `http://127.0.0.1:3101` (same env contract as smoke).
+- Two `next dev --turbopack` instances: **anon** `http://127.0.0.1:3100`, **auth** `http://127.0.0.1:3101` (same env contract as smoke). Unlike `pnpm test:smoke`, capture still starts **both** servers concurrently for wall-clock speed; expect higher peak RAM. Prefer `--anon-base` / `--auth-base` when servers are already running, or run smoke-style single-server iteration via [Playwright local smoke](./playwright-local-smoke.md#memory-and-local-resources) if you only need browser checks.
 
 **Requires:** Docker running, Playwright Chromium (`pnpm exec playwright install chromium`).
 
