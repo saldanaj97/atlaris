@@ -42,7 +42,7 @@ export function SettingsSidebar(): React.ReactElement {
             href={item.href}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-lg border border-transparent bg-sidebar px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-3 rounded-[0.375rem] border border-transparent bg-sidebar px-3 py-2 text-sm font-medium transition-colors',
               isActive
                 ? 'border-sidebar-border bg-sidebar-primary text-sidebar-primary-foreground'
                 : 'text-sidebar-foreground hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',

@@ -237,11 +237,11 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
       <Card className='flex min-h-80 flex-col p-6'>
         <h2 className='mb-4 text-xl font-semibold'>Personal Information</h2>
         <div className='space-y-4'>
-          <div>
+          <div className='space-y-2'>
             <Label
               id={profileNameLabelId}
               htmlFor={profileNameInputId}
-              className='mb-1 text-muted-foreground'
+              className='text-muted-foreground'
             >
               Name
             </Label>
@@ -251,6 +251,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 id={profileNameInputId}
                 type='text'
                 value={state.name}
+                className='rounded-[0.375rem]'
                 onChange={(event) =>
                   dispatch({ type: 'name-changed', name: event.target.value })
                 }
@@ -265,7 +266,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 type='button'
                 variant='outline'
                 aria-labelledby={`${profileNameLabelId} ${profileNameValueId}`}
-                className='flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal'
+                className='flex h-9 w-full items-center justify-between rounded-[0.375rem] px-3 py-2 text-left text-sm font-normal'
                 onClick={() => {
                   dispatch({ type: 'start-editing' });
                 }}
@@ -336,7 +337,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               })}
             </p>
           </div>
-          <div className='rounded-lg border border-border bg-muted/50 p-3'>
+          <div className='rounded-[0.375rem] border border-border bg-muted/50 p-3'>
             <p className='text-xs'>
               <strong>Note:</strong> To manage your subscription, visit the{' '}
               <Link

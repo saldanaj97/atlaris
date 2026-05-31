@@ -54,7 +54,7 @@ export default function AISettingsPage(): ReactElement {
               Your saved model stays in effect until you change it. Only listed
               models can be saved.
             </p>
-            <div className='mt-4 rounded-lg border border-border bg-muted/50 p-3'>
+            <div className='mt-4 rounded-[0.375rem] border border-border bg-muted/50 p-3'>
               <p className='text-xs'>
                 <strong>Note:</strong> Availability and pricing can change over
                 time.
