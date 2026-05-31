@@ -46,7 +46,7 @@ function TimelineTaskCard({
   return (
     <div
       className={cn(
-        'rounded-xl border p-4 transition-colors',
+        'rounded-lg border p-4 transition-colors',
         isCompleted
           ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
           : 'border-border bg-muted/30 hover:border-primary/30 dark:bg-muted/25 dark:hover:border-primary/50',
