@@ -4,7 +4,6 @@
 export function finalizePageBoundaryResult<TSuccess, TUnauth>(
   boundaryResult: TSuccess | null,
   options: {
-    entityId: string;
     unauthenticatedMessage: string;
     unauthenticated: (message: string) => TUnauth;
   },

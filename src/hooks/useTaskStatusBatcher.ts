@@ -34,6 +34,7 @@ interface UseTaskStatusBatcherOptions {
 const DEFAULT_DEBOUNCE_MS = 2000;
 const DEFAULT_MAX_WAIT_MS = 5000;
 
+/** Stable scope identity for effect deps when parent rebuilds Set with same ids. */
 function scopedTaskIdsKey(
   scopedTaskIds: ReadonlySet<string> | undefined,
 ): string {
@@ -114,7 +115,6 @@ export function useTaskStatusBatcher({
     () => scopedTaskIdsKey(scopedTaskIds),
     [scopedTaskIds],
   );
-  const previousScopeKeyRef = useRef('');
 
   const clearScheduledFlush = useCallback(() => {
     if (timerRef.current) {
@@ -249,16 +249,9 @@ export function useTaskStatusBatcher({
   );
 
   useEffect(() => {
-    const previousScopeKey = previousScopeKeyRef.current;
-    if (previousScopeKey !== scopeKey && previousScopeKey !== '') {
-      void flush().then(() => {
-        dropOutOfScopePending();
-      });
-    } else {
-      dropOutOfScopePending();
-    }
-    previousScopeKeyRef.current = scopeKey;
-  }, [dropOutOfScopePending, flush, scopeKey]);
+    // Scope change (navigation/regen): drop stale pending instead of flushing under new scope.
+    dropOutOfScopePending();
+  }, [dropOutOfScopePending, scopeKey]);
 
   useEffect(() => {
     return () => {

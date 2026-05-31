@@ -106,6 +106,18 @@ export async function resolveWorkflowCallbackAccess(
     return { status: 'allow' };
   }
 
+  const unconditionalAllow = resolveUnconditionalCallbackAllow(input, config);
+  if (unconditionalAllow) {
+    return unconditionalAllow;
+  }
+
+  return resolveTokenOrLocalCallbackAccess(input, config);
+}
+
+function resolveUnconditionalCallbackAllow(
+  input: WorkflowCallbackAuthInput,
+  config: WorkflowCallbackAuthConfig,
+): WorkflowCallbackAuthResult | null {
   if (isWorkflowHealthCheck(input) && !config.isProduction) {
     return { status: 'allow' };
   }
@@ -118,6 +130,13 @@ export async function resolveWorkflowCallbackAccess(
     return { status: 'allow' };
   }
 
+  return null;
+}
+
+async function resolveTokenOrLocalCallbackAccess(
+  input: WorkflowCallbackAuthInput,
+  config: WorkflowCallbackAuthConfig,
+): Promise<WorkflowCallbackAuthResult> {
   const headerName = config.headerName ?? WORKFLOW_CALLBACK_TOKEN_HEADER;
 
   if (config.callbackToken) {

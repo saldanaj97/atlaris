@@ -5,7 +5,6 @@ describe('finalizePageBoundaryResult', () => {
   it('returns boundary result when authenticated', () => {
     expect(
       finalizePageBoundaryResult('ok', {
-        entityId: 'plan-1',
         unauthenticatedMessage: 'Sign in',
         unauthenticated: (message) => ({ code: 'UNAUTHORIZED', message }),
       }),
@@ -15,7 +14,6 @@ describe('finalizePageBoundaryResult', () => {
   it('maps null boundary result to unauthenticated error', () => {
     expect(
       finalizePageBoundaryResult(null, {
-        entityId: 'plan-1',
         unauthenticatedMessage: 'Sign in required',
         unauthenticated: (message) => ({
           code: 'UNAUTHORIZED',

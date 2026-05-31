@@ -2,14 +2,8 @@
 
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import {
-  applyTaskProgressUpdates,
-  validateTaskProgressBatchInput,
-} from '@/features/plans/task-progress/boundary';
+import { batchUpdateTaskProgressCore } from '@/features/plans/task-progress/batch-action-core';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { serializeErrorForLog } from '@/lib/errors';
-import { logger } from '@/lib/logging/logger';
-import { revalidatePathsBestEffort } from '@/lib/next/revalidate-paths';
 
 interface BatchUpdateTaskProgressInput {
   planId: string;
@@ -40,36 +34,21 @@ export async function batchUpdateTaskProgressAction({
 }: BatchUpdateTaskProgressInput): Promise<BatchUpdateTaskProgressResult | void> {
   if (updates.length === 0) return;
 
-  const result = await requestBoundary.action(async ({ actor, db }) => {
-    validateTaskProgressBatchInput({ planId, updates });
-
-    try {
-      const outcome = await applyTaskProgressUpdates({
-        userId: actor.id,
+  const result = await requestBoundary.action(async ({ actor, db }) =>
+    batchUpdateTaskProgressCore({
+      planId,
+      updates,
+      userId: actor.id,
+      dbClient: db,
+      logContext: {
         planId,
-        updates,
-        dbClient: db,
-      });
-      const { failedPaths } = revalidatePathsBestEffort(
-        outcome.revalidatePaths,
-      );
-      return { revalidateFailed: failedPaths.length > 0 };
-    } catch (error) {
-      logger.error(
-        {
-          planId,
-          userId: actor.id,
-          updateCount: updates.length,
-          taskIds: updates.map((update) => update.taskId),
-          err: serializeErrorForLog(error),
-        },
-        'Failed to batch update task progress',
-      );
-      throw new Error('Unable to update task progress right now.', {
-        cause: error,
-      });
-    }
-  });
+        userId: actor.id,
+        updateCount: updates.length,
+        taskIds: updates.map((update) => update.taskId),
+      },
+      logMessage: 'Failed to batch update task progress',
+    }),
+  );
 
   if (result === null) {
     throw new Error('You must be signed in to update progress.');
