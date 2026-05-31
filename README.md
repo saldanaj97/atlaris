@@ -51,12 +51,12 @@ pnpm install
 pnpm dev              # Turbopack app only
 pnpm dev:full        # local DB + app
 pnpm check:full      # lint + type-check (runs check:lint + check:type)
-pnpm test            # lightweight changed bundle (same as test:changed)
+pnpm test            # lightweight changed unit + integration-class bundle
 ```
 
 Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
 
-On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + Prettier on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
+On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
 
 ## Project structure
 
@@ -98,7 +98,7 @@ The default `pnpm test` command runs a lightweight changed-only bundle: unit tes
 Use the explicit scoped commands for day-to-day work, and prefer targeted integration runs instead of the full suite whenever possible:
 
 ```bash
-pnpm test:changed
+pnpm test
 pnpm test:unit:changed
 pnpm test:integration:changed
 pnpm test:workflow

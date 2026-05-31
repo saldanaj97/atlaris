@@ -78,7 +78,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Ensure tests cover relevant scenarios and edge cases
 - Write clear, descriptive test cases that explain the intent of the test
 - Regularly run tests after changes to maintain code quality and reliability (prefer explicit scoped commands like `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted spec file)
-- Before considering any implementation complete, always run `pnpm test:changed` and `pnpm check:full` as the final validation baseline to catch regressions outside the immediately edited files.
+- Before considering any implementation complete, always run `pnpm test` and `pnpm check:full` as the final validation baseline to catch regressions outside the immediately edited files.
 
 # Core Principles
 
@@ -86,6 +86,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
 - Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
-- Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test:changed` and `pnpm check:full`.
+- Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test` and `pnpm check:full`.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.

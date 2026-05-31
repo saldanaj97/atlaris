@@ -22,7 +22,7 @@
  * `process.env` directly.
  */
 
-/** Seeded `users.id` (deterministic UUID) created by `pnpm db:dev:bootstrap`. */
+/** Seeded `users.id` (deterministic UUID) created by `pnpm db:dev:seed`. */
 export const LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID =
   '11111111-1111-4111-8111-111111111111' as const;
 

@@ -63,10 +63,9 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 
 ```bash
 pnpm test                              # Changed unit + integration-class bundle
-pnpm test:changed                      # Explicit alias for changed unit + integration-class bundle
 pnpm test:unit                         # Unit tests only
 pnpm test:unit:changed                 # Changed unit tests
-pnpm test:unit:watch                   # Watch unit tests
+pnpm exec tsx scripts/tests/run.ts unit --watch  # Watch unit tests
 pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
 pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
 pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase

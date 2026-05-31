@@ -34,15 +34,17 @@ pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
 pnpm check:type         # TypeScript type checking only
 ```
 
-Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus Prettier on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run Prettier explicitly, for example `pnpm exec prettier . --write --ignore-unknown`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
+Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus oxfmt on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run oxfmt explicitly, for example `pnpm exec oxfmt --no-error-on-unmatched-pattern .`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
 
-## Database (Supabase migrations + Drizzle ORM)
+## Database (Supabase migrations)
 
 ```bash
 supabase migration new <name> # Create a new SQL migration file
 supabase db diff -f <name>    # Generate a migration from local DB changes
 supabase db reset             # Recreate local Supabase DB from migrations + seed.sql
 ```
+
+Migration authoring uses the Supabase CLI. Package scripts still use Drizzle Kit for local/test migration application and CI schema push where documented below.
 
 ### Local dev database (Supabase local)
 
@@ -53,7 +55,6 @@ pnpm db:dev:start     # Start Supabase local stack
 pnpm db:dev:stop      # Stop Supabase local stack
 pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
 pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
-pnpm db:dev:bootstrap # Backward-compatible alias for db:dev:seed
 ```
 
 ## Testing
@@ -64,7 +65,6 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 
 ```bash
 pnpm test                     # Run changed unit + integration-class tests
-pnpm test:changed             # Explicit alias for the changed unit + integration-class bundle
 pnpm test:unit                # Run all unit tests
 pnpm test:unit:changed        # Run unit tests for changed files only
 pnpm exec tsx scripts/tests/run.ts unit --watch # Unit tests watch mode (no dedicated package.json alias)

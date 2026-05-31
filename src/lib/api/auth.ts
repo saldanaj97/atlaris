@@ -79,7 +79,7 @@ async function ensureUserRecord(
 
   if (localProductTestingEnv.enabled) {
     throw new AuthError(
-      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:seed and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
     );
   }
 

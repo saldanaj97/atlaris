@@ -104,7 +104,6 @@ supabase db reset
 | Stop Supabase     | `pnpm db:dev:stop`      |
 | Reset DB + seed   | `pnpm db:dev:reset`     |
 | Re-run seed only  | `pnpm db:dev:seed`      |
-| Legacy seed alias | `pnpm db:dev:bootstrap` |
 
 `pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
 
