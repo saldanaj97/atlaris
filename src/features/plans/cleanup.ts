@@ -3,7 +3,7 @@ import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 // updates run on the same transaction handle as SELECT … FOR UPDATE.
 import type { DbClient } from '@/lib/db/types';
 
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
+import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
 import { logger } from '@/lib/logging/logger';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 
@@ -20,7 +20,7 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  * does not race concurrent generation state updates.
  */
 type CleanupStuckPlansDependencies = {
-  markFailure?: typeof markPlanGenerationFailure;
+  markFailuresInTx?: typeof markPlanGenerationFailuresInTx;
 };
 
 export async function cleanupStuckPlans(
@@ -29,7 +29,8 @@ export async function cleanupStuckPlans(
   deps: CleanupStuckPlansDependencies = {},
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
-  const markFailure = deps.markFailure ?? markPlanGenerationFailure;
+  const markFailuresInTx =
+    deps.markFailuresInTx ?? markPlanGenerationFailuresInTx;
 
   return dbClient.transaction(async (tx) => {
     const stuckPlans = await tx
@@ -44,14 +45,13 @@ export async function cleanupStuckPlans(
       .limit(Number.MAX_SAFE_INTEGER)
       .for('update');
 
-    const timestamp = new Date();
-
-    for (const plan of stuckPlans) {
-      // Reuse a single timestamp so the batch gets a consistent failed-at moment.
-      await markFailure(plan.id, tx, () => timestamp);
+    if (stuckPlans.length === 0) {
+      return { cleaned: 0 };
     }
 
-    const cleaned = stuckPlans.length;
+    const timestamp = new Date();
+    const planIds = stuckPlans.map((plan) => plan.id);
+    const cleaned = await markFailuresInTx(tx, planIds, timestamp);
 
     if (cleaned > 0) {
       logger.info(

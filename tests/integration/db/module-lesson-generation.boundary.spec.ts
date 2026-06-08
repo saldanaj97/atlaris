@@ -92,6 +92,73 @@ describe('module lesson generation boundary (integration)', () => {
     expect(rows[1]?.id).toBe(task2.id);
   });
 
+  it('persists distinct lesson content for five tasks in one batch commit', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-five-tasks');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Five task batch' });
+    const mod = await createTestModule({ planId: plan.id });
+    const createdTasks = await Promise.all(
+      Array.from({ length: 5 }, (_, index) =>
+        createTestTask({
+          moduleId: mod.id,
+          order: index + 1,
+          title: `Task ${index + 1}`,
+        }),
+      ),
+    );
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    const result = await generateModuleLessons(
+      {
+        dbClient: rlsDb,
+        userId,
+        planId: plan.id,
+        moduleId: mod.id,
+        userTier: 'free',
+      },
+      {
+        provider: new MockGenerationProvider({
+          delayMs: 0,
+          deterministicSeed: 19,
+        }),
+      },
+    );
+
+    expect(result.kind).toBe('success');
+
+    const rows = await db
+      .select({
+        id: tasks.id,
+        order: tasks.order,
+        lessonContent: tasks.lessonContent,
+        lessonContentUpdatedAt: tasks.lessonContentUpdatedAt,
+      })
+      .from(tasks)
+      .where(eq(tasks.moduleId, mod.id))
+      .orderBy(asc(tasks.order));
+
+    expect(rows).toHaveLength(5);
+    expect(rows.map((row) => row.id)).toEqual(
+      createdTasks.map((task) => task.id),
+    );
+
+    const serializedContents = rows.map((row) =>
+      JSON.stringify(row.lessonContent),
+    );
+    expect(new Set(serializedContents).size).toBe(5);
+
+    const sharedTimestamp = rows[0]?.lessonContentUpdatedAt?.toISOString();
+    expect(sharedTimestamp).toBeDefined();
+    for (const row of rows) {
+      expect(row.lessonContent?.version).toBe(1);
+      expect(row.lessonContentUpdatedAt?.toISOString()).toBe(sharedTimestamp);
+    }
+  });
+
   it('retrying a failed module generation clears the error and returns ready', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-retry-failed');
     const userId = await ensureUser({

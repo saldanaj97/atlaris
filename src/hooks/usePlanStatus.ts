@@ -6,7 +6,7 @@ import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { computeNextDelay, INITIAL_POLL_MS } from '@/shared/constants/polling';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ZodError } from 'zod';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -34,16 +34,64 @@ interface UsePlanStatusReturn {
   revalidate: () => Promise<void>;
 }
 
+type PlanPollState = {
+  status: PlanStatus;
+  attempts: number;
+  error: string | null;
+  pollingError: string | null;
+};
+
+type PlanPollAction =
+  | { type: 'reset'; initialStatus: PlanStatus }
+  | {
+      type: 'apply_response';
+      status: PlanStatus;
+      attempts: number;
+      error: string | null;
+    }
+  | { type: 'set_polling_error'; message: string }
+  | { type: 'clear_polling_error' };
+
+function planPollReducer(
+  state: PlanPollState,
+  action: PlanPollAction,
+): PlanPollState {
+  switch (action.type) {
+    case 'reset':
+      return {
+        status: action.initialStatus,
+        attempts: 0,
+        error: null,
+        pollingError: null,
+      };
+    case 'apply_response':
+      return {
+        ...state,
+        status: action.status,
+        attempts: action.attempts,
+        error: action.error,
+      };
+    case 'set_polling_error':
+      return { ...state, pollingError: action.message };
+    case 'clear_polling_error':
+      return { ...state, pollingError: null };
+    default:
+      return state;
+  }
+}
+
 export function usePlanStatus(
   planId: string,
   initialStatus: PlanStatus,
   fetcher: typeof fetch = fetch,
 ): UsePlanStatusReturn {
-  const [status, setStatus] = useState<PlanStatus>(initialStatus);
-  const [attempts, setAttempts] = useState<number>(0);
-  const [error, setError] = useState<string | null>(null);
-  const [pollingError, setPollingError] = useState<string | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
+  const [state, dispatch] = useReducer(planPollReducer, {
+    status: initialStatus,
+    attempts: 0,
+    error: null,
+    pollingError: null,
+  });
+  const [pollLoopRunning, setPollLoopRunning] = useState(false);
   const consecutiveFailuresRef = useRef(0);
   const previousStatusRef = useRef<PlanStatus>(initialStatus);
   const delayRef = useRef(INITIAL_POLL_MS);
@@ -56,7 +104,9 @@ export function usePlanStatus(
   });
 
   const shouldPoll =
-    (status === 'pending' || status === 'processing') && pollingError === null;
+    (state.status === 'pending' || state.status === 'processing') &&
+    state.pollingError === null;
+  const isPolling = shouldPoll && pollLoopRunning;
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -82,15 +132,12 @@ export function usePlanStatus(
       const data = parseResult.data;
 
       previousStatusRef.current = data.status;
-      setStatus(data.status);
-      setAttempts(data.attempts);
-
-      setError(data.latestError);
-
-      // Stop polling if terminal state reached
-      if (data.status === 'ready' || data.status === 'failed') {
-        setIsPolling(false);
-      }
+      dispatch({
+        type: 'apply_response',
+        status: data.status,
+        attempts: data.attempts,
+        error: data.latestError,
+      });
     } catch (err) {
       if (err instanceof ZodError) {
         clientLogger.error('Plan status response validation failed', {
@@ -98,8 +145,11 @@ export function usePlanStatus(
           error: err.flatten(),
         });
         consecutiveFailuresRef.current += 1;
-        setPollingError('Received invalid plan status response from server.');
-        setIsPolling(false);
+        dispatch({
+          type: 'set_polling_error',
+          message: 'Received invalid plan status response from server.',
+        });
+        setPollLoopRunning(false);
         return;
       }
 
@@ -110,8 +160,8 @@ export function usePlanStatus(
 
       if (!isRetriable) {
         clientLogger.error('Failed to poll plan status (non-retriable):', err);
-        setPollingError(message);
-        setIsPolling(false);
+        dispatch({ type: 'set_polling_error', message });
+        setPollLoopRunning(false);
         return;
       }
 
@@ -121,8 +171,8 @@ export function usePlanStatus(
           'Failed to poll plan status: max retries exhausted',
           err,
         );
-        setPollingError(message);
-        setIsPolling(false);
+        dispatch({ type: 'set_polling_error', message });
+        setPollLoopRunning(false);
         return;
       }
 
@@ -132,18 +182,18 @@ export function usePlanStatus(
 
   const revalidate = useCallback(async (): Promise<void> => {
     consecutiveFailuresRef.current = 0;
-    setPollingError(null);
-    setIsPolling(true);
+    dispatch({ type: 'clear_polling_error' });
+    setPollLoopRunning(true);
     await fetchStatus();
   }, [fetchStatus]);
 
   useEffect(() => {
     if (!shouldPoll) {
-      setIsPolling(false);
+      setPollLoopRunning(false);
       return;
     }
 
-    setIsPolling(true);
+    setPollLoopRunning(true);
     delayRef.current = INITIAL_POLL_MS;
 
     let cancelled = false;
@@ -182,7 +232,7 @@ export function usePlanStatus(
         clearTimeout(pollTimeoutId);
         pollTimeoutId = null;
       }
-      setIsPolling(false);
+      setPollLoopRunning(false);
     };
   }, [shouldPoll, fetchStatus]);
 
@@ -194,12 +244,18 @@ export function usePlanStatus(
     }
 
     previousPlanIdRef.current = planId;
-    setStatus(initialStatusRef.current);
-    setAttempts(0);
-    setError(null);
-    setPollingError(null);
+    previousStatusRef.current = initialStatusRef.current;
+    delayRef.current = INITIAL_POLL_MS;
     consecutiveFailuresRef.current = 0;
+    dispatch({ type: 'reset', initialStatus: initialStatusRef.current });
   }, [planId]);
 
-  return { status, attempts, error, pollingError, isPolling, revalidate };
+  return {
+    status: state.status,
+    attempts: state.attempts,
+    error: state.error,
+    pollingError: state.pollingError,
+    isPolling,
+    revalidate,
+  };
 }

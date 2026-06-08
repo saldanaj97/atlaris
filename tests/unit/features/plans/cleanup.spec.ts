@@ -6,6 +6,7 @@ import {
   ORPHANED_ATTEMPT_THRESHOLD_MS,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
+import { logger } from '@/lib/logging/logger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to avoid console noise and allow assertion
@@ -68,43 +69,53 @@ describe('cleanupStuckPlans', () => {
     vi.clearAllMocks();
   });
 
-  it('marks stuck generating plans as failed and returns count', async () => {
+  it('marks stuck generating plans as failed with one bulk update', async () => {
     mockDb = createMockDbClient(3);
-    const markFailure = vi.fn().mockResolvedValue(undefined);
+    const markFailuresInTx = vi.fn().mockResolvedValue(3);
+    markFailuresInTx.mockImplementation(
+      (_tx, planIds: string[], timestamp: Date) => {
+        expect(planIds).toEqual(['id-0', 'id-1', 'id-2']);
+        expect(timestamp).toBeInstanceOf(Date);
+        return Promise.resolve(planIds.length);
+      },
+    );
 
     const result = await cleanupStuckPlans(mockDb.client, undefined, {
-      markFailure,
+      markFailuresInTx,
     });
 
     expect(result.cleaned).toBe(3);
     expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
-    expect(markFailure).toHaveBeenCalledTimes(3);
-    expect(markFailure).toHaveBeenNthCalledWith(
-      1,
-      'id-0',
+    expect(markFailuresInTx).toHaveBeenCalledTimes(1);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
       mockDb.client,
-      expect.any(Function),
+      ['id-0', 'id-1', 'id-2'],
+      expect.any(Date),
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'stuck_plans_cleaned',
+        count: 3,
+      }),
+      expect.stringContaining('3'),
     );
 
-    const firstClock = markFailure.mock.calls[0]?.[2] as
-      | (() => Date)
-      | undefined;
-    const secondClock = markFailure.mock.calls[1]?.[2] as
-      | (() => Date)
-      | undefined;
-
-    expect(firstClock).toBeDefined();
-    expect(secondClock).toBeDefined();
-    expect(firstClock?.()).toBeInstanceOf(Date);
-    expect(secondClock?.()).toBe(firstClock?.());
+    const timestampArg = markFailuresInTx.mock.calls[0]?.[2] as Date;
+    expect(timestampArg).toBeInstanceOf(Date);
   });
 
-  it('returns 0 when no stuck plans exist', async () => {
+  it('returns 0 and skips bulk update when no stuck plans exist', async () => {
     mockDb = createMockDbClient(0);
+    const markFailuresInTx = vi.fn();
 
-    const result = await cleanupStuckPlans(mockDb.client);
+    const result = await cleanupStuckPlans(mockDb.client, undefined, {
+      markFailuresInTx,
+    });
 
     expect(result.cleaned).toBe(0);
+    expect(markFailuresInTx).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
   });
 
   it('has a reasonable stuck plan threshold', () => {
@@ -116,11 +127,19 @@ describe('cleanupStuckPlans', () => {
 
   it('accepts a custom threshold', async () => {
     mockDb = createMockDbClient(1);
+    const markFailuresInTx = vi.fn().mockResolvedValue(1);
     const customThreshold = 5 * 60 * 1000; // 5 minutes
 
-    const result = await cleanupStuckPlans(mockDb.client, customThreshold);
+    const result = await cleanupStuckPlans(mockDb.client, customThreshold, {
+      markFailuresInTx,
+    });
 
     expect(result.cleaned).toBe(1);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
+      mockDb.client,
+      ['id-0'],
+      expect.any(Date),
+    );
   });
 });
 

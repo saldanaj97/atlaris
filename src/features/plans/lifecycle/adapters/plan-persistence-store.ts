@@ -17,7 +17,7 @@ import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-g
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
-import { and, count, eq, gte, notExists, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, notExists, sql } from 'drizzle-orm';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
@@ -57,6 +57,32 @@ export async function markPlanGenerationFailureInTx(
   planId: string,
   timestamp: Date,
 ): Promise<void> {
+  const updatedCount = await markPlanGenerationFailuresInTx(
+    tx,
+    [planId],
+    timestamp,
+  );
+
+  if (updatedCount === 0) {
+    logger.error(
+      { planId, timestamp, updatedCount },
+      'markPlanGenerationFailureInTx: no learningPlans rows updated in PlanUpdateTx',
+    );
+    throw new Error(
+      `markPlanGenerationFailureInTx: no plan updated for id ${planId}`,
+    );
+  }
+}
+
+export async function markPlanGenerationFailuresInTx(
+  tx: PlanUpdateTx,
+  planIds: readonly string[],
+  timestamp: Date,
+): Promise<number> {
+  if (planIds.length === 0) {
+    return 0;
+  }
+
   const updated = await tx
     .update(learningPlans)
     .set({
@@ -64,18 +90,10 @@ export async function markPlanGenerationFailureInTx(
       isQuotaEligible: false,
       updatedAt: timestamp,
     })
-    .where(eq(learningPlans.id, planId))
+    .where(inArray(learningPlans.id, planIds))
     .returning({ id: learningPlans.id });
 
-  if (updated.length === 0) {
-    logger.error(
-      { planId, timestamp, updatedCount: updated.length },
-      'markPlanGenerationFailureInTx: no learningPlans rows updated in PlanUpdateTx',
-    );
-    throw new Error(
-      `markPlanGenerationFailureInTx: no plan updated for id ${planId}`,
-    );
-  }
+  return updated.length;
 }
 
 export async function atomicCheckAndInsertPlan(

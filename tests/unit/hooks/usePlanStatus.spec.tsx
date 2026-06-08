@@ -1,3 +1,5 @@
+import type { PlanStatus } from '@/shared/types/client.types';
+
 import {
   createMockFetchResponse,
   createPlanStatusResponse,
@@ -533,6 +535,201 @@ describe('usePlanStatus', () => {
       await vi.advanceTimersByTimeAsync(INITIAL_POLL_MS);
     });
     expect(mockFetch).toHaveBeenCalledTimes(5);
+  });
+
+  it('resets state when planId changes', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({
+            status: 'processing',
+            attempts: 2,
+            latestError: 'transient',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'pending', attempts: 0 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ id, initial }: { id: string; initial: PlanStatus }) =>
+        usePlanStatus(id, initial, mockFetch),
+      { initialProps: { id: 'plan-a', initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+      expect(result.current.attempts).toBe(2);
+      expect(result.current.error).toBe('transient');
+    });
+
+    rerender({ id: 'plan-b', initial: 'pending' });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+      expect(result.current.attempts).toBe(0);
+      expect(result.current.error).toBeNull();
+      expect(result.current.pollingError).toBeNull();
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/plan-b/status');
+  });
+
+  it('does not reset live polled state when initialStatus changes for the same planId', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 4 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ initial }: { initial: PlanStatus }) =>
+        usePlanStatus('plan-123', initial, mockFetch),
+      { initialProps: { initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+      expect(result.current.attempts).toBe(4);
+    });
+
+    rerender({ initial: 'ready' });
+
+    expect(result.current.status).toBe('processing');
+    expect(result.current.attempts).toBe(4);
+  });
+
+  it('stops polling with a generic message when response validation fails', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'not-a-valid-status',
+        attempts: 1,
+        latestError: null,
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBe(
+        'Received invalid plan status response from server.',
+      );
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    expect(clientLogger.error).toHaveBeenCalled();
+  });
+
+  it('stops polling on non-retriable 404 responses', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Plan not found', code: 'NOT_FOUND' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBe('Plan not found');
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    expect(clientLogger.error).toHaveBeenCalled();
+  });
+
+  it('keeps isPolling true during retriable failures until max failures', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'Unavailable' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.isPolling).toBe(true);
+    expect(result.current.pollingError).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(result.current.isPolling).toBe(true);
+    expect(result.current.pollingError).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+    expect(result.current.pollingError).toBe('Unavailable');
+    expect(result.current.isPolling).toBe(false);
+  });
+
+  it('revalidate while polling is active clears errors and resumes polling', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+
+    expect(result.current.pollingError).toBe('Unavailable');
+    expect(result.current.isPolling).toBe(false);
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+
+    expect(result.current.pollingError).toBeNull();
+    expect(result.current.status).toBe('processing');
+    expect(result.current.isPolling).toBe(true);
   });
 });
 

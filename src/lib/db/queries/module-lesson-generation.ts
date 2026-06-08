@@ -1,7 +1,6 @@
-import type { DbClient } from '@/lib/db/types';
+import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type {
-  LessonContent,
   ModuleLessonBatchProviderOutput,
   ModuleLessonGenerationMetadata,
 } from '@/shared/types/lesson-content.types';
@@ -377,6 +376,43 @@ export type CommitModuleLessonBatchSuccessInput = {
 };
 
 /**
+ * Updates all task lesson rows for a module in one statement so content and timestamp
+ * commit atomically with the module ready transition.
+ */
+async function updateTaskLessonsInTx(
+  tx: Pick<DbTransaction, 'execute'>,
+  moduleId: string,
+  parsedTasks: ModuleLessonBatchProviderOutput['tasks'],
+  finishedAt: Date,
+): Promise<void> {
+  if (parsedTasks.length === 0) {
+    return;
+  }
+
+  const valueRows = parsedTasks.map(
+    (task) =>
+      sql`(${task.taskId}::uuid, ${JSON.stringify(task.content)}::jsonb)`,
+  );
+
+  const updated = (await tx.execute(sql`
+    UPDATE tasks AS t
+    SET
+      lesson_content = v.content,
+      lesson_content_updated_at = ${finishedAt.toISOString()}::timestamptz
+    FROM (VALUES ${sql.join(valueRows, sql`, `)}) AS v(id, content)
+    WHERE t.id = v.id
+      AND t.module_id = ${moduleId}::uuid
+    RETURNING t.id
+  `)) as Array<{ id: string }>;
+
+  if (updated.length !== parsedTasks.length) {
+    throw new Error(
+      `Expected ${parsedTasks.length} task lesson rows updated, got ${updated.length}`,
+    );
+  }
+}
+
+/**
  * Persists all task lessons, module ready fields, metadata, and AI usage in one RLS-aware transaction.
  */
 export async function commitModuleLessonBatchSuccess(
@@ -400,24 +436,12 @@ export async function commitModuleLessonBatchSuccess(
 
     assertParsedTasksMatchCurrentTaskRows(input.parsed, currentTasks);
 
-    for (const task of input.parsed.tasks) {
-      const updated = await tx
-        .update(tasks)
-        .set({
-          lessonContent: task.content as LessonContent,
-          lessonContentUpdatedAt: finishedAt,
-        })
-        .where(
-          and(eq(tasks.id, task.taskId), eq(tasks.moduleId, input.moduleId)),
-        )
-        .returning({ id: tasks.id });
-
-      if (updated.length !== 1) {
-        throw new Error(
-          `Expected exactly one task lesson row updated for task ${task.taskId}`,
-        );
-      }
-    }
+    await updateTaskLessonsInTx(
+      tx,
+      input.moduleId,
+      input.parsed.tasks,
+      finishedAt,
+    );
 
     const moduleUpdated = await tx
       .update(modules)
