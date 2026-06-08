@@ -13,7 +13,6 @@ import { useModuleLessonGeneration } from '@/app/(app)/plans/[id]/modules/[modul
 import { Accordion } from '@/components/ui/accordion';
 import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
-import { useMemo } from 'react';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -44,26 +43,18 @@ export function ModuleLessonsClient({
       previousModulesComplete,
     });
 
-  const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
-    const total = lessons.length;
-    let completed = 0;
-    for (const lesson of lessons) {
-      if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
-        completed++;
-      }
+  const totalLessons = lessons.length;
+  let completedLessons = 0;
+  for (const lesson of lessons) {
+    if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
+      completedLessons++;
     }
+  }
+  const isModuleComplete =
+    totalLessons > 0 && completedLessons === totalLessons;
 
-    return {
-      completedLessons: completed,
-      totalLessons: total,
-      isModuleComplete: total > 0 && completed === total,
-    };
-  }, [lessons, statuses]);
-
-  const { locks: lessonLocks, firstUnlockedIncompleteLessonId } = useMemo(
-    () => deriveLessonState(lessons, statuses, previousModulesComplete),
-    [lessons, previousModulesComplete, statuses],
-  );
+  const { locks: lessonLocks, firstUnlockedIncompleteLessonId } =
+    deriveLessonState(lessons, statuses, previousModulesComplete);
 
   return (
     <>

@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 interface PlansListProps {
   summaries: PlanSummary[];
@@ -46,39 +46,35 @@ export function PlansList({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
-  const filteredPlans = useMemo(() => {
-    const normalizedSearchQuery = searchQuery.toLowerCase();
-    return summaries.filter((summary) => {
-      const matchesSearch =
-        searchQuery === '' ||
-        summary.plan.topic.toLowerCase().includes(normalizedSearchQuery);
+  const normalizedSearchQuery = searchQuery.toLowerCase();
+  const filteredPlans = summaries.filter((summary) => {
+    const matchesSearch =
+      searchQuery === '' ||
+      summary.plan.topic.toLowerCase().includes(normalizedSearchQuery);
 
+    const status = getPlanStatus(summary, effectiveReferenceTimestamp);
+    const matchesStatus =
+      filterStatus === 'all' ||
+      status === filterStatus ||
+      (filterStatus === 'inactive' && status === 'paused');
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const statusCounts = summaries.reduce(
+    (acc, summary) => {
       const status = getPlanStatus(summary, effectiveReferenceTimestamp);
-      const matchesStatus =
-        filterStatus === 'all' ||
-        status === filterStatus ||
-        (filterStatus === 'inactive' && status === 'paused');
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [summaries, searchQuery, filterStatus, effectiveReferenceTimestamp]);
-
-  const statusCounts = useMemo(() => {
-    return summaries.reduce(
-      (acc, summary) => {
-        const status = getPlanStatus(summary, effectiveReferenceTimestamp);
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-      },
-      {
-        active: 0,
-        paused: 0,
-        completed: 0,
-        generating: 0,
-        failed: 0,
-      } as Record<PlanReadStatus, number>,
-    );
-  }, [summaries, effectiveReferenceTimestamp]);
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    },
+    {
+      active: 0,
+      paused: 0,
+      completed: 0,
+      generating: 0,
+      failed: 0,
+    } as Record<PlanReadStatus, number>,
+  );
 
   function getFilterCount(tab: (typeof FILTER_TABS)[number]): number | null {
     if (tab.id === 'all') return summaries.length;

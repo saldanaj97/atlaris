@@ -18,11 +18,32 @@ import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactElement, useCallback, useMemo } from 'react';
+import { type ReactElement } from 'react';
 import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
+}
+
+function handleTaskStatusError({
+  error,
+  taskId,
+  previousStatus,
+  nextStatus,
+}: {
+  error: unknown;
+  taskId: string;
+  previousStatus: ProgressStatus;
+  nextStatus: ProgressStatus;
+}) {
+  const { errorMessage, errorStack } = getLoggableErrorDetails(error);
+  clientLogger.error('Optimistic status revert', {
+    errorMessage,
+    errorStack,
+    taskId,
+    previousStatus,
+    nextStatus,
+  });
 }
 
 /**
@@ -31,48 +52,21 @@ interface PlanDetailClientProps {
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
-  const scopedTaskIds = useMemo(
-    () =>
-      new Set(modules.flatMap((module) => module.tasks.map((task) => task.id))),
-    [modules],
+  const scopedTaskIds = new Set(
+    modules.flatMap((module) => module.tasks.map((task) => task.id)),
   );
 
-  const flushTaskProgress = useCallback(
-    async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
-      const result = await batchUpdateTaskProgressAction({
-        planId: plan.id,
-        updates,
-      });
-      if (result?.revalidateFailed) {
-        toast.message('Progress saved. Refresh if the page looks stale.');
-      }
-    },
-    [plan.id],
-  );
-
-  const handleTaskStatusError = useCallback(
-    ({
-      error,
-      taskId,
-      previousStatus,
-      nextStatus,
-    }: {
-      error: unknown;
-      taskId: string;
-      previousStatus: ProgressStatus;
-      nextStatus: ProgressStatus;
-    }) => {
-      const { errorMessage, errorStack } = getLoggableErrorDetails(error);
-      clientLogger.error('Optimistic status revert', {
-        errorMessage,
-        errorStack,
-        taskId,
-        previousStatus,
-        nextStatus,
-      });
-    },
-    [],
-  );
+  async function flushTaskProgress(
+    updates: Array<{ taskId: string; status: ProgressStatus }>,
+  ) {
+    const result = await batchUpdateTaskProgressAction({
+      planId: plan.id,
+      updates,
+    });
+    if (result?.revalidateFailed) {
+      toast.message('Progress saved. Refresh if the page looks stale.');
+    }
+  }
 
   const { statuses, handleStatusChange } = useOptimisticTaskStatusUpdates({
     initialStatuses,
@@ -81,10 +75,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     onError: handleTaskStatusError,
   });
 
-  const overviewStats = useMemo(
-    () => computeOverviewStats(plan, statuses),
-    [plan, statuses],
-  );
+  const overviewStats = computeOverviewStats(plan, statuses);
 
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';

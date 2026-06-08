@@ -14,7 +14,7 @@ import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useId, useReducer, useRef } from 'react';
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -115,14 +115,11 @@ export function UnifiedPlanInput({
     }
   };
 
-  const isMac = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    return (
-      (navigator as Navigator & { userAgentData?: { platform?: string } })
-        .userAgentData?.platform === 'macOS' ||
-      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
-    );
-  }, []);
+  const isMac =
+    typeof navigator !== 'undefined' &&
+    ((navigator as Navigator & { userAgentData?: { platform?: string } })
+      .userAgentData?.platform === 'macOS' ||
+      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
 
   return (
     <div className='w-full max-w-5xl'>
