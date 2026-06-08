@@ -1,7 +1,6 @@
 'use client';
 
 import type { PlanFormData } from './types';
-import type { JSX } from 'react';
 
 import {
   createInitialPlanInputState,
@@ -36,7 +35,7 @@ export function UnifiedPlanInput({
   disabled = false,
   initialTopic = '',
   topicResetVersion = 0,
-}: UnifiedPlanInputProps): JSX.Element {
+}: UnifiedPlanInputProps) {
   const baseId = useId();
   const [state, dispatch] = useReducer(
     planInputReducer,

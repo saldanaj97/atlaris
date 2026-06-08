@@ -2,7 +2,6 @@
 
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
@@ -33,7 +32,7 @@ export default function DesktopHeader({
   tier,
   isAuthenticated,
   showClerkUserButton,
-}: DesktopHeaderProps): JSX.Element {
+}: DesktopHeaderProps) {
   return (
     <div className={desktopHeaderShellClass(pathname)}>
       {/* Brand (left) */}

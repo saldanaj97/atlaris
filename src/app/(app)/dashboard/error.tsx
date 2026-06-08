@@ -1,7 +1,5 @@
 'use client';
 
-import type { JSX } from 'react';
-
 import { PageHeader } from '@/components/ui/page-header';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
@@ -16,10 +14,7 @@ interface ErrorProps {
  * Route-level error boundary for dashboard page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function DashboardError({
-  error,
-  reset,
-}: ErrorProps): JSX.Element {
+export default function DashboardError({ error, reset }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Dashboard error:', {
       errorDigest: error.digest,

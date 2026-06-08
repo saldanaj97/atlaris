@@ -1,7 +1,7 @@
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 
 /** Semantic dot color for plan list rows and filter indicators. */
-export const PLAN_STATUS_DOT_CLASS: Record<PlanReadStatus, string> = {
+const PLAN_STATUS_DOT_CLASS: Record<PlanReadStatus, string> = {
   active: 'bg-success',
   paused: 'bg-warning',
   completed: 'bg-chart-3',

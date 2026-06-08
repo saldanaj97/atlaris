@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
@@ -61,7 +59,7 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
  * Skeleton for the plan detail content.
  * Shown while the async component is loading.
  */
-export function PlanDetailContentSkeleton(): JSX.Element {
+export function PlanDetailContentSkeleton() {
   return (
     <>
       <header className='mb-6 space-y-4'>

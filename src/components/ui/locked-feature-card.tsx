@@ -1,6 +1,6 @@
 'use client';
 
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ export function LockedFeatureCard({
   title,
   description,
   className,
-}: LockedFeatureCardProps): JSX.Element {
+}: LockedFeatureCardProps) {
   return (
     <Card
       data-slot='locked-feature-card'

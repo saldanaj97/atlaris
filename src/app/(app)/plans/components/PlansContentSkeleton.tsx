@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
@@ -7,7 +5,7 @@ import { Search } from 'lucide-react';
  * Skeleton for the plans content (search, filters, list).
  * Header title and button are static and rendered by the page.
  */
-export function PlansContentSkeleton(): JSX.Element {
+export function PlansContentSkeleton() {
   return (
     <>
       {/* Search Bar skeleton */}
@@ -35,7 +33,7 @@ export function PlansContentSkeleton(): JSX.Element {
   );
 }
 
-function PlanRowSkeleton(): JSX.Element {
+function PlanRowSkeleton() {
   return (
     <div className='flex items-center gap-4 rounded-2xl px-5 py-4'>
       {/* Status indicator skeleton */}

@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import ManageSubscriptionButton from './ManageSubscriptionButton';
 import {
   formatCompactUsageLimit,
@@ -24,11 +22,7 @@ import { redirect } from 'next/navigation';
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function BillingCards({
-  locale,
-}: {
-  locale?: string;
-}): Promise<JSX.Element> {
+export async function BillingCards({ locale }: { locale?: string }) {
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
     snapshot: await getBillingAccountSnapshot({

@@ -33,7 +33,7 @@ export default function SiteFooter() {
         </nav>
 
         {/* Copyright */}
-        <p className='text-xs text-muted-foreground'>
+        <p className='text-xs text-muted-foreground' suppressHydrationWarning>
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>

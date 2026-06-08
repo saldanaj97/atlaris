@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { PlanDetailPageError } from '@/app/(app)/plans/[id]/components/Error';
 import {
@@ -36,9 +35,7 @@ export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
  * in a Suspense boundary for loading states. Runtime errors are handled
  * by the route-level error.tsx boundary.
  */
-export default async function PlanDetailPage({
-  params,
-}: PlanPageProps): Promise<JSX.Element> {
+export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 

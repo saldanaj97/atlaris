@@ -1,7 +1,6 @@
 'use client';
 
 import type { PlanSummary } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import {
@@ -41,7 +40,7 @@ export function PlanRow({
   isSelected,
   onSelect,
   referenceTimestamp,
-}: PlanRowProps): JSX.Element {
+}: PlanRowProps) {
   const { plan } = summary;
   const progressPercent = Math.round(summary.completion * 100);
   const status = getPlanStatus(summary, referenceTimestamp);

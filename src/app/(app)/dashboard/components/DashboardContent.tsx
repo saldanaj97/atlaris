@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import {
   findActivePlan,
   generateActivities,
@@ -18,7 +16,7 @@ import { redirect } from 'next/navigation';
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function DashboardContent(): Promise<JSX.Element> {
+export async function DashboardContent() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
     const summaries = await listDashboardPlanSummaries({
       userId: actor.id,
@@ -61,7 +59,7 @@ export async function DashboardContent(): Promise<JSX.Element> {
  * Skeleton for the dashboard content.
  * Shown while the async component is loading.
  */
-export function DashboardContentSkeleton(): JSX.Element {
+export function DashboardContentSkeleton() {
   return (
     <>
       {/* ResumeLearningHero skeleton */}

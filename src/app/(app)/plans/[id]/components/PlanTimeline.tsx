@@ -2,7 +2,6 @@
 
 import type { ClientModule } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import {
   deriveTimelineModules,
@@ -30,7 +29,7 @@ export function PlanTimeline({
   modules,
   statuses,
   onStatusChange,
-}: ModuleTimelineProps): JSX.Element {
+}: ModuleTimelineProps) {
   const effectiveStatuses = useMemo(
     () => statuses ?? getStatusesFromModules(modules),
     [statuses, modules],

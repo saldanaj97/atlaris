@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
@@ -48,7 +47,7 @@ const PREVIEW_CARDS = [
   },
 ];
 
-export default function UsageAnalyticsPage(): JSX.Element {
+export default function UsageAnalyticsPage() {
   return (
     <>
       <PageHeader

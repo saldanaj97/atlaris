@@ -1,5 +1,4 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import { ModelPreferencesSelector } from '@/app/(app)/settings/ai/components/ModelPreferencesSelector';
 import {
@@ -23,7 +22,7 @@ import { redirect } from 'next/navigation';
  * Async component that fetches user subscription data and renders the model selector.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function ModelSelectionCard(): Promise<JSX.Element> {
+export async function ModelSelectionCard() {
   const user = await requestBoundary.component(({ actor }) => actor);
 
   if (!user) {

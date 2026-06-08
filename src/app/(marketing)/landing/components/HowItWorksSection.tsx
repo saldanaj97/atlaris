@@ -252,15 +252,13 @@ function SyncVisual() {
   );
 }
 
-function IntegrationIcon({ name, color }: { name: string; color: string }) {
+function IntegrationIcon({ color }: { name: string; color: string }) {
   return (
     <div
       className={`flex size-12 items-center justify-center rounded-xl ${color} shadow-lg`}
-      title={name}
-      role='img'
-      aria-label={name}
+      aria-hidden='true'
     >
-      <CalendarCheck className='size-5 text-white' aria-hidden='true' />
+      <CalendarCheck className='size-5 text-white' />
     </div>
   );
 }

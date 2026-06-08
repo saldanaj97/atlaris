@@ -2,7 +2,6 @@
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import { useModelPreferenceSave } from '@/app/(app)/settings/ai/components/useModelPreferenceSave';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +36,7 @@ const ModelDropdown = ({
   userTier,
   currentModel,
   onSave,
-}: ModelSelectorProps): JSX.Element => {
+}: ModelSelectorProps) => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
   const {
@@ -219,7 +218,7 @@ export function ModelSelector({
   currentModel = null,
   availableModels,
   onSave,
-}: ModelSelectorProps): JSX.Element {
+}: ModelSelectorProps) {
   if (availableModels.length === 0) {
     return (
       <RouteEmptyState

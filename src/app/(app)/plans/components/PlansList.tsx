@@ -6,7 +6,6 @@ import type {
   PlanReadStatus,
 } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
@@ -41,7 +40,7 @@ export function PlansList({
   summaries,
   usage: _usage,
   referenceTimestamp,
-}: PlansListProps): JSX.Element {
+}: PlansListProps) {
   const [effectiveReferenceTimestamp] = useState(() => referenceTimestamp);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');

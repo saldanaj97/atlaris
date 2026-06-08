@@ -1,7 +1,7 @@
 'use client';
 
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
-import type { CSSProperties, JSX } from 'react';
+import type { CSSProperties } from 'react';
 
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
@@ -56,7 +56,7 @@ export function InlineDropdown<TValue extends string>({
   placeholder,
   onChange,
   variant = 'primary',
-}: InlineDropdownProps<TValue>): JSX.Element {
+}: InlineDropdownProps<TValue>) {
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];

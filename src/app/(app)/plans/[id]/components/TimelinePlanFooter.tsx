@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import {
   PLAN_FOOTER_THEME,
   type PlanFooterStatus,
@@ -15,7 +13,7 @@ interface TimelinePlanFooterProps {
 export function TimelinePlanFooter({
   isPlanComplete,
   moduleCount,
-}: TimelinePlanFooterProps): JSX.Element {
+}: TimelinePlanFooterProps) {
   const status: PlanFooterStatus = isPlanComplete ? 'complete' : 'incomplete';
   const theme = PLAN_FOOTER_THEME[status];
   const moduleLabel = `${moduleCount} module${moduleCount !== 1 ? 's' : ''}`;

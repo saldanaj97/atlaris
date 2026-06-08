@@ -1,7 +1,6 @@
 'use client';
 
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -21,7 +20,7 @@ export function TaskCompletionButton({
   onStatusChange,
   disabled = false,
   variant,
-}: TaskCompletionButtonProps): JSX.Element {
+}: TaskCompletionButtonProps) {
   const isCompleted = status === 'completed';
   const buttonLabel = isCompleted ? 'Completed' : 'Mark Complete';
 

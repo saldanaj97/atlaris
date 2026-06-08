@@ -1,5 +1,4 @@
 import type { PlanSummary } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
@@ -58,7 +57,7 @@ function NoUpcomingEventsCard() {
 
 export function ActivityStreamSidebar({
   activePlan,
-}: ActivityStreamSidebarProps): JSX.Element {
+}: ActivityStreamSidebarProps) {
   return (
     <aside className='flex w-full flex-col gap-4'>
       {activePlan ? <NoUpcomingEventsCard /> : <EmptyStateCard />}

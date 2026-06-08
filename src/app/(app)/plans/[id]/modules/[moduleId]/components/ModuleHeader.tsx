@@ -3,7 +3,6 @@ import type {
   ModuleDetailNavItem,
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
@@ -35,7 +34,7 @@ export function ModuleHeader({
   statuses,
   previousModulesComplete,
   allModules,
-}: ModuleHeaderProps): JSX.Element {
+}: ModuleHeaderProps) {
   const {
     totalTasks,
     completedTasks,

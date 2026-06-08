@@ -2,7 +2,6 @@
 
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import DesktopHeader from './DesktopHeader';
 import MobileHeader from './MobileHeader';
@@ -24,7 +23,7 @@ export default function SiteHeaderChrome({
   tier,
   isAuthenticated,
   showClerkUserButton,
-}: SiteHeaderChromeProps): JSX.Element {
+}: SiteHeaderChromeProps) {
   const pathname = usePathname();
 
   return (

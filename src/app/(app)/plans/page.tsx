@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import {
   PlanCountBadgeContent,
@@ -33,7 +32,7 @@ export const metadata: Metadata = {
  * Static elements (title, "New Plan" button) render immediately.
  * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
  */
-export default function PlansPage(): JSX.Element {
+export default function PlansPage() {
   const plansPageData = loadPlansPageData();
 
   return (

@@ -1,5 +1,4 @@
 import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projection/types';
-import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,7 @@ function getGenerationStatusLabel(
   }
 }
 
-function LockedGenerationPanel(): JSX.Element {
+function LockedGenerationPanel() {
   return (
     <Surface variant='default' padding='none' className='mb-6 p-5'>
       <div className='flex items-start gap-3'>
@@ -53,7 +52,7 @@ function GenerationDescription({
   lessonGeneration: ModuleLessonGenerationSummary;
   generationTakingLong: boolean;
   quotaMessage: string | null;
-}): JSX.Element {
+}) {
   return (
     <div>
       <div className='mb-2 flex items-center gap-2'>
@@ -102,7 +101,7 @@ function GenerationAction({
   status: ModuleLessonGenerationSummary['status'];
   isPending: boolean;
   onGenerate: () => void;
-}): JSX.Element | null {
+}) {
   if (status === 'generating') {
     return (
       <div className='flex items-center gap-2 text-sm font-medium text-primary'>
@@ -140,7 +139,7 @@ export function GenerationStatePanel({
   generationTakingLong: boolean;
   onGenerate: () => void;
   isPending: boolean;
-}): JSX.Element | null {
+}) {
   if (!previousModulesComplete) {
     return <LockedGenerationPanel />;
   }

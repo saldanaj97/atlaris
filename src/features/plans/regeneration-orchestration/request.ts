@@ -47,9 +47,10 @@ export async function requestPlanRegeneration(
     };
   }
 
-  const planGenerationRateLimit = await d.rateLimit.check(userId, d.dbClient);
-
-  const tier = await d.tier.resolveUserTier(userId, d.dbClient);
+  const [planGenerationRateLimit, tier] = await Promise.all([
+    d.rateLimit.check(userId, d.dbClient),
+    d.tier.resolveUserTier(userId, d.dbClient),
+  ]);
   const priority = d.priority.computeJobPriority({
     tier,
     isPriorityTopic: d.priority.isPriorityTopic(overrides?.topic ?? plan.topic),

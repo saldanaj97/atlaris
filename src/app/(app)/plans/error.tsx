@@ -1,7 +1,5 @@
 'use client';
 
-import type { JSX } from 'react';
-
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { RouteErrorState } from '@/components/ui/route-error-state';
@@ -19,7 +17,7 @@ interface ErrorProps {
  * Route-level error boundary for plans list page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
+export default function PlansError({ error, reset }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Plans list error:', {
       errorDigest: error.digest,

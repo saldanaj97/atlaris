@@ -1,5 +1,4 @@
 import type { LucideIcon } from 'lucide-react';
-import type { JSX } from 'react';
 
 import { Surface } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
@@ -21,7 +20,7 @@ export function ComingSoonAlert({
   description,
   icon: Icon = Sparkles,
   className,
-}: ComingSoonAlertProps): JSX.Element {
+}: ComingSoonAlertProps) {
   return (
     <Surface
       variant='muted'

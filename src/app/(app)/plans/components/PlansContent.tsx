@@ -1,5 +1,4 @@
 import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
-import type { JSX } from 'react';
 
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
@@ -18,7 +17,7 @@ export async function PlanCountBadgeContent({
   dataPromise,
 }: {
   dataPromise: Promise<PlansPageData | null>;
-}): Promise<JSX.Element | null> {
+}) {
   const result = await dataPromise;
   const usage = result?.usage;
 
@@ -44,7 +43,7 @@ export async function PlansContent({
   dataPromise,
 }: {
   dataPromise: Promise<PlansPageData | null>;
-}): Promise<JSX.Element> {
+}) {
   const result = await dataPromise;
   if (!result) {
     redirect(

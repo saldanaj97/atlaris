@@ -2,7 +2,6 @@
 
 import type { TimelineModule } from './plan-timeline-state';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
@@ -33,7 +32,7 @@ export function TimelineModuleCard({
   statuses,
   onModuleToggle,
   onTaskStatusChange,
-}: TimelineModuleCardProps): JSX.Element {
+}: TimelineModuleCardProps) {
   const isLocked = module.status === 'locked';
 
   return (

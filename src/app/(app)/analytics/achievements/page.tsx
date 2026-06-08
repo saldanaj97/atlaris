@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
@@ -52,7 +51,7 @@ const ACHIEVEMENTS = [
   },
 ];
 
-export default function AchievementsPage(): JSX.Element {
+export default function AchievementsPage() {
   return (
     <>
       <PageHeader

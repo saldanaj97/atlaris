@@ -2,7 +2,6 @@
 
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { getLessonCardClassName } from './lessonAccordionStyles';
 import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
@@ -81,7 +80,7 @@ export function LessonAccordionItem({
   status,
   onStatusChange,
   isLocked = false,
-}: LessonAccordionItemProps): JSX.Element {
+}: LessonAccordionItemProps) {
   const isCompleted = status === 'completed';
   const resources = lesson.resources ?? [];
 

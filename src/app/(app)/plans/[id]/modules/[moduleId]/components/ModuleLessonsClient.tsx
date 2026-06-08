@@ -5,7 +5,6 @@ import type {
   ModuleDetailTask,
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
@@ -36,7 +35,7 @@ export function ModuleLessonsClient({
   previousModulesComplete,
   statuses,
   onStatusChange,
-}: ModuleLessonsClientProps): JSX.Element {
+}: ModuleLessonsClientProps) {
   const { generateLessons, generationTakingLong, isPending, quotaMessage } =
     useModuleLessonGeneration({
       planId,

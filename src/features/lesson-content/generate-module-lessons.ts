@@ -2,8 +2,6 @@ import type {
   GenerateModuleLessonsDeps,
   GenerateModuleLessonsParams,
   GenerateModuleLessonsResult,
-  ModuleLessonGenerationWorkResult,
-  RunModuleLessonGenerationAfterClaimParams,
 } from '@/features/lesson-content/generate-module-lessons.types';
 
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
