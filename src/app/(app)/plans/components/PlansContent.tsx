@@ -1,17 +1,9 @@
 import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
-import type { JSX } from 'react';
 
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { ROUTES } from '@/features/navigation/routes';
 import { Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -25,7 +17,7 @@ export async function PlanCountBadgeContent({
   dataPromise,
 }: {
   dataPromise: Promise<PlansPageData | null>;
-}): Promise<JSX.Element | null> {
+}) {
   const result = await dataPromise;
   const usage = result?.usage;
 
@@ -51,7 +43,7 @@ export async function PlansContent({
   dataPromise,
 }: {
   dataPromise: Promise<PlansPageData | null>;
-}): Promise<JSX.Element> {
+}) {
   const result = await dataPromise;
   if (!result) {
     redirect(
@@ -65,26 +57,20 @@ export async function PlansContent({
   if (!summaries.length) {
     return (
       <section aria-label='No plans found'>
-        <Empty className='min-h-100 border'>
-          <EmptyHeader>
-            <EmptyMedia variant='icon'>
-              <Sparkles />
-            </EmptyMedia>
-            <EmptyTitle>No learning plans yet</EmptyTitle>
-            <EmptyDescription>
-              Start by describing what you want to learn and we&apos;ll create a
-              personalized learning plan with resources and milestones.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
+        <RouteEmptyState
+          className='min-h-100 border'
+          icon={Sparkles}
+          title='No learning plans yet'
+          description="Start by describing what you want to learn and we'll create a personalized learning plan with resources and milestones."
+          action={
             <Button asChild size='lg'>
               <Link href='/plans/new'>
                 <Plus />
                 Create your first plan
               </Link>
             </Button>
-          </EmptyContent>
-        </Empty>
+          }
+        />
       </section>
     );
   }

@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { IntegrationGrid } from '@/app/(app)/settings/integrations/components/IntegrationGrid';
 import { RequestIntegration } from '@/app/(app)/settings/integrations/components/RequestIntegration';
 import { PageHeader } from '@/components/ui/page-header';
@@ -10,12 +8,11 @@ import { PageHeader } from '@/components/ui/page-header';
  * Rendered inside the shared settings layout.
  * Displays the integration management UI within Settings.
  */
-export default function SettingsIntegrationsPage(): JSX.Element {
+export default function SettingsIntegrationsPage() {
   return (
     <>
       <PageHeader
         title='Integrations'
-        titleAs='h2'
         subtitle='Connect your favorite tools to supercharge your learning workflow'
       />
 

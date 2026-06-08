@@ -1,4 +1,15 @@
-import { CalendarCheck, Check, ExternalLink, FileText } from 'lucide-react';
+import { marketingMockPanelSurface } from '@/app/(marketing)/_shared/marketing-glass-surface';
+import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
+import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
+import { cn } from '@/lib/utils';
+import {
+  CalendarCheck,
+  Check,
+  Code2,
+  ExternalLink,
+  FileText,
+  Play,
+} from 'lucide-react';
 import { useId } from 'react';
 
 interface StepCardProps {
@@ -22,54 +33,45 @@ export function HowItWorksSection() {
   const headingId = `${sectionId}-heading`;
 
   return (
-    <section
+    <MarketingSection
       id={sectionId}
-      className='scroll-mt-20 px-4 py-12 sm:px-6 sm:py-24 lg:px-8 lg:py-32'
-      aria-labelledby={headingId}
+      headingId={headingId}
+      className='scroll-mt-20'
+      title='How Atlaris forces progress'
+      subtitle='A three-step system that turns intention into action'
     >
-      <div className='mx-auto max-w-6xl'>
-        <div className='mb-16 text-center'>
-          <h2 id={headingId} className='marketing-h2 mb-4 text-foreground'>
-            How Atlaris forces progress
-          </h2>
-          <p className='marketing-subtitle mt-4'>
-            A three-step system that turns intention into action
-          </p>
-        </div>
+      <div className='grid gap-12 lg:grid-cols-3 lg:gap-8'>
+        {/* Step 1: Curriculum */}
+        <StepCard
+          stepNumber={1}
+          title='Curriculum that respects reality'
+          description='Your roadmap adapts to your actual time, experience level, and learning goals—not a generic template.'
+          visual={<CurriculumVisual />}
+        />
 
-        <div className='grid gap-12 lg:grid-cols-3 lg:gap-8'>
-          {/* Step 1: Curriculum */}
-          <StepCard
-            stepNumber={1}
-            title='Curriculum that respects reality'
-            description='Your roadmap adapts to your actual time, experience level, and learning goals—not a generic template.'
-            visual={<CurriculumVisual />}
-          />
+        {/* Step 2: Resources */}
+        <StepCard
+          stepNumber={2}
+          title='Resources chosen, not dumped'
+          description='Each learning block comes with curated resources—articles, videos, exercises—attached directly to your schedule.'
+          visual={<ResourcesVisual />}
+        />
 
-          {/* Step 2: Resources */}
-          <StepCard
-            stepNumber={2}
-            title='Resources chosen, not dumped'
-            description='Each learning block comes with curated resources—articles, videos, exercises—attached directly to your schedule.'
-            visual={<ResourcesVisual />}
-          />
-
-          {/* Step 3: Sync */}
-          <StepCard
-            stepNumber={3}
-            title='Sync to your real life'
-            description='One click exports your entire schedule to Google Calendar or Outlook. It shows up where you actually look.'
-            visual={<SyncVisual />}
-          />
-        </div>
+        {/* Step 3: Sync */}
+        <StepCard
+          stepNumber={3}
+          title='Sync to your real life'
+          description='One click exports your entire schedule to Google Calendar or Outlook. It shows up where you actually look.'
+          visual={<SyncVisual />}
+        />
       </div>
-    </section>
+    </MarketingSection>
   );
 }
 
 function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
   return (
-    <div className='group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/60 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40'>
+    <MarketingCard variant='primary' className='p-8'>
       <div className='mb-4 flex items-center gap-3'>
         <span
           className='flex size-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent text-sm font-bold text-white shadow-lg'
@@ -88,10 +90,8 @@ function StepCard({ stepNumber, title, description, visual }: StepCardProps) {
       </p>
 
       {/* Visual mockup */}
-      <div className='relative' aria-hidden='true'>
-        {visual}
-      </div>
-    </div>
+      <div aria-hidden='true'>{visual}</div>
+    </MarketingCard>
   );
 }
 
@@ -104,7 +104,7 @@ function CurriculumVisual() {
   ];
 
   return (
-    <div className='overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+    <div className={marketingMockPanelSurface}>
       <div className='border-b border-primary/20 bg-linear-to-r from-primary/10 to-accent/10 px-4 py-3'>
         <div className='flex items-center gap-2'>
           <FileText className='size-4 text-primary' />
@@ -139,7 +139,7 @@ function CurriculumVisual() {
 /** Visual 2: Calendar event with resource link */
 function ResourcesVisual() {
   return (
-    <div className='overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+    <div className={marketingMockPanelSurface}>
       {/* Event header */}
       <div className='border-b border-primary/20 bg-linear-to-r from-primary to-accent px-4 py-3'>
         <div className='flex items-center justify-between'>
@@ -176,15 +176,15 @@ function ResourcesVisual() {
 }
 
 function ResourceLinkMock({ label, type }: { label: string; type: string }) {
-  const icons: Record<string, string> = {
-    article: '📄',
-    video: '▶️',
-    exercise: '💻',
+  const icons: Record<string, React.ReactNode> = {
+    article: <FileText className='size-3.5 shrink-0' aria-hidden='true' />,
+    video: <Play className='size-3.5 shrink-0' aria-hidden='true' />,
+    exercise: <Code2 className='size-3.5 shrink-0' aria-hidden='true' />,
   };
 
   return (
-    <div className='flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary'>
-      <span>{icons[type]}</span>
+    <div className='flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary'>
+      {icons[type]}
       <span className='truncate'>{label}</span>
       <ExternalLink className='ml-auto size-3.5 shrink-0 text-primary/60' />
     </div>
@@ -197,18 +197,17 @@ function SyncVisual() {
     <div className='space-y-4'>
       {/* Integrations row */}
       <div className='flex items-center justify-center gap-4'>
-        <IntegrationIcon
-          name='Google Calendar'
-          color='bg-linear-to-br from-blue-400 to-blue-600'
-        />
-        <IntegrationIcon
-          name='Outlook'
-          color='bg-linear-to-br from-sky-400 to-sky-600'
-        />
+        <IntegrationIcon color='bg-linear-to-br from-primary to-accent' />
+        <IntegrationIcon color='bg-linear-to-br from-accent to-primary' />
       </div>
 
       {/* Sync toast notification */}
-      <div className='mx-auto max-w-56 overflow-hidden rounded-2xl border border-primary/30 bg-linear-to-r from-primary/10 to-accent/10 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+      <div
+        className={cn(
+          marketingMockPanelSurface,
+          'mx-auto max-w-56 border-primary/30 bg-linear-to-r from-primary/10 to-accent/10',
+        )}
+      >
         <div className='flex items-center gap-3 px-4 py-3'>
           <div className='brand-fill flex size-8 items-center justify-center rounded-xl shadow-md'>
             <Check className='size-4 text-foreground' />
@@ -230,7 +229,7 @@ function SyncVisual() {
           </span>
         </div>
         <div className='p-3'>
-          <div className='rounded-xl border border-white/60 bg-white/80 p-3 shadow-md backdrop-blur-sm dark:border-white/20 dark:bg-card/60'>
+          <div className='rounded-xl border border-border/60 bg-card p-3 shadow-md'>
             <div className='flex items-center gap-2'>
               <CalendarCheck className='size-4 text-primary' />
               <span className='text-xs font-medium text-foreground'>
@@ -247,17 +246,13 @@ function SyncVisual() {
   );
 }
 
-function IntegrationIcon({ name, color }: { name: string; color: string }) {
+function IntegrationIcon({ color }: { color: string }) {
   return (
     <div
-      className={`flex size-12 items-center justify-center rounded-xl ${color} shadow-lg transition hover:scale-105 hover:shadow-xl`}
-      title={name}
-      role='img'
-      aria-label={name}
+      className={`flex size-12 items-center justify-center rounded-xl ${color} shadow-lg`}
+      aria-hidden='true'
     >
-      <span className='text-lg font-semibold text-white' aria-hidden='true'>
-        {name.charAt(0)}
-      </span>
+      <CalendarCheck className='size-5 text-white' />
     </div>
   );
 }

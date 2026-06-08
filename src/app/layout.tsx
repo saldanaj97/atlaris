@@ -50,6 +50,10 @@ export const metadata: Metadata = {
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.app'),
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#333333' },
+  ],
 };
 
 export default function RootLayout({
@@ -65,9 +69,13 @@ export default function RootLayout({
   );
 
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html
+      lang='en'
+      suppressHydrationWarning
+      className={`${workSans.variable} ${youngSerif.variable}`}
+    >
       <body
-        className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
+        className={`${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
         {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
         {shouldUseClerkUi() ? (

@@ -25,6 +25,16 @@ export function useModelPreferenceSave({
     useState<ModelPreferenceSaveState>('idle');
 
   const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [prevCurrentModel, setPrevCurrentModel] = useState(currentModel);
+
+  if (currentModel !== prevCurrentModel) {
+    setPrevCurrentModel(currentModel);
+    setSelectedModel(normalizePreference(currentModel));
+    setOptimisticBaseline((prev) => {
+      if (prev === undefined) return undefined;
+      return normalizePreference(currentModel) === prev ? undefined : prev;
+    });
+  }
 
   const clearStatusReset = () => {
     if (statusTimeoutRef.current !== null) {
@@ -40,17 +50,6 @@ export function useModelPreferenceSave({
       }
     };
   }, []);
-
-  useEffect(() => {
-    setSelectedModel(normalizePreference(currentModel));
-  }, [currentModel]);
-
-  useEffect(() => {
-    setOptimisticBaseline((prev) => {
-      if (prev === undefined) return undefined;
-      return normalizePreference(currentModel) === prev ? undefined : prev;
-    });
-  }, [currentModel]);
 
   const effectiveBaseline =
     optimisticBaseline !== undefined

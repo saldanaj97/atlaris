@@ -2,7 +2,6 @@
 
 import type { TimelineModule } from './plan-timeline-state';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
@@ -33,7 +32,7 @@ export function TimelineModuleCard({
   statuses,
   onModuleToggle,
   onTaskStatusChange,
-}: TimelineModuleCardProps): JSX.Element {
+}: TimelineModuleCardProps) {
   const isLocked = module.status === 'locked';
 
   return (
@@ -49,7 +48,7 @@ export function TimelineModuleCard({
         value={module.id}
         disabled={isLocked}
         className={cn(
-          'group/accordion flex flex-1 flex-col rounded-2xl border transition-all duration-300',
+          'group/accordion flex flex-1 flex-col rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300',
           getTimelineCardClassName(module.status),
         )}
       >

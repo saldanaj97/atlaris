@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import ManageSubscriptionButton from './ManageSubscriptionButton';
 import {
   formatCompactUsageLimit,
@@ -7,7 +5,14 @@ import {
   getUsagePercent,
 } from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
@@ -18,7 +23,8 @@ import { redirect } from 'next/navigation';
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function BillingCards(): Promise<JSX.Element> {
+export async function BillingCards({ locale }: { locale?: string }) {
+  const effectiveLocale = locale ?? 'en-US';
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
     snapshot: await getBillingAccountSnapshot({
@@ -37,21 +43,26 @@ export async function BillingCards(): Promise<JSX.Element> {
 
   if (!snapshot) {
     return (
-      <Card className='p-6'>
-        <h2 className='text-xl font-semibold'>Billing unavailable</h2>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          We couldn&apos;t load your billing details right now.
-        </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing unavailable</CardTitle>
+          <CardDescription>
+            We couldn&apos;t load your billing details right now.
+          </CardDescription>
+        </CardHeader>
       </Card>
     );
   }
 
   const nextBilling = snapshot.subscriptionPeriodEnd
-    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString(
+        effectiveLocale,
+        {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        },
+      )
     : '—';
 
   const plansValue = getUsagePercent(
@@ -73,18 +84,17 @@ export async function BillingCards(): Promise<JSX.Element> {
 
   return (
     <>
-      <Card className='p-6'>
-        <div className='mb-4 flex items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-semibold'>Current Plan</h2>
-            <p className='text-sm text-muted-foreground'>
-              Manage your subscription
-            </p>
+      <Card>
+        <CardHeader>
+          <div className='space-y-1'>
+            <CardTitle>Current Plan</CardTitle>
+            <CardDescription>Manage your subscription</CardDescription>
           </div>
-          <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
-        </div>
-
-        <div className='space-y-2 text-sm'>
+          <CardAction>
+            <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className='space-y-2 text-sm'>
           <div className='flex items-center justify-between'>
             <span>Status</span>
             <span className='text-muted-foreground'>
@@ -95,29 +105,30 @@ export async function BillingCards(): Promise<JSX.Element> {
             <span>Next billing date</span>
             <span className='text-muted-foreground'>{nextBilling}</span>
           </div>
-        </div>
 
-        <div className='mt-4'>
-          <ManageSubscriptionButton
-            className='w-full'
-            canOpenBillingPortal={snapshot.canOpenBillingPortal}
-          />
-          {!snapshot.canOpenBillingPortal && (
-            <p className='mt-2 text-center text-sm text-muted-foreground'>
-              Billing features are unavailable.
-            </p>
-          )}
-        </div>
+          <div className='mt-4'>
+            <ManageSubscriptionButton
+              className='w-full'
+              canOpenBillingPortal={snapshot.canOpenBillingPortal}
+            />
+            {!snapshot.canOpenBillingPortal && (
+              <p className='mt-2 text-center text-sm text-muted-foreground'>
+                Billing features are unavailable.
+              </p>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className='p-6'>
-        <h2 className='mb-4 text-xl font-semibold'>Usage</h2>
-
-        <div className='space-y-5'>
+      <Card>
+        <CardHeader>
+          <CardTitle>Usage</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-5'>
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Active plans</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.activePlans.current}/
                 {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
               </span>
@@ -131,7 +142,7 @@ export async function BillingCards(): Promise<JSX.Element> {
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Regenerations (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.regenerations.used}/
                 {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
               </span>
@@ -145,7 +156,7 @@ export async function BillingCards(): Promise<JSX.Element> {
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Exports (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.exports.used}/
                 {formatCompactUsageLimit(snapshot.usage.exports.limit)}
               </span>
@@ -159,7 +170,7 @@ export async function BillingCards(): Promise<JSX.Element> {
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Lesson generations (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.lessonGenerations.used}/
                 {formatCompactUsageLimit(
                   snapshot.usage.lessonGenerations.limit,
@@ -171,7 +182,7 @@ export async function BillingCards(): Promise<JSX.Element> {
               aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
             />
           </div>
-        </div>
+        </CardContent>
       </Card>
     </>
   );

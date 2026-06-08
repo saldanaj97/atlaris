@@ -7,6 +7,9 @@ import { start } from 'workflow/api';
 export const PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE =
   'Queued plan regeneration failed.';
 
+export const PLAN_REGENERATION_SYNC_FAILURE_MESSAGE =
+  'Failed while processing queued plan regeneration job.';
+
 export type StartPlanRegenerationWorkflowInput = {
   readonly jobId: string;
   readonly planId: string;

@@ -2,21 +2,13 @@
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import { useModelPreferenceSave } from '@/app/(app)/settings/ai/components/useModelPreferenceSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import {
   Select,
   SelectContent,
@@ -44,7 +36,7 @@ const ModelDropdown = ({
   userTier,
   currentModel,
   onSave,
-}: ModelSelectorProps): JSX.Element => {
+}: ModelSelectorProps) => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
   const {
@@ -106,7 +98,7 @@ const ModelDropdown = ({
       </div>
 
       {selectedModelData && (
-        <Card className='p-4'>
+        <Card className='rounded-xl p-4'>
           <div className='space-y-3'>
             <div className='flex items-start justify-between'>
               <div>
@@ -201,7 +193,7 @@ const ModelDropdown = ({
         disabled={saveDisabled}
         className='w-full'
       >
-        {isSaving ? 'Saving...' : 'Save Preferences'}
+        {isSaving ? 'Saving…' : 'Save Preferences'}
       </Button>
 
       {userTier !== 'pro' && (
@@ -226,27 +218,19 @@ export function ModelSelector({
   currentModel = null,
   availableModels,
   onSave,
-}: ModelSelectorProps): JSX.Element {
+}: ModelSelectorProps) {
   if (availableModels.length === 0) {
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant='icon'>
-            <AlertCircle className='size-6' aria-hidden='true' />
-          </EmptyMedia>
-          <EmptyTitle>No models available</EmptyTitle>
-          <EmptyDescription>
-            No AI models are currently available for your subscription tier.
-            This may occur if model configurations are being updated or if your
-            tier doesn&apos;t have access to any models.
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
+      <RouteEmptyState
+        icon={AlertCircle}
+        title='No models available'
+        description="No AI models are currently available for your subscription tier. This may occur if model configurations are being updated or if your tier doesn't have access to any models."
+        action={
           <Button asChild variant='default'>
-            <Link href={ROUTES.PRICING}>View Pricing Plans</Link>
+            <Link href={ROUTES.PRICING}>View pricing plans</Link>
           </Button>
-        </EmptyContent>
-      </Empty>
+        }
+      />
     );
   }
 

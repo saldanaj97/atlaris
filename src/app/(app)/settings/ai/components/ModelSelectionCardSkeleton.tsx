@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -7,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  * Skeleton for the Model Selection card.
  * Shown while the async component is loading.
  */
-export function ModelSelectionCardSkeleton(): JSX.Element {
+export function ModelSelectionCardSkeleton() {
   return (
     <Card className='p-6'>
       <Skeleton className='mb-4 h-6 w-36' />

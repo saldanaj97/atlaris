@@ -1,7 +1,7 @@
 import type { PlanSummary } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { BookOpen, Calendar } from 'lucide-react';
@@ -11,13 +11,11 @@ interface ActivityStreamSidebarProps {
   activePlan?: PlanSummary;
 }
 
-const SIDEBAR_CARD_CLASS =
-  'rounded-2xl border border-sidebar-border bg-sidebar p-5 text-sidebar-foreground shadow-sm';
 const SIDEBAR_SECONDARY_TEXT_CLASS = 'text-sidebar-foreground/70';
 
 function EmptyStateCard() {
   return (
-    <div className={SIDEBAR_CARD_CLASS}>
+    <Surface className='border-sidebar-border bg-sidebar text-sidebar-foreground'>
       <div className='flex flex-col items-center py-6 text-center'>
         <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground'>
           <BookOpen className='size-6' />
@@ -32,13 +30,13 @@ function EmptyStateCard() {
           <Link href={ROUTES.PLANS.NEW}>Create New Plan</Link>
         </Button>
       </div>
-    </div>
+    </Surface>
   );
 }
 
 function NoUpcomingEventsCard() {
   return (
-    <div className={SIDEBAR_CARD_CLASS}>
+    <Surface className='border-sidebar-border bg-sidebar text-sidebar-foreground'>
       <div className='flex flex-col items-center py-6 text-center'>
         <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground'>
           <Calendar className='size-6' />
@@ -53,13 +51,13 @@ function NoUpcomingEventsCard() {
           <Link href={ROUTES.PLANS.ROOT}>View Plans</Link>
         </Button>
       </div>
-    </div>
+    </Surface>
   );
 }
 
 export function ActivityStreamSidebar({
   activePlan,
-}: ActivityStreamSidebarProps): JSX.Element {
+}: ActivityStreamSidebarProps) {
   return (
     <aside className='flex w-full flex-col gap-4'>
       {activePlan ? <NoUpcomingEventsCard /> : <EmptyStateCard />}

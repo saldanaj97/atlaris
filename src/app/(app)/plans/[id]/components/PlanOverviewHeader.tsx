@@ -45,11 +45,11 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
           </div>
         </div>
 
-        <div>
+        <div className='min-w-0'>
           <p className='mb-2 text-sm font-medium tracking-wider text-muted-foreground uppercase'>
             Learning Plan
           </p>
-          <h2 className='mb-1 text-3xl font-bold text-foreground md:text-4xl lg:text-5xl'>
+          <h2 className='mb-1 truncate text-3xl font-bold text-foreground md:text-4xl lg:text-5xl'>
             {plan.topic}
           </h2>
           <p className='text-lg text-muted-foreground md:text-xl'>

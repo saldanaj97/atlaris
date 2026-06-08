@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,9 +8,9 @@ import {
 } from '@/components/ui/card';
 import { MessageSquare } from 'lucide-react';
 
-export function RequestIntegration(): JSX.Element {
+export function RequestIntegration() {
   return (
-    <Card className='relative overflow-hidden rounded-3xl border-white/30 bg-white/30 text-center backdrop-blur-sm dark:border-white/5 dark:bg-card/40'>
+    <Card className='border-border bg-card text-center shadow-sm'>
       <CardHeader className='gap-1'>
         <CardTitle className='text-lg'>Don&apos;t see what you need?</CardTitle>
         <CardDescription className='mx-auto max-w-md'>

@@ -1,7 +1,6 @@
 'use client';
 
 import type { PlanFormData } from './types';
-import type { JSX } from 'react';
 
 import {
   createInitialPlanInputState,
@@ -36,7 +35,7 @@ export function UnifiedPlanInput({
   disabled = false,
   initialTopic = '',
   topicResetVersion = 0,
-}: UnifiedPlanInputProps): JSX.Element {
+}: UnifiedPlanInputProps) {
   const baseId = useId();
   const [state, dispatch] = useReducer(
     planInputReducer,
@@ -181,7 +180,7 @@ export function UnifiedPlanInput({
           >
             {isSubmitting ? (
               <>
-                <Loader2 className='mr-2 size-4 animate-spin' />
+                <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
                 <span>Generating…</span>
               </>
             ) : (

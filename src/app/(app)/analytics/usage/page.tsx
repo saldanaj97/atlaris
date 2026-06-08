@@ -1,20 +1,18 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
 import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
 import { PageHeader } from '@/components/ui/page-header';
-import { PageShell } from '@/components/ui/page-shell';
 import { BarChart3, Clock, Flame, Target } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Usage Analytics | Atlaris',
   description:
-    'Track your learning progress with detailed usage analytics — study time, completion rates, streaks, and more.',
+    'Review study time, completion rates, streaks, and weekly learning summaries.',
   openGraph: {
     title: 'Usage Analytics | Atlaris',
     description:
-      'Track your learning progress with detailed usage analytics — study time, completion rates, streaks, and more.',
+      'Review study time, completion rates, streaks, and weekly learning summaries.',
     url: '/analytics/usage',
     images: ['/og-default.jpg'],
   },
@@ -25,45 +23,45 @@ const iconClass = 'text-primary size-8 shrink-0';
 const PREVIEW_CARDS = [
   {
     icon: <Clock className={iconClass} aria-hidden />,
-    title: 'Study Time Tracking',
+    title: 'Study time',
     description:
-      'See exactly how many hours you spend learning each week. Spot your most productive days and find your ideal study rhythm.',
+      'Weekly totals and daily averages drawn from your lesson and module activity.',
   },
   {
     icon: <Target className={iconClass} aria-hidden />,
-    title: 'Completion Rates',
+    title: 'Completion rates',
     description:
-      "Track your progress across every plan. Know which topics you're crushing and where you might need a little more focus.",
+      'See task and module completion across each plan, with trends over time.',
   },
   {
     icon: <Flame className={iconClass} aria-hidden />,
-    title: 'Learning Streaks',
+    title: 'Learning streaks',
     description:
-      'Build consistency with daily and weekly streak tracking. Small wins compound — watch your momentum grow.',
+      'Track consecutive study days and spot gaps before they break your rhythm.',
   },
   {
     icon: <BarChart3 className={iconClass} aria-hidden />,
-    title: 'Weekly Reports',
+    title: 'Weekly summary',
     description:
-      'Get a clear snapshot of your week — time invested, milestones hit, and personalized suggestions for what to tackle next.',
+      'A single report with time spent, modules finished, and suggested next steps.',
   },
 ];
 
-export default function UsageAnalyticsPage(): JSX.Element {
+export default function UsageAnalyticsPage() {
   return (
-    <PageShell>
+    <>
       <PageHeader
         title='Usage'
-        subtitle='Understand how you learn, so you can learn even better'
+        subtitle='Metrics from your plans, modules, and study sessions'
       />
 
       <ComingSoonAlert
-        title="We're building something special"
-        description="Usage analytics will give you a clear picture of your learning habits and progress. We're putting the finishing touches on it — we'll let you know when it's ready."
+        title='Usage analytics are almost ready'
+        description='We are connecting your plan activity to charts and summaries. You will see real data here once the feature ships.'
         className='mb-6'
       />
 
-      <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+      <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
         {PREVIEW_CARDS.map((card) => (
           <LockedFeatureCard
             key={card.title}
@@ -73,6 +71,6 @@ export default function UsageAnalyticsPage(): JSX.Element {
           />
         ))}
       </div>
-    </PageShell>
+    </>
   );
 }

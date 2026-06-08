@@ -1,8 +1,6 @@
 'use client';
 
-import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import {
@@ -10,6 +8,7 @@ import {
   getPlanLastActivityRelative,
   getPlanStatus,
 } from '@/app/(app)/plans/components/plan-utils';
+import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -29,14 +28,6 @@ import {
 import Link from 'next/link';
 import { useState } from 'react';
 
-const STATUS_COLORS: Record<PlanReadStatus, string> = {
-  active: 'bg-emerald-500',
-  paused: 'bg-amber-500',
-  completed: 'bg-blue-500',
-  generating: 'bg-purple-500',
-  failed: 'bg-red-500',
-};
-
 interface PlanRowProps {
   summary: PlanSummary;
   isSelected: boolean;
@@ -49,7 +40,7 @@ export function PlanRow({
   isSelected,
   onSelect,
   referenceTimestamp,
-}: PlanRowProps): JSX.Element {
+}: PlanRowProps) {
   const { plan } = summary;
   const progressPercent = Math.round(summary.completion * 100);
   const status = getPlanStatus(summary, referenceTimestamp);
@@ -71,7 +62,7 @@ export function PlanRow({
       />
       <div
         className={cn(
-          'group flex items-center gap-4 rounded-2xl px-5 py-4 transition',
+          'group flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors',
           isSelected
             ? 'bg-primary/5 ring-1 ring-primary/30 dark:bg-primary/10'
             : 'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5',
@@ -84,12 +75,17 @@ export function PlanRow({
         >
           {/* Status indicator */}
           <div className='relative shrink-0'>
-            <div className={cn('size-3 rounded-full', STATUS_COLORS[status])} />
+            <div
+              className={cn(
+                'size-3 rounded-full',
+                getPlanStatusDotClassName(status),
+              )}
+            />
             {status === 'generating' && (
               <div
                 className={cn(
-                  'absolute inset-0 animate-ping rounded-full opacity-50',
-                  STATUS_COLORS[status],
+                  'absolute inset-0 animate-ping rounded-full opacity-50 motion-reduce:animate-none',
+                  getPlanStatusDotClassName(status),
                 )}
               />
             )}
@@ -102,12 +98,12 @@ export function PlanRow({
                 {plan.topic}
               </span>
               {progressPercent >= 80 && (
-                <Sparkles className='size-3.5 shrink-0 text-amber-500' />
+                <Sparkles className='size-3.5 shrink-0 text-warning' />
               )}
               {/* Tasks count */}
               <div className='hidden w-[3.75rem] shrink-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex'>
                 <CheckCircle2 className='size-3.5' />
-                <span>
+                <span className='tabular-nums'>
                   {summary.completedTasks}/{summary.totalTasks}
                 </span>
               </div>
@@ -130,7 +126,7 @@ export function PlanRow({
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className='w-8 text-right text-xs font-medium text-muted-foreground'>
+            <span className='w-8 text-right text-xs font-medium text-muted-foreground tabular-nums'>
               {progressPercent}%
             </span>
           </div>

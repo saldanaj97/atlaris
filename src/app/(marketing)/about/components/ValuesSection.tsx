@@ -1,48 +1,33 @@
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import { MarketingSectionLayout } from './MarketingSectionLayout';
-import { Card } from '@/components/ui/card';
+import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
+import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
 import { Eye, Globe, Target } from 'lucide-react';
 import { useId } from 'react';
 
-/**
- * Core values section with glassmorphism cards.
- */
-export function ValuesSection(): JSX.Element {
+export function ValuesSection() {
   const headingId = useId();
 
   return (
-    <MarketingSectionLayout
+    <MarketingSection
       headingId={headingId}
-      title={
-        <>
-          What We <span className='gradient-text'>Believe</span>
-        </>
-      }
+      title='What We Believe'
       subtitle='The principles that guide every feature we build.'
     >
       <div className='grid gap-6 md:grid-cols-3'>
         {VALUES.map((value) => (
-          <Card
-            key={value.title}
-            className='group relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-white/10 dark:bg-card/40'
-          >
-            <div
-              className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30'
-              aria-hidden='true'
-            />
-
-            <div className='mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg'>
+          <MarketingCard key={value.title}>
+            <div className='brand-fill-interactive mb-6 inline-flex size-14 items-center justify-center rounded-2xl shadow-lg'>
               {value.icon}
             </div>
-            <h3 className='marketing-h3 mb-3 text-foreground'>{value.title}</h3>
+            <h3 className='marketing-card-title mb-3'>{value.title}</h3>
             <p className='leading-relaxed text-muted-foreground'>
               {value.description}
             </p>
-          </Card>
+          </MarketingCard>
         ))}
       </div>
-    </MarketingSectionLayout>
+    </MarketingSection>
   );
 }
 
@@ -57,18 +42,18 @@ const VALUES: Value[] = [
     icon: <Eye className='size-6 text-white' aria-hidden='true' />,
     title: 'Clarity',
     description:
-      "Learning shouldn't feel chaotic. We strip away noise and give you a crystal-clear path from where you are to where you want to be.",
+      'Learning should not feel chaotic. We show the next module, lesson, and session on one timeline.',
   },
   {
     icon: <Target className='size-6 text-white' aria-hidden='true' />,
     title: 'Personalization',
     description:
-      'No two learners are the same. Every plan is tailored to your goals, schedule, and preferred learning style.',
+      'Every plan reflects your goals, schedule, and preferred learning pace.',
   },
   {
     icon: <Globe className='size-6 text-white' aria-hidden='true' />,
     title: 'Accessibility',
     description:
-      'Great education should be available to everyone. We curate free and open resources alongside premium content.',
+      'We prioritize open resources and keep a free tier so anyone can start.',
   },
 ];

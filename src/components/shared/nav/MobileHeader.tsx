@@ -1,7 +1,6 @@
 'use client';
 
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
@@ -36,7 +35,7 @@ export default function MobileHeader({
   tier,
   isAuthenticated,
   showClerkUserButton,
-}: MobileHeaderProps): JSX.Element {
+}: MobileHeaderProps) {
   return (
     <div className={mobileHeaderShellClass(pathname)}>
       <div className='flex shrink-0'>

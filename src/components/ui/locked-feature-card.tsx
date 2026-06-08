@@ -1,9 +1,8 @@
 'use client';
 
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Lock } from 'lucide-react';
 
@@ -23,7 +22,7 @@ export function LockedFeatureCard({
   title,
   description,
   className,
-}: LockedFeatureCardProps): JSX.Element {
+}: LockedFeatureCardProps) {
   return (
     <Card
       data-slot='locked-feature-card'
@@ -40,7 +39,10 @@ export function LockedFeatureCard({
         </div>
 
         <div className='flex flex-col gap-3 pr-8'>
-          <span className='shrink-0' aria-hidden='true'>
+          <span
+            className='flex size-10 shrink-0 items-center justify-center rounded-md bg-muted'
+            aria-hidden='true'
+          >
             {icon}
           </span>
           <div>
@@ -48,12 +50,6 @@ export function LockedFeatureCard({
             <p className='mt-1 text-sm text-muted-foreground'>{description}</p>
           </div>
         </div>
-
-        <Progress
-          value={0}
-          className='mt-4 h-1.5 bg-muted'
-          aria-hidden='true'
-        />
       </CardContent>
     </Card>
   );

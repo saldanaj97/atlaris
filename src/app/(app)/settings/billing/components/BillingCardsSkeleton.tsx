@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -7,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  * Skeleton for the billing cards.
  * Shown while the async component is loading.
  */
-export function BillingCardsSkeleton(): JSX.Element {
+export function BillingCardsSkeleton() {
   return (
     <>
       {/* Current Plan Card skeleton */}

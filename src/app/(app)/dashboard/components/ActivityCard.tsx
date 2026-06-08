@@ -1,6 +1,7 @@
 import type { ActivityItem } from '../types';
 import type React from 'react';
 
+import { Surface } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
 import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
 
@@ -14,13 +15,13 @@ const typeConfig: Record<
 > = {
   milestone: {
     icon: Trophy,
-    color: 'bg-amber-100 text-amber-600',
-    borderColor: 'border-l-amber-400',
+    color: 'bg-warning/15 text-warning',
+    borderColor: 'border-l-warning',
   },
   progress: {
     icon: TrendingUp,
-    color: 'bg-cyan-100 text-cyan-600',
-    borderColor: 'border-l-cyan-400',
+    color: 'bg-accent/15 text-accent-foreground',
+    borderColor: 'border-l-accent',
   },
 };
 
@@ -52,9 +53,11 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
   const Icon = config.icon;
 
   return (
-    <article
+    <Surface
+      variant='interactive'
+      padding='comfortable'
       className={cn(
-        'group relative overflow-hidden rounded-2xl border border-l-4 border-panel-border bg-panel p-5 shadow-sm transition hover:shadow-md',
+        'group relative overflow-hidden border-l-4',
         config.borderColor,
       )}
     >
@@ -62,7 +65,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
         {/* Icon */}
         <div
           className={cn(
-            'flex size-10 flex-shrink-0 items-center justify-center rounded-xl',
+            'flex size-10 flex-shrink-0 items-center justify-center rounded-lg',
             config.color,
           )}
         >
@@ -97,6 +100,6 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
           )}
         </div>
       </div>
-    </article>
+    </Surface>
   );
 }

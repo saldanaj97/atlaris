@@ -3,15 +3,14 @@ import type {
   RequestPlanRegenerationResult,
 } from './types';
 
+import { attachPlanRegenerationWorkflow } from './attach-workflow';
 import {
   createDefaultRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDeps,
 } from './deps';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
-import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
-import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
-import { workflowEnv } from '@/lib/config/env';
+import { workflowEnv } from '@/lib/config/env/workflow';
 import { getDb } from '@supabase/runtime';
 
 export async function requestPlanRegeneration(
@@ -48,9 +47,10 @@ export async function requestPlanRegeneration(
     };
   }
 
-  const planGenerationRateLimit = await d.rateLimit.check(userId, d.dbClient);
-
-  const tier = await d.tier.resolveUserTier(userId, d.dbClient);
+  const [planGenerationRateLimit, tier] = await Promise.all([
+    d.rateLimit.check(userId, d.dbClient),
+    d.tier.resolveUserTier(userId, d.dbClient),
+  ]);
   const priority = d.priority.computeJobPriority({
     tier,
     isPriorityTopic: d.priority.isPriorityTopic(overrides?.topic ?? plan.topic),
@@ -116,30 +116,38 @@ export async function requestPlanRegeneration(
   if (workflowEnv.planRegenerationWorkflowEnabled) {
     const correlationId = `regen-${acceptedJobId}`;
     try {
-      const workflowStart = await startPlanRegenerationWorkflow({
-        jobId: acceptedJobId,
-        planId,
-        userId,
-        correlationId,
-      });
-      if (!workflowStart.started) {
-        throw new Error(
-          `Failed to start plan regeneration workflow for job ${acceptedJobId}.`,
-        );
-      }
-
-      const launchedPayload = planRegenerationJobPayloadSchema.parse({
-        ...payload,
-        workflow: {
-          provider: 'workflow-sdk' as const,
-          runId: workflowStart.runId,
-          startedAt: new Date().toISOString(),
+      const attachResult = await attachPlanRegenerationWorkflow(
+        {
+          jobId: acceptedJobId,
+          planId,
+          userId,
+          payload,
+          correlationId,
         },
-      });
-      await d.queue.updateRegenerationJobPayload(
-        acceptedJobId,
-        launchedPayload,
+        d.queue,
       );
+      if (attachResult.kind === 'start-failed') {
+        d.logger.error(
+          {
+            acceptedJobId,
+            planId,
+            userId,
+            correlationId,
+          },
+          'Failed to start plan regeneration workflow at enqueue time',
+        );
+        await d.queue.failJob(
+          acceptedJobId,
+          'Failed to start plan regeneration workflow.',
+          { retryable: true },
+        );
+        return {
+          kind: 'workflow-start-failed',
+          jobId: acceptedJobId,
+          planId,
+          retryable: true,
+        };
+      }
     } catch (error: unknown) {
       d.logger.error(
         {

@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 
 import { ModelSelectionCard } from '@/app/(app)/settings/ai/components/ModelSelectionCard';
 import { ModelSelectionCardSkeleton } from '@/app/(app)/settings/ai/components/ModelSelectionCardSkeleton';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Suspense } from 'react';
 
@@ -17,7 +17,6 @@ export default function AISettingsPage(): ReactElement {
     <>
       <PageHeader
         title='AI Preferences'
-        titleAs='h2'
         subtitle={
           <>
             Save the model Atlaris should use for future plan generations. If
@@ -35,9 +34,11 @@ export default function AISettingsPage(): ReactElement {
         </Suspense>
 
         {/* Static content - renders immediately */}
-        <Card className='p-6'>
-          <h3 className='mb-4 text-xl font-semibold'>About AI Models</h3>
-          <div className='space-y-4 text-sm text-muted-foreground'>
+        <Card>
+          <CardHeader>
+            <CardTitle>About AI Models</CardTitle>
+          </CardHeader>
+          <CardContent className='space-y-4 text-sm text-muted-foreground'>
             <p>
               Different models trade off speed, price, and reasoning quality.
             </p>
@@ -54,13 +55,13 @@ export default function AISettingsPage(): ReactElement {
               Your saved model stays in effect until you change it. Only listed
               models can be saved.
             </p>
-            <div className='mt-4 rounded-lg border border-border bg-muted/50 p-3'>
+            <div className='mt-4 rounded-md border border-border bg-muted/50 p-3'>
               <p className='text-xs'>
                 <strong>Note:</strong> Availability and pricing can change over
                 time.
               </p>
             </div>
-          </div>
+          </CardContent>
         </Card>
       </div>
     </>

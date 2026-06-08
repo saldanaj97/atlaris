@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
@@ -7,17 +5,16 @@ import { Search } from 'lucide-react';
  * Skeleton for the plans content (search, filters, list).
  * Header title and button are static and rendered by the page.
  */
-export function PlansContentSkeleton(): JSX.Element {
+export function PlansContentSkeleton() {
   return (
     <>
       {/* Search Bar skeleton */}
-      <div className='mb-5 flex w-full items-center gap-3 rounded-2xl border border-border bg-muted-foreground/5 px-4 py-3 dark:bg-foreground/5'>
-        <Search className='size-4 text-muted-foreground' />
-        <Skeleton className='h-5 w-48' />
+      <div className='relative mb-6'>
+        <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+        <Skeleton className='h-11 w-full rounded-md' />
       </div>
 
-      {/* Filters Bar skeleton */}
-      <div className='mb-5 flex flex-wrap items-center gap-3 border-b border-border pb-4'>
+      <div className='mb-6 flex flex-wrap items-center gap-2 border-b border-border pb-4'>
         <Skeleton className='h-9 w-24 rounded-lg' />
         <Skeleton className='h-9 w-24 rounded-lg' />
         <Skeleton className='h-9 w-28 rounded-lg' />
@@ -36,7 +33,7 @@ export function PlansContentSkeleton(): JSX.Element {
   );
 }
 
-function PlanRowSkeleton(): JSX.Element {
+function PlanRowSkeleton() {
   return (
     <div className='flex items-center gap-4 rounded-2xl px-5 py-4'>
       {/* Status indicator skeleton */}

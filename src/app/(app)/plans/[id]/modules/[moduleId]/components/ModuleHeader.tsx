@@ -3,7 +3,6 @@ import type {
   ModuleDetailNavItem,
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
@@ -35,7 +34,7 @@ export function ModuleHeader({
   statuses,
   previousModulesComplete,
   allModules,
-}: ModuleHeaderProps): JSX.Element {
+}: ModuleHeaderProps) {
   const {
     totalTasks,
     completedTasks,
@@ -78,9 +77,9 @@ export function ModuleHeader({
           </div>
         </div>
 
-        <div>
-          <h1 className='mb-2 flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl'>
-            {module.title}
+        <div className='min-w-0'>
+          <h1 className='mb-2 flex min-w-0 items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl'>
+            <span className='truncate'>{module.title}</span>
             {!previousModulesComplete && (
               <Lock className='size-6 text-muted-foreground md:size-7' />
             )}

@@ -1,5 +1,3 @@
-import type { JSX } from 'react';
-
 import {
   findActivePlan,
   generateActivities,
@@ -18,7 +16,7 @@ import { redirect } from 'next/navigation';
  * Async component that fetches user plan data and renders dashboard content.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function DashboardContent(): Promise<JSX.Element> {
+export async function DashboardContent() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
     const summaries = await listDashboardPlanSummaries({
       userId: actor.id,
@@ -61,42 +59,35 @@ export async function DashboardContent(): Promise<JSX.Element> {
  * Skeleton for the dashboard content.
  * Shown while the async component is loading.
  */
-export function DashboardContentSkeleton(): JSX.Element {
+export function DashboardContentSkeleton() {
   return (
     <>
       {/* ResumeLearningHero skeleton */}
       <section aria-label='Resume learning loading' className='mb-6'>
-        <div className='relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary/20 via-accent/20 to-primary-dark/20 p-6 shadow-lg'>
-          {/* Top row: label (left) and circular progress (right) */}
+        <Surface padding='comfortable' className='flex flex-col gap-4'>
           <div className='flex items-start justify-between gap-4'>
-            <Skeleton className='h-4 w-28 bg-white/30' />
-            {/* Circular progress skeleton */}
-            <Skeleton className='size-16 rounded-full bg-white/30' />
+            <Skeleton className='h-4 w-28' />
+            <Skeleton className='size-16 rounded-full' />
           </div>
 
-          {/* Bottom row: badges + title + description */}
           <div className='flex flex-wrap items-end justify-between gap-4'>
             <div className='min-w-0 flex-1 space-y-2'>
-              {/* Badge skeletons */}
               <div className='flex flex-wrap gap-2'>
-                <Skeleton className='h-6 w-20 rounded-full bg-white/30' />
-                <Skeleton className='h-6 w-16 rounded-full bg-white/30' />
-                <Skeleton className='h-6 w-14 rounded-full bg-white/30' />
-                <Skeleton className='h-6 w-24 rounded-full bg-white/30' />
+                <Skeleton className='h-6 w-20 rounded-full' />
+                <Skeleton className='h-6 w-16 rounded-full' />
+                <Skeleton className='h-6 w-14 rounded-full' />
+                <Skeleton className='h-6 w-24 rounded-full' />
               </div>
-              {/* Title skeleton */}
-              <Skeleton className='h-9 w-64 bg-white/30 md:w-80' />
-              {/* Description skeleton */}
-              <Skeleton className='h-5 w-full max-w-md bg-white/30' />
+              <Skeleton className='h-9 w-64 md:w-80' />
+              <Skeleton className='h-5 w-full max-w-md' />
             </div>
 
-            {/* Bottom right: Up Next and Continue Learning */}
             <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
-              <Skeleton className='h-5 w-40 bg-white/30' />
-              <Skeleton className='h-10 w-40 rounded-lg bg-white/30' />
+              <Skeleton className='h-5 w-40' />
+              <Skeleton className='h-10 w-40 rounded-lg' />
             </div>
           </div>
-        </div>
+        </Surface>
       </section>
 
       <div className='grid gap-6 lg:grid-cols-3'>

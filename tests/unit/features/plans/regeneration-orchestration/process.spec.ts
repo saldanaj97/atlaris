@@ -479,7 +479,7 @@ describe('processPlanRegenerationJob', () => {
     });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
-      'Queued plan regeneration failed.',
+      'Failed while processing queued plan regeneration job.',
       {
         retryable: false,
       },

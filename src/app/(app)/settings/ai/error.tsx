@@ -1,7 +1,5 @@
 'use client';
 
-import type { JSX } from 'react';
-
 import { SettingsErrorContent } from '@/app/(app)/settings/components/SettingsErrorContent';
 
 interface ErrorProps {
@@ -13,10 +11,7 @@ interface ErrorProps {
  * Route-level error boundary for AI settings page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function AISettingsError({
-  error,
-  reset,
-}: ErrorProps): JSX.Element {
+export default function AISettingsError({ error, reset }: ErrorProps) {
   return (
     <SettingsErrorContent
       error={error}

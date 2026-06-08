@@ -8,9 +8,10 @@ import {
 import { ProfileFormSkeleton } from '@/app/(app)/settings/profile/components/ProfileFormSkeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
 import { Pencil } from 'lucide-react';
 import Link from 'next/link';
@@ -211,37 +212,31 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
   if (state.error || !state.profile) {
     return (
-      <Card className='col-span-full space-y-4 p-6'>
-        <p className='text-sm text-muted-foreground'>
-          {state.error ?? 'Unable to load profile data.'}
-        </p>
-        <div>
-          <Button
-            type='button'
-            variant='outline'
-            onClick={() => {
-              profileFetchControllerRef.current?.abort();
-              profileFetchControllerRef.current = fetchProfile();
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      </Card>
+      <RouteErrorState
+        className='col-span-full'
+        title='Unable to load profile'
+        message={state.error ?? 'Unable to load profile data.'}
+        onRetry={() => {
+          profileFetchControllerRef.current?.abort();
+          profileFetchControllerRef.current = fetchProfile();
+        }}
+      />
     );
   }
 
   return (
     <>
       {/* Personal Information */}
-      <Card className='flex min-h-80 flex-col p-6'>
-        <h2 className='mb-4 text-xl font-semibold'>Personal Information</h2>
-        <div className='space-y-4'>
-          <div>
+      <Card className='flex min-h-80 flex-col'>
+        <CardHeader>
+          <CardTitle>Personal Information</CardTitle>
+        </CardHeader>
+        <CardContent className='flex flex-1 flex-col space-y-4'>
+          <div className='space-y-2'>
             <Label
               id={profileNameLabelId}
               htmlFor={profileNameInputId}
-              className='mb-1 text-muted-foreground'
+              className='text-muted-foreground'
             >
               Name
             </Label>
@@ -251,6 +246,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 id={profileNameInputId}
                 type='text'
                 value={state.name}
+                className='rounded-md'
                 onChange={(event) =>
                   dispatch({ type: 'name-changed', name: event.target.value })
                 }
@@ -265,7 +261,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                 type='button'
                 variant='outline'
                 aria-labelledby={`${profileNameLabelId} ${profileNameValueId}`}
-                className='flex w-full items-center justify-between px-3 py-2 text-left text-sm font-normal'
+                className='flex h-9 w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-normal'
                 onClick={() => {
                   dispatch({ type: 'start-editing' });
                 }}
@@ -286,38 +282,40 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
             </span>
             <p className='text-sm'>{state.profile.email}</p>
           </div>
-        </div>
 
-        {state.editingName && (
-          <div className='mt-auto flex justify-end gap-2 pt-4'>
-            <Button
-              type='button'
-              variant='ghost'
-              disabled={state.saving}
-              onClick={() => {
-                dispatch({ type: 'cancel-editing' });
-              }}
-            >
-              Cancel
-            </Button>
-            {isDirty && (
+          {state.editingName && (
+            <div className='mt-auto flex justify-end gap-2 pt-4'>
               <Button
+                type='button'
+                variant='ghost'
                 disabled={state.saving}
                 onClick={() => {
-                  void handleSave();
+                  dispatch({ type: 'cancel-editing' });
                 }}
               >
-                {state.saving ? 'Saving…' : 'Save Changes'}
+                Cancel
               </Button>
-            )}
-          </div>
-        )}
+              {isDirty && (
+                <Button
+                  disabled={state.saving}
+                  onClick={() => {
+                    void handleSave();
+                  }}
+                >
+                  {state.saving ? 'Saving…' : 'Save Changes'}
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Account Details */}
-      <Card className='p-6'>
-        <h2 className='mb-4 text-xl font-semibold'>Account Details</h2>
-        <div className='space-y-4 text-sm text-muted-foreground'>
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Details</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-4 text-sm text-muted-foreground'>
           <div>
             <span className='mb-1 block'>Subscription Tier</span>
             <Badge variant='product'>{state.profile.subscriptionTier}</Badge>
@@ -336,7 +334,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               })}
             </p>
           </div>
-          <div className='rounded-lg border border-border bg-muted/50 p-3'>
+          <div className='rounded-md border border-border bg-muted/50 p-3'>
             <p className='text-xs'>
               <strong>Note:</strong> To manage your subscription, visit the{' '}
               <Link
@@ -348,7 +346,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               page.
             </p>
           </div>
-        </div>
+        </CardContent>
       </Card>
     </>
   );

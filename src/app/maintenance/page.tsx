@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function MaintenancePage(): JSX.Element {
+export default function MaintenancePage() {
   return (
     <div className='flex min-h-screen items-center justify-center p-5'>
       <Card className='w-full max-w-2xl text-center'>

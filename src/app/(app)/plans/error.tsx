@@ -1,8 +1,8 @@
 'use client';
 
-import type { JSX } from 'react';
-
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
+import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ interface ErrorProps {
  * Route-level error boundary for plans list page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
+export default function PlansError({ error, reset }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Plans list error:', {
       errorDigest: error.digest,
@@ -27,32 +27,24 @@ export default function PlansError({ error, reset }: ErrorProps): JSX.Element {
   }, [error]);
 
   return (
-    <div>
-      <div className='mb-6 flex items-center justify-between'>
-        <h1>Learning Plans</h1>
-        <Button asChild>
-          <Link href='/plans/new'>
-            <Plus />
-            New Plan
-          </Link>
-        </Button>
-      </div>
+    <>
+      <PageHeader
+        title='Your Plans'
+        actions={
+          <Button asChild>
+            <Link href='/plans/new'>
+              <Plus />
+              New Plan
+            </Link>
+          </Button>
+        }
+      />
 
-      <div
-        role='alert'
-        className='flex flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950'
-      >
-        <h2 className='mb-2 text-xl font-semibold text-red-600 dark:text-red-400'>
-          Error Loading Plans
-        </h2>
-        <p className='mb-4 max-w-md text-muted-foreground'>
-          We couldn&apos;t load your learning plans. This could be a temporary
-          issue.
-        </p>
-        <Button onClick={reset} variant='default'>
-          Try Again
-        </Button>
-      </div>
-    </div>
+      <RouteErrorState
+        title='Error Loading Plans'
+        message="We couldn't load your learning plans. This could be a temporary issue."
+        onRetry={reset}
+      />
+    </>
   );
 }

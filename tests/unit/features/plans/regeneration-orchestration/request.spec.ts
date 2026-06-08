@@ -489,22 +489,26 @@ describe('requestPlanRegeneration', () => {
       expect(deps.inlineDrain.tryRegister).not.toHaveBeenCalled();
     });
 
-    it('fails retryably when enqueue-time workflow start returns not started', async () => {
+    it('marks workflow start failure retryable and returns workflow-start-failed', async () => {
       startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
       const failJob = vi.fn(async () => null);
       const deps = buildDeps({ queue: { failJob } });
 
-      await expect(
-        requestPlanRegeneration(
-          {
-            userId: 'user-1',
-            planId: ownedPlan.id,
-            inlineProcessingEnabled: false,
-          },
-          deps,
-        ),
-      ).rejects.toThrow(/Failed to start plan regeneration workflow/);
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
 
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        retryable: true,
+      });
       expect(failJob).toHaveBeenCalledWith(
         'job-1',
         'Failed to start plan regeneration workflow.',

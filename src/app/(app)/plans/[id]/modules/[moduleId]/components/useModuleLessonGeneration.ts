@@ -69,7 +69,13 @@ export function useModuleLessonGeneration({
   const generationPollCountRef = useRef(0);
 
   useEffect(() => {
-    if (status !== 'generating' || !previousModulesComplete) {
+    if (status !== 'generating') {
+      generationPollCountRef.current = 0;
+      setGenerationTakingLong(false);
+      return;
+    }
+
+    if (!previousModulesComplete) {
       generationPollCountRef.current = 0;
       setGenerationTakingLong(false);
       return;

@@ -25,6 +25,8 @@ import {
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+type ProxyRequestContext = ReturnType<typeof buildProxyRequestContext>;
+
 function buildProxyRequestContext(request: NextRequest) {
   const correlationId = getCorrelationId(request);
   const nonce = createCspNonce();
@@ -35,10 +37,28 @@ function buildProxyRequestContext(request: NextRequest) {
   return { correlationId, nonce, contentSecurityPolicy };
 }
 
-function applyProxyDecorations(
-  response: NextResponse,
-  ctx: ReturnType<typeof buildProxyRequestContext>,
+function nextWithProxyContext(
+  request: NextRequest,
+  options?: { skipCsp?: boolean; ctx?: ProxyRequestContext },
 ): NextResponse {
+  const ctx = options?.ctx ?? buildProxyRequestContext(request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-correlation-id', ctx.correlationId);
+
+  if (!options?.skipCsp) {
+    requestHeaders.set('x-nonce', ctx.nonce);
+    requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
+  }
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  if (options?.skipCsp) {
+    response.headers.set('x-correlation-id', ctx.correlationId);
+    return response;
+  }
+
   response.headers.set('x-correlation-id', ctx.correlationId);
   return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
     isProduction: appEnv.isProduction,
@@ -50,36 +70,10 @@ const withCorrelationId = (
   response: NextResponse,
 ): NextResponse => {
   const ctx = buildProxyRequestContext(request);
-  return applyProxyDecorations(response, ctx);
-};
-
-/** Machine workflow callbacks skip CSP/nonce decoration (SDK queue consumer). */
-const nextForWorkflowCallback = (request: NextRequest): NextResponse => {
-  const correlationId = getCorrelationId(request);
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-correlation-id', correlationId);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
+  response.headers.set('x-correlation-id', ctx.correlationId);
+  return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
+    isProduction: appEnv.isProduction,
   });
-  response.headers.set('x-correlation-id', correlationId);
-  return response;
-};
-
-const nextWithCorrelationId = (
-  request: NextRequest,
-  existingCtx?: ReturnType<typeof buildProxyRequestContext>,
-): NextResponse => {
-  const ctx = existingCtx ?? buildProxyRequestContext(request);
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-correlation-id', ctx.correlationId);
-  requestHeaders.set('x-nonce', ctx.nonce);
-  requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-  return applyProxyDecorations(response, ctx);
 };
 
 const proxy = clerkMiddleware(
@@ -107,7 +101,7 @@ const proxy = clerkMiddleware(
       );
 
       if (callbackAccess.status === 'allow') {
-        return nextForWorkflowCallback(request);
+        return nextWithProxyContext(request, { skipCsp: true });
       }
 
       if (callbackAccess.status === 'misconfigured') {
@@ -119,7 +113,7 @@ const proxy = clerkMiddleware(
 
     // Stripe webhooks bypass all checks including maintenance mode
     if (pathname.startsWith('/api/v1/stripe/webhook')) {
-      return nextWithCorrelationId(request);
+      return nextWithProxyContext(request);
     }
 
     // Maintenance mode
@@ -162,13 +156,13 @@ const proxy = clerkMiddleware(
           pathname,
           correlationId: ctx.correlationId,
         });
-        return nextWithCorrelationId(request, ctx);
+        return nextWithProxyContext(request, { ctx });
       }
 
       await auth.protect();
     }
 
-    return nextWithCorrelationId(request);
+    return nextWithProxyContext(request);
   },
   {
     signInUrl: '/auth/sign-in',

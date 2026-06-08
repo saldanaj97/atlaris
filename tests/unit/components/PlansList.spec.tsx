@@ -78,9 +78,9 @@ describe('PlansList', () => {
       <PlansList summaries={[]} referenceTimestamp={referenceTimestamp} />,
     );
 
-    expect(screen.getByText('No Plans Found')).toBeInTheDocument();
+    expect(screen.getByText('No plans found')).toBeInTheDocument();
     expect(
-      screen.getByText(/You haven't created any plans yet/i),
+      screen.getByText(/Create your first plan to get started/i),
     ).toBeInTheDocument();
   });
 

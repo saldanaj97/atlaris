@@ -1,7 +1,6 @@
 'use client';
 
 import type { IntegrationCardProps } from './IntegrationCard';
-import type { JSX } from 'react';
 
 import { IntegrationCard } from './IntegrationCard';
 
@@ -68,7 +67,7 @@ const INTEGRATIONS: IntegrationDef[] = [
   },
 ];
 
-export function IntegrationGrid(): JSX.Element {
+export function IntegrationGrid() {
   return (
     <div className='grid gap-6 md:grid-cols-2'>
       {INTEGRATIONS.map((def) => (

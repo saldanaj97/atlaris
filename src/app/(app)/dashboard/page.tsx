@@ -3,7 +3,6 @@ import {
   DashboardContentSkeleton,
 } from './components/DashboardContent';
 import { PageHeader } from '@/components/ui/page-header';
-import { PageShell } from '@/components/ui/page-shell';
 import { Suspense } from 'react';
 
 /**
@@ -14,16 +13,15 @@ import { Suspense } from 'react';
  */
 export default function DashboardPage() {
   return (
-    <PageShell>
+    <>
       <PageHeader
         title='Activity Feed'
         subtitle='Your learning journey, moment by moment'
       />
 
-      {/* Data-dependent content - wrapped in Suspense */}
       <Suspense fallback={<DashboardContentSkeleton />}>
         <DashboardContent />
       </Suspense>
-    </PageShell>
+    </>
   );
 }

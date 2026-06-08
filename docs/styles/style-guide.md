@@ -55,6 +55,10 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 **App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
 
+**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies opaque `bg-card` / `border-border` on authenticated product routes and glass/blur only on marketing paths (`/`, `/landing`, `/about`, `/pricing`). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+
+**Marketing composition:** use [`MarketingPageShell`](../../src/app/(marketing)/_shared/MarketingPageShell.tsx), [`MarketingHero`](../../src/app/(marketing)/_shared/MarketingHero.tsx), [`MarketingSection`](../../src/app/(marketing)/_shared/MarketingSection.tsx), [`MarketingCard`](../../src/app/(marketing)/_shared/MarketingCard.tsx), and shared glass surfaces from [`marketing-glass-surface.ts`](../../src/app/(marketing)/_shared/marketing-glass-surface.ts). Default section width is `max-w-screen-xl`; narrower grids (e.g. pricing) may use `max-w-5xl` when layout requires it.
+
 ### Light-mode mapping (reference)
 
 | Token                            | Typical light-mode role                                    |
@@ -80,17 +84,20 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 ### Font stacks (runtime)
 
-| Layer                            | Family                                                | Notes                                                                                                    |
-| -------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Body (default)**               | **Work Sans** (Next font on `<body>` in `layout.tsx`) | Default UI copy and elements that inherit without a heading rule.                                        |
-| **Theme / Tailwind `font-sans`** | **Geist** first in `--font-sans`                      | Components and utilities that use `font-sans`; marketing utilities that set heading families explicitly. |
-| **Serif**                        | `--font-serif` → Source Serif 4                       | Theme token; use sparingly.                                                                              |
-| **Mono**                         | `--font-mono` → JetBrains Mono                        | Code, IDs, technical strings.                                                                            |
-| **Clerk Auth UI**                | Clerk components inherit the root app fonts           | Keep auth pages under the shared auth layout and avoid provider-specific global CSS imports.             |
+| Layer                            | Family                                                                 | Notes                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Body (default)**               | **Work Sans** via `--font-family-base`                                 | Loaded with `next/font` on `<html>`; applied on `<body>` in `layout.tsx`.                     |
+| **App headings (`h1`–`h6`)**     | **Work Sans** via `--font-family-heading` (weight **600**)             | Product UI titles, settings cards, dashboard headings.                                        |
+| **Marketing display headings**   | **Young Serif** via `--font-family-display`                            | `.marketing-h1`–`.marketing-h4`; deliberate serif display role on marketing pages only.       |
+| **Marketing card titles**        | **Work Sans** via `--font-family-heading`                              | `.marketing-card-title` stays in the product sans for readable card copy.                     |
+| **Theme / Tailwind `font-sans`** | `--font-family-base` (Work Sans stack)                                 | `font-sans` utilities inherit the same UI stack.                                              |
+| **Theme / Tailwind `font-serif`**| `--font-family-display` (Young Serif stack)                            | Use sparingly for intentional display moments.                                                |
+| **Mono**                         | `--font-mono` → JetBrains Mono                                         | Code, IDs, technical strings.                                                                 |
+| **Clerk Auth UI**                | Clerk components inherit the root app fonts                            | Keep auth pages under the shared auth layout; avoid provider-specific global CSS imports.      |
 
-**Consistency:** For new screens, treat **Work Sans** as the default UI face and **Geist** (via `font-sans` or marketing classes) for display/marketing headlines. Avoid introducing a third sans unless the root layout is intentionally updated.
+**Consistency:** Use **Work Sans** for all product/app UI. Reserve **Young Serif** for marketing display headings (`.marketing-h*`). Do not add another sans unless `layout.tsx` and `globals.css` are updated together.
 
-**Observation (dev audit):** On `/landing`, a `.marketing-h1` heading can compute to **Geist** at **49px** / **700** with tight tracking, while body text follows **Work Sans** from the root layout.
+**CSS variables (defined in `globals.css`):** `--font-family-base`, `--font-family-heading`, `--font-family-display`, `--font-weight-base` (400), `--font-weight-heading` (600). Next/font exposes `--font-work-sans` and `--font-young-serif` on `<html>`.
 
 ### App / dashboard base headings (`@layer base`)
 
@@ -105,7 +112,7 @@ Plain `<h1>`–`<h6>` in [`globals.css`](../../src/app/globals.css) use the head
 | `h5` | 14px (0.875rem) | 1.4         | 0              |                    |
 | `h6` | 12px (0.75rem)  | 1.5         | 0              | Uppercase          |
 
-All use `font-family: var(--font-family-heading)` (Geist) and `font-weight: var(--font-weight-heading)`.
+All use `font-family: var(--font-family-heading)` (Work Sans) and `font-weight: var(--font-weight-heading)`.
 
 ### Marketing typography classes (`globals.css`)
 
@@ -131,17 +138,24 @@ All use `font-family: var(--font-family-heading)` (Geist) and `font-weight: var(
 
 ### Radius
 
-`--radius` is **2rem** at the root; `rounded-sm` / `md` / `lg` / `xl` derive from it in `@theme inline`.
+Product and marketing use **split radius tokens** (see `:root` in `globals.css`):
 
-| Token          | Derived from `--radius` | Typical use                     |
-| -------------- | ----------------------- | ------------------------------- |
-| `rounded-sm`   | `calc(2rem - 4px)`      | Small elements, badges          |
-| `rounded-md`   | `calc(2rem - 2px)`      | Buttons, inputs                 |
-| `rounded-lg`   | `2rem`                  | Cards, containers               |
-| `rounded-xl`   | `calc(2rem + 4px)`      | Large cards, hero elements      |
-| `rounded-2xl`  | ~1rem                   | Standard glass cards            |
-| `rounded-3xl`  | ~1.5rem                 | Feature cards, landing sections |
-| `rounded-full` | `9999px`                | Pills, circular elements        |
+| Token                 | Value    | Scope                                                                 |
+| --------------------- | -------- | --------------------------------------------------------------------- |
+| `--radius`            | `0.75rem`| Product/app: buttons, inputs, and token-derived `rounded-sm`–`xl`     |
+| `--radius-marketing`  | `2rem`   | Reference for marketing glass cards; sections use explicit `rounded-2xl` / `rounded-3xl` |
+
+**Decision (L-08):** Lowered product `--radius` from `2rem` because controls felt overly pill-shaped at ~28px `rounded-md`. Marketing keeps generous corners via explicit utilities, not the product token.
+
+| Token          | Derived from `--radius` (0.75rem) | Typical use                     |
+| -------------- | --------------------------------- | ------------------------------- |
+| `rounded-sm`   | `calc(0.75rem × 0.75)`            | Small elements, badges          |
+| `rounded-md`   | `calc(0.75rem × 0.875)`           | Buttons, inputs                 |
+| `rounded-lg`   | `0.75rem`                         | Compact containers              |
+| `rounded-xl`   | `calc(0.75rem × 1.25)`            | Larger product panels           |
+| `rounded-2xl`  | ~1rem (fixed scale)               | Product cards, standard glass   |
+| `rounded-3xl`  | ~1.5rem (fixed scale)             | Marketing feature cards, heroes |
+| `rounded-full` | `9999px`                          | Pills, circular elements        |
 
 ### Spacing
 

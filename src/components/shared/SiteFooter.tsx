@@ -16,7 +16,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href='/about'
-                className='text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+                className='rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
               >
                 About
               </Link>
@@ -24,7 +24,7 @@ export default function SiteFooter() {
             <li>
               <Link
                 href='/pricing'
-                className='text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+                className='rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
               >
                 Pricing
               </Link>
@@ -33,7 +33,7 @@ export default function SiteFooter() {
         </nav>
 
         {/* Copyright */}
-        <p className='text-xs text-muted-foreground'>
+        <p className='text-xs text-muted-foreground' suppressHydrationWarning>
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>

@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import type React from 'react';
 
+import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { CtaSection } from '@/app/(marketing)/about/components/CtaSection';
 import { HeroSection } from '@/app/(marketing)/about/components/HeroSection';
 import { MissionSection } from '@/app/(marketing)/about/components/MissionSection';
-import { TeamSection } from '@/app/(marketing)/about/components/TeamSection';
 import { ValuesSection } from '@/app/(marketing)/about/components/ValuesSection';
 
 export const metadata: Metadata = {
@@ -22,12 +22,11 @@ export const metadata: Metadata = {
 
 export default function Page(): React.ReactElement {
   return (
-    <div className='relative min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background font-sans text-foreground'>
+    <MarketingPageShell withHeaderOffset>
       <HeroSection />
       <MissionSection />
       <ValuesSection />
-      <TeamSection />
       <CtaSection />
-    </div>
+    </MarketingPageShell>
   );
 }
