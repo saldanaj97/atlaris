@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ export function MarketingSection({
   className,
   containerClassName,
   id,
-}: MarketingSectionProps): JSX.Element {
+}: MarketingSectionProps): ReactNode {
   return (
     <section
       id={id}

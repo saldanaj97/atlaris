@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
 import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
@@ -22,7 +22,7 @@ export function MarketingCta({
   description,
   href = '/plans/new',
   buttonLabel = 'Get started free',
-}: MarketingCtaProps): JSX.Element {
+}: MarketingCtaProps): ReactNode {
   return (
     <section
       className='relative overflow-hidden py-24 lg:py-32'

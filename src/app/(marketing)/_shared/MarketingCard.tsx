@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -38,7 +38,7 @@ export function MarketingCard({
   className,
   variant,
   showGlow = true,
-}: MarketingCardProps): JSX.Element {
+}: MarketingCardProps): ReactNode {
   return (
     <div className={cn(marketingCardVariants({ variant }), className)}>
       {showGlow ? (
