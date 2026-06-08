@@ -18,29 +18,11 @@ import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactElement, useCallback } from 'react';
+import { type ReactElement, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
-}
-
-const scopedTaskIdsByModules = new WeakMap<
-  ClientPlanDetail['modules'],
-  ReadonlySet<string>
->();
-
-function getScopedTaskIds(
-  modules: ClientPlanDetail['modules'],
-): ReadonlySet<string> {
-  const cached = scopedTaskIdsByModules.get(modules);
-  if (cached) return cached;
-
-  const taskIds = new Set(
-    modules.flatMap((module) => module.tasks.map((task) => task.id)),
-  );
-  scopedTaskIdsByModules.set(modules, taskIds);
-  return taskIds;
 }
 
 /**
@@ -49,7 +31,11 @@ function getScopedTaskIds(
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
-  const scopedTaskIds = getScopedTaskIds(modules);
+  const scopedTaskIds = useMemo(
+    () =>
+      new Set(modules.flatMap((module) => module.tasks.map((task) => task.id))),
+    [modules],
+  );
 
   const flushTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {
@@ -95,7 +81,10 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     onError: handleTaskStatusError,
   });
 
-  const overviewStats = computeOverviewStats(plan, statuses);
+  const overviewStats = useMemo(
+    () => computeOverviewStats(plan, statuses),
+    [plan, statuses],
+  );
 
   const isPendingOrProcessing =
     plan.status === 'pending' || plan.status === 'processing';

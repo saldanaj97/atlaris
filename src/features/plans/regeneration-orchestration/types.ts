@@ -53,6 +53,12 @@ export type RequestPlanRegenerationResult =
       currentCount: number;
       limit: number;
       reason: string;
+    }
+  | {
+      kind: 'workflow-start-failed';
+      jobId: string;
+      planId: string;
+      retryable: boolean;
     };
 
 export type ProcessPlanRegenerationJobResult =

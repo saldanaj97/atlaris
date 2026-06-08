@@ -141,6 +141,12 @@ export async function requestPlanRegeneration(
           'Failed to start plan regeneration workflow.',
           { retryable: true },
         );
+        return {
+          kind: 'workflow-start-failed',
+          jobId: acceptedJobId,
+          planId,
+          retryable: true,
+        };
       }
     } catch (error: unknown) {
       d.logger.error(
