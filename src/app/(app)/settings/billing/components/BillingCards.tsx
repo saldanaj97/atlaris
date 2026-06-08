@@ -24,6 +24,7 @@ import { redirect } from 'next/navigation';
  * Wrapped in Suspense boundary by the parent page.
  */
 export async function BillingCards({ locale }: { locale?: string }) {
+  const effectiveLocale = locale ?? 'en-US';
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
     snapshot: await getBillingAccountSnapshot({
@@ -54,11 +55,14 @@ export async function BillingCards({ locale }: { locale?: string }) {
   }
 
   const nextBilling = snapshot.subscriptionPeriodEnd
-    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString(locale, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString(
+        effectiveLocale,
+        {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        },
+      )
     : '—';
 
   const plansValue = getUsagePercent(

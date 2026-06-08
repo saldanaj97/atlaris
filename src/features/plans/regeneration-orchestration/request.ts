@@ -127,8 +127,19 @@ export async function requestPlanRegeneration(
         d.queue,
       );
       if (attachResult.kind === 'start-failed') {
-        throw new Error(
-          `Failed to start plan regeneration workflow for job ${acceptedJobId}.`,
+        d.logger.error(
+          {
+            acceptedJobId,
+            planId,
+            userId,
+            correlationId,
+          },
+          'Failed to start plan regeneration workflow at enqueue time',
+        );
+        await d.queue.failJob(
+          acceptedJobId,
+          'Failed to start plan regeneration workflow.',
+          { retryable: true },
         );
       }
     } catch (error: unknown) {

@@ -68,15 +68,14 @@ export function useModuleLessonGeneration({
   const [generationTakingLong, setGenerationTakingLong] = useState(false);
   const generationPollCountRef = useRef(0);
 
-  if (status !== 'generating') {
-    generationPollCountRef.current = 0;
-    if (generationTakingLong) {
-      setGenerationTakingLong(false);
-    }
-  }
-
   useEffect(() => {
-    if (status !== 'generating' || !previousModulesComplete) {
+    if (status !== 'generating') {
+      generationPollCountRef.current = 0;
+      setGenerationTakingLong(false);
+      return;
+    }
+
+    if (!previousModulesComplete) {
       return;
     }
 

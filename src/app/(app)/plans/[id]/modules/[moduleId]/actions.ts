@@ -21,7 +21,7 @@ interface BatchUpdateModuleTaskProgressInput {
 
 /**
  * Server action to batch update multiple task progress records from the module detail page.
- * Delegates validation, scope checks, persistence, and path selection to `applyTaskProgressUpdates`.
+ * Delegates validation, scope checks, persistence, and path selection to `batchUpdateTaskProgressCore`.
  */
 export type BatchUpdateModuleTaskProgressResult = {
   readonly revalidateFailed: boolean;

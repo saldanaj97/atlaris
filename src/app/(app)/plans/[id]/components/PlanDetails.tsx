@@ -25,15 +25,31 @@ interface PlanDetailClientProps {
   plan: ClientPlanDetail;
 }
 
+const scopedTaskIdsByModules = new WeakMap<
+  ClientPlanDetail['modules'],
+  ReadonlySet<string>
+>();
+
+function getScopedTaskIds(
+  modules: ClientPlanDetail['modules'],
+): ReadonlySet<string> {
+  const cached = scopedTaskIdsByModules.get(modules);
+  if (cached) return cached;
+
+  const taskIds = new Set(
+    modules.flatMap((module) => module.tasks.map((task) => task.id)),
+  );
+  scopedTaskIdsByModules.set(modules, taskIds);
+  return taskIds;
+}
+
 /**
  * Client component that keeps header progress in sync with timeline status changes.
  */
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
-  const scopedTaskIds = new Set(
-    modules.flatMap((module) => module.tasks.map((task) => task.id)),
-  );
+  const scopedTaskIds = getScopedTaskIds(modules);
 
   const flushTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {

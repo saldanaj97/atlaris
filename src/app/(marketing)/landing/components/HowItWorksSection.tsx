@@ -197,14 +197,8 @@ function SyncVisual() {
     <div className='space-y-4'>
       {/* Integrations row */}
       <div className='flex items-center justify-center gap-4'>
-        <IntegrationIcon
-          name='Google Calendar'
-          color='bg-linear-to-br from-primary to-accent'
-        />
-        <IntegrationIcon
-          name='Outlook'
-          color='bg-linear-to-br from-accent to-primary'
-        />
+        <IntegrationIcon color='bg-linear-to-br from-primary to-accent' />
+        <IntegrationIcon color='bg-linear-to-br from-accent to-primary' />
       </div>
 
       {/* Sync toast notification */}
@@ -252,7 +246,7 @@ function SyncVisual() {
   );
 }
 
-function IntegrationIcon({ color }: { name: string; color: string }) {
+function IntegrationIcon({ color }: { color: string }) {
   return (
     <div
       className={`flex size-12 items-center justify-center rounded-xl ${color} shadow-lg`}

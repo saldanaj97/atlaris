@@ -5,7 +5,7 @@ import { BookOpen, Calendar, CheckCircle2 } from 'lucide-react';
  */
 export function LandingHeroVisual() {
   return (
-    <>
+    <div aria-hidden='true'>
       <div className='absolute -inset-4 rounded-3xl bg-linear-to-r from-primary/30 to-accent/30 blur-xl' />
 
       <div className='relative rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-card/30'>
@@ -63,6 +63,6 @@ export function LandingHeroVisual() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

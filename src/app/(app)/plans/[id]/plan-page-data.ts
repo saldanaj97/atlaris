@@ -6,8 +6,9 @@ import { loadAuthorizedPageEntity } from '@/lib/api/load-authorized-page-entity'
 import { logger } from '@/lib/logging/logger';
 
 /**
- * Loads plan detail for the plan overview page inside a server component boundary.
- * Uses `requestBoundary.component()` — do not call from `'use server'` action modules.
+ * Loads plan detail for the plan overview page through `loadAuthorizedPageEntity`.
+ * Pass a plan id and receive a `PlanAccessResult` with auth, not-found, and success states.
+ * Do not call this server-component loader from `'use server'` action modules.
  */
 export function loadPlanForPage(planId: string): Promise<PlanAccessResult> {
   return loadAuthorizedPageEntity({

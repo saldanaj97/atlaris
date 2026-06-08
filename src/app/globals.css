@@ -65,7 +65,7 @@
 
   --font-sans: var(--font-family-base);
   --font-serif: var(--font-family-display);
-  --font-mono: JetBrains Mono, monospace;
+  --font-mono: 'JetBrains Mono', monospace;
 
   /* Product controls derive rounded-* from --radius; marketing keeps explicit rounded-2xl/3xl. */
   --radius: 0.75rem;

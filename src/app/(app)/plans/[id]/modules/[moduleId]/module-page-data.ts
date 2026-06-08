@@ -9,8 +9,9 @@ import { loadAuthorizedPageEntity } from '@/lib/api/load-authorized-page-entity'
 import { logger } from '@/lib/logging/logger';
 
 /**
- * Loads module detail for the module page inside a server component boundary.
- * Uses `requestBoundary.component()` — do not call from `'use server'` action modules.
+ * Loads module detail for the module page through `loadAuthorizedPageEntity`.
+ * Pass plan and module ids and receive a `ModuleAccessResult` with auth, not-found, and success states.
+ * Do not call this server-component loader from `'use server'` action modules.
  */
 export function loadModuleForPage(
   planId: string,
