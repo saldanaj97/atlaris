@@ -71,7 +71,7 @@ function GenerationDescription({
             lessons, resources, and progress while content is prepared.
           </p>
           {generationTakingLong ? (
-            <p className='mt-2 text-sm font-medium text-amber-700 dark:text-amber-400'>
+            <p className='mt-2 text-sm font-medium text-warning'>
               Generation taking longer than expected
             </p>
           ) : null}
@@ -88,9 +88,7 @@ function GenerationDescription({
         </p>
       )}
       {quotaMessage ? (
-        <p className='mt-2 text-sm font-medium text-amber-700 dark:text-amber-400'>
-          {quotaMessage}
-        </p>
+        <p className='mt-2 text-sm font-medium text-warning'>{quotaMessage}</p>
       ) : null}
     </div>
   );

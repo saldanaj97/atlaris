@@ -16,12 +16,7 @@ export function ProblemSolutionSection() {
       headingId={headingId}
       badge='The Challenge'
       badgeClassName='bg-destructive/10 text-destructive'
-      title={
-        <>
-          Most people don&apos;t fail to learn.{' '}
-          <span className='gradient-text'>They fail to start.</span>
-        </>
-      }
+      title="Most people don't fail to learn. They fail to start."
     >
       <div className='grid gap-8 md:grid-cols-2'>
         <section aria-labelledby={problemCardHeadingId}>

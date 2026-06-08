@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('Navigation', () => {
   describe('authenticatedNavItems', () => {
-    it('should contain Dashboard nav item', () => {
+    it('should contain Activity Feed nav item', () => {
       const dashboardItem = authenticatedNavItems.find(
-        (item) => item.label === 'Dashboard',
+        (item) => item.label === 'Activity Feed',
       );
       expect(dashboardItem).toBeDefined();
       expect(dashboardItem?.href).toBe('/dashboard');
@@ -118,9 +118,9 @@ describe('Navigation', () => {
       expect(unauthenticatedNavItems.length).toBe(3);
     });
 
-    it('should not have Dashboard, Analytics, or Settings nav items', () => {
+    it('should not have Activity Feed, Analytics, or Settings nav items', () => {
       const dashboardItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'Dashboard',
+        (item) => item.label === 'Activity Feed',
       );
       const analyticsItem = unauthenticatedNavItems.find(
         (item) => item.label === 'Analytics',
@@ -170,9 +170,9 @@ describe('Navigation', () => {
     });
 
     it('should have completely different navigation structure', () => {
-      // Authenticated users have Dashboard, Plans, Analytics, Settings
+      // Authenticated users have Activity Feed, Plans, Analytics, Settings
       const authLabels = authenticatedNavItems.map((item) => item.label);
-      expect(authLabels).toContain('Dashboard');
+      expect(authLabels).toContain('Activity Feed');
       expect(authLabels).toContain('Plans');
       expect(authLabels).toContain('Analytics');
       expect(authLabels).toContain('Settings');
@@ -186,10 +186,10 @@ describe('Navigation', () => {
 
     it('should have authenticated-only navigation items', () => {
       const authDashboard = authenticatedNavItems.find(
-        (item) => item.label === 'Dashboard',
+        (item) => item.label === 'Activity Feed',
       );
       const unauthDashboard = unauthenticatedNavItems.find(
-        (item) => item.label === 'Dashboard',
+        (item) => item.label === 'Activity Feed',
       );
       expect(authDashboard).toBeDefined();
       expect(unauthDashboard).toBeUndefined();

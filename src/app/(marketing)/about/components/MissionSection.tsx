@@ -11,11 +11,7 @@ export function MissionSection(): JSX.Element {
   return (
     <MarketingSection
       headingId={headingId}
-      title={
-        <>
-          Our <span className='gradient-text'>Mission</span>
-        </>
-      }
+      title='Our Mission'
       subtitle='Bridging the gap between ambition and execution.'
     >
       <div className='grid items-center gap-8 md:grid-cols-2'>
@@ -37,13 +33,11 @@ export function MissionSection(): JSX.Element {
           <div className='space-y-6'>
             {HIGHLIGHTS.map((item) => (
               <div key={item.title} className='flex items-start gap-4'>
-                <div className='gradient-brand inline-flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-lg'>
+                <div className='brand-fill-interactive inline-flex size-12 shrink-0 items-center justify-center rounded-2xl shadow-lg'>
                   {item.icon}
                 </div>
                 <div>
-                  <h3 className='marketing-h3 mb-1 text-foreground'>
-                    {item.title}
-                  </h3>
+                  <h3 className='marketing-card-title mb-1'>{item.title}</h3>
                   <p className='text-sm leading-relaxed text-muted-foreground'>
                     {item.description}
                   </p>

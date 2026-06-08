@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function Page(): React.ReactElement {
   return (
-    <MarketingPageShell>
+    <MarketingPageShell withHeaderOffset>
       <HeroSection />
       <MissionSection />
       <ValuesSection />

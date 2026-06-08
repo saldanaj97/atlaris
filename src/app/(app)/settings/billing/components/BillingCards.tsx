@@ -121,7 +121,7 @@ export async function BillingCards({
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Active plans</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.activePlans.current}/
                 {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
               </span>
@@ -135,7 +135,7 @@ export async function BillingCards({
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Regenerations (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.regenerations.used}/
                 {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
               </span>
@@ -149,7 +149,7 @@ export async function BillingCards({
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Exports (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.exports.used}/
                 {formatCompactUsageLimit(snapshot.usage.exports.limit)}
               </span>
@@ -163,7 +163,7 @@ export async function BillingCards({
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Lesson generations (monthly)</span>
-              <span className='text-muted-foreground'>
+              <span className='text-muted-foreground tabular-nums'>
                 {snapshot.usage.lessonGenerations.used}/
                 {formatCompactUsageLimit(
                   snapshot.usage.lessonGenerations.limit,

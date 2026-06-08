@@ -20,7 +20,6 @@ export default async function BillingSettingsPage(): Promise<ReactElement> {
     <>
       <PageHeader
         title='Billing'
-        titleAs='h2'
         subtitle='Manage your subscription and view usage'
       />
 

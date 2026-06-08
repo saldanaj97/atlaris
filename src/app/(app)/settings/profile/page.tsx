@@ -19,7 +19,6 @@ export default async function ProfileSettingsPage(): Promise<ReactElement> {
     <>
       <PageHeader
         title='Profile'
-        titleAs='h2'
         subtitle='Manage your personal information and view your account details'
       />
 

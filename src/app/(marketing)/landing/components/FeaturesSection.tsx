@@ -40,11 +40,7 @@ export function FeaturesSection() {
       headingId={headingId}
       badge='Features'
       badgeClassName='bg-primary/10 text-primary'
-      title={
-        <>
-          Built for <span className='gradient-text'>follow-through</span>
-        </>
-      }
+      title='Built for follow-through'
       subtitle='Plan generation, scheduling, and progress tracking in one product surface.'
     >
       <div className='grid gap-6 md:grid-cols-3'>

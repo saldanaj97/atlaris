@@ -50,6 +50,10 @@ export const metadata: Metadata = {
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.app'),
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
+    { media: '(prefers-color-scheme: dark)', color: '#333333' },
+  ],
 };
 
 export default function RootLayout({

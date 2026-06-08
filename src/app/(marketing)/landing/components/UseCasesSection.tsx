@@ -49,12 +49,7 @@ export function UseCasesSection() {
       headingId={headingId}
       badge='Use Cases'
       badgeClassName='bg-accent/10 text-accent-foreground'
-      title={
-        <>
-          Built for people with{' '}
-          <span className='gradient-text'>limited time</span>
-        </>
-      }
+      title='Built for people with limited time'
       subtitle='Example scenarios from learners balancing work, school, and real calendars.'
     >
       <div className='grid gap-6 md:grid-cols-3'>

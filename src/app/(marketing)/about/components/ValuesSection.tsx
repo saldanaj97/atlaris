@@ -11,20 +11,16 @@ export function ValuesSection(): JSX.Element {
   return (
     <MarketingSection
       headingId={headingId}
-      title={
-        <>
-          What We <span className='gradient-text'>Believe</span>
-        </>
-      }
+      title='What We Believe'
       subtitle='The principles that guide every feature we build.'
     >
       <div className='grid gap-6 md:grid-cols-3'>
         {VALUES.map((value) => (
           <MarketingCard key={value.title}>
-            <div className='mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-primary shadow-lg'>
+            <div className='brand-fill-interactive mb-6 inline-flex size-14 items-center justify-center rounded-2xl shadow-lg'>
               {value.icon}
             </div>
-            <h3 className='marketing-h3 mb-3 text-foreground'>{value.title}</h3>
+            <h3 className='marketing-card-title mb-3'>{value.title}</h3>
             <p className='leading-relaxed text-muted-foreground'>
               {value.description}
             </p>
