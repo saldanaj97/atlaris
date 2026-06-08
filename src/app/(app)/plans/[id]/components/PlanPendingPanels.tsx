@@ -46,7 +46,7 @@ export function PlanStatusHeader({
           </Badge>
         </div>
         {isPolling ? (
-          <Loader2 className='size-6 animate-spin text-primary' />
+          <Loader2 className='size-6 animate-spin text-primary motion-reduce:animate-none' />
         ) : null}
       </div>
       <CardTitle className='text-lg'>Generation Status</CardTitle>

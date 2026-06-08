@@ -18,7 +18,11 @@ import { redirect } from 'next/navigation';
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
  */
-export async function BillingCards(): Promise<JSX.Element> {
+export async function BillingCards({
+  locale,
+}: {
+  locale?: string;
+}): Promise<JSX.Element> {
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
     snapshot: await getBillingAccountSnapshot({
@@ -47,7 +51,7 @@ export async function BillingCards(): Promise<JSX.Element> {
   }
 
   const nextBilling = snapshot.subscriptionPeriodEnd
-    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString('en-US', {
+    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString(locale, {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

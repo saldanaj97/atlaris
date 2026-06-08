@@ -49,7 +49,7 @@ export function TimelineModuleCard({
         value={module.id}
         disabled={isLocked}
         className={cn(
-          'group/accordion flex flex-1 flex-col rounded-2xl border transition-all duration-300',
+          'group/accordion flex flex-1 flex-col rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300',
           getTimelineCardClassName(module.status),
         )}
       >

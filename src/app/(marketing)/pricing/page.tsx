@@ -214,7 +214,7 @@ export default async function PricingPage(): Promise<ReactElement> {
           {showMissingStripeNotice ? <PricingMissingStripeNotice /> : null}
           <Tabs defaultValue='monthly'>
             <div className='flex justify-center'>
-              <TabsList className='h-11 rounded-lg border border-white/40 bg-white/40 p-1.5 backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/40'>
+              <TabsList className='h-11 rounded-lg border border-white/40 bg-white/40 p-1 backdrop-blur-xl dark:border-white/10 dark:bg-card/40'>
                 {intervals.map((interval) => (
                   <TabsTrigger
                     key={interval.value}

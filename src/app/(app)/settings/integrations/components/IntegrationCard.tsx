@@ -64,7 +64,7 @@ function ActionButton({
         <Button variant='default' onClick={onConnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 size-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
               Connecting…
             </>
           ) : (
@@ -83,7 +83,7 @@ function ActionButton({
         <Button variant='outline' onClick={onDisconnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 size-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
               Disconnecting…
             </>
           ) : (

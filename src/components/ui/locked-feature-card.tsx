@@ -3,7 +3,6 @@
 import type { JSX, ReactNode } from 'react';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { Lock } from 'lucide-react';
 
@@ -51,12 +50,6 @@ export function LockedFeatureCard({
             <p className='mt-1 text-sm text-muted-foreground'>{description}</p>
           </div>
         </div>
-
-        <Progress
-          value={0}
-          className='mt-4 h-1.5 bg-muted'
-          aria-hidden='true'
-        />
       </CardContent>
     </Card>
   );

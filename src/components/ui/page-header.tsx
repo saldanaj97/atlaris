@@ -37,7 +37,7 @@ function PageHeader({
       {...props}
     >
       <div className={cn('min-w-0 flex-1', isCentered && 'w-full')}>
-        <TitleTag className='text-foreground'>{title}</TitleTag>
+        <TitleTag className='text-balance text-foreground'>{title}</TitleTag>
         {subtitle != null ? (
           typeof subtitle === 'string' ? (
             <p className={PAGE_HEADER_SUBTITLE_CLASS}>{subtitle}</p>

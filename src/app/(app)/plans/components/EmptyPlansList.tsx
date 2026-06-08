@@ -1,14 +1,7 @@
 import type { FilterStatus } from '@/features/plans/read-projection/types';
 
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -24,26 +17,22 @@ export function EmptyPlansList({
   const hasFilters = searchQuery || filterStatus !== 'all';
 
   return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant='icon'>
-          <FileText />
-        </EmptyMedia>
-        <EmptyTitle>No Plans Found</EmptyTitle>
-        <EmptyDescription>
-          {hasFilters
-            ? 'No plans found matching your filters. Try adjusting your search or filter criteria.'
-            : "You haven't created any plans yet. Get started by creating your first plan."}
-        </EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
+    <RouteEmptyState
+      icon={FileText}
+      title='No plans found'
+      description={
+        hasFilters
+          ? 'No plans match your search or filters. Try adjusting your criteria.'
+          : "You haven't created any plans yet. Create your first plan to get started."
+      }
+      action={
         <Button asChild>
           <Link href='/plans/new'>
             <Plus />
-            New Plan
+            New plan
           </Link>
         </Button>
-      </EmptyContent>
-    </Empty>
+      }
+    />
   );
 }

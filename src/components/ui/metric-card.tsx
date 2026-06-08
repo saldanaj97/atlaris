@@ -32,7 +32,9 @@ function MetricCard({
         ) : null}
         <span className='text-xs font-medium uppercase'>{label}</span>
       </div>
-      <div className='text-2xl font-bold text-foreground'>{value}</div>
+      <div className='text-2xl font-bold text-foreground tabular-nums'>
+        {value}
+      </div>
       {sublabel ? (
         <div className='text-xs text-muted-foreground'>{sublabel}</div>
       ) : null}

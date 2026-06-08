@@ -21,7 +21,7 @@ function LearningResourceCard({
       href={resource.url}
       target='_blank'
       rel='noopener noreferrer'
-      className='group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-all hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30'
+      className='group/resource flex items-start gap-3 rounded-xl border border-panel-border bg-panel p-4 shadow-sm transition-[border-color,box-shadow] hover:border-primary/30 hover:shadow-md dark:hover:border-primary/30'
     >
       <div
         className={cn(

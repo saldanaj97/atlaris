@@ -108,7 +108,7 @@ function GenerationAction({
   if (status === 'generating') {
     return (
       <div className='flex items-center gap-2 text-sm font-medium text-primary'>
-        <span className='animate-spin'>
+        <span className='animate-spin motion-reduce:animate-none'>
           <Loader2 className='size-4' />
         </span>
         Generating

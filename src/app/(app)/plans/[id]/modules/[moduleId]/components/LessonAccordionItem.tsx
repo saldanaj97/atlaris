@@ -90,7 +90,7 @@ export function LessonAccordionItem({
       value={lesson.id}
       disabled={isLocked}
       className={cn(
-        'rounded-2xl border transition-all duration-300',
+        'rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300',
         getLessonCardClassName(isLocked, isCompleted),
       )}
     >

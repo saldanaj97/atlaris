@@ -146,7 +146,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
               </span>
             ))}
           </div>
-          <h2 className='text-2xl font-semibold text-foreground md:text-3xl'>
+          <h2 className='truncate text-2xl font-semibold text-foreground md:text-3xl'>
             {plan.plan.topic}
           </h2>
           <p className='text-sm text-muted-foreground'>

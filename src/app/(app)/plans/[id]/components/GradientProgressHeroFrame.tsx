@@ -37,7 +37,7 @@ export function GradientProgressHeroFrame({
         aria-hidden
       >
         <div
-          className='h-full bg-primary transition-all duration-500'
+          className='h-full bg-primary transition-[width] duration-500 motion-reduce:transition-none'
           style={{ width: `${completion}%` }}
         />
       </div>

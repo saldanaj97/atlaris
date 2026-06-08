@@ -2,10 +2,9 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { PageHeader } from '@/components/ui/page-header';
-import { Switch } from '@/components/ui/switch';
 import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -13,19 +12,13 @@ export const metadata: Metadata = {
   description: 'Manage your notification preferences.',
 };
 
-function ToggleRow({
-  label,
-  switchId,
-}: {
-  label: string;
-  switchId: string;
-}): ReactElement {
+function LockedNotificationRow({ label }: { label: string }): ReactElement {
   return (
     <div className='flex items-center justify-between py-2'>
-      <Label htmlFor={switchId} className='font-normal text-muted-foreground'>
-        {label}
-      </Label>
-      <Switch id={switchId} disabled checked={false} />
+      <span className='text-sm text-muted-foreground'>{label}</span>
+      <Badge variant='outline' className='text-xs font-normal'>
+        Coming soon
+      </Badge>
     </div>
   );
 }
@@ -35,93 +28,61 @@ export default function NotificationsSettingsPage(): ReactElement {
     <>
       <PageHeader
         title='Notifications'
-        titleAs='h2'
         subtitle='Manage how you stay informed about your learning progress and account activity'
       />
 
       <ComingSoonAlert
         title='Personalized alerts are on the way'
-        description="We're fine-tuning your notification experience. Soon you'll be able to customize exactly how and when you receive updates about your learning journey."
+        description="We're building notification preferences so you can choose how and when you receive updates about your learning and account."
         icon={BellRing}
         className='mb-6'
       />
 
       <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
-        {/* Learning Reminders */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
             <Clock className='size-5 text-muted-foreground' />
-            <h3 className='text-xl font-semibold'>Learning Reminders</h3>
+            <h3 className='text-xl font-semibold'>Learning reminders</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>
-            Stay on track with daily and weekly nudges that keep your learning
-            momentum going.
+            Daily and weekly nudges to help you keep a consistent study rhythm.
           </p>
           <div className='divide-y divide-border'>
-            <ToggleRow
-              label='Daily study reminder'
-              switchId='learning-daily-study-reminder'
-            />
-            <ToggleRow
-              label='Weekly progress summary'
-              switchId='learning-weekly-progress-summary'
-            />
-            <ToggleRow
-              label='Streak at risk'
-              switchId='learning-streak-at-risk'
-            />
+            <LockedNotificationRow label='Daily study reminder' />
+            <LockedNotificationRow label='Weekly progress summary' />
+            <LockedNotificationRow label='Streak at risk' />
           </div>
         </Card>
 
-        {/* Plan Updates */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
             <BookOpen className='size-5 text-muted-foreground' />
-            <h3 className='text-xl font-semibold'>Plan Updates</h3>
+            <h3 className='text-xl font-semibold'>Plan updates</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>
-            Get notified when your learning plans are ready and when new
-            resources become available.
+            Alerts when plans finish generating or new lesson resources are
+            ready.
           </p>
           <div className='divide-y divide-border'>
-            <ToggleRow
-              label='Plan generation complete'
-              switchId='plan-generation-complete'
-            />
-            <ToggleRow
-              label='New resources available'
-              switchId='plan-new-resources-available'
-            />
-            <ToggleRow
-              label='Module milestones'
-              switchId='plan-module-milestones'
-            />
+            <LockedNotificationRow label='Plan generation complete' />
+            <LockedNotificationRow label='New resources available' />
+            <LockedNotificationRow label='Module milestones' />
           </div>
         </Card>
 
-        {/* Account & Billing */}
         <Card className='p-6'>
           <div className='mb-4 flex items-center gap-3'>
             <CreditCard className='size-5 text-muted-foreground' />
-            <h3 className='text-xl font-semibold'>Account & Billing</h3>
+            <h3 className='text-xl font-semibold'>Account & billing</h3>
           </div>
           <p className='mb-4 text-sm text-muted-foreground'>
-            Important notifications about your subscription, usage limits, and
-            account security.
+            Updates about subscription changes, usage limits, and account
+            security.
           </p>
           <div className='divide-y divide-border'>
-            <ToggleRow
-              label='Subscription changes'
-              switchId='account-subscription-changes'
-            />
-            <ToggleRow
-              label='Usage limit warnings'
-              switchId='account-usage-limit-warnings'
-            />
-            <ToggleRow
-              label='Security alerts'
-              switchId='account-security-alerts'
-            />
+            <LockedNotificationRow label='Subscription changes' />
+            <LockedNotificationRow label='Usage limit warnings' />
+            <LockedNotificationRow label='Security alerts' />
           </div>
         </Card>
       </div>

@@ -44,7 +44,9 @@ export function TaskCompletionButton({
       }
       className={cn(
         variant === 'timeline' ? 'rounded-md px-4' : 'rounded-lg px-4',
-        variant === 'timeline' ? 'border text-left' : 'transition-all',
+        variant === 'timeline'
+          ? 'border text-left'
+          : 'transition-[background-color,color,border-color,box-shadow]',
         isCompleted
           ? variant === 'timeline'
             ? 'border-success bg-success text-success-foreground hover:bg-success/90 dark:border-success dark:bg-success dark:hover:bg-success/90'
