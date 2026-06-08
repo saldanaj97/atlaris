@@ -1,9 +1,7 @@
-import type { JSX } from 'react';
-
 import { MarketingCta } from '@/app/(marketing)/_shared/MarketingCta';
 import { useId } from 'react';
 
-export function CtaSection(): JSX.Element {
+export function CtaSection() {
   const headingId = useId();
 
   return (

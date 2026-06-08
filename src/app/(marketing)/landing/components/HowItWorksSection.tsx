@@ -1,5 +1,7 @@
+import { marketingMockPanelSurface } from '@/app/(marketing)/_shared/marketing-glass-surface';
 import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
 import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
+import { cn } from '@/lib/utils';
 import {
   CalendarCheck,
   Check,
@@ -35,7 +37,6 @@ export function HowItWorksSection() {
       id={sectionId}
       headingId={headingId}
       className='scroll-mt-20'
-      containerClassName='max-w-6xl'
       title='How Atlaris forces progress'
       subtitle='A three-step system that turns intention into action'
     >
@@ -103,7 +104,7 @@ function CurriculumVisual() {
   ];
 
   return (
-    <div className='overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+    <div className={marketingMockPanelSurface}>
       <div className='border-b border-primary/20 bg-linear-to-r from-primary/10 to-accent/10 px-4 py-3'>
         <div className='flex items-center gap-2'>
           <FileText className='size-4 text-primary' />
@@ -138,7 +139,7 @@ function CurriculumVisual() {
 /** Visual 2: Calendar event with resource link */
 function ResourcesVisual() {
   return (
-    <div className='overflow-hidden rounded-2xl border border-white/60 bg-white/60 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+    <div className={marketingMockPanelSurface}>
       {/* Event header */}
       <div className='border-b border-primary/20 bg-linear-to-r from-primary to-accent px-4 py-3'>
         <div className='flex items-center justify-between'>
@@ -182,7 +183,7 @@ function ResourceLinkMock({ label, type }: { label: string; type: string }) {
   };
 
   return (
-    <div className='flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary'>
+    <div className='flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary'>
       {icons[type]}
       <span className='truncate'>{label}</span>
       <ExternalLink className='ml-auto size-3.5 shrink-0 text-primary/60' />
@@ -198,16 +199,21 @@ function SyncVisual() {
       <div className='flex items-center justify-center gap-4'>
         <IntegrationIcon
           name='Google Calendar'
-          color='bg-linear-to-br from-blue-400 to-blue-600'
+          color='bg-linear-to-br from-primary to-accent'
         />
         <IntegrationIcon
           name='Outlook'
-          color='bg-linear-to-br from-sky-400 to-sky-600'
+          color='bg-linear-to-br from-accent to-primary'
         />
       </div>
 
       {/* Sync toast notification */}
-      <div className='mx-auto max-w-56 overflow-hidden rounded-2xl border border-primary/30 bg-linear-to-r from-primary/10 to-accent/10 shadow-lg backdrop-blur-sm dark:border-white/10 dark:bg-card/90'>
+      <div
+        className={cn(
+          marketingMockPanelSurface,
+          'mx-auto max-w-56 border-primary/30 bg-linear-to-r from-primary/10 to-accent/10',
+        )}
+      >
         <div className='flex items-center gap-3 px-4 py-3'>
           <div className='brand-fill flex size-8 items-center justify-center rounded-xl shadow-md'>
             <Check className='size-4 text-foreground' />
@@ -229,7 +235,7 @@ function SyncVisual() {
           </span>
         </div>
         <div className='p-3'>
-          <div className='rounded-xl border border-white/60 bg-white/80 p-3 shadow-md backdrop-blur-sm dark:border-white/20 dark:bg-card/60'>
+          <div className='rounded-xl border border-border/60 bg-card p-3 shadow-md'>
             <div className='flex items-center gap-2'>
               <CalendarCheck className='size-4 text-primary' />
               <span className='text-xs font-medium text-foreground'>

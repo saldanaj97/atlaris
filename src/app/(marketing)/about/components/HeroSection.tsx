@@ -1,10 +1,8 @@
-import type { JSX } from 'react';
-
 import { MarketingHero } from '@/app/(marketing)/_shared/MarketingHero';
 import { Badge } from '@/components/ui/badge';
 import { useId } from 'react';
 
-export function HeroSection(): JSX.Element {
+export function HeroSection() {
   const headingId = useId();
 
   return (

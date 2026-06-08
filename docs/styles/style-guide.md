@@ -55,6 +55,10 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 **App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
 
+**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies opaque `bg-card` / `border-border` on authenticated product routes and glass/blur only on marketing paths (`/`, `/landing`, `/about`, `/pricing`). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+
+**Marketing composition:** use [`MarketingPageShell`](../../src/app/(marketing)/_shared/MarketingPageShell.tsx), [`MarketingHero`](../../src/app/(marketing)/_shared/MarketingHero.tsx), [`MarketingSection`](../../src/app/(marketing)/_shared/MarketingSection.tsx), [`MarketingCard`](../../src/app/(marketing)/_shared/MarketingCard.tsx), and shared glass surfaces from [`marketing-glass-surface.ts`](../../src/app/(marketing)/_shared/marketing-glass-surface.ts). Default section width is `max-w-screen-xl`; narrower grids (e.g. pricing) may use `max-w-5xl` when layout requires it.
+
 ### Light-mode mapping (reference)
 
 | Token                            | Typical light-mode role                                    |

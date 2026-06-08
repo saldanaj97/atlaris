@@ -53,7 +53,7 @@ export function TaskCompletionButton({
             : 'bg-success text-success-foreground hover:bg-success/90'
           : variant === 'timeline'
             ? 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            : 'bg-white/50 text-foreground hover:bg-primary hover:text-primary-foreground dark:bg-card/50 dark:text-muted-foreground dark:hover:bg-primary dark:hover:text-primary-foreground',
+            : 'border border-border bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground',
       )}
     >
       {isCompleted ? (

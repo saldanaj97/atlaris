@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
 
 type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
@@ -108,45 +108,44 @@ export function IntegrationCard({
     <Card
       role='region'
       aria-label={name}
-      className='flex flex-col gap-5 border-border bg-card p-6 shadow-sm'
+      className='flex flex-col border-border bg-card shadow-sm'
     >
-      <div className='flex items-center justify-between'>
+      <CardHeader className='flex-row items-start justify-between space-y-0'>
         <div className='flex items-center gap-4'>
           <div className='inline-flex size-14 items-center justify-center rounded-xl bg-primary/10 text-2xl text-primary'>
             {icon}
           </div>
-          <h3 className='text-lg font-semibold'>{name}</h3>
+          <CardTitle className='text-lg'>{name}</CardTitle>
         </div>
         <StatusBadge status={status} />
-      </div>
+      </CardHeader>
 
-      {/* Description */}
-      <p className='text-sm leading-relaxed text-muted-foreground'>
-        {description}
-      </p>
+      <CardContent className='flex flex-1 flex-col gap-5'>
+        <p className='text-sm leading-relaxed text-muted-foreground'>
+          {description}
+        </p>
 
-      {/* Features */}
-      <ul className='grid grid-cols-2 gap-2'>
-        {features.map((feature) => (
-          <li
-            key={feature}
-            className='flex items-center gap-2 text-sm text-muted-foreground'
-          >
-            <Check className='size-4 shrink-0 text-success' />
-            {feature}
-          </li>
-        ))}
-      </ul>
+        <ul className='grid grid-cols-2 gap-2'>
+          {features.map((feature) => (
+            <li
+              key={feature}
+              className='flex items-center gap-2 text-sm text-muted-foreground'
+            >
+              <Check className='size-4 shrink-0 text-success' />
+              {feature}
+            </li>
+          ))}
+        </ul>
 
-      {/* Action */}
-      <div className='pt-2'>
-        <ActionButton
-          status={status}
-          onConnect={onConnect}
-          onDisconnect={onDisconnect}
-          loading={loading}
-        />
-      </div>
+        <div className='pt-2'>
+          <ActionButton
+            status={status}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+            loading={loading}
+          />
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -1,11 +1,9 @@
 'use client';
 
-import type { JSX } from 'react';
-
 import { MarketingCta } from '@/app/(marketing)/_shared/MarketingCta';
 import { useId } from 'react';
 
-export function PricingFinalCta(): JSX.Element {
+export function PricingFinalCta() {
   const headingId = useId();
 
   return (

@@ -8,15 +8,8 @@ import { useModelPreferenceSave } from '@/app/(app)/settings/ai/components/useMo
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import {
   Select,
   SelectContent,
@@ -229,24 +222,16 @@ export function ModelSelector({
 }: ModelSelectorProps): JSX.Element {
   if (availableModels.length === 0) {
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant='icon'>
-            <AlertCircle className='size-6' aria-hidden='true' />
-          </EmptyMedia>
-          <EmptyTitle>No models available</EmptyTitle>
-          <EmptyDescription>
-            No AI models are currently available for your subscription tier.
-            This may occur if model configurations are being updated or if your
-            tier doesn&apos;t have access to any models.
-          </EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
+      <RouteEmptyState
+        icon={AlertCircle}
+        title='No models available'
+        description="No AI models are currently available for your subscription tier. This may occur if model configurations are being updated or if your tier doesn't have access to any models."
+        action={
           <Button asChild variant='default'>
-            <Link href={ROUTES.PRICING}>View Pricing Plans</Link>
+            <Link href={ROUTES.PRICING}>View pricing plans</Link>
           </Button>
-        </EmptyContent>
-      </Empty>
+        }
+      />
     );
   }
 

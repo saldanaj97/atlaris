@@ -1,5 +1,9 @@
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
+import {
+  marketingGlassCardPopularSurface,
+  marketingGlassCardSurface,
+} from '@/app/(marketing)/_shared/marketing-glass-surface';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -34,14 +38,14 @@ export function PricingCard({
   cta,
   isPopular = false,
   className,
-}: PricingCardProps): ReactElement {
+}: PricingCardProps) {
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden p-6 backdrop-blur-xl transition',
+        'relative gap-0 overflow-hidden p-6 transition-[transform,box-shadow] motion-reduce:transition-none',
         isPopular
-          ? 'border-primary/40 bg-white/40 shadow-lg ring-1 shadow-primary/25 ring-primary/50 dark:border-primary/30 dark:bg-primary/5 dark:shadow-primary/20 dark:ring-primary/70'
-          : 'border-white/40 bg-white/30 shadow-lg dark:border-white/10 dark:bg-card/40',
+          ? marketingGlassCardPopularSurface
+          : marketingGlassCardSurface,
         className,
       )}
     >

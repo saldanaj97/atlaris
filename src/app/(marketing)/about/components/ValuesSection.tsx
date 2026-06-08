@@ -1,11 +1,11 @@
-import type { JSX, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
 import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
 import { Eye, Globe, Target } from 'lucide-react';
 import { useId } from 'react';
 
-export function ValuesSection(): JSX.Element {
+export function ValuesSection() {
   const headingId = useId();
 
   return (

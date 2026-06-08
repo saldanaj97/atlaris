@@ -138,7 +138,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align='start'
             className={cn(
-              'z-50 min-w-[220px] overflow-hidden rounded-2xl border bg-popover shadow-xl',
+              'z-50 min-w-[220px] overflow-hidden rounded-md border bg-popover shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -153,7 +153,7 @@ export function InlineDropdown<TValue extends string>({
                   value={option.value}
                   textValue={option.label}
                   className={cn(
-                    'relative w-full cursor-default rounded-[calc(1rem-0.375rem)] py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
+                    'relative w-full cursor-default rounded-sm py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
                     styles.item,
                   )}
                 >

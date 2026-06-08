@@ -1,7 +1,6 @@
 import type { StripeTierConfig } from '@/app/(marketing)/pricing/components/pricing-config';
 import type { BillingCatalogTierData } from '@/features/billing/catalog-read';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import { PricingCard } from '@/app/(marketing)/pricing/components/PricingCard';
 import { PRICING_TIERS } from '@/app/(marketing)/pricing/components/PricingTiers';
@@ -21,7 +20,7 @@ export function PricingGrid({
   intervalLabel,
   tierDisplayMap,
   subscribeLabel,
-}: PricingGridProps): JSX.Element {
+}: PricingGridProps) {
   return (
     <div className='mx-auto grid max-w-5xl gap-6 lg:grid-cols-3'>
       {configs.map((config) => {

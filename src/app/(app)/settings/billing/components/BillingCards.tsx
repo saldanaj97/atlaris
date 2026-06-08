@@ -7,7 +7,13 @@ import {
   getUsagePercent,
 } from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
@@ -41,11 +47,13 @@ export async function BillingCards({
 
   if (!snapshot) {
     return (
-      <Card className='p-6'>
-        <h2 className='text-xl font-semibold'>Billing unavailable</h2>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          We couldn&apos;t load your billing details right now.
-        </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Billing unavailable</CardTitle>
+          <CardDescription>
+            We couldn&apos;t load your billing details right now.
+          </CardDescription>
+        </CardHeader>
       </Card>
     );
   }
@@ -77,18 +85,15 @@ export async function BillingCards({
 
   return (
     <>
-      <Card className='p-6'>
-        <div className='mb-4 flex items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-semibold'>Current Plan</h2>
-            <p className='text-sm text-muted-foreground'>
-              Manage your subscription
-            </p>
+      <Card>
+        <CardHeader className='flex-row items-start justify-between space-y-0'>
+          <div className='space-y-1'>
+            <CardTitle>Current Plan</CardTitle>
+            <CardDescription>Manage your subscription</CardDescription>
           </div>
           <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
-        </div>
-
-        <div className='space-y-2 text-sm'>
+        </CardHeader>
+        <CardContent className='space-y-2 text-sm'>
           <div className='flex items-center justify-between'>
             <span>Status</span>
             <span className='text-muted-foreground'>
@@ -99,25 +104,26 @@ export async function BillingCards({
             <span>Next billing date</span>
             <span className='text-muted-foreground'>{nextBilling}</span>
           </div>
-        </div>
 
-        <div className='mt-4'>
-          <ManageSubscriptionButton
-            className='w-full'
-            canOpenBillingPortal={snapshot.canOpenBillingPortal}
-          />
-          {!snapshot.canOpenBillingPortal && (
-            <p className='mt-2 text-center text-sm text-muted-foreground'>
-              Billing features are unavailable.
-            </p>
-          )}
-        </div>
+          <div className='mt-4'>
+            <ManageSubscriptionButton
+              className='w-full'
+              canOpenBillingPortal={snapshot.canOpenBillingPortal}
+            />
+            {!snapshot.canOpenBillingPortal && (
+              <p className='mt-2 text-center text-sm text-muted-foreground'>
+                Billing features are unavailable.
+              </p>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className='p-6'>
-        <h2 className='mb-4 text-xl font-semibold'>Usage</h2>
-
-        <div className='space-y-5'>
+      <Card>
+        <CardHeader>
+          <CardTitle>Usage</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-5'>
           <div>
             <div className='mb-1 flex items-center justify-between text-sm'>
               <span>Active plans</span>
@@ -175,7 +181,7 @@ export async function BillingCards({
               aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
             />
           </div>
-        </div>
+        </CardContent>
       </Card>
     </>
   );
