@@ -108,49 +108,44 @@ export function IntegrationCard({
     <Card
       role='region'
       aria-label={name}
-      className='relative overflow-hidden border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
+      className='flex flex-col gap-5 border-border bg-card p-6 shadow-sm'
     >
-      <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
-
-      <div className='relative flex flex-col gap-5'>
-        {/* Header */}
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-4'>
-            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-xl text-2xl shadow-lg'>
-              {icon}
-            </div>
-            <h3 className='text-lg font-semibold'>{name}</h3>
+      <div className='flex items-center justify-between'>
+        <div className='flex items-center gap-4'>
+          <div className='inline-flex size-14 items-center justify-center rounded-xl bg-primary/10 text-2xl text-primary'>
+            {icon}
           </div>
-          <StatusBadge status={status} />
+          <h3 className='text-lg font-semibold'>{name}</h3>
         </div>
+        <StatusBadge status={status} />
+      </div>
 
-        {/* Description */}
-        <p className='text-sm leading-relaxed text-muted-foreground'>
-          {description}
-        </p>
+      {/* Description */}
+      <p className='text-sm leading-relaxed text-muted-foreground'>
+        {description}
+      </p>
 
-        {/* Features */}
-        <ul className='grid grid-cols-2 gap-2'>
-          {features.map((feature) => (
-            <li
-              key={feature}
-              className='flex items-center gap-2 text-sm text-muted-foreground'
-            >
-              <Check className='size-4 shrink-0 text-success' />
-              {feature}
-            </li>
-          ))}
-        </ul>
+      {/* Features */}
+      <ul className='grid grid-cols-2 gap-2'>
+        {features.map((feature) => (
+          <li
+            key={feature}
+            className='flex items-center gap-2 text-sm text-muted-foreground'
+          >
+            <Check className='size-4 shrink-0 text-success' />
+            {feature}
+          </li>
+        ))}
+      </ul>
 
-        {/* Action */}
-        <div className='pt-2'>
-          <ActionButton
-            status={status}
-            onConnect={onConnect}
-            onDisconnect={onDisconnect}
-            loading={loading}
-          />
-        </div>
+      {/* Action */}
+      <div className='pt-2'>
+        <ActionButton
+          status={status}
+          onConnect={onConnect}
+          onDisconnect={onDisconnect}
+          loading={loading}
+        />
       </div>
     </Card>
   );

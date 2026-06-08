@@ -3,9 +3,6 @@ import type { JSX } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { useId } from 'react';
 
-/**
- * Hero section for the About page with mission statement.
- */
 export function HeroSection(): JSX.Element {
   const headingId = useId();
 
@@ -21,14 +18,13 @@ export function HeroSection(): JSX.Element {
           id={headingId}
           className='marketing-h1 mx-auto max-w-4xl text-foreground'
         >
-          Learning reimagined with{' '}
-          <span className='gradient-text'>AI precision</span>
+          Learning plans built for{' '}
+          <span className='gradient-text'>real schedules</span>
         </h1>
 
         <p className='marketing-subtitle mx-auto mt-6 max-w-2xl'>
-          We believe everyone deserves a clear, personalized path to mastering
-          new skills. Atlaris turns ambitious learning goals into structured,
-          actionable plans — powered by AI.
+          We help learners turn ambitious goals into structured, calendar-backed
+          plans — with modules, resources, and progress tracking in one place.
         </p>
       </div>
     </section>

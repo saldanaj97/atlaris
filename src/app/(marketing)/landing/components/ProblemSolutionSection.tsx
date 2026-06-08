@@ -1,14 +1,10 @@
 import type { ReactNode } from 'react';
 
-import { Badge } from '@/components/ui/badge';
+import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
+import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
 import { ArrowDownCircle, Calendar, Check, X } from 'lucide-react';
 import { useId } from 'react';
 
-/**
- * Problem vs Solution section highlighting the contrast between
- * manual learning struggles and the structured Pathfinder approach.
- * Glassmorphism design with soft gradients and transparency.
- */
 export function ProblemSolutionSection() {
   const sectionId = useId();
   const headingId = `${sectionId}-heading`;
@@ -16,30 +12,20 @@ export function ProblemSolutionSection() {
   const solutionCardHeadingId = `${sectionId}-solution-card-heading`;
 
   return (
-    <section className='relative lg:py-32' aria-labelledby={headingId}>
-      <div className='relative z-10 mx-auto max-w-screen-xl px-6'>
-        <div className='mb-16 text-center'>
-          <Badge
-            variant='glassmorphic'
-            className='mb-4 bg-destructive/10 px-4 py-1.5 text-destructive'
-          >
-            The Challenge
-          </Badge>
-          <h2 id={headingId} className='marketing-h2 mb-4 text-foreground'>
-            Most people don&apos;t fail to learn.{' '}
-            <span className='gradient-text'>They fail to start.</span>
-          </h2>
-        </div>
-
-        <div className='grid gap-8 md:grid-cols-2'>
-          {/* Problem Card */}
-          <section
-            className='group relative overflow-hidden rounded-3xl border border-destructive/30 bg-linear-to-br from-destructive/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-destructive/20 dark:from-destructive/5 dark:to-card/40'
-            aria-labelledby={problemCardHeadingId}
-          >
-            {/* Decorative glow */}
-            <div className='absolute -top-12 -right-12 size-32 rounded-full bg-linear-to-br from-destructive/30 to-destructive/20 opacity-30 blur-2xl'></div>
-
+    <MarketingSection
+      headingId={headingId}
+      badge='The Challenge'
+      badgeClassName='bg-destructive/10 text-destructive'
+      title={
+        <>
+          Most people don&apos;t fail to learn.{' '}
+          <span className='gradient-text'>They fail to start.</span>
+        </>
+      }
+    >
+      <div className='grid gap-8 md:grid-cols-2'>
+        <section aria-labelledby={problemCardHeadingId}>
+          <MarketingCard variant='destructive' className='p-8'>
             <div className='mb-6 flex items-center gap-4'>
               <div className='flex size-12 items-center justify-center rounded-2xl bg-linear-to-br from-destructive to-destructive/80 shadow-lg'>
                 <ArrowDownCircle
@@ -64,16 +50,11 @@ export function ProblemSolutionSection() {
               </ProblemItem>
               <ProblemItem>Motivation dies by week two</ProblemItem>
             </ul>
-          </section>
+          </MarketingCard>
+        </section>
 
-          {/* Solution Card */}
-          <section
-            className='group relative overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary/10 to-white/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-primary/20 dark:from-primary/5 dark:to-card/40'
-            aria-labelledby={solutionCardHeadingId}
-          >
-            {/* Decorative glow */}
-            <div className='absolute -top-12 -right-12 size-32 rounded-full bg-linear-to-br from-primary/30 to-accent/20 opacity-30 blur-2xl'></div>
-
+        <section aria-labelledby={solutionCardHeadingId}>
+          <MarketingCard variant='primary' className='p-8'>
             <div className='mb-6 flex items-center gap-4'>
               <div className='flex size-12 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-accent shadow-lg'>
                 <Calendar className='size-6 text-white' aria-hidden='true' />
@@ -89,10 +70,10 @@ export function ProblemSolutionSection() {
               <SolutionItem>Resources attached to every session</SolutionItem>
               <SolutionItem>Progress visible at a glance</SolutionItem>
             </ul>
-          </section>
-        </div>
+          </MarketingCard>
+        </section>
       </div>
-    </section>
+    </MarketingSection>
   );
 }
 
@@ -100,12 +81,6 @@ interface ItemProps {
   children: ReactNode;
 }
 
-/**
- * Displays a problem item in the problem-solution comparison section.
- * Renders a list item with an X icon and the provided children content.
- *
- * @param children - The content to display as the problem description
- */
 function ProblemItem({ children }: ItemProps) {
   return (
     <li className='flex items-start gap-3'>
@@ -117,12 +92,6 @@ function ProblemItem({ children }: ItemProps) {
   );
 }
 
-/**
- * Displays a solution item in the problem-solution comparison section.
- * Renders a list item with a checkmark icon and the provided children content.
- *
- * @param children - The content to display as the solution description
- */
 function SolutionItem({ children }: ItemProps) {
   return (
     <li className='flex items-start gap-3'>

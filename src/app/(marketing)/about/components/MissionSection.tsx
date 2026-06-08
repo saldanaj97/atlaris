@@ -1,18 +1,15 @@
 import type { JSX, ReactNode } from 'react';
 
-import { MarketingSectionLayout } from './MarketingSectionLayout';
-import { Card } from '@/components/ui/card';
+import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
+import { MarketingSection } from '@/app/(marketing)/_shared/MarketingSection';
 import { CalendarDays, Library, Sparkles } from 'lucide-react';
 import { useId } from 'react';
 
-/**
- * Mission section explaining what Atlaris does.
- */
 export function MissionSection(): JSX.Element {
   const headingId = useId();
 
   return (
-    <MarketingSectionLayout
+    <MarketingSection
       headingId={headingId}
       title={
         <>
@@ -30,19 +27,13 @@ export function MissionSection(): JSX.Element {
           </p>
           <p className='text-lg leading-relaxed text-muted-foreground'>
             Atlaris transforms your learning goals into structured, time-blocked
-            plans tailored to your schedule. Our AI analyzes thousands of
-            resources, curates the best ones, and maps out a day-by-day path —
-            synced directly to your calendar so nothing falls through the
-            cracks.
+            plans tailored to your schedule. We generate modules, attach curated
+            resources to each lesson, and sync sessions to your calendar so
+            progress does not stall after week one.
           </p>
         </div>
 
-        <Card className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-card/40'>
-          <div
-            className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30'
-            aria-hidden='true'
-          />
-
+        <MarketingCard>
           <div className='space-y-6'>
             {HIGHLIGHTS.map((item) => (
               <div key={item.title} className='flex items-start gap-4'>
@@ -60,9 +51,9 @@ export function MissionSection(): JSX.Element {
               </div>
             ))}
           </div>
-        </Card>
+        </MarketingCard>
       </div>
-    </MarketingSectionLayout>
+    </MarketingSection>
   );
 }
 
@@ -75,9 +66,9 @@ interface Highlight {
 const HIGHLIGHTS: Highlight[] = [
   {
     icon: <Sparkles className='size-5 text-white' aria-hidden='true' />,
-    title: 'AI-Powered Plans',
+    title: 'Structured Plans',
     description:
-      'Intelligent scheduling that adapts to your pace, goals, and availability.',
+      'Module and lesson generation sized to your weekly hours and skill level.',
   },
   {
     icon: <CalendarDays className='size-5 text-white' aria-hidden='true' />,
@@ -89,6 +80,6 @@ const HIGHLIGHTS: Highlight[] = [
     icon: <Library className='size-5 text-white' aria-hidden='true' />,
     title: 'Curated Resources',
     description:
-      'Top-ranked videos, articles, and docs selected for each topic.',
+      'Videos, articles, and exercises attached to each scheduled session.',
   },
 ];

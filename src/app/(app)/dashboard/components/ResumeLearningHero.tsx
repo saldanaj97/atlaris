@@ -1,6 +1,7 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
+import { Surface } from '@/components/ui/surface';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import { Play } from 'lucide-react';
 import Link from 'next/link';
@@ -80,7 +81,7 @@ function HeroCircularProgress({
           cy={size / 2}
           r={radius}
           fill='none'
-          stroke='rgba(255,255,255,0.2)'
+          className='stroke-muted'
           strokeWidth={strokeWidth}
         />
         <circle
@@ -88,16 +89,15 @@ function HeroCircularProgress({
           cy={size / 2}
           r={radius}
           fill='none'
-          stroke='white'
+          className='stroke-primary'
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap='round'
-          className='transition-all duration-300'
         />
       </svg>
       <span
-        className='absolute inset-0 flex items-center justify-center text-sm font-bold text-white'
+        className='absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground tabular-nums'
         aria-hidden='true'
       >
         {progressPercent}%
@@ -106,55 +106,30 @@ function HeroCircularProgress({
   );
 }
 
-/**
- * ResumeLearningHero component displays a hero card for the user's most recent learning plan.
- *
- * This component shows plan progress, key metrics (skill level, weekly hours, duration, module count),
- * and provides a call-to-action to continue learning. It renders a circular progress indicator and
- * displays the next module to be completed.
- *
- * @param props - Component props
- * @param props.plan - The PlanSummary object containing plan details and progress information
- *
- * @example
- * ```tsx
- * <ResumeLearningHero plan={planSummary} />
- * ```
- *
- * The PlanSummary type should contain:
- * - `plan.id`: Unique identifier for the learning plan
- * - `plan.topic`: The main topic/subject of the plan
- * - `plan.skillLevel`: Skill level (e.g., 'beginner', 'intermediate', 'advanced')
- * - `plan.weeklyHours`: Recommended weekly hours for the plan
- * - `completion`: Completion percentage (0-1)
- * - `modules`: Array of module objects
- * - `completedModules`: Number of completed modules
- * - `totalMinutes`: Total duration of the plan in minutes
- */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const skillLevel = formatSkillLevel(plan.plan.skillLevel ?? 'beginner');
   const weeklyHours = plan.plan.weeklyHours ?? 10;
   const moduleCount = plan.modules.length;
   const totalDuration = formatMinutes(plan.totalMinutes);
-  // Clamp completion to [0, 1] to prevent display issues with invalid data
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
   const upNextLabel = getUpNextLabel(plan);
 
   return (
-    <div className='relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-linear-to-br from-primary via-accent to-primary-dark p-6 shadow-lg'>
-      {/* Top row: label (left) and circular progress (right) */}
+    <Surface
+      variant='interactive'
+      padding='comfortable'
+      className='flex flex-col gap-4 border-primary/20'
+    >
       <div className='flex items-start justify-between gap-4'>
-        <p className='text-xs font-medium tracking-wider text-white/70 uppercase'>
+        <p className='text-xs font-medium tracking-wider text-muted-foreground uppercase'>
           Most Recent Plan
         </p>
         <HeroCircularProgress progressPercent={progressPercent} />
       </div>
 
-      {/* Bottom row: badges + title + description (left), Up Next + Continue (right) */}
       <div className='flex flex-wrap items-end justify-between gap-4'>
-        {/* Bottom left: badges, title, description */}
         <div className='min-w-0 flex-1 space-y-2'>
           <div className='flex flex-wrap gap-2'>
             {[
@@ -165,26 +140,26 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
             ].map((label) => (
               <span
                 key={label}
-                className='rounded-full bg-white/25 px-3 py-1 text-xs font-medium text-white'
+                className='rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground'
               >
                 {label}
               </span>
             ))}
           </div>
-          <h2 className='text-2xl font-bold text-white md:text-3xl'>
+          <h2 className='text-2xl font-semibold text-foreground md:text-3xl'>
             {plan.plan.topic}
           </h2>
-          <p className='text-sm text-white/80'>
+          <p className='text-sm text-muted-foreground'>
             {getResumeHeroDescription(plan)}
           </p>
         </div>
 
-        {/* Bottom right: Up Next and Continue Learning */}
         <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
-          <p className='text-sm text-white/90'>
-            <span className='font-medium'>Up Next:</span> {upNextLabel}
+          <p className='text-sm text-muted-foreground'>
+            <span className='font-medium text-foreground'>Up Next:</span>{' '}
+            {upNextLabel}
           </p>
-          <Button asChild variant='secondary' className='px-5 py-2.5 shadow-sm'>
+          <Button asChild className='px-5 py-2.5'>
             <Link href={`/plans/${plan.plan.id}`}>
               <Play />
               Continue Learning
@@ -192,6 +167,6 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           </Button>
         </div>
       </div>
-    </div>
+    </Surface>
   );
 }

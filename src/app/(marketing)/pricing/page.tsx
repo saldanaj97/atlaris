@@ -204,7 +204,7 @@ export default async function PricingPage(): Promise<ReactElement> {
             Invest in your{' '}
             <span className='gradient-text-symmetric'>growth</span>
           </h1>
-          <p className='mx-auto max-w-md text-base text-muted-foreground sm:max-w-xl sm:text-lg'>
+          <p className='marketing-subtitle mx-auto max-w-md sm:max-w-xl'>
             Choose the plan that matches your learning ambitions. Start free,
             upgrade when you&apos;re ready.
           </p>

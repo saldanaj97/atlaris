@@ -80,17 +80,20 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 ### Font stacks (runtime)
 
-| Layer                            | Family                                                | Notes                                                                                                    |
-| -------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Body (default)**               | **Work Sans** (Next font on `<body>` in `layout.tsx`) | Default UI copy and elements that inherit without a heading rule.                                        |
-| **Theme / Tailwind `font-sans`** | **Geist** first in `--font-sans`                      | Components and utilities that use `font-sans`; marketing utilities that set heading families explicitly. |
-| **Serif**                        | `--font-serif` → Source Serif 4                       | Theme token; use sparingly.                                                                              |
-| **Mono**                         | `--font-mono` → JetBrains Mono                        | Code, IDs, technical strings.                                                                            |
-| **Clerk Auth UI**                | Clerk components inherit the root app fonts           | Keep auth pages under the shared auth layout and avoid provider-specific global CSS imports.             |
+| Layer                            | Family                                                                 | Notes                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Body (default)**               | **Work Sans** via `--font-family-base`                                 | Loaded with `next/font` on `<html>`; applied on `<body>` in `layout.tsx`.                     |
+| **App headings (`h1`–`h6`)**     | **Work Sans** via `--font-family-heading` (weight **600**)             | Product UI titles, settings cards, dashboard headings.                                        |
+| **Marketing display headings**   | **Young Serif** via `--font-family-display`                            | `.marketing-h1`–`.marketing-h4`; deliberate serif display role on marketing pages only.       |
+| **Marketing card titles**        | **Work Sans** via `--font-family-heading`                              | `.marketing-card-title` stays in the product sans for readable card copy.                     |
+| **Theme / Tailwind `font-sans`** | `--font-family-base` (Work Sans stack)                                 | `font-sans` utilities inherit the same UI stack.                                              |
+| **Theme / Tailwind `font-serif`**| `--font-family-display` (Young Serif stack)                            | Use sparingly for intentional display moments.                                                |
+| **Mono**                         | `--font-mono` → JetBrains Mono                                         | Code, IDs, technical strings.                                                                 |
+| **Clerk Auth UI**                | Clerk components inherit the root app fonts                            | Keep auth pages under the shared auth layout; avoid provider-specific global CSS imports.      |
 
-**Consistency:** For new screens, treat **Work Sans** as the default UI face and **Geist** (via `font-sans` or marketing classes) for display/marketing headlines. Avoid introducing a third sans unless the root layout is intentionally updated.
+**Consistency:** Use **Work Sans** for all product/app UI. Reserve **Young Serif** for marketing display headings (`.marketing-h*`). Do not add another sans unless `layout.tsx` and `globals.css` are updated together.
 
-**Observation (dev audit):** On `/landing`, a `.marketing-h1` heading can compute to **Geist** at **49px** / **700** with tight tracking, while body text follows **Work Sans** from the root layout.
+**CSS variables (defined in `globals.css`):** `--font-family-base`, `--font-family-heading`, `--font-family-display`, `--font-weight-base` (400), `--font-weight-heading` (600). Next/font exposes `--font-work-sans` and `--font-young-serif` on `<html>`.
 
 ### App / dashboard base headings (`@layer base`)
 
@@ -105,7 +108,7 @@ Plain `<h1>`–`<h6>` in [`globals.css`](../../src/app/globals.css) use the head
 | `h5` | 14px (0.875rem) | 1.4         | 0              |                    |
 | `h6` | 12px (0.75rem)  | 1.5         | 0              | Uppercase          |
 
-All use `font-family: var(--font-family-heading)` (Geist) and `font-weight: var(--font-weight-heading)`.
+All use `font-family: var(--font-family-heading)` (Work Sans) and `font-weight: var(--font-weight-heading)`.
 
 ### Marketing typography classes (`globals.css`)
 
