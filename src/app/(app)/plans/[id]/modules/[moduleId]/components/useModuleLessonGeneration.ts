@@ -76,6 +76,8 @@ export function useModuleLessonGeneration({
     }
 
     if (!previousModulesComplete) {
+      generationPollCountRef.current = 0;
+      setGenerationTakingLong(false);
       return;
     }
 
