@@ -75,8 +75,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -113,8 +111,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Run dependency audit
         run: |
           MAX_ATTEMPTS=1
@@ -179,8 +175,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -241,8 +235,6 @@ jobs:
           fetch-depth: 0
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -401,8 +393,6 @@ jobs:
           fetch-depth: 0
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -567,8 +557,6 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
-        with:
-          version: 9
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
