@@ -7,6 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -80,12 +81,14 @@ export async function BillingCards({ locale }: { locale?: string }) {
   return (
     <>
       <Card>
-        <CardHeader className='flex-row items-start justify-between space-y-0'>
+        <CardHeader>
           <div className='space-y-1'>
             <CardTitle>Current Plan</CardTitle>
             <CardDescription>Manage your subscription</CardDescription>
           </div>
-          <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
+          <CardAction>
+            <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
+          </CardAction>
         </CardHeader>
         <CardContent className='space-y-2 text-sm'>
           <div className='flex items-center justify-between'>

@@ -1,6 +1,12 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
 
 type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
@@ -108,14 +114,16 @@ export function IntegrationCard({
       aria-label={name}
       className='flex flex-col border-border bg-card shadow-sm'
     >
-      <CardHeader className='flex-row items-start justify-between space-y-0'>
+      <CardHeader>
         <div className='flex items-center gap-4'>
           <div className='inline-flex size-14 items-center justify-center rounded-xl bg-primary/10 text-2xl text-primary'>
             {icon}
           </div>
           <CardTitle className='text-lg'>{name}</CardTitle>
         </div>
-        <StatusBadge status={status} />
+        <CardAction>
+          <StatusBadge status={status} />
+        </CardAction>
       </CardHeader>
 
       <CardContent className='flex flex-1 flex-col gap-5'>
