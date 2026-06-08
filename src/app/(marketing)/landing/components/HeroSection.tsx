@@ -3,9 +3,13 @@ import type { JSX } from 'react';
 import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { ArrowRight, BookOpen, Calendar, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
+
+const heroEnterClassName =
+  'motion-reduce:animate-none animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-700';
 
 export function HeroSection(): JSX.Element {
   const headingId = useId();
@@ -14,34 +18,58 @@ export function HeroSection(): JSX.Element {
     <section className='relative' aria-labelledby={headingId}>
       <div className='relative z-10 mx-auto flex flex-col items-center px-6 pt-6 pb-48 text-center sm:pt-8 lg:min-h-screen lg:justify-center lg:pt-16'>
         <div className='flex flex-col items-center space-y-6 lg:flex-1 lg:justify-center'>
-          <Badge variant='glassmorphic' className='px-4 py-2'>
+          <Badge
+            variant='glassmorphic'
+            className={cn(heroEnterClassName, 'px-4 py-2 delay-0')}
+          >
             <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent' />
             Learning plans that land on your calendar
           </Badge>
 
-          <h1 id={headingId} className='marketing-h1 max-w-4xl text-foreground'>
+          <h1
+            id={headingId}
+            className={cn(
+              'marketing-h1 max-w-4xl text-foreground',
+              heroEnterClassName,
+              'delay-150',
+            )}
+          >
             Turn goals into a{' '}
             <span className='gradient-text'>scheduled plan</span>
           </h1>
 
-          <p className='marketing-subtitle max-w-lg md:max-w-2xl'>
+          <p
+            className={cn(
+              'marketing-subtitle max-w-lg md:max-w-2xl',
+              heroEnterClassName,
+              'delay-300',
+            )}
+          >
             Atlaris builds module-by-module roadmaps, attaches resources to each
             session, and syncs your study blocks to Google Calendar.
           </p>
 
-          <Button
-            asChild
-            variant='default'
-            className={marketingPrimaryCtaClassName}
-          >
-            <Link href='/plans/new'>
-              Get started free
-              <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
-            </Link>
-          </Button>
+          <div className={cn(heroEnterClassName, 'delay-500')}>
+            <Button
+              asChild
+              variant='default'
+              className={marketingPrimaryCtaClassName}
+            >
+              <Link href='/plans/new'>
+                Get started free
+                <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
+              </Link>
+            </Button>
+          </div>
         </div>
 
-        <div className='relative mt-12 -mb-32 w-full max-w-7xl md:mt-6 md:-mb-40 lg:mt-0 lg:-mb-48'>
+        <div
+          className={cn(
+            'relative mt-12 -mb-32 w-full max-w-7xl md:mt-6 md:-mb-40 lg:mt-0 lg:-mb-48',
+            heroEnterClassName,
+            'delay-700',
+          )}
+        >
           <div className='absolute -inset-4 rounded-3xl bg-linear-to-r from-primary/30 to-accent/30 blur-xl' />
 
           <div className='relative rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-card/30'>

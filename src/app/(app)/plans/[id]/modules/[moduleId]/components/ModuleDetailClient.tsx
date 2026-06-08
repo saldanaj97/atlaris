@@ -8,7 +8,7 @@ import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modu
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import { clientLogger } from '@/lib/logging/client';
-import { type JSX, useCallback, useMemo } from 'react';
+import { type JSX, useCallback } from 'react';
 import { toast } from 'sonner';
 
 interface ModuleDetailClientProps {
@@ -32,10 +32,7 @@ export function ModuleDetailClient({
   } = moduleData;
 
   const lessons = module.tasks;
-  const scopedTaskIds = useMemo(
-    () => new Set(lessons.map((lesson) => lesson.id)),
-    [lessons],
-  );
+  const scopedTaskIds = new Set(lessons.map((lesson) => lesson.id));
 
   const flushModuleTaskProgress = useCallback(
     async (updates: Array<{ taskId: string; status: ProgressStatus }>) => {

@@ -201,7 +201,7 @@ const ModelDropdown = ({
         disabled={saveDisabled}
         className='w-full'
       >
-        {isSaving ? 'Saving...' : 'Save Preferences'}
+        {isSaving ? 'Saving…' : 'Save Preferences'}
       </Button>
 
       {userTier !== 'pro' && (

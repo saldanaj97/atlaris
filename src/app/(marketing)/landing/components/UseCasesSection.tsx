@@ -4,16 +4,14 @@ import { cn } from '@/lib/utils';
 import { Quote } from 'lucide-react';
 import { useId } from 'react';
 
-type AvatarGradient =
-  | 'from-primary to-accent'
-  | 'from-destructive to-destructive/80';
+type AvatarGradient = 'from-primary to-accent';
 
 interface QuoteCardProps {
   quote: string;
   persona: string;
   detail: string;
   avatarInitials: string;
-  gradient: AvatarGradient;
+  gradient?: AvatarGradient;
 }
 
 const USE_CASES: QuoteCardProps[] = [
@@ -39,7 +37,6 @@ const USE_CASES: QuoteCardProps[] = [
     persona: 'Busy Professional',
     detail: 'Product Manager',
     avatarInitials: 'RL',
-    gradient: 'from-destructive to-destructive/80',
   },
 ];
 
@@ -74,7 +71,7 @@ function QuoteCard({
   persona,
   detail,
   avatarInitials,
-  gradient,
+  gradient = 'from-primary to-accent',
 }: QuoteCardProps) {
   return (
     <MarketingCard className='flex flex-col p-8' showGlow={false}>

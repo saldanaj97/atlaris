@@ -123,7 +123,7 @@ function GenerationAction({
 
   return (
     <Button onClick={onGenerate} disabled={isPending}>
-      {isPending ? 'Generating...' : 'Generate lessons'}
+      {isPending ? 'Generating…' : 'Generate lessons'}
     </Button>
   );
 }

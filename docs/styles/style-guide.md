@@ -134,17 +134,24 @@ All use `font-family: var(--font-family-heading)` (Work Sans) and `font-weight: 
 
 ### Radius
 
-`--radius` is **2rem** at the root; `rounded-sm` / `md` / `lg` / `xl` derive from it in `@theme inline`.
+Product and marketing use **split radius tokens** (see `:root` in `globals.css`):
 
-| Token          | Derived from `--radius` | Typical use                     |
-| -------------- | ----------------------- | ------------------------------- |
-| `rounded-sm`   | `calc(2rem - 4px)`      | Small elements, badges          |
-| `rounded-md`   | `calc(2rem - 2px)`      | Buttons, inputs                 |
-| `rounded-lg`   | `2rem`                  | Cards, containers               |
-| `rounded-xl`   | `calc(2rem + 4px)`      | Large cards, hero elements      |
-| `rounded-2xl`  | ~1rem                   | Standard glass cards            |
-| `rounded-3xl`  | ~1.5rem                 | Feature cards, landing sections |
-| `rounded-full` | `9999px`                | Pills, circular elements        |
+| Token                 | Value    | Scope                                                                 |
+| --------------------- | -------- | --------------------------------------------------------------------- |
+| `--radius`            | `0.75rem`| Product/app: buttons, inputs, and token-derived `rounded-sm`–`xl`     |
+| `--radius-marketing`  | `2rem`   | Reference for marketing glass cards; sections use explicit `rounded-2xl` / `rounded-3xl` |
+
+**Decision (L-08):** Lowered product `--radius` from `2rem` because controls felt overly pill-shaped at ~28px `rounded-md`. Marketing keeps generous corners via explicit utilities, not the product token.
+
+| Token          | Derived from `--radius` (0.75rem) | Typical use                     |
+| -------------- | --------------------------------- | ------------------------------- |
+| `rounded-sm`   | `calc(0.75rem × 0.75)`            | Small elements, badges          |
+| `rounded-md`   | `calc(0.75rem × 0.875)`           | Buttons, inputs                 |
+| `rounded-lg`   | `0.75rem`                         | Compact containers              |
+| `rounded-xl`   | `calc(0.75rem × 1.25)`            | Larger product panels           |
+| `rounded-2xl`  | ~1rem (fixed scale)               | Product cards, standard glass   |
+| `rounded-3xl`  | ~1.5rem (fixed scale)             | Marketing feature cards, heroes |
+| `rounded-full` | `9999px`                          | Pills, circular elements        |
 
 ### Spacing
 
