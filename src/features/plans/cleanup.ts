@@ -54,6 +54,21 @@ export async function cleanupStuckPlans(
     const planIds = stuckPlans.map((plan) => plan.id);
     const cleaned = await markFailuresInTx(tx, planIds, timestamp);
 
+    if (cleaned !== planIds.length) {
+      logger.error(
+        {
+          source: 'cleanup',
+          event: 'stuck_plans_cleanup_partial_failure',
+          expected: planIds.length,
+          cleaned,
+        },
+        'Plan cleanup failed to mark all locked stuck plans as failed',
+      );
+      throw new Error(
+        'Plan cleanup failed to mark all locked stuck plans as failed',
+      );
+    }
+
     if (cleaned > 0) {
       logger.info(
         { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
@@ -115,10 +130,8 @@ export async function runPlanCleanupMaintenance(): Promise<{
   stuckPlansCleaned: number;
   orphanedAttemptsCleaned: number;
 }> {
-  const [stuckPlans, orphanedAttempts] = await Promise.all([
-    cleanupStuckPlans(serviceRoleDb),
-    cleanupOrphanedAttempts(serviceRoleDb),
-  ]);
+  const stuckPlans = await cleanupStuckPlans(serviceRoleDb);
+  const orphanedAttempts = await cleanupOrphanedAttempts(serviceRoleDb);
 
   return {
     stuckPlansCleaned: stuckPlans.cleaned,

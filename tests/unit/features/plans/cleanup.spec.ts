@@ -141,6 +141,28 @@ describe('cleanupStuckPlans', () => {
       expect.any(Date),
     );
   });
+
+  it('throws when markFailuresInTx updates fewer rows than locked plans', async () => {
+    mockDb = createMockDbClient(3);
+    const markFailuresInTx = vi.fn().mockResolvedValue(2);
+
+    await expect(
+      cleanupStuckPlans(mockDb.client, undefined, { markFailuresInTx }),
+    ).rejects.toThrow(
+      'Plan cleanup failed to mark all locked stuck plans as failed',
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'stuck_plans_cleanup_partial_failure',
+        expected: 3,
+        cleaned: 2,
+      }),
+      'Plan cleanup failed to mark all locked stuck plans as failed',
+    );
+    expect(logger.info).not.toHaveBeenCalled();
+  });
 });
 
 describe('cleanupOrphanedAttempts', () => {

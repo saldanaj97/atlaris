@@ -5,7 +5,34 @@ import {
   readInternalWorkerToken,
   tokensMatch,
 } from '@/lib/api/internal/internal-worker-token';
-import { appEnv } from '@/lib/config/env';
+import { appEnv, maintenanceEnv } from '@/lib/config/env';
+
+const MAINTENANCE_WORKER_HEADER = 'x-maintenance-worker-token';
+const MISSING_MAINTENANCE_WORKER_TOKEN_LOG_MESSAGE =
+  'Maintenance worker token missing in production';
+
+export type AssertMaintenanceWorkerAccessArgs = {
+  request: Request;
+  pathname: string;
+  logger: Logger;
+  enabled: boolean;
+  unavailableMessage: string;
+  unauthorizedLogMessage: string;
+};
+
+/**
+ * Shared auth gate for maintenance cleanup POST routes.
+ */
+export function assertMaintenanceWorkerAccess(
+  args: AssertMaintenanceWorkerAccessArgs,
+): void {
+  assertInternalWorkerAccess({
+    ...args,
+    workerToken: maintenanceEnv.workerToken,
+    headerName: MAINTENANCE_WORKER_HEADER,
+    missingWorkerTokenLogMessage: MISSING_MAINTENANCE_WORKER_TOKEN_LOG_MESSAGE,
+  });
+}
 
 export type AssertInternalWorkerAccessArgs = {
   request: Request;
