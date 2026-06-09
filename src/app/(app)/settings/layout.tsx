@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 
 import { SettingsSidebar } from '@/app/(app)/settings/components/SettingsSidebar';
+import { PageHeader } from '@/components/ui/page-header';
 import { PageShell } from '@/components/ui/page-shell';
 
 export const metadata: Metadata = {
@@ -23,6 +24,8 @@ export default function SettingsLayout({
 }): ReactElement {
   return (
     <PageShell>
+      <PageHeader title='Settings' />
+
       <div className='flex flex-col gap-6 md:flex-row md:gap-7'>
         {/* Sidebar */}
         <aside className='w-full shrink-0 md:w-52'>

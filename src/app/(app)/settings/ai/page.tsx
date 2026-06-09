@@ -17,6 +17,7 @@ export default function AISettingsPage(): ReactElement {
     <>
       <PageHeader
         title='AI Preferences'
+        titleAs='h2'
         subtitle={
           <>
             Save the model Atlaris should use for future plan generations. If
