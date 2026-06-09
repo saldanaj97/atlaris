@@ -5,12 +5,13 @@
 
 ## Overview
 
-Two POST routes live under `/api/internal/`. They bypass Clerk middleware and authenticate callers with shared worker tokens when enabled.
+Three POST routes live under `/api/internal/`. They bypass Clerk middleware and authenticate callers with shared worker tokens when enabled.
 
 | Route                                              | Purpose                             | Env config             |
 | -------------------------------------------------- | ----------------------------------- | ---------------------- |
 | `POST /api/internal/jobs/regeneration/process`     | Drain queued plan regeneration jobs | `regenerationQueueEnv` |
 | `POST /api/internal/maintenance/retention/cleanup` | Manual retention cleanup fallback   | `maintenanceEnv`       |
+| `POST /api/internal/maintenance/plans/cleanup`     | Manual stuck-plan and orphaned-attempt cleanup | `maintenanceEnv` |
 
 Both routes share `assertInternalWorkerAccess()` in `src/lib/api/internal/internal-worker-access.ts`.
 
@@ -25,6 +26,7 @@ Each route accepts **one** of:
 | ------------------ | ----------------------------- | --------------------------- |
 | Regeneration drain | `x-regeneration-worker-token` | `REGENERATION_WORKER_TOKEN` |
 | Retention cleanup  | `x-maintenance-worker-token`  | `MAINTENANCE_WORKER_TOKEN`  |
+| Plan cleanup       | `x-maintenance-worker-token`  | `MAINTENANCE_WORKER_TOKEN`  |
 
 Requests that supply both Bearer and the custom header are rejected.
 

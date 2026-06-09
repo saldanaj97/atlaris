@@ -97,7 +97,8 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
 | `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                            |
 | `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
-| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes only when manual route is enabled          |
+| `PLAN_CLEANUP_ENABLED`      | Master switch for the **manual** plan cleanup HTTP route only        | Set `true` only when enabling the manual route |
+| `MAINTENANCE_WORKER_TOKEN`  | Auth for manual maintenance cleanup routes                           | Yes when any manual maintenance route is enabled |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 

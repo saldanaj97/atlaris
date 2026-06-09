@@ -1,8 +1,10 @@
 import {
+  cleanupOrphanedAttempts,
   cleanupStuckPlans,
+  ORPHANED_ATTEMPT_THRESHOLD_MS,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
-import { learningPlans } from '@supabase/schema';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
@@ -135,5 +137,108 @@ describe('cleanupStuckPlans (integration)', () => {
       .where(eq(learningPlans.id, plan.id));
 
     expect(row?.generationStatus).toBe('generating');
+  });
+});
+
+describe('cleanupOrphanedAttempts (integration)', () => {
+  it('finalizes stale in_progress attempts and leaves recent attempts untouched', async () => {
+    const user = await createTestUser();
+    const staleCutoff = new Date(
+      Date.now() - ORPHANED_ATTEMPT_THRESHOLD_MS - 60_000,
+    );
+    const recentCutoff = new Date(Date.now() - 60_000);
+
+    const stalePlan = await createTestPlan({
+      userId: user.id,
+      topic: 'Stale attempt plan',
+    });
+    const recentPlan = await createTestPlan({
+      userId: user.id,
+      topic: 'Recent attempt plan',
+    });
+
+    const [staleAttempt] = await db
+      .insert(generationAttempts)
+      .values({
+        planId: stalePlan.id,
+        status: 'in_progress',
+        classification: null,
+        durationMs: 0,
+        modulesCount: 0,
+        tasksCount: 0,
+      })
+      .returning();
+    const [recentAttempt] = await db
+      .insert(generationAttempts)
+      .values({
+        planId: recentPlan.id,
+        status: 'in_progress',
+        classification: null,
+        durationMs: 0,
+        modulesCount: 0,
+        tasksCount: 0,
+      })
+      .returning();
+
+    await db
+      .update(generationAttempts)
+      .set({ createdAt: staleCutoff })
+      .where(eq(generationAttempts.id, staleAttempt.id));
+    await db
+      .update(generationAttempts)
+      .set({ createdAt: recentCutoff })
+      .where(eq(generationAttempts.id, recentAttempt.id));
+
+    const result = await cleanupOrphanedAttempts(db);
+
+    expect(result.cleaned).toBe(1);
+
+    const rows = await db
+      .select({
+        id: generationAttempts.id,
+        status: generationAttempts.status,
+        classification: generationAttempts.classification,
+      })
+      .from(generationAttempts)
+      .where(
+        inArray(generationAttempts.id, [staleAttempt.id, recentAttempt.id]),
+      );
+
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    expect(byId.get(staleAttempt.id)).toMatchObject({
+      status: 'failure',
+      classification: 'timeout',
+    });
+    expect(byId.get(recentAttempt.id)).toMatchObject({
+      status: 'in_progress',
+      classification: null,
+    });
+  });
+
+  it('returns 0 when no orphaned in_progress attempts exist', async () => {
+    const user = await createTestUser();
+    const plan = await createTestPlan({ userId: user.id });
+    const recentCutoff = new Date(Date.now() - 60_000);
+
+    const [attempt] = await db
+      .insert(generationAttempts)
+      .values({
+        planId: plan.id,
+        status: 'in_progress',
+        classification: null,
+        durationMs: 0,
+        modulesCount: 0,
+        tasksCount: 0,
+      })
+      .returning();
+
+    await db
+      .update(generationAttempts)
+      .set({ createdAt: recentCutoff })
+      .where(eq(generationAttempts.id, attempt.id));
+
+    const result = await cleanupOrphanedAttempts(db);
+
+    expect(result.cleaned).toBe(0);
   });
 });

@@ -7,10 +7,11 @@ import {
 } from '@/lib/config/env/shared';
 
 /**
- * Retention cleanup env flags consumed by the internal maintenance route.
+ * Maintenance cleanup env flags consumed by internal maintenance routes.
  */
 interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
+  readonly planCleanupEnabled: boolean;
   readonly workerToken: string | undefined;
 }
 
@@ -29,10 +30,16 @@ export function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
       );
     },
     /**
-     * Bearer token for manual retention cleanup via the internal HTTP route.
+     * Master switch for the manual plan cleanup HTTP endpoint.
+     */
+    get planCleanupEnabled(): boolean {
+      return toBoolean(access.getServerOptional('PLAN_CLEANUP_ENABLED'), false);
+    },
+    /**
+     * Bearer token for manual maintenance cleanup via internal HTTP routes.
      */
     get workerToken(): string | undefined {
-      if (!this.retentionCleanupEnabled) {
+      if (!this.retentionCleanupEnabled && !this.planCleanupEnabled) {
         return undefined;
       }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');

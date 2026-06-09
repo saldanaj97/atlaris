@@ -21,7 +21,7 @@ After deploying a release that includes new Supabase migrations:
 2. If the CLI reports out-of-order local migrations, use `supabase db push --include-all` against the target project (see `docs/architecture/retention-cleanup-runbook.md`).
 3. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
-   - `RETENTION_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling the manual retention route
+   - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling manual maintenance routes
 4. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
 
 ```sql

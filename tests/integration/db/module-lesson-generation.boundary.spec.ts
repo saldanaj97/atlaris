@@ -2,6 +2,7 @@ import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
+import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
@@ -90,6 +91,70 @@ describe('module lesson generation boundary (integration)', () => {
     expect(rows[1]?.lessonContent?.version).toBe(1);
     expect(rows[0]?.id).toBe(task1.id);
     expect(rows[1]?.id).toBe(task2.id);
+  });
+
+  it('persists distinct lesson content for max-batch tasks in one commit', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-max-batch');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Max batch task coverage',
+    });
+    const mod = await createTestModule({ planId: plan.id });
+    const createdTasks = await Promise.all(
+      Array.from({ length: MAX_MODULE_LESSON_BATCH_TASKS }, (_, index) =>
+        createTestTask({
+          moduleId: mod.id,
+          order: index + 1,
+          title: `Task ${index + 1}`,
+        }),
+      ),
+    );
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    const result = await generateModuleLessons(
+      {
+        dbClient: rlsDb,
+        userId,
+        planId: plan.id,
+        moduleId: mod.id,
+        userTier: 'free',
+      },
+      {
+        provider: new MockGenerationProvider({
+          delayMs: 0,
+          deterministicSeed: 23,
+        }),
+      },
+    );
+
+    expect(result.kind).toBe('success');
+
+    const [modRow] = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(modRow?.lessonGenerationStatus).toBe('ready');
+
+    const rows = await db
+      .select({
+        id: tasks.id,
+        order: tasks.order,
+        lessonContent: tasks.lessonContent,
+      })
+      .from(tasks)
+      .where(eq(tasks.moduleId, mod.id))
+      .orderBy(asc(tasks.order));
+
+    expect(rows).toHaveLength(MAX_MODULE_LESSON_BATCH_TASKS);
+    expect(rows.map((row) => row.id)).toEqual(
+      createdTasks.map((task) => task.id),
+    );
+    expect(rows.every((row) => row.lessonContent?.version === 1)).toBe(true);
   });
 
   it('persists distinct lesson content for five tasks in one batch commit', async () => {

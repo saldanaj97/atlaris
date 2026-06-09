@@ -6,6 +6,7 @@ import type { DbClient } from '@/lib/db/types';
 import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
 import { logger } from '@/lib/logging/logger';
 import { generationAttempts, learningPlans } from '@supabase/schema';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
@@ -105,4 +106,22 @@ export async function cleanupOrphanedAttempts(
   }
 
   return { cleaned };
+}
+
+/**
+ * Service-role entrypoint for the internal plan cleanup maintenance route.
+ */
+export async function runPlanCleanupMaintenance(): Promise<{
+  stuckPlansCleaned: number;
+  orphanedAttemptsCleaned: number;
+}> {
+  const [stuckPlans, orphanedAttempts] = await Promise.all([
+    cleanupStuckPlans(serviceRoleDb),
+    cleanupOrphanedAttempts(serviceRoleDb),
+  ]);
+
+  return {
+    stuckPlansCleaned: stuckPlans.cleaned,
+    orphanedAttemptsCleaned: orphanedAttempts.cleaned,
+  };
 }

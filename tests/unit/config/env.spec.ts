@@ -603,6 +603,28 @@ describe('Environment Configuration', () => {
       expect(maintenance.retentionCleanupEnabled).toBe(true);
       expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
+
+    it('does not require a worker token when plan cleanup is disabled in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        PLAN_CLEANUP_ENABLED: 'false',
+      });
+
+      expect(maintenance.planCleanupEnabled).toBe(false);
+      expect(maintenance.workerToken).toBeUndefined();
+    });
+
+    it('requires a worker token when manual plan cleanup is enabled in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        PLAN_CLEANUP_ENABLED: 'true',
+      });
+
+      expect(maintenance.planCleanupEnabled).toBe(true);
+      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
+    });
   });
 
   describe('parseEnvNumber', () => {
