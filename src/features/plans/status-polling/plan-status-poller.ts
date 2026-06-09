@@ -91,6 +91,7 @@ export class PlanStatusPoller {
     this.syncSnapshot();
     this.emit();
     if (shouldContinuePolling(this.state)) {
+      this.clearScheduledPoll();
       await this.fetchOnce('immediate');
       this.scheduleNextPoll();
     }
@@ -123,6 +124,10 @@ export class PlanStatusPoller {
   dispose(): void {
     this.cancelled = true;
     this.started = false;
+    this.clearScheduledPoll();
+  }
+
+  private clearScheduledPoll(): void {
     if (this.pollTimeoutId !== null) {
       clearTimeout(this.pollTimeoutId);
       this.pollTimeoutId = null;

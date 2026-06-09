@@ -745,6 +745,40 @@ describe('usePlanStatus', () => {
     expect(result.current.isPolling).toBe(false);
   });
 
+  it('does not keep the previous scheduled poll after revalidating while polling', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(1);
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
   it('revalidate while polling is active clears errors and resumes polling', async () => {
     vi.useFakeTimers();
 
