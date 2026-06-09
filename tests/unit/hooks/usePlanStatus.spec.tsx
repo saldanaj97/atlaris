@@ -680,6 +680,71 @@ describe('usePlanStatus', () => {
     expect(result.current.isPolling).toBe(false);
   });
 
+  it('resets state synchronously on planId change without a stale frame', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({
+            status: 'processing',
+            attempts: 2,
+            latestError: 'transient',
+          }),
+        ),
+      )
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'pending', attempts: 0 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ id, initial }: { id: string; initial: PlanStatus }) =>
+        usePlanStatus(id, initial, mockFetch),
+      { initialProps: { id: 'plan-a', initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+    });
+
+    rerender({ id: 'plan-b', initial: 'pending' });
+
+    expect(result.current.status).toBe('pending');
+    expect(result.current.attempts).toBe(0);
+    expect(result.current.error).toBeNull();
+    expect(result.current.pollingError).toBeNull();
+  });
+
+  it('does not revalidate when plan is in a terminal status', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'ready', attempts: 3 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready');
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    const callsBeforeRevalidate = mockFetch.mock.calls.length;
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+
+    expect(mockFetch.mock.calls.length).toBe(callsBeforeRevalidate);
+    expect(result.current.status).toBe('ready');
+    expect(result.current.isPolling).toBe(false);
+  });
+
   it('revalidate while polling is active clears errors and resumes polling', async () => {
     vi.useFakeTimers();
 
