@@ -4,8 +4,10 @@ import {
   cleanupOrphanedAttempts,
   cleanupStuckPlans,
   ORPHANED_ATTEMPT_THRESHOLD_MS,
+  STUCK_PLAN_CLEANUP_BATCH_SIZE,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
+import { logger } from '@/lib/logging/logger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the logger to avoid console noise and allow assertion
@@ -22,8 +24,11 @@ function createMockDbClient(resultCount: number) {
   const rows = Array.from({ length: resultCount }, (_, i) => ({
     id: `id-${i}`,
   }));
-  const forFn = vi.fn().mockResolvedValue(rows);
-  const limitFn = vi.fn().mockReturnValue({ for: forFn });
+  const forFn = vi.fn();
+  const limitFn = vi.fn().mockImplementation((limit: number) => {
+    forFn.mockResolvedValue(rows.slice(0, limit));
+    return { for: forFn };
+  });
   const whereSelectFn = vi.fn().mockReturnValue({ limit: limitFn });
   const transactionFn = vi.fn();
   const fromFn = vi.fn().mockReturnValue({ where: whereSelectFn });
@@ -68,43 +73,56 @@ describe('cleanupStuckPlans', () => {
     vi.clearAllMocks();
   });
 
-  it('marks stuck generating plans as failed and returns count', async () => {
+  it('marks stuck generating plans as failed with one bulk update', async () => {
     mockDb = createMockDbClient(3);
-    const markFailure = vi.fn().mockResolvedValue(undefined);
+    const markFailuresInTx = vi.fn().mockResolvedValue(3);
+    markFailuresInTx.mockImplementation(
+      (_tx, planIds: string[], timestamp: Date) => {
+        expect(planIds).toEqual(['id-0', 'id-1', 'id-2']);
+        expect(timestamp).toBeInstanceOf(Date);
+        return Promise.resolve(planIds.length);
+      },
+    );
 
     const result = await cleanupStuckPlans(mockDb.client, undefined, {
-      markFailure,
+      markFailuresInTx,
     });
 
     expect(result.cleaned).toBe(3);
     expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
-    expect(markFailure).toHaveBeenCalledTimes(3);
-    expect(markFailure).toHaveBeenNthCalledWith(
-      1,
-      'id-0',
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(
+      STUCK_PLAN_CLEANUP_BATCH_SIZE,
+    );
+    expect(markFailuresInTx).toHaveBeenCalledTimes(1);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
       mockDb.client,
-      expect.any(Function),
+      ['id-0', 'id-1', 'id-2'],
+      expect.any(Date),
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'stuck_plans_cleaned',
+        count: 3,
+      }),
+      expect.stringContaining('3'),
     );
 
-    const firstClock = markFailure.mock.calls[0]?.[2] as
-      | (() => Date)
-      | undefined;
-    const secondClock = markFailure.mock.calls[1]?.[2] as
-      | (() => Date)
-      | undefined;
-
-    expect(firstClock).toBeDefined();
-    expect(secondClock).toBeDefined();
-    expect(firstClock?.()).toBeInstanceOf(Date);
-    expect(secondClock?.()).toBe(firstClock?.());
+    const timestampArg = markFailuresInTx.mock.calls[0]?.[2] as Date;
+    expect(timestampArg).toBeInstanceOf(Date);
   });
 
-  it('returns 0 when no stuck plans exist', async () => {
+  it('returns 0 and skips bulk update when no stuck plans exist', async () => {
     mockDb = createMockDbClient(0);
+    const markFailuresInTx = vi.fn();
 
-    const result = await cleanupStuckPlans(mockDb.client);
+    const result = await cleanupStuckPlans(mockDb.client, undefined, {
+      markFailuresInTx,
+    });
 
     expect(result.cleaned).toBe(0);
+    expect(markFailuresInTx).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
   });
 
   it('has a reasonable stuck plan threshold', () => {
@@ -116,11 +134,67 @@ describe('cleanupStuckPlans', () => {
 
   it('accepts a custom threshold', async () => {
     mockDb = createMockDbClient(1);
+    const markFailuresInTx = vi.fn().mockResolvedValue(1);
     const customThreshold = 5 * 60 * 1000; // 5 minutes
 
-    const result = await cleanupStuckPlans(mockDb.client, customThreshold);
+    const result = await cleanupStuckPlans(mockDb.client, customThreshold, {
+      markFailuresInTx,
+    });
 
     expect(result.cleaned).toBe(1);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
+      mockDb.client,
+      ['id-0'],
+      expect.any(Date),
+    );
+  });
+
+  it('processes only one bounded batch per run', async () => {
+    mockDb = createMockDbClient(5);
+    const markFailuresInTx = vi.fn().mockResolvedValue(2);
+
+    const result = await cleanupStuckPlans(mockDb.client, undefined, {
+      markFailuresInTx,
+      batchSize: 2,
+    });
+
+    expect(result.cleaned).toBe(2);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(2);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
+      mockDb.client,
+      ['id-0', 'id-1'],
+      expect.any(Date),
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      {
+        source: 'cleanup',
+        event: 'stuck_plans_cleanup_batch_full',
+        batchSize: 2,
+      },
+      'Plan cleanup filled its stuck-plan batch; backlog may remain',
+    );
+  });
+
+  it('throws when markFailuresInTx updates fewer rows than locked plans', async () => {
+    mockDb = createMockDbClient(3);
+    const markFailuresInTx = vi.fn().mockResolvedValue(2);
+
+    await expect(
+      cleanupStuckPlans(mockDb.client, undefined, { markFailuresInTx }),
+    ).rejects.toThrow(
+      'Plan cleanup failed to mark all locked stuck plans as failed',
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'stuck_plans_cleanup_partial_failure',
+        expected: 3,
+        cleaned: 2,
+      }),
+      'Plan cleanup failed to mark all locked stuck plans as failed',
+    );
+    expect(logger.info).not.toHaveBeenCalled();
   });
 });
 

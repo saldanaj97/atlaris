@@ -27,9 +27,16 @@ function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<'div'>) {
+function CardTitle({
+  className,
+  as: TitleTag = 'div',
+  ...props
+}: React.ComponentProps<'div'> & {
+  /** Use `h3` for section titles under a page `h2` (e.g. settings billing cards). */
+  as?: 'div' | 'h2' | 'h3' | 'h4';
+}) {
   return (
-    <div
+    <TitleTag
       data-slot='card-title'
       className={cn('leading-none font-semibold', className)}
       {...props}

@@ -34,7 +34,7 @@ export function SettingsErrorContent({
 
   return (
     <>
-      <PageHeader title={title} subtitle={subtitle} />
+      <PageHeader title={title} titleAs='h2' subtitle={subtitle} />
       <RouteErrorState
         title={errorTitle}
         message={errorMessage}

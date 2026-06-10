@@ -17,6 +17,7 @@ export default function AISettingsPage(): ReactElement {
     <>
       <PageHeader
         title='AI Preferences'
+        titleAs='h2'
         subtitle={
           <>
             Save the model Atlaris should use for future plan generations. If
@@ -36,7 +37,7 @@ export default function AISettingsPage(): ReactElement {
         {/* Static content - renders immediately */}
         <Card>
           <CardHeader>
-            <CardTitle>About AI Models</CardTitle>
+            <CardTitle as='h3'>About AI Models</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4 text-sm text-muted-foreground'>
             <p>

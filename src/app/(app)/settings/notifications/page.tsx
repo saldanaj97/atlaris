@@ -38,6 +38,7 @@ export default function NotificationsSettingsPage() {
     <>
       <PageHeader
         title='Notifications'
+        titleAs='h2'
         subtitle='Manage how you stay informed about your learning progress and account activity'
       />
 

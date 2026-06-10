@@ -32,6 +32,19 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
     envKeys.forEach(restoreEnvVar);
   });
 
+  it('returns 503 when retention cleanup is disabled', async () => {
+    process.env.RETENTION_CLEANUP_ENABLED = 'false';
+
+    const response = await POST_RETENTION_CLEANUP(
+      new Request(
+        'http://localhost/api/internal/maintenance/retention/cleanup',
+        { method: 'POST' },
+      ),
+    );
+
+    expect(response.status).toBe(503);
+  });
+
   it('rejects unauthorized requests when a worker token is configured', async () => {
     process.env.MAINTENANCE_WORKER_TOKEN = 'maintenance-secret';
     process.env.RETENTION_CLEANUP_ENABLED = 'true';

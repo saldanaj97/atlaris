@@ -1,3 +1,5 @@
+import type { PlanStatus } from '@/shared/types/client.types';
+
 import {
   createMockFetchResponse,
   createPlanStatusResponse,
@@ -17,6 +19,16 @@ import { z } from 'zod';
 const FIRST_BACKOFF = 1500; // computeNextDelay(1000) = 1000 * 1.5
 const SECOND_BACKOFF = 2250; // computeNextDelay(1500) = 1500 * 1.5
 const THIRD_BACKOFF = 3375; // computeNextDelay(2250) = 2250 * 1.5
+
+function expectStatusFetch(
+  mockFetch: ReturnType<typeof vi.fn>,
+  planId: string,
+): void {
+  expect(mockFetch).toHaveBeenCalledWith(
+    `/api/v1/plans/${planId}/status`,
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  );
+}
 
 describe('usePlanStatus', () => {
   beforeEach(() => {
@@ -64,7 +76,7 @@ describe('usePlanStatus', () => {
 
     // Wait for the immediate fetch call
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/plan-123/status');
+      expectStatusFetch(mockFetch, 'plan-123');
     });
   });
 
@@ -533,6 +545,348 @@ describe('usePlanStatus', () => {
       await vi.advanceTimersByTimeAsync(INITIAL_POLL_MS);
     });
     expect(mockFetch).toHaveBeenCalledTimes(5);
+  });
+
+  it('resets state when planId changes', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({
+            status: 'processing',
+            attempts: 2,
+            latestError: 'transient',
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'pending', attempts: 0 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ id, initial }: { id: string; initial: PlanStatus }) =>
+        usePlanStatus(id, initial, mockFetch),
+      { initialProps: { id: 'plan-a', initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+      expect(result.current.attempts).toBe(2);
+      expect(result.current.error).toBe('transient');
+    });
+
+    rerender({ id: 'plan-b', initial: 'pending' });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+      expect(result.current.attempts).toBe(0);
+      expect(result.current.error).toBeNull();
+      expect(result.current.pollingError).toBeNull();
+    });
+
+    expectStatusFetch(mockFetch, 'plan-b');
+  });
+
+  it('does not reset live polled state when initialStatus changes for the same planId', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 4 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ initial }: { initial: PlanStatus }) =>
+        usePlanStatus('plan-123', initial, mockFetch),
+      { initialProps: { initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+      expect(result.current.attempts).toBe(4);
+    });
+
+    rerender({ initial: 'ready' });
+
+    expect(result.current.status).toBe('processing');
+    expect(result.current.attempts).toBe(4);
+  });
+
+  it('stops polling with a generic message when response validation fails', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'not-a-valid-status',
+        attempts: 1,
+        latestError: null,
+      }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBe(
+        'Received invalid plan status response from server.',
+      );
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    expect(clientLogger.error).toHaveBeenCalled();
+  });
+
+  it('stops polling on non-retriable 404 responses', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Plan not found', code: 'NOT_FOUND' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.pollingError).toBe('Plan not found');
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    expect(clientLogger.error).toHaveBeenCalled();
+  });
+
+  it('keeps isPolling true during retriable failures until max failures', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({ error: 'Unavailable' }),
+    });
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(result.current.isPolling).toBe(true);
+    expect(result.current.pollingError).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(result.current.isPolling).toBe(true);
+    expect(result.current.pollingError).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+    expect(result.current.pollingError).toBe('Unavailable');
+    expect(result.current.isPolling).toBe(false);
+  });
+
+  it('resets state on planId change without a stale frame', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createMockFetchResponse(
+          createPlanStatusResponse({
+            status: 'processing',
+            attempts: 2,
+            latestError: 'transient',
+          }),
+        ),
+      )
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'pending', attempts: 0 }),
+        ),
+      );
+
+    const { result, rerender } = renderHook(
+      ({ id, initial }: { id: string; initial: PlanStatus }) =>
+        usePlanStatus(id, initial, mockFetch),
+      { initialProps: { id: 'plan-a', initial: 'pending' as PlanStatus } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('processing');
+    });
+
+    rerender({ id: 'plan-b', initial: 'pending' });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+      expect(result.current.attempts).toBe(0);
+      expect(result.current.error).toBeNull();
+      expect(result.current.pollingError).toBeNull();
+    });
+  });
+
+  it('does not revalidate when plan is in a terminal status', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'ready', attempts: 3 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready');
+      expect(result.current.isPolling).toBe(false);
+    });
+
+    const callsBeforeRevalidate = mockFetch.mock.calls.length;
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+
+    expect(mockFetch.mock.calls.length).toBe(callsBeforeRevalidate);
+    expect(result.current.status).toBe('ready');
+    expect(result.current.isPolling).toBe(false);
+  });
+
+  it('does not keep the previous scheduled poll after revalidating while polling', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(1);
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('reuses an in-flight scheduled fetch when revalidating', async () => {
+    vi.useFakeTimers();
+
+    type MockFetchResponse = ReturnType<typeof createMockFetchResponse>;
+    let resolveScheduledFetch!: (response: MockFetchResponse) => void;
+    const scheduledFetch = new Promise<MockFetchResponse>((resolve) => {
+      resolveScheduledFetch = resolve;
+    });
+    const response = createMockFetchResponse(
+      createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(response)
+      .mockReturnValueOnce(scheduledFetch)
+      .mockResolvedValue(response);
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+
+    let revalidatePromise!: Promise<void>;
+    await act(async () => {
+      revalidatePromise = result.current.revalidate();
+      await Promise.resolve();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveScheduledFetch(response);
+      await revalidatePromise;
+    });
+
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('revalidate while polling is active clears errors and resumes polling', async () => {
+    vi.useFakeTimers();
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({ error: 'Unavailable' }),
+      })
+      .mockResolvedValue(
+        createMockFetchResponse(
+          createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+        ),
+      );
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SECOND_BACKOFF);
+    });
+
+    expect(result.current.pollingError).toBe('Unavailable');
+    expect(result.current.isPolling).toBe(false);
+
+    await act(async () => {
+      await result.current.revalidate();
+    });
+
+    expect(result.current.pollingError).toBeNull();
+    expect(result.current.status).toBe('processing');
+    expect(result.current.isPolling).toBe(true);
   });
 });
 

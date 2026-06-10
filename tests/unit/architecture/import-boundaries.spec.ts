@@ -7,6 +7,7 @@ const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const SRC_ROOT = join(REPO_ROOT, 'src');
 const FEATURES_ROOT = join(SRC_ROOT, 'features');
 const APP_ROOT = join(SRC_ROOT, 'app');
+const PLANS_API_ROOT = join(APP_ROOT, 'api/v1/plans');
 
 const PLANS_QUERIES_MODULE = '@/lib/db/queries/plans';
 
@@ -250,6 +251,40 @@ describe('import boundaries (Slice B)', () => {
           }
         }
       }
+    }
+
+    expect(violations, violations.join('\n')).toEqual([]);
+  });
+
+  it('requires plans API route entrypoints to use requestBoundary.route', () => {
+    const violations: string[] = [];
+    const routeFiles = walkSourceFiles(PLANS_API_ROOT).filter((filePath) => {
+      const rel = relative(PLANS_API_ROOT, filePath).split('\\').join('/');
+      return rel.endsWith('/route.ts');
+    });
+
+    for (const filePath of routeFiles) {
+      const rel = relative(PLANS_API_ROOT, filePath).split('\\').join('/');
+      if (rel === 'plan-creation-failure.ts') {
+        continue;
+      }
+
+      const source = readFileSync(filePath, 'utf8');
+      if (source.includes('requestBoundary.route')) {
+        continue;
+      }
+
+      const handlerPath = join(filePath, '..', 'handler.ts');
+      if (existsSync(handlerPath)) {
+        const handlerSource = readFileSync(handlerPath, 'utf8');
+        if (handlerSource.includes('requestBoundary.route')) {
+          continue;
+        }
+      }
+
+      violations.push(
+        `${relative(REPO_ROOT, filePath)}: plans API route must wrap handlers with requestBoundary.route`,
+      );
     }
 
     expect(violations, violations.join('\n')).toEqual([]);
