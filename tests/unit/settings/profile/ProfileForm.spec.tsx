@@ -118,6 +118,35 @@ describe('ProfileForm', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows cancel button in edit mode and restores view on cancel', async () => {
+    mockFetchSuccess();
+
+    render(<ProfileForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(MOCK_PROFILE.name));
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    expect(cancelButton).toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText('Name');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Temporary Name');
+    await user.click(cancelButton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /save changes/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows save button when name is edited', async () => {
     mockFetchSuccess();
 
