@@ -15,6 +15,7 @@ describe('middleware policy', () => {
     '/api/internal/',
     '/api/internal/jobs/regeneration/process',
     '/api/internal/maintenance/retention/cleanup',
+    '/api/internal/maintenance/plans/cleanup',
     '/api/internal/extra-segment',
   ])('isProtectedRoute skips internal worker prefix %s', (pathname) => {
     expect(isProtectedRoute(pathname)).toBe(false);

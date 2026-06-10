@@ -4,6 +4,11 @@ Quick reference for all common development commands.
 
 See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migration deploys.
 
+## Package manager
+
+- CI pins **pnpm 9** (see `.github/workflows/ci-pr.yml`).
+- Supply-chain release-age policy (`minimumReleaseAge`) is **deferred** until a pnpm 10.16+ upgrade — see [supply-chain policy](../security/supply-chain-policy.md).
+
 ## Development Server
 
 > **Note**: Do not auto-run these commands; listed for reference only.

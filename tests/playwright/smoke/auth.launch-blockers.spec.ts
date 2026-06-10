@@ -24,12 +24,10 @@ const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 const CHECKOUT_TIMEOUT_MS = 20_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
-  await expectHeading(page, 'Settings');
-  await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Current Plan' }),
-  ).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Usage' })).toBeVisible();
+  await expectHeading(page, 'Settings', 1);
+  await expectHeading(page, 'Billing', 2);
+  await expectHeading(page, 'Current Plan', 3);
+  await expectHeading(page, 'Usage', 3);
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('Next billing date')).toBeVisible();
   await expect(page.getByText(/^active$/i)).toBeVisible();

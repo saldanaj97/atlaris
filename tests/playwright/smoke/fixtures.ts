@@ -63,8 +63,14 @@ export function assertRedirectToSignIn(
 export async function expectHeading(
   page: Page,
   name: HeadingName,
+  level?: 1 | 2 | 3 | 4 | 5 | 6,
+  timeout?: number,
 ): Promise<void> {
-  await expect(page.getByRole('heading', { name })).toBeVisible();
+  const locator =
+    level === undefined
+      ? page.getByRole('heading', { name })
+      : page.getByRole('heading', { name, level });
+  await expect(locator).toBeVisible({ timeout });
 }
 
 export async function selectInlineDropdown(

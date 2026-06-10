@@ -53,7 +53,7 @@ export async function ModelSelectionCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Model Selection</CardTitle>
+        <CardTitle as='h3'>Model Selection</CardTitle>
         <CardDescription>
           {currentModel !== null ? (
             <>

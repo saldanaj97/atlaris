@@ -14,7 +14,13 @@ import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import { useEffect, useId, useMemo, useReducer, useRef } from 'react';
+import { useEffect, useId, useReducer, useRef } from 'react';
+
+const IS_MAC =
+  typeof navigator !== 'undefined' &&
+  ((navigator as Navigator & { userAgentData?: { platform?: string } })
+    .userAgentData?.platform === 'macOS' ||
+    /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -115,15 +121,6 @@ export function UnifiedPlanInput({
     }
   };
 
-  const isMac = useMemo(() => {
-    if (typeof navigator === 'undefined') return false;
-    return (
-      (navigator as Navigator & { userAgentData?: { platform?: string } })
-        .userAgentData?.platform === 'macOS' ||
-      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
-    );
-  }, []);
-
   return (
     <div className='w-full max-w-5xl'>
       <Surface
@@ -199,7 +196,7 @@ export function UnifiedPlanInput({
           className='rounded bg-muted px-1.5 py-0.5 text-xs font-medium'
           suppressHydrationWarning
         >
-          {isMac ? '⌘' : 'Ctrl'}+Enter
+          {IS_MAC ? '⌘' : 'Ctrl'}+Enter
         </kbd>{' '}
         to submit.
       </p>

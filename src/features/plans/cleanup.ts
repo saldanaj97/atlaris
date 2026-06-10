@@ -3,12 +3,19 @@ import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 // updates run on the same transaction handle as SELECT … FOR UPDATE.
 import type { DbClient } from '@/lib/db/types';
 
-import { markPlanGenerationFailure } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
+import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/adapters/plan-persistence-store';
 import { logger } from '@/lib/logging/logger';
 import { generationAttempts, learningPlans } from '@supabase/schema';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Max stuck plans processed per cleanup run. At the 15-minute scheduler cadence
+ * this drains up to 4,000 plans/hour while keeping each transaction bounded.
+ */
+export const STUCK_PLAN_CLEANUP_BATCH_SIZE = 1000;
 
 /** In-progress attempts older than this are considered orphaned. */
 export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
@@ -20,7 +27,8 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  * does not race concurrent generation state updates.
  */
 type CleanupStuckPlansDependencies = {
-  markFailure?: typeof markPlanGenerationFailure;
+  markFailuresInTx?: typeof markPlanGenerationFailuresInTx;
+  batchSize?: number;
 };
 
 export async function cleanupStuckPlans(
@@ -29,7 +37,9 @@ export async function cleanupStuckPlans(
   deps: CleanupStuckPlansDependencies = {},
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
-  const markFailure = deps.markFailure ?? markPlanGenerationFailure;
+  const markFailuresInTx =
+    deps.markFailuresInTx ?? markPlanGenerationFailuresInTx;
+  const batchSize = deps.batchSize ?? STUCK_PLAN_CLEANUP_BATCH_SIZE;
 
   return dbClient.transaction(async (tx) => {
     const stuckPlans = await tx
@@ -41,22 +51,47 @@ export async function cleanupStuckPlans(
           lt(learningPlans.updatedAt, cutoff),
         ),
       )
-      .limit(Number.MAX_SAFE_INTEGER)
+      .limit(batchSize)
       .for('update');
 
-    const timestamp = new Date();
-
-    for (const plan of stuckPlans) {
-      // Reuse a single timestamp so the batch gets a consistent failed-at moment.
-      await markFailure(plan.id, tx, () => timestamp);
+    if (stuckPlans.length === 0) {
+      return { cleaned: 0 };
     }
 
-    const cleaned = stuckPlans.length;
+    const timestamp = new Date();
+    const planIds = stuckPlans.map((plan) => plan.id);
+    const cleaned = await markFailuresInTx(tx, planIds, timestamp);
+
+    if (cleaned !== planIds.length) {
+      logger.error(
+        {
+          source: 'cleanup',
+          event: 'stuck_plans_cleanup_partial_failure',
+          expected: planIds.length,
+          cleaned,
+        },
+        'Plan cleanup failed to mark all locked stuck plans as failed',
+      );
+      throw new Error(
+        'Plan cleanup failed to mark all locked stuck plans as failed',
+      );
+    }
 
     if (cleaned > 0) {
       logger.info(
         { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
         `Marked ${cleaned} stuck plan(s) as failed`,
+      );
+    }
+
+    if (cleaned === batchSize) {
+      logger.warn(
+        {
+          source: 'cleanup',
+          event: 'stuck_plans_cleanup_batch_full',
+          batchSize,
+        },
+        'Plan cleanup filled its stuck-plan batch; backlog may remain',
       );
     }
 
@@ -105,4 +140,20 @@ export async function cleanupOrphanedAttempts(
   }
 
   return { cleaned };
+}
+
+/**
+ * Service-role entrypoint for the internal plan cleanup maintenance route.
+ */
+export async function runPlanCleanupMaintenance(): Promise<{
+  stuckPlansCleaned: number;
+  orphanedAttemptsCleaned: number;
+}> {
+  const stuckPlans = await cleanupStuckPlans(serviceRoleDb);
+  const orphanedAttempts = await cleanupOrphanedAttempts(serviceRoleDb);
+
+  return {
+    stuckPlansCleaned: stuckPlans.cleaned,
+    orphanedAttemptsCleaned: orphanedAttempts.cleaned,
+  };
 }

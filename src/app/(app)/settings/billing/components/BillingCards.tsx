@@ -45,7 +45,7 @@ export async function BillingCards({ locale }: { locale?: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Billing unavailable</CardTitle>
+          <CardTitle as='h3'>Billing unavailable</CardTitle>
           <CardDescription>
             We couldn&apos;t load your billing details right now.
           </CardDescription>
@@ -87,7 +87,7 @@ export async function BillingCards({ locale }: { locale?: string }) {
       <Card>
         <CardHeader>
           <div className='space-y-1'>
-            <CardTitle>Current Plan</CardTitle>
+            <CardTitle as='h3'>Current Plan</CardTitle>
             <CardDescription>Manage your subscription</CardDescription>
           </div>
           <CardAction>
@@ -122,7 +122,7 @@ export async function BillingCards({ locale }: { locale?: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Usage</CardTitle>
+          <CardTitle as='h3'>Usage</CardTitle>
         </CardHeader>
         <CardContent className='space-y-5'>
           <div>
