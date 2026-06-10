@@ -37,7 +37,7 @@ export default function AISettingsPage(): ReactElement {
         {/* Static content - renders immediately */}
         <Card>
           <CardHeader>
-            <CardTitle>About AI Models</CardTitle>
+            <CardTitle as='h3'>About AI Models</CardTitle>
           </CardHeader>
           <CardContent className='space-y-4 text-sm text-muted-foreground'>
             <p>
