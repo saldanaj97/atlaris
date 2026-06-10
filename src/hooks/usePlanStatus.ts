@@ -33,13 +33,29 @@ export function usePlanStatus(
   const [poller, setPoller] = useState(() =>
     createPoller(planId, initialStatus, fetcher),
   );
-  const previousPlanIdRef = useRef(planId);
+  const pollerRef = useRef(poller);
+  pollerRef.current = poller;
 
-  if (previousPlanIdRef.current !== planId) {
-    previousPlanIdRef.current = planId;
-    poller.dispose();
-    setPoller(createPoller(planId, initialStatusRef.current, fetcher));
-  }
+  const planIdRef = useRef(planId);
+  const fetcherRef = useRef(fetcher);
+
+  useEffect(() => {
+    const planIdChanged = planIdRef.current !== planId;
+    const fetcherChanged = fetcherRef.current !== fetcher;
+    planIdRef.current = planId;
+    fetcherRef.current = fetcher;
+
+    if (planIdChanged || fetcherChanged) {
+      pollerRef.current.dispose();
+      const nextPoller = createPoller(
+        planId,
+        initialStatusRef.current,
+        fetcher,
+      );
+      pollerRef.current = nextPoller;
+      setPoller(nextPoller);
+    }
+  }, [planId, fetcher]);
 
   const snapshot = useSyncExternalStore(
     poller.subscribe,

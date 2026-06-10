@@ -8,7 +8,10 @@ import {
 } from './plan-status-machine';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
-import { INITIAL_POLL_MS } from '@/shared/constants/polling';
+import {
+  INITIAL_POLL_MS,
+  PLAN_STATUS_FETCH_TIMEOUT_MS,
+} from '@/shared/constants/polling';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 import { ZodError } from 'zod';
 
@@ -31,6 +34,7 @@ export interface PlanStatusPollerConfig {
   initialStatus: PlanStatus;
   fetcher?: typeof fetch;
   randomFn?: () => number;
+  fetchTimeoutMs?: number;
 }
 
 export interface PlanStatusSnapshot {
@@ -46,19 +50,24 @@ export class PlanStatusPoller {
   private snapshot: PlanStatusSnapshot;
   private listeners = new Set<() => void>();
   private pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private inFlightFetch: Promise<void> | null = null;
+  private pollingToken = 0;
   private cancelled = false;
   private started = false;
   private readonly fetcher: typeof fetch;
   private readonly randomFn: () => number;
+  private readonly fetchTimeoutMs: number;
 
   constructor({
     planId,
     initialStatus,
     fetcher = fetch,
     randomFn = Math.random,
+    fetchTimeoutMs = PLAN_STATUS_FETCH_TIMEOUT_MS,
   }: PlanStatusPollerConfig) {
     this.fetcher = fetcher;
     this.randomFn = randomFn;
+    this.fetchTimeoutMs = fetchTimeoutMs;
     this.state = createInitialPlanPollState(planId, initialStatus);
     this.snapshot = this.buildSnapshot(this.state);
   }
@@ -92,7 +101,15 @@ export class PlanStatusPoller {
     this.emit();
     if (shouldContinuePolling(this.state)) {
       this.clearScheduledPoll();
+      const token = this.pollingToken;
       await this.fetchOnce('immediate');
+      if (
+        token !== this.pollingToken ||
+        this.cancelled ||
+        !shouldContinuePolling(this.state)
+      ) {
+        return;
+      }
       this.scheduleNextPoll();
     }
   };
@@ -114,10 +131,16 @@ export class PlanStatusPoller {
     };
 
     void (async () => {
+      const token = this.pollingToken;
       await this.fetchOnce('immediate');
-      if (!this.cancelled && shouldContinuePolling(this.state)) {
-        this.scheduleNextPoll();
+      if (
+        token !== this.pollingToken ||
+        this.cancelled ||
+        !shouldContinuePolling(this.state)
+      ) {
+        return;
       }
+      this.scheduleNextPoll();
     })();
   }
 
@@ -128,6 +151,7 @@ export class PlanStatusPoller {
   }
 
   private clearScheduledPoll(): void {
+    this.pollingToken += 1;
     if (this.pollTimeoutId !== null) {
       clearTimeout(this.pollTimeoutId);
       this.pollTimeoutId = null;
@@ -141,33 +165,67 @@ export class PlanStatusPoller {
   }
 
   private scheduleNextPoll(): void {
-    if (this.cancelled || !shouldContinuePolling(this.state)) {
+    if (
+      this.pollTimeoutId !== null ||
+      this.cancelled ||
+      !shouldContinuePolling(this.state)
+    ) {
       return;
     }
 
     const delayMs = this.state.delayMs;
+    const token = this.pollingToken;
     this.pollTimeoutId = setTimeout(() => {
       this.pollTimeoutId = null;
-      if (this.cancelled || !shouldContinuePolling(this.state)) {
+      if (
+        token !== this.pollingToken ||
+        this.cancelled ||
+        !shouldContinuePolling(this.state)
+      ) {
         return;
       }
 
       void (async () => {
+        const fetchToken = this.pollingToken;
         await this.fetchOnce('scheduled');
-        if (!this.cancelled && shouldContinuePolling(this.state)) {
-          this.scheduleNextPoll();
+        if (
+          fetchToken !== this.pollingToken ||
+          this.cancelled ||
+          !shouldContinuePolling(this.state)
+        ) {
+          return;
         }
+        this.scheduleNextPoll();
       })();
     }, delayMs);
   }
 
-  private async fetchOnce(
+  private fetchOnce(backoffMode: 'immediate' | 'scheduled'): Promise<void> {
+    if (this.inFlightFetch) {
+      return this.inFlightFetch;
+    }
+
+    const request = this.performFetchOnce(backoffMode);
+    this.inFlightFetch = request;
+
+    return request.finally(() => {
+      if (this.inFlightFetch === request) {
+        this.inFlightFetch = null;
+      }
+    });
+  }
+
+  private async performFetchOnce(
     backoffMode: 'immediate' | 'scheduled',
   ): Promise<void> {
     const { planId } = this.state;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.fetchTimeoutMs);
 
     try {
-      const response = await this.fetcher(`/api/v1/plans/${planId}/status`);
+      const response = await this.fetcher(`/api/v1/plans/${planId}/status`, {
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         const parsed = await parseApiErrorResponse(
@@ -199,6 +257,20 @@ export class PlanStatusPoller {
       this.syncSnapshot();
       this.emit();
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        this.state = transitionPlanPollState(
+          this.state,
+          {
+            type: 'transient_failure',
+            message: 'Plan status request timed out',
+          },
+          this.randomFn,
+        );
+        this.syncSnapshot();
+        this.emit();
+        return;
+      }
+
       if (err instanceof ZodError) {
         clientLogger.error('Plan status response validation failed', {
           planId,
@@ -245,6 +317,8 @@ export class PlanStatusPoller {
       } else {
         clientLogger.warn('Transient polling failure, will retry:', err);
       }
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

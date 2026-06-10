@@ -20,6 +20,16 @@ const FIRST_BACKOFF = 1500; // computeNextDelay(1000) = 1000 * 1.5
 const SECOND_BACKOFF = 2250; // computeNextDelay(1500) = 1500 * 1.5
 const THIRD_BACKOFF = 3375; // computeNextDelay(2250) = 2250 * 1.5
 
+function expectStatusFetch(
+  mockFetch: ReturnType<typeof vi.fn>,
+  planId: string,
+): void {
+  expect(mockFetch).toHaveBeenCalledWith(
+    `/api/v1/plans/${planId}/status`,
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  );
+}
+
 describe('usePlanStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,7 +76,7 @@ describe('usePlanStatus', () => {
 
     // Wait for the immediate fetch call
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/plan-123/status');
+      expectStatusFetch(mockFetch, 'plan-123');
     });
   });
 
@@ -576,7 +586,7 @@ describe('usePlanStatus', () => {
       expect(result.current.pollingError).toBeNull();
     });
 
-    expect(mockFetch).toHaveBeenCalledWith('/api/v1/plans/plan-b/status');
+    expectStatusFetch(mockFetch, 'plan-b');
   });
 
   it('does not reset live polled state when initialStatus changes for the same planId', async () => {
@@ -680,7 +690,7 @@ describe('usePlanStatus', () => {
     expect(result.current.isPolling).toBe(false);
   });
 
-  it('resets state synchronously on planId change without a stale frame', async () => {
+  it('resets state on planId change without a stale frame', async () => {
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(
@@ -710,10 +720,12 @@ describe('usePlanStatus', () => {
 
     rerender({ id: 'plan-b', initial: 'pending' });
 
-    expect(result.current.status).toBe('pending');
-    expect(result.current.attempts).toBe(0);
-    expect(result.current.error).toBeNull();
-    expect(result.current.pollingError).toBeNull();
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+      expect(result.current.attempts).toBe(0);
+      expect(result.current.error).toBeNull();
+      expect(result.current.pollingError).toBeNull();
+    });
   });
 
   it('does not revalidate when plan is in a terminal status', async () => {
@@ -776,6 +788,52 @@ describe('usePlanStatus', () => {
       await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
     });
     expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it('reuses an in-flight scheduled fetch when revalidating', async () => {
+    vi.useFakeTimers();
+
+    type MockFetchResponse = ReturnType<typeof createMockFetchResponse>;
+    let resolveScheduledFetch!: (response: MockFetchResponse) => void;
+    const scheduledFetch = new Promise<MockFetchResponse>((resolve) => {
+      resolveScheduledFetch = resolve;
+    });
+    const response = createMockFetchResponse(
+      createPlanStatusResponse({ status: 'processing', attempts: 1 }),
+    );
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(response)
+      .mockReturnValueOnce(scheduledFetch)
+      .mockResolvedValue(response);
+
+    const { result } = renderHook(() =>
+      usePlanStatus('plan-123', 'pending', mockFetch),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FIRST_BACKOFF);
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(1);
+
+    let revalidatePromise!: Promise<void>;
+    await act(async () => {
+      revalidatePromise = result.current.revalidate();
+      await Promise.resolve();
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveScheduledFetch(response);
+      await revalidatePromise;
+    });
+
     expect(vi.getTimerCount()).toBe(1);
   });
 
