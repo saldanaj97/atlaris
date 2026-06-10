@@ -16,6 +16,12 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useEffect, useId, useReducer, useRef } from 'react';
 
+const IS_MAC =
+  typeof navigator !== 'undefined' &&
+  ((navigator as Navigator & { userAgentData?: { platform?: string } })
+    .userAgentData?.platform === 'macOS' ||
+    /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
+
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
   isSubmitting?: boolean;
@@ -115,12 +121,6 @@ export function UnifiedPlanInput({
     }
   };
 
-  const isMac =
-    typeof navigator !== 'undefined' &&
-    ((navigator as Navigator & { userAgentData?: { platform?: string } })
-      .userAgentData?.platform === 'macOS' ||
-      /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
-
   return (
     <div className='w-full max-w-5xl'>
       <Surface
@@ -196,7 +196,7 @@ export function UnifiedPlanInput({
           className='rounded bg-muted px-1.5 py-0.5 text-xs font-medium'
           suppressHydrationWarning
         >
-          {isMac ? '⌘' : 'Ctrl'}+Enter
+          {IS_MAC ? '⌘' : 'Ctrl'}+Enter
         </kbd>{' '}
         to submit.
       </p>

@@ -15,7 +15,7 @@ import { getStatusesFromModules } from '@/app/(app)/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { deriveActiveModuleId } from '@/features/plans/task-progress/client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface ModuleTimelineProps {
   planId: string;
@@ -30,12 +30,24 @@ export function PlanTimeline({
   statuses,
   onStatusChange,
 }: ModuleTimelineProps) {
-  const effectiveStatuses = statuses ?? getStatusesFromModules(modules);
+  const effectiveStatuses = useMemo(
+    () => statuses ?? getStatusesFromModules(modules),
+    [statuses, modules],
+  );
 
-  const timelineModules = deriveTimelineModules(modules, effectiveStatuses);
+  const timelineModules = useMemo(
+    () => deriveTimelineModules(modules, effectiveStatuses),
+    [modules, effectiveStatuses],
+  );
 
-  const activeModuleId = deriveActiveModuleId(modules, effectiveStatuses);
-  const isPlanComplete = isPlanTimelineComplete(modules, effectiveStatuses);
+  const activeModuleId = useMemo(
+    () => deriveActiveModuleId(modules, effectiveStatuses),
+    [modules, effectiveStatuses],
+  );
+  const isPlanComplete = useMemo(
+    () => isPlanTimelineComplete(modules, effectiveStatuses),
+    [modules, effectiveStatuses],
+  );
 
   const [expandedModuleIds, setExpandedModuleIds] = useState<string[]>(() => {
     return activeModuleId ? [activeModuleId] : [];
