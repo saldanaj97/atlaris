@@ -4,6 +4,7 @@ import {
   cleanupOrphanedAttempts,
   cleanupStuckPlans,
   ORPHANED_ATTEMPT_THRESHOLD_MS,
+  STUCK_PLAN_CLEANUP_BATCH_SIZE,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
 import { logger } from '@/lib/logging/logger';
@@ -23,8 +24,11 @@ function createMockDbClient(resultCount: number) {
   const rows = Array.from({ length: resultCount }, (_, i) => ({
     id: `id-${i}`,
   }));
-  const forFn = vi.fn().mockResolvedValue(rows);
-  const limitFn = vi.fn().mockReturnValue({ for: forFn });
+  const forFn = vi.fn();
+  const limitFn = vi.fn().mockImplementation((limit: number) => {
+    forFn.mockResolvedValue(rows.slice(0, limit));
+    return { for: forFn };
+  });
   const whereSelectFn = vi.fn().mockReturnValue({ limit: limitFn });
   const transactionFn = vi.fn();
   const fromFn = vi.fn().mockReturnValue({ where: whereSelectFn });
@@ -86,6 +90,9 @@ describe('cleanupStuckPlans', () => {
 
     expect(result.cleaned).toBe(3);
     expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(
+      STUCK_PLAN_CLEANUP_BATCH_SIZE,
+    );
     expect(markFailuresInTx).toHaveBeenCalledTimes(1);
     expect(markFailuresInTx).toHaveBeenCalledWith(
       mockDb.client,
@@ -139,6 +146,32 @@ describe('cleanupStuckPlans', () => {
       mockDb.client,
       ['id-0'],
       expect.any(Date),
+    );
+  });
+
+  it('processes only one bounded batch per run', async () => {
+    mockDb = createMockDbClient(5);
+    const markFailuresInTx = vi.fn().mockResolvedValue(2);
+
+    const result = await cleanupStuckPlans(mockDb.client, undefined, {
+      markFailuresInTx,
+      batchSize: 2,
+    });
+
+    expect(result.cleaned).toBe(2);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(2);
+    expect(markFailuresInTx).toHaveBeenCalledWith(
+      mockDb.client,
+      ['id-0', 'id-1'],
+      expect.any(Date),
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      {
+        source: 'cleanup',
+        event: 'stuck_plans_cleanup_batch_full',
+        batchSize: 2,
+      },
+      'Plan cleanup filled its stuck-plan batch; backlog may remain',
     );
   });
 

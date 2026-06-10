@@ -11,7 +11,7 @@ Three POST routes live under `/api/internal/`. They bypass Clerk middleware and 
 | -------------------------------------------------- | ----------------------------------- | ---------------------- | ---------- |
 | `POST /api/internal/jobs/regeneration/process`     | Drain queued plan regeneration jobs | `regenerationQueueEnv` | External scheduler required |
 | `POST /api/internal/maintenance/retention/cleanup` | Retention cleanup (manual fallback) | `maintenanceEnv`       | Supabase `pg_cron` daily; HTTP route is manual fallback |
-| `POST /api/internal/maintenance/plans/cleanup`     | Stuck-plan and orphaned-attempt cleanup | `maintenanceEnv`       | External scheduler required (no `pg_cron`) |
+| `POST /api/internal/maintenance/plans/cleanup`     | Stuck-plan and orphaned-attempt cleanup | `maintenanceEnv`       | GitHub Actions every 15 minutes |
 
 Maintenance cleanup routes share `assertMaintenanceWorkerAccess()` in `src/lib/api/internal/internal-worker-access.ts`. The regeneration drain uses `assertInternalWorkerAccess()` directly.
 

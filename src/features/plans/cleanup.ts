@@ -11,6 +11,12 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
+/**
+ * Max stuck plans processed per cleanup run. At the 15-minute scheduler cadence
+ * this drains up to 4,000 plans/hour while keeping each transaction bounded.
+ */
+export const STUCK_PLAN_CLEANUP_BATCH_SIZE = 1000;
+
 /** In-progress attempts older than this are considered orphaned. */
 export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -22,6 +28,7 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  */
 type CleanupStuckPlansDependencies = {
   markFailuresInTx?: typeof markPlanGenerationFailuresInTx;
+  batchSize?: number;
 };
 
 export async function cleanupStuckPlans(
@@ -32,6 +39,7 @@ export async function cleanupStuckPlans(
   const cutoff = new Date(Date.now() - thresholdMs);
   const markFailuresInTx =
     deps.markFailuresInTx ?? markPlanGenerationFailuresInTx;
+  const batchSize = deps.batchSize ?? STUCK_PLAN_CLEANUP_BATCH_SIZE;
 
   return dbClient.transaction(async (tx) => {
     const stuckPlans = await tx
@@ -43,7 +51,7 @@ export async function cleanupStuckPlans(
           lt(learningPlans.updatedAt, cutoff),
         ),
       )
-      .limit(Number.MAX_SAFE_INTEGER)
+      .limit(batchSize)
       .for('update');
 
     if (stuckPlans.length === 0) {
@@ -73,6 +81,17 @@ export async function cleanupStuckPlans(
       logger.info(
         { source: 'cleanup', event: 'stuck_plans_cleaned', count: cleaned },
         `Marked ${cleaned} stuck plan(s) as failed`,
+      );
+    }
+
+    if (cleaned === batchSize) {
+      logger.warn(
+        {
+          source: 'cleanup',
+          event: 'stuck_plans_cleanup_batch_full',
+          batchSize,
+        },
+        'Plan cleanup filled its stuck-plan batch; backlog may remain',
       );
     }
 

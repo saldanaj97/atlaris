@@ -22,10 +22,10 @@ After deploying a release that includes new Supabase migrations:
 3. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
-4. Verify plan cleanup scheduler when `PLAN_CLEANUP_ENABLED=true`:
-   - Configure an external scheduler (Vercel Cron, GitHub Actions, or equivalent) to `POST /api/internal/maintenance/plans/cleanup` every 5–15 minutes with `x-maintenance-worker-token` or `Authorization: Bearer`.
-   - Confirm the first scheduled run returns `200` with `ok: true`.
-   - See `docs/architecture/plan-cleanup-runbook.md`.
+4. Verify plan cleanup scheduler and alerting when `PLAN_CLEANUP_ENABLED=true`:
+   - Set the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions repository secret.
+   - Confirm `.github/workflows/plan-cleanup-scheduler.yml` runs every 15 minutes and returns `200` with `ok: true`.
+   - Confirm Sentry monitor `plan-cleanup-maintenance` receives successful check-ins; GitHub workflow failures identify `401`, `503`, and `500` responses.
 5. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
 
 ```sql

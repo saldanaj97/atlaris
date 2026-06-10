@@ -7,8 +7,20 @@ import { json } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { maintenanceEnv } from '@/lib/config/env';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
+import * as Sentry from '@sentry/nextjs';
 
-export const POST: PlainHandler = withErrorBoundary(async (request) => {
+const PLAN_CLEANUP_MONITOR_SLUG = 'plan-cleanup-maintenance';
+const PLAN_CLEANUP_MONITOR_CONFIG = {
+  schedule: { type: 'crontab', value: '*/15 * * * *' },
+  checkinMargin: 5,
+  maxRuntime: 5,
+  timezone: 'UTC',
+  failureIssueThreshold: 1,
+  recoveryThreshold: 1,
+  isolateTrace: true,
+} as const;
+
+const runPlanCleanup: PlainHandler = async (request) => {
   const { logger } = getLoggingRequestContext(request);
   const pathname = new URL(request.url).pathname;
 
@@ -23,14 +35,22 @@ export const POST: PlainHandler = withErrorBoundary(async (request) => {
     unauthorizedLogMessage: 'Unauthorized plan cleanup trigger attempt',
   });
 
-  logger.info('Starting plan cleanup');
+  return Sentry.withMonitor(
+    PLAN_CLEANUP_MONITOR_SLUG,
+    async () => {
+      logger.info('Starting plan cleanup');
 
-  const result = await runPlanCleanupMaintenance();
+      const result = await runPlanCleanupMaintenance();
 
-  logger.info(result, 'Completed plan cleanup');
+      logger.info(result, 'Completed plan cleanup');
 
-  return json({
-    ok: true,
-    ...result,
-  });
-});
+      return json({
+        ...result,
+        ok: true,
+      });
+    },
+    PLAN_CLEANUP_MONITOR_CONFIG,
+  );
+};
+
+export const POST: PlainHandler = withErrorBoundary(runPlanCleanup);

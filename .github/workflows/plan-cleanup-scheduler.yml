@@ -1,0 +1,79 @@
+name: Plan Cleanup Scheduler
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: plan-cleanup-scheduler
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Trigger production plan cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger plan cleanup
+        env:
+          MAINTENANCE_WORKER_TOKEN: ${{ secrets.MAINTENANCE_WORKER_TOKEN }}
+          PLAN_CLEANUP_URL: https://atlaris.app/api/internal/maintenance/plans/cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${MAINTENANCE_WORKER_TOKEN}" ]]; then
+            echo "::error title=Plan cleanup scheduler misconfigured::MAINTENANCE_WORKER_TOKEN is not configured."
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          trap 'rm -f "${response_file}"' EXIT
+
+          status_code="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --max-time 120 \
+              --retry 2 \
+              --retry-delay 5 \
+              --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
+              --header 'User-Agent: atlaris-plan-cleanup-scheduler' \
+              "${PLAN_CLEANUP_URL}"
+          )"
+
+          case "${status_code}" in
+            200)
+              if ! jq -e '.ok == true' "${response_file}" >/dev/null; then
+                echo "::error title=Plan cleanup invalid response::Endpoint returned 200 without ok=true."
+                exit 1
+              fi
+              ;;
+            401)
+              echo "::error title=Plan cleanup unauthorized (401)::Production and GitHub worker tokens do not match."
+              exit 1
+              ;;
+            500)
+              echo "::error title=Plan cleanup failed (500)::Cleanup logic failed. Inspect Vercel and Sentry logs."
+              exit 1
+              ;;
+            503)
+              echo "::error title=Plan cleanup unavailable (503)::PLAN_CLEANUP_ENABLED is false or the production worker token is missing."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Plan cleanup unexpected response::Endpoint returned HTTP ${status_code}."
+              exit 1
+              ;;
+          esac
+
+          jq -c \
+            '{ok, stuckPlansCleaned, orphanedAttemptsCleaned}' \
+            "${response_file}"
