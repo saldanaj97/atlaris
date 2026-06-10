@@ -4,10 +4,10 @@ import type { ModuleDetailReadModel } from '@/features/plans/read-projection/typ
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
+import { logTaskStatusError } from '@/app/(app)/plans/[id]/log-task-status-error';
 import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import { clientLogger } from '@/lib/logging/client';
 import { toast } from 'sonner';
 
 interface ModuleDetailClientProps {
@@ -46,26 +46,15 @@ export function ModuleDetailClient({
     }
   }
 
-  function handleTaskStatusError({
-    error,
-    taskId,
-  }: {
-    error: unknown;
-    taskId: string;
-  }) {
-    clientLogger.error('Module task status batch failed', {
-      error,
-      moduleId: module.id,
-      planId,
-      taskId,
-    });
-  }
-
   const { statuses, handleStatusChange } = useOptimisticTaskStatusUpdates({
     initialStatuses,
     scopedTaskIds,
     flushAction: flushModuleTaskProgress,
-    onError: handleTaskStatusError,
+    onError: (context) =>
+      logTaskStatusError({
+        ...context,
+        context: { moduleId: module.id, planId },
+      }),
   });
 
   return (

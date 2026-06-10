@@ -12,38 +12,16 @@ import {
   getStatusesFromModules,
 } from '@/app/(app)/plans/[id]/helpers';
 import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
+import { logTaskStatusError } from '@/app/(app)/plans/[id]/log-task-status-error';
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
-import { getLoggableErrorDetails } from '@/lib/errors';
-import { clientLogger } from '@/lib/logging/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactElement } from 'react';
+import { type ReactElement, useMemo } from 'react';
 import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
-}
-
-function handleTaskStatusError({
-  error,
-  taskId,
-  previousStatus,
-  nextStatus,
-}: {
-  error: unknown;
-  taskId: string;
-  previousStatus: ProgressStatus;
-  nextStatus: ProgressStatus;
-}) {
-  const { errorMessage, errorStack } = getLoggableErrorDetails(error);
-  clientLogger.error('Optimistic status revert', {
-    errorMessage,
-    errorStack,
-    taskId,
-    previousStatus,
-    nextStatus,
-  });
 }
 
 /**
@@ -52,8 +30,10 @@ function handleTaskStatusError({
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
-  const scopedTaskIds = new Set(
-    modules.flatMap((module) => module.tasks.map((task) => task.id)),
+  const scopedTaskIds = useMemo(
+    () =>
+      new Set(modules.flatMap((module) => module.tasks.map((task) => task.id))),
+    [modules],
   );
 
   async function flushTaskProgress(
@@ -72,7 +52,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     initialStatuses,
     scopedTaskIds,
     flushAction: flushTaskProgress,
-    onError: handleTaskStatusError,
+    onError: logTaskStatusError,
   });
 
   const overviewStats = computeOverviewStats(plan, statuses);
