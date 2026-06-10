@@ -51,7 +51,9 @@ export class PlanStatusPoller {
   private listeners = new Set<() => void>();
   private pollTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private inFlightFetch: Promise<void> | null = null;
+  private activeFetchController: AbortController | null = null;
   private pollingToken = 0;
+  private disposalToken = 0;
   private cancelled = false;
   private started = false;
   private readonly fetcher: typeof fetch;
@@ -96,6 +98,10 @@ export class PlanStatusPoller {
   }
 
   revalidate = async (): Promise<void> => {
+    if (this.cancelled) {
+      return;
+    }
+
     this.state = transitionPlanPollState(this.state, { type: 'revalidate' });
     this.syncSnapshot();
     this.emit();
@@ -147,7 +153,10 @@ export class PlanStatusPoller {
   dispose(): void {
     this.cancelled = true;
     this.started = false;
+    this.disposalToken += 1;
     this.clearScheduledPoll();
+    this.activeFetchController?.abort();
+    this.activeFetchController = null;
   }
 
   private clearScheduledPoll(): void {
@@ -162,6 +171,10 @@ export class PlanStatusPoller {
     for (const listener of this.listeners) {
       listener();
     }
+  }
+
+  private isStaleFetch(disposalToken: number): boolean {
+    return this.cancelled || disposalToken !== this.disposalToken;
   }
 
   private scheduleNextPoll(): void {
@@ -219,24 +232,35 @@ export class PlanStatusPoller {
     backoffMode: 'immediate' | 'scheduled',
   ): Promise<void> {
     const { planId } = this.state;
+    const disposalToken = this.disposalToken;
     const controller = new AbortController();
+    this.activeFetchController = controller;
     const timeoutId = setTimeout(() => controller.abort(), this.fetchTimeoutMs);
 
     try {
       const response = await this.fetcher(`/api/v1/plans/${planId}/status`, {
         signal: controller.signal,
       });
+      if (this.isStaleFetch(disposalToken)) {
+        return;
+      }
 
       if (!response.ok) {
         const parsed = await parseApiErrorResponse(
           response,
           `Failed to fetch plan status: ${response.status}`,
         );
+        if (this.isStaleFetch(disposalToken)) {
+          return;
+        }
         const retriable = isRetriableFromResponse(response.status);
         throw new RetriableError(parsed.error, retriable);
       }
 
       const raw = (await response.json()) as unknown;
+      if (this.isStaleFetch(disposalToken)) {
+        return;
+      }
       const parseResult = PlanStatusResponseSchema.safeParse(raw);
       if (!parseResult.success) {
         throw parseResult.error;
@@ -257,6 +281,10 @@ export class PlanStatusPoller {
       this.syncSnapshot();
       this.emit();
     } catch (err) {
+      if (this.isStaleFetch(disposalToken)) {
+        return;
+      }
+
       if (err instanceof Error && err.name === 'AbortError') {
         this.state = transitionPlanPollState(
           this.state,
@@ -319,6 +347,9 @@ export class PlanStatusPoller {
       }
     } finally {
       clearTimeout(timeoutId);
+      if (this.activeFetchController === controller) {
+        this.activeFetchController = null;
+      }
     }
   }
 }
