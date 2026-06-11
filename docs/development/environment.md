@@ -51,7 +51,7 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB                                            | No       |
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
-| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
+| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation) |
 
 ### Workflow SDK
 
@@ -99,6 +99,7 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
 | `PLAN_CLEANUP_ENABLED`      | Master switch for the plan cleanup HTTP route                        | Set `true` when scheduled cleanup is enabled |
 | `MAINTENANCE_WORKER_TOKEN`  | Auth for maintenance cleanup routes and the plan cleanup scheduler   | Yes when any maintenance route is enabled |
+| `WORKER_HEALTH_TOKEN`       | Auth for `GET /api/health/worker` operator metrics                   | Yes                                            |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 
