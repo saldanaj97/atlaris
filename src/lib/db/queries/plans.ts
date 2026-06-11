@@ -8,6 +8,7 @@ import type {
   LightweightModuleMetricsRow,
   LightweightPlanListRow,
   PlanAttemptsPlanMeta,
+  PlanDetailTaskRow,
   PlanProgressStatusRow,
   PlanSummaryTaskRow,
 } from '@/lib/db/queries/types/plans.types';
@@ -16,7 +17,6 @@ import type {
   GenerationAttempt,
   LearningPlan,
   Module,
-  Task,
   TaskProgress,
 } from '@/shared/types/db.types';
 
@@ -58,7 +58,7 @@ type LightweightPlanSummaryRows = {
 type LearningPlanDetailRows = {
   plan: LearningPlan;
   moduleRows: Module[];
-  taskRows: Task[];
+  taskRows: PlanDetailTaskRow[];
   progressRows: TaskProgress[];
   resourceRows: TaskResourceWithResource[];
   latestAttempt: GenerationAttempt | null;
@@ -345,9 +345,19 @@ export async function getLearningPlanDetailRows(
 
   const moduleIds = moduleRows.map((module) => module.id);
 
-  const taskRows = moduleIds.length
+  const taskRows: PlanDetailTaskRow[] = moduleIds.length
     ? await client
-        .select()
+        .select({
+          id: tasks.id,
+          moduleId: tasks.moduleId,
+          order: tasks.order,
+          title: tasks.title,
+          description: tasks.description,
+          estimatedMinutes: tasks.estimatedMinutes,
+          hasMicroExplanation: tasks.hasMicroExplanation,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        })
         .from(tasks)
         .where(inArray(tasks.moduleId, moduleIds))
         .orderBy(asc(tasks.order))
