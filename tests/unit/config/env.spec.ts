@@ -625,6 +625,24 @@ describe('Environment Configuration', () => {
       expect(maintenance.planCleanupEnabled).toBe(true);
       expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
+
+    it('requires a worker health token in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+      });
+
+      expect(() => maintenance.workerHealthToken).toThrow(EnvValidationError);
+    });
+
+    it('allows an optional worker health token outside production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'test',
+      });
+
+      expect(maintenance.workerHealthToken).toBeUndefined();
+    });
   });
 
   describe('parseEnvNumber', () => {

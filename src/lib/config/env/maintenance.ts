@@ -13,6 +13,7 @@ interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
   readonly workerToken: string | undefined;
+  readonly workerHealthToken: string | undefined;
 }
 
 const defaultMaintenanceAccess = createServerEnvAccess(getProcessEnvSource);
@@ -43,6 +44,12 @@ export function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
         return undefined;
       }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');
+    },
+    /**
+     * Bearer token for GET /api/health/worker operator metrics.
+     */
+    get workerHealthToken(): string | undefined {
+      return access.getServerRequiredProdOnly('WORKER_HEALTH_TOKEN');
     },
   };
 }
