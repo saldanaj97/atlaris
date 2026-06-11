@@ -241,4 +241,58 @@ describe('cleanupOrphanedAttempts (integration)', () => {
 
     expect(result.cleaned).toBe(0);
   });
+
+  it('processes only one bounded batch per run', async () => {
+    const user = await createTestUser();
+    const staleCutoff = new Date(
+      Date.now() - ORPHANED_ATTEMPT_THRESHOLD_MS - 60_000,
+    );
+    const attemptIds: string[] = [];
+
+    for (let index = 0; index < 3; index += 1) {
+      const plan = await createTestPlan({
+        userId: user.id,
+        topic: `Stale attempt plan ${index}`,
+      });
+      const [attempt] = await db
+        .insert(generationAttempts)
+        .values({
+          planId: plan.id,
+          status: 'in_progress',
+          classification: null,
+          durationMs: 0,
+          modulesCount: 0,
+          tasksCount: 0,
+        })
+        .returning();
+      await db
+        .update(generationAttempts)
+        .set({ createdAt: staleCutoff })
+        .where(eq(generationAttempts.id, attempt.id));
+      attemptIds.push(attempt.id);
+    }
+
+    const result = await cleanupOrphanedAttempts(db, undefined, {
+      batchSize: 2,
+    });
+
+    expect(result.cleaned).toBe(2);
+
+    const rows = await db
+      .select({
+        id: generationAttempts.id,
+        status: generationAttempts.status,
+        classification: generationAttempts.classification,
+      })
+      .from(generationAttempts)
+      .where(inArray(generationAttempts.id, attemptIds));
+
+    const finalized = rows.filter((row) => row.classification === 'timeout');
+    const stillInProgress = rows.filter(
+      (row) => row.status === 'in_progress' && row.classification === null,
+    );
+
+    expect(finalized).toHaveLength(2);
+    expect(stillInProgress).toHaveLength(1);
+  });
 });
