@@ -1,12 +1,27 @@
 # Workflow Orchestration
 
-## Overview
+## Agent Context
 
-**Agent memory:** Recurring preferences and durable workspace facts live in `.agents/plans/lessons.md`. Read that file whenever you read or apply this file.
+**Agent Memory:** Recurring preferences and durable workspace facts live in `.agents/lessons.md`. Read that file whenever you read or apply this file.
 
-Repo-writable planning artifacts are local-only and belong under `.agents/plans/`. Use that directory for PRDs, plans, todos, trackers, and lessons learned. Do not create or update planning artifacts under legacy `prds/`, legacy `.plans/`, or Cursor-native `.cursor/plans/` unless the user explicitly asks for that path; `.cursor/plans/` is treated as a read-only export/import surface. Keep `.agents/plans/` updated with task progress, verification notes, and durable lessons when the work calls for it.
+**Agent Context:** Repo-writable planning and handoff artifacts are local-only and belong under the daily recap layout (see below). Do not create or update planning artifacts under legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/` paths.`.cursor/plans/` is treated as a read-only export/import surface.
 
-## Karpathy behavioral guidelines
+Organize same-day plans and handoff prompts under `.agents/recaps/MM-DD-YYYY/`, where the date folder uses the **current local calendar day** in `MM-DD-YYYY` format (for example, `06-10-2026`).
+
+| Artifact                            | Path                                  |
+| ----------------------------------- | ------------------------------------- |
+| Plans, PRDs, todos, trackers        | `.agents/recaps/MM-DD-YYYY/plans/`    |
+| Handoff prompts and review handoffs | `.agents/recaps/MM-DD-YYYY/handoffs/` |
+
+Before writing a plan or handoff file:
+
+1. Resolve today's date folder: `.agents/recaps/MM-DD-YYYY/`.
+2. If it does not exist, create it plus `plans/` and `handoffs/` subfolders for that day.
+3. Write the artifact under the matching subfolder for its type.
+
+Keep the day's `plans/` folder updated with task progress and verification notes when the work calls for it. Durable cross-session lessons still belong in `.agents/lessons.md`, not in daily recap folders.
+
+## Behavioral guidelines
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
@@ -17,6 +32,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
 Before implementing:
+
 - State your assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
@@ -39,12 +55,14 @@ Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, sim
 **Touch only what you must. Clean up only your own mess.**
 
 When editing existing code:
+
 - Don't "improve" adjacent code, comments, or formatting.
 - Don't refactor things that aren't broken.
 - Match existing style, even if you'd do it differently.
 - If you notice unrelated dead code, mention it - don't delete it.
 
 When your changes create orphans:
+
 - Remove imports/variables/functions that YOUR changes made unused.
 - Don't remove pre-existing dead code unless asked.
 
@@ -55,11 +73,13 @@ The test: Every changed line should trace directly to the user's request.
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:
+
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
 
 For multi-step tasks, state a brief plan:
+
 ```
 1. [Step] → verify: [check]
 2. [Step] → verify: [check]
