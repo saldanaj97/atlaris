@@ -1,7 +1,10 @@
 import type { ModuleLessonGenerationApiResponse } from '@/shared/types/lesson-content.types';
 
 import { clientLogger } from '@/lib/logging/client';
-import { ModuleLessonGenerationApiResponseSchema } from '@/shared/schemas/lesson-content.schemas';
+import {
+  ModuleLessonGenerationApiResponseSchema,
+  ModuleLessonGenerationStatusResponseSchema,
+} from '@/shared/schemas/lesson-content.schemas';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -51,6 +54,10 @@ function applyModuleLessonGenerationResponse(
   }
 }
 
+function buildModuleLessonStatusUrl(planId: string, moduleId: string): string {
+  return `/api/v1/plans/${planId}/modules/${moduleId}/lesson-content/status`;
+}
+
 export function useModuleLessonGeneration({
   planId,
   moduleId,
@@ -83,23 +90,91 @@ export function useModuleLessonGeneration({
 
     let cancelled = false;
     let timeoutId: number | undefined;
+    const statusUrl = buildModuleLessonStatusUrl(planId, moduleId);
 
-    const schedule = (): void => {
-      timeoutId = window.setTimeout(() => {
-        if (cancelled) return;
+    const pollStatus = async (): Promise<'continue' | 'terminal' | 'error'> => {
+      try {
+        const response = await fetch(statusUrl, { cache: 'no-store' });
 
-        generationPollCountRef.current += 1;
-        if (
-          generationPollCountRef.current > MODULE_LESSON_GENERATION_MAX_POLLS
-        ) {
-          setGenerationTakingLong(true);
-          return;
+        if (!response.ok) {
+          clientLogger.error('Module lesson generation status request failed', {
+            moduleId,
+            planId,
+            ok: response.ok,
+            status: response.status,
+          });
+          return 'error';
+        }
+
+        let raw: unknown;
+        try {
+          raw = await response.json();
+        } catch (parseError) {
+          clientLogger.error(
+            'Module lesson generation status response JSON parse failed',
+            {
+              parseError,
+              moduleId,
+              planId,
+              ok: response.ok,
+              status: response.status,
+            },
+          );
+          return 'error';
+        }
+
+        const parsed =
+          ModuleLessonGenerationStatusResponseSchema.safeParse(raw);
+        if (!parsed.success) {
+          clientLogger.error(
+            'Module lesson generation status response validation failed',
+            {
+              issues: parsed.error.flatten(),
+              moduleId,
+              planId,
+              ok: response.ok,
+              status: response.status,
+            },
+          );
+          return 'error';
+        }
+
+        if (parsed.data.status === 'generating') {
+          return 'continue';
         }
 
         refresh();
-        if (!cancelled) {
+        return 'terminal';
+      } catch (error) {
+        clientLogger.error('Module lesson generation status request failed', {
+          error,
+          moduleId,
+          planId,
+        });
+        return 'error';
+      }
+    };
+
+    const schedule = (): void => {
+      timeoutId = window.setTimeout(() => {
+        void (async () => {
+          if (cancelled) return;
+
+          generationPollCountRef.current += 1;
+          if (
+            generationPollCountRef.current > MODULE_LESSON_GENERATION_MAX_POLLS
+          ) {
+            setGenerationTakingLong(true);
+            return;
+          }
+
+          const outcome = await pollStatus();
+          if (cancelled || outcome === 'terminal') {
+            return;
+          }
+
           schedule();
-        }
+        })();
       }, MODULE_LESSON_GENERATION_POLL_MS);
     };
 
@@ -111,7 +186,7 @@ export function useModuleLessonGeneration({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [previousModulesComplete, refresh, status]);
+  }, [moduleId, planId, previousModulesComplete, refresh, status]);
 
   const generateLessons = (): void => {
     if (!previousModulesComplete) {

@@ -147,3 +147,8 @@ export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
     }),
   ],
 );
+
+export const ModuleLessonGenerationStatusResponseSchema =
+  ModuleLessonGenerationApiBaseSchema.extend({
+    status: z.enum(['not_generated', 'generating', 'ready', 'failed']),
+  }).strict();
