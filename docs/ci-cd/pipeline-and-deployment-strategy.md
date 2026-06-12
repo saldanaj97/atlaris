@@ -45,7 +45,8 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### 2) `.github/workflows/ci-trunk.yml`
 
 - Trigger: push to `develop` or `main` (plus merge queue)
-- Runs: heavier integration and e2e/smoke validations on trunk branches
+- Runs: full integration and RLS security checks on trunk branches
+- Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
 
 ### 3) `.github/workflows/staging-db-migrations.yaml`
 
