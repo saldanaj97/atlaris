@@ -144,9 +144,8 @@ When adding new user-editable columns to the `users` table, update in lockstep:
 2. **Canonical TS** — `users-authenticated-update-columns.ts` (source of truth for tests and bootstrap).
 3. [`tests/helpers/db/rls-bootstrap.ts`](../tests/helpers/db/rls-bootstrap.ts) — `ensureRlsRolesAndPermissions()` (integration helpers that mirror grants after `db:migrate`).
 4. [`tests/helpers/db/bootstrap.ts`](../tests/helpers/db/bootstrap.ts) — `grantRlsPermissions()` (shared with [`tests/setup/testcontainers.ts`](../tests/setup/testcontainers.ts) for ephemeral Postgres).
-5. [`.github/workflows/ci-trunk.yml`](../.github/workflows/ci-trunk.yml) — E2E and Integration job grant blocks.
 
-Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration, `ci-trunk.yml`, and bootstrap sources against the canonical list.
+Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration and bootstrap sources against the canonical list.
 
 **CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` uses the Testcontainers-backed migration bootstrap instead of a `pnpm db:push` shortcut, so PR integration DBs now run through the committed migration path. Keep this aligned with trunk (`ci-trunk.yml`) and the files above when privilege rules change.
 
