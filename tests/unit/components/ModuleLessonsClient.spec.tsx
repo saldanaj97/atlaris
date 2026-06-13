@@ -243,7 +243,7 @@ describe('ModuleLessonsClient', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(refreshMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       vi.advanceTimersByTime(2500);

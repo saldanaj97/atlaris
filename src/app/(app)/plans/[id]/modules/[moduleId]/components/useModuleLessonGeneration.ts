@@ -169,7 +169,14 @@ export function useModuleLessonGeneration({
           }
 
           const outcome = await pollStatus();
-          if (cancelled || outcome !== 'continue') {
+          if (cancelled) {
+            return;
+          }
+          if (outcome === 'error') {
+            refresh();
+            return;
+          }
+          if (outcome !== 'continue') {
             return;
           }
 
