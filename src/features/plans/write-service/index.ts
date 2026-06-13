@@ -1,5 +1,3 @@
-import type { PlanDbClient } from '@/features/plans/read-projection/types';
-
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { deletePlan } from '@/lib/db/queries/plans';
 
@@ -10,13 +8,8 @@ import { deletePlan } from '@/lib/db/queries/plans';
 export async function removePlanForWrite(params: {
   planId: string;
   userId: string;
-  dbClient: PlanDbClient;
 }): Promise<void> {
-  const result = await deletePlan(
-    params.planId,
-    params.userId,
-    params.dbClient,
-  );
+  const result = await deletePlan(params.planId, params.userId);
 
   if (result.success) {
     return;
