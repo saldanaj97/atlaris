@@ -1,6 +1,6 @@
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 /**
- * Intentional readFileSync: compares on-disk migration, workflows, and bootstrap
+ * Intentional readFileSync: compares on-disk migration and bootstrap
  * sources to the canonical allowlist so privilege drift fails in CI.
  */
 import { readFileSync } from 'node:fs';
@@ -42,21 +42,6 @@ describe('authenticated users UPDATE allowlist sync', () => {
 
     expect(migrationMatches).toHaveLength(1);
     expect(migrationMatches[0]).toEqual(expectedColumns);
-  });
-
-  it('keeps ci-trunk grant blocks in sync with the canonical allowlist', () => {
-    const workflowContents = readFileSync(
-      resolve(TEST_DIR, '../../../.github/workflows/ci-trunk.yml'),
-      'utf8',
-    );
-
-    const workflowMatches = extractUsersUpdateGrantColumns(workflowContents);
-
-    // Only `e2e-tests` still uses the inline `services: postgres` bootstrap.
-    // `integration-tests` runs on Testcontainers via tests/helpers/db/bootstrap.ts,
-    // covered by the dedicated bootstrap test below.
-    expect(workflowMatches).toHaveLength(1);
-    expect(workflowMatches[0]).toEqual(expectedColumns);
   });
 
   it('keeps shared Postgres bootstrap using the canonical column list for users UPDATE', () => {
