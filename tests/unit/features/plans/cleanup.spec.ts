@@ -221,6 +221,7 @@ describe('cleanupOrphanedAttempts', () => {
     expect(mockDb.spies.setFn).toHaveBeenCalledWith(
       expect.objectContaining({
         classification: 'timeout',
+        status: 'failure',
       }),
     );
   });
@@ -272,5 +273,28 @@ describe('cleanupOrphanedAttempts', () => {
       },
       'Plan cleanup filled its orphaned-attempt batch; backlog may remain',
     );
+  });
+
+  it('throws when fewer orphaned attempts are finalized than locked', async () => {
+    mockDb = createMockDbClient(3);
+    mockDb.spies.returningFn.mockResolvedValue([
+      { id: 'id-0' },
+      { id: 'id-1' },
+    ]);
+
+    await expect(cleanupOrphanedAttempts(mockDb.client)).rejects.toThrow(
+      'Plan cleanup failed to finalize all locked orphaned attempts',
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'orphaned_attempts_cleanup_partial_failure',
+        expected: 3,
+        cleaned: 2,
+      }),
+      'Plan cleanup failed to finalize all locked orphaned attempts',
+    );
+    expect(logger.info).not.toHaveBeenCalled();
   });
 });

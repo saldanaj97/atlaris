@@ -216,6 +216,42 @@ describe('ModuleLessonsClient', () => {
     expect(refreshMock.mock.calls.length).toBe(callsAfterTerminal);
   });
 
+  it('stops polling when status polling fails', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        mockJsonFetchResponse(
+          { error: { code: 'INTERNAL_ERROR', message: 'Unavailable' } },
+          { ok: false, status: 500 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient({
+      lessonGeneration: {
+        status: 'generating',
+        startedAt: new Date('2025-06-01T00:00:00.000Z'),
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(refreshMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('shows long-running notice and stops polling after max attempts', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue(

@@ -8,7 +8,6 @@ import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-a
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { maintenanceEnv } from '@/lib/config/env';
 import { getSystemWideJobMetrics } from '@/lib/db/queries/admin/jobs-metrics';
-import { logger } from '@/lib/logging/logger';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
 import { NextResponse } from 'next/server';
 
@@ -50,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
       status: httpStatus,
     });
   } catch (error) {
-    logger.error({ error }, 'Health worker check failed');
+    requestLogger.error({ error }, 'Health worker check failed');
 
     return NextResponse.json(buildWorkerHealthMonitoringErrorBody(timestamp), {
       status: 503,

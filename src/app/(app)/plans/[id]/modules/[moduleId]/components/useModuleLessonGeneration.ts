@@ -169,7 +169,7 @@ export function useModuleLessonGeneration({
           }
 
           const outcome = await pollStatus();
-          if (cancelled || outcome === 'terminal') {
+          if (cancelled || outcome !== 'continue') {
             return;
           }
 

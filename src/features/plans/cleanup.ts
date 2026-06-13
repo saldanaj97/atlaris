@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
 // Use the store function directly (not PlanPersistenceAdapter) so failure
 // updates run on the same transaction handle as SELECT … FOR UPDATE.
 import type { DbClient } from '@/lib/db/types';
@@ -147,14 +147,28 @@ export async function cleanupOrphanedAttempts(
       .update(generationAttempts)
       .set({
         classification: 'timeout',
-        // Raw SQL literal — the generation_attempts.status column uses a DB enum
-        // whose TypeScript type doesn't include 'failure' directly.
-        status: sql<string>`'failure'`,
+        status: 'failure',
       })
       .where(inArray(generationAttempts.id, attemptIds))
       .returning({ id: generationAttempts.id });
 
-    const cleaned = result.length;
+    const cleanedAttemptIds = result.map((attempt) => attempt.id);
+    const cleaned = cleanedAttemptIds.length;
+
+    if (cleaned !== attemptIds.length) {
+      logger.error(
+        {
+          source: 'cleanup',
+          event: 'orphaned_attempts_cleanup_partial_failure',
+          expected: attemptIds.length,
+          cleaned,
+        },
+        'Plan cleanup failed to finalize all locked orphaned attempts',
+      );
+      throw new Error(
+        'Plan cleanup failed to finalize all locked orphaned attempts',
+      );
+    }
 
     if (cleaned > 0) {
       logger.info(
