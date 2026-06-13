@@ -6,6 +6,7 @@ import {
   ModuleLessonBatchProviderOutputSchema,
   ModuleLessonGenerationApiResponseSchema,
   ModuleLessonGenerationMetadataSchema,
+  ModuleLessonGenerationStatusResponseSchema,
 } from '@/shared/schemas/lesson-content.schemas';
 
 export type LessonContentBlock = z.infer<typeof LessonContentBlockSchema>;
@@ -18,4 +19,7 @@ export type ModuleLessonGenerationMetadata = z.infer<
 >;
 export type ModuleLessonGenerationApiResponse = z.infer<
   typeof ModuleLessonGenerationApiResponseSchema
+>;
+export type ModuleLessonGenerationStatusResponse = z.infer<
+  typeof ModuleLessonGenerationStatusResponseSchema
 >;

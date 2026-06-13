@@ -11,6 +11,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 const PLAN_ID = randomUUID();
 const MODULE_ID = randomUUID();
 const GENERATE_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/generate`;
+const STATUS_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/status`;
 
 const refreshMock = vi.fn();
 const toastErrorMock = vi.mocked(toast.error);
@@ -149,8 +150,17 @@ describe('ModuleLessonsClient', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows generating state and schedules refresh', async () => {
+  it('shows generating state and polls status without refreshing', async () => {
     vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonFetchResponse({
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        status: 'generating',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
     renderClient({
       lessonGeneration: {
         status: 'generating',
@@ -166,11 +176,93 @@ describe('ModuleLessonsClient', () => {
     await act(async () => {
       vi.advanceTimersByTime(2500);
     });
-    expect(refreshMock).toHaveBeenCalled();
+
+    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, { cache: 'no-store' });
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it('refreshes once when status polling returns ready', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonFetchResponse({
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        status: 'ready',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient({
+      lessonGeneration: {
+        status: 'generating',
+        startedAt: new Date('2025-06-01T00:00:00.000Z'),
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, { cache: 'no-store' });
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    const callsAfterTerminal = refreshMock.mock.calls.length;
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+    expect(refreshMock.mock.calls.length).toBe(callsAfterTerminal);
+  });
+
+  it('stops polling when status polling fails', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        mockJsonFetchResponse(
+          { error: { code: 'INTERNAL_ERROR', message: 'Unavailable' } },
+          { ok: false, status: 500 },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient({
+      lessonGeneration: {
+        status: 'generating',
+        startedAt: new Date('2025-06-01T00:00:00.000Z'),
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows long-running notice and stops polling after max attempts', async () => {
     vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonFetchResponse({
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        status: 'generating',
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
     renderClient({
       lessonGeneration: {
         status: 'generating',
@@ -195,11 +287,12 @@ describe('ModuleLessonsClient', () => {
       screen.getByText('Generation taking longer than expected'),
     ).toBeInTheDocument();
 
-    const callsAfterStop = refreshMock.mock.calls.length;
+    const callsAfterStop = fetchMock.mock.calls.length;
     await act(async () => {
       vi.advanceTimersByTime(2500);
     });
-    expect(refreshMock.mock.calls.length).toBe(callsAfterStop);
+    expect(fetchMock.mock.calls.length).toBe(callsAfterStop);
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it('shows failed generation copy from server and retry affordance', () => {

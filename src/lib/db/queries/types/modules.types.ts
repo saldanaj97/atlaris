@@ -30,6 +30,19 @@ export interface ModuleWithTasks extends Module {
   tasks: TaskWithRelations[];
 }
 
+/** Task with relations for plan detail reads (lesson content not loaded). */
+export interface PlanDetailTaskWithRelations extends Omit<
+  Task,
+  'lessonContent' | 'lessonContentUpdatedAt'
+> {
+  resources: TaskResourceWithResource[];
+  progress?: TaskProgress | null;
+}
+
+export interface PlanDetailModuleWithTasks extends Module {
+  tasks: PlanDetailTaskWithRelations[];
+}
+
 /** Per-module task completion aggregates for module navigation (storage / projection input). */
 export interface ModuleTaskMetricRow {
   id: string;

@@ -93,7 +93,7 @@ We use 4 core GitHub Actions workflows:
 - Security audit (dependency vulnerabilities)
 - Build (Next.js)
 - Unit tests
-- Light integration tests
+- Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
 
 **Purpose:** Fast feedback on PRs before merge.
 

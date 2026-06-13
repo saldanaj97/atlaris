@@ -3,6 +3,7 @@ import type { DbClient } from '@/lib/db/types';
 import {
   cleanupOrphanedAttempts,
   cleanupStuckPlans,
+  ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE,
   ORPHANED_ATTEMPT_THRESHOLD_MS,
   STUCK_PLAN_CLEANUP_BATCH_SIZE,
   STUCK_PLAN_THRESHOLD_MS,
@@ -211,10 +212,16 @@ describe('cleanupOrphanedAttempts', () => {
     const result = await cleanupOrphanedAttempts(mockDb.client);
 
     expect(result.cleaned).toBe(5);
+    expect(mockDb.spies.transactionFn).toHaveBeenCalledTimes(1);
+    expect(mockDb.spies.selectFn).toHaveBeenCalledTimes(1);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(
+      ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE,
+    );
     expect(mockDb.spies.updateFn).toHaveBeenCalledTimes(1);
     expect(mockDb.spies.setFn).toHaveBeenCalledWith(
       expect.objectContaining({
         classification: 'timeout',
+        status: 'failure',
       }),
     );
   });
@@ -244,5 +251,50 @@ describe('cleanupOrphanedAttempts', () => {
     );
 
     expect(result.cleaned).toBe(2);
+  });
+
+  it('processes only one bounded batch per run', async () => {
+    mockDb = createMockDbClient(5);
+    mockDb.spies.returningFn.mockResolvedValue(
+      Array.from({ length: 2 }, (_, index) => ({ id: `id-${index}` })),
+    );
+
+    const result = await cleanupOrphanedAttempts(mockDb.client, undefined, {
+      batchSize: 2,
+    });
+
+    expect(result.cleaned).toBe(2);
+    expect(mockDb.spies.limitFn).toHaveBeenCalledWith(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      {
+        source: 'cleanup',
+        event: 'orphaned_attempts_cleanup_batch_full',
+        batchSize: 2,
+      },
+      'Plan cleanup filled its orphaned-attempt batch; backlog may remain',
+    );
+  });
+
+  it('throws when fewer orphaned attempts are finalized than locked', async () => {
+    mockDb = createMockDbClient(3);
+    mockDb.spies.returningFn.mockResolvedValue([
+      { id: 'id-0' },
+      { id: 'id-1' },
+    ]);
+
+    await expect(cleanupOrphanedAttempts(mockDb.client)).rejects.toThrow(
+      'Plan cleanup failed to finalize all locked orphaned attempts',
+    );
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'cleanup',
+        event: 'orphaned_attempts_cleanup_partial_failure',
+        expected: 3,
+        cleaned: 2,
+      }),
+      'Plan cleanup failed to finalize all locked orphaned attempts',
+    );
+    expect(logger.info).not.toHaveBeenCalled();
   });
 });

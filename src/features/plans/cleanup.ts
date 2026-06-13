@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
 // Use the store function directly (not PlanPersistenceAdapter) so failure
 // updates run on the same transaction handle as SELECT … FOR UPDATE.
 import type { DbClient } from '@/lib/db/types';
@@ -19,6 +19,12 @@ export const STUCK_PLAN_CLEANUP_BATCH_SIZE = 1000;
 
 /** In-progress attempts older than this are considered orphaned. */
 export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+/**
+ * Max orphaned attempts processed per cleanup run. Matches stuck-plan batching so
+ * each maintenance transaction stays bounded.
+ */
+export const ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE = 1000;
 
 /**
  * Marks plans stuck in 'generating' status for longer than the threshold as 'failed'.
@@ -99,47 +105,95 @@ export async function cleanupStuckPlans(
   });
 }
 
+type CleanupOrphanedAttemptsDependencies = {
+  batchSize?: number;
+};
+
 /**
  * Finalizes orphaned 'in_progress' generation attempts older than the threshold.
  * Sets classification to 'timeout' for attempts that were never completed.
+ * Rows are locked inside a transaction before updates so cleanup does not race
+ * concurrent generation state updates.
  */
 export async function cleanupOrphanedAttempts(
   dbClient: DbClient,
   thresholdMs: number = ORPHANED_ATTEMPT_THRESHOLD_MS,
+  deps: CleanupOrphanedAttemptsDependencies = {},
 ): Promise<{ cleaned: number }> {
   const cutoff = new Date(Date.now() - thresholdMs);
+  const batchSize = deps.batchSize ?? ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE;
 
-  const result = await dbClient
-    .update(generationAttempts)
-    .set({
-      classification: 'timeout',
-      // Raw SQL literal — the generation_attempts.status column uses a DB enum
-      // whose TypeScript type doesn't include 'failure' directly.
-      status: sql<string>`'failure'`,
-    })
-    .where(
-      and(
-        isNull(generationAttempts.classification),
-        eq(generationAttempts.status, 'in_progress'),
-        lt(generationAttempts.createdAt, cutoff),
-      ),
-    )
-    .returning({ id: generationAttempts.id });
+  return dbClient.transaction(async (tx) => {
+    const orphanedAttempts = await tx
+      .select({ id: generationAttempts.id })
+      .from(generationAttempts)
+      .where(
+        and(
+          isNull(generationAttempts.classification),
+          eq(generationAttempts.status, 'in_progress'),
+          lt(generationAttempts.createdAt, cutoff),
+        ),
+      )
+      .limit(batchSize)
+      .for('update');
 
-  const cleaned = result.length;
+    if (orphanedAttempts.length === 0) {
+      return { cleaned: 0 };
+    }
 
-  if (cleaned > 0) {
-    logger.info(
-      {
-        source: 'cleanup',
-        event: 'orphaned_attempts_cleaned',
-        count: cleaned,
-      },
-      `Finalized ${cleaned} orphaned attempt(s)`,
-    );
-  }
+    const attemptIds = orphanedAttempts.map((attempt) => attempt.id);
 
-  return { cleaned };
+    const result = await tx
+      .update(generationAttempts)
+      .set({
+        classification: 'timeout',
+        status: 'failure',
+      })
+      .where(inArray(generationAttempts.id, attemptIds))
+      .returning({ id: generationAttempts.id });
+
+    const cleanedAttemptIds = result.map((attempt) => attempt.id);
+    const cleaned = cleanedAttemptIds.length;
+
+    if (cleaned !== attemptIds.length) {
+      logger.error(
+        {
+          source: 'cleanup',
+          event: 'orphaned_attempts_cleanup_partial_failure',
+          expected: attemptIds.length,
+          cleaned,
+        },
+        'Plan cleanup failed to finalize all locked orphaned attempts',
+      );
+      throw new Error(
+        'Plan cleanup failed to finalize all locked orphaned attempts',
+      );
+    }
+
+    if (cleaned > 0) {
+      logger.info(
+        {
+          source: 'cleanup',
+          event: 'orphaned_attempts_cleaned',
+          count: cleaned,
+        },
+        `Finalized ${cleaned} orphaned attempt(s)`,
+      );
+    }
+
+    if (cleaned === batchSize) {
+      logger.warn(
+        {
+          source: 'cleanup',
+          event: 'orphaned_attempts_cleanup_batch_full',
+          batchSize,
+        },
+        'Plan cleanup filled its orphaned-attempt batch; backlog may remain',
+      );
+    }
+
+    return { cleaned };
+  });
 }
 
 /**

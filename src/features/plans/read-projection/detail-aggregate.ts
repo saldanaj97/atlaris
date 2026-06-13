@@ -1,10 +1,10 @@
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import type { PlanDetailTaskRow } from '@/lib/db/queries/types/plans.types';
 import type {
   GenerationAttempt,
   LearningPlan,
   LearningPlanDetail,
   Module,
-  Task,
   TaskProgress,
 } from '@/shared/types/db.types';
 
@@ -15,7 +15,7 @@ type ModuleTasks = LearningPlanDetail['plan']['modules'][number]['tasks'];
 export function buildLearningPlanDetail(params: {
   plan: LearningPlan;
   moduleRows: Module[];
-  taskRows: Task[];
+  taskRows: PlanDetailTaskRow[];
   progressRows: TaskProgress[];
   resourceRows: TaskResourceWithResource[];
   latestAttempt: GenerationAttempt | null;

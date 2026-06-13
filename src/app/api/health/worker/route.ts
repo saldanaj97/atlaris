@@ -4,14 +4,32 @@ import {
   buildHealthyWorkerHealthBody,
   buildWorkerHealthMonitoringErrorBody,
 } from '@/lib/api/health/worker-health-checks';
+import { assertInternalWorkerAccess } from '@/lib/api/internal/internal-worker-access';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { maintenanceEnv } from '@/lib/config/env';
 import { getSystemWideJobMetrics } from '@/lib/db/queries/admin/jobs-metrics';
-import { logger } from '@/lib/logging/logger';
+import { getLoggingRequestContext } from '@/lib/logging/request-context';
 import { NextResponse } from 'next/server';
 
+const WORKER_HEALTH_HEADER = 'x-worker-health-token';
+
 export async function GET(request: Request): Promise<Response> {
+  const { logger: requestLogger } = getLoggingRequestContext(request);
+  const pathname = new URL(request.url).pathname;
+
   try {
     checkIpRateLimit(request, 'health');
+    assertInternalWorkerAccess({
+      request,
+      pathname,
+      logger: requestLogger,
+      enabled: true,
+      workerToken: maintenanceEnv.workerHealthToken,
+      headerName: WORKER_HEALTH_HEADER,
+      unavailableMessage: 'Worker health check is currently unavailable.',
+      unauthorizedLogMessage: 'Unauthorized worker health check attempt',
+      missingWorkerTokenLogMessage: 'Worker health token missing in production',
+    });
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -31,7 +49,7 @@ export async function GET(request: Request): Promise<Response> {
       status: httpStatus,
     });
   } catch (error) {
-    logger.error({ error }, 'Health worker check failed');
+    requestLogger.error({ error }, 'Health worker check failed');
 
     return NextResponse.json(buildWorkerHealthMonitoringErrorBody(timestamp), {
       status: 503,

@@ -59,8 +59,6 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - '.oxlintrc.json'
-              - '.prettierignore'
-              - 'prettier.config.mjs'
               - '.husky/**'
               - '.github/workflows/**'
 
@@ -384,7 +382,7 @@ jobs:
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   integration-light:
-    name: Integration (related or light)
+    name: Integration (related/full/light)
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
@@ -432,10 +430,9 @@ jobs:
         env:
           NODE_ENV: 'test'
           BASE_REF: ${{ github.base_ref }}
-          # No POSTGRES_URL: tests/setup/testcontainers.ts spins up Postgres and
-          # tests/setup/test-env.ts derives per-worker DBs from VITEST_POOL_ID.
         shell: bash
         run: |
+          set -e
           echo "Base ref: ${BASE_REF}"
           CHANGED_FILES=""
           if [ -n "${BASE_REF}" ]; then
@@ -447,7 +444,6 @@ jobs:
           COUNT=$(echo "${FILES}" | wc -l | tr -d ' ')
           echo "Changed candidate files: ${COUNT}"
 
-          # Global changes that should skip related integration and rely on light subset
           read -r -d '' GLOBAL_TRIGGER_PATTERN <<'EOF' || true
           ^(
             pnpm-lock\.yaml|
@@ -459,49 +455,61 @@ jobs:
             supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?
           )$
           EOF
-          # Remove newlines and spaces for grep -E compatibility
           GLOBAL_TRIGGER_PATTERN_CLEAN=$(echo "${GLOBAL_TRIGGER_PATTERN}" | tr -d '\n' | sed 's/ //g')
           GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E "${GLOBAL_TRIGGER_PATTERN_CLEAN}" || true)
+
+          MODE="light"
           if [ -n "${GLOBAL_TRIGGER}" ]; then
-            echo "Detected global change impacting many tests; skipping related integration."
-            COUNT=0
-          fi
-
-          if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
-            echo "Running vitest related for integration project..."
-            pnpm vitest related --project integration --run --coverage \
-              --reporter=default \
-              --reporter=json \
-              --outputFile=test-results.json \
-              ${FILES}
-            EXIT=$?
-            if [ $EXIT -eq 0 ]; then
-              echo "Related integration run completed."
-              # Ensure coverage file exists before exiting
-              if [ -f coverage/lcov.info ]; then
-                echo "Coverage report generated successfully."
-              else
-                echo "⚠️ Warning: coverage/lcov.info not found after test run"
-              fi
-              exit 0
-            else
-              echo "Related run failed; falling back to light subset."
-            fi
+            MODE="full"
+            echo "Integration mode: full (global trigger detected)"
+          elif [ "${COUNT}" -gt 50 ]; then
+            MODE="full"
+            echo "Integration mode: full (${COUNT} candidate TypeScript files)"
+          elif [ "${COUNT}" -gt 0 ]; then
+            MODE="related"
+            echo "Integration mode: related (${COUNT} candidate TypeScript files)"
           else
-            echo "No suitable changed files; using light subset."
+            echo "Integration mode: light (no suitable source candidates)"
           fi
 
-          # Light subset fallback (or primary when no related)
-          mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
-          if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
-            echo "No light integration tests found; skipping."
-            exit 0
+          case "${MODE}" in
+            related)
+              pnpm vitest related --project integration --run --coverage \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json \
+                ${FILES}
+              ;;
+            full)
+              pnpm vitest run --project integration tests/integration \
+                --coverage \
+                --coverage.thresholds.lines=0 \
+                --coverage.thresholds.functions=0 \
+                --coverage.thresholds.branches=0 \
+                --coverage.thresholds.statements=0 \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json
+              ;;
+            light)
+              mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
+              if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
+                echo "No light integration tests found; skipping."
+                exit 0
+              fi
+              pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
+                --coverage \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json
+              ;;
+          esac
+
+          if [ -f coverage/lcov.info ]; then
+            echo "Coverage report generated successfully."
+          else
+            echo "⚠️ Warning: coverage/lcov.info not found after test run"
           fi
-          pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
-            --coverage \
-            --reporter=default \
-            --reporter=json \
-            --outputFile=test-results.json
       - name: Generate test summary
         if: always()
         run: |

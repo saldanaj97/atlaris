@@ -26,7 +26,10 @@ import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
-import { getModuleDetailRows } from '@/lib/db/queries/modules';
+import {
+  getModuleDetailRows,
+  getModuleLessonGenerationStatus,
+} from '@/lib/db/queries/modules';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -139,6 +142,34 @@ export async function getPlanGenerationStatusSnapshot(params: {
   }
 
   return buildPlanDetailStatusSnapshot(rows);
+}
+
+export async function getModuleLessonGenerationStatusForRead(params: {
+  planId: string;
+  moduleId: string;
+  userId: string;
+  dbClient?: PlanDbClient;
+}): Promise<{
+  planId: string;
+  moduleId: string;
+  status: 'not_generated' | 'generating' | 'ready' | 'failed';
+} | null> {
+  const status = await getModuleLessonGenerationStatus(
+    params.planId,
+    params.moduleId,
+    params.userId,
+    params.dbClient,
+  );
+
+  if (!status) {
+    return null;
+  }
+
+  return {
+    planId: params.planId,
+    moduleId: params.moduleId,
+    status,
+  };
 }
 
 export async function getPlanGenerationAttemptsForRead(params: {

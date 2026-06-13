@@ -46,12 +46,12 @@ export const GET = requestBoundary.route(
 
 export const DELETE = requestBoundary.route(
   { rateLimit: 'mutation' },
-  async ({ params, actor, db }) => {
+  async ({ params, actor }) => {
     const planId = requireUuidRouteParam(params, 'planId');
 
     logger.info({ planId, userId: actor.id }, 'Deleting learning plan');
 
-    await removePlanForWrite({ planId, userId: actor.id, dbClient: db });
+    await removePlanForWrite({ planId, userId: actor.id });
 
     logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
 

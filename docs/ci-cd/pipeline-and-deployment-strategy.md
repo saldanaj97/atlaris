@@ -39,7 +39,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### 1) `.github/workflows/ci-pr.yml`
 
 - Trigger: PRs to `develop` or `main`
-- Runs: lint, type-check, dependency audit, build, unit tests, light integration tests
+- Runs: lint, type-check, dependency audit, build, unit tests, and PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
 - Skips docs-only changes (`docs/**`, `**/*.md`, etc.)
 
 ### 2) `.github/workflows/ci-trunk.yml`

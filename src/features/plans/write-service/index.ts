@@ -1,8 +1,5 @@
-import type { PlanDbClient } from '@/features/plans/read-projection/types';
-
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { deletePlan } from '@/lib/db/queries/plans';
-import { db as serviceRoleDb } from '@supabase/service-role';
 
 /**
  * Deletes a user-owned plan through the feature service boundary so route
@@ -11,9 +8,8 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 export async function removePlanForWrite(params: {
   planId: string;
   userId: string;
-  dbClient: PlanDbClient;
 }): Promise<void> {
-  const result = await deletePlan(params.planId, params.userId, serviceRoleDb);
+  const result = await deletePlan(params.planId, params.userId);
 
   if (result.success) {
     return;

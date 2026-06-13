@@ -4,17 +4,26 @@ import { JOB_TYPES } from '@/features/jobs/types';
 import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Creates a mock Request object for testing the health endpoint.
  * The health endpoint now requires a Request argument for IP-based rate limiting.
  */
-function createMockRequest(ip: string = '127.0.0.1'): Request {
+function createMockRequest(
+  ip: string = '127.0.0.1',
+  authToken?: string,
+): Request {
+  const headers: Record<string, string> = {
+    'x-forwarded-for': ip,
+  };
+
+  if (authToken) {
+    headers.authorization = `Bearer ${authToken}`;
+  }
+
   return new Request('http://localhost/api/health/worker', {
-    headers: {
-      'x-forwarded-for': ip,
-    },
+    headers,
   });
 }
 
@@ -26,6 +35,7 @@ describe('Health Endpoint', () => {
 
   afterEach(() => {
     clearAllRateLimiters();
+    vi.unstubAllEnvs();
   });
 
   describe('Healthy State', () => {
@@ -282,6 +292,30 @@ describe('Health Endpoint', () => {
       const now = new Date();
       const diffMs = now.getTime() - timestamp.getTime();
       expect(diffMs).toBeLessThan(60 * 1000); // within 1 minute
+    });
+  });
+
+  describe('Operator auth', () => {
+    it('returns 401 when a worker health token is configured but missing from the request', async () => {
+      vi.stubEnv('WORKER_HEALTH_TOKEN', 'configured-health-secret');
+
+      const response = await GET(createMockRequest());
+      const data = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(data.code).toBe('UNAUTHORIZED');
+    });
+
+    it('accepts a matching bearer token when configured', async () => {
+      vi.stubEnv('WORKER_HEALTH_TOKEN', 'configured-health-secret');
+
+      const response = await GET(
+        createMockRequest('127.0.0.1', 'configured-health-secret'),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.status).toBe('healthy');
     });
   });
 });
