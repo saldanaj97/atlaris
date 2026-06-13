@@ -104,9 +104,9 @@ We use 4 core GitHub Actions workflows:
 **What it runs:**
 
 - Integration tests (full suite)
-- E2E tests
+- RLS security tests
 
-**Purpose:** Comprehensive validation after merge.
+**Purpose:** Comprehensive validation after merge. Browser smoke (`pnpm test:smoke`) is supported locally but is not a hosted CI gate.
 
 ### 3. `staging-db-migrations.yaml` - Staging Database Migration Workflow
 
