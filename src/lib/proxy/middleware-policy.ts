@@ -14,6 +14,9 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
   '/.well-known/workflow/',
 ] as const;
 
+/** Exact paths that stay reachable during maintenance (route-level auth applies). */
+const MAINTENANCE_MODE_BYPASS_PATHS = ['/api/health/worker'] as const;
+
 export function isProtectedRoute(pathname: string): boolean {
   // Stripe webhooks bypass all checks
   if (pathname.startsWith('/api/v1/stripe/webhook')) {
@@ -22,6 +25,10 @@ export function isProtectedRoute(pathname: string): boolean {
   // Internal worker/maintenance routes bypass Clerk; each route must enforce
   // its own worker token auth (see assertInternalWorkerAccess).
   if (pathname.startsWith('/api/internal/')) {
+    return false;
+  }
+  // Worker health probes authenticate via route-level worker token, not Clerk.
+  if (pathname === '/api/health/worker') {
     return false;
   }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -35,7 +42,8 @@ export function resolveMaintenanceRedirectPath(
   if (
     MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
       pathname.startsWith(prefix),
-    )
+    ) ||
+    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(pathname)
   ) {
     return null;
   }

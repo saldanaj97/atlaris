@@ -21,6 +21,10 @@ describe('middleware policy', () => {
     expect(isProtectedRoute(pathname)).toBe(false);
   });
 
+  it('isProtectedRoute skips worker health endpoint', () => {
+    expect(isProtectedRoute('/api/health/worker')).toBe(false);
+  });
+
   it('isProtectedRoute protects non-internal api routes', () => {
     expect(isProtectedRoute('/api/plans')).toBe(true);
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
@@ -35,6 +39,12 @@ describe('middleware policy', () => {
     expect(
       resolveMaintenanceRedirectPath(true, '/.well-known/workflow/v1/flow'),
     ).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/api/health/worker')).toBe(
+      null,
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
+      '/maintenance',
+    );
     expect(resolveMaintenanceRedirectPath(false, '/maintenance')).toBe('/');
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
   });

@@ -174,6 +174,7 @@ export function useModuleLessonGeneration({
           }
           if (outcome === 'error') {
             refresh();
+            schedule();
             return;
           }
           if (outcome !== 'continue') {

@@ -216,15 +216,22 @@ describe('ModuleLessonsClient', () => {
     expect(refreshMock.mock.calls.length).toBe(callsAfterTerminal);
   });
 
-  it('stops polling when status polling fails', async () => {
+  it('refreshes and resumes polling after a transient status failure', async () => {
     vi.useFakeTimers();
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
+      .mockResolvedValueOnce(
         mockJsonFetchResponse(
           { error: { code: 'INTERNAL_ERROR', message: 'Unavailable' } },
           { ok: false, status: 500 },
         ),
+      )
+      .mockResolvedValue(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'generating',
+        }),
       );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -249,7 +256,7 @@ describe('ModuleLessonsClient', () => {
       vi.advanceTimersByTime(2500);
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('shows long-running notice and stops polling after max attempts', async () => {

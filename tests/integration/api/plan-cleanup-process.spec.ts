@@ -48,6 +48,18 @@ describe('POST /api/internal/maintenance/plans/cleanup', () => {
     expect(response.status).toBe(503);
   });
 
+  it('returns 503 when plan cleanup is enabled but maintenance token is missing in production', async () => {
+    vi.stubGlobal('window', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('PLAN_CLEANUP_ENABLED', 'true');
+
+    const response = await POST_PLAN_CLEANUP(createCleanupRequest());
+    const body = (await response.json()) as { code?: string };
+
+    expect(response.status).toBe(503);
+    expect(body.code).toBe('SERVICE_UNAVAILABLE');
+  });
+
   it('rejects unauthorized requests when a worker token is configured', async () => {
     vi.stubEnv('MAINTENANCE_WORKER_TOKEN', WORKER_TOKEN);
     vi.stubEnv('PLAN_CLEANUP_ENABLED', 'true');

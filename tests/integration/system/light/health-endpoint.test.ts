@@ -317,5 +317,16 @@ describe('Health Endpoint', () => {
       expect(response.status).toBe(200);
       expect(data.status).toBe('healthy');
     });
+
+    it('returns 503 when worker health token is missing in production', async () => {
+      vi.stubGlobal('window', undefined);
+      vi.stubEnv('NODE_ENV', 'production');
+
+      const response = await GET(createMockRequest());
+      const data = await response.json();
+
+      expect(response.status).toBe(503);
+      expect(data.code).toBe('SERVICE_UNAVAILABLE');
+    });
   });
 });

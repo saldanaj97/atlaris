@@ -147,7 +147,7 @@ Do not re-enable concurrent dual dev servers or project-level Playwright paralle
 1. Decide whether the flow is truly launch-blocker or regression-prone enough for smoke.
 2. Keep it independent of unrelated prior auth mutations.
 3. Reuse helpers in `tests/playwright/smoke/fixtures.ts` or `tests/playwright/smoke/helpers/` when they simplify behavior without hiding intent.
-4. Update **`tracker.md`** under the local-only planning path [`.agents/plans/playwright-local-smoke/`](../../.agents/plans/playwright-local-smoke/) with what changed and how it was verified (create folder/file if missing). Do not mirror smoke planning notes into legacy `prds/`, legacy `.plans/`, or Cursor-native `.cursor/plans/`.
+4. Update **`tracker.md`** under the current local day's `.agents/recaps/MM-DD-YYYY/plans/playwright-local-smoke/` folder with what changed and how it was verified (create folder/file if missing). Do not mirror smoke planning notes into legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/`.
 
 ## Debugging
 

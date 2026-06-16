@@ -6,10 +6,25 @@ import {
   tokensMatch,
 } from '@/lib/api/internal/internal-worker-token';
 import { appEnv, maintenanceEnv } from '@/lib/config/env';
+import { EnvValidationError } from '@/lib/config/env/shared';
 
 const MAINTENANCE_WORKER_HEADER = 'x-maintenance-worker-token';
 const MISSING_MAINTENANCE_WORKER_TOKEN_LOG_MESSAGE =
   'Maintenance worker token missing in production';
+
+function resolveMaintenanceWorkerToken(): string | undefined {
+  try {
+    return maintenanceEnv.workerToken;
+  } catch (error) {
+    if (
+      error instanceof EnvValidationError &&
+      error.envKey === 'MAINTENANCE_WORKER_TOKEN'
+    ) {
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 export type AssertMaintenanceWorkerAccessArgs = {
   request: Request;
@@ -28,7 +43,7 @@ export function assertMaintenanceWorkerAccess(
 ): void {
   assertInternalWorkerAccess({
     ...args,
-    workerToken: maintenanceEnv.workerToken,
+    workerToken: resolveMaintenanceWorkerToken(),
     headerName: MAINTENANCE_WORKER_HEADER,
     missingWorkerTokenLogMessage: MISSING_MAINTENANCE_WORKER_TOKEN_LOG_MESSAGE,
   });
