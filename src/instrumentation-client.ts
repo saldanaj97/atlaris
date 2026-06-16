@@ -7,6 +7,7 @@ import {
   shouldEnableLogs,
   tracesSampler,
 } from '@/lib/observability/sampling';
+import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
 
 // NOTE: We read `process.env` directly here instead of importing from
@@ -29,6 +30,8 @@ if (isSentryEnabled) {
 
     // Context-aware trace sampling (replaces flat tracesSampleRate).
     tracesSampler,
+
+    beforeSend: beforeSendSentryEvent,
 
     // SDK log shipping — disabled in production to reduce ingest volume.
     enableLogs: shouldEnableLogs(),

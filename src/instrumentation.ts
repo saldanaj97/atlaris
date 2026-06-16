@@ -1,3 +1,4 @@
+import { shouldCaptureRequestError } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
 
 function isSentryEnabled(): boolean {
@@ -22,6 +23,11 @@ export const onRequestError = (
   ...args: Parameters<typeof Sentry.captureRequestError>
 ): void => {
   if (!isSentryEnabled()) {
+    return;
+  }
+
+  const [error] = args;
+  if (!shouldCaptureRequestError(error)) {
     return;
   }
 

@@ -4,6 +4,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import { shouldEnableLogs, tracesSampler } from '@/lib/observability/sampling';
+import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
 
 Sentry.init({
@@ -12,6 +13,8 @@ Sentry.init({
   // Context-aware trace sampling — see src/lib/observability/sampling.ts for
   // per-route rates and rationale.
   tracesSampler,
+
+  beforeSend: beforeSendSentryEvent,
 
   // Vercel AI integration (required for Edge - not enabled by default)
   integrations: (defaultIntegrations) => [
