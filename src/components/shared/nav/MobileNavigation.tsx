@@ -3,7 +3,10 @@
 import type { NavItem } from '@/features/navigation';
 
 import BrandLogo from '../BrandLogo';
-import { isMarketingHeaderPath } from '@/components/shared/nav/header-shell';
+import {
+  type HeaderShellVariant,
+  usesLiquidGlassHeader,
+} from '@/components/shared/nav/header-shell';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +25,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 interface MobileNavigationProps {
+  headerVariant: HeaderShellVariant;
   pathname: string;
   navItems: NavItem[];
 }
@@ -30,11 +34,12 @@ interface MobileNavigationProps {
  * Mobile navigation component with left-sliding sheet.
  */
 export default function MobileNavigation({
+  headerVariant,
   pathname,
   navItems,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
-  const isMarketing = isMarketingHeaderPath(pathname);
+  const usesGlassHeader = usesLiquidGlassHeader(headerVariant);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -45,7 +50,7 @@ export default function MobileNavigation({
             size='icon-sm'
             onClick={() => setOpen(true)}
             className={
-              isMarketing
+              usesGlassHeader
                 ? 'rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20'
                 : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             }
@@ -61,7 +66,7 @@ export default function MobileNavigation({
       <SheetContent
         side='left'
         className={
-          isMarketing
+          usesGlassHeader
             ? 'w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55'
             : 'w-72 border-r border-border bg-card p-0 shadow-lg'
         }
@@ -104,7 +109,7 @@ export default function MobileNavigation({
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-primary text-white shadow-md'
-                      : isMarketing
+                      : usesGlassHeader
                         ? 'text-muted-foreground hover:bg-white/60 hover:text-primary dark:hover:bg-white/10 dark:hover:text-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}

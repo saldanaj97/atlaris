@@ -1,12 +1,13 @@
 'use client';
 
+import type { HeaderShellVariant } from '@/components/shared/nav/header-shell';
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
-import { desktopHeaderShellClass } from '@/components/shared/nav/header-shell';
+import HeaderLiquidGlassShell from '@/components/shared/nav/HeaderLiquidGlassShell';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +15,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
+  headerVariant: HeaderShellVariant;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -27,26 +29,29 @@ interface DesktopHeaderProps {
  * Layout: brand (left) | navigation (center) | auth controls (right)
  */
 export default function DesktopHeader({
+  headerVariant,
   pathname,
   navItems,
   tier,
   isAuthenticated,
   showClerkUserButton,
 }: DesktopHeaderProps) {
-  return (
-    <div className={desktopHeaderShellClass(pathname)}>
+  const headerContent = (
+    <>
       {/* Brand (left) */}
-      <div className='flex items-center'>
+      <div className='relative z-10 flex items-center'>
         <BrandLogo />
       </div>
 
-      {/* Navigation (center) */}
-      <div className='flex justify-center'>
-        <DesktopNavigation pathname={pathname} navItems={navItems} />
+      {/* Navigation (visually centered in header bar) */}
+      <div className='pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center'>
+        <div className='pointer-events-auto'>
+          <DesktopNavigation pathname={pathname} navItems={navItems} />
+        </div>
       </div>
 
       {/* Auth controls (right) */}
-      <div className='flex items-center justify-end gap-1'>
+      <div className='relative z-10 flex items-center justify-end gap-1'>
         <Button
           variant='ghost'
           size='sm'
@@ -69,6 +74,12 @@ export default function DesktopHeader({
           showClerkUserButton={showClerkUserButton}
         />
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <HeaderLiquidGlassShell layout='desktop' variant={headerVariant}>
+      {headerContent}
+    </HeaderLiquidGlassShell>
   );
 }

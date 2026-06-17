@@ -30,7 +30,7 @@ interface DropdownNavItemProps {
  */
 function getNavItemClass(isActive: boolean): string {
   return cn(
-    'flex items-center gap-1 text-sm font-medium transition',
+    'flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium transition',
     'hover:text-primary dark:hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
     isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground',
@@ -120,7 +120,7 @@ export default function DesktopNavigation({
   };
 
   return (
-    <nav className='hidden items-center gap-6 md:flex'>
+    <nav className='hidden flex-nowrap items-center gap-6 md:flex'>
       {navItems.map((item) => renderNavItem(item))}
     </nav>
   );

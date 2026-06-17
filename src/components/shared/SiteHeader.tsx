@@ -78,7 +78,7 @@ export default async function SiteHeader() {
 
   return (
     <header className='fixed top-0 left-0 z-50 w-full px-4 pt-3 lg:px-6 lg:pt-4'>
-      <div className='mx-auto max-w-7xl'>
+      <div className='mx-auto max-w-7xl overflow-hidden rounded-2xl'>
         <SiteHeaderChrome
           navItems={navItems}
           tier={tier}
