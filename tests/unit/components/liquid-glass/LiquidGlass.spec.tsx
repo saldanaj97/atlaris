@@ -3,10 +3,10 @@ import {
   LiquidGlassLayer,
 } from '@/components/shared/liquid-glass';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-function mockMotionPreference(matches: boolean): void {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+function createMatchMediaMock(matches: boolean) {
+  return vi.fn().mockImplementation((query: string) => ({
     matches,
     media: query,
     onchange: null,
@@ -17,6 +17,14 @@ function mockMotionPreference(matches: boolean): void {
     dispatchEvent: vi.fn(),
   }));
 }
+
+function mockMotionPreference(matches: boolean): void {
+  vi.stubGlobal('matchMedia', createMatchMediaMock(matches));
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('LiquidGlass', () => {
   it('keeps the decorative glass layer behind interactive content', () => {
@@ -42,6 +50,24 @@ describe('LiquidGlass', () => {
       'inset-0',
       '-z-10',
     );
+  });
+
+  it('falls back to static glass when matchMedia is unavailable', () => {
+    vi.stubGlobal('matchMedia', undefined);
+
+    render(
+      <LiquidGlass
+        lens={{ width: 32, height: 16, borderRadius: 8 }}
+        fallbackClassName='bg-white/40 backdrop-blur-sm'
+      >
+        <button type='button'>Open navigation</button>
+      </LiquidGlass>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Open navigation' }),
+    ).toBeEnabled();
+    expect(document.querySelector('filter')).toBeNull();
   });
 });
 

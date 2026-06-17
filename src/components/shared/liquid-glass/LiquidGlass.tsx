@@ -3,62 +3,16 @@
 import type { LiquidGlassProps } from './types';
 
 import { generateLensMap } from './generate-lens-map';
-import { resolveLiquidGlassPhysics } from './types';
-import { cn } from '@/lib/utils';
 import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from 'react';
-
-const MIN_MEASURED_SIZE = 1;
-
-function supportsSvgDisplacementFilters(): boolean {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return false;
-  }
-
-  return (
-    typeof SVGFEDisplacementMapElement !== 'undefined' &&
-    typeof SVGFEImageElement !== 'undefined'
-  );
-}
-
-function lensMapToDataUrl(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number,
-): string {
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext('2d');
-  if (!context) {
-    return '';
-  }
-
-  const imageData = context.createImageData(width, height);
-  imageData.data.set(data);
-  context.putImageData(imageData, 0, 0);
-  return canvas.toDataURL();
-}
-
-function specularLightPosition(
-  angleDegrees: number,
-  width: number,
-  height: number,
-): { x: number; y: number; z: number } {
-  const radians = (angleDegrees * Math.PI) / 180;
-  return {
-    x: width / 2 + Math.cos(radians) * width,
-    y: height / 2 + Math.sin(radians) * height,
-    z: Math.max(width, height),
-  };
-}
+  buildMapSignature,
+  computeEffectiveLens,
+  lensMapToDataUrl,
+  specularLightPosition,
+} from './liquid-glass-utils';
+import { resolveLiquidGlassPhysics } from './types';
+import { useLiquidGlassRuntime } from './use-liquid-glass-runtime';
+import { cn } from '@/lib/utils';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 
 export function LiquidGlass({
   lens,
@@ -70,71 +24,21 @@ export function LiquidGlass({
 }: LiquidGlassProps) {
   const baseFilterId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [filterRevision, setFilterRevision] = useState(0);
   const [measuredSize, setMeasuredSize] = useState({
     width: lens.width,
     height: lens.height,
   });
-  const [isMounted, setIsMounted] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [isSupported, setIsSupported] = useState(true);
+  const { isMounted, isSupported, prefersReducedMotion } =
+    useLiquidGlassRuntime();
 
   const resolvedPhysics = resolveLiquidGlassPhysics(intensity, physics);
-
-  const effectiveLens = useMemo(
-    () => ({
-      width:
-        lens.width > 0
-          ? Math.round(lens.width)
-          : Math.max(MIN_MEASURED_SIZE, measuredSize.width),
-      height:
-        lens.height > 0
-          ? Math.round(lens.height)
-          : Math.max(MIN_MEASURED_SIZE, measuredSize.height),
-      borderRadius: Math.max(0, Math.round(lens.borderRadius)),
-    }),
-    [
-      lens.borderRadius,
-      lens.height,
-      lens.width,
-      measuredSize.height,
-      measuredSize.width,
-    ],
+  const effectiveLens = computeEffectiveLens(lens, measuredSize);
+  const mapResult = generateLensMap(effectiveLens, resolvedPhysics);
+  const mapSignature = buildMapSignature(
+    effectiveLens,
+    mapResult.scale,
+    mapResult.chromaAmount,
   );
-
-  const mapResult = useMemo(
-    () => generateLensMap(effectiveLens, resolvedPhysics),
-    [effectiveLens, resolvedPhysics],
-  );
-
-  const mapSignature = useMemo(
-    () =>
-      `${effectiveLens.width}:${effectiveLens.height}:${effectiveLens.borderRadius}:${mapResult.scale}:${mapResult.chromaAmount}`,
-    [
-      effectiveLens.borderRadius,
-      effectiveLens.height,
-      effectiveLens.width,
-      mapResult.chromaAmount,
-      mapResult.scale,
-    ],
-  );
-
-  useEffect(() => {
-    setIsMounted(true);
-    setIsSupported(supportsSvgDisplacementFilters());
-
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const syncReducedMotion = () => {
-      setPrefersReducedMotion(mediaQuery.matches);
-    };
-
-    syncReducedMotion();
-    mediaQuery.addEventListener('change', syncReducedMotion);
-
-    return () => {
-      mediaQuery.removeEventListener('change', syncReducedMotion);
-    };
-  }, []);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -150,8 +54,8 @@ export function LiquidGlass({
 
       const { width, height } = entry.contentRect;
       setMeasuredSize({
-        width: Math.max(MIN_MEASURED_SIZE, Math.round(width)),
-        height: Math.max(MIN_MEASURED_SIZE, Math.round(height)),
+        width: Math.max(1, Math.round(width)),
+        height: Math.max(1, Math.round(height)),
       });
     });
 
@@ -162,29 +66,15 @@ export function LiquidGlass({
     };
   }, [lens.height, lens.width]);
 
-  useEffect(() => {
-    setFilterRevision((revision) => revision + 1);
-  }, [mapSignature]);
-
-  const displacementMapUrl = useMemo(() => {
-    if (!isMounted || prefersReducedMotion || !isSupported) {
-      return '';
-    }
-
-    return lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height);
-  }, [
-    isMounted,
-    isSupported,
-    mapResult.data,
-    mapResult.height,
-    mapResult.width,
-    prefersReducedMotion,
-  ]);
+  const displacementMapUrl =
+    isMounted && !prefersReducedMotion && isSupported
+      ? lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height)
+      : '';
 
   const useStaticFallback =
     !isMounted || prefersReducedMotion || !isSupported || !displacementMapUrl;
 
-  const filterId = `${baseFilterId}-liquid-glass-${filterRevision}`;
+  const filterId = `${baseFilterId}-liquid-glass-${mapSignature.replace(/:/g, '-')}`;
   const filterStyle: CSSProperties | undefined = useStaticFallback
     ? undefined
     : { filter: `url(#${filterId})` };
