@@ -1,6 +1,8 @@
 import {
+  DEFAULT_LIQUID_GLASS_PHYSICS,
   LiquidGlass,
   LiquidGlassLayer,
+  resolveLiquidGlassPhysics,
 } from '@/components/shared/liquid-glass';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -95,6 +97,14 @@ describe('LiquidGlassLayer', () => {
       'absolute',
       'inset-0',
       'rounded-2xl',
+    );
+  });
+});
+
+describe('resolveLiquidGlassPhysics', () => {
+  it('uses the default preset for intensity="default"', () => {
+    expect(resolveLiquidGlassPhysics('default')).toEqual(
+      DEFAULT_LIQUID_GLASS_PHYSICS,
     );
   });
 });

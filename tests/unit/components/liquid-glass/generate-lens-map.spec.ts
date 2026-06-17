@@ -99,4 +99,36 @@ describe('generateLensMap', () => {
     expect(second.scale).toBe(first.scale);
     expect(second.chromaAmount).toBe(first.chromaAmount);
   });
+
+  it('reuses cached maps when non-map physics fields differ', () => {
+    const first = generateLensMap(testLens, testPhysics);
+    const second = generateLensMap(testLens, {
+      ...testPhysics,
+      blur: 0.9,
+      glow: 0.8,
+      edgeHighlight: 0.7,
+      specularAngle: 45,
+    });
+
+    expect(second).toBe(first);
+  });
+
+  it('evicts the oldest cache entry when the cache is full', () => {
+    const oldestLens = { ...testLens, width: testLens.width };
+    const oldest = generateLensMap(oldestLens, testPhysics);
+
+    for (let index = 1; index <= 32; index += 1) {
+      generateLensMap(
+        { ...testLens, width: testLens.width + index },
+        testPhysics,
+      );
+    }
+
+    generateLensMap({ ...testLens, width: testLens.width + 33 }, testPhysics);
+
+    const rematerialized = generateLensMap(oldestLens, testPhysics);
+
+    expect(rematerialized).not.toBe(oldest);
+    expect(Array.from(rematerialized.data)).toEqual(Array.from(oldest.data));
+  });
 });

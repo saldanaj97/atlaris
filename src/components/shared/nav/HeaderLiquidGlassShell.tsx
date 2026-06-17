@@ -2,10 +2,13 @@
 
 import type { ReactNode } from 'react';
 
-import { LiquidGlassLayer } from '@/components/shared/liquid-glass';
+import {
+  LiquidGlassLayer,
+  MARKETING_HEADER_PHYSICS,
+  PRICING_HEADER_PHYSICS,
+} from '@/components/shared/liquid-glass';
 import {
   desktopHeaderShellClass,
-  headerGlassIntensity,
   headerGlassSurfaceClass,
   mobileHeaderShellClass,
   type HeaderShellLayout,
@@ -38,7 +41,11 @@ export default function HeaderLiquidGlassShell({
       <div className='pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl'>
         <LiquidGlassLayer
           lens={{ width: 0, height: 0, borderRadius: 16 }}
-          intensity={headerGlassIntensity(variant)}
+          physics={
+            variant === 'pricing'
+              ? PRICING_HEADER_PHYSICS
+              : MARKETING_HEADER_PHYSICS
+          }
           fallbackClassName={headerGlassSurfaceClass(variant, layout)}
           className='size-full rounded-2xl'
         />

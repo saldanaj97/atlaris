@@ -33,12 +33,18 @@ export function LiquidGlass({
 
   const resolvedPhysics = resolveLiquidGlassPhysics(intensity, physics);
   const effectiveLens = computeEffectiveLens(lens, measuredSize);
-  const mapResult = generateLensMap(effectiveLens, resolvedPhysics);
-  const mapSignature = buildMapSignature(
-    effectiveLens,
-    mapResult.scale,
-    mapResult.chromaAmount,
-  );
+  const shouldUseDynamicFilter =
+    isMounted && !prefersReducedMotion && isSupported;
+  const mapResult = shouldUseDynamicFilter
+    ? generateLensMap(effectiveLens, resolvedPhysics)
+    : null;
+  const mapSignature = mapResult
+    ? buildMapSignature(
+        effectiveLens,
+        mapResult.scale,
+        mapResult.chromaAmount,
+      )
+    : '';
 
   useEffect(() => {
     const node = containerRef.current;
@@ -66,10 +72,9 @@ export function LiquidGlass({
     };
   }, [lens.height, lens.width]);
 
-  const displacementMapUrl =
-    isMounted && !prefersReducedMotion && isSupported
-      ? lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height)
-      : '';
+  const displacementMapUrl = mapResult
+    ? lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height)
+    : '';
 
   const useStaticFallback =
     !isMounted || prefersReducedMotion || !isSupported || !displacementMapUrl;
@@ -79,7 +84,10 @@ export function LiquidGlass({
     ? undefined
     : { filter: `url(#${filterId})` };
 
-  const chromaOffset = mapResult.chromaAmount;
+  const chromaOffset =
+    mapResult?.chromaAmount ??
+    Math.max(0, resolvedPhysics.chroma * resolvedPhysics.scale * 0.35);
+  const displacementScale = mapResult?.scale ?? resolvedPhysics.scale;
   const edgeHighlight = resolvedPhysics.edgeHighlight ?? 0;
   const specularAngle = resolvedPhysics.specularAngle ?? 135;
   const light = specularLightPosition(
@@ -118,7 +126,7 @@ export function LiquidGlass({
               <feDisplacementMap
                 in='SourceGraphic'
                 in2='displacementMap'
-                scale={mapResult.scale}
+                scale={displacementScale}
                 xChannelSelector='R'
                 yChannelSelector='G'
                 result='displaced'

@@ -97,7 +97,9 @@ export function resolveLiquidGlassPhysics(
   overrides?: Partial<LiquidGlassPhysics>,
 ): LiquidGlassPhysics {
   const base =
-    intensity === 'subtle' ? PRICING_HEADER_PHYSICS : MARKETING_HEADER_PHYSICS;
+    intensity === 'subtle'
+      ? PRICING_HEADER_PHYSICS
+      : DEFAULT_LIQUID_GLASS_PHYSICS;
 
   return {
     ...base,

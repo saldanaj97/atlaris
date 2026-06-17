@@ -43,11 +43,9 @@ export default function DesktopHeader({
         <BrandLogo />
       </div>
 
-      {/* Navigation (visually centered in header bar) */}
-      <div className='pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center'>
-        <div className='pointer-events-auto'>
-          <DesktopNavigation pathname={pathname} navItems={navItems} />
-        </div>
+      {/* Navigation (center column) */}
+      <div className='relative z-10 flex min-w-0 justify-center'>
+        <DesktopNavigation pathname={pathname} navItems={navItems} />
       </div>
 
       {/* Auth controls (right) */}

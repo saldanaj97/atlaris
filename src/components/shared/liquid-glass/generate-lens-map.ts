@@ -14,6 +14,7 @@ export type LensMapResult = {
 };
 
 const lensMapCache = new Map<string, LensMapResult>();
+const MAX_LENS_MAP_CACHE_ENTRIES = 32;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -108,19 +109,26 @@ function buildCacheKey(
   lens: LiquidGlassLens,
   physics: LiquidGlassPhysics,
 ): string {
+  const width = Math.max(1, Math.round(lens.width));
+  const height = Math.max(1, Math.round(lens.height));
+  const borderRadius = Math.max(
+    0,
+    Math.min(
+      Math.round(lens.borderRadius),
+      Math.floor(width / 2),
+      Math.floor(height / 2),
+    ),
+  );
+
   return JSON.stringify({
-    width: Math.round(lens.width),
-    height: Math.round(lens.height),
-    borderRadius: Math.round(lens.borderRadius),
+    width,
+    height,
+    borderRadius,
     scale: Math.round(physics.scale),
     depth: Math.round(physics.depth * 100),
     curvature: Math.round(physics.curvature * 100),
     splay: Math.round(physics.splay * 100),
     chroma: Math.round(physics.chroma * 100),
-    blur: Math.round((physics.blur ?? 0) * 100),
-    glow: Math.round((physics.glow ?? 0) * 100),
-    edgeHighlight: Math.round((physics.edgeHighlight ?? 0) * 100),
-    specularAngle: Math.round(physics.specularAngle ?? 0),
   });
 }
 
@@ -210,6 +218,14 @@ export function generateLensMap(
   }
 
   const result = createLensMap(lens, resolvedPhysics);
+
+  if (lensMapCache.size >= MAX_LENS_MAP_CACHE_ENTRIES) {
+    const oldestKey = lensMapCache.keys().next().value;
+    if (oldestKey) {
+      lensMapCache.delete(oldestKey);
+    }
+  }
+
   lensMapCache.set(cacheKey, result);
   return result;
 }
