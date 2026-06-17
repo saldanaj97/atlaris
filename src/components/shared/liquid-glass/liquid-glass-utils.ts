@@ -32,6 +32,10 @@ export function lensMapToDataUrl(
   width: number,
   height: number,
 ): string {
+  if (typeof document === 'undefined') {
+    return '';
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

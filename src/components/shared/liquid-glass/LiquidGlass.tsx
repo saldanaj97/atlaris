@@ -39,16 +39,16 @@ export function LiquidGlass({
     ? generateLensMap(effectiveLens, resolvedPhysics)
     : null;
   const mapSignature = mapResult
-    ? buildMapSignature(
-        effectiveLens,
-        mapResult.scale,
-        mapResult.chromaAmount,
-      )
+    ? buildMapSignature(effectiveLens, mapResult.scale, mapResult.chromaAmount)
     : '';
 
   useEffect(() => {
     const node = containerRef.current;
-    if (!node || (lens.width > 0 && lens.height > 0)) {
+    if (
+      !node ||
+      typeof ResizeObserver === 'undefined' ||
+      (lens.width > 0 && lens.height > 0)
+    ) {
       return;
     }
 
