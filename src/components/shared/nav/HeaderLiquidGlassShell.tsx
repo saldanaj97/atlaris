@@ -6,6 +6,7 @@ import {
   LiquidGlassLayer,
   MARKETING_HEADER_PHYSICS,
   PRICING_HEADER_PHYSICS,
+  type LiquidGlassPhysics,
 } from '@/components/shared/liquid-glass';
 import {
   desktopHeaderShellClass,
@@ -13,7 +14,6 @@ import {
   mobileHeaderShellClass,
   type HeaderShellLayout,
   type HeaderShellVariant,
-  usesLiquidGlassHeader,
 } from '@/components/shared/nav/header-shell';
 
 interface HeaderLiquidGlassShellProps {
@@ -21,6 +21,14 @@ interface HeaderLiquidGlassShellProps {
   layout: HeaderShellLayout;
   variant: HeaderShellVariant;
 }
+
+type GlassHeaderVariant = Exclude<HeaderShellVariant, 'opaque'>;
+
+const HEADER_VARIANT_PHYSICS: Record<GlassHeaderVariant, LiquidGlassPhysics> = {
+  marketing: MARKETING_HEADER_PHYSICS,
+  pricing: PRICING_HEADER_PHYSICS,
+  protected: MARKETING_HEADER_PHYSICS,
+};
 
 /**
  * Header layout shell that layers {@link LiquidGlassLayer} behind nav chrome on glass routes.
@@ -35,7 +43,7 @@ export default function HeaderLiquidGlassShell({
       ? desktopHeaderShellClass(variant)
       : mobileHeaderShellClass(variant);
 
-  if (!usesLiquidGlassHeader(variant)) {
+  if (variant === 'opaque') {
     return <div className={shellClassName}>{children}</div>;
   }
 
@@ -44,11 +52,7 @@ export default function HeaderLiquidGlassShell({
       <div className='pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl'>
         <LiquidGlassLayer
           lens={{ width: 0, height: 0, borderRadius: 16 }}
-          physics={
-            variant === 'pricing'
-              ? PRICING_HEADER_PHYSICS
-              : MARKETING_HEADER_PHYSICS
-          }
+          physics={HEADER_VARIANT_PHYSICS[variant]}
           fallbackClassName={headerGlassSurfaceClass(variant, layout)}
           className='size-full rounded-2xl'
         />

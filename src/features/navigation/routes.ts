@@ -5,6 +5,7 @@
  */
 export const ROUTES = {
   HOME: '/',
+  LANDING: '/landing',
   DASHBOARD: '/dashboard',
   AUTH: {
     SIGN_IN: '/auth/sign-in',

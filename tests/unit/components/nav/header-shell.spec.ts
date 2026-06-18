@@ -6,11 +6,12 @@ import {
   mobileHeaderShellClass,
   usesLiquidGlassHeader,
 } from '@/components/shared/nav/header-shell';
+import { ROUTES } from '@/features/navigation';
 import { describe, expect, it } from 'vitest';
 
 describe('header shell variants', () => {
   it('uses glass variants for marketing and protected app routes', () => {
-    expect(getHeaderShellVariant('/landing')).toBe('marketing');
+    expect(getHeaderShellVariant(ROUTES.LANDING)).toBe('marketing');
     expect(getHeaderShellVariant('/about')).toBe('marketing');
     expect(getHeaderShellVariant('/pricing')).toBe('pricing');
     expect(getHeaderShellVariant('/dashboard')).toBe('protected');

@@ -29,6 +29,19 @@ describe('HeaderLiquidGlassShell', () => {
     ).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('mounts a decorative liquid glass layer for protected routes', () => {
+    render(
+      <HeaderLiquidGlassShell layout='desktop' variant='protected'>
+        <span>Protected header</span>
+      </HeaderLiquidGlassShell>,
+    );
+
+    expect(screen.getByText('Protected header')).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-slot="liquid-glass-layer"]'),
+    ).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('uses the pricing glass surface classes on pricing routes', () => {
     render(
       <HeaderLiquidGlassShell layout='mobile' variant='pricing'>

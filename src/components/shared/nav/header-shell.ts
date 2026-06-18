@@ -47,7 +47,7 @@ function matchesPathOrDescendant(pathname: string, path: string): boolean {
 export function isMarketingHeaderPath(pathname: string): boolean {
   return (
     pathname === ROUTES.HOME ||
-    pathname === '/landing' ||
+    pathname === ROUTES.LANDING ||
     pathname === ROUTES.ABOUT ||
     pathname === ROUTES.PRICING
   );
