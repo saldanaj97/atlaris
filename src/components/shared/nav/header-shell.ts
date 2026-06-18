@@ -14,13 +14,13 @@ const PRICING_SHELL_BORDER = 'border-white/25 dark:border-white/10';
 const PRICING_SHELL_SURFACE = 'bg-white/20 dark:bg-white/5';
 
 const GLASS_DESKTOP_STRUCTURE_BASE =
-  'relative hidden w-full isolate grid-cols-[auto_minmax(0,1fr)_auto] items-center overflow-hidden rounded-2xl border px-5 py-2.5 shadow-lg md:grid';
+  'relative hidden w-full isolate grid-cols-[auto_minmax(0,1fr)_auto] items-center rounded-2xl border px-5 py-2.5 shadow-lg md:grid';
 
 const GLASS_DESKTOP_SURFACE =
   'rounded-2xl bg-white/20 backdrop-blur-sm dark:bg-white/10';
 
 const GLASS_MOBILE_STRUCTURE_BASE =
-  'relative grid w-full isolate grid-cols-[auto_1fr_auto] items-center gap-2 overflow-hidden rounded-2xl border px-3 py-2 shadow-lg sm:px-4 sm:py-2.5 md:hidden';
+  'relative grid w-full isolate grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border px-3 py-2 shadow-lg sm:px-4 sm:py-2.5 md:hidden';
 
 const GLASS_MOBILE_SURFACE =
   'rounded-2xl bg-white/20 backdrop-blur-sm dark:bg-white/10';

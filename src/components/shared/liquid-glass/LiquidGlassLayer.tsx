@@ -40,9 +40,12 @@ export function LiquidGlassLayer({
     useLiquidGlassRuntime();
 
   const resolvedPhysics = resolveLiquidGlassPhysics(intensity, physics);
+  const awaitingMeasurement =
+    (lens.width === 0 || lens.height === 0) &&
+    (measuredSize.width === 0 || measuredSize.height === 0);
   const effectiveLens = computeEffectiveLens(lens, measuredSize);
   const shouldUseDynamicFilter =
-    isMounted && !prefersReducedMotion && isSupported;
+    isMounted && !prefersReducedMotion && isSupported && !awaitingMeasurement;
   const mapResult = shouldUseDynamicFilter
     ? generateLensMap(effectiveLens, resolvedPhysics)
     : null;
@@ -94,10 +97,6 @@ export function LiquidGlassLayer({
   }, [lens.height, lens.width]);
 
   const displacementMapUrl = mapResult ? getLensMapDataUrl(mapResult) : '';
-
-  const awaitingMeasurement =
-    (lens.width === 0 || lens.height === 0) &&
-    (measuredSize.width === 0 || measuredSize.height === 0);
 
   const useStaticFallback =
     !isMounted ||

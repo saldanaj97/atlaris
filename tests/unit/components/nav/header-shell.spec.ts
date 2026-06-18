@@ -45,7 +45,13 @@ describe('header shell variants', () => {
     expect(desktopHeaderShellClass('protected')).toContain(
       'grid-cols-[auto_minmax(0,1fr)_auto]',
     );
+    expect(desktopHeaderShellClass('protected')).not.toContain(
+      'overflow-hidden',
+    );
     expect(mobileHeaderShellClass('protected')).toContain('rounded-2xl');
+    expect(mobileHeaderShellClass('protected')).not.toContain(
+      'overflow-hidden',
+    );
     expect(headerGlassSurfaceClass('protected', 'desktop')).toContain(
       'dark:bg-white/10',
     );

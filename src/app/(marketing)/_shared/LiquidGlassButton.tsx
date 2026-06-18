@@ -17,6 +17,10 @@ const CTA_LENS_BORDER_RADIUS = 8;
 const CTA_FALLBACK_CLASS_NAME =
   'inline-flex rounded-lg border border-white/30 bg-primary/90 shadow-lg backdrop-blur-md dark:border-white/10';
 
+/** Semi-transparent surface so the liquid-glass layer remains visible through the CTA. */
+const LIQUID_GLASS_CTA_SURFACE_CLASS_NAME =
+  'border border-white/25 bg-primary/70 shadow-primary/20 hover:bg-primary/80 dark:border-white/10';
+
 type LiquidGlassButtonProps = ComponentProps<typeof Button>;
 
 /**
@@ -41,7 +45,11 @@ export function LiquidGlassButton({
         asChild={asChild}
         variant={variant}
         size={size}
-        className={cn(marketingPrimaryCtaClassName, className)}
+        className={cn(
+          marketingPrimaryCtaClassName,
+          LIQUID_GLASS_CTA_SURFACE_CLASS_NAME,
+          className,
+        )}
         {...props}
       />
     </LiquidGlass>

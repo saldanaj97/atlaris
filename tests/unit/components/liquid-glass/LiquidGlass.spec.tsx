@@ -107,6 +107,11 @@ describe('LiquidGlass', () => {
 
   it('defers the displacement filter until the container has dimensions', () => {
     mockMotionPreference(false);
+    enableDynamicLiquidGlass();
+    const generateLensMapSpy = vi.spyOn(
+      generateLensMapModule,
+      'generateLensMap',
+    );
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
       width: 0,
       height: 0,
@@ -130,6 +135,7 @@ describe('LiquidGlass', () => {
     );
 
     expect(document.querySelector('filter')).toBeNull();
+    expect(generateLensMapSpy).not.toHaveBeenCalled();
   });
 
   it('updates auto-sized lenses when ResizeObserver reports a new size', () => {

@@ -53,4 +53,20 @@ describe('HeaderLiquidGlassShell', () => {
 
     expect(layer).toHaveClass('bg-white/20', 'dark:bg-white/5');
   });
+
+  it('clips the glass layer on an inner wrapper so the shell can show focus rings', () => {
+    render(
+      <HeaderLiquidGlassShell layout='desktop' variant='marketing'>
+        <span>Marketing header</span>
+      </HeaderLiquidGlassShell>,
+    );
+
+    const shell = screen.getByText('Marketing header').parentElement;
+    const glassClipWrapper = document.querySelector(
+      '[data-slot="liquid-glass-layer"]',
+    )?.parentElement;
+
+    expect(shell?.className).not.toContain('overflow-hidden');
+    expect(glassClipWrapper).toHaveClass('overflow-hidden', 'rounded-2xl');
+  });
 });
