@@ -88,6 +88,17 @@ if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = () => {};
 }
 
+// LiquidGlass measures container size via ResizeObserver (not provided by jsdom).
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+
+    unobserve() {}
+
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 // Extend expect with jest-dom matchers
 import '@testing-library/jest-dom';
 
