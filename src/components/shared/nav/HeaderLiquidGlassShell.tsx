@@ -22,6 +22,9 @@ interface HeaderLiquidGlassShellProps {
   variant: HeaderShellVariant;
 }
 
+/**
+ * Header layout shell that layers {@link LiquidGlassLayer} behind nav chrome on glass routes.
+ */
 export default function HeaderLiquidGlassShell({
   children,
   layout,

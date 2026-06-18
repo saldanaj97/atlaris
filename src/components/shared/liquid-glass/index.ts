@@ -3,6 +3,7 @@ export { LiquidGlassLayer } from './LiquidGlassLayer';
 export {
   clearLensMapCache,
   generateLensMap,
+  getLensMapDataUrl,
   type LensMapResult,
 } from './generate-lens-map';
 export {

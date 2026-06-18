@@ -43,6 +43,9 @@ function getSvgFilterSupportSnapshot(): boolean {
   );
 }
 
+/**
+ * Client runtime gate for liquid glass: hydration, SVG filter support, and reduced-motion preference.
+ */
 export function useLiquidGlassRuntime(): {
   isMounted: boolean;
   isSupported: boolean;

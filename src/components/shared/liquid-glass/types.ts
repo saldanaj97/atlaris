@@ -92,6 +92,7 @@ export const MARKETING_CTA_PHYSICS: LiquidGlassPhysics = {
   specularAngle: 120,
 };
 
+/** Merges intensity preset physics with optional per-surface overrides. */
 export function resolveLiquidGlassPhysics(
   intensity: LiquidGlassProps['intensity'] = 'default',
   overrides?: Partial<LiquidGlassPhysics>,

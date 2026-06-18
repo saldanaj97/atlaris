@@ -120,7 +120,7 @@ export default function DesktopNavigation({
   };
 
   return (
-    <nav className='hidden flex-nowrap items-center gap-6 md:flex'>
+    <nav className='hidden flex-nowrap items-center gap-4 md:flex lg:gap-6'>
       {navItems.map((item) => renderNavItem(item))}
     </nav>
   );

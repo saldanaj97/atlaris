@@ -2,18 +2,28 @@
 
 import type { LiquidGlassProps } from './types';
 
-import { generateLensMap } from './generate-lens-map';
+import { generateLensMap, getLensMapDataUrl } from './generate-lens-map';
 import {
   buildMapSignature,
   computeEffectiveLens,
-  lensMapToDataUrl,
   specularLightPosition,
 } from './liquid-glass-utils';
 import { resolveLiquidGlassPhysics } from './types';
 import { useLiquidGlassRuntime } from './use-liquid-glass-runtime';
 import { cn } from '@/lib/utils';
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
+/**
+ * Wraps children with an SVG displacement filter for a liquid-glass lens effect.
+ * Falls back to static glassmorphism when filters, motion preferences, or sizing are unavailable.
+ */
 export function LiquidGlass({
   lens,
   physics,
@@ -41,6 +51,19 @@ export function LiquidGlass({
   const mapSignature = mapResult
     ? buildMapSignature(effectiveLens, mapResult.scale, mapResult.chromaAmount)
     : '';
+
+  useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (!node || (lens.width > 0 && lens.height > 0)) return;
+
+    const { width, height } = node.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
+
+    setMeasuredSize({
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+    });
+  }, [lens.width, lens.height]);
 
   useEffect(() => {
     const node = containerRef.current;
@@ -72,12 +95,18 @@ export function LiquidGlass({
     };
   }, [lens.height, lens.width]);
 
-  const displacementMapUrl = mapResult
-    ? lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height)
-    : '';
+  const displacementMapUrl = mapResult ? getLensMapDataUrl(mapResult) : '';
+
+  const awaitingMeasurement =
+    (lens.width === 0 || lens.height === 0) &&
+    (measuredSize.width === 0 || measuredSize.height === 0);
 
   const useStaticFallback =
-    !isMounted || prefersReducedMotion || !isSupported || !displacementMapUrl;
+    !isMounted ||
+    prefersReducedMotion ||
+    !isSupported ||
+    !displacementMapUrl ||
+    awaitingMeasurement;
 
   const filterId = `${baseFilterId}-liquid-glass-${mapSignature.replace(/:/g, '-')}`;
   const filterStyle: CSSProperties | undefined = useStaticFallback

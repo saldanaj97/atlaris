@@ -3,8 +3,10 @@ import type { LiquidGlassLens } from '@/components/shared/liquid-glass/types';
 import {
   clearLensMapCache,
   generateLensMap,
+  getLensMapDataUrl,
 } from '@/components/shared/liquid-glass/generate-lens-map';
-import { describe, expect, it, beforeEach } from 'vitest';
+import * as liquidGlassUtils from '@/components/shared/liquid-glass/liquid-glass-utils';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 
 const NEUTRAL = 128;
 
@@ -130,5 +132,61 @@ describe('generateLensMap', () => {
 
     expect(rematerialized).not.toBe(oldest);
     expect(Array.from(rematerialized.data)).toEqual(Array.from(oldest.data));
+  });
+});
+
+describe('getLensMapDataUrl', () => {
+  beforeEach(() => {
+    clearLensMapCache();
+    vi.restoreAllMocks();
+  });
+
+  it('returns the same data URL for repeated calls on one map result', () => {
+    const mapResult = generateLensMap(testLens, testPhysics);
+    const lensMapToDataUrlSpy = vi
+      .spyOn(liquidGlassUtils, 'lensMapToDataUrl')
+      .mockReturnValue('data:image/png;base64,mock');
+
+    const first = getLensMapDataUrl(mapResult);
+    const second = getLensMapDataUrl(mapResult);
+
+    expect(first).toBe(second);
+    expect(lensMapToDataUrlSpy).toHaveBeenCalledTimes(1);
+    expect(lensMapToDataUrlSpy).toHaveBeenCalledWith(
+      mapResult.data,
+      mapResult.width,
+      mapResult.height,
+    );
+  });
+
+  it('reuses cached data URLs when generateLensMap returns a cached result', () => {
+    const mapResult = generateLensMap(testLens, testPhysics);
+    const lensMapToDataUrlSpy = vi
+      .spyOn(liquidGlassUtils, 'lensMapToDataUrl')
+      .mockReturnValue('data:image/png;base64,mock');
+
+    getLensMapDataUrl(mapResult);
+    getLensMapDataUrl(generateLensMap(testLens, testPhysics));
+
+    expect(lensMapToDataUrlSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('builds a new data URL when map inputs change', () => {
+    const firstMap = generateLensMap(testLens, testPhysics);
+    const secondMap = generateLensMap(
+      { ...testLens, width: testLens.width + 1 },
+      testPhysics,
+    );
+    const lensMapToDataUrlSpy = vi
+      .spyOn(liquidGlassUtils, 'lensMapToDataUrl')
+      .mockReturnValueOnce('data:image/png;base64,first')
+      .mockReturnValueOnce('data:image/png;base64,second');
+
+    const firstUrl = getLensMapDataUrl(firstMap);
+    const secondUrl = getLensMapDataUrl(secondMap);
+
+    expect(firstUrl).toBe('data:image/png;base64,first');
+    expect(secondUrl).toBe('data:image/png;base64,second');
+    expect(lensMapToDataUrlSpy).toHaveBeenCalledTimes(2);
   });
 });

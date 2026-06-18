@@ -1,5 +1,6 @@
 import type { LiquidGlassLens, LiquidGlassPhysics } from './types';
 
+import { lensMapToDataUrl } from './liquid-glass-utils';
 import { DEFAULT_LIQUID_GLASS_PHYSICS } from './types';
 
 const NEUTRAL_CHANNEL = 128;
@@ -14,6 +15,7 @@ export type LensMapResult = {
 };
 
 const lensMapCache = new Map<string, LensMapResult>();
+const lensMapDataUrlCache = new WeakMap<LensMapResult, string>();
 const MAX_LENS_MAP_CACHE_ENTRIES = 32;
 
 function clamp(value: number, min: number, max: number): number {
@@ -198,10 +200,26 @@ function createLensMap(
   };
 }
 
+/** Clears the in-memory lens displacement map cache (for tests and hot reload). */
 export function clearLensMapCache(): void {
   lensMapCache.clear();
 }
 
+/** Returns a cached data URL for the RGB displacement map encoded in `result`. */
+export function getLensMapDataUrl(result: LensMapResult): string {
+  const cached = lensMapDataUrlCache.get(result);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const dataUrl = lensMapToDataUrl(result.data, result.width, result.height);
+  lensMapDataUrlCache.set(result, dataUrl);
+  return dataUrl;
+}
+
+/**
+ * Builds (or returns a cached) feDisplacementMap RGBA buffer for the given lens and physics.
+ */
 export function generateLensMap(
   lens: LiquidGlassLens,
   physics: Partial<LiquidGlassPhysics> = {},

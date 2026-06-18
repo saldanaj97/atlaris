@@ -2,18 +2,27 @@
 
 import type { LiquidGlassLayerProps } from './types';
 
-import { generateLensMap } from './generate-lens-map';
+import { generateLensMap, getLensMapDataUrl } from './generate-lens-map';
 import {
   buildMapSignature,
   computeEffectiveLens,
-  lensMapToDataUrl,
   specularLightPosition,
 } from './liquid-glass-utils';
 import { resolveLiquidGlassPhysics } from './types';
 import { useLiquidGlassRuntime } from './use-liquid-glass-runtime';
 import { cn } from '@/lib/utils';
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 
+/**
+ * Decorative glass layer without children — use when interactive content sits in a sibling above the filter.
+ */
 export function LiquidGlassLayer({
   lens,
   physics,
@@ -40,6 +49,19 @@ export function LiquidGlassLayer({
   const mapSignature = mapResult
     ? buildMapSignature(effectiveLens, mapResult.scale, mapResult.chromaAmount)
     : '';
+
+  useLayoutEffect(() => {
+    const node = layerRef.current;
+    if (!node || (lens.width > 0 && lens.height > 0)) return;
+
+    const { width, height } = node.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
+
+    setMeasuredSize({
+      width: Math.max(1, Math.round(width)),
+      height: Math.max(1, Math.round(height)),
+    });
+  }, [lens.width, lens.height]);
 
   useEffect(() => {
     const node = layerRef.current;
@@ -71,12 +93,18 @@ export function LiquidGlassLayer({
     };
   }, [lens.height, lens.width]);
 
-  const displacementMapUrl = mapResult
-    ? lensMapToDataUrl(mapResult.data, mapResult.width, mapResult.height)
-    : '';
+  const displacementMapUrl = mapResult ? getLensMapDataUrl(mapResult) : '';
+
+  const awaitingMeasurement =
+    (lens.width === 0 || lens.height === 0) &&
+    (measuredSize.width === 0 || measuredSize.height === 0);
 
   const useStaticFallback =
-    !isMounted || prefersReducedMotion || !isSupported || !displacementMapUrl;
+    !isMounted ||
+    prefersReducedMotion ||
+    !isSupported ||
+    !displacementMapUrl ||
+    awaitingMeasurement;
 
   const filterId = `${baseFilterId}-liquid-glass-layer-${mapSignature.replace(/:/g, '-')}`;
   const borderRadiusPx = effectiveLens.borderRadius;

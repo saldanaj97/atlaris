@@ -2,6 +2,7 @@ import type { LiquidGlassLens } from './types';
 
 export const MIN_MEASURED_SIZE = 1;
 
+/** Resolves explicit lens dimensions or measured container size, with sane minimums. */
 export function computeEffectiveLens(
   lens: LiquidGlassLens,
   measuredSize: { width: number; height: number },
@@ -19,6 +20,7 @@ export function computeEffectiveLens(
   };
 }
 
+/** Stable cache key fragment for SVG filter ids derived from lens size and map parameters. */
 export function buildMapSignature(
   effectiveLens: LiquidGlassLens,
   scale: number,
@@ -27,6 +29,7 @@ export function buildMapSignature(
   return `${effectiveLens.width}:${effectiveLens.height}:${effectiveLens.borderRadius}:${scale}:${chromaAmount}`;
 }
 
+/** Encodes displacement map pixels as a PNG data URL for `feImage`. */
 export function lensMapToDataUrl(
   data: Uint8ClampedArray,
   width: number,
@@ -51,6 +54,7 @@ export function lensMapToDataUrl(
   return canvas.toDataURL();
 }
 
+/** Maps a specular highlight angle to `fePointLight` coordinates for the lens bounds. */
 export function specularLightPosition(
   angleDegrees: number,
   width: number,
