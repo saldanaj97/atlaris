@@ -288,7 +288,3 @@ export async function runModuleLessonGenerationWork(
 
   return { kind: 'failed', message: quotaResult.value.message };
 }
-
-/** @deprecated Use `runModuleLessonGenerationWork`. */
-export const runModuleLessonGenerationAfterClaim =
-  runModuleLessonGenerationWork;

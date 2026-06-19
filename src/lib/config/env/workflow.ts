@@ -6,7 +6,7 @@ import {
 } from '@/lib/config/env/shared';
 import { z } from 'zod';
 
-export const WORKFLOW_CALLBACK_TOKEN_ENV_KEY = 'WORKFLOW_CALLBACK_TOKEN';
+const WORKFLOW_CALLBACK_TOKEN_ENV_KEY = 'WORKFLOW_CALLBACK_TOKEN';
 
 const workflowCallbackTokenSchema = z
   .string()
@@ -80,7 +80,7 @@ export function readWorkflowCallbackTokenConfig(
 }
 
 /** Parses optional workflow callback token; unset/blank env is undefined. */
-export function parseWorkflowCallbackToken(
+function parseWorkflowCallbackToken(
   raw: string | undefined,
 ): string | undefined {
   if (raw === undefined || raw === '') {

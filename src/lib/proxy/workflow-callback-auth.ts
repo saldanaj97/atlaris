@@ -23,7 +23,7 @@ export function isWorkflowCallbackPath(pathname: string): boolean {
   return pathname.startsWith('/.well-known/workflow/');
 }
 
-export function isWorkflowWebhookPath(pathname: string): boolean {
+function isWorkflowWebhookPath(pathname: string): boolean {
   return pathname.startsWith('/.well-known/workflow/v1/webhook/');
 }
 

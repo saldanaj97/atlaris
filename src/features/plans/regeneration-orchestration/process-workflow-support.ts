@@ -250,15 +250,6 @@ export async function applyRegenerationGenerationResult(
   }
 }
 
-export async function failRegenerationJobForInvalidPayload(
-  jobId: string,
-  deps: RegenerationOrchestrationDeps,
-): Promise<void> {
-  await deps.queue.failJob(jobId, INVALID_JOB_PAYLOAD_MESSAGE, {
-    retryable: false,
-  });
-}
-
 export async function failRegenerationJobForMissingPlanInWorkflow(
   jobId: string,
   deps: RegenerationOrchestrationDeps,
