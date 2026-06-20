@@ -61,7 +61,7 @@ export function HowItWorksSection() {
         <StepCard
           stepNumber={3}
           title='Sync to your real life'
-          description='One click exports your entire schedule to Google Calendar or Outlook. It shows up where you actually look.'
+          description='Designed to export your schedule to your calendar (Google Calendar and Outlook coming soon).'
           visual={<SyncVisual />}
         />
       </div>
