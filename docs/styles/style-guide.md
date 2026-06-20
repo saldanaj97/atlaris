@@ -55,7 +55,7 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 **App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
 
-**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies opaque `bg-card` / `border-border` on authenticated product routes and glass/blur only on marketing paths (`/`, `/landing`, `/about`, `/pricing`). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies liquid glass to marketing paths (`/`, `/landing`, `/about`, `/pricing`) and protected app paths (`/dashboard`, `/plans`, `/settings`, `/analytics`, `/account`), while auth and other non-product shell routes stay opaque. [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
 
 **Marketing composition:** use [`MarketingPageShell`](../../src/app/(marketing)/_shared/MarketingPageShell.tsx), [`MarketingHero`](../../src/app/(marketing)/_shared/MarketingHero.tsx), [`MarketingSection`](../../src/app/(marketing)/_shared/MarketingSection.tsx), [`MarketingCard`](../../src/app/(marketing)/_shared/MarketingCard.tsx), and shared glass surfaces from [`marketing-glass-surface.ts`](../../src/app/(marketing)/_shared/marketing-glass-surface.ts). Default section width is `max-w-screen-xl`; narrower grids (e.g. pricing) may use `max-w-5xl` when layout requires it.
 
@@ -272,6 +272,64 @@ className =
 className =
   'rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm';
 ```
+
+### Liquid glass / refraction
+
+Liquid glass is a **separate visual layer** from glassmorphism. It refracts live DOM pixels through an SVG displacement lens instead of simulating depth with alpha and blur alone.
+
+| | Glassmorphism | Liquid glass |
+| -- | ------------- | ------------ |
+| Mechanism | Alpha + `backdrop-blur` + borders | SVG `feDisplacementMap` lens (`filter: url(#id)`) |
+| Default scope | Marketing cards, legacy fallback | Shared site header + opt-in CTAs |
+| Product UI | Never on `Surface` / dense shells | Header chrome only |
+
+**Do not use liquid glass on:**
+
+- `Surface` and other shared product shells
+- Dashboard, settings, and plan-generation page content
+- Dense forms, data tables, modals, or any UI where legibility and interaction density matter
+
+Header-only by default: site header chrome uses liquid glass on marketing routes and protected app routes (`/dashboard`, `/plans`, `/settings`, `/analytics`, and `/account`). Keep product page surfaces, cards, forms, and dense workflows opaque unless there is a separate design review.
+
+#### Import path
+
+```tsx
+import {
+  LiquidGlass,
+  MARKETING_CTA_PHYSICS,
+  MARKETING_HEADER_PHYSICS,
+  PRICING_HEADER_PHYSICS,
+} from '@/components/shared/liquid-glass';
+```
+
+Use `LiquidGlass` as a client wrapper around children. Pass `fallbackClassName` with the existing glassmorphism shell classes so reduced-motion and unsupported browsers degrade gracefully.
+
+#### Marketing presets
+
+| Preset | Constant | When to use |
+| ------ | -------- | ----------- |
+| Header (default) | `MARKETING_HEADER_PHYSICS` | Shared nav shell on marketing and protected app routes |
+| Header (subtle) | `PRICING_HEADER_PHYSICS` | `/pricing` — set `intensity="subtle"` on `LiquidGlass` |
+| CTA (opt-in) | `MARKETING_CTA_PHYSICS` | Button-sized lenses on marketing CTAs only |
+
+`intensity="subtle"` resolves to `PRICING_HEADER_PHYSICS` (lower `scale`, `chroma`, and edge highlight). Use it anywhere the header should read lighter than the default preset — today that is `/pricing`.
+
+Do **not** apply `intensity="subtle"` to product content UI or as a global default; it is a pricing-header tuning knob.
+
+#### Performance
+
+- Keep the SVG filter region **small and tight** — header bar bounds (~`max-w-7xl` × ~48–56px) or button-sized CTAs, not full-viewport areas.
+- **Never** attach full-viewport displacement filters to fixed chrome (nav, sticky bars). Scroll jank on iOS is the primary risk.
+- Regenerate the displacement map only on resize or physics changes, not on scroll or animation frames.
+- Prefer marketing presets over ad-hoc physics values; tune `scale` / `chroma` down if Safari or iOS shows jank.
+
+#### Accessibility and browser verification
+
+- **Reduced motion:** `LiquidGlass` skips the SVG filter when `prefers-reduced-motion: reduce` is set and renders children with `fallbackClassName` (static glassmorphism). Do not bypass this path.
+- **Contrast:** Verify header links, CTA labels, and borders in light and dark mode after enabling liquid glass. Refraction must not reduce text legibility below WCAG expectations for marketing or protected app routes.
+- **Safari / iOS:** Test shared site header and opt-in CTAs on Safari desktop and iOS Safari. Filter IDs refresh on map updates to avoid stale-cache bugs; still confirm no hydration mismatch and acceptable scroll performance on fixed header.
+
+When liquid glass is unavailable (feature detection) or disabled (reduced motion), fall back to the glassmorphism patterns in this section — do not leave transparent, unblurred chrome.
 
 ---
 

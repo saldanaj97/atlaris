@@ -17,14 +17,7 @@ export type {
   GenerateModuleLessonsDeps,
   GenerateModuleLessonsParams,
   GenerateModuleLessonsResult,
-  ModuleLessonGenerationWorkResult,
-  RunModuleLessonGenerationAfterClaimParams,
 } from '@/features/lesson-content/generate-module-lessons.types';
-
-export {
-  runModuleLessonGenerationAfterClaim,
-  runModuleLessonGenerationWork,
-} from '@/features/lesson-content/run-module-lesson-generation-work';
 
 /**
  * Ownership-scoped module lesson batch: CAS → model/provider → parse → single transaction persist (tasks + module + usage).

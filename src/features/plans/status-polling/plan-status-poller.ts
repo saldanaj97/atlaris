@@ -37,7 +37,7 @@ export interface PlanStatusPollerConfig {
   fetchTimeoutMs?: number;
 }
 
-export interface PlanStatusSnapshot {
+interface PlanStatusSnapshot {
   status: PlanStatus;
   attempts: number;
   error: string | null;

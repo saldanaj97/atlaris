@@ -1,10 +1,11 @@
 'use client';
 
+import type { HeaderShellVariant } from '@/components/shared/nav/header-shell';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
-import { mobileHeaderShellClass } from '@/components/shared/nav/header-shell';
+import HeaderLiquidGlassShell from '@/components/shared/nav/HeaderLiquidGlassShell';
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileHeaderProps {
+  headerVariant: HeaderShellVariant;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -30,27 +32,32 @@ interface MobileHeaderProps {
  * shows inline nav links instead.
  */
 export default function MobileHeader({
+  headerVariant,
   pathname,
   navItems,
   tier,
   isAuthenticated,
   showClerkUserButton,
 }: MobileHeaderProps) {
-  return (
-    <div className={mobileHeaderShellClass(pathname)}>
-      <div className='flex shrink-0'>
-        <MobileNavigation pathname={pathname} navItems={navItems} />
+  const headerContent = (
+    <>
+      <div className='relative z-10 flex shrink-0'>
+        <MobileNavigation
+          headerVariant={headerVariant}
+          pathname={pathname}
+          navItems={navItems}
+        />
       </div>
 
-      <div className='flex min-w-0 items-center justify-center overflow-hidden' />
+      <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden' />
 
-      <div className='pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center'>
+      <div className='pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center'>
         <div className='pointer-events-auto'>
           <BrandLogo size='sm' />
         </div>
       </div>
 
-      <div className='flex min-w-0 shrink-0 items-center gap-1'>
+      <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1'>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -82,6 +89,12 @@ export default function MobileHeader({
           />
         </div>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <HeaderLiquidGlassShell layout='mobile' variant={headerVariant}>
+      {headerContent}
+    </HeaderLiquidGlassShell>
   );
 }
