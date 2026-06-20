@@ -18,6 +18,7 @@ import {
   readWorkflowCallbackTokenConfig,
   regenerationQueueEnv,
   requireEnv,
+  sentryEnv,
   toBoolean,
   workflowEnv,
 } from '@/lib/config/env';
@@ -476,6 +477,23 @@ describe('Environment Configuration', () => {
 
         expect(appEnv.maintenanceMode).toBe(false);
       });
+    });
+  });
+
+  describe('sentryEnv', () => {
+    it('defaults sendDefaultPii to false when unset', () => {
+      expect(sentryEnv.sendDefaultPii).toBe(false);
+    });
+
+    it.each([
+      ['true', true],
+      ['TRUE', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('parses SENTRY_SEND_DEFAULT_PII=%s', (value, expected) => {
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', value);
+      expect(sentryEnv.sendDefaultPii).toBe(expected);
     });
   });
 
