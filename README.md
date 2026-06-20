@@ -10,16 +10,16 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 - Streams AI generation progress to the client over SSE
 - Tracks generation attempts, failure classifications, and retryability
 - Enforces tenant isolation with PostgreSQL Row Level Security (RLS)
-- Supports Google Calendar OAuth token storage and disconnect flows
+- Google Calendar sync is planned (not yet implemented — shown as "Coming Soon" in Settings → Integrations)
 - Applies usage limits, rate limiting, and subscription gating server-side
 
 ## Core stack
 
-- **Framework:** Next.js 16.2.4 + React 19
+- **Framework:** Next.js 16.2.6 + React 19
 - **Language:** TypeScript (strict mode)
 - **Database:** Supabase local Postgres / hosted Supabase Postgres via Drizzle ORM
 - **Auth:** Clerk for UI, route protection, and server session reads
-- **AI:** OpenRouter via `@openrouter/sdk` and the Vercel AI SDK
+- **AI:** OpenRouter via `@openrouter/sdk`
 - **Payments:** Stripe
 - **Testing:** Vitest + Testing Library + Testcontainers
 
@@ -64,9 +64,9 @@ On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged fi
 src/
 ├── app/           # App Router pages + API routes
 ├── components/    # Shared UI and feature components
+├── features/      # Domain features (ai, plans, billing, jobs, lesson-content, integrations)
 ├── hooks/         # Client hooks
 ├── lib/
-│   ├── ai/        # Providers, orchestration, parsing, streaming
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers
 │   ├── auth/      # Auth server/client wiring
 │   ├── config/    # Typed environment access
@@ -132,4 +132,5 @@ Workflow SDK runtime, local dev (`pnpm dev:workflow`), feature flags, and correl
 - `docs/architecture/regeneration-worker-runbook.md`
 - `docs/architecture/retention-cleanup-runbook.md`
 - `docs/api/error-contract.md`
+- API reference (OpenAPI/Scalar UI): served at `/api/docs` — route `src/app/api/docs/route.ts`
 - `docs/database/schema-overview.md`
