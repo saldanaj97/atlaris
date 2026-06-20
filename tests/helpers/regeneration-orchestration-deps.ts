@@ -38,7 +38,10 @@ export function makeRegenerationOrchestrationDeps(
       failJob: vi.fn(async () => null),
       updateRegenerationJobPayload: vi.fn(async () => null),
     },
-    quota: { runReserved: vi.fn() },
+    quota: {
+      runReserved: vi.fn(),
+      compensateReservation: vi.fn(async () => undefined),
+    },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),
       findOwnedPlan: vi.fn(async () => null),

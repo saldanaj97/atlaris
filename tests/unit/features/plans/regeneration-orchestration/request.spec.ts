@@ -514,6 +514,36 @@ describe('requestPlanRegeneration', () => {
         'Failed to start plan regeneration workflow.',
         { retryable: true },
       );
+      expect(deps.quota.compensateReservation).toHaveBeenCalledTimes(1);
+      expect(deps.quota.compensateReservation).toHaveBeenCalledWith({
+        userId: 'user-1',
+        dbClient: fakeDb,
+      });
+    });
+
+    it('does not compensate when workflow attach throws', async () => {
+      const workflowError = new Error('runId persist failed');
+      startPlanRegenerationWorkflowMock.mockRejectedValue(workflowError);
+      const failJob = vi.fn(async () => null);
+      const deps = buildDeps({ queue: { failJob } });
+
+      await expect(
+        requestPlanRegeneration(
+          {
+            userId: 'user-1',
+            planId: ownedPlan.id,
+            inlineProcessingEnabled: false,
+          },
+          deps,
+        ),
+      ).rejects.toThrow('runId persist failed');
+
+      expect(failJob).toHaveBeenCalledWith(
+        'job-1',
+        'Failed to start plan regeneration workflow.',
+        { retryable: true },
+      );
+      expect(deps.quota.compensateReservation).not.toHaveBeenCalled();
     });
   });
 

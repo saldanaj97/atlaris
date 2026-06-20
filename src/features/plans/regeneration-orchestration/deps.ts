@@ -3,7 +3,10 @@ import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import type { DbClient } from '@/lib/db/types';
 
-import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
+import {
+  compensateRegenerationReservation,
+  runRegenerationQuotaReserved,
+} from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
@@ -36,6 +39,7 @@ export interface RegenerationOrchestrationDeps {
   };
   quota: {
     runReserved: typeof runRegenerationQuotaReserved;
+    compensateReservation: typeof compensateRegenerationReservation;
   };
   plans: {
     getActiveRegenerationJob: (
@@ -100,7 +104,10 @@ export function createDefaultRegenerationOrchestrationDeps(
       failJob,
       updateRegenerationJobPayload: updateJobPayload,
     },
-    quota: { runReserved: runRegenerationQuotaReserved },
+    quota: {
+      runReserved: runRegenerationQuotaReserved,
+      compensateReservation: compensateRegenerationReservation,
+    },
     plans: {
       getActiveRegenerationJob,
       findOwnedPlan: async (planId, userId, client) => {
