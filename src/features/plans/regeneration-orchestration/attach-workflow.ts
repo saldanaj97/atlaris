@@ -2,6 +2,7 @@ import type { RegenerationOrchestrationDeps } from './deps';
 import type { PlanRegenerationJobPayload } from './schema';
 
 import { planRegenerationJobPayloadSchema } from './schema';
+import { cancelPlanRegenerationWorkflow } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 
 export type AttachPlanRegenerationWorkflowInput = {
@@ -29,6 +30,9 @@ type AttachPlanRegenerationWorkflowDeps = Pick<
 export async function attachPlanRegenerationWorkflow(
   input: AttachPlanRegenerationWorkflowInput,
   deps: AttachPlanRegenerationWorkflowDeps,
+  options: {
+    readonly cancelWorkflow?: typeof cancelPlanRegenerationWorkflow;
+  } = {},
 ): Promise<AttachPlanRegenerationWorkflowResult> {
   if (input.payload.workflow?.runId) {
     return { kind: 'already-attached' };
@@ -48,6 +52,9 @@ export async function attachPlanRegenerationWorkflow(
     return { kind: 'start-failed' };
   }
 
+  const cancelWorkflow =
+    options.cancelWorkflow ?? cancelPlanRegenerationWorkflow;
+
   const launchedPayload = planRegenerationJobPayloadSchema.parse({
     ...input.payload,
     workflow: {
@@ -56,7 +63,15 @@ export async function attachPlanRegenerationWorkflow(
       startedAt: input.payload.workflow?.startedAt ?? new Date().toISOString(),
     },
   });
-  await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
+
+  try {
+    await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
+  } catch (persistError) {
+    // Run started but runId could not be persisted. Cancel the orphan so a retry
+    // re-attaches exactly once instead of starting a duplicate run.
+    await cancelWorkflow(workflowStart.runId);
+    throw persistError;
+  }
 
   return { kind: 'attached', runId: workflowStart.runId };
 }
