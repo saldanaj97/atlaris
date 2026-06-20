@@ -141,6 +141,23 @@ export async function requestPlanRegeneration(
           'Failed to start plan regeneration workflow.',
           { retryable: true },
         );
+        try {
+          await d.quota.compensateReservation({
+            userId,
+            dbClient: d.dbClient,
+          });
+        } catch (compensateError) {
+          d.logger.error(
+            {
+              acceptedJobId,
+              planId,
+              userId,
+              correlationId,
+              compensateError,
+            },
+            'Failed to compensate regeneration reservation after workflow start failure',
+          );
+        }
         return {
           kind: 'workflow-start-failed',
           jobId: acceptedJobId,
@@ -149,6 +166,9 @@ export async function requestPlanRegeneration(
         };
       }
     } catch (error: unknown) {
+      // Do not compensate here: the throw may occur after the workflow run
+      // started (e.g. during runId persist), so releasing the reservation
+      // risks over-crediting. Rely on reconciliation instead.
       d.logger.error(
         {
           acceptedJobId,
