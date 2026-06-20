@@ -26,8 +26,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `maintenanceEnv` - Manual retention cleanup route toggle and token
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
-- `loggingEnv` - Logging configuration
-- `observabilityEnv` - Sentry and telemetry configuration
+- `loggingEnv` - Logging, Sentry, and telemetry configuration
 
 ### Adding New Variables
 

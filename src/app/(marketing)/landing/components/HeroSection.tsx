@@ -28,7 +28,7 @@ export function HeroSection() {
           <span className='gradient-text'>scheduled plan</span>
         </>
       }
-      subtitle='Atlaris builds module-by-module roadmaps, attaches resources to each session, and syncs your study blocks to Google Calendar.'
+      subtitle='Atlaris builds module-by-module roadmaps, attaches resources to each session, and is built to sync your study blocks to your calendar (coming soon).'
       cta={
         <Button
           asChild
