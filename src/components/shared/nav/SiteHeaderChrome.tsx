@@ -4,6 +4,7 @@ import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import DesktopHeader from './DesktopHeader';
+import { getHeaderShellVariant } from './header-shell';
 import MobileHeader from './MobileHeader';
 import { usePathname } from 'next/navigation';
 
@@ -25,10 +26,12 @@ export default function SiteHeaderChrome({
   showClerkUserButton,
 }: SiteHeaderChromeProps) {
   const pathname = usePathname();
+  const headerVariant = getHeaderShellVariant(pathname);
 
   return (
     <>
       <MobileHeader
+        headerVariant={headerVariant}
         pathname={pathname}
         navItems={navItems}
         tier={tier}
@@ -36,6 +39,7 @@ export default function SiteHeaderChrome({
         showClerkUserButton={showClerkUserButton}
       />
       <DesktopHeader
+        headerVariant={headerVariant}
         pathname={pathname}
         navItems={navItems}
         tier={tier}

@@ -1,10 +1,9 @@
 'use client';
 
-import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
+import { LiquidGlassButton } from '@/app/(marketing)/_shared/LiquidGlassButton';
 import { MarketingHero } from '@/app/(marketing)/_shared/MarketingHero';
 import { LandingHeroVisual } from '@/app/(marketing)/landing/components/LandingHeroVisual';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
@@ -30,16 +29,12 @@ export function HeroSection() {
       }
       subtitle='Atlaris builds module-by-module roadmaps, attaches resources to each session, and syncs your study blocks to Google Calendar.'
       cta={
-        <Button
-          asChild
-          variant='default'
-          className={marketingPrimaryCtaClassName}
-        >
+        <LiquidGlassButton asChild>
           <Link href='/plans/new'>
             Get started free
             <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
           </Link>
-        </Button>
+        </LiquidGlassButton>
       }
       visual={<LandingHeroVisual />}
     />

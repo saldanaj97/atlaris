@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
+import { LiquidGlassButton } from '@/app/(marketing)/_shared/LiquidGlassButton';
 import { MarketingCard } from '@/app/(marketing)/_shared/MarketingCard';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 interface MarketingCtaProps {
@@ -36,13 +35,9 @@ export function MarketingCta({
           <p className='marketing-subtitle mx-auto mb-6 max-w-xl lg:mb-10'>
             {description}
           </p>
-          <Button
-            asChild
-            variant='default'
-            className={marketingPrimaryCtaClassName}
-          >
+          <LiquidGlassButton asChild>
             <Link href={href}>{buttonLabel}</Link>
-          </Button>
+          </LiquidGlassButton>
         </MarketingCard>
       </div>
     </section>
