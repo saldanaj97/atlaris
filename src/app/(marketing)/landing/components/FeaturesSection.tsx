@@ -20,7 +20,7 @@ const FEATURES: Feature[] = [
     icon: <CalendarCheck className='size-7 text-white' aria-hidden='true' />,
     title: 'Calendar-Ready Plans',
     description:
-      'Export sessions to Google Calendar so study time shows up where you already look.',
+      'Calendar-ready sessions so study time can show up where you already look, with calendar sync coming soon.',
   },
   {
     icon: <BookOpen className='size-7 text-white' aria-hidden='true' />,

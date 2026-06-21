@@ -2,6 +2,7 @@ import type { RegenerationOrchestrationDeps } from './deps';
 import type { PlanRegenerationJobPayload } from './schema';
 
 import { planRegenerationJobPayloadSchema } from './schema';
+import { cancelPlanRegenerationWorkflow } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 
 export type AttachPlanRegenerationWorkflowInput = {
@@ -15,7 +16,16 @@ export type AttachPlanRegenerationWorkflowInput = {
 export type AttachPlanRegenerationWorkflowResult =
   | { readonly kind: 'already-attached' }
   | { readonly kind: 'attached'; readonly runId: string }
-  | { readonly kind: 'start-failed' };
+  | { readonly kind: 'start-failed' }
+  | {
+      readonly kind: 'persist-failed';
+      readonly runId: string;
+      readonly persistError: unknown;
+      readonly cancellation: {
+        readonly requested: true;
+        readonly succeeded: boolean;
+      };
+    };
 
 type AttachPlanRegenerationWorkflowDeps = Pick<
   RegenerationOrchestrationDeps['queue'],
@@ -29,6 +39,9 @@ type AttachPlanRegenerationWorkflowDeps = Pick<
 export async function attachPlanRegenerationWorkflow(
   input: AttachPlanRegenerationWorkflowInput,
   deps: AttachPlanRegenerationWorkflowDeps,
+  options: {
+    readonly cancelWorkflow?: typeof cancelPlanRegenerationWorkflow;
+  } = {},
 ): Promise<AttachPlanRegenerationWorkflowResult> {
   if (input.payload.workflow?.runId) {
     return { kind: 'already-attached' };
@@ -48,15 +61,36 @@ export async function attachPlanRegenerationWorkflow(
     return { kind: 'start-failed' };
   }
 
-  const launchedPayload = planRegenerationJobPayloadSchema.parse({
-    ...input.payload,
-    workflow: {
-      provider: 'workflow-sdk' as const,
+  const cancelWorkflow =
+    options.cancelWorkflow ?? cancelPlanRegenerationWorkflow;
+
+  try {
+    const launchedPayload = planRegenerationJobPayloadSchema.parse({
+      ...input.payload,
+      workflow: {
+        provider: 'workflow-sdk' as const,
+        runId: workflowStart.runId,
+        startedAt:
+          input.payload.workflow?.startedAt ?? new Date().toISOString(),
+      },
+    });
+    await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
+  } catch (persistError) {
+    // Run started but runId could not be persisted. Cancel the orphan so a retry
+    // re-attaches exactly once instead of starting a duplicate run.
+    let cancellationSucceeded = false;
+    try {
+      cancellationSucceeded = await cancelWorkflow(workflowStart.runId);
+    } catch {
+      // Cancellation is best-effort; preserve the deterministic persist-failed result.
+    }
+    return {
+      kind: 'persist-failed',
       runId: workflowStart.runId,
-      startedAt: input.payload.workflow?.startedAt ?? new Date().toISOString(),
-    },
-  });
-  await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
+      persistError,
+      cancellation: { requested: true, succeeded: cancellationSucceeded },
+    };
+  }
 
   return { kind: 'attached', runId: workflowStart.runId };
 }

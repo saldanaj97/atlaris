@@ -18,6 +18,7 @@ import {
   readWorkflowCallbackTokenConfig,
   regenerationQueueEnv,
   requireEnv,
+  sentryEnv,
   toBoolean,
   workflowEnv,
 } from '@/lib/config/env';
@@ -476,6 +477,81 @@ describe('Environment Configuration', () => {
 
         expect(appEnv.maintenanceMode).toBe(false);
       });
+    });
+  });
+
+  describe('sentryEnv', () => {
+    it('defaults sendDefaultPii to false when unset', () => {
+      expect(sentryEnv.sendDefaultPii).toBe(false);
+    });
+
+    it.each([
+      ['true', true],
+      ['TRUE', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('parses SENTRY_SEND_DEFAULT_PII=%s', (value, expected) => {
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', value);
+      expect(sentryEnv.sendDefaultPii).toBe(expected);
+    });
+  });
+
+  describe('Sentry init config modules', () => {
+    it('server and edge default sendDefaultPii to false when unset', async () => {
+      vi.resetModules();
+      vi.unstubAllEnvs();
+      const initOptions: Array<Record<string, unknown>> = [];
+      vi.doMock('@sentry/nextjs', () => ({
+        init: (options: Record<string, unknown>) => {
+          initOptions.push(options);
+        },
+        pinoIntegration: () => ({}),
+        vercelAIIntegration: () => ({}),
+      }));
+      vi.doMock('@/lib/observability/sampling', () => ({
+        shouldEnableLogs: () => false,
+        tracesSampler: () => 0,
+      }));
+      vi.doMock('@/lib/observability/sentry-filters', () => ({
+        beforeSendSentryEvent: (event: unknown) => event,
+      }));
+
+      await import('../../../sentry.server.config');
+      await import('../../../sentry.edge.config');
+
+      expect(initOptions).toHaveLength(2);
+      expect(initOptions.every((opts) => opts.sendDefaultPii === false)).toBe(
+        true,
+      );
+    });
+
+    it('server and edge enable sendDefaultPii when SENTRY_SEND_DEFAULT_PII is truthy', async () => {
+      vi.resetModules();
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+      const initOptions: Array<Record<string, unknown>> = [];
+      vi.doMock('@sentry/nextjs', () => ({
+        init: (options: Record<string, unknown>) => {
+          initOptions.push(options);
+        },
+        pinoIntegration: () => ({}),
+        vercelAIIntegration: () => ({}),
+      }));
+      vi.doMock('@/lib/observability/sampling', () => ({
+        shouldEnableLogs: () => false,
+        tracesSampler: () => 0,
+      }));
+      vi.doMock('@/lib/observability/sentry-filters', () => ({
+        beforeSendSentryEvent: (event: unknown) => event,
+      }));
+
+      await import('../../../sentry.server.config');
+      await import('../../../sentry.edge.config');
+
+      expect(initOptions).toHaveLength(2);
+      expect(initOptions.every((opts) => opts.sendDefaultPii === true)).toBe(
+        true,
+      );
     });
   });
 

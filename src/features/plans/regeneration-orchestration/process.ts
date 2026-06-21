@@ -17,6 +17,7 @@ import {
   PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
 } from '@/features/plans/start-plan-regeneration-workflow';
 import { workflowEnv } from '@/lib/config/env/workflow';
+import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 export async function processNextPlanRegenerationJob(
@@ -89,6 +90,42 @@ export async function processPlanRegenerationJob(
           {
             retryable: false,
           },
+        );
+        return {
+          kind: 'permanent-failure',
+          jobId: job.id,
+          planId: payload.planId,
+        };
+      }
+
+      if (attachResult.kind === 'persist-failed') {
+        d.logger.error(
+          {
+            jobId: job.id,
+            planId: payload.planId,
+            userId: job.userId,
+            workflowRunId: attachResult.runId,
+            persistError: attachResult.persistError,
+            cancellationSucceeded: attachResult.cancellation.succeeded,
+          },
+          'Failed to persist plan regeneration workflow run id after start',
+        );
+        if (!attachResult.cancellation.succeeded) {
+          recordRegenerationWorkflowAttachUncertain(
+            {
+              jobId: job.id,
+              planId: payload.planId,
+              userId: job.userId,
+              workflowRunId: attachResult.runId,
+              cancellationSucceeded: false,
+            },
+            attachResult.persistError,
+          );
+        }
+        await d.queue.failJob(
+          job.id,
+          'Failed to persist plan regeneration workflow run id.',
+          { retryable: false },
         );
         return {
           kind: 'permanent-failure',

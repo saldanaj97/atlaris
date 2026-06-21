@@ -10,7 +10,7 @@ export { createClerkAuthEnv, devAuthEnv } from '@/lib/config/env/auth';
 export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
-export { loggingEnv } from '@/lib/config/env/observability';
+export { loggingEnv, sentryEnv } from '@/lib/config/env/observability';
 export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
 export {
   createMaintenanceEnvForTests,

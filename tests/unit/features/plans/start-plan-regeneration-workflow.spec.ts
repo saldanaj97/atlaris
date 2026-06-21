@@ -1,3 +1,4 @@
+import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
 import { createId } from '@tests/fixtures/ids';
@@ -22,6 +23,7 @@ describe('startPlanRegenerationWorkflow', () => {
   };
 
   beforeEach(() => {
+    resetPlanRegenerationCancellationMarkersForTests();
     mocks.isEnabled.mockReset();
     mocks.isEnabled.mockReturnValue(false);
     mocks.workflowStart.mockReset();
@@ -135,6 +137,39 @@ describe('startPlanRegenerationWorkflow', () => {
         err: rejection,
         workflowRunId: 'wrun_regen',
       }),
+      expect.stringContaining('workflow failed'),
+    );
+  });
+
+  it('does not terminalize the job when returnValue rejects after intentional cancellation', async () => {
+    const rejection = new Error('workflow-cancelled');
+    mocks.isEnabled.mockReturnValue(true);
+    mocks.workflowStart.mockResolvedValue({
+      runId: 'wrun_regen',
+      returnValue: Promise.reject(rejection),
+    });
+
+    const { markPlanRegenerationRunIntentionallyCancelled } =
+      await import('@/features/plans/cancel-plan-regeneration-workflow');
+    markPlanRegenerationRunIntentionallyCancelled('wrun_regen');
+
+    const result = await startPlanRegenerationWorkflow(input, {
+      isEnabled: mocks.isEnabled,
+      workflowStart: mocks.workflowStart,
+      failJob: mocks.failJob,
+      log: mocks.log,
+    });
+
+    expect(result).toEqual({ started: true, runId: 'wrun_regen' });
+    await vi.waitFor(() => {
+      expect(mocks.log.info).toHaveBeenCalledWith(
+        expect.objectContaining({ workflowRunId: 'wrun_regen' }),
+        expect.stringContaining('cancelled after orphan cleanup'),
+      );
+    });
+    expect(mocks.failJob).not.toHaveBeenCalled();
+    expect(mocks.log.error).not.toHaveBeenCalledWith(
+      expect.objectContaining({ workflowRunId: 'wrun_regen' }),
       expect.stringContaining('workflow failed'),
     );
   });
