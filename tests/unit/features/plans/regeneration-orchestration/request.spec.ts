@@ -669,6 +669,36 @@ describe('requestPlanRegeneration', () => {
       );
     });
 
+    it('returns a structured persist failure when job terminalization fails', async () => {
+      const persistError = new Error('runId persist failed');
+      const updateRegenerationJobPayload = vi.fn(async () => {
+        throw persistError;
+      });
+      const failJob = vi.fn(async () => {
+        throw new Error('database unavailable');
+      });
+      const deps = buildDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        retryable: false,
+      });
+      expect(failJob).toHaveBeenCalledTimes(1);
+    });
+
     it('does not compensate when workflow attach throws unexpectedly', async () => {
       const workflowError = new Error('unexpected attach failure');
       startPlanRegenerationWorkflowMock.mockRejectedValue(workflowError);

@@ -175,11 +175,25 @@ export async function requestPlanRegeneration(
             attachResult.persistError,
           );
         }
-        await d.queue.failJob(
-          acceptedJobId,
-          'Failed to persist plan regeneration workflow run id.',
-          { retryable: false },
-        );
+        try {
+          await d.queue.failJob(
+            acceptedJobId,
+            'Failed to persist plan regeneration workflow run id.',
+            { retryable: false },
+          );
+        } catch (terminalizeError: unknown) {
+          d.logger.error(
+            {
+              acceptedJobId,
+              planId,
+              userId,
+              correlationId,
+              workflowRunId: attachResult.runId,
+              terminalizeError,
+            },
+            'Failed to terminalize plan regeneration job after workflow run id persistence failure',
+          );
+        }
         return {
           kind: 'workflow-start-failed',
           jobId: acceptedJobId,
