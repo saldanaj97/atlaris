@@ -20,7 +20,7 @@ const FEATURES: Feature[] = [
     icon: <CalendarCheck className='size-7 text-white' aria-hidden='true' />,
     title: 'Calendar-Ready Plans',
     description:
-      'Calendar-ready sessions so study time can show up where you already look (Google Calendar sync coming soon).',
+      'Calendar-ready sessions so study time can show up where you already look, with calendar sync coming soon.',
   },
   {
     icon: <BookOpen className='size-7 text-white' aria-hidden='true' />,
