@@ -1,6 +1,7 @@
 import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
 
+import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { attachPlanRegenerationWorkflow } from '@/features/plans/regeneration-orchestration/attach-workflow';
 import { makeRegenerationOrchestrationDeps } from '@tests/helpers/regeneration-orchestration-deps';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +30,7 @@ function makeDeps(
 
 describe('attachPlanRegenerationWorkflow', () => {
   beforeEach(() => {
+    resetPlanRegenerationCancellationMarkersForTests();
     startPlanRegenerationWorkflowMock.mockReset();
     startPlanRegenerationWorkflowMock.mockResolvedValue({
       started: true,
@@ -103,7 +105,7 @@ describe('attachPlanRegenerationWorkflow', () => {
     expect(cancelWorkflow).not.toHaveBeenCalled();
   });
 
-  it('cancels the started run and rethrows when persist fails after start', async () => {
+  it('returns persist-failed with cancellation outcome when persist fails after start', async () => {
     const persistError = new Error('runId persist failed');
     const updateRegenerationJobPayload = vi.fn(async () => {
       throw persistError;
@@ -111,15 +113,41 @@ describe('attachPlanRegenerationWorkflow', () => {
     const cancelWorkflow = vi.fn(async () => true);
     const deps = makeDeps({ updateRegenerationJobPayload });
 
-    await expect(
-      attachPlanRegenerationWorkflow(
-        { jobId, planId, userId, payload: basePayload, correlationId },
-        deps,
-        { cancelWorkflow },
-      ),
-    ).rejects.toThrow('runId persist failed');
+    const result = await attachPlanRegenerationWorkflow(
+      { jobId, planId, userId, payload: basePayload, correlationId },
+      deps,
+      { cancelWorkflow },
+    );
 
+    expect(result).toEqual({
+      kind: 'persist-failed',
+      runId: 'wrun_attach',
+      persistError,
+      cancellation: { requested: true, succeeded: true },
+    });
     expect(cancelWorkflow).toHaveBeenCalledTimes(1);
     expect(cancelWorkflow).toHaveBeenCalledWith('wrun_attach');
+  });
+
+  it('returns persist-failed with cancellationSucceeded false when cancel fails', async () => {
+    const persistError = new Error('runId persist failed');
+    const updateRegenerationJobPayload = vi.fn(async () => {
+      throw persistError;
+    });
+    const cancelWorkflow = vi.fn(async () => false);
+    const deps = makeDeps({ updateRegenerationJobPayload });
+
+    const result = await attachPlanRegenerationWorkflow(
+      { jobId, planId, userId, payload: basePayload, correlationId },
+      deps,
+      { cancelWorkflow },
+    );
+
+    expect(result).toEqual({
+      kind: 'persist-failed',
+      runId: 'wrun_attach',
+      persistError,
+      cancellation: { requested: true, succeeded: false },
+    });
   });
 });

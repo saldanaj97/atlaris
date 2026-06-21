@@ -1,4 +1,5 @@
 import { failJob } from '@/features/jobs/queue';
+import { consumeIntentionalPlanRegenerationCancellation } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
 import { workflowEnv } from '@/lib/config/env/workflow';
 import { logger } from '@/lib/logging/logger';
@@ -74,6 +75,20 @@ export async function startPlanRegenerationWorkflow(
   );
 
   void run.returnValue.catch((error: unknown) => {
+    if (consumeIntentionalPlanRegenerationCancellation(run.runId)) {
+      log.info(
+        {
+          jobId: input.jobId,
+          planId: input.planId,
+          userId: input.userId,
+          correlationId: input.correlationId,
+          workflowRunId: run.runId,
+        },
+        'Plan regeneration workflow cancelled after orphan cleanup',
+      );
+      return;
+    }
+
     log.error(
       {
         err: error,

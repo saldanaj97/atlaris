@@ -18,7 +18,6 @@ import {
   type ReserveMeteredResult,
   reserveMeteredUsage,
 } from './metered-reservation';
-import { getCurrentMonth } from './usage-metrics';
 import { logger } from '@/lib/logging/logger';
 import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
 import { db as serviceRoleDb } from '@supabase/service-role';
@@ -113,30 +112,6 @@ type SafeCompensateArgs = {
   reconciliationContext: ReconciliationContext;
   logContext: CompensationLogContext;
 };
-
-/**
- * Release one regeneration credit for the current month. Use only when a
- * reservation was consumed but the downstream work provably did not run
- * (e.g. workflow start failure). The current-month bucket matches the
- * reservation bucket because reserve + compensate happen in the same request.
- */
-export async function compensateRegenerationReservation(
-  params: { userId: string; dbClient: DbClient },
-  now?: () => Date,
-): Promise<void> {
-  const token: MeteredReservationToken = {
-    userId: params.userId,
-    month: getCurrentMonth(now?.()),
-    meter: 'regeneration',
-    // limit/newCount are unused by compensateMeteredReservation (decrement only).
-    limit: 0,
-    newCount: 0,
-  };
-  await compensateMeteredReservation(
-    token,
-    params.dbClient === serviceRoleDb ? params.dbClient : serviceRoleDb,
-  );
-}
 
 const DEFAULT_DEPS: RegenerationQuotaBoundaryDeps = {
   reserve: (userId, dbClient) =>

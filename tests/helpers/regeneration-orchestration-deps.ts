@@ -40,7 +40,6 @@ export function makeRegenerationOrchestrationDeps(
     },
     quota: {
       runReserved: vi.fn(),
-      compensateReservation: vi.fn(async () => undefined),
     },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),

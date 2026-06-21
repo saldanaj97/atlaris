@@ -11,6 +11,7 @@ import {
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { workflowEnv } from '@/lib/config/env/workflow';
+import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { getDb } from '@supabase/runtime';
 
 export async function requestPlanRegeneration(
@@ -141,23 +142,6 @@ export async function requestPlanRegeneration(
           'Failed to start plan regeneration workflow.',
           { retryable: true },
         );
-        try {
-          await d.quota.compensateReservation({
-            userId,
-            dbClient: d.dbClient,
-          });
-        } catch (compensateError) {
-          d.logger.error(
-            {
-              acceptedJobId,
-              planId,
-              userId,
-              correlationId,
-              compensateError,
-            },
-            'Failed to compensate regeneration reservation after workflow start failure',
-          );
-        }
         return {
           kind: 'workflow-start-failed',
           jobId: acceptedJobId,
@@ -165,10 +149,47 @@ export async function requestPlanRegeneration(
           retryable: true,
         };
       }
+
+      if (attachResult.kind === 'persist-failed') {
+        d.logger.error(
+          {
+            acceptedJobId,
+            planId,
+            userId,
+            correlationId,
+            workflowRunId: attachResult.runId,
+            persistError: attachResult.persistError,
+            cancellationSucceeded: attachResult.cancellation.succeeded,
+          },
+          'Failed to persist plan regeneration workflow run id after start',
+        );
+        if (!attachResult.cancellation.succeeded) {
+          recordRegenerationWorkflowAttachUncertain(
+            {
+              jobId: acceptedJobId,
+              planId,
+              userId,
+              workflowRunId: attachResult.runId,
+              cancellationSucceeded: false,
+            },
+            attachResult.persistError,
+          );
+        }
+        await d.queue.failJob(
+          acceptedJobId,
+          'Failed to persist plan regeneration workflow run id.',
+          { retryable: false },
+        );
+        return {
+          kind: 'workflow-start-failed',
+          jobId: acceptedJobId,
+          planId,
+          retryable: false,
+        };
+      }
     } catch (error: unknown) {
-      // Do not compensate here: the throw may occur after the workflow run
-      // started (e.g. during runId persist), so releasing the reservation
-      // risks over-crediting. Rely on reconciliation instead.
+      // Unexpected attach failure after workflow may have started; do not
+      // compensate or mark retryable — rely on reconciliation instead.
       d.logger.error(
         {
           acceptedJobId,
@@ -177,12 +198,12 @@ export async function requestPlanRegeneration(
           correlationId,
           error,
         },
-        'Failed to start plan regeneration workflow',
+        'Failed to attach plan regeneration workflow',
       );
       await d.queue.failJob(
         acceptedJobId,
-        'Failed to start plan regeneration workflow.',
-        { retryable: true },
+        'Failed to attach plan regeneration workflow.',
+        { retryable: false },
       );
       throw error;
     }

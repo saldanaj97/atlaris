@@ -247,6 +247,36 @@ describe('runRegenerationQuotaReserved', () => {
     expect(reportReconciliation).toHaveBeenCalledTimes(1);
   });
 
+  it('compensates using the reservation month bucket even when work runs after month rollover', async () => {
+    const aprilToken: MeteredReservationToken = {
+      ...baseToken,
+      month: '2026-04',
+    };
+    const deps = buildDeps({
+      reserve: vi.fn(
+        async (): Promise<ReserveMeteredResult> => ({
+          ok: true,
+          token: aprilToken,
+        }),
+      ),
+    });
+    const work = vi.fn(
+      async (): Promise<RegenerationQuotaWorkResult<{ jobId: string }>> => ({
+        disposition: 'revert',
+        value: { jobId },
+        reason: 'enqueue_deduplicated',
+        jobId,
+      }),
+    );
+
+    await runRegenerationQuotaReserved(
+      { userId, planId, dbClient: fakeDb, work },
+      deps,
+    );
+
+    expect(deps.compensate).toHaveBeenCalledWith(aprilToken, fakeDb);
+  });
+
   it('treats reportReconciliation as fire-and-forget on the revert path and still reports reconciliationRequired', async () => {
     const compensateError = new Error('decrement failed');
     const reportError = new Error('sentry transport down');

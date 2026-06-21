@@ -16,7 +16,16 @@ export type AttachPlanRegenerationWorkflowInput = {
 export type AttachPlanRegenerationWorkflowResult =
   | { readonly kind: 'already-attached' }
   | { readonly kind: 'attached'; readonly runId: string }
-  | { readonly kind: 'start-failed' };
+  | { readonly kind: 'start-failed' }
+  | {
+      readonly kind: 'persist-failed';
+      readonly runId: string;
+      readonly persistError: unknown;
+      readonly cancellation: {
+        readonly requested: true;
+        readonly succeeded: boolean;
+      };
+    };
 
 type AttachPlanRegenerationWorkflowDeps = Pick<
   RegenerationOrchestrationDeps['queue'],
@@ -69,8 +78,13 @@ export async function attachPlanRegenerationWorkflow(
   } catch (persistError) {
     // Run started but runId could not be persisted. Cancel the orphan so a retry
     // re-attaches exactly once instead of starting a duplicate run.
-    await cancelWorkflow(workflowStart.runId);
-    throw persistError;
+    const cancellationSucceeded = await cancelWorkflow(workflowStart.runId);
+    return {
+      kind: 'persist-failed',
+      runId: workflowStart.runId,
+      persistError,
+      cancellation: { requested: true, succeeded: cancellationSucceeded },
+    };
   }
 
   return { kind: 'attached', runId: workflowStart.runId };

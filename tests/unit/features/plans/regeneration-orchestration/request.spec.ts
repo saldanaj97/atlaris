@@ -3,6 +3,7 @@ import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneratio
 import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
 
 import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
+import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { RateLimitError } from '@/lib/api/errors';
@@ -14,10 +15,48 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const startPlanRegenerationWorkflowMock = vi.hoisted(() => vi.fn());
+const cancelPlanRegenerationWorkflowMock = vi.hoisted(() =>
+  vi.fn(async () => true),
+);
+const recordRegenerationWorkflowAttachUncertainMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/plans/start-plan-regeneration-workflow', () => ({
-  startPlanRegenerationWorkflow: startPlanRegenerationWorkflowMock,
-}));
+vi.mock(
+  '@/features/plans/start-plan-regeneration-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/plans/start-plan-regeneration-workflow')
+      >();
+    return {
+      ...actual,
+      startPlanRegenerationWorkflow: startPlanRegenerationWorkflowMock,
+    };
+  },
+);
+
+vi.mock(
+  '@/features/plans/cancel-plan-regeneration-workflow',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/plans/cancel-plan-regeneration-workflow')
+      >();
+    return {
+      ...actual,
+      cancelPlanRegenerationWorkflow: cancelPlanRegenerationWorkflowMock,
+    };
+  },
+);
+
+vi.mock('@/lib/logging/ops-alerts', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/logging/ops-alerts')>();
+  return {
+    ...actual,
+    recordRegenerationWorkflowAttachUncertain:
+      recordRegenerationWorkflowAttachUncertainMock,
+  };
+});
 
 const fakeDb = makeDbClient();
 
@@ -442,8 +481,12 @@ describe('requestPlanRegeneration', () => {
 
   describe('workflow-enabled enqueue', () => {
     beforeEach(() => {
+      resetPlanRegenerationCancellationMarkersForTests();
       vi.stubEnv('PLAN_REGENERATION_WORKFLOW_ENABLED', 'true');
       startPlanRegenerationWorkflowMock.mockReset();
+      cancelPlanRegenerationWorkflowMock.mockReset();
+      cancelPlanRegenerationWorkflowMock.mockResolvedValue(true);
+      recordRegenerationWorkflowAttachUncertainMock.mockReset();
       startPlanRegenerationWorkflowMock.mockResolvedValue({
         started: true,
         runId: 'wrun_enqueue',
@@ -489,10 +532,29 @@ describe('requestPlanRegeneration', () => {
       expect(deps.inlineDrain.tryRegister).not.toHaveBeenCalled();
     });
 
-    it('marks workflow start failure retryable and returns workflow-start-failed', async () => {
+    it('marks workflow start failure retryable without compensating quota', async () => {
       startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
       const failJob = vi.fn(async () => null);
-      const deps = buildDeps({ queue: { failJob } });
+      const runReserved = vi.fn(async (args) => {
+        const workResult = await args.work();
+        if (workResult.disposition === 'consumed') {
+          return {
+            ok: true as const,
+            consumed: true as const,
+            value: workResult.value,
+          };
+        }
+        return {
+          ok: true as const,
+          consumed: false as const,
+          value: workResult.value,
+          reconciliationRequired: false as const,
+        };
+      });
+      const deps = buildDeps({
+        queue: { failJob },
+        quota: { runReserved },
+      });
 
       const result = await requestPlanRegeneration(
         {
@@ -514,18 +576,120 @@ describe('requestPlanRegeneration', () => {
         'Failed to start plan regeneration workflow.',
         { retryable: true },
       );
-      expect(deps.quota.compensateReservation).toHaveBeenCalledTimes(1);
-      expect(deps.quota.compensateReservation).toHaveBeenCalledWith({
-        userId: 'user-1',
-        dbClient: fakeDb,
-      });
+      expect(runReserved).toHaveBeenCalledTimes(1);
     });
 
-    it('does not compensate when workflow attach throws', async () => {
-      const workflowError = new Error('runId persist failed');
+    it('does not compensate quota when workflow start fails at enqueue time', async () => {
+      startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
+      const failJob = vi.fn(async () => null);
+      const reserve = vi.fn().mockResolvedValue({
+        ok: true,
+        token: baseToken,
+      });
+      const compensate = vi.fn(async () => undefined);
+      const deps = buildDeps({
+        queue: { failJob },
+        quota: {
+          runReserved: ((
+            args: Parameters<typeof runRegenerationQuotaReserved>[0],
+          ) =>
+            runRegenerationQuotaReserved(args, {
+              reserve,
+              compensate,
+              reportReconciliation: vi.fn(),
+            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
+        },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        retryable: true,
+      });
+      expect(reserve).toHaveBeenCalledTimes(1);
+      expect(compensate).not.toHaveBeenCalled();
+      expect(failJob).toHaveBeenCalledWith(
+        'job-1',
+        'Failed to start plan regeneration workflow.',
+        { retryable: true },
+      );
+    });
+
+    it('marks persist failure non-retryable and emits ops telemetry when cancel fails', async () => {
+      cancelPlanRegenerationWorkflowMock.mockResolvedValue(false);
+      const persistError = new Error('runId persist failed');
+      const updateRegenerationJobPayload = vi.fn(async () => {
+        throw persistError;
+      });
+      const failJob = vi.fn(async () => null);
+      const deps = buildDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        retryable: false,
+      });
+      expect(failJob).toHaveBeenCalledWith(
+        'job-1',
+        'Failed to persist plan regeneration workflow run id.',
+        { retryable: false },
+      );
+      expect(failJob).toHaveBeenCalledTimes(1);
+      expect(
+        recordRegenerationWorkflowAttachUncertainMock,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobId: 'job-1',
+          planId: ownedPlan.id,
+          userId: 'user-1',
+          workflowRunId: 'wrun_enqueue',
+          cancellationSucceeded: false,
+        }),
+        persistError,
+      );
+    });
+
+    it('does not compensate when workflow attach throws unexpectedly', async () => {
+      const workflowError = new Error('unexpected attach failure');
       startPlanRegenerationWorkflowMock.mockRejectedValue(workflowError);
       const failJob = vi.fn(async () => null);
-      const deps = buildDeps({ queue: { failJob } });
+      const compensate = vi.fn(async () => undefined);
+      const deps = buildDeps({
+        queue: { failJob },
+        quota: {
+          runReserved: ((
+            args: Parameters<typeof runRegenerationQuotaReserved>[0],
+          ) =>
+            runRegenerationQuotaReserved(args, {
+              reserve: vi.fn().mockResolvedValue({
+                ok: true,
+                token: baseToken,
+              }),
+              compensate,
+              reportReconciliation: vi.fn(),
+            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
+        },
+      });
 
       await expect(
         requestPlanRegeneration(
@@ -536,14 +700,14 @@ describe('requestPlanRegeneration', () => {
           },
           deps,
         ),
-      ).rejects.toThrow('runId persist failed');
+      ).rejects.toThrow('unexpected attach failure');
 
       expect(failJob).toHaveBeenCalledWith(
         'job-1',
-        'Failed to start plan regeneration workflow.',
-        { retryable: true },
+        'Failed to attach plan regeneration workflow.',
+        { retryable: false },
       );
-      expect(deps.quota.compensateReservation).not.toHaveBeenCalled();
+      expect(compensate).not.toHaveBeenCalled();
     });
   });
 
