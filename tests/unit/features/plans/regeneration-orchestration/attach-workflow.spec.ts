@@ -150,4 +150,56 @@ describe('attachPlanRegenerationWorkflow', () => {
       cancellation: { requested: true, succeeded: false },
     });
   });
+
+  it('cancels the started workflow when launched payload validation fails', async () => {
+    const cancelWorkflow = vi.fn(async () => true);
+    const deps = makeDeps();
+    const invalidPayload = {
+      ...basePayload,
+      planId: 'not-a-uuid',
+    } as unknown as PlanRegenerationJobPayload;
+
+    const result = await attachPlanRegenerationWorkflow(
+      {
+        jobId,
+        planId,
+        userId,
+        payload: invalidPayload,
+        correlationId,
+      },
+      deps,
+      { cancelWorkflow },
+    );
+
+    expect(result).toMatchObject({
+      kind: 'persist-failed',
+      runId: 'wrun_attach',
+      cancellation: { requested: true, succeeded: true },
+    });
+    expect(cancelWorkflow).toHaveBeenCalledWith('wrun_attach');
+  });
+
+  it('returns persist-failed when the cancellation adapter throws', async () => {
+    const persistError = new Error('runId persist failed');
+    const updateRegenerationJobPayload = vi.fn(async () => {
+      throw persistError;
+    });
+    const cancelWorkflow = vi.fn(async () => {
+      throw new Error('cancel adapter failed');
+    });
+    const deps = makeDeps({ updateRegenerationJobPayload });
+
+    const result = await attachPlanRegenerationWorkflow(
+      { jobId, planId, userId, payload: basePayload, correlationId },
+      deps,
+      { cancelWorkflow },
+    );
+
+    expect(result).toEqual({
+      kind: 'persist-failed',
+      runId: 'wrun_attach',
+      persistError,
+      cancellation: { requested: true, succeeded: false },
+    });
+  });
 });

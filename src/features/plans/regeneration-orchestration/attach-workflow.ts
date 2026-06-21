@@ -64,21 +64,26 @@ export async function attachPlanRegenerationWorkflow(
   const cancelWorkflow =
     options.cancelWorkflow ?? cancelPlanRegenerationWorkflow;
 
-  const launchedPayload = planRegenerationJobPayloadSchema.parse({
-    ...input.payload,
-    workflow: {
-      provider: 'workflow-sdk' as const,
-      runId: workflowStart.runId,
-      startedAt: input.payload.workflow?.startedAt ?? new Date().toISOString(),
-    },
-  });
-
   try {
+    const launchedPayload = planRegenerationJobPayloadSchema.parse({
+      ...input.payload,
+      workflow: {
+        provider: 'workflow-sdk' as const,
+        runId: workflowStart.runId,
+        startedAt:
+          input.payload.workflow?.startedAt ?? new Date().toISOString(),
+      },
+    });
     await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
   } catch (persistError) {
     // Run started but runId could not be persisted. Cancel the orphan so a retry
     // re-attaches exactly once instead of starting a duplicate run.
-    const cancellationSucceeded = await cancelWorkflow(workflowStart.runId);
+    let cancellationSucceeded = false;
+    try {
+      cancellationSucceeded = await cancelWorkflow(workflowStart.runId);
+    } catch {
+      // Cancellation is best-effort; preserve the deterministic persist-failed result.
+    }
     return {
       kind: 'persist-failed',
       runId: workflowStart.runId,

@@ -10,6 +10,12 @@ export function markPlanRegenerationRunIntentionallyCancelled(
   intentionallyCancelledRunIds.add(runId);
 }
 
+export function unmarkPlanRegenerationRunIntentionallyCancelled(
+  runId: string,
+): void {
+  intentionallyCancelledRunIds.delete(runId);
+}
+
 export function consumeIntentionalPlanRegenerationCancellation(
   runId: string,
 ): boolean {
@@ -46,6 +52,7 @@ export async function cancelPlanRegenerationWorkflow(
     await getRunFn(runId).cancel();
     return true;
   } catch (error: unknown) {
+    unmarkPlanRegenerationRunIntentionallyCancelled(runId);
     log.error(
       { err: error, workflowRunId: runId },
       'Failed to cancel orphaned plan regeneration run',
