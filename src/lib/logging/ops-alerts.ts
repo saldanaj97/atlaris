@@ -1,3 +1,4 @@
+import { sentryEnv } from '@/lib/config/env/observability';
 import * as Sentry from '@sentry/nextjs';
 
 /**
@@ -31,7 +32,9 @@ export function recordRegenerationWorkflowAttachUncertain(
     scope.setTag('regeneration_workflow_attach', 'uncertain');
     scope.setExtra('jobId', context.jobId);
     scope.setExtra('planId', context.planId);
-    scope.setExtra('userId', context.userId);
+    if (sentryEnv.sendDefaultPii) {
+      scope.setExtra('userId', context.userId);
+    }
     scope.setExtra('workflowRunId', context.workflowRunId);
     scope.setExtra('cancellationSucceeded', context.cancellationSucceeded);
     const err = error instanceof Error ? error : new Error(String(error));
