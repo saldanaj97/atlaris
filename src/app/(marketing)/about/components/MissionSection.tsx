@@ -22,10 +22,10 @@ export function MissionSection() {
             leave learners overwhelmed and without direction.
           </p>
           <p className='text-lg leading-relaxed text-muted-foreground'>
-            Atlaris transforms your learning goals into structured, time-blocked
-            plans tailored to your schedule. We generate modules, attach curated
-            resources to each lesson, and sync sessions to your calendar so
-            progress does not stall after week one.
+            Atlaris transforms your learning goals into structured plans that
+            build momentum. We generate focused modules, attach curated
+            resources to each lesson, and make progress visible so learning does
+            not stall after week one.
           </p>
         </div>
 
@@ -66,9 +66,9 @@ const HIGHLIGHTS: Highlight[] = [
   },
   {
     icon: <CalendarDays className='size-5 text-white' aria-hidden='true' />,
-    title: 'Calendar Sync',
+    title: 'Learning Momentum',
     description:
-      'Plans sync directly to Google Calendar so learning fits your life.',
+      'Clear milestones and visible progress keep each learning plan moving.',
   },
   {
     icon: <Library className='size-5 text-white' aria-hidden='true' />,

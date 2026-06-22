@@ -51,7 +51,8 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
   };
 
   return {
-    topic: typeof maybePayload.topic === 'string' ? maybePayload.topic : null,
+    hasTopic:
+      typeof maybePayload.topic === 'string' && maybePayload.topic.length > 0,
     skillLevel:
       typeof maybePayload.skillLevel === 'string'
         ? maybePayload.skillLevel

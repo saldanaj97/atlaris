@@ -10,9 +10,9 @@ insert into public.users (
 )
 values (
   '11111111-1111-4111-8111-111111111111'::uuid,
-  'user_33d1Ci8mqFZqiIb7pMYj0671CXj',
-  'local-dev@example.com',
-  'local-dev-free',
+  '00000000-0000-4000-8000-000000000001',
+  'local-product-test@localhost.local',
+  'Local Product Test',
   'free',
   false,
   0
