@@ -34,7 +34,7 @@ import {
 import { createCustomer } from '@/features/billing/subscriptions';
 import { stripeWebhookEvents } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 type Logger = ReturnType<typeof createLogger>;
@@ -98,18 +98,6 @@ function throwIfAborted(signal?: AbortSignal): void {
   throw error;
 }
 
-async function updateUsersByStripeCustomerId(
-  customerId: string,
-  set: UpdateUsersByStripeCustomerIdSet,
-  deps: Pick<TransitionDeps, 'db' | 'users'>,
-) {
-  return deps.db
-    .update(deps.users)
-    .set(set)
-    .where(eq(deps.users.stripeCustomerId, customerId))
-    .returning({ userId: deps.users.id });
-}
-
 async function getUsersByStripeCustomerId(
   customerId: string,
   deps: Pick<TransitionDeps, 'db' | 'users'>,
@@ -127,6 +115,7 @@ async function getUsersByStripeCustomerId(
 
 async function updateUsersByIds(
   userIds: string[],
+  subscriptionId: string,
   set: UpdateUsersByStripeCustomerIdSet,
   deps: Pick<TransitionDeps, 'db' | 'users'>,
 ) {
@@ -137,8 +126,21 @@ async function updateUsersByIds(
   return deps.db
     .update(deps.users)
     .set(set)
-    .where(inArray(deps.users.id, userIds))
+    .where(
+      and(
+        inArray(deps.users.id, userIds),
+        eq(deps.users.stripeSubscriptionId, subscriptionId),
+      ),
+    )
     .returning({ userId: deps.users.id });
+}
+
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const subscription = invoice.parent?.subscription_details?.subscription;
+  if (typeof subscription === 'string') {
+    return subscription;
+  }
+  return subscription?.id ?? null;
 }
 
 export async function applySubscriptionSync(
@@ -179,26 +181,33 @@ export async function applySubscriptionDeleted(
     currentPeriodEnd !== null &&
     currentPeriodEnd.getTime() > Date.now();
 
-  const updatedUsers = await updateUsersByStripeCustomerId(
-    customerId,
-    shouldRetainEntitlements
-      ? {
-          subscriptionStatus: 'canceled',
-          stripeSubscriptionId: null,
-          subscriptionPeriodEnd: currentPeriodEnd,
-          cancelAtPeriodEnd: true,
-          updatedAt: new Date(),
-        }
-      : {
-          subscriptionTier: 'free',
-          subscriptionStatus: 'canceled',
-          stripeSubscriptionId: null,
-          subscriptionPeriodEnd: null,
-          cancelAtPeriodEnd: false,
-          updatedAt: new Date(),
-        },
-    deps,
-  );
+  const updatedUsers = await deps.db
+    .update(deps.users)
+    .set(
+      shouldRetainEntitlements
+        ? {
+            subscriptionStatus: 'canceled',
+            stripeSubscriptionId: null,
+            subscriptionPeriodEnd: currentPeriodEnd,
+            cancelAtPeriodEnd: true,
+            updatedAt: new Date(),
+          }
+        : {
+            subscriptionTier: 'free',
+            subscriptionStatus: 'canceled',
+            stripeSubscriptionId: null,
+            subscriptionPeriodEnd: null,
+            cancelAtPeriodEnd: false,
+            updatedAt: new Date(),
+          },
+    )
+    .where(
+      and(
+        eq(deps.users.stripeCustomerId, customerId),
+        eq(deps.users.stripeSubscriptionId, subscription.id),
+      ),
+    )
+    .returning({ userId: deps.users.id });
 
   throwIfAborted(options?.signal);
 
@@ -248,6 +257,15 @@ export async function applyPaymentFailed(
     return;
   }
 
+  const subscriptionId = getInvoiceSubscriptionId(invoice);
+  if (!subscriptionId) {
+    deps.logger.info(
+      { customerId, invoiceId: invoice.id },
+      'Skipped invoice.payment_failed without subscription identity',
+    );
+    return;
+  }
+
   const mappedUsers = await getUsersByStripeCustomerId(customerId, deps);
 
   throwIfAborted(options?.signal);
@@ -266,6 +284,7 @@ export async function applyPaymentFailed(
   const eligibleUsers = mappedUsers.filter(
     (user) =>
       user.stripeSubscriptionId !== null &&
+      user.stripeSubscriptionId === subscriptionId &&
       (user.subscriptionStatus === 'trialing' ||
         user.subscriptionStatus === 'active' ||
         user.subscriptionStatus === 'past_due'),
@@ -292,6 +311,7 @@ export async function applyPaymentFailed(
 
   const updatedUsers = await updateUsersByIds(
     eligibleUsers.map((user) => user.userId),
+    subscriptionId,
     {
       subscriptionStatus: 'past_due',
       updatedAt: new Date(),
@@ -446,10 +466,7 @@ async function dispatchVerifiedStripeEvent(
 
     case 'invoice.payment_succeeded': {
       const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId =
-        typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : invoice.subscription?.id;
+      const subscriptionId = getInvoiceSubscriptionId(invoice);
 
       if (!subscriptionId || !gateway) {
         const message = !subscriptionId

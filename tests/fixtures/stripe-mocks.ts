@@ -123,8 +123,11 @@ export function makeStripeSubscription(
  * Build a partial Stripe.Invoice object suitable for webhook test fixtures.
  */
 export function makeStripeInvoice(
-  partial: DeepPartial<Stripe.Invoice> = {},
+  partial: Omit<DeepPartial<Stripe.Invoice>, 'subscription'> & {
+    subscription?: string | Stripe.Subscription | null;
+  } = {},
 ): Stripe.Invoice {
+  const { subscription, ...invoicePartial } = partial;
   return {
     id: partial.id ?? 'in_test',
     object: 'invoice',
@@ -132,6 +135,14 @@ export function makeStripeInvoice(
     status: 'paid',
     paid: true,
     metadata: {},
-    ...partial,
+    ...(subscription
+      ? {
+          parent: {
+            type: 'subscription_details',
+            subscription_details: { subscription, metadata: null },
+          },
+        }
+      : {}),
+    ...invoicePartial,
   } as Stripe.Invoice;
 }

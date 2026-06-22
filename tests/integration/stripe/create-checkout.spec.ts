@@ -98,6 +98,7 @@ describe('POST /api/v1/stripe/create-checkout', () => {
       },
       {
         timeout: 10_000,
+        idempotencyKey: `atlaris:customer-provisioning:v1:${userId}`,
       },
     );
 

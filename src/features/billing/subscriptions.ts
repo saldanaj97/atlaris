@@ -5,7 +5,7 @@ import { getStripe } from './client';
 import { logger } from '@/lib/logging/logger';
 import { getDb } from '@supabase/runtime';
 import { users } from '@supabase/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 const CUSTOMER_PROVISION_LOCK_KEY = 2;
 const CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS = 10_000;
@@ -50,6 +50,7 @@ export async function createCustomer(
       },
       {
         timeout: CUSTOMER_PROVISION_REQUEST_TIMEOUT_MS,
+        idempotencyKey: `atlaris:customer-provisioning:v1:${userId}`,
       },
     );
     const stripeCallDurationMs = Date.now() - stripeCallStartedAt;
@@ -65,13 +66,20 @@ export async function createCustomer(
       );
     }
 
-    await tx
+    const updatedUsers = await tx
       .update(users)
       .set({
         stripeCustomerId: customer.id,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(and(eq(users.id, userId), isNull(users.stripeCustomerId)))
+      .returning({ userId: users.id });
+
+    if (updatedUsers.length !== 1) {
+      throw new Error(
+        `Stripe customer provisioning did not update exactly one user row (userId=${userId}, updated=${updatedUsers.length}).`,
+      );
+    }
 
     return customer.id;
   });

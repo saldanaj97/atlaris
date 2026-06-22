@@ -81,6 +81,7 @@ describe('Subscription Management', () => {
         },
         {
           timeout: 10_000,
+          idempotencyKey: `atlaris:customer-provisioning:v1:${userId}`,
         },
       );
 
@@ -118,6 +119,26 @@ describe('Subscription Management', () => {
 
       expect(customerId).toBe(existingCustomerId);
       expect(createStripeCustomer).not.toHaveBeenCalled();
+    });
+
+    it('fails when the returned customer cannot be assigned to exactly one user', async () => {
+      const missingUserId = '00000000-0000-4000-8000-000000000099';
+      const createStripeCustomer = vi
+        .fn()
+        .mockResolvedValue({ id: 'cus_orphan' });
+      const mockStripe = makeStripeMock({
+        customers: { create: createStripeCustomer },
+      });
+
+      await expect(
+        createCustomer(missingUserId, 'missing@example.com', mockStripe),
+      ).rejects.toThrow('did not update exactly one user row');
+      expect(createStripeCustomer).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          idempotencyKey: `atlaris:customer-provisioning:v1:${missingUserId}`,
+        }),
+      );
     });
   });
 
@@ -491,16 +512,43 @@ describe('Subscription Management', () => {
       expect(user?.cancelAtPeriodEnd).toBe(true);
     });
 
+    it('applySubscriptionDeleted ignores a stale subscription for the same customer', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'pro',
+          subscriptionStatus: 'active',
+        });
+
+      await applySubscriptionDeleted(
+        makeStripeSubscription({
+          id: `${stripeSubscriptionId}_stale`,
+          customer: stripeCustomerId,
+        }),
+        makeTransitionDeps(),
+      );
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(sql`id = ${userId}`);
+      expect(user?.subscriptionTier).toBe('pro');
+      expect(user?.subscriptionStatus).toBe('active');
+      expect(user?.stripeSubscriptionId).toBe(stripeSubscriptionId);
+    });
+
     it('applyPaymentFailed marks the mapped user as past_due', async () => {
       const userId = await createUniqueUser();
-      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
-        subscriptionTier: 'starter',
-        subscriptionStatus: 'active',
-      });
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'starter',
+          subscriptionStatus: 'active',
+        });
 
       const invoice = makeStripeInvoice({
         id: 'in_payment_failed',
         customer: stripeCustomerId,
+        subscription: stripeSubscriptionId,
       });
 
       await applyPaymentFailed(invoice, makeTransitionDeps());
@@ -516,14 +564,16 @@ describe('Subscription Management', () => {
 
     it('applyPaymentFailed marks subscribed free-tier users as past_due', async () => {
       const userId = await createUniqueUser();
-      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
-        subscriptionTier: 'free',
-        subscriptionStatus: 'active',
-      });
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'free',
+          subscriptionStatus: 'active',
+        });
 
       const invoice = makeStripeInvoice({
         id: 'in_payment_failed_free_tier',
         customer: stripeCustomerId,
+        subscription: stripeSubscriptionId,
       });
 
       await applyPaymentFailed(invoice, makeTransitionDeps());
@@ -536,6 +586,31 @@ describe('Subscription Management', () => {
       expect(user?.subscriptionStatus).toBe('past_due');
       expect(user?.subscriptionTier).toBe('free');
       expect(user?.stripeSubscriptionId).not.toBeNull();
+    });
+
+    it('applyPaymentFailed ignores a stale subscription for the same customer', async () => {
+      const userId = await createUniqueUser();
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'starter',
+          subscriptionStatus: 'active',
+        });
+
+      await applyPaymentFailed(
+        makeStripeInvoice({
+          id: 'in_stale_payment_failed',
+          customer: stripeCustomerId,
+          subscription: `${stripeSubscriptionId}_stale`,
+        }),
+        makeTransitionDeps(),
+      );
+
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(sql`id = ${userId}`);
+      expect(user?.subscriptionStatus).toBe('active');
+      expect(user?.stripeSubscriptionId).toBe(stripeSubscriptionId);
     });
 
     it('applySubscriptionDeleted resolves when no mapped user exists', async () => {
