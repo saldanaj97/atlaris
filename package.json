@@ -24,15 +24,15 @@
     "test": "tsx scripts/tests/run-phases.ts test:unit:changed test:integration:changed",
     "test:unit": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit",
     "test:unit:changed": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit --changed tests/unit",
-    "test:integration": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration && pnpm test:workflow",
+    "test:integration": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration",
     "test:integration:changed": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration --changed tests/integration && NODE_ENV=test pnpm vitest run --config vitest.workflow.config.ts --changed --passWithNoTests tests/workflow",
     "test:workflow": "NODE_ENV=test pnpm vitest run --config vitest.workflow.config.ts tests/workflow",
     "test:security": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project security tests/security",
     "test:smoke": "pnpm exec tsx scripts/tests/smoke/run.ts",
     "ui:capture-baseline": "tsx scripts/ui/capture-baseline.ts",
     "test:e2e": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project e2e tests/e2e",
-    "test:all": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:security",
-    "test:all:e2e": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:security test:e2e",
+    "test:all": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:workflow test:security",
+    "test:all:e2e": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:workflow test:security test:e2e",
     "prepare": "husky || true"
   },
   "dependencies": {
