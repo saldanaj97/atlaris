@@ -21,7 +21,7 @@
     "db:dev:stop": "supabase stop",
     "db:dev:seed": "tsx scripts/seed-local-supabase.ts",
     "db:dev:reset": "supabase db reset",
-    "test": "pnpm test:unit:changed && pnpm test:integration:changed",
+    "test": "tsx scripts/tests/run-phases.ts test:unit:changed test:integration:changed",
     "test:unit": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit",
     "test:unit:changed": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit --changed tests/unit",
     "test:integration": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration && pnpm test:workflow",
@@ -30,8 +30,9 @@
     "test:security": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project security tests/security",
     "test:smoke": "pnpm exec tsx scripts/tests/smoke/run.ts",
     "ui:capture-baseline": "tsx scripts/ui/capture-baseline.ts",
-    "test:all": "pnpm check:full && pnpm test:unit && pnpm test:integration && pnpm test:security",
-    "test:all:e2e": "pnpm check:full && pnpm test:unit && pnpm test:integration && pnpm test:security && NODE_ENV=test pnpm vitest run --config vitest.config.ts --project e2e tests/e2e",
+    "test:e2e": "NODE_ENV=test pnpm vitest run --config vitest.config.ts --project e2e tests/e2e",
+    "test:all": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:security",
+    "test:all:e2e": "tsx scripts/tests/run-phases.ts check:full test:unit test:integration test:security test:e2e",
     "prepare": "husky || true"
   },
   "dependencies": {
