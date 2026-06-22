@@ -566,6 +566,71 @@ describe('Stripe API Routes', () => {
 
       expect(response.status).toBe(400);
     });
+
+    it('rejects declared oversized payloads before invoking commerce', async () => {
+      const boundary = {
+        acceptWebhook: vi.fn(),
+      } as unknown as StripeCommerceBoundary;
+      const post = createWebhookHandler({ boundary });
+      const response = await post(
+        new Request('http://localhost/api/v1/stripe/webhook', {
+          method: 'POST',
+          headers: {
+            'stripe-signature': 'test_signature',
+            'content-length': String(256 * 1024 + 1),
+          },
+          body: 'small',
+        }),
+      );
+
+      expect(response.status).toBe(413);
+      expect(boundary.acceptWebhook).not.toHaveBeenCalled();
+    });
+
+    it('rejects chunked oversized payloads before invoking commerce', async () => {
+      const boundary = {
+        acceptWebhook: vi.fn(),
+      } as unknown as StripeCommerceBoundary;
+      const post = createWebhookHandler({ boundary });
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(256 * 1024));
+          controller.enqueue(new Uint8Array([1]));
+          controller.close();
+        },
+      });
+      const response = await post(
+        new Request('http://localhost/api/v1/stripe/webhook', {
+          method: 'POST',
+          headers: { 'stripe-signature': 'test_signature' },
+          body: stream,
+          duplex: 'half',
+        } as RequestInit & { duplex: 'half' }),
+      );
+
+      expect(response.status).toBe(413);
+      expect(boundary.acceptWebhook).not.toHaveBeenCalled();
+    });
+
+    it('accepts a payload at the exact 256 KiB boundary', async () => {
+      const acceptWebhook = vi
+        .fn()
+        .mockResolvedValue({ status: 200, body: 'ok' });
+      const boundary = { acceptWebhook } as unknown as StripeCommerceBoundary;
+      const post = createWebhookHandler({ boundary });
+      const response = await post(
+        new Request('http://localhost/api/v1/stripe/webhook', {
+          method: 'POST',
+          headers: { 'stripe-signature': 'test_signature' },
+          body: 'a'.repeat(256 * 1024),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(acceptWebhook).toHaveBeenCalledWith(
+        expect.objectContaining({ rawBody: 'a'.repeat(256 * 1024) }),
+      );
+    });
   });
 
   describe('GET /api/v1/user/subscription', () => {

@@ -14,6 +14,33 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const WEBHOOK_MAX_BYTES = 256 * 1024;
+
+async function readUtf8BodyCapped(req: Request): Promise<string | null> {
+  if (!req.body) {
+    return '';
+  }
+
+  const reader = req.body.getReader();
+  const decoder = new TextDecoder();
+  let body = '';
+  let bytesRead = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return body + decoder.decode();
+    }
+
+    bytesRead += value.byteLength;
+    if (bytesRead > WEBHOOK_MAX_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    body += decoder.decode(value, { stream: true });
+  }
+}
+
 // Startup validation: STRIPE_WEBHOOK_DEV_MODE must only be enabled in development/test
 if (stripeEnv.webhookDevMode && !(appEnv.isDevelopment || appEnv.isTest)) {
   throw new Error(
@@ -56,6 +83,12 @@ export function createWebhookHandler(deps: WebhookHandlerDeps): PlainHandler {
       throw error;
     }
 
+    const signatureHeader = req.headers.get('stripe-signature');
+    if (!signatureHeader) {
+      logger.warn('Stripe webhook missing signature');
+      return respond('missing signature', { status: 400 });
+    }
+
     const contentLengthHeader = req.headers.get('content-length');
     const contentLengthParsed =
       contentLengthHeader !== null ? Number(contentLengthHeader) : Number.NaN;
@@ -64,12 +97,21 @@ export function createWebhookHandler(deps: WebhookHandlerDeps): PlainHandler {
         ? contentLengthParsed
         : null;
 
-    const rawBody = await req.text();
-    const signatureHeader = req.headers.get('stripe-signature');
+    if (contentLength !== null && contentLength > WEBHOOK_MAX_BYTES) {
+      logger.warn(
+        { contentLength, maxBytes: WEBHOOK_MAX_BYTES },
+        'Stripe webhook payload too large (content-length)',
+      );
+      return respond('payload too large', { status: 413 });
+    }
 
-    if (!signatureHeader) {
-      logger.warn('Stripe webhook missing signature');
-      return respond('missing signature', { status: 400 });
+    const rawBody = await readUtf8BodyCapped(req);
+    if (rawBody === null) {
+      logger.warn(
+        { maxBytes: WEBHOOK_MAX_BYTES },
+        'Stripe webhook payload too large while streaming',
+      );
+      return respond('payload too large', { status: 413 });
     }
 
     const result = await deps.boundary.acceptWebhook({
