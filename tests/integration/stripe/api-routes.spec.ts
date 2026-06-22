@@ -403,25 +403,21 @@ describe('Stripe API Routes', () => {
 
     it('handles subscription.deleted event and downgrades to free', async () => {
       const userId = await createAuthTestUser();
-      const { stripeCustomerId } = await markUserAsSubscribed(userId, {
-        subscriptionTier: 'pro',
-        subscriptionStatus: 'active',
-      });
+      const { stripeCustomerId, stripeSubscriptionId } =
+        await markUserAsSubscribed(userId, {
+          subscriptionTier: 'pro',
+          subscriptionStatus: 'active',
+        });
       await db
         .update(users)
         .set({ cancelAtPeriodEnd: true })
         .where(sql`id = ${userId}`);
-      const expectedSubscriptionId = buildStripeSubscriptionId(
-        userId,
-        'webhook-deleted',
-      );
-
       const event = makeStripeEvent({
         id: 'evt_sub_deleted',
         type: 'customer.subscription.deleted',
         livemode: false,
         dataObject: makeStripeSubscription({
-          id: expectedSubscriptionId,
+          id: stripeSubscriptionId,
           customer: stripeCustomerId,
         }),
       });

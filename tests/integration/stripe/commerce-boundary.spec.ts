@@ -92,7 +92,9 @@ describe('StripeCommerceBoundary', () => {
     vi.stubEnv('STRIPE_PRO_YEARLY_PRICE_ID', 'price_pro_yearly_approved');
 
     const userId = createId('user');
-    const customerProvisioningDb = buildMockCustomerProvisioningDb();
+    const customerProvisioningDb = buildMockCustomerProvisioningDb({
+      updateReturning: vi.fn().mockResolvedValue([{ userId }]),
+    });
     const requestDb = vi.fn(() => {
       throw new Error('request DB should not provision Stripe customers');
     });
