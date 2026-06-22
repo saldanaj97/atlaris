@@ -8,32 +8,22 @@
 import type { DbClient } from '@/lib/db/types';
 
 import {
-  compensateMeteredReservation,
-  type MeteredReservationToken,
-  type ReserveMeteredResult,
-  reserveMeteredUsage,
-} from './metered-reservation';
-import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
-import { db as serviceRoleDb } from '@supabase/service-role';
+  createServiceRoleMeteredBoundaryDeps,
+  runMeteredQuotaReserved,
+  type MeteredQuotaBoundaryDeps,
+  type MeteredQuotaResult,
+  type MeteredQuotaWorkResult,
+} from './metered-quota-boundary-core';
 
-export type LessonGenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
-  | { disposition: 'consumed'; value: TConsumed }
-  | {
-      disposition: 'revert';
-      value: TReverted;
-      reason?: string;
-    };
+export type LessonGenerationQuotaWorkResult<
+  TConsumed,
+  TReverted = TConsumed,
+> = MeteredQuotaWorkResult<TConsumed, TReverted>;
 
-type LessonGenerationQuotaResult<TConsumed, TReverted = TConsumed> =
-  | { ok: true; consumed: true; value: TConsumed }
-  | {
-      ok: true;
-      consumed: false;
-      value: TReverted;
-      reconciliationRequired: boolean;
-    }
-  | { ok: false; currentCount: number; limit: number };
+type LessonGenerationQuotaResult<
+  TConsumed,
+  TReverted = TConsumed,
+> = MeteredQuotaResult<TConsumed, TReverted>;
 
 type LessonGenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
   userId: string;
@@ -43,55 +33,9 @@ type LessonGenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
   work: () => Promise<LessonGenerationQuotaWorkResult<TConsumed, TReverted>>;
 };
 
-type ReconciliationContext = {
-  planId: string;
-  moduleId: string;
-  userId: string;
-};
+export type LessonGenerationQuotaBoundaryDeps = MeteredQuotaBoundaryDeps;
 
-type CompensationLogContext = {
-  planId: string;
-  moduleId: string;
-  userId: string;
-  reason: string;
-};
-
-export type LessonGenerationQuotaBoundaryDeps = {
-  reserve: (
-    userId: string,
-    dbClient: DbClient,
-  ) => Promise<ReserveMeteredResult>;
-  compensate: (
-    token: MeteredReservationToken,
-    dbClient: DbClient,
-  ) => Promise<void>;
-  reportReconciliation: (
-    context: ReconciliationContext,
-    error: unknown,
-  ) => void;
-};
-
-type SafeCompensateArgs = {
-  deps: LessonGenerationQuotaBoundaryDeps;
-  token: MeteredReservationToken;
-  dbClient: DbClient;
-  reconciliationContext: ReconciliationContext;
-  logContext: CompensationLogContext;
-};
-
-const DEFAULT_DEPS: LessonGenerationQuotaBoundaryDeps = {
-  reserve: (userId, dbClient) =>
-    reserveMeteredUsage(
-      { userId, meter: 'lessonGeneration' },
-      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-    ),
-  compensate: (token, dbClient) =>
-    compensateMeteredReservation(
-      token,
-      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-    ),
-  reportReconciliation: recordBillingReconciliationRequired,
-};
+const DEFAULT_DEPS = createServiceRoleMeteredBoundaryDeps('lessonGeneration');
 
 export async function runLessonGenerationQuotaReserved<
   TConsumed,
@@ -102,83 +46,31 @@ export async function runLessonGenerationQuotaReserved<
 ): Promise<LessonGenerationQuotaResult<TConsumed, TReverted>> {
   const { userId, planId, moduleId, dbClient, work } = args;
 
-  const reservation = await deps.reserve(userId, dbClient);
-  if (!reservation.ok) {
-    return {
-      ok: false,
-      currentCount: reservation.currentCount,
-      limit: reservation.limit,
-    };
-  }
-
-  const { token } = reservation;
-
-  let workResult: LessonGenerationQuotaWorkResult<TConsumed, TReverted>;
-  try {
-    workResult = await work();
-  } catch (workError) {
-    await safelyCompensate({
-      deps,
-      token,
+  return await runMeteredQuotaReserved<
+    TConsumed,
+    TReverted,
+    LessonGenerationQuotaWorkResult<TConsumed, TReverted>
+  >(
+    {
+      userId,
       dbClient,
-      reconciliationContext: { planId, moduleId, userId },
-      logContext: { planId, moduleId, userId, reason: 'work_threw' },
-    });
-    throw workError;
-  }
-
-  if (workResult.disposition === 'consumed') {
-    return { ok: true, consumed: true, value: workResult.value };
-  }
-
-  const reconciliationRequired = await safelyCompensate({
+      work,
+      buildWorkThrowContexts: () => ({
+        reconciliationContext: { planId, moduleId, userId },
+        logContext: { planId, moduleId, userId, reason: 'work_threw' },
+      }),
+      buildRevertContexts: (workResult) => ({
+        reconciliationContext: { planId, moduleId, userId },
+        logContext: {
+          planId,
+          moduleId,
+          userId,
+          reason: workResult.reason ?? 'work_revert',
+        },
+      }),
+      compensationFailureMessage:
+        'Failed to compensate lesson generation usage reservation',
+    },
     deps,
-    token,
-    dbClient,
-    reconciliationContext: {
-      planId,
-      moduleId,
-      userId,
-    },
-    logContext: {
-      planId,
-      moduleId,
-      userId,
-      reason: workResult.reason ?? 'work_revert',
-    },
-  });
-
-  return {
-    ok: true,
-    consumed: false,
-    value: workResult.value,
-    reconciliationRequired,
-  };
-}
-
-async function safelyCompensate(args: SafeCompensateArgs): Promise<boolean> {
-  try {
-    await args.deps.compensate(args.token, args.dbClient);
-    return false;
-  } catch (compensateError) {
-    try {
-      args.deps.reportReconciliation(
-        args.reconciliationContext,
-        compensateError,
-      );
-    } catch (reportError) {
-      logger.error(
-        { ...args.logContext, reportError },
-        'Failed to report billing reconciliation alert',
-      );
-    }
-    logger.error(
-      {
-        ...args.logContext,
-        compensateError,
-      },
-      'Failed to compensate lesson generation usage reservation',
-    );
-    return true;
-  }
+  );
 }

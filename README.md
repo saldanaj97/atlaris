@@ -107,9 +107,10 @@ pnpm test:workflow
 For direct file targeting:
 
 ```bash
-pnpm exec tsx scripts/tests/run.ts changed
-pnpm exec tsx scripts/tests/run.ts unit path/to/file.spec.ts
-pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts
+pnpm test:unit:changed
+pnpm test:integration:changed
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
+NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.

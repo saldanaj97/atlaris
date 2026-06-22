@@ -269,6 +269,138 @@ function createMockStream(
   );
 }
 
+type MockScenarioMessages = {
+  timeout: string;
+  providerError: string;
+  rateLimit: string;
+};
+
+const PLAN_MOCK_SCENARIO_MESSAGES: MockScenarioMessages = {
+  timeout: 'MOCK_AI_SCENARIO=timeout (mock)',
+  providerError: 'MOCK_AI_SCENARIO=provider_error',
+  rateLimit: 'MOCK_AI_SCENARIO=rate_limit',
+};
+
+const MODULE_BATCH_MOCK_SCENARIO_MESSAGES: MockScenarioMessages = {
+  timeout: 'MOCK_AI_SCENARIO=timeout (mock module batch)',
+  providerError: 'MOCK_AI_SCENARIO=provider_error (module batch)',
+  rateLimit: 'MOCK_AI_SCENARIO=rate_limit (module batch)',
+};
+
+function resolveMockScenario(
+  scenario: string | undefined,
+  messages: MockScenarioMessages,
+): Promise<ProviderGenerateResult> | null {
+  if (scenario === 'timeout') {
+    return Promise.reject(new ProviderTimeoutError(messages.timeout));
+  }
+  if (scenario === 'provider_error') {
+    return Promise.reject(
+      new ProviderError('provider_error', messages.providerError),
+    );
+  }
+  if (scenario === 'rate_limit') {
+    return Promise.reject(new ProviderRateLimitError(messages.rateLimit));
+  }
+  if (scenario === 'invalid_response') {
+    return Promise.resolve(createInvalidMockResponseResult());
+  }
+
+  return null;
+}
+
+function createInvalidMockResponseResult(): ProviderGenerateResult {
+  return {
+    stream: new ReadableStream<string>({
+      start(controller) {
+        controller.enqueue('not-valid-json{{{');
+        controller.close();
+      },
+    }),
+    metadata: {
+      provider: 'mock',
+      model: 'mock-invalid',
+      usage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      },
+    },
+  };
+}
+
+function createMockRng(
+  deterministicSeed: number | undefined,
+): SeededRandom | undefined {
+  return deterministicSeed !== undefined
+    ? new SeededRandom(deterministicSeed)
+    : undefined;
+}
+
+function shouldSimulateMockFailure(
+  rng: SeededRandom | undefined,
+  failureRate: number,
+): boolean {
+  const failureCheck = rng ? rng.next() : Math.random();
+  return failureCheck < failureRate;
+}
+
+function validateMockFailureRate(failureRate: number): number {
+  if (failureRate < 0 || failureRate > 1) {
+    throw new RangeError(
+      `Mock failureRate must be between 0 and 1 inclusive. Received: ${failureRate}`,
+    );
+  }
+
+  return failureRate;
+}
+
+function computeMockDelay(
+  baseDelay: number,
+  rng: SeededRandom | undefined,
+): number {
+  if (baseDelay >= VARIANCE_THRESHOLD_MS) {
+    const variance = rng ? rng.nextInt(-2000, 2000) : getRandomInt(-2000, 2000);
+    return Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance);
+  }
+
+  return baseDelay;
+}
+
+function executeMockGeneration(args: {
+  config: Required<
+    Omit<MockGenerationConfig, 'deterministicSeed' | 'scenario'>
+  > & { deterministicSeed?: number; scenario?: string };
+  scenarioMessages: MockScenarioMessages;
+  failureMessage: string;
+  buildPayload: (rng: SeededRandom | undefined) => unknown;
+  buildMetadata: () => ProviderGenerateResult['metadata'];
+  options?: GenerationOptions;
+}): Promise<ProviderGenerateResult> {
+  const scenarioResult = resolveMockScenario(
+    args.config.scenario,
+    args.scenarioMessages,
+  );
+  if (scenarioResult) {
+    return scenarioResult;
+  }
+
+  const rng = createMockRng(args.config.deterministicSeed);
+  if (shouldSimulateMockFailure(rng, args.config.failureRate)) {
+    return Promise.reject(
+      new ProviderError('provider_error', args.failureMessage),
+    );
+  }
+
+  const payload = args.buildPayload(rng);
+  const actualDelay = computeMockDelay(args.config.delayMs, rng);
+
+  return Promise.resolve({
+    stream: createMockStream(payload, actualDelay, args.options?.signal),
+    metadata: args.buildMetadata(),
+  });
+}
+
 export class MockGenerationProvider implements AiPlanGenerationProvider {
   private readonly config: Required<
     Omit<MockGenerationConfig, 'deterministicSeed' | 'scenario'>
@@ -277,7 +409,9 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
   constructor(config: MockGenerationConfig = {}) {
     this.config = {
       delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
-      failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
+      failureRate: validateMockFailureRate(
+        config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
+      ),
       deterministicSeed: config.deterministicSeed,
       scenario: config.scenario ?? aiEnv.mockScenario,
     };
@@ -287,81 +421,12 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     input: GenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    const scenario = this.config.scenario;
-    if (scenario === 'timeout') {
-      return Promise.reject(
-        new ProviderTimeoutError('MOCK_AI_SCENARIO=timeout (mock)'),
-      );
-    }
-    if (scenario === 'provider_error') {
-      return Promise.reject(
-        new ProviderError('provider_error', 'MOCK_AI_SCENARIO=provider_error'),
-      );
-    }
-    if (scenario === 'rate_limit') {
-      return Promise.reject(
-        new ProviderRateLimitError('MOCK_AI_SCENARIO=rate_limit'),
-      );
-    }
-    if (scenario === 'invalid_response') {
-      return Promise.resolve({
-        stream: new ReadableStream<string>({
-          start(controller) {
-            controller.enqueue('not-valid-json{{{');
-            controller.close();
-          },
-        }),
-        metadata: {
-          provider: 'mock',
-          model: 'mock-invalid',
-          usage: {
-            promptTokens: 0,
-            completionTokens: 0,
-            totalTokens: 0,
-          },
-        },
-      });
-    }
-
-    // Create seeded RNG if seed is provided
-    const rng =
-      this.config.deterministicSeed !== undefined
-        ? new SeededRandom(this.config.deterministicSeed)
-        : undefined;
-
-    // Simulate random failures based on configured rate
-    const failureCheck = rng ? rng.next() : Math.random();
-    if (failureCheck < this.config.failureRate) {
-      return Promise.reject(
-        new ProviderError(
-          'provider_error',
-          'Mock provider simulated failure for testing',
-        ),
-      );
-    }
-
-    // Generate realistic modules based on input
-    const payload = generateModules(input, rng);
-
-    // Random delay (configurable via env, or deterministic if seeded)
-    const baseDelay = this.config.delayMs;
-    // Only apply variance if delay is large enough
-    // For fast test mode (below threshold), use exact delay with no minimum floor
-    const variance =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? rng
-          ? rng.nextInt(-2000, 2000)
-          : getRandomInt(-2000, 2000)
-        : 0;
-    const actualDelay =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
-        : baseDelay;
-
-    // Return an already-settled Promise so tests get deterministic timing and avoid unnecessary microtask deferral.
-    return Promise.resolve({
-      stream: createMockStream(payload, actualDelay, options?.signal),
-      metadata: {
+    return executeMockGeneration({
+      config: this.config,
+      scenarioMessages: PLAN_MOCK_SCENARIO_MESSAGES,
+      failureMessage: 'Mock provider simulated failure for testing',
+      buildPayload: (rng) => generateModules(input, rng),
+      buildMetadata: () => ({
         provider: 'mock',
         model: 'mock-generator-v1',
         usage: {
@@ -369,7 +434,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
           completionTokens: 500,
           totalTokens: 600,
         },
-      },
+      }),
+      options,
     });
   }
 
@@ -377,81 +443,13 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
     input: ModuleLessonBatchGenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    const scenario = this.config.scenario;
-    if (scenario === 'timeout') {
-      return Promise.reject(
-        new ProviderTimeoutError(
-          'MOCK_AI_SCENARIO=timeout (mock module batch)',
-        ),
-      );
-    }
-    if (scenario === 'provider_error') {
-      return Promise.reject(
-        new ProviderError(
-          'provider_error',
-          'MOCK_AI_SCENARIO=provider_error (module batch)',
-        ),
-      );
-    }
-    if (scenario === 'rate_limit') {
-      return Promise.reject(
-        new ProviderRateLimitError(
-          'MOCK_AI_SCENARIO=rate_limit (module batch)',
-        ),
-      );
-    }
-    if (scenario === 'invalid_response') {
-      return Promise.resolve({
-        stream: new ReadableStream<string>({
-          start(controller) {
-            controller.enqueue('not-valid-json{{{');
-            controller.close();
-          },
-        }),
-        metadata: {
-          provider: 'mock',
-          model: 'mock-invalid',
-          usage: {
-            promptTokens: 0,
-            completionTokens: 0,
-            totalTokens: 0,
-          },
-        },
-      });
-    }
-
-    const rng =
-      this.config.deterministicSeed !== undefined
-        ? new SeededRandom(this.config.deterministicSeed)
-        : undefined;
-
-    const failureCheck = rng ? rng.next() : Math.random();
-    if (failureCheck < this.config.failureRate) {
-      return Promise.reject(
-        new ProviderError(
-          'provider_error',
-          'Mock module batch simulated failure for testing',
-        ),
-      );
-    }
-
-    const payload = buildSyntheticModuleLessonBatchPayload(input.taskIds);
-
-    const baseDelay = this.config.delayMs;
-    const variance =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? rng
-          ? rng.nextInt(-2000, 2000)
-          : getRandomInt(-2000, 2000)
-        : 0;
-    const actualDelay =
-      baseDelay >= VARIANCE_THRESHOLD_MS
-        ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
-        : baseDelay;
-
-    return Promise.resolve({
-      stream: createMockStream(payload, actualDelay, options?.signal),
-      metadata: {
+    return executeMockGeneration({
+      config: this.config,
+      scenarioMessages: MODULE_BATCH_MOCK_SCENARIO_MESSAGES,
+      failureMessage: 'Mock module batch simulated failure for testing',
+      buildPayload: (_rng) =>
+        buildSyntheticModuleLessonBatchPayload(input.taskIds),
+      buildMetadata: () => ({
         provider: 'mock',
         model: 'mock-module-lesson-batch-v1',
         usage: {
@@ -459,7 +457,8 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
           completionTokens: 800,
           totalTokens: 920,
         },
-      },
+      }),
+      options,
     });
   }
 }

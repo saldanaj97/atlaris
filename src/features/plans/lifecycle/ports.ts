@@ -167,18 +167,3 @@ export interface GenerationFinalizationPort {
     input: FinalizeGenerationFailureParams,
   ): Promise<GenerationAttemptRecord | void>;
 }
-
-/**
- * Port interfaces for the plan lifecycle module (usage recording, billing hooks).
- */
-
-export interface UsageRecordingPort {
-  recordUsage(
-    this: void,
-    params: {
-      userId: string;
-      usage: CanonicalAIUsage;
-      kind?: 'plan' | 'regeneration';
-    },
-  ): Promise<void>;
-}
