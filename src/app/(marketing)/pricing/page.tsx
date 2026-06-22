@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { deriveBillingSubscriptionSnapshot } from '@/features/billing/account-snapshot';
 import {
-  readBillingCatalogTierData,
+  readBillingCatalogTierEntries,
   type BillingCatalogTierData,
 } from '@/features/billing/catalog-read';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -117,11 +117,13 @@ async function loadBillingCatalogDisplayMap(
   }
 
   try {
-    return await readBillingCatalogTierData({
-      interval,
-      starterId: priceIds.starterId,
-      proId: priceIds.proId,
-    });
+    return new Map(
+      await readBillingCatalogTierEntries({
+        interval,
+        starterId: priceIds.starterId,
+        proId: priceIds.proId,
+      }),
+    );
   } catch (error) {
     logger.error(
       { err: error },
