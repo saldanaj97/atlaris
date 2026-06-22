@@ -264,11 +264,6 @@ describe('import boundaries (Slice B)', () => {
     });
 
     for (const filePath of routeFiles) {
-      const rel = relative(PLANS_API_ROOT, filePath).split('\\').join('/');
-      if (rel === 'plan-creation-failure.ts') {
-        continue;
-      }
-
       const source = readFileSync(filePath, 'utf8');
       if (source.includes('requestBoundary.route')) {
         continue;
