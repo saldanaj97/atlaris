@@ -28,6 +28,13 @@ type MeasuredSize = {
   height: number;
 };
 
+function getRoundedMeasuredSize(width: number, height: number): MeasuredSize {
+  return {
+    width: Math.max(1, Math.round(width)),
+    height: Math.max(1, Math.round(height)),
+  };
+}
+
 export function useLiquidGlassMeasurement(
   elementRef: RefObject<HTMLElement | null>,
   lens: LiquidGlassLens,
@@ -44,10 +51,13 @@ export function useLiquidGlassMeasurement(
     const { width, height } = node.getBoundingClientRect();
     if (width <= 0 || height <= 0) return;
 
-    setMeasuredSize({
-      width: Math.max(1, Math.round(width)),
-      height: Math.max(1, Math.round(height)),
-    });
+    const nextMeasuredSize = getRoundedMeasuredSize(width, height);
+    setMeasuredSize((currentMeasuredSize) =>
+      currentMeasuredSize.width === nextMeasuredSize.width &&
+      currentMeasuredSize.height === nextMeasuredSize.height
+        ? currentMeasuredSize
+        : nextMeasuredSize,
+    );
   }, [elementRef, lens.width, lens.height]);
 
   useEffect(() => {
@@ -67,10 +77,13 @@ export function useLiquidGlassMeasurement(
       }
 
       const { width, height } = entry.contentRect;
-      setMeasuredSize({
-        width: Math.max(1, Math.round(width)),
-        height: Math.max(1, Math.round(height)),
-      });
+      const nextMeasuredSize = getRoundedMeasuredSize(width, height);
+      setMeasuredSize((currentMeasuredSize) =>
+        currentMeasuredSize.width === nextMeasuredSize.width &&
+        currentMeasuredSize.height === nextMeasuredSize.height
+          ? currentMeasuredSize
+          : nextMeasuredSize,
+      );
     });
 
     observer.observe(node);

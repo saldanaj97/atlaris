@@ -147,6 +147,26 @@ describe('Phase 2: Mock AI Provider Tests', () => {
   });
 
   describe('T023: Failure rate toggle test', () => {
+    it('rejects failure rates below 0', () => {
+      expect(
+        () =>
+          new MockGenerationProvider({
+            delayMs: 0,
+            failureRate: -0.1,
+          }),
+      ).toThrow('Mock failureRate must be between 0 and 1 inclusive');
+    });
+
+    it('rejects failure rates above 1', () => {
+      expect(
+        () =>
+          new MockGenerationProvider({
+            delayMs: 0,
+            failureRate: 1.1,
+          }),
+      ).toThrow('Mock failureRate must be between 0 and 1 inclusive');
+    });
+
     it('always fails when MOCK_GENERATION_FAILURE_RATE=1', async () => {
       const provider = new MockGenerationProvider({
         delayMs: 0,

@@ -8,10 +8,11 @@
 import type { DbClient } from '@/lib/db/types';
 
 import {
-    createServiceRoleMeteredBoundaryDeps,
-    runMeteredQuotaReserved,
-    type MeteredQuotaBoundaryDeps,
-    type MeteredQuotaWorkResult,
+  createServiceRoleMeteredBoundaryDeps,
+  runMeteredQuotaReserved,
+  type MeteredQuotaBoundaryDeps,
+  type MeteredQuotaResult,
+  type MeteredQuotaWorkResult,
 } from './metered-quota-boundary-core';
 
 export type LessonGenerationQuotaWorkResult<
@@ -19,15 +20,10 @@ export type LessonGenerationQuotaWorkResult<
   TReverted = TConsumed,
 > = MeteredQuotaWorkResult<TConsumed, TReverted>;
 
-type LessonGenerationQuotaResult<TConsumed, TReverted = TConsumed> =
-  | { ok: true; consumed: true; value: TConsumed }
-  | {
-      ok: true;
-      consumed: false;
-      value: TReverted;
-      reconciliationRequired: boolean;
-    }
-  | { ok: false; currentCount: number; limit: number };
+type LessonGenerationQuotaResult<
+  TConsumed,
+  TReverted = TConsumed,
+> = MeteredQuotaResult<TConsumed, TReverted>;
 
 type LessonGenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
   userId: string;

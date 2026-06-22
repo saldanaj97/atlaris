@@ -18,7 +18,7 @@ export type MeteredQuotaWorkResult<TConsumed, TReverted = TConsumed> =
       reason?: string;
     };
 
-type MeteredQuotaResult<TConsumed, TReverted> =
+export type MeteredQuotaResult<TConsumed, TReverted = TConsumed> =
   | { ok: true; consumed: true; value: TConsumed }
   | {
       ok: true;
@@ -84,16 +84,10 @@ export function createServiceRoleMeteredBoundaryDeps<
   TMeter extends 'lessonGeneration' | 'regeneration',
 >(meter: TMeter): MeteredQuotaBoundaryDeps {
   return {
-    reserve: (userId, dbClient) =>
-      reserveMeteredUsage(
-        { userId, meter },
-        dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-      ),
-    compensate: (token, dbClient) =>
-      compensateMeteredReservation(
-        token,
-        dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-      ),
+    reserve: (userId, _dbClient) =>
+      reserveMeteredUsage({ userId, meter }, serviceRoleDb),
+    compensate: (token, _dbClient) =>
+      compensateMeteredReservation(token, serviceRoleDb),
     reportReconciliation: recordBillingReconciliationRequired,
   };
 }

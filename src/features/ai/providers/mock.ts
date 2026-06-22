@@ -345,20 +345,26 @@ function shouldSimulateMockFailure(
   return failureCheck < failureRate;
 }
 
+function validateMockFailureRate(failureRate: number): number {
+  if (failureRate < 0 || failureRate > 1) {
+    throw new RangeError(
+      `Mock failureRate must be between 0 and 1 inclusive. Received: ${failureRate}`,
+    );
+  }
+
+  return failureRate;
+}
+
 function computeMockDelay(
   baseDelay: number,
   rng: SeededRandom | undefined,
 ): number {
-  const variance =
-    baseDelay >= VARIANCE_THRESHOLD_MS
-      ? rng
-        ? rng.nextInt(-2000, 2000)
-        : getRandomInt(-2000, 2000)
-      : 0;
+  if (baseDelay >= VARIANCE_THRESHOLD_MS) {
+    const variance = rng ? rng.nextInt(-2000, 2000) : getRandomInt(-2000, 2000);
+    return Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance);
+  }
 
-  return baseDelay >= VARIANCE_THRESHOLD_MS
-    ? Math.max(VARIANCE_THRESHOLD_MS, baseDelay + variance)
-    : baseDelay;
+  return baseDelay;
 }
 
 function executeMockGeneration(args: {
@@ -403,7 +409,9 @@ export class MockGenerationProvider implements AiPlanGenerationProvider {
   constructor(config: MockGenerationConfig = {}) {
     this.config = {
       delayMs: config.delayMs ?? aiEnv.mock?.delayMs ?? 7000,
-      failureRate: config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
+      failureRate: validateMockFailureRate(
+        config.failureRate ?? aiEnv.mock?.failureRate ?? 0,
+      ),
       deterministicSeed: config.deterministicSeed,
       scenario: config.scenario ?? aiEnv.mockScenario,
     };

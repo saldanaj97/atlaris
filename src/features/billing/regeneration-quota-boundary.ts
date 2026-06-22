@@ -16,6 +16,7 @@ import {
   createServiceRoleMeteredBoundaryDeps,
   runMeteredQuotaReserved,
   type MeteredQuotaBoundaryDeps,
+  type MeteredQuotaResult,
 } from './metered-quota-boundary-core';
 
 /**
@@ -43,15 +44,10 @@ export type RegenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
  * - `ok: true, consumed: true` means the reservation stuck and the route should accept the request.
  * - `ok: true, consumed: false` means the reservation was reverted; route should map to 409 (or its caller-defined conflict). `reconciliationRequired` is true when the compensation step itself failed.
  */
-type RegenerationQuotaResult<TConsumed, TReverted = TConsumed> =
-  | { ok: true; consumed: true; value: TConsumed }
-  | {
-      ok: true;
-      consumed: false;
-      value: TReverted;
-      reconciliationRequired: boolean;
-    }
-  | { ok: false; currentCount: number; limit: number };
+type RegenerationQuotaResult<
+  TConsumed,
+  TReverted = TConsumed,
+> = MeteredQuotaResult<TConsumed, TReverted>;
 
 type RegenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
   userId: string;
