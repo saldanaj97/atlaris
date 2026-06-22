@@ -13,9 +13,12 @@ export type PlanReadStatus =
 
 /**
  * List-filter status used by plan read projections.
- * `inactive` is a UI aggregate for non-active plan rows rather than a DB status.
+ * `inactive` is the canonical URL/UI aggregate for paused rows.
  */
-export type FilterStatus = 'all' | PlanReadStatus | 'inactive';
+export type FilterStatus =
+  | 'all'
+  | Exclude<PlanReadStatus, 'paused'>
+  | 'inactive';
 
 export const PLAN_LIST_PAGE_SIZE = 20 as const;
 

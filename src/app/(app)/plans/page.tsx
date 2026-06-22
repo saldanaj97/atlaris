@@ -37,7 +37,6 @@ type PlansPageProps = {
 const PLAN_FILTERS = new Set<FilterStatus>([
   'all',
   'active',
-  'paused',
   'completed',
   'generating',
   'failed',
@@ -54,8 +53,10 @@ async function parsePlansQuery(
   const params = await searchParams;
   const pageValue = Number(firstSearchParam(params?.page));
   const statusValue = firstSearchParam(params?.status);
-  const status = PLAN_FILTERS.has(statusValue as FilterStatus)
-    ? (statusValue as FilterStatus)
+  const canonicalStatusValue =
+    statusValue === 'paused' ? 'inactive' : statusValue;
+  const status = PLAN_FILTERS.has(canonicalStatusValue as FilterStatus)
+    ? (canonicalStatusValue as FilterStatus)
     : 'all';
 
   return {

@@ -30,11 +30,12 @@ import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
+import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
 import {
   getModuleDetailRows,
   getModuleLessonGenerationStatus,
 } from '@/lib/db/queries/modules';
-import { getPlanListPageForUser } from '@/lib/db/queries/plan-list';
+import { getPlanListPageRowsForUser } from '@/lib/db/queries/plan-list';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -91,10 +92,19 @@ export async function getPlansPageForRead(params: {
   query: PlanListQuery;
   referenceTimestamp?: string;
 }): Promise<PlanListPage> {
-  return getPlanListPageForUser({
+  const rows = await getPlanListPageRowsForUser({
     ...params,
     referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
   });
+
+  return {
+    ...rows,
+    pageSize: PLAN_LIST_PAGE_SIZE,
+    items: rows.items.map((item) => ({
+      ...item,
+      completion: item.totalTasks ? item.completedTasks / item.totalTasks : 0,
+    })),
+  };
 }
 
 export async function listLightweightPlansForApi(params: {

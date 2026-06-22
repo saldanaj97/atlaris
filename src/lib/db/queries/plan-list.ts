@@ -1,29 +1,58 @@
-import type {
-  PlanListItem,
-  PlanListPage,
-  PlanListQuery,
-  PlanListStatusCounts,
-  PlanReadStatus,
-} from '@/features/plans/read-projection/types';
 import type { DbClient } from '@/lib/db/types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
 import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
-type StatusCountRow = { status: PlanReadStatus; total: number };
+export type PlanListRowStatus =
+  | 'active'
+  | 'paused'
+  | 'completed'
+  | 'generating'
+  | 'failed';
+export type PlanListFilterStatus =
+  | 'all'
+  | Exclude<PlanListRowStatus, 'paused'>
+  | 'inactive';
+export type PlanListPageQuery = {
+  page: number;
+  search: string;
+  status: PlanListFilterStatus;
+};
+export type PlanListQueryItemRow = {
+  id: string;
+  topic: string;
+  createdAt: string;
+  updatedAt: string | null;
+  status: PlanListRowStatus;
+  completedTasks: number;
+  totalTasks: number;
+};
+export type PlanListQueryStatusCounts = Record<PlanListRowStatus, number>;
+export type PlanListQueryPageRows = {
+  items: PlanListQueryItemRow[];
+  page: number;
+  pageSize: typeof PLAN_LIST_PAGE_SIZE;
+  totalItems: number;
+  totalPages: number;
+  totalSearchResults: number;
+  statusCounts: PlanListQueryStatusCounts;
+  referenceTimestamp: string;
+};
+
+type StatusCountRow = { status: PlanListRowStatus; total: number };
 type PlanListItemRow = {
   id: string;
   topic: string;
   created_at: Date;
   updated_at: Date | null;
-  status: PlanReadStatus;
+  status: PlanListRowStatus;
   completed_tasks: number;
   total_tasks: number;
 };
 
-const EMPTY_STATUS_COUNTS: PlanListStatusCounts = {
+const PLAN_LIST_PAGE_SIZE = 20 as const;
+const EMPTY_STATUS_COUNTS: PlanListQueryStatusCounts = {
   active: 0,
   paused: 0,
   completed: 0,
@@ -36,8 +65,8 @@ function normalizePage(page: number): number {
 }
 
 function normalizedStatus(
-  status: PlanListQuery['status'],
-): PlanReadStatus | null {
+  status: PlanListPageQuery['status'],
+): PlanListRowStatus | null {
   if (status === 'all') return null;
   return status === 'inactive' ? 'paused' : status;
 }
@@ -49,18 +78,36 @@ function planListRowsSql(params: {
 }): SQL {
   const attemptCap = getGenerationAttemptCap();
   const searchFilter = params.search
-    ? sql`and position(lower(${params.search}) in lower(p.topic)) > 0`
+    ? sql`and position(lower(${params.search}) in lower(up.topic)) > 0`
     : sql``;
 
   return sql`
-    with module_counts as (
+    with user_plans as (
+      select
+        p.id,
+        p.topic,
+        p.created_at,
+        p.updated_at,
+        p.generation_status
+      from learning_plans p
+      where p.user_id = ${params.userId}::uuid
+    ),
+    filtered_user_plans as (
+      select up.*
+      from user_plans up
+      where true
+        ${searchFilter}
+    ),
+    module_counts as (
       select m.plan_id, count(*)::int as module_count
       from modules m
+      inner join filtered_user_plans up on up.id = m.plan_id
       group by m.plan_id
     ),
     attempt_counts as (
       select a.plan_id, count(*)::int as attempt_count
       from generation_attempts a
+      inner join filtered_user_plans up on up.id = a.plan_id
       group by a.plan_id
     ),
     task_metrics as (
@@ -69,6 +116,7 @@ function planListRowsSql(params: {
         count(t.id)::int as total_tasks,
         count(t.id) filter (where tp.status = 'completed')::int as completed_tasks
       from modules m
+      inner join filtered_user_plans up on up.id = m.plan_id
       left join tasks t on t.module_id = m.id
       left join task_progress tp
         on tp.task_id = t.id and tp.user_id = ${params.userId}::uuid
@@ -76,10 +124,10 @@ function planListRowsSql(params: {
     ),
     status_rows as (
       select
-        p.id,
-        p.topic,
-        p.created_at,
-        p.updated_at,
+        up.id,
+        up.topic,
+        up.created_at,
+        up.updated_at,
         coalesce(tm.total_tasks, 0)::int as total_tasks,
         coalesce(tm.completed_tasks, 0)::int as completed_tasks,
         case
@@ -87,29 +135,27 @@ function planListRowsSql(params: {
             and coalesce(tm.total_tasks, 0) > 0
             and tm.completed_tasks >= tm.total_tasks then 'completed'
           when coalesce(mc.module_count, 0) > 0
-            and p.updated_at is not null
-            and ${params.referenceTimestamp}::timestamptz - p.updated_at >= interval '30 days' then 'paused'
+            and up.updated_at is not null
+            and ${params.referenceTimestamp}::timestamptz - up.updated_at >= interval '30 days' then 'paused'
           when coalesce(mc.module_count, 0) > 0 then 'active'
-          when p.generation_status = 'failed' then 'failed'
+          when up.generation_status = 'failed' then 'failed'
           when coalesce(ac.attempt_count, 0) >= ${attemptCap} then 'failed'
           else 'generating'
         end as status
-      from learning_plans p
-      left join module_counts mc on mc.plan_id = p.id
-      left join attempt_counts ac on ac.plan_id = p.id
-      left join task_metrics tm on tm.plan_id = p.id
-      where p.user_id = ${params.userId}::uuid
-        ${searchFilter}
+      from filtered_user_plans up
+      left join module_counts mc on mc.plan_id = up.id
+      left join attempt_counts ac on ac.plan_id = up.id
+      left join task_metrics tm on tm.plan_id = up.id
     )
   `;
 }
 
-export async function getPlanListPageForUser(params: {
+export async function getPlanListPageRowsForUser(params: {
   userId: string;
-  query: PlanListQuery;
+  query: PlanListPageQuery;
   referenceTimestamp: string;
   dbClient?: DbClient;
-}): Promise<PlanListPage> {
+}): Promise<PlanListQueryPageRows> {
   const client = params.dbClient ?? getDb();
   const rowsSql = planListRowsSql({
     userId: params.userId,
@@ -155,7 +201,7 @@ export async function getPlanListPageForUser(params: {
 
   return {
     items: itemRows.map(
-      (row): PlanListItem => ({
+      (row): PlanListQueryItemRow => ({
         id: row.id,
         topic: row.topic,
         createdAt: new Date(row.created_at).toISOString(),
@@ -165,7 +211,6 @@ export async function getPlanListPageForUser(params: {
         status: row.status,
         completedTasks: row.completed_tasks,
         totalTasks: row.total_tasks,
-        completion: row.total_tasks ? row.completed_tasks / row.total_tasks : 0,
       }),
     ),
     page,
