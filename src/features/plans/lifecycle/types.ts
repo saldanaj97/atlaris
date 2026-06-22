@@ -33,8 +33,13 @@ export type PlanInsertData = Readonly<PlanGenerationCoreFields> & {
 
 /** Result of an atomic plan insert operation. */
 export type AtomicInsertResult =
-  | { readonly success: true; readonly id: string }
-  | { readonly success: false; readonly reason: string };
+  | { readonly status: 'created'; readonly id: string }
+  | { readonly status: 'duplicate'; readonly existingPlanId: string }
+  | {
+      readonly status: 'limit_reached';
+      readonly currentCount: number;
+      readonly limit: number;
+    };
 
 /** Result of a duration cap check. */
 export type DurationCapResult = {

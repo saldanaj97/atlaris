@@ -3,15 +3,13 @@
  * Do not import outside lifecycle adapters / composition roots.
  */
 
+import type { AtomicInsertResult } from '@/features/plans/lifecycle/types';
 import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
-import {
-  PlanCreationError,
-  PlanLimitReachedError,
-} from '@/features/plans/errors';
+import { PlanCreationError } from '@/features/plans/errors';
 import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
 import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
 import { logger } from '@/lib/logging/logger';
@@ -103,9 +101,29 @@ export async function atomicCheckAndInsertPlan(
     origin: 'ai' | 'manual' | 'template';
   },
   dbClient: DbClient,
-): Promise<{ id: string }> {
+): Promise<AtomicInsertResult> {
   return dbClient.transaction(async (tx) => {
     const user = await selectUserSubscriptionTierForUpdate(tx, userId);
+
+    const windowStart = new Date(
+      Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000,
+    );
+    const [duplicate] = await tx
+      .select({ id: learningPlans.id })
+      .from(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.userId, userId),
+          sql`lower(${learningPlans.topic}) = lower(${planData.topic})`,
+          gte(learningPlans.createdAt, windowStart),
+          sql`${learningPlans.generationStatus} IN ('generating', 'ready')`,
+        ),
+      )
+      .limit(1);
+
+    if (duplicate) {
+      return { status: 'duplicate', existingPlanId: duplicate.id };
+    }
 
     const tier = user.subscriptionTier;
     const tierConfig = TIER_LIMITS[tier];
@@ -118,7 +136,7 @@ export async function atomicCheckAndInsertPlan(
       const currentCount = await countPlansContributingToCap(tx, userId);
 
       if (currentCount >= limit) {
-        throw new PlanLimitReachedError(currentCount, limit);
+        return { status: 'limit_reached', currentCount, limit };
       }
     }
 
@@ -135,7 +153,7 @@ export async function atomicCheckAndInsertPlan(
       throw new PlanCreationError();
     }
 
-    return plan;
+    return { status: 'created', id: plan.id };
   });
 }
 
@@ -188,31 +206,6 @@ export async function markPlanGenerationFailure(
       'markPlanGenerationFailure: no rows updated — plan may have been deleted',
     );
   }
-}
-
-export async function findRecentDuplicatePlan(
-  userId: string,
-  normalizedTopic: string,
-  dbClient: DbClient,
-): Promise<string | null> {
-  const windowStart = new Date(
-    Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000,
-  );
-
-  const [row] = await dbClient
-    .select({ id: learningPlans.id })
-    .from(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        sql`lower(${learningPlans.topic}) = lower(${normalizedTopic})`,
-        gte(learningPlans.createdAt, windowStart),
-        sql`${learningPlans.generationStatus} IN ('generating', 'ready')`,
-      ),
-    )
-    .limit(1);
-
-  return row?.id ?? null;
 }
 
 export async function findCappedPlanWithoutModules(

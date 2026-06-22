@@ -9,11 +9,9 @@ import type { DbClient } from '@/lib/db/types';
 import {
   atomicCheckAndInsertPlan,
   findCappedPlanWithoutModules,
-  findRecentDuplicatePlan,
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from './plan-persistence-store';
-import { PlanLimitReachedError } from '@/features/plans/errors';
 
 export class PlanPersistenceAdapter implements PlanPersistencePort {
   constructor(private readonly dbClient: DbClient) {}
@@ -22,33 +20,11 @@ export class PlanPersistenceAdapter implements PlanPersistencePort {
     userId: string,
     planData: PlanInsertData,
   ): Promise<AtomicInsertResult> {
-    try {
-      const result = await atomicCheckAndInsertPlan(
-        userId,
-        planData,
-        this.dbClient,
-      );
-      return { success: true, id: result.id };
-    } catch (error) {
-      if (error instanceof PlanLimitReachedError) {
-        return {
-          success: false,
-          reason: 'Plan limit reached for current subscription tier',
-        };
-      }
-      throw error;
-    }
+    return atomicCheckAndInsertPlan(userId, planData, this.dbClient);
   }
 
   async findCappedPlanWithoutModules(userId: string): Promise<string | null> {
     return findCappedPlanWithoutModules(userId, this.dbClient);
-  }
-
-  async findRecentDuplicatePlan(
-    userId: string,
-    normalizedTopic: string,
-  ): Promise<string | null> {
-    return findRecentDuplicatePlan(userId, normalizedTopic, this.dbClient);
   }
 
   async markGenerationSuccess(planId: string): Promise<void> {
