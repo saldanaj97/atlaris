@@ -109,6 +109,41 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
     });
   });
 
+  it('logs only structural topic metadata for identity-linked payloads', async () => {
+    const authUserId = buildTestAuthUserId('stream-private-topic-log');
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+
+    const privateTopic = 'Private health diagnosis research';
+    const testLogger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const post = createStreamHandler({ logger: testLogger });
+    const response = await post(
+      new Request('http://localhost/api/v1/plans/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: privateTopic }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    const payloadCall = testLogger.info.mock.calls.find(
+      ([, message]) => message === 'Plan stream request payload received',
+    );
+    expect(payloadCall?.[0]).toMatchObject({
+      authUserId,
+      payload: { hasTopic: true },
+    });
+    expect(JSON.stringify(payloadCall?.[0])).not.toContain(privateTopic);
+  });
+
   it('warns when payload log fails and still returns an error response', async () => {
     const authUserId = buildTestAuthUserId('stream-payload-log-throw');
     await ensureUser({
