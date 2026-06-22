@@ -69,8 +69,8 @@ SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --pr
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts  # Single unit test file
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts  # Single integration file (Testcontainers)
 pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase
-pnpm test:integration                  # Full integration suite + Workflow SDK phase
-pnpm test:workflow                     # Workflow SDK tests only
+pnpm test:integration                  # Full DB/API integration suite
+pnpm test:workflow                     # Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
 pnpm test:smoke                        # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
 pnpm test:smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
@@ -85,9 +85,9 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 
 See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for feature flags, local dev (`pnpm dev:workflow`), run correlation, and the full test command matrix.
 
-- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary, even though it does not use Testcontainers.
-- Keep `vitest.workflow.config.ts` separate from DB/API integration tests so the Workflow SDK harness does not inherit global Testcontainers setup.
-- Use `pnpm test:integration` or `pnpm test:integration:changed` when validating the full integration-class test surface; these commands run the DB/API integration phase first and then the workflow phase.
+- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary against an isolated Testcontainers database.
+- Keep `vitest.workflow.config.ts` separate from DB/API integration tests; its harness owns production workflow discovery and its own Testcontainers lifecycle.
+- Use `pnpm test:integration:changed` for changed DB/API and workflow coverage, or `pnpm test:all` for both complete suites.
 - Use `pnpm test:workflow` for targeted Workflow SDK iteration.
 - Keep unit tests for workflow helpers, wrappers, and orchestration under `tests/unit/**`; reserve `tests/workflow/**` for runtime wiring and SDK behavior.
 
