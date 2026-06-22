@@ -81,6 +81,9 @@ export async function claimPlanRegenerationJobStep(
     }
     if (latest?.status === 'processing') {
       const run = latest.data.workflow?.runId;
+      if (run === runId) {
+        return { kind: 'claimed', runId };
+      }
       if (run) {
         return { kind: 'in-flight', jobId: job.id, runId: run };
       }

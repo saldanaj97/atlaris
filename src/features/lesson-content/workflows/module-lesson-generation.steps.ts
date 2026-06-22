@@ -51,9 +51,6 @@ export async function claimModuleLessonGenerationStep(
     input.userId,
     {
       workflow: {
-        userId: input.userId,
-        planId: input.planId,
-        moduleId: input.moduleId,
         runId,
         startedAt,
       },
@@ -74,7 +71,12 @@ export async function claimModuleLessonGenerationStep(
     return { kind: 'not_found', runId };
   }
 
-  return { kind: 'claimed', runId, load: claimedLoad, startedAt };
+  return {
+    kind: 'claimed',
+    runId,
+    load: claimedLoad,
+    startedAt: claim.workflowStartedAt ?? startedAt,
+  };
 }
 
 export async function runModuleLessonGenerationStep(

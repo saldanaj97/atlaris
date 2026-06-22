@@ -37,15 +37,13 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
-          userId,
-          planId: plan.id,
-          moduleId: mod.id,
           runId,
           startedAt,
         },
       },
     );
     expect(claim.kind).toBe('claimed');
+    expect(claim).toMatchObject({ workflowStartedAt: startedAt });
 
     const [row] = await db
       .select({
@@ -68,6 +66,7 @@ describe('module lesson workflow metadata (integration)', () => {
       },
     });
 
+    const replayStartedAt = new Date(Date.now() + 1_000).toISOString();
     const replay = await claimModuleLessonGenerationOrDescribe(
       db,
       plan.id,
@@ -75,15 +74,13 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
-          userId,
-          planId: plan.id,
-          moduleId: mod.id,
           runId,
-          startedAt,
+          startedAt: replayStartedAt,
         },
       },
     );
     expect(replay.kind).toBe('claimed');
+    expect(replay).toMatchObject({ workflowStartedAt: startedAt });
 
     const competing = await claimModuleLessonGenerationOrDescribe(
       db,
@@ -92,9 +89,6 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
-          userId,
-          planId: plan.id,
-          moduleId: mod.id,
           runId: `${runId}_other`,
           startedAt: new Date().toISOString(),
         },

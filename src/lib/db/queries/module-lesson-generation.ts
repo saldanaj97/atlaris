@@ -158,17 +158,17 @@ export async function loadModuleLessonGenerationContext(
 }
 
 export type LessonGenerationClaimResult =
-  | { readonly kind: 'claimed' }
+  | {
+      readonly kind: 'claimed';
+      readonly workflowStartedAt: string | null;
+    }
   | { readonly kind: 'already_ready' }
   | { readonly kind: 'in_flight' }
   | { readonly kind: 'not_found' };
 
-export type PersistModuleLessonWorkflowRunInput = {
-  readonly userId: string;
-  readonly planId: string;
-  readonly moduleId: string;
+type ModuleLessonWorkflowClaimMetadata = {
   readonly runId: string;
-  readonly startedAt?: string;
+  readonly startedAt: string;
 };
 
 function truncateGenerationError(message: string): string {
@@ -267,7 +267,7 @@ export async function claimModuleLessonGenerationOrDescribe(
   userId: string,
   options?: {
     readonly now?: () => Date;
-    readonly workflow?: PersistModuleLessonWorkflowRunInput;
+    readonly workflow?: ModuleLessonWorkflowClaimMetadata;
   },
 ): Promise<LessonGenerationClaimResult> {
   const now = options?.now ?? (() => new Date());
@@ -281,7 +281,7 @@ export async function claimModuleLessonGenerationOrDescribe(
         },
       })
     : undefined;
-  const claimStartedAt = options?.workflow?.startedAt
+  const claimStartedAt = options?.workflow
     ? new Date(options.workflow.startedAt)
     : now();
   const attemptClaim = async (): Promise<boolean> => {
@@ -312,7 +312,10 @@ export async function claimModuleLessonGenerationOrDescribe(
 
   for (let attempt = 0; attempt < 2; attempt++) {
     if (await attemptClaim()) {
-      return { kind: 'claimed' };
+      return {
+        kind: 'claimed',
+        workflowStartedAt: options?.workflow?.startedAt ?? null,
+      };
     }
 
     const state = await readScopedModuleState(
@@ -333,7 +336,10 @@ export async function claimModuleLessonGenerationOrDescribe(
         options?.workflow &&
         state.metadata?.workflow?.runId === options.workflow.runId
       ) {
-        return { kind: 'claimed' };
+        return {
+          kind: 'claimed',
+          workflowStartedAt: state.metadata.workflow.startedAt ?? null,
+        };
       }
       return { kind: 'in_flight' };
     }
@@ -351,7 +357,10 @@ export async function claimModuleLessonGenerationOrDescribe(
       options?.workflow &&
       state.metadata?.workflow?.runId === options.workflow.runId
     ) {
-      return { kind: 'claimed' };
+      return {
+        kind: 'claimed',
+        workflowStartedAt: state.metadata.workflow.startedAt ?? null,
+      };
     }
     return { kind: 'in_flight' };
   }
