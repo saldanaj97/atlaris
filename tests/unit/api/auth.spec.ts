@@ -12,13 +12,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),
-  createUser: vi.fn(),
+  getOrCreateUser: vi.fn(),
   getSession: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/users', () => ({
   getUserByAuthId: mocks.getUserByAuthId,
-  createUser: mocks.createUser,
+  getOrCreateUser: mocks.getOrCreateUser,
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -28,13 +28,13 @@ vi.mock('@/lib/auth/server', () => ({
 }));
 
 const mockGetUserByAuthId = mocks.getUserByAuthId;
-const mockCreateUser = mocks.createUser;
+const mockGetOrCreateUser = mocks.getOrCreateUser;
 const mockGetSession = mocks.getSession;
 
 describe('auth helpers', () => {
   beforeEach(() => {
     mockGetUserByAuthId.mockReset();
-    mockCreateUser.mockReset();
+    mockGetOrCreateUser.mockReset();
     mockGetSession.mockReset();
     clearTestUser();
   });
@@ -58,7 +58,7 @@ describe('auth helpers', () => {
     mockGetUserByAuthId.mockResolvedValue(user);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(user);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord provisions a missing user from Clerk session data', async () => {
@@ -80,10 +80,10 @@ describe('auth helpers', () => {
         },
       },
     });
-    mockCreateUser.mockResolvedValue(created);
+    mockGetOrCreateUser.mockResolvedValue(created);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(created);
-    expect(mockCreateUser).toHaveBeenCalledWith(
+    expect(mockGetOrCreateUser).toHaveBeenCalledWith(
       {
         authUserId: 'auth_created',
         email: 'created@example.com',
@@ -99,7 +99,7 @@ describe('auth helpers', () => {
     mockGetSession.mockResolvedValue({ data: null });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord fails closed when the Clerk user has no email', async () => {
@@ -116,7 +116,7 @@ describe('auth helpers', () => {
     });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
   });
 
   it('withServerComponentContext installs request context in test mode', async () => {

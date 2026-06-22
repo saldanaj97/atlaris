@@ -12,7 +12,7 @@ import { AuthError } from './errors';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { getOrCreateUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@supabase/runtime';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
@@ -94,7 +94,7 @@ async function ensureUserRecord(
     throw new AuthError('Auth user must have an email address.');
   }
 
-  const created = await createUser(
+  const created = await getOrCreateUser(
     {
       authUserId,
       email,

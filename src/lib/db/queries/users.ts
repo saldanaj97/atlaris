@@ -170,6 +170,33 @@ export async function createUser(
 }
 
 /**
+ * Creates a user when absent, or returns the row created by a concurrent request.
+ * Email conflicts belonging to a different auth identity remain database errors.
+ */
+export async function getOrCreateUser(
+  userData: CreateUserData,
+  dbClient?: UsersDbClient,
+  deps: UsersQueryDeps = defaultUsersQueryDeps,
+): Promise<DbUser | undefined> {
+  const client = dbClient ?? deps.getDb();
+  const inserted = await client
+    .insert(users)
+    .values({
+      authUserId: userData.authUserId,
+      email: userData.email,
+      name: userData.name,
+    })
+    .onConflictDoNothing({ target: users.authUserId })
+    .returning();
+
+  if (inserted[0]) {
+    return inserted[0];
+  }
+
+  return getUserByAuthId(userData.authUserId, client);
+}
+
+/**
  * Updates a user's preferred AI model.
  *
  * @param userId - Internal user ID
