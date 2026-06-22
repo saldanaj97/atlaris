@@ -19,7 +19,22 @@ export default defineConfig({
     include: ['tests/workflow/**/*.workflow.spec.ts'],
     passWithNoTests: false,
     globalSetup: ['tests/setup/workflow-vitest-global-setup.ts'],
-    setupFiles: ['tests/setup/workflow-vitest-setup.ts'],
+    setupFiles: [
+      'tests/setup/test-env.ts',
+      'tests/setup.ts',
+      'tests/setup/db.ts',
+      'tests/setup/workflow-vitest-setup.ts',
+    ],
+    env: {
+      AI_PROVIDER: 'mock',
+      MOCK_GENERATION_DELAY_MS: '0',
+      MOCK_GENERATION_FAILURE_RATE: '0',
+      MOCK_GENERATION_SEED: '20260622',
+      MOCK_AI_SCENARIO: 'success',
+      LESSON_GENERATION_ENABLED: 'true',
+      ENABLE_SENTRY: 'false',
+      NEXT_PUBLIC_ENABLE_SENTRY: 'false',
+    },
     alias: {
       '@': srcRoot,
       '@/': path.join(srcRoot, path.sep),

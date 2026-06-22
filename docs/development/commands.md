@@ -74,8 +74,8 @@ pnpm test:unit                # Run all unit tests
 pnpm test:unit:changed        # Run unit tests for changed files only
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
 pnpm test:integration:changed # Run changed integration + Workflow SDK tests
-pnpm test:integration         # Run full integration + Workflow SDK suites (heavier; use sparingly)
-pnpm test:workflow            # Run only the Workflow SDK Vitest harness
+pnpm test:integration         # Run the full DB/API integration suite (heavier; use sparingly)
+pnpm test:workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test:security            # Run RLS policy tests
 pnpm test:smoke               # Run Playwright smoke coverage
 pnpm test:all                 # Run lint, typecheck, unit, integration, workflow, and security suites

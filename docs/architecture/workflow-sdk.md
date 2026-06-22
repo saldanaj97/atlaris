@@ -97,18 +97,19 @@ Workflow data for dev lives under `.next/workflow-data/` (not `.workflow-data/`,
 
 ## Testing
 
-Workflow SDK tests use a **separate** Vitest config so they do not share Testcontainers setup with DB/API integration tests. The unified integration runner still includes them as a workflow phase for full and changed integration-class runs:
+Workflow SDK tests use a **separate** Vitest config and their own isolated Testcontainers database. The changed integration runner includes a workflow phase, while full workflow coverage is an explicit phase in `pnpm test:all`:
 
 | Command                                       | Purpose                                                                                               |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm test:integration`                       | DB/API integration tests, then the Workflow SDK Vitest harness                                        |
+| `pnpm test:integration`                       | DB/API integration tests only                                                                          |
 | `pnpm test:integration:changed`               | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
-| `pnpm test:workflow`                          | Only the in-process Workflow SDK smoke (`tests/workflow/*.workflow.spec.ts`)                          |
+| `pnpm test:workflow`                          | Workflow SDK wiring and production entrypoints against isolated Postgres                              |
 | `pnpm exec vitest run --config vitest.config.ts --project unit tests/unit/...` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin) |
 
 - Config: `vitest.workflow.config.ts`
-- Bundle output: `.workflow-vitest/` (default discovery scope: `tests/helpers/workflow` only)
-- Override discovery roots: `WORKFLOW_VITEST_DIRS=.` (comma-separated) for full product workflow bundles
+- Bundle output: `.workflow-vitest/`
+- Default discovery: production workflow directories plus `tests/helpers/workflow`
+- Override discovery roots: `WORKFLOW_VITEST_DIRS=dir-a,dir-b` (comma-separated)
 
 Orchestration for product workflows is covered in `tests/unit/features/**/workflows/*.workflow.spec.ts` by calling workflow functions directly with mocked steps (per [Workflow SDK testing](https://workflow-sdk.dev/docs/testing)).
 

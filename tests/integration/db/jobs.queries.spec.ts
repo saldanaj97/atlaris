@@ -3,6 +3,7 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import { createTestUser } from '../../fixtures/users';
 import { JOB_TYPES } from '@/features/jobs/types';
 import {
+  claimRegenerationJobById,
   cleanupOldJobs,
   getActiveRegenerationJob,
   getFailedJobs,
@@ -71,6 +72,46 @@ describe('Job Queries', () => {
       .returning();
 
     planId = expectPresent(plan, 'Failed to create plan fixture').id;
+  });
+
+  it('atomically claims a regeneration job with workflow ownership metadata', async () => {
+    const pending = await createJob({
+      status: 'pending',
+      payload: { planId },
+    });
+    const payload = {
+      planId,
+      workflow: {
+        provider: 'workflow-sdk' as const,
+        runId: 'wrun_atomic_claim',
+        startedAt: '2026-06-22T18:00:00.000Z',
+      },
+    };
+
+    const claimed = await claimRegenerationJobById(
+      pending.id,
+      { planId, userId },
+      payload,
+      db,
+    );
+
+    expect(claimed).toMatchObject({
+      id: pending.id,
+      status: 'processing',
+      data: payload,
+    });
+    expect(claimed?.processingStartedAt).toBeInstanceOf(Date);
+
+    const competing = await claimRegenerationJobById(
+      pending.id,
+      { planId, userId },
+      {
+        ...payload,
+        workflow: { ...payload.workflow, runId: 'wrun_competing' },
+      },
+      db,
+    );
+    expect(competing).toBeNull();
   });
 
   describe('getFailedJobs', () => {

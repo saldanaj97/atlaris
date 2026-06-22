@@ -68,8 +68,9 @@ export async function getNextJob(types: JobType[]): Promise<Job | null> {
 export async function claimRegenerationJob(
   jobId: string,
   expected: { planId: string; userId: string },
+  payload: JobPayload,
 ): Promise<Job | null> {
-  return claimRegenerationJobById(jobId, expected, db);
+  return claimRegenerationJobById(jobId, expected, payload, db);
 }
 
 export async function updateJobPayload(

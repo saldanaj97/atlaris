@@ -55,6 +55,7 @@ jobs:
               - 'tests/**'
               - 'scripts/**'
               - 'vitest.config.ts'
+              - 'vitest.workflow.config.ts'
               - 'tsconfig.json'
               - 'package.json'
               - 'pnpm-lock.yaml'
@@ -635,6 +636,37 @@ jobs:
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
+  workflow-tests:
+    name: Production Workflow Tests
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 9
+      - name: Setup pnpm store cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run production workflow tests
+        run: pnpm test:workflow
+
   all-checks-pr:
     name: All Checks Passed (PR)
     needs:
@@ -646,6 +678,7 @@ jobs:
         unit-tests,
         integration-light,
         security-tests,
+        workflow-tests,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -661,10 +694,11 @@ jobs:
             [unit-tests]="${{ needs['unit-tests'].result }}"
             [integration-light]="${{ needs['integration-light'].result }}"
             [security-tests]="${{ needs['security-tests'].result }}"
+            [workflow-tests]="${{ needs['workflow-tests'].result }}"
           )
 
           failed=0
-          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests; do
+          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests workflow-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)

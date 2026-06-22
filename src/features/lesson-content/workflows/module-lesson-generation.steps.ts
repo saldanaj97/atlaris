@@ -10,7 +10,6 @@ import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-mod
 import {
   claimModuleLessonGenerationOrDescribe,
   loadModuleLessonGenerationContext,
-  persistModuleLessonWorkflowRunMetadata,
 } from '@/lib/db/queries/module-lesson-generation';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { getWorkflowMetadata } from 'workflow';
@@ -39,15 +38,23 @@ export async function claimModuleLessonGenerationStep(
   if (preflight.kind === 'already_ready') {
     return { kind: 'already_ready', runId };
   }
-  if (preflight.kind === 'in_flight') {
-    return { kind: 'in_flight', runId };
-  }
+  const existingWorkflow = load?.module.lessonGenerationMetadata?.workflow;
+  const startedAt =
+    existingWorkflow?.runId === runId && existingWorkflow.startedAt
+      ? existingWorkflow.startedAt
+      : new Date().toISOString();
 
   const claim = await claimModuleLessonGenerationOrDescribe(
     serviceRoleDb,
     input.planId,
     input.moduleId,
     input.userId,
+    {
+      workflow: {
+        runId,
+        startedAt,
+      },
+    },
   );
 
   if (claim.kind === 'already_ready') {
@@ -59,22 +66,17 @@ export async function claimModuleLessonGenerationStep(
   if (claim.kind === 'not_found') {
     return { kind: 'not_found', runId };
   }
-  if (preflight.kind !== 'eligible') {
-    return { kind: 'in_flight', runId };
+  const claimedLoad = load;
+  if (!claimedLoad) {
+    return { kind: 'not_found', runId };
   }
 
-  const claimedLoad = preflight.load;
-  const startedAt = new Date().toISOString();
-
-  await persistModuleLessonWorkflowRunMetadata(serviceRoleDb, {
-    userId: input.userId,
-    planId: input.planId,
-    moduleId: input.moduleId,
+  return {
+    kind: 'claimed',
     runId,
-    startedAt,
-  });
-
-  return { kind: 'claimed', runId, load: claimedLoad, startedAt };
+    load: claimedLoad,
+    startedAt: claim.workflowStartedAt ?? startedAt,
+  };
 }
 
 export async function runModuleLessonGenerationStep(
