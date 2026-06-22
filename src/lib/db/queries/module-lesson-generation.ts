@@ -228,14 +228,20 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     );
 }
 
-async function readScopedModuleStatus(
+async function readScopedModuleState(
   dbClient: GenerationDb,
   planId: string,
   moduleId: string,
   userId: string,
-): Promise<InferSelectModel<typeof modules>['lessonGenerationStatus'] | null> {
+): Promise<{
+  status: InferSelectModel<typeof modules>['lessonGenerationStatus'];
+  metadata: ModuleLessonGenerationMetadata | null;
+} | null> {
   const [row] = await dbClient
-    .select({ status: modules.lessonGenerationStatus })
+    .select({
+      status: modules.lessonGenerationStatus,
+      metadata: modules.lessonGenerationMetadata,
+    })
     .from(modules)
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
     .where(
@@ -247,43 +253,7 @@ async function readScopedModuleStatus(
     )
     .limit(1);
 
-  return row?.status ?? null;
-}
-
-/**
- * Records Workflow SDK run metadata on a module already in `generating` state.
- */
-export async function persistModuleLessonWorkflowRunMetadata(
-  dbClient: GenerationDb,
-  input: PersistModuleLessonWorkflowRunInput,
-): Promise<void> {
-  const metadata = ModuleLessonGenerationMetadataSchema.parse({
-    version: 1,
-    workflow: {
-      provider: 'workflow-sdk',
-      runId: input.runId,
-      startedAt: input.startedAt,
-    },
-  });
-
-  const updated = await dbClient
-    .update(modules)
-    .set({ lessonGenerationMetadata: metadata })
-    .where(
-      and(
-        eq(modules.id, input.moduleId),
-        eq(modules.planId, input.planId),
-        eq(modules.lessonGenerationStatus, 'generating'),
-        moduleOwnedByUser(input.userId),
-      ),
-    )
-    .returning({ id: modules.id });
-
-  if (updated.length !== 1) {
-    throw new Error(
-      'Module lesson workflow metadata update did not match exactly one row',
-    );
-  }
+  return row ?? null;
 }
 
 /**
@@ -295,8 +265,22 @@ export async function claimModuleLessonGenerationOrDescribe(
   planId: string,
   moduleId: string,
   userId: string,
-  now: () => Date = () => new Date(),
+  options?: {
+    readonly now?: () => Date;
+    readonly workflow?: PersistModuleLessonWorkflowRunInput;
+  },
 ): Promise<LessonGenerationClaimResult> {
+  const now = options?.now ?? (() => new Date());
+  const workflowMetadata = options?.workflow
+    ? ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: options.workflow.runId,
+          startedAt: options.workflow.startedAt,
+        },
+      })
+    : undefined;
   const attemptClaim = async (): Promise<boolean> => {
     const touched = await dbClient
       .update(modules)
@@ -306,6 +290,9 @@ export async function claimModuleLessonGenerationOrDescribe(
         lessonGenerationCompletedAt: null,
         lessonGenerationFailedAt: null,
         lessonGenerationError: null,
+        ...(workflowMetadata
+          ? { lessonGenerationMetadata: workflowMetadata }
+          : {}),
       })
       .where(
         and(
@@ -325,42 +312,49 @@ export async function claimModuleLessonGenerationOrDescribe(
       return { kind: 'claimed' };
     }
 
-    const status = await readScopedModuleStatus(
+    const state = await readScopedModuleState(
       dbClient,
       planId,
       moduleId,
       userId,
     );
 
-    if (status == null) {
+    if (state == null) {
       return { kind: 'not_found' };
     }
-    if (status === 'ready') {
+    if (state.status === 'ready') {
       return { kind: 'already_ready' };
     }
-    if (status === 'generating') {
+    if (state.status === 'generating') {
+      if (
+        options?.workflow &&
+        state.metadata?.workflow?.runId === options.workflow.runId
+      ) {
+        return { kind: 'claimed' };
+      }
       return { kind: 'in_flight' };
     }
   }
 
-  const status = await readScopedModuleStatus(
-    dbClient,
-    planId,
-    moduleId,
-    userId,
-  );
-  if (status == null) {
+  const state = await readScopedModuleState(dbClient, planId, moduleId, userId);
+  if (state == null) {
     return { kind: 'not_found' };
   }
-  if (status === 'ready') {
+  if (state.status === 'ready') {
     return { kind: 'already_ready' };
   }
-  if (status === 'generating') {
+  if (state.status === 'generating') {
+    if (
+      options?.workflow &&
+      state.metadata?.workflow?.runId === options.workflow.runId
+    ) {
+      return { kind: 'claimed' };
+    }
     return { kind: 'in_flight' };
   }
 
   throw new Error(
-    `Unexpected module lesson_generation_status after claim retries: ${String(status)}`,
+    `Unexpected module lesson_generation_status after claim retries: ${String(state.status)}`,
   );
 }
 

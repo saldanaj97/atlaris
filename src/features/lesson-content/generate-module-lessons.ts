@@ -52,7 +52,7 @@ export async function generateModuleLessons(
     params.planId,
     params.moduleId,
     params.userId,
-    nowFn,
+    { now: nowFn },
   );
 
   if (claim.kind !== 'claimed') {
