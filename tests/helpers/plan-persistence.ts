@@ -11,8 +11,11 @@ export async function atomicInsertPlanOrThrow(
 ): Promise<{ id: string }> {
   const adapter = new PlanPersistenceAdapter(db);
   const result = await adapter.atomicInsertPlan(userId, planData);
-  if (result.success) {
+  if (result.status === 'created') {
     return { id: result.id };
   }
-  throw new Error(result.reason);
+  if (result.status === 'duplicate') {
+    throw new Error(`Duplicate plan: ${result.existingPlanId}`);
+  }
+  throw new Error('Plan limit reached for current subscription tier');
 }

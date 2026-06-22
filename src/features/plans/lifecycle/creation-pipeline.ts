@@ -146,14 +146,25 @@ export async function insertCreatedPlan(params: {
 
   const insertResult = await planPersistence.atomicInsertPlan(userId, planData);
 
-  if (!insertResult.success) {
+  if (insertResult.status === 'duplicate') {
+    logger.info(
+      { userId, existingPlanId: insertResult.existingPlanId },
+      `${getCreateLogBase(lifecycleLabel)}: duplicate detected`,
+    );
+    return {
+      status: 'duplicate_detected',
+      existingPlanId: insertResult.existingPlanId,
+    };
+  }
+
+  if (insertResult.status === 'limit_reached') {
     logger.info(
       { userId },
       `${getCreateLogBase(lifecycleLabel)}: quota rejected (plan limit)`,
     );
     return {
       status: 'quota_rejected',
-      reason: insertResult.reason,
+      reason: 'Plan limit reached for current subscription tier',
     };
   }
 

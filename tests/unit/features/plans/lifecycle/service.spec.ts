@@ -42,8 +42,9 @@ describe('PlanLifecycleService', () => {
         planPersistence: {
           ...createMockPorts().planPersistence,
           atomicInsertPlan: async () => ({
-            success: false as const,
-            reason: 'Plan limit reached for current subscription tier',
+            status: 'limit_reached' as const,
+            currentCount: 3,
+            limit: 3,
           }),
         },
       });
@@ -155,7 +156,7 @@ describe('PlanLifecycleService', () => {
           ...createMockPorts().planPersistence,
           atomicInsertPlan: async (_userId, planData) => {
             capturedData = planData;
-            return { success: true as const, id: 'plan-789' };
+            return { status: 'created' as const, id: 'plan-789' };
           },
         },
         quota: {
@@ -190,7 +191,7 @@ describe('PlanLifecycleService', () => {
           ...createMockPorts().planPersistence,
           atomicInsertPlan: async (_userId, planData) => {
             capturedData = planData;
-            return { success: true as const, id: 'plan-trim' };
+            return { status: 'created' as const, id: 'plan-trim' };
           },
         },
       });
@@ -205,7 +206,10 @@ describe('PlanLifecycleService', () => {
       ports = createMockPorts({
         planPersistence: {
           ...createMockPorts().planPersistence,
-          findRecentDuplicatePlan: async () => 'existing-plan-id',
+          atomicInsertPlan: async () => ({
+            status: 'duplicate' as const,
+            existingPlanId: 'existing-plan-id',
+          }),
         },
       });
       service = new PlanLifecycleService(ports);
@@ -218,34 +222,35 @@ describe('PlanLifecycleService', () => {
       }
     });
 
-    it('does not call atomicInsertPlan when duplicate is detected', async () => {
-      const insertSpy = vi
-        .fn()
-        .mockResolvedValue({ success: true as const, id: 'plan-new' });
+    it('maps the atomic duplicate outcome without reporting creation', async () => {
+      const insertSpy = vi.fn().mockResolvedValue({
+        status: 'duplicate' as const,
+        existingPlanId: 'existing-plan-id',
+      });
       ports = createMockPorts({
         planPersistence: {
           ...createMockPorts().planPersistence,
-          findRecentDuplicatePlan: async () => 'existing-plan-id',
           atomicInsertPlan: insertSpy,
         },
       });
       service = new PlanLifecycleService(ports);
 
-      await service.createPlan(validInput);
+      const result = await service.createPlan(validInput);
 
-      expect(insertSpy).not.toHaveBeenCalled();
+      expect(insertSpy).toHaveBeenCalledOnce();
+      expect(result.status).toBe('duplicate_detected');
     });
 
-    it('passes userId and trimmed topic to findRecentDuplicatePlan', async () => {
+    it('passes userId and trimmed topic to atomicInsertPlan', async () => {
       let capturedUserId: string | undefined;
       let capturedTopic: string | undefined;
       ports = createMockPorts({
         planPersistence: {
           ...createMockPorts().planPersistence,
-          findRecentDuplicatePlan: async (userId, topic) => {
+          atomicInsertPlan: async (userId, planData) => {
             capturedUserId = userId;
-            capturedTopic = topic;
-            return null;
+            capturedTopic = planData.topic;
+            return { status: 'created' as const, id: 'plan-new' };
           },
         },
       });
@@ -261,7 +266,6 @@ describe('PlanLifecycleService', () => {
     });
 
     it('proceeds to create plan when no duplicate exists', async () => {
-      // Default mock returns null for findRecentDuplicatePlan
       const result = await service.createPlan(validInput);
 
       expect(result.status).toBe('success');

@@ -27,8 +27,6 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
  * inside one transaction.
  * @property findCappedPlanWithoutModules Finds a plan that exhausted generation
  * attempts before modules were created.
- * @property findRecentDuplicatePlan Finds a recent duplicate plan with the same
- * normalized topic inside the deduplication window.
  * @property markGenerationSuccess Marks generation as successful for a plan.
  * @property markGenerationFailure Marks generation as failed for a plan.
  */
@@ -42,12 +40,6 @@ export interface PlanPersistencePort {
   findCappedPlanWithoutModules(
     this: void,
     userId: string,
-  ): Promise<string | null>;
-
-  findRecentDuplicatePlan(
-    this: void,
-    userId: string,
-    normalizedTopic: string,
   ): Promise<string | null>;
 
   markGenerationSuccess(this: void, planId: string): Promise<void>;

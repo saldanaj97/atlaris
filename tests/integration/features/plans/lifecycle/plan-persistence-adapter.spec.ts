@@ -30,8 +30,8 @@ describe('PlanPersistenceAdapter (integration)', () => {
       topic: `${planPayload.topic} insert`,
     });
 
-    expect(result.success).toBe(true);
-    if (!result.success) return;
+    expect(result.status).toBe('created');
+    if (result.status !== 'created') return;
 
     const [row] = await db
       .select()
@@ -57,7 +57,7 @@ describe('PlanPersistenceAdapter (integration)', () => {
         ...planPayload,
         topic: `${planPayload.topic} cap ${i}`,
       });
-      expect(r.success).toBe(true);
+      expect(r.status).toBe('created');
     }
 
     const rejected = await adapter.atomicInsertPlan(userId, {
@@ -65,12 +65,10 @@ describe('PlanPersistenceAdapter (integration)', () => {
       topic: `${planPayload.topic} cap overflow`,
     });
 
-    expect(rejected.success).toBe(false);
-    if (rejected.success) return;
-    expect(rejected.reason).toMatch(/limit reached/i);
+    expect(rejected.status).toBe('limit_reached');
   });
 
-  it('findRecentDuplicatePlan returns the recent plan id for the same topic', async () => {
+  it('atomicInsertPlan returns the recent plan id for the same topic', async () => {
     const authUserId = buildTestAuthUserId('persist-adapter-dup');
     const userId = await ensureUser({
       authUserId,
@@ -84,11 +82,53 @@ describe('PlanPersistenceAdapter (integration)', () => {
       ...planPayload,
       topic,
     });
-    expect(inserted.success).toBe(true);
-    if (!inserted.success) return;
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
 
-    const dupId = await adapter.findRecentDuplicatePlan(userId, topic);
-    expect(dupId).toBe(inserted.id);
+    const duplicate = await adapter.atomicInsertPlan(userId, {
+      ...planPayload,
+      topic,
+    });
+    expect(duplicate).toEqual({
+      status: 'duplicate',
+      existingPlanId: inserted.id,
+    });
+  });
+
+  it('serializes simultaneous identical plan creation into one row', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-concurrent-dup');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const adapter = new PlanPersistenceAdapter(db);
+    const topic = `${planPayload.topic} concurrent duplicate`;
+
+    const results = await Promise.all([
+      adapter.atomicInsertPlan(userId, { ...planPayload, topic }),
+      adapter.atomicInsertPlan(userId, { ...planPayload, topic }),
+    ]);
+
+    const created = results.find((result) => result.status === 'created');
+    const duplicate = results.find((result) => result.status === 'duplicate');
+    expect(created?.status).toBe('created');
+    expect(duplicate).toEqual({
+      status: 'duplicate',
+      existingPlanId: created?.status === 'created' ? created.id : undefined,
+    });
+
+    const rows = await db
+      .select({ id: learningPlans.id })
+      .from(learningPlans)
+      .where(eq(learningPlans.userId, userId));
+    expect(rows).toHaveLength(1);
+
+    const secondDistinct = await adapter.atomicInsertPlan(userId, {
+      ...planPayload,
+      topic: `${topic} distinct`,
+    });
+    expect(secondDistinct.status).toBe('created');
   });
 
   it('markGenerationSuccess updates persisted flags', async () => {
@@ -104,8 +144,8 @@ describe('PlanPersistenceAdapter (integration)', () => {
       ...planPayload,
       topic: `${planPayload.topic} status-success`,
     });
-    expect(inserted.success).toBe(true);
-    if (!inserted.success) return;
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
 
     await adapter.markGenerationSuccess(inserted.id);
 
@@ -131,8 +171,8 @@ describe('PlanPersistenceAdapter (integration)', () => {
       ...planPayload,
       topic: `${planPayload.topic} status-fail`,
     });
-    expect(inserted.success).toBe(true);
-    if (!inserted.success) return;
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
 
     await adapter.markGenerationFailure(inserted.id);
 
@@ -158,8 +198,8 @@ describe('PlanPersistenceAdapter (integration)', () => {
       ...planPayload,
       topic: `${planPayload.topic} capped`,
     });
-    expect(inserted.success).toBe(true);
-    if (!inserted.success) return;
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
 
     for (let i = 0; i < cap; i++) {
       await db.insert(generationAttempts).values({
