@@ -19,7 +19,7 @@
 
 ### Phase 0 — Environment Setup
 
-- `pnpm db:dev:bootstrap` passed
+- `pnpm db:dev:reset` passed
 - Anonymous server startup passed with no env validation errors
 - Authenticated server startup passed with no env validation errors
 
@@ -103,7 +103,7 @@
 ## Verification Commands
 
 ```bash
-pnpm db:dev:bootstrap
+pnpm db:dev:reset
 pnpm dev
 pnpm test:changed
 chrome-devtools navigate_page --url http://localhost:3000/landing
