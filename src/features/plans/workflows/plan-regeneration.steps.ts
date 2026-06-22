@@ -56,10 +56,23 @@ export async function claimPlanRegenerationJobStep(
     return { kind: 'claimed', runId };
   }
 
-  const claimed = await claimRegenerationJob(job.id, {
-    planId: input.planId,
-    userId: input.userId,
+  const payload = planRegenerationJobPayloadSchema.parse({
+    ...validation.payload,
+    workflow: {
+      provider: 'workflow-sdk' as const,
+      runId,
+      startedAt: new Date().toISOString(),
+    },
   });
+
+  const claimed = await claimRegenerationJob(
+    job.id,
+    {
+      planId: input.planId,
+      userId: input.userId,
+    },
+    payload,
+  );
 
   if (!claimed) {
     const latest = await loadJobById(input.jobId);
@@ -74,17 +87,6 @@ export async function claimPlanRegenerationJobStep(
     }
     return { kind: 'job-not-found', jobId: input.jobId };
   }
-
-  const payload = planRegenerationJobPayloadSchema.parse({
-    ...validation.payload,
-    workflow: {
-      provider: 'workflow-sdk' as const,
-      runId,
-      startedAt: new Date().toISOString(),
-    },
-  });
-
-  await updateJobPayload(job.id, payload);
 
   return { kind: 'claimed', runId };
 }
