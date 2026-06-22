@@ -17,6 +17,38 @@ export type PlanReadStatus =
  */
 export type FilterStatus = 'all' | PlanReadStatus | 'inactive';
 
+export const PLAN_LIST_PAGE_SIZE = 20 as const;
+
+export type PlanListQuery = {
+  page: number;
+  search: string;
+  status: FilterStatus;
+};
+
+export type PlanListItem = {
+  id: string;
+  topic: string;
+  createdAt: string;
+  updatedAt: string | null;
+  status: PlanReadStatus;
+  completion: number;
+  completedTasks: number;
+  totalTasks: number;
+};
+
+export type PlanListStatusCounts = Record<PlanReadStatus, number>;
+
+export type PlanListPage = {
+  items: PlanListItem[];
+  page: number;
+  pageSize: typeof PLAN_LIST_PAGE_SIZE;
+  totalItems: number;
+  totalPages: number;
+  totalSearchResults: number;
+  statusCounts: PlanListStatusCounts;
+  referenceTimestamp: string;
+};
+
 /** Flat resource on module-detail task (type/title/url map to UI). */
 export type ModuleDetailResource = {
   id: string;

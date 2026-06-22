@@ -2,6 +2,10 @@ import type {
   ModuleDetailReadModel,
   PlanDbClient,
 } from '@/features/plans/read-projection/types';
+import type {
+  PlanListPage,
+  PlanListQuery,
+} from '@/features/plans/read-projection/types';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
   ClientGenerationAttempt,
@@ -30,6 +34,7 @@ import {
   getModuleDetailRows,
   getModuleLessonGenerationStatus,
 } from '@/lib/db/queries/modules';
+import { getPlanListPageForUser } from '@/lib/db/queries/plan-list';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -70,6 +75,18 @@ export async function listPlansPageSummaries(params: {
   options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
   return listPlanSummaries(params);
+}
+
+export async function getPlansPageForRead(params: {
+  userId: string;
+  dbClient?: PlanDbClient;
+  query: PlanListQuery;
+  referenceTimestamp?: string;
+}): Promise<PlanListPage> {
+  return getPlanListPageForUser({
+    ...params,
+    referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
+  });
 }
 
 export async function listLightweightPlansForApi(params: {
