@@ -1,13 +1,9 @@
 'use client';
 
-import type { PlanSummary } from '@/shared/types/db.types';
+import type { PlanListItem } from '@/features/plans/read-projection/types';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
-import {
-  getNextTaskName,
-  getPlanLastActivityRelative,
-  getPlanStatus,
-} from '@/app/(app)/plans/components/plan-utils';
+import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,22 +25,19 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 interface PlanRowProps {
-  summary: PlanSummary;
-  isSelected: boolean;
-  onSelect: () => void;
+  plan: PlanListItem;
   referenceTimestamp: string;
 }
 
-export function PlanRow({
-  summary,
-  isSelected,
-  onSelect,
-  referenceTimestamp,
-}: PlanRowProps) {
-  const { plan } = summary;
-  const progressPercent = Math.round(summary.completion * 100);
-  const status = getPlanStatus(summary, referenceTimestamp);
-  const nextTask = getNextTaskName(summary);
+function getNextTaskLabel(plan: PlanListItem): string {
+  if (plan.status === 'completed') return 'All tasks completed';
+  if (plan.completedTasks === 0) return 'Not started';
+  return 'Continue learning';
+}
+
+export function PlanRow({ plan, referenceTimestamp }: PlanRowProps) {
+  const progressPercent = Math.round(plan.completion * 100);
+  const nextTask = getNextTaskLabel(plan);
   const lastActivity = getPlanLastActivityRelative(
     plan.updatedAt ?? plan.createdAt,
     referenceTimestamp,
@@ -56,21 +49,18 @@ export function PlanRow({
       <DeletePlanDialog
         planId={plan.id}
         planTopic={plan.topic}
-        isGenerating={status === 'generating'}
+        isGenerating={plan.status === 'generating'}
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
       />
       <div
         className={cn(
           'group flex items-center gap-4 rounded-2xl px-5 py-4 transition-colors',
-          isSelected
-            ? 'bg-primary/5 ring-1 ring-primary/30 dark:bg-primary/10'
-            : 'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5',
+          'hover:bg-muted-foreground/3 dark:hover:bg-foreground/5',
         )}
       >
         <Link
           href={`/plans/${plan.id}`}
-          onClick={onSelect}
           className='flex min-w-0 flex-1 items-center gap-4'
         >
           {/* Status indicator */}
@@ -78,14 +68,14 @@ export function PlanRow({
             <div
               className={cn(
                 'size-3 rounded-full',
-                getPlanStatusDotClassName(status),
+                getPlanStatusDotClassName(plan.status),
               )}
             />
-            {status === 'generating' && (
+            {plan.status === 'generating' && (
               <div
                 className={cn(
                   'absolute inset-0 animate-ping rounded-full opacity-50 motion-reduce:animate-none',
-                  getPlanStatusDotClassName(status),
+                  getPlanStatusDotClassName(plan.status),
                 )}
               />
             )}
@@ -104,12 +94,12 @@ export function PlanRow({
               <div className='hidden w-[3.75rem] shrink-0 items-center gap-1.5 text-xs text-muted-foreground sm:flex'>
                 <CheckCircle2 className='size-3.5' />
                 <span className='tabular-nums'>
-                  {summary.completedTasks}/{summary.totalTasks}
+                  {plan.completedTasks}/{plan.totalTasks}
                 </span>
               </div>
             </div>
             <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-              {summary.completedTasks > 0 &&
+              {plan.completedTasks > 0 &&
                 nextTask !== 'Not started' &&
                 nextTask !== 'All tasks completed' && (
                   <ArrowRight className='size-3' />
@@ -153,7 +143,7 @@ export function PlanRow({
           <DropdownMenuContent align='end'>
             <DropdownMenuItem
               variant='destructive'
-              disabled={status === 'generating'}
+              disabled={plan.status === 'generating'}
               onSelect={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className='mr-2 size-4' />

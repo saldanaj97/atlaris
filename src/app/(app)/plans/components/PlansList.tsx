@@ -3,24 +3,25 @@
 import type { UsageData } from '@/app/_shared/usage-formatting';
 import type {
   FilterStatus,
+  PlanListPage,
+  PlanListQuery,
   PlanReadStatus,
 } from '@/features/plans/read-projection/types';
-import type { PlanSummary } from '@/shared/types/db.types';
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
-import { getPlanStatus } from '@/app/(app)/plans/components/plan-utils';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import Link from 'next/link';
 
 interface PlansListProps {
-  summaries: PlanSummary[];
+  page: PlanListPage;
+  query: PlanListQuery;
   usage?: UsageData;
-  referenceTimestamp: string;
 }
 
 const FILTER_TABS: {
@@ -36,112 +37,89 @@ const FILTER_TABS: {
   { id: 'failed', label: 'Failed', status: 'failed' },
 ];
 
-export function PlansList({
-  summaries,
-  usage: _usage,
-  referenceTimestamp,
-}: PlansListProps) {
-  const [effectiveReferenceTimestamp] = useState(() => referenceTimestamp);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+function plansHref(params: {
+  search: string;
+  status: FilterStatus;
+  page?: number;
+}): string {
+  const searchParams = new URLSearchParams();
 
-  const normalizedSearchQuery = searchQuery.toLowerCase();
-  const { filteredPlans, statusCounts } = useMemo(() => {
-    const statusCounts = {
-      active: 0,
-      paused: 0,
-      completed: 0,
-      generating: 0,
-      failed: 0,
-    } as Record<PlanReadStatus, number>;
-
-    const plansWithStatus = summaries.map((summary) => ({
-      summary,
-      status: getPlanStatus(summary, effectiveReferenceTimestamp),
-    }));
-
-    for (const { status } of plansWithStatus) {
-      statusCounts[status] = (statusCounts[status] || 0) + 1;
-    }
-
-    const filteredPlans = plansWithStatus
-      .filter(({ summary, status }) => {
-        const matchesSearch =
-          searchQuery === '' ||
-          summary.plan.topic.toLowerCase().includes(normalizedSearchQuery);
-
-        const matchesStatus =
-          filterStatus === 'all' ||
-          status === filterStatus ||
-          (filterStatus === 'inactive' && status === 'paused');
-
-        return matchesSearch && matchesStatus;
-      })
-      .map(({ summary }) => summary);
-
-    return { filteredPlans, statusCounts };
-  }, [
-    summaries,
-    effectiveReferenceTimestamp,
-    searchQuery,
-    normalizedSearchQuery,
-    filterStatus,
-  ]);
-
-  function getFilterCount(tab: (typeof FILTER_TABS)[number]): number | null {
-    if (tab.id === 'all') return summaries.length;
-    if (tab.id === 'inactive') return statusCounts.paused;
-    if (tab.status) return statusCounts[tab.status];
-    return null;
+  if (params.search) {
+    searchParams.set('search', params.search);
+  }
+  if (params.status !== 'all') {
+    searchParams.set('status', params.status);
+  }
+  if (params.page && params.page > 1) {
+    searchParams.set('page', String(params.page));
   }
 
+  const queryString = searchParams.toString();
+  return queryString ? `/plans?${queryString}` : '/plans';
+}
+
+function getFilterCount(
+  tab: (typeof FILTER_TABS)[number],
+  page: PlanListPage,
+): number {
+  if (tab.id === 'all') return page.totalSearchResults;
+  if (tab.id === 'inactive') return page.statusCounts.paused;
+  return tab.status ? page.statusCounts[tab.status] : 0;
+}
+
+export function PlansList({ page, query, usage: _usage }: PlansListProps) {
   return (
     <>
-      <div className='relative mb-6'>
+      <form action='/plans' className='relative mb-6'>
         <Search
           className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
           aria-hidden='true'
         />
+        {query.status !== 'all' ? (
+          <input type='hidden' name='status' value={query.status} />
+        ) : null}
         <Input
           type='search'
+          name='search'
           placeholder='Search plans…'
           aria-label='Search learning plans'
           className='h-11 border-border bg-muted/50 pl-9 dark:bg-muted/30'
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          defaultValue={query.search}
         />
-      </div>
+      </form>
 
       <div className='mb-6 flex items-center gap-2 border-b border-border pb-4'>
-        <Tabs
-          value={filterStatus}
-          onValueChange={(value) => setFilterStatus(value as FilterStatus)}
-        >
+        <Tabs value={query.status}>
           <TabsList className='h-auto flex-wrap gap-1 bg-transparent p-0'>
             {FILTER_TABS.map((tab) => {
-              const count = getFilterCount(tab);
+              const count = getFilterCount(tab, page);
               return (
                 <TabsTrigger
+                  asChild
                   key={tab.id}
                   value={tab.id}
                   className='rounded-lg px-3 py-1.5'
                 >
-                  {tab.status ? (
-                    <span
-                      className={cn(
-                        'size-2 rounded-full',
-                        getPlanStatusDotClassName(tab.status),
-                      )}
-                      aria-hidden='true'
-                    />
-                  ) : null}
-                  {tab.label}
-                  {count != null ? (
+                  <Link
+                    href={plansHref({
+                      search: query.search,
+                      status: tab.id,
+                    })}
+                  >
+                    {tab.status ? (
+                      <span
+                        className={cn(
+                          'size-2 rounded-full',
+                          getPlanStatusDotClassName(tab.status),
+                        )}
+                        aria-hidden='true'
+                      />
+                    ) : null}
+                    {tab.label}
                     <span className='text-muted-foreground tabular-nums'>
                       ({count})
                     </span>
-                  ) : null}
+                  </Link>
                 </TabsTrigger>
               );
             })}
@@ -150,25 +128,84 @@ export function PlansList({
       </div>
 
       <div>
-        {filteredPlans.length === 0 ? (
+        {page.items.length === 0 ? (
           <EmptyPlansList
-            searchQuery={searchQuery}
-            filterStatus={filterStatus}
+            searchQuery={query.search}
+            filterStatus={query.status}
           />
         ) : (
           <div className='space-y-2'>
-            {filteredPlans.map((summary, index) => (
+            {page.items.map((plan) => (
               <PlanRow
-                key={summary.plan.id}
-                summary={summary}
-                isSelected={index === selectedIndex}
-                onSelect={() => setSelectedIndex(index)}
-                referenceTimestamp={effectiveReferenceTimestamp}
+                key={plan.id}
+                plan={plan}
+                referenceTimestamp={page.referenceTimestamp}
               />
             ))}
           </div>
         )}
       </div>
+
+      {page.totalPages > 1 ? (
+        <nav
+          aria-label='Plans pagination'
+          className='mt-6 flex items-center justify-between gap-4 text-sm text-muted-foreground'
+        >
+          <span>
+            Page {page.page} of {page.totalPages}
+          </span>
+          <div className='flex items-center gap-2'>
+            <Button
+              asChild={page.page > 1}
+              variant='outline'
+              size='sm'
+              disabled={page.page <= 1}
+            >
+              {page.page > 1 ? (
+                <Link
+                  href={plansHref({
+                    search: query.search,
+                    status: query.status,
+                    page: page.page - 1,
+                  })}
+                >
+                  <ChevronLeft />
+                  Previous
+                </Link>
+              ) : (
+                <>
+                  <ChevronLeft />
+                  Previous
+                </>
+              )}
+            </Button>
+            <Button
+              asChild={page.page < page.totalPages}
+              variant='outline'
+              size='sm'
+              disabled={page.page >= page.totalPages}
+            >
+              {page.page < page.totalPages ? (
+                <Link
+                  href={plansHref({
+                    search: query.search,
+                    status: query.status,
+                    page: page.page + 1,
+                  })}
+                >
+                  Next
+                  <ChevronRight />
+                </Link>
+              ) : (
+                <>
+                  Next
+                  <ChevronRight />
+                </>
+              )}
+            </Button>
+          </div>
+        </nav>
+      ) : null}
     </>
   );
 }
