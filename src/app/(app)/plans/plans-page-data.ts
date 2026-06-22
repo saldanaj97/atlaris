@@ -1,23 +1,26 @@
 import type { UsageSummary } from '@/features/billing/usage-metrics';
+import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
 import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { listPlansPageSummaries } from '@/features/plans/read-projection/service';
+import { getPlansPageForRead } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 export type PlansPageData = {
-  summaries: Awaited<ReturnType<typeof listPlansPageSummaries>>;
+  plansPage: Awaited<ReturnType<typeof getPlansPageForRead>>;
   usage: UsageSummary;
 };
 
-export function loadPlansPageData(): Promise<PlansPageData | null> {
+export function loadPlansPageData(
+  query: PlanListQuery,
+): Promise<PlansPageData | null> {
   return requestBoundary.component(async ({ actor, db }) => {
-    const [summaries, snapshot] = await Promise.all([
-      listPlansPageSummaries({ userId: actor.id, dbClient: db }),
+    const [plansPage, snapshot] = await Promise.all([
+      getPlansPageForRead({ userId: actor.id, dbClient: db, query }),
       getBillingAccountSnapshot({ userId: actor.id, dbClient: db }),
     ]);
 
     return {
-      summaries,
+      plansPage,
       usage: snapshot.usage,
     };
   });

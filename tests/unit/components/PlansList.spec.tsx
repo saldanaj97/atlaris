@@ -1,11 +1,14 @@
+import type {
+  FilterStatus,
+  PlanListItem,
+  PlanListPage,
+  PlanListQuery,
+  PlanListStatusCounts,
+} from '@/features/plans/read-projection/types';
 import type React from 'react';
 
-import {
-  buildModuleRows,
-  buildPlan,
-  buildPlanSummary,
-} from '../../fixtures/plan-detail';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -26,57 +29,91 @@ vi.mock('next/navigation', () => ({
 describe('PlansList', () => {
   const referenceTimestamp = '2024-06-01T00:00:00.000Z';
 
-  const activePlan = buildPlanSummary({
-    plan: buildPlan({
-      id: 'plan-1',
-      topic: 'Master React Hooks',
-      skillLevel: 'advanced',
-      weeklyHours: 5,
-      learningStyle: 'practice',
-      startDate: '2024-02-01',
-      deadlineDate: null,
-      generationStatus: 'ready',
-      isQuotaEligible: true,
-      finalizedAt: new Date('2024-02-01'),
-      createdAt: new Date('2024-02-01'),
-      updatedAt: new Date('2024-02-10'),
-    }),
+  const statusCounts: PlanListStatusCounts = {
+    active: 1,
+    paused: 0,
+    completed: 1,
+    generating: 0,
+    failed: 0,
+  };
+
+  const activePlan: PlanListItem = {
+    id: 'plan-1',
+    topic: 'Master React Hooks',
+    createdAt: '2024-02-01T00:00:00.000Z',
+    updatedAt: '2024-02-10T00:00:00.000Z',
+    status: 'active',
     completion: 0.4,
-    completedModules: 2,
     completedTasks: 8,
     totalTasks: 20,
-    totalMinutes: 600,
-    completedMinutes: 240,
-    modules: buildModuleRows('plan-1', 6, { estimatedMinutes: 100 }),
-  });
+  };
 
-  const completedPlan = buildPlanSummary({
-    plan: buildPlan({
-      id: 'plan-2',
-      topic: 'Learn TypeScript',
-      skillLevel: 'intermediate',
-      weeklyHours: 10,
-      learningStyle: 'mixed',
-      startDate: '2024-01-15',
-      deadlineDate: '2024-05-15',
-      generationStatus: 'ready',
-      finalizedAt: new Date('2024-01-15'),
-      createdAt: new Date('2024-01-15'),
-      updatedAt: new Date('2024-01-15'),
-    }),
-    completion: 1.0,
-    completedModules: 4,
+  const completedPlan: PlanListItem = {
+    id: 'plan-2',
+    topic: 'Learn TypeScript',
+    createdAt: '2024-01-15T00:00:00.000Z',
+    updatedAt: '2024-01-15T00:00:00.000Z',
+    status: 'completed',
+    completion: 1,
     completedTasks: 20,
     totalTasks: 20,
-    totalMinutes: 800,
-    completedMinutes: 800,
-    modules: buildModuleRows('plan-2', 4, { estimatedMinutes: 200 }),
-  });
+  };
 
-  it('should render empty state when no plans provided', () => {
+  function buildQuery(overrides: Partial<PlanListQuery> = {}): PlanListQuery {
+    return {
+      page: 1,
+      search: '',
+      status: 'all',
+      ...overrides,
+    };
+  }
+
+  function buildPage(overrides: Partial<PlanListPage> = {}): PlanListPage {
+    const items = overrides.items ?? [activePlan, completedPlan];
+
+    return {
+      items,
+      page: 1,
+      pageSize: PLAN_LIST_PAGE_SIZE,
+      totalItems: items.length,
+      totalPages: 1,
+      totalSearchResults: items.length,
+      statusCounts,
+      referenceTimestamp,
+      ...overrides,
+    };
+  }
+
+  function renderPlansList(
+    params: {
+      page?: Partial<PlanListPage>;
+      query?: Partial<PlanListQuery>;
+    } = {},
+  ) {
     render(
-      <PlansList summaries={[]} referenceTimestamp={referenceTimestamp} />,
+      <PlansList
+        page={buildPage(params.page)}
+        query={buildQuery(params.query)}
+      />,
     );
+  }
+
+  it('renders empty state when the current server page has no plans', () => {
+    renderPlansList({
+      page: {
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        totalSearchResults: 0,
+        statusCounts: {
+          active: 0,
+          paused: 0,
+          completed: 0,
+          generating: 0,
+          failed: 0,
+        },
+      },
+    });
 
     expect(screen.getByText('No plans found')).toBeInTheDocument();
     expect(
@@ -84,30 +121,77 @@ describe('PlansList', () => {
     ).toBeInTheDocument();
   });
 
-  it('should render correct link for each plan', () => {
-    render(
-      <PlansList
-        summaries={[activePlan, completedPlan]}
-        referenceTimestamp={referenceTimestamp}
-      />,
-    );
+  it('renders correct link for each plan', () => {
+    renderPlansList();
 
     const planLinks = screen
       .getAllByRole('link')
-      .filter((link) => link.getAttribute('href')?.startsWith('/plans/'));
+      .filter((link) => link.getAttribute('href')?.startsWith('/plans/plan-'));
     expect(planLinks).toHaveLength(2);
     expect(planLinks[0]).toHaveAttribute('href', '/plans/plan-1');
     expect(planLinks[1]).toHaveAttribute('href', '/plans/plan-2');
   });
 
-  it('should handle plans with no modules gracefully', () => {
-    render(
-      <PlansList
-        summaries={[{ ...activePlan, modules: [] }]}
-        referenceTimestamp={referenceTimestamp}
-      />,
-    );
+  it('preserves search when building server-side filter links', () => {
+    renderPlansList({
+      query: { search: 'react hooks' },
+    });
 
-    expect(screen.getByText('Master React Hooks')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Active/ })).toHaveAttribute(
+      'href',
+      '/plans?search=react+hooks&status=active',
+    );
   });
+
+  it('resets page when submitting search or changing filters', () => {
+    renderPlansList({
+      page: { page: 2, totalPages: 3 },
+      query: { page: 2, search: 'typescript', status: 'completed' },
+    });
+
+    expect(screen.getByRole('searchbox')).toHaveValue('typescript');
+    expect(screen.getByDisplayValue('completed')).toHaveAttribute(
+      'name',
+      'status',
+    );
+    expect(
+      screen
+        .getAllByRole('link')
+        .find(
+          (link) => link.getAttribute('href') === '/plans?search=typescript',
+        ),
+    ).toBeDefined();
+  });
+
+  it('renders stable server pagination links', () => {
+    renderPlansList({
+      page: { page: 2, totalPages: 3, totalItems: 45 },
+      query: { page: 2, search: 'react', status: 'active' },
+    });
+
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Previous/ })).toHaveAttribute(
+      'href',
+      '/plans?search=react&status=active',
+    );
+    expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
+      'href',
+      '/plans?search=react&status=active&page=3',
+    );
+  });
+
+  it.each([
+    ['active', 'Active', '(1)'],
+    ['inactive', 'Inactive', '(0)'],
+    ['completed', 'Completed', '(1)'],
+  ] satisfies [FilterStatus, string, string][])(
+    'renders aggregate count for %s filter',
+    (_, label, count) => {
+      renderPlansList();
+
+      expect(
+        screen.getByRole('link', { name: new RegExp(label) }),
+      ).toHaveTextContent(count);
+    },
+  );
 });

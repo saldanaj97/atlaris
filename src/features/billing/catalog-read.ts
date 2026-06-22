@@ -16,6 +16,7 @@ import {
 } from '@/features/billing/validation/stripe';
 import { stripeEnv } from '@/lib/config/env';
 import { logger as appLogger } from '@/lib/logging/logger';
+import { unstable_cache } from 'next/cache';
 
 /** Display names aligned with marketing `PRICING_TIERS`; billing owns read fallback strings. */
 const BILLING_CATALOG_FALLBACK_PRODUCT_NAMES = {
@@ -50,6 +51,10 @@ export interface ReadBillingCatalogInput {
   starterId: string;
   proId: string;
 }
+
+export type BillingCatalogTierEntries = Array<
+  [SubscriptionTier, BillingCatalogTierData]
+>;
 
 function createBillingCatalogLogger(): BillingCatalogLogger {
   return {
@@ -360,4 +365,33 @@ export async function readBillingCatalogTierData(
   }
 
   return readLiveBillingCatalog(input, resolved);
+}
+
+const readCachedProductionBillingCatalogEntries = unstable_cache(
+  async (
+    input: ReadBillingCatalogInput,
+  ): Promise<BillingCatalogTierEntries> => [
+    ...(await readBillingCatalogTierData(input)).entries(),
+  ],
+  ['stripe-pricing-catalog-v1'],
+  {
+    tags: ['stripe-pricing-catalog'],
+    revalidate: 3_600,
+  },
+);
+
+/**
+ * Serializable pricing-page boundary. Production default reads use Next's
+ * shared cache; injected reads stay uncached so tests and local adapters remain
+ * deterministic.
+ */
+export async function readBillingCatalogTierEntries(
+  input: ReadBillingCatalogInput,
+  deps?: Partial<BillingCatalogReadDeps>,
+): Promise<BillingCatalogTierEntries> {
+  if (process.env.NODE_ENV === 'production' && deps === undefined) {
+    return readCachedProductionBillingCatalogEntries(input);
+  }
+
+  return [...(await readBillingCatalogTierData(input, deps)).entries()];
 }

@@ -2,6 +2,10 @@ import type {
   ModuleDetailReadModel,
   PlanDbClient,
 } from '@/features/plans/read-projection/types';
+import type {
+  PlanListPage,
+  PlanListQuery,
+} from '@/features/plans/read-projection/types';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
   ClientGenerationAttempt,
@@ -26,10 +30,12 @@ import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
+import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
 import {
   getModuleDetailRows,
   getModuleLessonGenerationStatus,
 } from '@/lib/db/queries/modules';
+import { getPlanListPageRowsForUser } from '@/lib/db/queries/plan-list';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -43,7 +49,7 @@ import { logger } from '@/lib/logging/logger';
 async function listPlanSummaries(params: {
   userId: string;
   dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+  options?: PaginationOptions & { orderBy?: 'createdAt' | 'updatedAt' };
 }): Promise<PlanSummary[]> {
   const rows = await getPlanSummaryRowsForUser(
     params.userId,
@@ -56,12 +62,20 @@ async function listPlanSummaries(params: {
 
 // Keep page-specific entrypoints explicit even while both consumers share the
 // same summary projection today.
+const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
+
 export async function listDashboardPlanSummaries(params: {
   userId: string;
   dbClient?: PlanDbClient;
-  options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
-  return listPlanSummaries(params);
+  return listPlanSummaries({
+    userId: params.userId,
+    dbClient: params.dbClient,
+    options: {
+      limit: DASHBOARD_PLAN_SUMMARY_LIMIT,
+      orderBy: 'updatedAt',
+    },
+  });
 }
 
 export async function listPlansPageSummaries(params: {
@@ -70,6 +84,27 @@ export async function listPlansPageSummaries(params: {
   options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
   return listPlanSummaries(params);
+}
+
+export async function getPlansPageForRead(params: {
+  userId: string;
+  dbClient?: PlanDbClient;
+  query: PlanListQuery;
+  referenceTimestamp?: string;
+}): Promise<PlanListPage> {
+  const rows = await getPlanListPageRowsForUser({
+    ...params,
+    referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
+  });
+
+  return {
+    ...rows,
+    pageSize: PLAN_LIST_PAGE_SIZE,
+    items: rows.items.map((item) => ({
+      ...item,
+      completion: item.totalTasks ? item.completedTasks / item.totalTasks : 0,
+    })),
+  };
 }
 
 export async function listLightweightPlansForApi(params: {

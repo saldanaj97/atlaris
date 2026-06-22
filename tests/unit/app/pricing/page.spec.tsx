@@ -8,7 +8,7 @@ type PricingPageUser = ReturnType<typeof buildUserFixture>;
 
 const mocks = vi.hoisted(() => ({
   requestBoundaryComponentMock: vi.fn(),
-  readBillingCatalogTierDataMock: vi.fn(),
+  readBillingCatalogTierEntriesMock: vi.fn(),
   pricingGridMock: vi.fn(),
   pricingMissingStripeNoticeMock: vi.fn(),
   manageSubscriptionButtonMock: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('@/features/billing/account-snapshot', () => ({
 }));
 
 vi.mock('@/features/billing/catalog-read', () => ({
-  readBillingCatalogTierData: mocks.readBillingCatalogTierDataMock,
+  readBillingCatalogTierEntries: mocks.readBillingCatalogTierEntriesMock,
 }));
 
 vi.mock('@/lib/logging/logger', () => ({
@@ -139,12 +139,12 @@ function mockStripeTierData(
   monthlyStripeData = createStripeTierMap(['starter', 'pro']),
   yearlyStripeData = createStripeTierMap(['starter', 'pro']),
 ): void {
-  mocks.readBillingCatalogTierDataMock
+  mocks.readBillingCatalogTierEntriesMock
     .mockImplementationOnce(async (_input: ReadBillingCatalogInput) => {
-      return monthlyStripeData;
+      return [...monthlyStripeData.entries()];
     })
     .mockImplementationOnce(async (_input: ReadBillingCatalogInput) => {
-      return yearlyStripeData;
+      return [...yearlyStripeData.entries()];
     });
 }
 
@@ -173,13 +173,13 @@ describe('PricingPage', () => {
     expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
       user,
     );
-    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenCalledTimes(2);
-    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenNthCalledWith(1, {
+    expect(mocks.readBillingCatalogTierEntriesMock).toHaveBeenCalledTimes(2);
+    expect(mocks.readBillingCatalogTierEntriesMock).toHaveBeenNthCalledWith(1, {
       interval: 'monthly',
       proId: 'price_pro_monthly',
       starterId: 'price_starter_monthly',
     });
-    expect(mocks.readBillingCatalogTierDataMock).toHaveBeenNthCalledWith(2, {
+    expect(mocks.readBillingCatalogTierEntriesMock).toHaveBeenNthCalledWith(2, {
       interval: 'yearly',
       proId: 'price_pro_yearly',
       starterId: 'price_starter_yearly',
@@ -211,9 +211,9 @@ describe('PricingPage', () => {
     const user = buildUserFixture();
 
     mockAuthenticatedUser(user);
-    mocks.readBillingCatalogTierDataMock
-      .mockResolvedValueOnce(new Map())
-      .mockResolvedValueOnce(createStripeTierMap(['starter']));
+    mocks.readBillingCatalogTierEntriesMock
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([...createStripeTierMap(['starter']).entries()]);
 
     await renderPricingPage();
 
@@ -254,7 +254,7 @@ describe('PricingPage', () => {
       expect(mocks.deriveBillingSubscriptionSnapshotMock).toHaveBeenCalledWith(
         user,
       );
-      expect(mocks.readBillingCatalogTierDataMock).toHaveBeenCalledTimes(2);
+      expect(mocks.readBillingCatalogTierEntriesMock).toHaveBeenCalledTimes(2);
       expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
         'data-can-open-billing-portal',
         'false',

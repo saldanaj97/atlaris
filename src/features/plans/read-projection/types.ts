@@ -13,9 +13,44 @@ export type PlanReadStatus =
 
 /**
  * List-filter status used by plan read projections.
- * `inactive` is a UI aggregate for non-active plan rows rather than a DB status.
+ * `inactive` is the canonical URL/UI aggregate for paused rows.
  */
-export type FilterStatus = 'all' | PlanReadStatus | 'inactive';
+export type FilterStatus =
+  | 'all'
+  | Exclude<PlanReadStatus, 'paused'>
+  | 'inactive';
+
+export const PLAN_LIST_PAGE_SIZE = 20 as const;
+
+export type PlanListQuery = {
+  page: number;
+  search: string;
+  status: FilterStatus;
+};
+
+export type PlanListItem = {
+  id: string;
+  topic: string;
+  createdAt: string;
+  updatedAt: string | null;
+  status: PlanReadStatus;
+  completion: number;
+  completedTasks: number;
+  totalTasks: number;
+};
+
+export type PlanListStatusCounts = Record<PlanReadStatus, number>;
+
+export type PlanListPage = {
+  items: PlanListItem[];
+  page: number;
+  pageSize: typeof PLAN_LIST_PAGE_SIZE;
+  totalItems: number;
+  totalPages: number;
+  totalSearchResults: number;
+  statusCounts: PlanListStatusCounts;
+  referenceTimestamp: string;
+};
 
 /** Flat resource on module-detail task (type/title/url map to UI). */
 export type ModuleDetailResource = {

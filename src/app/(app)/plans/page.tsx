@@ -1,3 +1,7 @@
+import type {
+  FilterStatus,
+  PlanListQuery,
+} from '@/features/plans/read-projection/types';
 import type { Metadata } from 'next';
 
 import {
@@ -26,14 +30,46 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Plans list page with Suspense boundaries for data-dependent content.
- *
- * Static elements (title, "New Plan" button) render immediately.
- * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
- */
-export default function PlansPage() {
-  const plansPageData = loadPlansPageData();
+type PlansPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const PLAN_FILTERS = new Set<FilterStatus>([
+  'all',
+  'active',
+  'completed',
+  'generating',
+  'failed',
+  'inactive',
+]);
+
+function firstSearchParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
+
+async function parsePlansQuery(
+  searchParams: PlansPageProps['searchParams'],
+): Promise<PlanListQuery> {
+  const params = await searchParams;
+  const pageValue = Number(firstSearchParam(params?.page));
+  const statusValue = firstSearchParam(params?.status);
+  const canonicalStatusValue =
+    statusValue === 'paused' ? 'inactive' : statusValue;
+  const status = PLAN_FILTERS.has(canonicalStatusValue as FilterStatus)
+    ? (canonicalStatusValue as FilterStatus)
+    : 'all';
+
+  return {
+    page:
+      Number.isFinite(pageValue) && pageValue >= 1 ? Math.floor(pageValue) : 1,
+    search: firstSearchParam(params?.search).trim(),
+    status,
+  };
+}
+
+export default async function PlansPage({ searchParams }: PlansPageProps) {
+  const query = await parsePlansQuery(searchParams);
+  const plansPageData = loadPlansPageData(query);
 
   return (
     <>
@@ -57,7 +93,7 @@ export default function PlansPage() {
 
       {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
       <Suspense fallback={<PlansContentSkeleton />}>
-        <PlansContent dataPromise={plansPageData} />
+        <PlansContent dataPromise={plansPageData} query={query} />
       </Suspense>
     </>
   );

@@ -1,4 +1,5 @@
 import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
+import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
@@ -41,8 +42,10 @@ export async function PlanCountBadgeContent({
  */
 export async function PlansContent({
   dataPromise,
+  query,
 }: {
   dataPromise: Promise<PlansPageData | null>;
+  query: PlanListQuery;
 }) {
   const result = await dataPromise;
   if (!result) {
@@ -51,10 +54,13 @@ export async function PlansContent({
     );
   }
 
-  const { summaries, usage } = result;
-  const referenceTimestamp = new Date().toISOString();
+  const { plansPage, usage } = result;
 
-  if (!summaries.length) {
+  if (
+    plansPage.totalSearchResults === 0 &&
+    query.search === '' &&
+    query.status === 'all'
+  ) {
     return (
       <section aria-label='No plans found'>
         <RouteEmptyState
@@ -77,8 +83,8 @@ export async function PlansContent({
 
   return (
     <PlansList
-      summaries={summaries}
-      referenceTimestamp={referenceTimestamp}
+      page={plansPage}
+      query={query}
       usage={{
         tier: usage.tier,
         activePlans: usage.activePlans,
