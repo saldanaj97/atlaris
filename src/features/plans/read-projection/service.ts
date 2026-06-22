@@ -48,7 +48,7 @@ import { logger } from '@/lib/logging/logger';
 async function listPlanSummaries(params: {
   userId: string;
   dbClient?: PlanDbClient;
-  options?: PaginationOptions;
+  options?: PaginationOptions & { orderBy?: 'createdAt' | 'updatedAt' };
 }): Promise<PlanSummary[]> {
   const rows = await getPlanSummaryRowsForUser(
     params.userId,
@@ -61,12 +61,20 @@ async function listPlanSummaries(params: {
 
 // Keep page-specific entrypoints explicit even while both consumers share the
 // same summary projection today.
+const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
+
 export async function listDashboardPlanSummaries(params: {
   userId: string;
   dbClient?: PlanDbClient;
-  options?: PaginationOptions;
 }): Promise<PlanSummary[]> {
-  return listPlanSummaries(params);
+  return listPlanSummaries({
+    userId: params.userId,
+    dbClient: params.dbClient,
+    options: {
+      limit: DASHBOARD_PLAN_SUMMARY_LIMIT,
+      orderBy: 'updatedAt',
+    },
+  });
 }
 
 export async function listPlansPageSummaries(params: {

@@ -78,6 +78,10 @@ type PlanStatusRows = {
 /** Maximum number of generation attempts to return in attempt history queries. */
 const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
 const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
+type PlanListOrdering = 'createdAt' | 'updatedAt';
+type PlanListOptions = PaginationOptions & {
+  orderBy?: PlanListOrdering;
+};
 type PlanGenerationStatus =
   (typeof learningPlans.$inferSelect)['generationStatus'];
 
@@ -111,14 +115,22 @@ const LIGHTWEIGHT_PLAN_LIST_SELECTION = {
 
 function applyPlanListOrderingAndPagination(
   planQuery: {
-    orderBy: <TOrderByArg>(column: TOrderByArg) => unknown;
+    orderBy: (...columns: ReturnType<typeof desc>[]) => unknown;
     limit: (n: number) => unknown;
     offset: (n: number) => unknown;
   },
-  orderByColumn: ReturnType<typeof desc>,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): void {
-  planQuery.orderBy(orderByColumn);
+  if (options?.orderBy === 'updatedAt') {
+    planQuery.orderBy(
+      desc(
+        sql`coalesce(${learningPlans.updatedAt}, ${learningPlans.createdAt})`,
+      ),
+      desc(learningPlans.id),
+    );
+  } else {
+    planQuery.orderBy(desc(learningPlans.createdAt), desc(learningPlans.id));
+  }
   if (options?.limit !== undefined) {
     planQuery.limit(options.limit);
   }
@@ -134,18 +146,18 @@ function userPlanListWhere(userId: string) {
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): Promise<LearningPlan[]>;
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options: PaginationOptions | undefined,
+  options: PlanListOptions | undefined,
   selection: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION,
 ): Promise<LightweightPlanListRow[]>;
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
   selection?: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION,
 ): Promise<LearningPlan[] | LightweightPlanListRow[]> {
   const planQuery = (selection ? client.select(selection) : client.select())
@@ -153,11 +165,7 @@ async function fetchUserPlanListRows(
     .where(userPlanListWhere(userId))
     .$dynamic();
 
-  applyPlanListOrderingAndPagination(
-    planQuery,
-    desc(learningPlans.createdAt),
-    options,
-  );
+  applyPlanListOrderingAndPagination(planQuery, options);
 
   return await planQuery;
 }
@@ -193,7 +201,7 @@ function isDeletablePlanStatus(
 export async function getPlanSummaryRowsForUser(
   userId: string,
   dbClient?: DbClient,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): Promise<PlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
