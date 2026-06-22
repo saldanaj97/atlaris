@@ -65,9 +65,9 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 pnpm test                              # Changed unit + integration-class bundle
 pnpm test:unit                         # Unit tests only
 pnpm test:unit:changed                 # Changed unit tests
-pnpm exec tsx scripts/tests/run.ts unit --watch  # Watch unit tests
-pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
-pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Watch unit tests
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts  # Single unit test file
+NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts  # Single integration file (Testcontainers)
 pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase
 pnpm test:integration                  # Full integration suite + Workflow SDK phase
 pnpm test:workflow                     # Workflow SDK tests only
