@@ -81,6 +81,7 @@ describe('Subscription Management', () => {
         },
         {
           timeout: 10_000,
+          idempotencyKey: `atlaris:customer-provisioning:v1:${userId}`,
         },
       );
 
@@ -118,6 +119,26 @@ describe('Subscription Management', () => {
 
       expect(customerId).toBe(existingCustomerId);
       expect(createStripeCustomer).not.toHaveBeenCalled();
+    });
+
+    it('fails when the returned customer cannot be assigned to exactly one user', async () => {
+      const missingUserId = '00000000-0000-4000-8000-000000000099';
+      const createStripeCustomer = vi
+        .fn()
+        .mockResolvedValue({ id: 'cus_orphan' });
+      const mockStripe = makeStripeMock({
+        customers: { create: createStripeCustomer },
+      });
+
+      await expect(
+        createCustomer(missingUserId, 'missing@example.com', mockStripe),
+      ).rejects.toThrow('did not update exactly one user row');
+      expect(createStripeCustomer).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          idempotencyKey: `atlaris:customer-provisioning:v1:${missingUserId}`,
+        }),
+      );
     });
   });
 
