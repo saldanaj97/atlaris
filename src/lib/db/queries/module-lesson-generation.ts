@@ -281,12 +281,15 @@ export async function claimModuleLessonGenerationOrDescribe(
         },
       })
     : undefined;
+  const claimStartedAt = options?.workflow?.startedAt
+    ? new Date(options.workflow.startedAt)
+    : now();
   const attemptClaim = async (): Promise<boolean> => {
     const touched = await dbClient
       .update(modules)
       .set({
         lessonGenerationStatus: 'generating',
-        lessonGenerationStartedAt: now(),
+        lessonGenerationStartedAt: claimStartedAt,
         lessonGenerationCompletedAt: null,
         lessonGenerationFailedAt: null,
         lessonGenerationError: null,
