@@ -13,14 +13,10 @@
 import type { DbClient } from '@/lib/db/types';
 
 import {
-  compensateMeteredReservation,
-  type MeteredReservationToken,
-  type ReserveMeteredResult,
-  reserveMeteredUsage,
-} from './metered-reservation';
-import { logger } from '@/lib/logging/logger';
-import { recordBillingReconciliationRequired } from '@/lib/logging/ops-alerts';
-import { db as serviceRoleDb } from '@supabase/service-role';
+  createServiceRoleMeteredBoundaryDeps,
+  runMeteredQuotaReserved,
+  type MeteredQuotaBoundaryDeps,
+} from './metered-quota-boundary-core';
 
 /**
  * Outcome the caller's `work()` function returns to describe what should
@@ -65,24 +61,6 @@ type RegenerationQuotaBoundaryArgs<TConsumed, TReverted = TConsumed> = {
 };
 
 /**
- * Context used by both reconciliation telemetry and the structured log line
- * emitted when compensation fails. Kept explicit so test fakes and call sites
- * stay type-checked instead of accepting any string-keyed bag.
- */
-type ReconciliationContext = {
-  planId: string;
-  userId: string;
-  jobId?: string;
-};
-
-type CompensationLogContext = {
-  planId: string;
-  userId: string;
-  reason: string;
-  jobId?: string;
-};
-
-/**
  * Injectable seam for unit tests. Defaults wire production billing primitives
  * and Sentry telemetry; callers should not pass overrides outside tests.
  *
@@ -90,42 +68,9 @@ type CompensationLogContext = {
  * a `catch` clause where TypeScript surfaces caught values as `unknown`. The
  * default implementation normalizes to `Error` before forwarding to Sentry.
  */
-export type RegenerationQuotaBoundaryDeps = {
-  reserve: (
-    userId: string,
-    dbClient: DbClient,
-  ) => Promise<ReserveMeteredResult>;
-  compensate: (
-    token: MeteredReservationToken,
-    dbClient: DbClient,
-  ) => Promise<void>;
-  reportReconciliation: (
-    context: ReconciliationContext,
-    error: unknown,
-  ) => void;
-};
+export type RegenerationQuotaBoundaryDeps = MeteredQuotaBoundaryDeps;
 
-type SafeCompensateArgs = {
-  deps: RegenerationQuotaBoundaryDeps;
-  token: MeteredReservationToken;
-  dbClient: DbClient;
-  reconciliationContext: ReconciliationContext;
-  logContext: CompensationLogContext;
-};
-
-const DEFAULT_DEPS: RegenerationQuotaBoundaryDeps = {
-  reserve: (userId, dbClient) =>
-    reserveMeteredUsage(
-      { userId, meter: 'regeneration' },
-      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-    ),
-  compensate: (token, dbClient) =>
-    compensateMeteredReservation(
-      token,
-      dbClient === serviceRoleDb ? dbClient : serviceRoleDb,
-    ),
-  reportReconciliation: recordBillingReconciliationRequired,
-};
+const DEFAULT_DEPS = createServiceRoleMeteredBoundaryDeps('regeneration');
 
 export async function runRegenerationQuotaReserved<
   TConsumed,
@@ -136,87 +81,35 @@ export async function runRegenerationQuotaReserved<
 ): Promise<RegenerationQuotaResult<TConsumed, TReverted>> {
   const { userId, planId, dbClient, work } = args;
 
-  const reservation = await deps.reserve(userId, dbClient);
-  if (!reservation.ok) {
-    return {
-      ok: false,
-      currentCount: reservation.currentCount,
-      limit: reservation.limit,
-    };
-  }
-
-  const { token } = reservation;
-
-  let workResult: RegenerationQuotaWorkResult<TConsumed, TReverted>;
-  try {
-    workResult = await work();
-  } catch (workError) {
-    await safelyCompensate({
-      deps,
-      token,
+  return await runMeteredQuotaReserved<
+    TConsumed,
+    TReverted,
+    RegenerationQuotaWorkResult<TConsumed, TReverted>
+  >(
+    {
+      userId,
       dbClient,
-      reconciliationContext: { planId, userId },
-      logContext: { planId, userId, reason: 'work_threw' },
-    });
-    throw workError;
-  }
-
-  if (workResult.disposition === 'consumed') {
-    return { ok: true, consumed: true, value: workResult.value };
-  }
-
-  const reconciliationRequired = await safelyCompensate({
+      work,
+      buildWorkThrowContexts: () => ({
+        reconciliationContext: { planId, userId },
+        logContext: { planId, userId, reason: 'work_threw' },
+      }),
+      buildRevertContexts: (workResult) => ({
+        reconciliationContext: {
+          planId,
+          userId,
+          jobId: workResult.jobId,
+        },
+        logContext: {
+          planId,
+          userId,
+          reason: workResult.reason ?? 'work_revert',
+          jobId: workResult.jobId,
+        },
+      }),
+      compensationFailureMessage:
+        'Failed to compensate regeneration usage reservation',
+    },
     deps,
-    token,
-    dbClient,
-    reconciliationContext: {
-      planId,
-      userId,
-      jobId: workResult.jobId,
-    },
-    logContext: {
-      planId,
-      userId,
-      reason: workResult.reason ?? 'work_revert',
-      jobId: workResult.jobId,
-    },
-  });
-
-  return {
-    ok: true,
-    consumed: false,
-    value: workResult.value,
-    reconciliationRequired,
-  };
-}
-
-async function safelyCompensate(args: SafeCompensateArgs): Promise<boolean> {
-  try {
-    await args.deps.compensate(args.token, args.dbClient);
-    return false;
-  } catch (compensateError) {
-    // Telemetry is treated as fire-and-forget so that a throwing
-    // reconciliation helper cannot shadow the caller's original error
-    // (e.g. the `workError` we are about to rethrow). Anything that
-    // escapes Sentry/log here is logged separately and swallowed.
-    try {
-      args.deps.reportReconciliation(
-        args.reconciliationContext,
-        compensateError,
-      );
-    } catch (reportError) {
-      logger.error(
-        { ...args.logContext, reportError },
-        'Failed to report billing reconciliation alert',
-      );
-    }
-    logger.error(
-      {
-        ...args.logContext,
-        compensateError,
-      },
-      'Failed to compensate regeneration usage reservation',
-    );
-    return true;
-  }
+  );
 }
