@@ -8,7 +8,7 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
 
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { getAttemptCap } from '@/lib/config/env';
 import { hashSha256 } from '@/lib/crypto/hash';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
@@ -160,7 +160,7 @@ export async function reserveAttemptSlot(
     const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
     const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
-    if (existingAttempts >= getGenerationAttemptCap()) {
+    if (existingAttempts >= getAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
 

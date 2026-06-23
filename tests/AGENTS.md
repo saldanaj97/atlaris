@@ -54,7 +54,7 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Workflow    | Workflow SDK harness  | In-process SDK runtime                | No                  | 90s     |
+| Workflow    | Workflow SDK harness  | In-process SDK runtime                | Yes                 | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Smoke       | Playwright            | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |

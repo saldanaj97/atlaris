@@ -95,6 +95,7 @@ export async function getPlansPageForRead(params: {
   const rows = await getPlanListPageRowsForUser({
     ...params,
     referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
+    pageSize: PLAN_LIST_PAGE_SIZE,
   });
 
   return {

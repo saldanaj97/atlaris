@@ -1,6 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
+import { getAttemptCap } from '@/lib/config/env';
 import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
@@ -32,7 +32,7 @@ export type PlanListQueryStatusCounts = Record<PlanListRowStatus, number>;
 export type PlanListQueryPageRows = {
   items: PlanListQueryItemRow[];
   page: number;
-  pageSize: typeof PLAN_LIST_PAGE_SIZE;
+  pageSize: number;
   totalItems: number;
   totalPages: number;
   totalSearchResults: number;
@@ -51,7 +51,6 @@ type PlanListItemRow = {
   total_tasks: number;
 };
 
-const PLAN_LIST_PAGE_SIZE = 20 as const;
 const EMPTY_STATUS_COUNTS: PlanListQueryStatusCounts = {
   active: 0,
   paused: 0,
@@ -76,7 +75,7 @@ function planListRowsSql(params: {
   search: string;
   referenceTimestamp: string;
 }): SQL {
-  const attemptCap = getGenerationAttemptCap();
+  const attemptCap = getAttemptCap();
   const searchFilter = params.search
     ? sql`and position(lower(${params.search}) in lower(up.topic)) > 0`
     : sql``;
@@ -154,9 +153,11 @@ export async function getPlanListPageRowsForUser(params: {
   userId: string;
   query: PlanListPageQuery;
   referenceTimestamp: string;
+  pageSize: number;
   dbClient?: DbClient;
 }): Promise<PlanListQueryPageRows> {
   const client = params.dbClient ?? getDb();
+  const { pageSize } = params;
   const rowsSql = planListRowsSql({
     userId: params.userId,
     search: params.query.search,
@@ -179,7 +180,7 @@ export async function getPlanListPageRowsForUser(params: {
     0,
   );
   const totalItems = status ? statusCounts[status] : totalSearchResults;
-  const totalPages = Math.ceil(totalItems / PLAN_LIST_PAGE_SIZE);
+  const totalPages = Math.ceil(totalItems / pageSize);
   const page = Math.min(normalizePage(params.query.page), totalPages || 1);
   const statusFilter = status ? sql`where status = ${status}` : sql``;
   const itemRows = (await client.execute(sql`
@@ -195,8 +196,8 @@ export async function getPlanListPageRowsForUser(params: {
     from status_rows
     ${statusFilter}
     order by created_at desc, id desc
-    limit ${PLAN_LIST_PAGE_SIZE}
-    offset ${(page - 1) * PLAN_LIST_PAGE_SIZE}
+    limit ${pageSize}
+    offset ${(page - 1) * pageSize}
   `)) as PlanListItemRow[];
 
   return {
@@ -214,7 +215,7 @@ export async function getPlanListPageRowsForUser(params: {
       }),
     ),
     page,
-    pageSize: PLAN_LIST_PAGE_SIZE,
+    pageSize,
     totalItems,
     totalPages,
     totalSearchResults,
