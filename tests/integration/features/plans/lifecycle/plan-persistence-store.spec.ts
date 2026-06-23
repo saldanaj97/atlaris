@@ -1,5 +1,10 @@
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
+import {
+  atomicCheckAndInsertPlan,
+  findCappedPlanWithoutModules,
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from '@/features/plans/lifecycle/plan-persistence-store';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -16,19 +21,22 @@ const planPayload = {
   origin: 'ai' as const,
 };
 
-describe('PlanPersistenceAdapter (integration)', () => {
+describe('plan persistence store', () => {
   it('atomicInsertPlan persists a generating plan row', async () => {
     const authUserId = buildTestAuthUserId('persist-adapter-insert');
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
     });
-    const adapter = new PlanPersistenceAdapter(db);
 
-    const result = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${planPayload.topic} insert`,
-    });
+    const result = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} insert`,
+      },
+      db,
+    );
 
     expect(result.status).toBe('created');
     if (result.status !== 'created') return;
@@ -50,20 +58,27 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'free',
     });
-    const adapter = new PlanPersistenceAdapter(db);
 
     for (let i = 0; i < 3; i++) {
-      const r = await adapter.atomicInsertPlan(userId, {
-        ...planPayload,
-        topic: `${planPayload.topic} cap ${i}`,
-      });
+      const r = await atomicCheckAndInsertPlan(
+        userId,
+        {
+          ...planPayload,
+          topic: `${planPayload.topic} cap ${i}`,
+        },
+        db,
+      );
       expect(r.status).toBe('created');
     }
 
-    const rejected = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${planPayload.topic} cap overflow`,
-    });
+    const rejected = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} cap overflow`,
+      },
+      db,
+    );
 
     expect(rejected.status).toBe('limit_reached');
   });
@@ -75,20 +90,27 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'pro',
     });
-    const adapter = new PlanPersistenceAdapter(db);
     const topic = `${planPayload.topic} duplicate`;
 
-    const inserted = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic,
-    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic,
+      },
+      db,
+    );
     expect(inserted.status).toBe('created');
     if (inserted.status !== 'created') return;
 
-    const duplicate = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic,
-    });
+    const duplicate = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic,
+      },
+      db,
+    );
     expect(duplicate).toEqual({
       status: 'duplicate',
       existingPlanId: inserted.id,
@@ -102,12 +124,11 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'free',
     });
-    const adapter = new PlanPersistenceAdapter(db);
     const topic = `${planPayload.topic} concurrent duplicate`;
 
     const results = await Promise.all([
-      adapter.atomicInsertPlan(userId, { ...planPayload, topic }),
-      adapter.atomicInsertPlan(userId, { ...planPayload, topic }),
+      atomicCheckAndInsertPlan(userId, { ...planPayload, topic }, db),
+      atomicCheckAndInsertPlan(userId, { ...planPayload, topic }, db),
     ]);
 
     const created = results.find((result) => result.status === 'created');
@@ -124,10 +145,14 @@ describe('PlanPersistenceAdapter (integration)', () => {
       .where(eq(learningPlans.userId, userId));
     expect(rows).toHaveLength(1);
 
-    const secondDistinct = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${topic} distinct`,
-    });
+    const secondDistinct = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${topic} distinct`,
+      },
+      db,
+    );
     expect(secondDistinct.status).toBe('created');
   });
 
@@ -138,16 +163,18 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'pro',
     });
-    const adapter = new PlanPersistenceAdapter(db);
-
-    const inserted = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${planPayload.topic} status-success`,
-    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} status-success`,
+      },
+      db,
+    );
     expect(inserted.status).toBe('created');
     if (inserted.status !== 'created') return;
 
-    await adapter.markGenerationSuccess(inserted.id);
+    await markPlanGenerationSuccess(inserted.id, db);
 
     const [readyRow] = await db
       .select()
@@ -165,16 +192,18 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'pro',
     });
-    const adapter = new PlanPersistenceAdapter(db);
-
-    const inserted = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${planPayload.topic} status-fail`,
-    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} status-fail`,
+      },
+      db,
+    );
     expect(inserted.status).toBe('created');
     if (inserted.status !== 'created') return;
 
-    await adapter.markGenerationFailure(inserted.id);
+    await markPlanGenerationFailure(inserted.id, db);
 
     const [failedRow] = await db
       .select()
@@ -191,13 +220,16 @@ describe('PlanPersistenceAdapter (integration)', () => {
       email: buildTestEmail(authUserId),
       subscriptionTier: 'pro',
     });
-    const adapter = new PlanPersistenceAdapter(db);
     const cap = getGenerationAttemptCap();
 
-    const inserted = await adapter.atomicInsertPlan(userId, {
-      ...planPayload,
-      topic: `${planPayload.topic} capped`,
-    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} capped`,
+      },
+      db,
+    );
     expect(inserted.status).toBe('created');
     if (inserted.status !== 'created') return;
 
@@ -212,7 +244,7 @@ describe('PlanPersistenceAdapter (integration)', () => {
       });
     }
 
-    const cappedId = await adapter.findCappedPlanWithoutModules(userId);
+    const cappedId = await findCappedPlanWithoutModules(userId, db);
     expect(cappedId).toBe(inserted.id);
   });
 });

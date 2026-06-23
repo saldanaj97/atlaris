@@ -1,10 +1,3 @@
-import {
-  addYears,
-  isBefore,
-  parseISO,
-  startOfDay,
-  startOfToday,
-} from 'date-fns';
 import { z } from 'zod';
 
 export { createLearningPlanSchema } from '@/shared/schemas/learning-plans.schemas';
@@ -17,6 +10,7 @@ import {
 
 export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
 export const DEFAULT_PLAN_DURATION_WEEKS = 2;
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const planRegenerationRequestSchema = z
   .object({
@@ -24,8 +18,45 @@ export const planRegenerationRequestSchema = z
   })
   .strict();
 
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfToday(): Date {
+  return startOfDay(new Date());
+}
+
+function addYears(date: Date, years: number): Date {
+  const next = new Date(date);
+  next.setFullYear(next.getFullYear() + years);
+  return next;
+}
+
+function isBefore(date: Date, dateToCompare: Date): boolean {
+  return date.getTime() < dateToCompare.getTime();
+}
+
+function parseIsoDateOnly(value: string): Date {
+  const match = DATE_ONLY_RE.exec(value);
+  if (!match) {
+    return new Date(Number.NaN);
+  }
+
+  const [, year, month, day] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    parsed.getFullYear() !== Number(year) ||
+    parsed.getMonth() !== Number(month) - 1 ||
+    parsed.getDate() !== Number(day)
+  ) {
+    return new Date(Number.NaN);
+  }
+
+  return parsed;
+}
+
 function toDateOnly(value: string): Date {
-  const parsedDate = parseISO(value);
+  const parsedDate = parseIsoDateOnly(value);
 
   if (!Number.isNaN(parsedDate.getTime())) {
     return startOfDay(parsedDate);

@@ -1,6 +1,5 @@
 /**
- * Adapter-private Drizzle persistence for plan lifecycle mutations.
- * Do not import outside lifecycle adapters / composition roots.
+ * Drizzle persistence for plan lifecycle mutations.
  */
 
 import type { AtomicInsertResult } from '@/features/plans/lifecycle/types';

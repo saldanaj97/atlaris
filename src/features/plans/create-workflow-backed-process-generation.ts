@@ -6,7 +6,7 @@ import type {
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
-import { GenerationFinalizationAdapter } from '@/features/plans/lifecycle/generation-finalization/adapter';
+import { commitPlanGenerationFailure } from '@/features/plans/lifecycle/generation-finalization/store';
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
@@ -36,8 +36,7 @@ async function defaultFinalizeWorkflowStartFailure(
     error: Error;
   },
 ): Promise<void> {
-  const finalization = new GenerationFinalizationAdapter(dbClient);
-  await finalization.finalizeFailure({
+  await commitPlanGenerationFailure(dbClient, {
     variant: 'reserved_attempt',
     planId: input.planId,
     userId: input.userId,

@@ -1,17 +1,28 @@
 import type {
-  GenerationFinalizationPort,
-  GenerationPort,
-  GenerationRunResult,
-  PlanPersistencePort,
-  QuotaPort,
-} from './ports';
+  FinalizeGenerationFailureParams,
+  FinalizeGenerationSuccessInput,
+} from './generation-finalization/types';
 import type {
+  AtomicInsertResult,
   CreateAiPlanInput,
   CreatePlanResult,
+  DurationCapResult,
+  GeneratedModule,
   GenerationAttemptResult,
+  NormalizedDuration,
+  PlanInsertData,
   ProcessGenerationInput,
 } from './types';
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+  GenerationAttemptRecord,
+  ReserveAttemptSlotParams,
+} from '@/lib/db/queries/types/attempts.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { checkCreationGate } from './creation-pipeline';
 import { type CreationGatePorts } from './creation-pipeline';
@@ -20,11 +31,125 @@ import { logger } from '@/lib/logging/logger';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
 
+export interface PlanLifecyclePersistence {
+  atomicInsertPlan(
+    this: void,
+    userId: string,
+    planData: PlanInsertData,
+  ): Promise<AtomicInsertResult>;
+
+  findCappedPlanWithoutModules(
+    this: void,
+    userId: string,
+  ): Promise<string | null>;
+
+  markGenerationSuccess(this: void, planId: string): Promise<void>;
+  markGenerationFailure(this: void, planId: string): Promise<void>;
+}
+
+export type PlanGenerationFailureMarker = Pick<
+  PlanLifecyclePersistence,
+  'markGenerationFailure'
+>;
+
+export interface PlanLifecycleQuota {
+  resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
+
+  checkDurationCap(
+    this: void,
+    params: {
+      tier: SubscriptionTier;
+      weeklyHours: number;
+      totalWeeks: number;
+    },
+  ): DurationCapResult;
+
+  normalizePlanDuration(
+    this: void,
+    params: {
+      tier: SubscriptionTier;
+      weeklyHours: number;
+      startDate?: string | null;
+      deadlineDate?: string | null;
+      today?: Date;
+    },
+  ): NormalizedDuration;
+}
+
+export type GenerationRunParams = {
+  planId: string;
+  userId: string;
+  tier: SubscriptionTier;
+  input: Readonly<GenerationInput>;
+  modelOverride?: string;
+  signal?: AbortSignal;
+  allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
+  requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
+  onAttemptReserved?: (reservation: AttemptReservation) => void;
+  /**
+   * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
+   * worker recovery) does not double-reserve. Implementations must validate the
+   * reservation against current DB state before provider work.
+   */
+  reservation?: AttemptReservation;
+};
+
+type GenerationRunSuccess = {
+  status: 'success';
+  modules: GeneratedModule[];
+  metadata: Record<string, unknown>;
+  usage: CanonicalAIUsage;
+  durationMs: number;
+  reservation: AttemptReservation;
+  extendedTimeout: boolean;
+};
+
+type GenerationRunFailure = {
+  status: 'failure';
+  classification: FailureClassification;
+  error: Error;
+  metadata?: Record<string, unknown>;
+  usage?: CanonicalAIUsage;
+  durationMs: number;
+  reservation?: AttemptReservation;
+  timedOut?: boolean;
+  extendedTimeout?: boolean;
+  reservationRejectionReason?: AttemptRejection['reason'];
+};
+
+type GenerationRunAlreadyFinalized = {
+  status: 'already_finalized';
+  planId: string;
+};
+
+export type GenerationRunResult =
+  | GenerationRunSuccess
+  | GenerationRunFailure
+  | GenerationRunAlreadyFinalized;
+
+export interface PlanLifecycleGeneration {
+  runGeneration(
+    this: void,
+    params: GenerationRunParams,
+  ): Promise<GenerationRunResult>;
+}
+
+export interface PlanLifecycleFinalization {
+  finalizeSuccess(
+    this: void,
+    input: FinalizeGenerationSuccessInput,
+  ): Promise<GenerationAttemptRecord>;
+
+  finalizeFailure(
+    this: void,
+    input: FinalizeGenerationFailureParams,
+  ): Promise<GenerationAttemptRecord | void>;
+}
+
 /**
- * PlanLifecycleService — orchestrates plan creation through port interfaces.
+ * PlanLifecycleService — orchestrates plan creation and generation attempts.
  *
- * This service has ZERO direct imports from billing, AI, DB, or job modules.
- * All interaction with external concerns goes through injected ports.
+ * This service keeps external concerns behind injected collaborators.
  *
  * Returns discriminated union results for expected lifecycle outcomes.
  * Generation finalization can throw on DB/RLS/infra errors after provider success;
@@ -32,10 +157,10 @@ import { isRetryableClassification } from '@/shared/types/failure-classification
  */
 
 export interface PlanLifecycleServicePorts {
-  readonly planPersistence: PlanPersistencePort;
-  readonly quota: QuotaPort;
-  readonly generation: GenerationPort;
-  readonly generationFinalization: GenerationFinalizationPort;
+  readonly planPersistence: PlanLifecyclePersistence;
+  readonly quota: PlanLifecycleQuota;
+  readonly generation: PlanLifecycleGeneration;
+  readonly generationFinalization: PlanLifecycleFinalization;
 }
 
 function shouldMarkPlanFailedAfterGenerationFailure(

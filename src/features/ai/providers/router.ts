@@ -20,7 +20,6 @@ import {
   PROVIDER_RETRY_MAX_MS,
   PROVIDER_RETRY_MIN_MS,
 } from '@/shared/constants/retry-policy';
-import pRetry from 'p-retry';
 
 export type RouterConfig = {
   useMock?: boolean;
@@ -97,6 +96,53 @@ function shouldRetry(error: unknown): boolean {
   return typeof status === 'number' ? status >= 500 : false;
 }
 
+function abortErrorFromSignal(signal: AbortSignal): Error {
+  if (signal.reason instanceof Error) {
+    return signal.reason;
+  }
+
+  const error = new Error('The operation was aborted');
+  error.name = 'AbortError';
+  return error;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw abortErrorFromSignal(signal);
+  }
+}
+
+function retryDelayMs(): number {
+  if (PROVIDER_RETRY_MAX_MS <= PROVIDER_RETRY_MIN_MS) {
+    return PROVIDER_RETRY_MIN_MS;
+  }
+
+  return (
+    PROVIDER_RETRY_MIN_MS +
+    Math.floor(
+      Math.random() * (PROVIDER_RETRY_MAX_MS - PROVIDER_RETRY_MIN_MS + 1),
+    )
+  );
+}
+
+function waitForRetry(signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal);
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, retryDelayMs());
+
+    function onAbort() {
+      clearTimeout(timeout);
+      reject(signal ? abortErrorFromSignal(signal) : new Error('Aborted'));
+    }
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
   private readonly providers: (() => AiPlanGenerationProvider)[];
 
@@ -143,18 +189,25 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     operation: () => Promise<ProviderGenerateResult>,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    return pRetry(operation, {
-      retries: MAX_PROVIDER_RETRIES,
-      minTimeout: PROVIDER_RETRY_MIN_MS,
-      maxTimeout: PROVIDER_RETRY_MAX_MS,
-      randomize: true,
-      signal: options?.signal,
-      onFailedAttempt: ({ error }) => {
-        if (!shouldRetry(error)) {
+    for (let attempt = 0; attempt <= MAX_PROVIDER_RETRIES; attempt++) {
+      throwIfAborted(options?.signal);
+
+      try {
+        return await operation();
+      } catch (error) {
+        if (
+          isAbortError(error) ||
+          !shouldRetry(error) ||
+          attempt >= MAX_PROVIDER_RETRIES
+        ) {
           throw error;
         }
-      },
-    });
+
+        await waitForRetry(options?.signal);
+      }
+    }
+
+    throw new Error('Provider retry loop exited unexpectedly');
   }
 
   private async runWithProviderFallback(

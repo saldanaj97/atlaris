@@ -20,7 +20,7 @@ import {
 import {
   markPlanGenerationFailureInTx,
   markPlanGenerationSuccessInTx,
-} from '@/features/plans/lifecycle/adapters/plan-persistence-store';
+} from '@/features/plans/lifecycle/plan-persistence-store';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import { buildMetadata } from '@/lib/db/queries/helpers/attempts-input';

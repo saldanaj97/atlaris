@@ -1,4 +1,4 @@
-import type { PlanPersistencePort, QuotaPort } from './ports';
+import type { PlanLifecyclePersistence, PlanLifecycleQuota } from './service';
 import type {
   CreatePlanResult,
   CreatePlanSuccess,
@@ -15,9 +15,9 @@ type CreationLifecycleLabel = 'create';
 
 export interface CreationGatePorts
   extends
-    Pick<PlanPersistencePort, 'findCappedPlanWithoutModules'>,
+    Pick<PlanLifecyclePersistence, 'findCappedPlanWithoutModules'>,
     Pick<
-      QuotaPort,
+      PlanLifecycleQuota,
       'resolveUserTier' | 'checkDurationCap' | 'normalizePlanDuration'
     > {}
 
@@ -128,7 +128,7 @@ export async function checkCreationGate(
 }
 
 export async function insertCreatedPlan(params: {
-  planPersistence: Pick<PlanPersistencePort, 'atomicInsertPlan'>;
+  planPersistence: Pick<PlanLifecyclePersistence, 'atomicInsertPlan'>;
   userId: string;
   tier: SubscriptionTier;
   lifecycleLabel: CreationLifecycleLabel;
