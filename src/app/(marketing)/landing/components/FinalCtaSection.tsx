@@ -8,7 +8,7 @@ export function FinalCtaSection() {
     <MarketingCta
       headingId={headingId}
       title='Ready to schedule your next skill?'
-      description='Create a free learning plan in minutes, then export sessions straight to your calendar.'
+      description='Create a free learning plan in minutes, with time-blocked sessions and resources ready to follow.'
     />
   );
 }

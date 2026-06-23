@@ -53,7 +53,7 @@ export function HowItWorksSection() {
         <StepCard
           stepNumber={2}
           title='Resources chosen, not dumped'
-          description='Each learning block comes with curated resources—articles, videos, exercises—attached directly to your schedule.'
+          description='Each learning block comes with curated resources—articles, videos, exercises—attached directly to your plan.'
           visual={<ResourcesVisual />}
         />
 
@@ -61,7 +61,7 @@ export function HowItWorksSection() {
         <StepCard
           stepNumber={3}
           title='Sync to your real life'
-          description='Designed to export your schedule to your calendar, with calendar sync coming soon.'
+          description='Designed around realistic study blocks now, with calendar sync coming soon.'
           visual={<SyncVisual />}
         />
       </div>
@@ -213,9 +213,9 @@ function SyncVisual() {
             <Check className='size-4 text-foreground' />
           </div>
           <div>
-            <p className='text-sm font-medium text-primary'>Schedule synced</p>
+            <p className='text-sm font-medium text-primary'>Plan ready</p>
             <p className='text-xs text-muted-foreground'>
-              24 events added to calendar
+              Study blocks organized
             </p>
           </div>
         </div>

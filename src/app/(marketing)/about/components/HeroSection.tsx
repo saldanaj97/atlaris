@@ -20,7 +20,7 @@ export function HeroSection() {
           <span className='gradient-text'>real schedules</span>
         </>
       }
-      subtitle='We help learners turn ambitious goals into structured, calendar-backed plans — with modules, resources, and progress tracking in one place.'
+      subtitle='We help learners turn ambitious goals into structured, time-aware plans — with modules, resources, and progress tracking in one place.'
     />
   );
 }

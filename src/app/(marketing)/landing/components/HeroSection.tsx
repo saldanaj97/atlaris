@@ -18,7 +18,7 @@ export function HeroSection() {
       badge={
         <Badge variant='glassmorphic' className='px-4 py-2'>
           <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent' />
-          Learning plans that land on your calendar
+          Learning plans built around your time
         </Badge>
       }
       title={
@@ -27,7 +27,7 @@ export function HeroSection() {
           <span className='gradient-text'>scheduled plan</span>
         </>
       }
-      subtitle='Atlaris builds module-by-module roadmaps, attaches resources to each session, with calendar sync coming soon.'
+      subtitle='Atlaris builds module-by-module roadmaps and attaches resources to each time-blocked session, with calendar sync coming soon.'
       cta={
         <LiquidGlassButton asChild>
           <Link href='/plans/new'>

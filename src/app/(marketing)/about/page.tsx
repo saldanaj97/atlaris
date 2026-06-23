@@ -10,11 +10,11 @@ import { ValuesSection } from '@/app/(marketing)/about/components/ValuesSection'
 export const metadata: Metadata = {
   title: 'About | Atlaris',
   description:
-    'Learn about Atlaris and how we help learners turn goals into scheduled execution.',
+    'Learn about Atlaris and how we help learners turn goals into structured execution.',
   openGraph: {
     title: 'About | Atlaris',
     description:
-      'Learn about Atlaris and how we help learners turn goals into scheduled execution.',
+      'Learn about Atlaris and how we help learners turn goals into structured execution.',
     url: '/about',
     images: ['/og-default.jpg'],
   },

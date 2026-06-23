@@ -14,7 +14,7 @@ interface ScenarioCardProps {
 const USE_CASES: ScenarioCardProps[] = [
   {
     scenario:
-      "I kept bookmarking 'Learn Python' courses for months. Atlaris put 3 hours a week on my calendar and I actually stuck with it.",
+      "I kept bookmarking 'Learn Python' courses for months. Atlaris turned it into 3 focused hours a week and I actually stuck with it.",
     persona: 'Career Switcher',
     detail: 'Marketing → Data Science',
     avatarInitials: 'SK',
@@ -28,7 +28,7 @@ const USE_CASES: ScenarioCardProps[] = [
   },
   {
     scenario:
-      'I have maybe 5 hours a week. Atlaris figured out what I could actually cover and scheduled it around my meetings.',
+      'I have maybe 5 hours a week. Atlaris figured out what I could actually cover and turned it into a plan I could follow.',
     persona: 'Busy Professional',
     detail: 'Product Manager',
     avatarInitials: 'RL',

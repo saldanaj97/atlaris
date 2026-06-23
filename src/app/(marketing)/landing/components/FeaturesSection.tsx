@@ -20,7 +20,7 @@ const FEATURES: Feature[] = [
     icon: <CalendarCheck className='size-7 text-white' aria-hidden='true' />,
     title: 'Calendar-Ready Plans',
     description:
-      'Calendar-ready sessions so study time can show up where you already look, with calendar sync coming soon.',
+      'Time-blocked sessions help you plan study time now, with calendar sync coming soon.',
   },
   {
     icon: <BookOpen className='size-7 text-white' aria-hidden='true' />,
@@ -41,7 +41,7 @@ export function FeaturesSection() {
       badge='Features'
       badgeClassName='bg-primary/10 text-primary'
       title='Built for follow-through'
-      subtitle='Plan generation, scheduling, and progress tracking in one product surface.'
+      subtitle='Plan generation, time-blocked lessons, and progress tracking in one product surface.'
     >
       <div className='grid gap-6 md:grid-cols-3'>
         {FEATURES.map((feature) => (

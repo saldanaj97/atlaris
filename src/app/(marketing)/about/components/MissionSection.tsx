@@ -74,6 +74,6 @@ const HIGHLIGHTS: Highlight[] = [
     icon: <Library className='size-5 text-white' aria-hidden='true' />,
     title: 'Curated Resources',
     description:
-      'Videos, articles, and exercises attached to each scheduled session.',
+      'Videos, articles, and exercises attached to each learning session.',
   },
 ];

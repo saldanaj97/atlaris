@@ -57,7 +57,7 @@ export function LandingHeroVisual() {
               </span>
               <span className='inline-flex items-center gap-1.5'>
                 <Calendar className='size-3.5' aria-hidden='true' />
-                Synced to Google Calendar
+                Time-blocked sessions
               </span>
             </div>
           </div>

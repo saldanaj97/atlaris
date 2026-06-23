@@ -41,7 +41,7 @@ export function ProblemSolutionSection() {
                 Conflicting advice from different sources
               </ProblemItem>
               <ProblemItem>
-                Plans that never make it to your calendar
+                Plans that never become a concrete weekly routine
               </ProblemItem>
               <ProblemItem>Motivation dies by week two</ProblemItem>
             </ul>
@@ -61,7 +61,9 @@ export function ProblemSolutionSection() {
 
             <ul className='space-y-4'>
               <SolutionItem>Coherent roadmap from day one</SolutionItem>
-              <SolutionItem>Time-blocked in your calendar</SolutionItem>
+              <SolutionItem>
+                Time-blocked into a realistic weekly plan
+              </SolutionItem>
               <SolutionItem>Resources attached to every session</SolutionItem>
               <SolutionItem>Progress visible at a glance</SolutionItem>
             </ul>
