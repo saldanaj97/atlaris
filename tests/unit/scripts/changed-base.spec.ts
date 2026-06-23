@@ -2,8 +2,8 @@ import { resolveChangedTestBase } from '../../../scripts/tests/changed-base';
 import { describe, expect, it } from 'vitest';
 
 describe('resolveChangedTestBase', () => {
-  it('defaults changed tests to main when no base env is configured', () => {
-    expect(resolveChangedTestBase({})).toBe('main');
+  it('defaults changed tests to origin/develop when no base env is configured', () => {
+    expect(resolveChangedTestBase({})).toBe('origin/develop');
   });
 
   it('uses VITEST_CHANGED_BASE when provided', () => {

@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 
-const DEFAULT_CHANGED_TEST_BASE = 'main';
+const DEFAULT_CHANGED_TEST_BASE = 'origin/develop';
 
 export type ChangedTestBaseEnv = {
   BASE_REF?: string;
