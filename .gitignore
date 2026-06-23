@@ -67,3 +67,4 @@ screenshots/
 .fallow/
 .daily-recap/
 .agents/recaps/**
+.codex/environments/
