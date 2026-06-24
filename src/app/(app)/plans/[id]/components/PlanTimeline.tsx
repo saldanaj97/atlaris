@@ -91,11 +91,13 @@ export function PlanTimeline({
 
   if (modules.length === 0) {
     return (
-      <Card className='text-center'>
-        <CardContent className='p-6'>
-          <p className='text-muted-foreground'>No modules available yet.</p>
-        </CardContent>
-      </Card>
+      <section className='mt-12'>
+        <Card className='text-center'>
+          <CardContent className='p-6'>
+            <p className='text-muted-foreground'>No modules available yet.</p>
+          </CardContent>
+        </Card>
+      </section>
     );
   }
 
