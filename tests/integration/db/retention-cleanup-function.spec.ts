@@ -1,7 +1,9 @@
-import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { seedRetentionCleanupRows } from '@tests/helpers/db/retention-fixtures';
-import { sql, and, eq, inArray } from 'drizzle-orm';
+import {
+  seedRetentionCleanupRows,
+  selectRetentionJobRows,
+} from '@tests/helpers/db/retention-fixtures';
+import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 describe('private.cleanup_retained_db_rows', () => {
@@ -58,15 +60,7 @@ describe('private.cleanup_retained_db_rows', () => {
       },
     ]);
 
-    const remainingJobs = await db
-      .select({ id: jobQueue.id, status: jobQueue.status })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.userId, fixture.userId),
-          inArray(jobQueue.id, fixture.jobRowIds),
-        ),
-      );
+    const remainingJobs = await selectRetentionJobRows(fixture);
     expect(remainingJobs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ status: 'completed' }),

@@ -8,31 +8,34 @@ import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
+import { createMaintenancePostRequest } from '@tests/helpers/maintenance-request';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const CLEANUP_URL = 'http://localhost/api/internal/maintenance/plans/cleanup';
 const WORKER_TOKEN = 'maintenance-secret';
 
+type PlanCleanupResponseBody = {
+  ok: boolean;
+  stuckPlansCleaned: number;
+  orphanedAttemptsCleaned: number;
+};
+
 function createCleanupRequest(
   init: RequestInit & { token?: string; useBearer?: boolean } = {},
 ): Request {
-  const { token, useBearer = true, ...requestInit } = init;
-  const headers = new Headers(requestInit.headers);
+  return createMaintenancePostRequest(CLEANUP_URL, init);
+}
 
-  if (token) {
-    if (useBearer) {
-      headers.set('Authorization', `Bearer ${token}`);
-    } else {
-      headers.set('x-maintenance-worker-token', token);
-    }
-  }
-
-  return new Request(CLEANUP_URL, {
-    method: 'POST',
-    ...requestInit,
-    headers,
-  });
+async function expectPlanCleanupOk(
+  response: Response,
+): Promise<PlanCleanupResponseBody> {
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as PlanCleanupResponseBody;
+  expect(body.ok).toBe(true);
+  expect(body.stuckPlansCleaned).toEqual(expect.any(Number));
+  expect(body.orphanedAttemptsCleaned).toEqual(expect.any(Number));
+  return body;
 }
 
 describe('POST /api/internal/maintenance/plans/cleanup', () => {
@@ -77,15 +80,7 @@ describe('POST /api/internal/maintenance/plans/cleanup', () => {
       createCleanupRequest({ token: WORKER_TOKEN }),
     );
 
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      ok: boolean;
-      stuckPlansCleaned: number;
-      orphanedAttemptsCleaned: number;
-    };
-    expect(body.ok).toBe(true);
-    expect(body.stuckPlansCleaned).toEqual(expect.any(Number));
-    expect(body.orphanedAttemptsCleaned).toEqual(expect.any(Number));
+    await expectPlanCleanupOk(response);
   });
 
   it('returns 200 with ok:true when authenticated via x-maintenance-worker-token', async () => {
@@ -170,13 +165,7 @@ describe('POST /api/internal/maintenance/plans/cleanup', () => {
 
     const response = await POST_PLAN_CLEANUP(createCleanupRequest());
 
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as {
-      ok: boolean;
-      stuckPlansCleaned: number;
-      orphanedAttemptsCleaned: number;
-    };
-    expect(body.ok).toBe(true);
+    const body = await expectPlanCleanupOk(response);
     expect(body.stuckPlansCleaned).toBeGreaterThanOrEqual(1);
     expect(body.orphanedAttemptsCleaned).toBeGreaterThanOrEqual(1);
 

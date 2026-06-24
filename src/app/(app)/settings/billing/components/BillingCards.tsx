@@ -19,6 +19,30 @@ import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
 
+type UsageMeterRowProps = {
+  label: string;
+  ariaLabel: string;
+  used: number;
+  limit: number | null | undefined;
+};
+
+function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
+  return (
+    <div>
+      <div className='mb-1 flex items-center justify-between text-sm'>
+        <span>{label}</span>
+        <span className='text-muted-foreground tabular-nums'>
+          {used}/{formatCompactUsageLimit(limit)}
+        </span>
+      </div>
+      <Progress
+        value={getUsagePercent(used, limit)}
+        aria-label={`${ariaLabel}: ${used} of ${formatUsageLimitLabel(limit)}`}
+      />
+    </div>
+  );
+}
+
 /**
  * Async component that fetches subscription and usage data.
  * Wrapped in Suspense boundary by the parent page.
@@ -65,23 +89,6 @@ export async function BillingCards({ locale }: { locale?: string }) {
       )
     : '—';
 
-  const plansValue = getUsagePercent(
-    snapshot.usage.activePlans.current,
-    snapshot.usage.activePlans.limit,
-  );
-  const regenValue = getUsagePercent(
-    snapshot.usage.regenerations.used,
-    snapshot.usage.regenerations.limit,
-  );
-  const exportValue = getUsagePercent(
-    snapshot.usage.exports.used,
-    snapshot.usage.exports.limit,
-  );
-  const lessonGenerationValue = getUsagePercent(
-    snapshot.usage.lessonGenerations.used,
-    snapshot.usage.lessonGenerations.limit,
-  );
-
   return (
     <>
       <Card>
@@ -125,63 +132,30 @@ export async function BillingCards({ locale }: { locale?: string }) {
           <CardTitle as='h3'>Usage</CardTitle>
         </CardHeader>
         <CardContent className='space-y-5'>
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Active plans</span>
-              <span className='text-muted-foreground tabular-nums'>
-                {snapshot.usage.activePlans.current}/
-                {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
-              </span>
-            </div>
-            <Progress
-              value={plansValue}
-              aria-label={`Active plans: ${snapshot.usage.activePlans.current} of ${formatUsageLimitLabel(snapshot.usage.activePlans.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Regenerations (monthly)</span>
-              <span className='text-muted-foreground tabular-nums'>
-                {snapshot.usage.regenerations.used}/
-                {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
-              </span>
-            </div>
-            <Progress
-              value={regenValue}
-              aria-label={`Monthly regenerations: ${snapshot.usage.regenerations.used} of ${formatUsageLimitLabel(snapshot.usage.regenerations.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Exports (monthly)</span>
-              <span className='text-muted-foreground tabular-nums'>
-                {snapshot.usage.exports.used}/
-                {formatCompactUsageLimit(snapshot.usage.exports.limit)}
-              </span>
-            </div>
-            <Progress
-              value={exportValue}
-              aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatUsageLimitLabel(snapshot.usage.exports.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Lesson generations (monthly)</span>
-              <span className='text-muted-foreground tabular-nums'>
-                {snapshot.usage.lessonGenerations.used}/
-                {formatCompactUsageLimit(
-                  snapshot.usage.lessonGenerations.limit,
-                )}
-              </span>
-            </div>
-            <Progress
-              value={lessonGenerationValue}
-              aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
-            />
-          </div>
+          <UsageMeterRow
+            label='Active plans'
+            ariaLabel='Active plans'
+            used={snapshot.usage.activePlans.current}
+            limit={snapshot.usage.activePlans.limit}
+          />
+          <UsageMeterRow
+            label='Regenerations (monthly)'
+            ariaLabel='Monthly regenerations'
+            used={snapshot.usage.regenerations.used}
+            limit={snapshot.usage.regenerations.limit}
+          />
+          <UsageMeterRow
+            label='Exports (monthly)'
+            ariaLabel='Monthly exports'
+            used={snapshot.usage.exports.used}
+            limit={snapshot.usage.exports.limit}
+          />
+          <UsageMeterRow
+            label='Lesson generations (monthly)'
+            ariaLabel='Monthly lesson generations'
+            used={snapshot.usage.lessonGenerations.used}
+            limit={snapshot.usage.lessonGenerations.limit}
+          />
         </CardContent>
       </Card>
     </>

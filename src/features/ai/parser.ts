@@ -160,16 +160,12 @@ function toParsedModule(module: unknown, moduleIndex: number): ParsedModule {
   return { title, description, estimatedMinutes, tasks };
 }
 
-export async function parseGenerationStream(
-  stream: AsyncIterable<string> | ReadableStream<string>,
+async function readRawGenerationResponse(
+  source: AsyncIterable<string>,
   callbacks: ParserCallbacks = {},
-): Promise<ParsedGeneration> {
+): Promise<string> {
   let buffer = '';
   let moduleDetected = false;
-  const source =
-    stream instanceof ReadableStream
-      ? readableStreamToAsyncIterable(stream)
-      : stream;
 
   for await (const chunk of source) {
     callbacks.signal?.throwIfAborted();
@@ -190,8 +186,13 @@ export async function parseGenerationStream(
     }
   }
 
-  callbacks.signal?.throwIfAborted();
+  return buffer;
+}
 
+function parseRawGenerationResponse(
+  buffer: string,
+  signal?: AbortSignal,
+): Record<string, unknown> {
   if (!buffer.trim()) {
     throw new ParserError(
       'invalid_json',
@@ -202,7 +203,7 @@ export async function parseGenerationStream(
   let parsed: unknown;
   try {
     parsed = JSON.parse(buffer);
-    callbacks.signal?.throwIfAborted();
+    signal?.throwIfAborted();
   } catch (error) {
     // Re-throw abort so callers can distinguish user cancellation from parse failures.
     if (error instanceof Error && error.name === 'AbortError') throw error;
@@ -220,7 +221,14 @@ export async function parseGenerationStream(
     );
   }
 
-  const modulesRaw = (parsed as Record<string, unknown>).modules;
+  return parsed as Record<string, unknown>;
+}
+
+function toParsedModules(
+  parsed: Record<string, unknown>,
+  signal?: AbortSignal,
+): ParsedModule[] {
+  const modulesRaw = parsed.modules;
   if (!Array.isArray(modulesRaw)) {
     throw new ParserError(
       'validation',
@@ -239,9 +247,27 @@ export async function parseGenerationStream(
 
   const modules: ParsedModule[] = [];
   for (let index = 0; index < modulesRaw.length; index++) {
-    callbacks.signal?.throwIfAborted();
+    signal?.throwIfAborted();
     modules.push(toParsedModule(modulesRaw[index], index));
   }
+
+  return modules;
+}
+
+export async function parseGenerationStream(
+  stream: AsyncIterable<string> | ReadableStream<string>,
+  callbacks: ParserCallbacks = {},
+): Promise<ParsedGeneration> {
+  const source =
+    stream instanceof ReadableStream
+      ? readableStreamToAsyncIterable(stream)
+      : stream;
+  const buffer = await readRawGenerationResponse(source, callbacks);
+
+  callbacks.signal?.throwIfAborted();
+
+  const parsed = parseRawGenerationResponse(buffer, callbacks.signal);
+  const modules = toParsedModules(parsed, callbacks.signal);
 
   return {
     modules,

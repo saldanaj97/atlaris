@@ -21,6 +21,65 @@ import {
 } from '@/shared/types/ai-usage.types';
 import * as Sentry from '@sentry/nextjs';
 
+function collectMissingFields(
+  metadata: ProviderMetadata | undefined,
+): CanonicalUsageMissingField[] {
+  const missingFields: CanonicalUsageMissingField[] = [];
+  const usage = metadata?.usage;
+
+  if (!metadata?.provider) missingFields.push('provider');
+  if (!metadata?.model) missingFields.push('model');
+  if (usage?.promptTokens == null) missingFields.push('inputTokens');
+  if (usage?.completionTokens == null) missingFields.push('outputTokens');
+
+  return missingFields;
+}
+
+function computeEstimatedCostCents(args: {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  provider: string;
+}): number {
+  const { model, inputTokens, outputTokens, provider } = args;
+
+  try {
+    return computeCostCents(model, inputTokens, outputTokens);
+  } catch (error) {
+    if (error instanceof UnknownModelError) {
+      logger.warn(
+        {
+          source: 'canonical-usage',
+          event: 'unknown_model_cost_skipped',
+          modelId: model,
+          provider,
+        },
+        `Unknown model "${model}" — recording 0 estimated cost`,
+      );
+      return 0;
+    }
+
+    throw error;
+  }
+}
+
+function resolveProviderCostMicrousd(
+  usage: ProviderMetadata['usage'] | undefined,
+  isPartial: boolean,
+): number | null {
+  if (isPartial) {
+    return null;
+  }
+
+  const usd = usage?.providerReportedCostUsd;
+  return usd != null &&
+    typeof usd === 'number' &&
+    Number.isFinite(usd) &&
+    usd >= 0
+    ? usdCostToMicrousdInteger(usd)
+    : null;
+}
+
 /**
  * Strictly normalize provider metadata into a CanonicalAIUsage.
  *
@@ -32,16 +91,10 @@ import * as Sentry from '@sentry/nextjs';
 export function normalizeToCanonicalUsage(
   metadata: ProviderMetadata | undefined,
 ): CanonicalAIUsage {
-  const missingFields: CanonicalUsageMissingField[] = [];
-
+  const missingFields = collectMissingFields(metadata);
   const provider = metadata?.provider;
   const model = metadata?.model;
   const usage = metadata?.usage;
-
-  if (!provider) missingFields.push('provider');
-  if (!model) missingFields.push('model');
-  if (usage?.promptTokens == null) missingFields.push('inputTokens');
-  if (usage?.completionTokens == null) missingFields.push('outputTokens');
 
   const resolvedProvider = provider ?? 'unknown';
   const resolvedModel = model ?? 'unknown';
@@ -54,43 +107,15 @@ export function normalizeToCanonicalUsage(
   // log it explicitly so the silent path stops being invisible. Any other
   // error from computeCostCents (invalid token counts, registry bug) must
   // propagate.
-  let estimatedCostCents = 0;
-  try {
-    estimatedCostCents = computeCostCents(
-      resolvedModel,
-      resolvedInputTokens,
-      resolvedOutputTokens,
-    );
-  } catch (error) {
-    if (error instanceof UnknownModelError) {
-      logger.warn(
-        {
-          source: 'canonical-usage',
-          event: 'unknown_model_cost_skipped',
-          modelId: resolvedModel,
-          provider: resolvedProvider,
-        },
-        `Unknown model "${resolvedModel}" — recording 0 estimated cost`,
-      );
-    } else {
-      throw error;
-    }
-  }
+  const estimatedCostCents = computeEstimatedCostCents({
+    model: resolvedModel,
+    inputTokens: resolvedInputTokens,
+    outputTokens: resolvedOutputTokens,
+    provider: resolvedProvider,
+  });
 
   const isPartial = missingFields.length > 0;
-
-  let providerCostMicrousd: number | null = null;
-  if (!isPartial) {
-    const usd = usage?.providerReportedCostUsd;
-    if (
-      usd != null &&
-      typeof usd === 'number' &&
-      Number.isFinite(usd) &&
-      usd >= 0
-    ) {
-      providerCostMicrousd = usdCostToMicrousdInteger(usd);
-    }
-  }
+  const providerCostMicrousd = resolveProviderCostMicrousd(usage, isPartial);
 
   const canonical: CanonicalAIUsage = {
     inputTokens: resolvedInputTokens,
