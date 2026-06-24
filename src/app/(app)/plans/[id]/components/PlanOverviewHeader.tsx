@@ -29,7 +29,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
     <article className='lg:col-span-2'>
       <GradientProgressHeroFrame
         className='mb-6'
-        contentClassName='min-h-88'
+        contentClassName='min-h-64'
         completion={completion}
       >
         <div className='flex items-start justify-between'>
@@ -49,7 +49,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
           <p className='mb-2 text-sm font-medium tracking-wider text-muted-foreground uppercase'>
             Learning Plan
           </p>
-          <h2 className='mb-1 truncate text-3xl font-bold text-foreground md:text-4xl lg:text-5xl'>
+          <h2 className='mb-1 line-clamp-3 text-2xl font-bold wrap-break-word text-foreground sm:line-clamp-2 md:text-3xl lg:text-4xl'>
             {plan.topic}
           </h2>
           <p className='text-lg text-muted-foreground md:text-xl'>

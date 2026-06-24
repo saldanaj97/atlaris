@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
-import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
@@ -60,22 +66,43 @@ export default function AchievementsPage() {
       />
 
       <ComingSoonAlert
-        title='Achievements are in development'
-        description='You will earn badges as you complete plans, maintain streaks, and hit milestones. We will notify you when this page goes live.'
+        title='Achievements preview'
+        description='Badges stay locked until they can be earned from real plan progress.'
         icon={Trophy}
         className='mb-6'
       />
 
-      <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-        {ACHIEVEMENTS.map((achievement) => (
-          <LockedFeatureCard
-            key={achievement.name}
-            icon={achievement.icon}
-            title={achievement.name}
-            description={achievement.description}
-          />
-        ))}
-      </div>
+      <Card className='max-w-3xl'>
+        <CardHeader>
+          <CardTitle as='h3'>Milestones that will unlock</CardTitle>
+          <CardDescription>
+            Earned badges will appear here after completion, streak, and
+            consistency tracking ships.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className='grid gap-4 sm:grid-cols-2'>
+            {ACHIEVEMENTS.map((achievement) => (
+              <li key={achievement.name} className='flex gap-3'>
+                <span
+                  className='flex size-10 shrink-0 items-center justify-center rounded-md bg-muted'
+                  aria-hidden='true'
+                >
+                  {achievement.icon}
+                </span>
+                <div className='min-w-0'>
+                  <h3 className='font-medium text-foreground'>
+                    {achievement.name}
+                  </h3>
+                  <p className='mt-1 text-sm text-muted-foreground'>
+                    {achievement.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </>
   );
 }

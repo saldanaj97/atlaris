@@ -5,7 +5,7 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(0.98 0.01 75);
+  --background: oklch(0.985 0.004 255);
   --foreground: oklch(0.25 0.02 60);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.32 0 0);

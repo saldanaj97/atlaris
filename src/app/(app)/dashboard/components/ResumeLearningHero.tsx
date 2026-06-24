@@ -129,7 +129,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         <HeroCircularProgress progressPercent={progressPercent} />
       </div>
 
-      <div className='flex flex-wrap items-end justify-between gap-4'>
+      <div className='flex flex-wrap items-start justify-between gap-4 sm:items-end'>
         <div className='min-w-0 flex-1 space-y-2'>
           <div className='flex flex-wrap gap-2'>
             {[
@@ -154,8 +154,8 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           </p>
         </div>
 
-        <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
-          <p className='text-sm text-muted-foreground'>
+        <div className='flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4'>
+          <p className='min-w-0 text-sm wrap-break-word text-muted-foreground'>
             <span className='font-medium text-foreground'>Up Next:</span>{' '}
             {upNextLabel}
           </p>

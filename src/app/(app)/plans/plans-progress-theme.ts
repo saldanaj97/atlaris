@@ -23,10 +23,10 @@ const TIMELINE_MODULE_THEME: Record<
     title: 'text-foreground',
   },
   locked: {
-    marker: 'border-muted-foreground/40 text-muted-foreground/50',
-    card: 'border-border bg-muted/40 dark:bg-muted/25',
-    badge: 'bg-muted text-muted-foreground',
-    title: 'text-muted-foreground',
+    marker: 'border-muted-foreground/60 text-muted-foreground/70',
+    card: 'border-border bg-panel-muted shadow-sm dark:bg-muted/30',
+    badge: 'bg-muted text-foreground/70',
+    title: 'text-foreground/70',
   },
 };
 
@@ -73,10 +73,10 @@ const LESSON_PROGRESS_THEME: Record<
     mutedText: 'text-muted-foreground',
   },
   locked: {
-    marker: 'bg-muted text-muted-foreground/50',
-    card: `${TIMELINE_MODULE_THEME.locked.card} opacity-75`,
-    title: 'text-muted-foreground/50',
-    mutedText: 'text-muted-foreground/50',
+    marker: 'bg-muted text-muted-foreground/70',
+    card: `${TIMELINE_MODULE_THEME.locked.card} opacity-90`,
+    title: 'text-foreground/70',
+    mutedText: 'text-muted-foreground/80',
   },
 };
 

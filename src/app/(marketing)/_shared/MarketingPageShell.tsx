@@ -20,7 +20,7 @@ export function MarketingPageShell({
   return (
     <div
       className={cn(
-        'relative min-h-screen w-full overflow-hidden bg-linear-to-br from-primary/5 via-accent/5 to-background font-sans text-foreground',
+        'relative min-h-screen w-full overflow-hidden bg-linear-to-br from-card via-background to-accent/20 font-sans text-foreground',
         withHeaderOffset && '-mt-16 pt-16',
         className,
       )}

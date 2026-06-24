@@ -24,12 +24,12 @@ export function ComingSoonAlert({
   return (
     <Surface
       variant='muted'
-      padding='comfortable'
+      padding='compact'
       role='region'
       aria-label='Coming soon'
-      className={cn('flex items-start gap-4', className)}
+      className={cn('flex items-start gap-3 sm:gap-4', className)}
     >
-      <div className='flex size-9 shrink-0 items-center justify-center rounded-md border border-panel-border bg-panel text-primary shadow-none'>
+      <div className='flex size-8 shrink-0 items-center justify-center rounded-md border border-panel-border bg-panel text-primary shadow-none sm:size-9'>
         <Icon className='size-4' aria-hidden='true' />
       </div>
       <div className='min-w-0 space-y-0.5'>

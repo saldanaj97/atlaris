@@ -77,11 +77,7 @@ function ActionButton({
         </Button>
       );
     case 'coming_soon':
-      return (
-        <Button variant='outline' disabled>
-          Coming Soon
-        </Button>
-      );
+      return null;
     case 'connected':
       return (
         <Button variant='outline' onClick={onDisconnect} disabled={isDisabled}>
@@ -112,11 +108,14 @@ export function IntegrationCard({
     <Card
       role='region'
       aria-label={name}
-      className='flex flex-col border-border bg-card shadow-sm'
+      className='flex flex-col gap-4 border-border bg-card py-5 shadow-sm sm:gap-6 sm:py-6'
     >
-      <CardHeader>
-        <div className='flex items-center gap-4'>
-          <div className='inline-flex size-14 items-center justify-center rounded-xl bg-primary/10 text-2xl text-primary'>
+      <CardHeader className='px-5 sm:px-6'>
+        <div className='flex items-center gap-3 sm:gap-4'>
+          <div
+            className='inline-flex size-11 items-center justify-center rounded-lg bg-primary/10 text-xl text-primary sm:size-14 sm:rounded-xl sm:text-2xl'
+            aria-hidden='true'
+          >
             {icon}
           </div>
           <CardTitle className='text-lg'>{name}</CardTitle>
@@ -126,24 +125,24 @@ export function IntegrationCard({
         </CardAction>
       </CardHeader>
 
-      <CardContent className='flex flex-1 flex-col gap-5'>
+      <CardContent className='flex flex-1 flex-col gap-4 px-5 sm:px-6'>
         <p className='text-sm leading-relaxed text-muted-foreground'>
           {description}
         </p>
 
-        <ul className='grid grid-cols-2 gap-2'>
+        <ul className='grid gap-x-3 gap-y-2 sm:grid-cols-2'>
           {features.map((feature) => (
             <li
               key={feature}
               className='flex items-center gap-2 text-sm text-muted-foreground'
             >
-              <Check className='size-4 shrink-0 text-success' />
+              <Check className='size-4 shrink-0 text-success' aria-hidden />
               {feature}
             </li>
           ))}
         </ul>
 
-        <div className='pt-2'>
+        <div className='mt-auto pt-1'>
           <ActionButton
             status={status}
             onConnect={onConnect}

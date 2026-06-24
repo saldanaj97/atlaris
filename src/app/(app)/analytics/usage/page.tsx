@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 
 import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
-import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { BarChart3, Clock, Flame, Target } from 'lucide-react';
 
@@ -56,21 +62,40 @@ export default function UsageAnalyticsPage() {
       />
 
       <ComingSoonAlert
-        title='Usage analytics are almost ready'
-        description='We are connecting your plan activity to charts and summaries. You will see real data here once the feature ships.'
+        title='Usage analytics preview'
+        description='Live charts stay hidden until plan activity is connected, so this page only shows what will unlock.'
         className='mb-6'
       />
 
-      <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-3'>
-        {PREVIEW_CARDS.map((card) => (
-          <LockedFeatureCard
-            key={card.title}
-            icon={card.icon}
-            title={card.title}
-            description={card.description}
-          />
-        ))}
-      </div>
+      <Card className='max-w-3xl'>
+        <CardHeader>
+          <CardTitle as='h3'>Progress signals coming here</CardTitle>
+          <CardDescription>
+            Unlocks when study sessions and module activity start feeding the
+            analytics pipeline.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className='grid gap-4 sm:grid-cols-2'>
+            {PREVIEW_CARDS.map((card) => (
+              <li key={card.title} className='flex gap-3'>
+                <span
+                  className='flex size-10 shrink-0 items-center justify-center rounded-md bg-muted'
+                  aria-hidden='true'
+                >
+                  {card.icon}
+                </span>
+                <div className='min-w-0'>
+                  <h3 className='font-medium text-foreground'>{card.title}</h3>
+                  <p className='mt-1 text-sm text-muted-foreground'>
+                    {card.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </>
   );
 }

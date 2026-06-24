@@ -69,7 +69,7 @@ const INTEGRATIONS: IntegrationDef[] = [
 
 export function IntegrationGrid() {
   return (
-    <div className='grid gap-6 md:grid-cols-2'>
+    <div className='grid gap-4 md:grid-cols-2 md:gap-5'>
       {INTEGRATIONS.map((def) => (
         <IntegrationCard
           key={def.id}

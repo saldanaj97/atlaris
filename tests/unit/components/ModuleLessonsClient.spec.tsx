@@ -171,7 +171,8 @@ describe('ModuleLessonsClient', () => {
       },
     });
 
-    expect(screen.getAllByText('Generating')).toHaveLength(2);
+    expect(screen.getByText('Generating')).toBeInTheDocument();
+    expect(screen.getByText('Generating lessons...')).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(2500);
@@ -318,7 +319,7 @@ describe('ModuleLessonsClient', () => {
       screen.getByText('Upstream provider timed out.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Generate lessons' }),
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
     ).toBeInTheDocument();
   });
 
@@ -339,7 +340,7 @@ describe('ModuleLessonsClient', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Generate lessons' }),
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
     ).toBeInTheDocument();
   });
 

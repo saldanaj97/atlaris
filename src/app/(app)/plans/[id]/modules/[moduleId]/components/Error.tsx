@@ -16,10 +16,7 @@ export function ModuleDetailPageError({
   planId,
 }: ModuleDetailPageErrorProps) {
   return (
-    <div
-      role='alert'
-      className='flex min-h-[60vh] flex-col items-center justify-center p-4'
-    >
+    <div className='flex min-h-[60vh] flex-col items-center justify-center p-4'>
       <RouteErrorState
         title='Error Loading Module'
         message={

@@ -53,7 +53,7 @@ export function ModuleHeader({
       />
 
       <GradientProgressHeroFrame
-        contentClassName='min-h-62'
+        contentClassName='min-h-52'
         completion={completion}
       >
         <div className='flex items-start justify-between'>
@@ -78,8 +78,10 @@ export function ModuleHeader({
         </div>
 
         <div className='min-w-0'>
-          <h1 className='mb-2 flex min-w-0 items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl'>
-            <span className='truncate'>{module.title}</span>
+          <h1 className='mb-2 flex min-w-0 flex-wrap items-center gap-2 text-2xl font-bold text-foreground md:text-3xl lg:text-4xl'>
+            <span className='line-clamp-3 min-w-0 wrap-break-word sm:line-clamp-2'>
+              {module.title}
+            </span>
             {!previousModulesComplete && (
               <Lock className='size-6 text-muted-foreground md:size-7' />
             )}

@@ -29,11 +29,11 @@ export function LockedFeatureCard({
       role='group'
       aria-label={`Preview — ${title}, unavailable`}
       className={cn(
-        'border-dashed border-border/80 bg-card shadow-sm',
+        'gap-4 border-dashed border-border/80 bg-card py-5 shadow-sm sm:gap-6 sm:py-6',
         className,
       )}
     >
-      <CardContent className='relative'>
+      <CardContent className='relative px-5 sm:px-6'>
         <div className='absolute top-4 right-4' aria-hidden='true'>
           <Lock className='size-4 text-muted-foreground' />
         </div>

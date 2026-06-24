@@ -35,7 +35,7 @@ export function PlanRouteErrorContent({
         title={title}
         message={message}
         actions={
-          <div className='flex gap-4'>
+          <div className='flex flex-col gap-3 sm:flex-row sm:justify-center'>
             <Button onClick={reset} variant='default'>
               Try Again
             </Button>
