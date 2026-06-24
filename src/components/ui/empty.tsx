@@ -6,7 +6,7 @@ function Empty({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot='empty'
       className={cn(
-        'flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-lg border-dashed p-6 text-center text-balance md:p-12',
+        'flex min-w-0 flex-1 flex-col items-center justify-center gap-6 rounded-2xl border border-panel-border bg-panel p-6 text-center text-balance shadow-sm md:p-10',
         className,
       )}
       {...props}
@@ -19,7 +19,7 @@ function EmptyHeader({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot='empty-header'
       className={cn(
-        'flex max-w-sm flex-col items-center gap-2 text-center',
+        'flex max-w-md flex-col items-center gap-2 text-center',
         className,
       )}
       {...props}
@@ -33,7 +33,7 @@ const emptyMediaVariants = cva(
     variants: {
       variant: {
         default: 'bg-transparent',
-        icon: "bg-muted text-foreground flex size-10 shrink-0 items-center justify-center rounded-md [&_svg:not([class*='size-'])]:size-6",
+        icon: "flex size-11 shrink-0 items-center justify-center rounded-xl border border-panel-border bg-primary/10 text-primary [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {
@@ -61,7 +61,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='empty-title'
-      className={cn('text-lg font-medium tracking-tight', className)}
+      className={cn('text-xl font-semibold tracking-normal', className)}
       {...props}
     />
   );
@@ -69,7 +69,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
 
 function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
   return (
-    <div
+    <p
       data-slot='empty-description'
       className={cn(
         'text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',

@@ -8,54 +8,42 @@ import {
 } from '@supabase/schema/constants';
 import { z } from 'zod';
 
-const LessonHeadingBlockSchema = z
-  .object({
-    type: z.literal('heading'),
-    text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
-  })
-  .strict();
+const LessonHeadingBlockSchema = z.strictObject({
+  type: z.literal('heading'),
+  text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
+});
 
-const LessonParagraphBlockSchema = z
-  .object({
-    type: z.literal('paragraph'),
-    text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
-  })
-  .strict();
+const LessonParagraphBlockSchema = z.strictObject({
+  type: z.literal('paragraph'),
+  text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
+});
 
-const LessonExampleBlockSchema = z
-  .object({
-    type: z.literal('example'),
-    title: z.string().max(MAX_LESSON_BLOCK_TITLE_LENGTH),
-    text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
-  })
-  .strict();
+const LessonExampleBlockSchema = z.strictObject({
+  type: z.literal('example'),
+  title: z.string().max(MAX_LESSON_BLOCK_TITLE_LENGTH),
+  text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
+});
 
-const LessonPracticeBlockSchema = z
-  .object({
-    type: z.literal('practice'),
-    text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
-  })
-  .strict();
+const LessonPracticeBlockSchema = z.strictObject({
+  type: z.literal('practice'),
+  text: z.string().max(MAX_LESSON_BLOCK_TEXT_LENGTH),
+});
 
-const LessonTakeawaysBlockSchema = z
-  .object({
-    type: z.literal('takeaways'),
-    items: z
-      .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
-      .min(1)
-      .max(MAX_LESSON_LIST_ITEMS),
-  })
-  .strict();
+const LessonTakeawaysBlockSchema = z.strictObject({
+  type: z.literal('takeaways'),
+  items: z
+    .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
+    .min(1)
+    .max(MAX_LESSON_LIST_ITEMS),
+});
 
-const LessonCompletionCriteriaBlockSchema = z
-  .object({
-    type: z.literal('completion_criteria'),
-    items: z
-      .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
-      .min(1)
-      .max(MAX_LESSON_LIST_ITEMS),
-  })
-  .strict();
+const LessonCompletionCriteriaBlockSchema = z.strictObject({
+  type: z.literal('completion_criteria'),
+  items: z
+    .array(z.string().max(MAX_LESSON_LIST_ITEM_LENGTH))
+    .min(1)
+    .max(MAX_LESSON_LIST_ITEMS),
+});
 
 export const LessonContentBlockSchema = z.discriminatedUnion('type', [
   LessonHeadingBlockSchema,
@@ -66,56 +54,44 @@ export const LessonContentBlockSchema = z.discriminatedUnion('type', [
   LessonCompletionCriteriaBlockSchema,
 ]);
 
-export const LessonContentSchema = z
-  .object({
-    version: z.literal(1),
-    blocks: z
-      .array(LessonContentBlockSchema)
-      .min(1)
-      .max(MAX_LESSON_BLOCKS_PER_TASK),
-  })
-  .strict();
+export const LessonContentSchema = z.strictObject({
+  version: z.literal(1),
+  blocks: z
+    .array(LessonContentBlockSchema)
+    .min(1)
+    .max(MAX_LESSON_BLOCKS_PER_TASK),
+});
 
-export const ModuleLessonBatchProviderOutputSchema = z
-  .object({
-    version: z.literal(1),
-    tasks: z
-      .array(
-        z
-          .object({
-            taskId: z.string().uuid(),
-            content: LessonContentSchema,
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(MAX_MODULE_LESSON_BATCH_TASKS),
-  })
-  .strict();
+export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
+  version: z.literal(1),
+  tasks: z
+    .array(
+      z.strictObject({
+        taskId: z.uuid(),
+        content: LessonContentSchema,
+      }),
+    )
+    .min(1)
+    .max(MAX_MODULE_LESSON_BATCH_TASKS),
+});
 
-export const ModuleLessonWorkflowMetadataSchema = z
-  .object({
-    provider: z.literal('workflow-sdk'),
-    runId: z.string().min(1).max(256),
-    startedAt: z.string().datetime().optional(),
-    completedAt: z.string().datetime().optional(),
-  })
-  .strict();
+const ModuleLessonWorkflowMetadataSchema = z.strictObject({
+  provider: z.literal('workflow-sdk'),
+  runId: z.string().min(1).max(256),
+  startedAt: z.iso.datetime().optional(),
+  completedAt: z.iso.datetime().optional(),
+});
 
-export const ModuleLessonGenerationMetadataSchema = z
-  .object({
-    version: z.literal(1),
-    batchRequestId: z.string().max(128).optional(),
-    workflow: ModuleLessonWorkflowMetadataSchema.optional(),
-  })
-  .strict();
+export const ModuleLessonGenerationMetadataSchema = z.strictObject({
+  version: z.literal(1),
+  batchRequestId: z.string().max(128).optional(),
+  workflow: ModuleLessonWorkflowMetadataSchema.optional(),
+});
 
-const ModuleLessonGenerationApiBaseSchema = z
-  .object({
-    planId: z.string().uuid(),
-    moduleId: z.string().uuid(),
-  })
-  .strict();
+const ModuleLessonGenerationApiBaseSchema = z.strictObject({
+  planId: z.uuid(),
+  moduleId: z.uuid(),
+});
 
 export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
   'state',
@@ -151,4 +127,4 @@ export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
 export const ModuleLessonGenerationStatusResponseSchema =
   ModuleLessonGenerationApiBaseSchema.extend({
     status: z.enum(['not_generated', 'generating', 'ready', 'failed']),
-  }).strict();
+  });

@@ -221,7 +221,7 @@
 - [ ] Lockfile integrity: pinned versions, no untrusted git dependencies.
 - [ ] Watch for malicious install scripts (postinstall) and CI execution risks.
 - [ ] `pnpm audit` runs in CI and blocks on high/critical vulnerabilities.
-- [ ] `minimumReleaseAge` supply-chain policy documented in [supply-chain-policy.md](./supply-chain-policy.md) (deferred until pnpm 10.16+ upgrade).
+- [ ] `minimumReleaseAge` and `trustPolicy` supply-chain policy configured in `pnpm-workspace.yaml` and documented in [supply-chain-policy.md](./supply-chain-policy.md).
 - [ ] Dependabot or similar enabled for security updates.
 - [ ] Review new dependencies before adding (check maintainer, download count, last update).
 

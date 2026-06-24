@@ -10,6 +10,8 @@ CREATE TABLE "oauth_state_tokens" (
 ALTER TABLE "oauth_state_tokens" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 CREATE INDEX "oauth_state_tokens_hash_idx" ON "oauth_state_tokens" USING btree ("state_token_hash");--> statement-breakpoint
 CREATE INDEX "oauth_state_tokens_expires_at_idx" ON "oauth_state_tokens" USING btree ("expires_at");--> statement-breakpoint
+-- react-doctor-disable-next-line react-doctor/supabase-rls-policy-risk -- historical bootstrap policy; later migrations restrict tokens to the authenticated owner.
 CREATE POLICY "oauth_state_tokens_insert" ON "oauth_state_tokens" AS PERMISSIVE FOR INSERT TO public WITH CHECK (true);--> statement-breakpoint
 CREATE POLICY "oauth_state_tokens_select" ON "oauth_state_tokens" AS PERMISSIVE FOR SELECT TO public USING (true);--> statement-breakpoint
+-- react-doctor-disable-next-line react-doctor/supabase-rls-policy-risk -- historical bootstrap policy; later migrations restrict tokens to the authenticated owner.
 CREATE POLICY "oauth_state_tokens_delete" ON "oauth_state_tokens" AS PERMISSIVE FOR DELETE TO public USING (true);

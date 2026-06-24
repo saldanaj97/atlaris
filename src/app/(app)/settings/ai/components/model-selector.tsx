@@ -157,22 +157,21 @@ const ModelDropdown = ({
       )}
 
       {saveStatus === 'error' && (
-        <div
-          role='alert'
+        <p
+          aria-live='assertive'
           className='rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive'
         >
           Failed to save preferences. Please try again.
-        </div>
+        </p>
       )}
 
       {saveStatus === 'success' && (
-        <div
-          role='status'
+        <output
           aria-live='polite'
           className='rounded-lg border-2 border-success bg-success/10 p-3 text-sm text-success dark:text-success-foreground'
         >
           Preferences saved successfully!
-        </div>
+        </output>
       )}
 
       {showSecondaryAction && (

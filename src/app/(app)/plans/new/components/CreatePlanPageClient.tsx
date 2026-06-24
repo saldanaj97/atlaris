@@ -10,7 +10,7 @@ export function CreatePlanPageClient(): React.ReactElement {
     <>
       <PageHeader
         align='center'
-        className='mb-6 max-w-3xl'
+        className='mb-5 max-w-3xl'
         title='What do you want to learn?'
         subtitle="Describe your learning goal. We'll create a personalized, time-blocked plan with resources for each session."
       />

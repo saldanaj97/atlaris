@@ -37,8 +37,8 @@ export function MarketingHero({
       className={cn(
         'relative',
         isLanding
-          ? 'py-12 sm:py-16 lg:min-h-screen'
-          : 'py-12 sm:py-24 lg:py-32',
+          ? 'py-10 sm:py-12 lg:pt-12 lg:pb-10'
+          : 'py-10 sm:py-16 lg:py-20',
         className,
       )}
       aria-labelledby={headingId}
@@ -46,9 +46,7 @@ export function MarketingHero({
       <div
         className={cn(
           'relative z-10 mx-auto flex flex-col items-center px-6 text-center',
-          isLanding
-            ? 'pb-48 sm:pb-52 lg:min-h-screen lg:justify-center lg:pb-48'
-            : 'max-w-screen-xl',
+          isLanding ? 'pb-28 sm:pb-32 lg:pb-24' : 'max-w-screen-xl',
         )}
       >
         <div
@@ -99,7 +97,7 @@ export function MarketingHero({
               marketingHeroEnterClassName,
               'delay-700',
               isLanding
-                ? 'mt-12 -mb-32 w-full max-w-7xl md:mt-6 md:-mb-40 lg:mt-0 lg:-mb-48'
+                ? 'mt-8 -mb-20 w-full max-w-7xl md:mt-4 md:-mb-28 lg:mt-0 lg:-mb-32'
                 : 'mt-12 max-w-7xl',
             )}
           >

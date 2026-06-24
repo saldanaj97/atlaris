@@ -1,0 +1,39 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    "files": [".test-dist/**"],
+    "overrides": [
+      {
+        "files": [
+          "supabase/migrations/0000_wonderful_guardian.sql",
+          "supabase/migrations/0001_tearful_morlocks.sql"
+        ],
+        "rules": ["react-doctor/supabase-rls-policy-risk"]
+      },
+      {
+        "files": ["src/lib/api/auth.ts"],
+        "rules": ["deslop/unused-export"]
+      },
+      {
+        "files": [
+          "src/components/ui/alert.tsx",
+          "src/components/ui/hover-card.tsx"
+        ],
+        "rules": ["react-doctor/no-multi-comp"]
+      },
+      {
+        "files": ["src/app/**/components/PlanPendingState.tsx"],
+        "rules": ["react-doctor/no-event-handler", "no-event-handler"]
+      },
+      {
+        "files": [
+          "src/components/ui/badge.tsx",
+          "src/components/ui/button.tsx",
+          "src/components/ui/surface.tsx"
+        ],
+        "rules": ["react-doctor/only-export-components"]
+      }
+    ]
+  },
+  "serverAuthFunctionNames": ["requestBoundary.action"]
+}

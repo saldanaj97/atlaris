@@ -5,18 +5,16 @@ import { z } from 'zod';
  * Explains how app-estimated `cost_cents` was derived from the local catalog.
  */
 
-const ModelPricingSnapshotV1Schema = z
-  .object({
-    version: z.literal(1),
-    source: z.literal('local_catalog'),
-    requestedModelId: z.string().min(1),
-    pricedModelId: z.string().min(1),
-    inputTokens: z.number().int().nonnegative(),
-    outputTokens: z.number().int().nonnegative(),
-    inputCostUsdPerMillion: z.number().finite().nonnegative(),
-    outputCostUsdPerMillion: z.number().finite().nonnegative(),
-  })
-  .strict();
+const ModelPricingSnapshotV1Schema = z.strictObject({
+  version: z.literal(1),
+  source: z.literal('local_catalog'),
+  requestedModelId: z.string().min(1),
+  pricedModelId: z.string().min(1),
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  inputCostUsdPerMillion: z.number().finite().nonnegative(),
+  outputCostUsdPerMillion: z.number().finite().nonnegative(),
+});
 
 export const ModelPricingSnapshotSchema = z.discriminatedUnion('version', [
   ModelPricingSnapshotV1Schema,

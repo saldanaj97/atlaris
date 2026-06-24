@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function CreateNewPlanPage() {
   return (
-    <div className='flex flex-col items-center pt-6 sm:pt-10'>
+    <div className='flex flex-col items-center pt-2 sm:pt-4'>
       <CreatePlanPageClient />
     </div>
   );

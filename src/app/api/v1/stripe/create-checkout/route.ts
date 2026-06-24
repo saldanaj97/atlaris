@@ -9,15 +9,13 @@ import { json } from '@/lib/api/response';
 import { getFirstZodIssueMessage } from '@/lib/api/zod-issue';
 import { z } from 'zod';
 
-const createCheckoutBodySchema = z
-  .object({
-    priceId: z
-      .string({ message: 'priceId is required' })
-      .min(1, 'priceId is required'),
-    successUrl: z.string().optional(),
-    cancelUrl: z.string().optional(),
-  })
-  .strict();
+const createCheckoutBodySchema = z.strictObject({
+  priceId: z
+    .string({ message: 'priceId is required' })
+    .min(1, 'priceId is required'),
+  successUrl: z.string().optional(),
+  cancelUrl: z.string().optional(),
+});
 
 /**
  * Factory deps for `createCreateCheckoutHandler`. Callers provide a commerce boundary so

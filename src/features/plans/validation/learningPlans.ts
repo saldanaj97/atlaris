@@ -12,11 +12,9 @@ export const MILLISECONDS_PER_WEEK = 7 * 24 * 3600 * 1000;
 export const DEFAULT_PLAN_DURATION_WEEKS = 2;
 const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export const planRegenerationRequestSchema = z
-  .object({
-    overrides: planRegenerationOverridesSchema.optional(),
-  })
-  .strict();
+export const planRegenerationRequestSchema = z.strictObject({
+  overrides: planRegenerationOverridesSchema.optional(),
+});
 
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());

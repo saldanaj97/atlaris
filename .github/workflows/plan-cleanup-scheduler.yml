@@ -15,7 +15,7 @@ jobs:
   cleanup:
     name: Trigger production plan cleanup
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 7
 
     steps:
       - name: Trigger plan cleanup
@@ -41,9 +41,7 @@ jobs:
               --output "${response_file}" \
               --write-out '%{http_code}' \
               --request POST \
-              --max-time 120 \
-              --retry 2 \
-              --retry-delay 5 \
+              --max-time 300 \
               --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
               --header 'User-Agent: atlaris-plan-cleanup-scheduler' \
               "${PLAN_CLEANUP_URL}"

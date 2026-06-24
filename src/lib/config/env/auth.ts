@@ -1,7 +1,6 @@
 import {
   type EnvSource,
   EnvValidationError,
-  getProcessEnvSource,
   getServerOptional,
   requireEnvFrom,
 } from '@/lib/config/env/shared';
@@ -62,26 +61,6 @@ export function createClerkAuthEnv(env: EnvSource): ClerkAuthEnv {
   }
   return parsed.data;
 }
-
-let clerkAuthLazy: ClerkAuthEnv | undefined;
-
-function loadClerkAuthFromProcess(): ClerkAuthEnv {
-  if (clerkAuthLazy) {
-    return clerkAuthLazy;
-  }
-  clerkAuthLazy = createClerkAuthEnv(getProcessEnvSource());
-  return clerkAuthLazy;
-}
-
-/** Lazy Clerk auth config; validates on first property read. */
-export const clerkAuthEnv = {
-  get publishableKey() {
-    return loadClerkAuthFromProcess().publishableKey;
-  },
-  get secretKey() {
-    return loadClerkAuthFromProcess().secretKey;
-  },
-} as const;
 
 export const devAuthEnv = {
   get userId() {

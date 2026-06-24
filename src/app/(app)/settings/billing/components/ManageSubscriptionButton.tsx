@@ -140,27 +140,34 @@ export default function ManageSubscriptionButton({
         toast.error('Unable to open billing portal', {
           description: result.message,
         });
-        return;
+      } else {
+        try {
+          window.location.href = result.portalUrl;
+          isRedirecting = true;
+        } catch (error: unknown) {
+          clientLogger.error('Unexpected billing portal failure', {
+            error,
+            returnUrl,
+          });
+          toast.error('Unable to open billing portal', {
+            description: getClientErrorMessage(error, 'Something went wrong'),
+          });
+        }
       }
+    } catch (error: unknown) {
+      clientLogger.error('Unexpected billing portal failure', {
+        error,
+        returnUrl,
+      });
+      toast.error('Unable to open billing portal', {
+        description: getClientErrorMessage(error, 'Something went wrong'),
+      });
+    }
 
-      try {
-        window.location.href = result.portalUrl;
-        isRedirecting = true;
-      } catch (error: unknown) {
-        clientLogger.error('Unexpected billing portal failure', {
-          error,
-          returnUrl,
-        });
-        toast.error('Unable to open billing portal', {
-          description: getClientErrorMessage(error, 'Something went wrong'),
-        });
-      }
-    } finally {
-      pendingRef.current = false;
+    pendingRef.current = false;
 
-      if (!isRedirecting) {
-        setLoading(false);
-      }
+    if (!isRedirecting) {
+      setLoading(false);
     }
   }
 

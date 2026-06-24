@@ -15,13 +15,7 @@ import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
-import {
-  type ReactElement,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 interface DeletePlanDialogBaseProps {
@@ -150,20 +144,18 @@ export function DeletePlanDialog({
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = useCallback(
-    (value: boolean) => {
-      if (isControlled) {
-        controlledOnOpenChange?.(value);
-      } else {
-        setInternalOpen(value);
-      }
-    },
-    [isControlled, controlledOnOpenChange],
-  );
+  const setOpen = (value: boolean) => {
+    if (isControlled) {
+      controlledOnOpenChange?.(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
+  // react-doctor-disable-next-line react-doctor/exhaustive-deps -- mount cleanup intentionally flips the mounted ref and aborts the active request.
   useEffect(() => {
     return () => {
       isMountedRef.current = false;

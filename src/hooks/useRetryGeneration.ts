@@ -87,14 +87,12 @@ export function useRetryGeneration(
         router.refresh();
       }
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        clientLogger.error('Retry generation failed:', error);
       }
-
-      clientLogger.error('Retry generation failed:', error);
-    } finally {
-      retryInFlightRef.current = false;
     }
+
+    retryInFlightRef.current = false;
   }, [cooldownActive, planId, router, startSession]);
 
   return {

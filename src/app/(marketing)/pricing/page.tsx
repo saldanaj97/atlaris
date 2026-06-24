@@ -196,8 +196,8 @@ export default async function PricingPage(): Promise<ReactElement> {
 
   return (
     <MarketingPageShell withHeaderOffset>
-      <div className='px-6 py-12 sm:py-16'>
-        <div className='mx-auto flex max-w-screen-xl flex-col items-center gap-y-10'>
+      <div className='px-6 py-10 sm:py-12'>
+        <div className='mx-auto flex max-w-screen-xl flex-col items-center gap-y-8'>
           <div className='text-center'>
             <h1 className='marketing-h1 mb-2 text-foreground'>
               Invest in your{' '}
@@ -243,21 +243,17 @@ export default async function PricingPage(): Promise<ReactElement> {
             </Tabs>
           </div>
 
-          <div className='text-center'>
-            <p className='mb-3 text-sm text-muted-foreground'>
-              Already subscribed?
-            </p>
-            <ManageSubscriptionButton
-              className='rounded-lg'
-              canOpenBillingPortal={canOpenBillingPortal}
-            />
-            {!canOpenBillingPortal ? (
-              <p className='mt-2 text-sm text-muted-foreground'>
-                Billing portal is available after your first subscription
-                checkout.
+          {canOpenBillingPortal ? (
+            <div className='text-center'>
+              <p className='mb-3 text-sm text-muted-foreground'>
+                Already subscribed?
               </p>
-            ) : null}
-          </div>
+              <ManageSubscriptionButton
+                className='rounded-lg'
+                canOpenBillingPortal={canOpenBillingPortal}
+              />
+            </div>
+          ) : null}
 
           <PricingFinalCta />
         </div>

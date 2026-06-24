@@ -808,6 +808,7 @@ CREATE POLICY "modules_update_own_plan" ON "modules" AS PERMISSIVE FOR UPDATE TO
     )
   );--> statement-breakpoint
 DROP POLICY IF EXISTS "modules_delete_own_plan" ON "modules";
+-- react-doctor-disable-next-line react-doctor/supabase-rls-policy-risk -- ownership predicate below gates deletes to the plan owner.
 CREATE POLICY "modules_delete_own_plan" ON "modules" AS PERMISSIVE FOR DELETE TO public USING (
     EXISTS (
       SELECT 1 FROM "learning_plans"

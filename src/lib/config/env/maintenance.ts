@@ -18,7 +18,7 @@ interface MaintenanceEnv {
 
 const defaultMaintenanceAccess = createServerEnvAccess(getProcessEnvSource);
 
-export function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
+function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
   return {
     /**
      * Master switch for the manual retention cleanup HTTP endpoint.

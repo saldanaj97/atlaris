@@ -6,22 +6,18 @@ import { planRegenerationOverridesSchema } from '@/features/plans/validation/lea
  */
 import { z } from 'zod';
 
-const planRegenerationWorkflowMetadataSchema = z
-  .object({
-    provider: z.literal('workflow-sdk'),
-    runId: z.string().min(1).max(256),
-    startedAt: z.string().datetime().optional(),
-    completedAt: z.string().datetime().optional(),
-  })
-  .strict();
+const planRegenerationWorkflowMetadataSchema = z.strictObject({
+  provider: z.literal('workflow-sdk'),
+  runId: z.string().min(1).max(256),
+  startedAt: z.iso.datetime().optional(),
+  completedAt: z.iso.datetime().optional(),
+});
 
-export const planRegenerationJobPayloadSchema = z
-  .object({
-    planId: z.string().uuid(),
-    workflow: planRegenerationWorkflowMetadataSchema.optional(),
-    overrides: planRegenerationOverridesSchema.optional(),
-  })
-  .strict();
+export const planRegenerationJobPayloadSchema = z.strictObject({
+  planId: z.uuid(),
+  workflow: planRegenerationWorkflowMetadataSchema.optional(),
+  overrides: planRegenerationOverridesSchema.optional(),
+});
 
 export type PlanRegenerationJobPayload = z.infer<
   typeof planRegenerationJobPayloadSchema

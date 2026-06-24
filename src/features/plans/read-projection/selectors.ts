@@ -46,7 +46,3 @@ export function derivePlanSummaryDisplayStatus(params: {
 
   return 'active';
 }
-
-export function isPlanSummaryFullyComplete(summary: PlanSummary): boolean {
-  return deriveCanonicalPlanSummaryStatus(summary) === 'completed';
-}

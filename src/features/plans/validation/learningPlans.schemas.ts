@@ -47,17 +47,15 @@ const planDeadlineDateOverrideSchema = z
   )
   .transform((value) => (value ? value : null));
 
-export const planRegenerationOverridesSchema = z
-  .object({
-    topic: planTopicOverrideSchema.optional(),
-    notes: planNotesOverrideSchema.optional().nullable(),
-    skillLevel: SKILL_LEVEL_ENUM.optional(),
-    weeklyHours: weeklyHoursSchema.optional(),
-    learningStyle: LEARNING_STYLE_ENUM.optional(),
-    startDate: planStartDateOverrideSchema.optional().nullable(),
-    deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
-  })
-  .strict();
+export const planRegenerationOverridesSchema = z.strictObject({
+  topic: planTopicOverrideSchema.optional(),
+  notes: planNotesOverrideSchema.optional().nullable(),
+  skillLevel: SKILL_LEVEL_ENUM.optional(),
+  weeklyHours: weeklyHoursSchema.optional(),
+  learningStyle: LEARNING_STYLE_ENUM.optional(),
+  startDate: planStartDateOverrideSchema.optional().nullable(),
+  deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
+});
 
 export const onboardingFormObject = z.object({
   topic: topicSchema,

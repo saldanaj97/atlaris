@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
@@ -22,6 +22,45 @@ const youngSerif = Young_Serif({
 
 const metadataDescription =
   'Create personalized learning plans with AI-generated modules and tasks. Track progress and learn smarter.';
+
+const clerkAppearance = {
+  variables: {
+    borderRadius: 'var(--radius)',
+    colorBackground: 'var(--panel)',
+    colorPrimary: 'var(--primary)',
+    colorText: 'var(--foreground)',
+    colorTextSecondary: 'var(--muted-foreground)',
+    fontFamily: 'var(--font-family-base)',
+  },
+  elements: {
+    card: 'bg-panel shadow-none',
+    cardBox: 'rounded-2xl border border-panel-border shadow-sm',
+    footerActionLink: 'text-primary hover:text-primary-dark',
+    formButtonPrimary: 'bg-primary hover:bg-primary/90',
+    headerSubtitle: 'text-muted-foreground',
+    headerTitle: 'text-foreground',
+    socialButtonsBlockButton: 'border-border text-foreground hover:bg-muted/70',
+  },
+};
+
+const clerkLocalization = {
+  signIn: {
+    start: {
+      title: 'Sign in to Atlaris',
+      titleCombined: 'Sign in to Atlaris',
+      subtitle: 'Continue building your learning schedule.',
+      subtitleCombined: 'Continue building your learning schedule.',
+    },
+  },
+  signUp: {
+    start: {
+      title: 'Create your Atlaris account',
+      titleCombined: 'Create your Atlaris account',
+      subtitle: 'Turn your learning goal into a structured plan.',
+      subtitleCombined: 'Turn your learning goal into a structured plan.',
+    },
+  },
+};
 
 export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
@@ -50,8 +89,11 @@ export const metadata: Metadata = {
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.app'),
+};
+
+export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#faf8f6' },
+    { media: '(prefers-color-scheme: light)', color: '#f8f9fb' },
     { media: '(prefers-color-scheme: dark)', color: '#333333' },
   ],
 };
@@ -81,6 +123,8 @@ export default function RootLayout({
         {shouldUseClerkUi() ? (
           <ClerkProvider
             afterSignOutUrl='/'
+            appearance={clerkAppearance}
+            localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
           >

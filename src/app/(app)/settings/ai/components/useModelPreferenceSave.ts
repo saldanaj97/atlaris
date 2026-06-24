@@ -94,9 +94,9 @@ export function useModelPreferenceSave({
       });
       setSaveStatus('error');
       scheduleStatusReset();
-    } finally {
-      setIsSaving(false);
     }
+
+    setIsSaving(false);
   };
 
   const saveSelectedModel = async (): Promise<void> => {

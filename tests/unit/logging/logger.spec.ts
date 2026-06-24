@@ -29,9 +29,8 @@ describe('Logger', () => {
       expect(typeof logger.level).toBe('string');
     });
 
-    it('should use debug level in non-production by default', () => {
-      // Test environment should default to debug
-      expect(['debug', 'info', 'warn', 'error']).toContain(logger.level);
+    it('should use silent level in test by default', () => {
+      expect(logger.level).toBe('silent');
     });
 
     it('should log messages', () => {

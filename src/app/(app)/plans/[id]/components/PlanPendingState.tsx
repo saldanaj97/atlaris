@@ -2,15 +2,13 @@
 
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
+import { GenerationStatusContent } from './GenerationStatusContent';
+import { PendingPlanDetails } from './PendingPlanDetails';
 import {
   buildPlanPendingViewState,
   MAX_RETRY_ATTEMPTS,
 } from './plan-pending-view-state';
-import {
-  GenerationStatusContent,
-  PendingPlanDetails,
-  PlanStatusHeader,
-} from './PlanPendingPanels';
+import { PlanStatusHeader } from './PlanStatusHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
 import { usePlanStatus } from '@/hooks/usePlanStatus';

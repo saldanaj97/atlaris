@@ -17,7 +17,7 @@ import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog'
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type ReactElement, useMemo } from 'react';
+import { type ReactElement } from 'react';
 import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
@@ -30,10 +30,8 @@ interface PlanDetailClientProps {
 export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
-  const scopedTaskIds = useMemo(
-    () =>
-      new Set(modules.flatMap((module) => module.tasks.map((task) => task.id))),
-    [modules],
+  const scopedTaskIds = new Set(
+    modules.flatMap((module) => module.tasks.map((task) => task.id)),
   );
 
   async function flushTaskProgress(

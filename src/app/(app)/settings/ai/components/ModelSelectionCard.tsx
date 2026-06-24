@@ -51,27 +51,25 @@ export async function ModelSelectionCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className='gap-4 py-5 sm:gap-6 sm:py-6'>
+      <CardHeader className='px-5 sm:px-6'>
         <CardTitle as='h3'>Model Selection</CardTitle>
         <CardDescription>
           {currentModel !== null ? (
             <>
-              Your saved choice is used for new plan generations. You can still
-              use a one-off <code className='font-mono text-xs'>?model=</code>{' '}
-              query on a generation request to override it for that run only.
+              New plan generations use this saved choice. A one-off{' '}
+              <code className='font-mono text-xs'>?model=</code> request can
+              still override a single run.
             </>
           ) : (
             <>
-              No explicit preference saved yet. New plans use{' '}
-              <strong>{tierDefaultLabel}</strong>. Save a model below to store a
-              preference. Only persistable models are listed here; the runtime
-              router fallback is not.
+              New plans use <strong>{tierDefaultLabel}</strong> until you save a
+              preference. Only persistable models appear here.
             </>
           )}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className='px-5 sm:px-6'>
         <ModelPreferencesSelector
           currentModel={currentModel}
           userTier={userTier}

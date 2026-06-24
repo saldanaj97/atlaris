@@ -195,6 +195,7 @@ describe('PricingPage', () => {
       'data-can-open-billing-portal',
       'true',
     );
+    expect(screen.getByText('Already subscribed?')).toBeVisible();
     expect(mocks.pricingGridMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -238,7 +239,7 @@ describe('PricingPage', () => {
   });
 
   it.each([undefined, null] as const)(
-    'disables the billing portal when stripeCustomerId is %s',
+    'hides subscriber management when stripeCustomerId is %s',
     async (stripeCustomerId) => {
       const user = buildUserFixture({
         stripeCustomerId,
@@ -255,10 +256,10 @@ describe('PricingPage', () => {
         user,
       );
       expect(mocks.readBillingCatalogTierEntriesMock).toHaveBeenCalledTimes(2);
-      expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
-        'data-can-open-billing-portal',
-        'false',
-      );
+      expect(
+        screen.queryByTestId('manage-subscription-button'),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Already subscribed?')).not.toBeInTheDocument();
     },
   );
 
@@ -273,10 +274,39 @@ describe('PricingPage', () => {
       screen.getByRole('heading', { name: /invest in your growth/i }),
     ).toBeVisible();
     expect(screen.getByTestId('pricing-grid-subscribe-monthly')).toBeVisible();
-    expect(screen.getByTestId('manage-subscription-button')).toHaveAttribute(
-      'data-can-open-billing-portal',
-      'false',
-    );
+    expect(
+      screen.queryByTestId('manage-subscription-button'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Already subscribed?')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Billing portal is available after your first subscription checkout.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(mocks.manageSubscriptionButtonMock).not.toHaveBeenCalled();
+  });
+
+  it('hides subscriber management for signed-in users without portal access', async () => {
+    const user = buildUserFixture({
+      stripeCustomerId: 'cus_local_test',
+      subscriptionStatus: null,
+    });
+
+    mockAuthenticatedUser(user);
+    mockStripeTierData();
+
+    await renderPricingPage();
+
+    expect(
+      screen.queryByTestId('manage-subscription-button'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Already subscribed?')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Billing portal is available after your first subscription checkout.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(mocks.manageSubscriptionButtonMock).not.toHaveBeenCalled();
   });
 
   it.each([['trialing'], ['canceled'], ['past_due']] as const)(
@@ -301,6 +331,7 @@ describe('PricingPage', () => {
         'data-can-open-billing-portal',
         'true',
       );
+      expect(screen.getByText('Already subscribed?')).toBeVisible();
     },
   );
 });

@@ -64,7 +64,7 @@ export async function PlansContent({
     return (
       <section aria-label='No plans found'>
         <RouteEmptyState
-          className='min-h-100 border'
+          className='min-h-72'
           icon={Sparkles}
           title='No learning plans yet'
           description="Start by describing what you want to learn and we'll create a personalized learning plan with resources and milestones."

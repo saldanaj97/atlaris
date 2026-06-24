@@ -108,7 +108,7 @@ function GenerationAction({
         <span className='animate-spin motion-reduce:animate-none'>
           <Loader2 className='size-4' />
         </span>
-        Generating
+        Generating lessons...
       </div>
     );
   }
@@ -120,7 +120,11 @@ function GenerationAction({
 
   return (
     <Button onClick={onGenerate} disabled={isPending}>
-      {isPending ? 'Generating…' : 'Generate lessons'}
+      {isPending
+        ? 'Generating...'
+        : status === 'failed'
+          ? 'Retry lesson generation'
+          : 'Generate lessons'}
     </Button>
   );
 }
@@ -149,7 +153,12 @@ export function GenerationStatePanel({
   }
 
   return (
-    <Surface variant='default' padding='none' className='mb-6 p-5'>
+    <Surface
+      variant='default'
+      padding='none'
+      className='mb-6 p-5'
+      aria-live='polite'
+    >
       <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <GenerationDescription
           lessonGeneration={lessonGeneration}
