@@ -28,33 +28,25 @@ export function usePlanStatus(
   fetcher: typeof fetch = fetch,
 ): UsePlanStatusReturn {
   const initialStatusRef = useRef(initialStatus);
-  initialStatusRef.current = initialStatus;
-
+  const didMountRef = useRef(false);
   const [poller, setPoller] = useState(() =>
     createPoller(planId, initialStatus, fetcher),
   );
-  const pollerRef = useRef(poller);
-  pollerRef.current = poller;
-
-  const planIdRef = useRef(planId);
-  const fetcherRef = useRef(fetcher);
 
   useEffect(() => {
-    const planIdChanged = planIdRef.current !== planId;
-    const fetcherChanged = fetcherRef.current !== fetcher;
-    planIdRef.current = planId;
-    fetcherRef.current = fetcher;
+    initialStatusRef.current = initialStatus;
+  }, [initialStatus]);
 
-    if (planIdChanged || fetcherChanged) {
-      pollerRef.current.dispose();
-      const nextPoller = createPoller(
-        planId,
-        initialStatusRef.current,
-        fetcher,
-      );
-      pollerRef.current = nextPoller;
-      setPoller(nextPoller);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
     }
+
+    setPoller((currentPoller) => {
+      currentPoller.dispose();
+      return createPoller(planId, initialStatusRef.current, fetcher);
+    });
   }, [planId, fetcher]);
 
   const snapshot = useSyncExternalStore(

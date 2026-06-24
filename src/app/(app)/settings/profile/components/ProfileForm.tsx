@@ -15,14 +15,7 @@ import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
 import { Pencil } from 'lucide-react';
 import Link from 'next/link';
-import {
-  type ReactElement,
-  useCallback,
-  useEffect,
-  useId,
-  useReducer,
-  useRef,
-} from 'react';
+import { type ReactElement, useEffect, useId, useReducer, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface ProfileFormProps {
@@ -132,6 +125,39 @@ function profileFormReducer(
   }
 }
 
+function fetchProfile(
+  dispatch: (action: ProfileFormAction) => void,
+): AbortController {
+  const controller = new AbortController();
+
+  dispatch({ type: 'load-started' });
+
+  void (async () => {
+    const result = await requestProfile(controller.signal);
+
+    if (controller.signal.aborted || result.kind === 'aborted') {
+      return;
+    }
+
+    if (result.kind === 'success') {
+      dispatch({ type: 'load-succeeded', profile: result.profile });
+      return;
+    }
+
+    clientLogger.error('Failed to load profile', { error: result.error });
+    dispatch({ type: 'load-failed', message: result.message });
+    toast.error(result.message);
+  })();
+
+  return controller;
+}
+
+function focusNameInput(node: HTMLInputElement | null): void {
+  if (node) {
+    node.focus();
+  }
+}
+
 export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   const profileNameId = useId();
   const profileNameLabelId = `${profileNameId}-label`;
@@ -143,47 +169,17 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
     INITIAL_PROFILE_FORM_STATE,
   );
   const profileFetchControllerRef = useRef<AbortController | null>(null);
-  const nameInputCallbackRef = useCallback((node: HTMLInputElement | null) => {
-    if (node) {
-      node.focus();
-    }
-  }, []);
 
   const isDirty =
     state.profile !== null && state.name !== (state.profile.name ?? '');
 
-  const fetchProfile = useCallback((): AbortController => {
-    const controller = new AbortController();
-
-    dispatch({ type: 'load-started' });
-
-    void (async () => {
-      const result = await requestProfile(controller.signal);
-
-      if (controller.signal.aborted || result.kind === 'aborted') {
-        return;
-      }
-
-      if (result.kind === 'success') {
-        dispatch({ type: 'load-succeeded', profile: result.profile });
-        return;
-      }
-
-      clientLogger.error('Failed to load profile', { error: result.error });
-      dispatch({ type: 'load-failed', message: result.message });
-      toast.error(result.message);
-    })();
-
-    return controller;
-  }, []);
-
   useEffect(() => {
-    profileFetchControllerRef.current = fetchProfile();
+    profileFetchControllerRef.current = fetchProfile(dispatch);
 
     return () => {
       profileFetchControllerRef.current?.abort();
     };
-  }, [fetchProfile]);
+  }, []);
 
   async function handleSave(): Promise<void> {
     if (!isDirty) return;
@@ -200,7 +196,6 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
     clientLogger.error('Failed to update profile', {
       error: result.error,
-      submittedName: state.name,
     });
     dispatch({ type: 'save-failed' });
     toast.error(result.message);
@@ -218,7 +213,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
         message={state.error ?? 'Unable to load profile data.'}
         onRetry={() => {
           profileFetchControllerRef.current?.abort();
-          profileFetchControllerRef.current = fetchProfile();
+          profileFetchControllerRef.current = fetchProfile(dispatch);
         }}
       />
     );
@@ -242,7 +237,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
             </Label>
             {state.editingName ? (
               <Input
-                ref={nameInputCallbackRef}
+                ref={focusNameInput}
                 id={profileNameInputId}
                 type='text'
                 value={state.name}

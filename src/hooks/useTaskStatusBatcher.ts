@@ -4,7 +4,7 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { getLoggableErrorDetails } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 interface Resolver {
@@ -108,13 +108,16 @@ export function useTaskStatusBatcher({
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstQueuedAtRef = useRef<number | null>(null);
   const flushActionRef = useRef(flushAction);
-  flushActionRef.current = flushAction;
   const scopedTaskIdsRef = useRef(scopedTaskIds);
-  scopedTaskIdsRef.current = scopedTaskIds;
-  const scopeKey = useMemo(
-    () => scopedTaskIdsKey(scopedTaskIds),
-    [scopedTaskIds],
-  );
+  const scopeKey = scopedTaskIdsKey(scopedTaskIds);
+
+  useLayoutEffect(() => {
+    flushActionRef.current = flushAction;
+  }, [flushAction]);
+
+  useLayoutEffect(() => {
+    scopedTaskIdsRef.current = scopedTaskIds;
+  }, [scopedTaskIds]);
 
   const clearScheduledFlush = useCallback(() => {
     if (timerRef.current) {
@@ -153,12 +156,12 @@ export function useTaskStatusBatcher({
 
     try {
       await flushActionRef.current(updates);
-      for (const [, { resolvers }] of inScopeEntries) {
-        for (const r of resolvers) r.resolve();
+      for (const entry of inScopeEntries) {
+        for (const r of entry[1].resolvers) r.resolve();
       }
     } catch (error) {
-      for (const [, { resolvers }] of inScopeEntries) {
-        for (const r of resolvers) r.reject(error);
+      for (const entry of inScopeEntries) {
+        for (const r of entry[1].resolvers) r.reject(error);
       }
       const { errorMessage, errorStack } = getLoggableErrorDetails(error);
       clientLogger.error('Failed to batch update task statuses', {

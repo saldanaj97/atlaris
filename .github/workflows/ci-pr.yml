@@ -24,7 +24,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -58,6 +57,7 @@ jobs:
               - 'vitest.workflow.config.ts'
               - 'tsconfig.json'
               - 'package.json'
+              - 'pnpm-workspace.yaml'
               - 'pnpm-lock.yaml'
               - '.oxlintrc.json'
               - '.husky/**'
@@ -75,7 +75,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -113,7 +113,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Run dependency audit
         run: |
           MAX_ATTEMPTS=1
@@ -179,7 +179,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -241,7 +241,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -401,7 +401,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -577,7 +577,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -648,7 +648,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 10.33.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:

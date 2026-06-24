@@ -85,6 +85,7 @@ export const modules = pgTable(
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
       check(
         'module_lesson_generation_error_length',
+        // react-doctor-disable-next-line react-doctor/raw-sql-injection-risk -- static numeric limit from repo constants, not user input.
         sql`(${table.lessonGenerationError} IS NULL OR char_length(${table.lessonGenerationError}) <= ${sql.raw(String(MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH))})`,
       ),
       check('module_title_length', sql`char_length(${table.title}) <= 500`),

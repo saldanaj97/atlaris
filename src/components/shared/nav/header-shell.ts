@@ -44,7 +44,7 @@ function matchesPathOrDescendant(pathname: string, path: string): boolean {
 }
 
 /** True for marketing surfaces that use the glass header shell (home, landing, about, pricing). */
-export function isMarketingHeaderPath(pathname: string): boolean {
+function isMarketingHeaderPath(pathname: string): boolean {
   return (
     pathname === ROUTES.HOME ||
     pathname === ROUTES.LANDING ||
@@ -54,12 +54,12 @@ export function isMarketingHeaderPath(pathname: string): boolean {
 }
 
 /** True when the pathname is the pricing route (subtle glass intensity). */
-export function isPricingPath(pathname: string): boolean {
+function isPricingPath(pathname: string): boolean {
   return pathname === ROUTES.PRICING;
 }
 
 /** True for authenticated app areas that use the protected glass header variant. */
-export function isProtectedHeaderPath(pathname: string): boolean {
+function isProtectedHeaderPath(pathname: string): boolean {
   return PROTECTED_HEADER_PREFIXES.some((prefix) =>
     matchesPathOrDescendant(pathname, prefix),
   );

@@ -12,7 +12,7 @@ import {
 } from '@/lib/config/env/shared';
 import { z } from 'zod';
 
-const APP_URL_SCHEMA = z.string().url();
+const APP_URL_SCHEMA = z.url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 
 /**

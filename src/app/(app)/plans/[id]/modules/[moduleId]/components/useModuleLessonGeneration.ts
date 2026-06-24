@@ -12,6 +12,11 @@ import { toast } from 'sonner';
 const MODULE_LESSON_GENERATION_POLL_MS = 2500;
 const MODULE_LESSON_GENERATION_MAX_POLLS = 20;
 
+type LongGenerationKey = {
+  planId: string;
+  moduleId: string;
+};
+
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
@@ -72,19 +77,23 @@ export function useModuleLessonGeneration({
   const { refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
   const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
-  const [generationTakingLong, setGenerationTakingLong] = useState(false);
+  const [longGenerationKey, setLongGenerationKey] =
+    useState<LongGenerationKey | null>(null);
   const generationPollCountRef = useRef(0);
+  const generationTakingLong =
+    status === 'generating' &&
+    previousModulesComplete &&
+    longGenerationKey?.planId === planId &&
+    longGenerationKey.moduleId === moduleId;
 
   useEffect(() => {
     if (status !== 'generating') {
       generationPollCountRef.current = 0;
-      setGenerationTakingLong(false);
       return;
     }
 
     if (!previousModulesComplete) {
       generationPollCountRef.current = 0;
-      setGenerationTakingLong(false);
       return;
     }
 
@@ -164,7 +173,7 @@ export function useModuleLessonGeneration({
           if (
             generationPollCountRef.current > MODULE_LESSON_GENERATION_MAX_POLLS
           ) {
-            setGenerationTakingLong(true);
+            setLongGenerationKey({ planId, moduleId });
             return;
           }
 

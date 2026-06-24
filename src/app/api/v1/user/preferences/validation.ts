@@ -17,8 +17,6 @@ const preferredAiModelEnum = z.enum(preferredAiModel.enumValues, {
 /**
  * `preferredAiModel: null` clears the saved preference (tier default applies).
  */
-export const updatePreferencesSchema = z
-  .object({
-    preferredAiModel: preferredAiModelEnum.nullable(),
-  })
-  .strict();
+export const updatePreferencesSchema = z.strictObject({
+  preferredAiModel: preferredAiModelEnum.nullable(),
+});

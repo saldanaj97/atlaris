@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 interface ThemeToggleProps {
   /** Button size variant */
@@ -19,18 +19,30 @@ interface ThemeToggleProps {
   withTooltip?: boolean;
 }
 
+function subscribeMounted(onStoreChange: () => void): () => void {
+  onStoreChange();
+  return () => {};
+}
+
+function getMountedSnapshot(): boolean {
+  return true;
+}
+
+function getServerMountedSnapshot(): boolean {
+  return false;
+}
+
 export function ThemeToggle({
   size = 'icon',
   className,
   withTooltip = false,
 }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Prevent hydration mismatch by only rendering after mount
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribeMounted,
+    getMountedSnapshot,
+    getServerMountedSnapshot,
+  );
 
   const toggleTheme = () => {
     // Use resolvedTheme to handle 'system' theme correctly

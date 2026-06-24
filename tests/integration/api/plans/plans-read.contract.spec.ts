@@ -30,88 +30,78 @@ const serverAuth = vi.hoisted(() => {
 vi.mock('@/lib/auth/server', () => serverAuth.module());
 
 /** Locks lightweight list item shape for GET /api/v1/plans (AC3). */
-const lightweightPlanListItemSchema = z
-  .object({
-    id: z.string().uuid(),
-    topic: z.string(),
-    skillLevel: z.string(),
-    learningStyle: z.string(),
-    visibility: z.string(),
-    origin: z.string(),
-    generationStatus: z.string(),
-    createdAt: z.string(),
-    updatedAt: z.string().nullable(),
-    completion: z.number(),
-    completedTasks: z.number(),
-    totalTasks: z.number(),
-    totalMinutes: z.number(),
-    completedMinutes: z.number(),
-    completedModules: z.number(),
-    moduleCount: z.number(),
-  })
-  .strict();
+const lightweightPlanListItemSchema = z.strictObject({
+  id: z.uuid(),
+  topic: z.string(),
+  skillLevel: z.string(),
+  learningStyle: z.string(),
+  visibility: z.string(),
+  origin: z.string(),
+  generationStatus: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string().nullable(),
+  completion: z.number(),
+  completedTasks: z.number(),
+  totalTasks: z.number(),
+  totalMinutes: z.number(),
+  completedMinutes: z.number(),
+  completedModules: z.number(),
+  moduleCount: z.number(),
+});
 
-const clientModuleSchema = z
-  .object({
-    id: z.string().uuid(),
-    order: z.number(),
-    title: z.string(),
-    description: z.string().nullable(),
-    estimatedMinutes: z.number(),
-    tasks: z.array(
-      z
-        .object({
-          id: z.string().uuid(),
-          order: z.number(),
-          title: z.string(),
-          description: z.string().nullable(),
-          estimatedMinutes: z.number(),
-          status: z.string(),
-          resources: z.array(z.unknown()),
-        })
-        .strict(),
-    ),
-  })
-  .strict();
+const clientModuleSchema = z.strictObject({
+  id: z.uuid(),
+  order: z.number(),
+  title: z.string(),
+  description: z.string().nullable(),
+  estimatedMinutes: z.number(),
+  tasks: z.array(
+    z.strictObject({
+      id: z.uuid(),
+      order: z.number(),
+      title: z.string(),
+      description: z.string().nullable(),
+      estimatedMinutes: z.number(),
+      status: z.string(),
+      resources: z.array(z.unknown()),
+    }),
+  ),
+});
 
-const clientPlanDetailSchema = z
-  .object({
-    id: z.string().uuid(),
-    topic: z.string(),
-    skillLevel: z.string(),
-    weeklyHours: z.number(),
-    learningStyle: z.string(),
-    visibility: z.string(),
-    origin: z.string(),
-    createdAt: z.string().optional(),
-    modules: z.array(clientModuleSchema),
-    totalTasks: z.number(),
-    completedTasks: z.number(),
-    totalMinutes: z.number(),
-    completedMinutes: z.number(),
-    completedModules: z.number(),
-    status: z.string().optional(),
-    latestAttempt: z.unknown().nullable(),
-  })
-  .strict();
+const clientPlanDetailSchema = z.strictObject({
+  id: z.uuid(),
+  topic: z.string(),
+  skillLevel: z.string(),
+  weeklyHours: z.number(),
+  learningStyle: z.string(),
+  visibility: z.string(),
+  origin: z.string(),
+  createdAt: z.string().optional(),
+  modules: z.array(clientModuleSchema),
+  totalTasks: z.number(),
+  completedTasks: z.number(),
+  totalMinutes: z.number(),
+  completedMinutes: z.number(),
+  completedModules: z.number(),
+  status: z.string().optional(),
+  latestAttempt: z.unknown().nullable(),
+});
 
-const generationAttemptSchema = z
-  .object({
-    id: z.string().uuid(),
-    status: z.string(),
-    classification: z.string().nullable(),
-    durationMs: z.number(),
-    modulesCount: z.number(),
-    tasksCount: z.number(),
-    truncatedTopic: z.boolean(),
-    truncatedNotes: z.boolean(),
-    normalizedEffort: z.boolean(),
-    promptHash: z.string().nullable(),
-    metadata: z.unknown().nullable(),
-    model: z.string().nullable().optional(),
-    createdAt: z.string(),
-  })
-  .strict();
+const generationAttemptSchema = z.strictObject({
+  id: z.uuid(),
+  status: z.string(),
+  classification: z.string().nullable(),
+  durationMs: z.number(),
+  modulesCount: z.number(),
+  tasksCount: z.number(),
+  truncatedTopic: z.boolean(),
+  truncatedNotes: z.boolean(),
+  normalizedEffort: z.boolean(),
+  promptHash: z.string().nullable(),
+  metadata: z.unknown().nullable(),
+  model: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
 
 describe('Plan read API response contracts', () => {
   let authUserId = '';

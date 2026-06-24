@@ -62,12 +62,13 @@ function HeroCircularProgress({
     <div
       className='relative flex-shrink-0'
       style={{ width: size, height: size }}
-      role='progressbar'
-      aria-valuenow={progressPercent}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={`Plan progress: ${progressPercent}% complete`}
     >
+      <progress
+        aria-label={`Plan progress: ${progressPercent}% complete`}
+        className='sr-only'
+        value={progressPercent}
+        max={100}
+      >{`Plan progress: ${progressPercent}% complete`}</progress>
       <svg
         className='-rotate-90'
         width={size}
