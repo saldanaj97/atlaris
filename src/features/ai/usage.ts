@@ -107,14 +107,15 @@ export function normalizeToCanonicalUsage(
   // log it explicitly so the silent path stops being invisible. Any other
   // error from computeCostCents (invalid token counts, registry bug) must
   // propagate.
-  const estimatedCostCents = computeEstimatedCostCents({
-    model: resolvedModel,
-    inputTokens: resolvedInputTokens,
-    outputTokens: resolvedOutputTokens,
-    provider: resolvedProvider,
-  });
-
   const isPartial = missingFields.length > 0;
+  const estimatedCostCents = isPartial
+    ? 0
+    : computeEstimatedCostCents({
+        model: resolvedModel,
+        inputTokens: resolvedInputTokens,
+        outputTokens: resolvedOutputTokens,
+        provider: resolvedProvider,
+      });
   const providerCostMicrousd = resolveProviderCostMicrousd(usage, isPartial);
 
   const canonical: CanonicalAIUsage = {

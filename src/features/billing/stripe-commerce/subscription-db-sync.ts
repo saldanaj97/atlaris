@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type Stripe from 'stripe';
 
 import { getStripe } from '@/features/billing/client';
@@ -20,8 +21,6 @@ type SyncSubscriptionToDbDeps = {
   signal?: AbortSignal;
   timeoutMs?: number;
 };
-
-type SubscriptionTier = 'free' | 'starter' | 'pro';
 
 export type StripeSubscriptionForSync = Pick<
   Stripe.Subscription,
