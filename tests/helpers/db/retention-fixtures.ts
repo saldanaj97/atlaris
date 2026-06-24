@@ -6,6 +6,7 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
+import { and, eq, inArray } from 'drizzle-orm';
 
 export const JOB_QUEUE_RETENTION_DAYS = 30;
 export const STRIPE_WEBHOOK_EVENT_RETENTION_DAYS = 45;
@@ -35,6 +36,20 @@ export type SeedRetentionCleanupRowsResult = {
   };
   jobRowIds: string[];
 };
+
+export async function selectRetentionJobRows(
+  fixture: Pick<SeedRetentionCleanupRowsResult, 'userId' | 'jobRowIds'>,
+) {
+  return db
+    .select({ id: jobQueue.id, status: jobQueue.status })
+    .from(jobQueue)
+    .where(
+      and(
+        eq(jobQueue.userId, fixture.userId),
+        inArray(jobQueue.id, fixture.jobRowIds),
+      ),
+    );
+}
 
 export async function seedRetentionCleanupRows(
   options: SeedRetentionCleanupRowsOptions,

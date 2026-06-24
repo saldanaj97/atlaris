@@ -1,13 +1,7 @@
-import type { PlainHandler } from '@/lib/api/auth';
-
 import { runPlanCleanupMaintenance } from '@/features/plans/cleanup';
-import { assertMaintenanceWorkerAccess } from '@/lib/api/internal/internal-worker-access';
-import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+import { createMaintenancePostRoute } from '@/lib/api/internal/maintenance-route';
 import { json } from '@/lib/api/response';
-import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { maintenanceEnv } from '@/lib/config/env';
-import { getLoggingRequestContext } from '@/lib/logging/request-context';
-import * as Sentry from '@sentry/nextjs';
 
 const PLAN_CLEANUP_MONITOR_SLUG = 'plan-cleanup-maintenance';
 const PLAN_CLEANUP_MONITOR_CONFIG = {
@@ -20,37 +14,24 @@ const PLAN_CLEANUP_MONITOR_CONFIG = {
   isolateTrace: true,
 } as const;
 
-const runPlanCleanup: PlainHandler = async (request) => {
-  const { logger } = getLoggingRequestContext(request);
-  const pathname = new URL(request.url).pathname;
+export const POST = createMaintenancePostRoute({
+  enabled: () => maintenanceEnv.planCleanupEnabled,
+  unavailableMessage: 'Plan cleanup is currently unavailable.',
+  unauthorizedLogMessage: 'Unauthorized plan cleanup trigger attempt',
+  monitor: {
+    slug: PLAN_CLEANUP_MONITOR_SLUG,
+    config: PLAN_CLEANUP_MONITOR_CONFIG,
+  },
+  run: async ({ logger }) => {
+    logger.info('Starting plan cleanup');
 
-  checkIpRateLimit(request, 'internal');
+    const result = await runPlanCleanupMaintenance();
 
-  assertMaintenanceWorkerAccess({
-    request,
-    pathname,
-    logger,
-    enabled: maintenanceEnv.planCleanupEnabled,
-    unavailableMessage: 'Plan cleanup is currently unavailable.',
-    unauthorizedLogMessage: 'Unauthorized plan cleanup trigger attempt',
-  });
+    logger.info(result, 'Completed plan cleanup');
 
-  return Sentry.withMonitor(
-    PLAN_CLEANUP_MONITOR_SLUG,
-    async () => {
-      logger.info('Starting plan cleanup');
-
-      const result = await runPlanCleanupMaintenance();
-
-      logger.info(result, 'Completed plan cleanup');
-
-      return json({
-        ...result,
-        ok: true,
-      });
-    },
-    PLAN_CLEANUP_MONITOR_CONFIG,
-  );
-};
-
-export const POST: PlainHandler = withErrorBoundary(runPlanCleanup);
+    return json({
+      ...result,
+      ok: true,
+    });
+  },
+});

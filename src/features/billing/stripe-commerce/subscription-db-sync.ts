@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type Stripe from 'stripe';
 
 import { getStripe } from '@/features/billing/client';
@@ -86,6 +87,68 @@ async function withAbortSignal<T>(
   });
 }
 
+async function resolveTierFromPrice(args: {
+  stripe: Stripe;
+  priceId: string | undefined;
+  existingTier: SubscriptionTier;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}): Promise<SubscriptionTier> {
+  const { stripe, priceId, existingTier, signal, timeoutMs } = args;
+  if (!priceId) {
+    return existingTier;
+  }
+
+  const requestTimeoutMs = timeoutMs ?? 10_000;
+  try {
+    const price = await withAbortSignal(
+      () =>
+        stripe.prices.retrieve(
+          priceId,
+          {
+            expand: ['product'],
+          },
+          {
+            timeout: requestTimeoutMs,
+          },
+        ),
+      signal,
+    );
+
+    const product = price.product as Stripe.Product;
+    const tierMetadata = product.metadata?.tier;
+
+    return tierMetadata === 'starter' || tierMetadata === 'pro'
+      ? tierMetadata
+      : existingTier;
+  } catch (error) {
+    if (isAbortError(error)) {
+      logger.warn(
+        {
+          priceId,
+          event: 'subscription_sync_price_fetch_aborted',
+          timeoutMs: requestTimeoutMs,
+        },
+        'Stripe price lookup aborted during subscription sync',
+      );
+    } else {
+      logger.error(
+        {
+          priceId,
+          event: 'subscription_sync_price_fetch_failed',
+          error,
+        },
+        'Error retrieving Stripe price/product during subscription sync',
+      );
+    }
+
+    throw new Error(
+      `Unable to determine subscription tier for Stripe price ${priceId}`,
+      { cause: error },
+    );
+  }
+}
+
 /**
  * Stripe subscription → users row sync. Internal to write-side reconciliation
  * (`reconciliation.ts`); not a public billing API.
@@ -129,58 +192,13 @@ export async function syncSubscriptionToDb(
       ? user.subscriptionTier
       : 'free';
 
-  let tier: 'free' | 'starter' | 'pro' = existingTier;
-
-  if (priceId) {
-    const requestTimeoutMs = deps.timeoutMs ?? 10_000;
-    try {
-      const price = await withAbortSignal(
-        () =>
-          stripe.prices.retrieve(
-            priceId,
-            {
-              expand: ['product'],
-            },
-            {
-              timeout: requestTimeoutMs,
-            },
-          ),
-        deps.signal,
-      );
-
-      const product = price.product as Stripe.Product;
-      const tierMetadata = product.metadata?.tier;
-
-      if (tierMetadata === 'starter' || tierMetadata === 'pro') {
-        tier = tierMetadata;
-      }
-    } catch (error) {
-      if (isAbortError(error)) {
-        logger.warn(
-          {
-            priceId,
-            event: 'subscription_sync_price_fetch_aborted',
-            timeoutMs: requestTimeoutMs,
-          },
-          'Stripe price lookup aborted during subscription sync',
-        );
-      } else {
-        logger.error(
-          {
-            priceId,
-            event: 'subscription_sync_price_fetch_failed',
-            error,
-          },
-          'Error retrieving Stripe price/product during subscription sync',
-        );
-      }
-
-      throw new Error(
-        `Unable to determine subscription tier for Stripe price ${priceId}`,
-        { cause: error },
-      );
-    }
-  }
+  const tier = await resolveTierFromPrice({
+    stripe,
+    priceId,
+    existingTier,
+    signal: deps.signal,
+    timeoutMs: deps.timeoutMs,
+  });
 
   const status = mapStripeSubscriptionStatus(subscription.status);
 
