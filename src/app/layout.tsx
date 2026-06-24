@@ -25,11 +25,11 @@ const metadataDescription =
 
 const clerkAppearance = {
   variables: {
-    borderRadius: '0.75rem',
-    colorBackground: '#ffffff',
-    colorPrimary: '#4f46e5',
-    colorText: '#403c38',
-    colorTextSecondary: '#6f6a73',
+    borderRadius: 'var(--radius)',
+    colorBackground: 'var(--panel)',
+    colorPrimary: 'var(--primary)',
+    colorText: 'var(--foreground)',
+    colorTextSecondary: 'var(--muted-foreground)',
     fontFamily: 'var(--font-family-base)',
   },
   elements: {
