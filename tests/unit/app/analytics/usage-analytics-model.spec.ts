@@ -44,8 +44,6 @@ function pickTotals(model: UsageAnalyticsModel) {
     moduleCompletionPercent: model.moduleCompletionPercent,
     completedMinutes: model.completedMinutes,
     totalMinutes: model.totalMinutes,
-    hasPlans: model.hasPlans,
-    hasCompletedWork: model.hasCompletedWork,
   };
 }
 
@@ -63,8 +61,6 @@ describe('buildUsageAnalyticsModel', () => {
       moduleCompletionPercent: 0,
       completedMinutes: 0,
       totalMinutes: 0,
-      hasPlans: false,
-      hasCompletedWork: false,
     });
     expect(model.plans).toEqual([]);
   });
@@ -86,8 +82,6 @@ describe('buildUsageAnalyticsModel', () => {
       taskCompletionPercent: 0,
       completedMinutes: 0,
       totalMinutes: 120,
-      hasPlans: true,
-      hasCompletedWork: false,
     });
   });
 
@@ -125,15 +119,10 @@ describe('buildUsageAnalyticsModel', () => {
       moduleCompletionPercent: 40,
       completedMinutes: 100,
       totalMinutes: 200,
-      hasCompletedWork: true,
     });
     expect(model.plans).toMatchObject([
-      {
-        topic: 'React',
-        taskCompletionPercent: 40,
-        moduleCompletionPercent: 33,
-      },
-      { topic: 'SQL', taskCompletionPercent: 60, moduleCompletionPercent: 50 },
+      { topic: 'React', taskCompletionPercent: 40 },
+      { topic: 'SQL', taskCompletionPercent: 60 },
     ]);
   });
 
@@ -158,7 +147,6 @@ describe('buildUsageAnalyticsModel', () => {
       taskCompletionPercent: 100,
       completedModules: 2,
       totalModules: 2,
-      moduleCompletionPercent: 100,
     });
   });
 

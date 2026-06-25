@@ -8,7 +8,6 @@ export type UsageAnalyticsPlanRow = {
   taskCompletionPercent: number;
   completedModules: number;
   totalModules: number;
-  moduleCompletionPercent: number;
   completedMinutes: number;
   totalMinutes: number;
 };
@@ -24,8 +23,6 @@ export type UsageAnalyticsModel = {
   moduleCompletionPercent: number;
   completedMinutes: number;
   totalMinutes: number;
-  hasPlans: boolean;
-  hasCompletedWork: boolean;
 };
 
 function completionPercent(completed: number, total: number): number {
@@ -46,10 +43,6 @@ export function buildUsageAnalyticsModel(
     ),
     completedModules: summary.completedModules,
     totalModules: summary.moduleCount,
-    moduleCompletionPercent: completionPercent(
-      summary.completedModules,
-      summary.moduleCount,
-    ),
     completedMinutes: summary.completedMinutes,
     totalMinutes: summary.totalMinutes,
   }));
@@ -91,7 +84,5 @@ export function buildUsageAnalyticsModel(
     ),
     completedMinutes: totals.completedMinutes,
     totalMinutes: totals.totalMinutes,
-    hasPlans: plans.length > 0,
-    hasCompletedWork: totals.completedTasks > 0,
   };
 }

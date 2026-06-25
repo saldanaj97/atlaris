@@ -14,7 +14,6 @@ import { ROUTES } from '@/features/navigation/routes';
 import { formatMinutes } from '@/features/plans/formatters';
 import { listUsageAnalyticsPlanSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { cn } from '@/lib/utils';
 import {
   BarChart3,
   BookOpenCheck,
@@ -69,7 +68,7 @@ function UsageAnalyticsView({ model }: { model: UsageAnalyticsModel }) {
         subtitle='Current completion progress and estimated completed learning time from your plans.'
       />
 
-      {!model.hasPlans ? (
+      {model.planCount === 0 ? (
         <div className='space-y-6'>
           <NoPlansState />
           <HistoricalPlaceholder />
@@ -117,7 +116,7 @@ function AnalyticsContent({ model }: { model: UsageAnalyticsModel }) {
         {ESTIMATED_TIME_HELPER}
       </p>
 
-      {!model.hasCompletedWork ? <NoCompletedWorkState /> : null}
+      {model.completedTasks === 0 ? <NoCompletedWorkState /> : null}
 
       <PlanCompletionSection plans={model.plans} />
 
@@ -244,19 +243,10 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ProgressBar({
-  value,
-  className,
-}: {
-  value: number;
-  className?: string;
-}) {
+function ProgressBar({ value }: { value: number }) {
   return (
     <div
-      className={cn(
-        'h-2 w-full overflow-hidden rounded-full bg-muted',
-        className,
-      )}
+      className='h-2 w-full overflow-hidden rounded-full bg-muted'
       aria-hidden='true'
     >
       <div
