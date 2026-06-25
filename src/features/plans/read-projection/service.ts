@@ -122,6 +122,13 @@ export async function listLightweightPlansForApi(params: {
   return buildLightweightPlanSummaries(rows);
 }
 
+export async function listUsageAnalyticsPlanSummaries(params: {
+  userId: string;
+  dbClient?: PlanDbClient;
+}): Promise<LightweightPlanSummary[]> {
+  return listLightweightPlansForApi(params);
+}
+
 export async function getPlanListTotalCount(params: {
   userId: string;
   dbClient?: PlanDbClient;
