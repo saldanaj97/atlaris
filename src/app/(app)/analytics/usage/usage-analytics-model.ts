@@ -26,7 +26,8 @@ export type UsageAnalyticsModel = {
 };
 
 function completionPercent(completed: number, total: number): number {
-  return total > 0 ? Math.round((completed / total) * 100) : 0;
+  if (total <= 0) return 0;
+  return completed >= total ? 100 : Math.floor((completed / total) * 100);
 }
 
 export function buildUsageAnalyticsModel(

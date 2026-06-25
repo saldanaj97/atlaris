@@ -150,6 +150,22 @@ describe('buildUsageAnalyticsModel', () => {
     });
   });
 
+  it('does not round incomplete progress up to complete', () => {
+    const model = buildUsageAnalyticsModel([
+      planSummary({
+        id: 'plan-1',
+        completedTasks: 199,
+        totalTasks: 200,
+        completedModules: 1,
+        moduleCount: 2,
+      }),
+    ]);
+
+    expect(model.taskCompletionPercent).toBe(99);
+    expect(model.moduleCompletionPercent).toBe(50);
+    expect(model.plans[0].taskCompletionPercent).toBe(99);
+  });
+
   it('uses only currently completed task estimates for completed learning time', () => {
     const model = buildUsageAnalyticsModel([
       planSummary({
