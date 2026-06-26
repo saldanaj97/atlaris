@@ -25,18 +25,21 @@ Use this wording for the MVP time metric:
 | `plan_completion` | Existing completion read projections over plan tasks | Current-state | `completedTasks / totalTasks`; plans with zero tasks have `0` completion. |
 | `estimated_completed_learning_time` | `tasks.estimated_minutes` for currently completed tasks | Current-state, estimated | Sum task estimates for tasks currently marked complete. This is not actual recorded study time. |
 | `actual_study_time` | Future append-only learning activity history | Historical, actual | Unavailable until explicit study-duration events or another accepted actual-time source exists. |
-| `streaks` | Future append-only learning activity history | Historical | Unavailable until progress-change activity events exist and date bucketing is defined. |
-| `weekly_summaries` | Future append-only learning activity history | Historical | Unavailable until post-launch activity events exist. |
-| `trends` | Future append-only learning activity history | Historical | Unavailable until post-launch activity events exist. |
+| `streaks` | `learning_activity_events` | Historical | Unavailable until JCS-28 defines date bucketing and reads recorded post-launch progress-change activity. |
+| `weekly_summaries` | `learning_activity_events` | Historical | Unavailable until JCS-28 reads recorded post-launch activity events. |
+| `trends` | `learning_activity_events` | Historical | Unavailable until JCS-28 reads recorded post-launch activity events. |
 
 ## Future Activity Semantics
 
-JCS-27 must create the durable activity source before JCS-28 exposes historical
-analytics.
+JCS-27 creates `learning_activity_events` as the durable activity source before
+JCS-28 exposes historical analytics.
 
 - A study day is any calendar day with at least one recorded task progress
   status change.
 - Activity history is forward-only from the activity-history launch date.
+- `learning_activity_events` records task progress status changes at the
+  database boundary. Rows are deleted if their user, plan, module, or task is
+  deleted.
 - Do not reconstruct complete pre-launch history from mutable current-state
   rows.
 - Streaks should support both global and per-plan views when implemented.
@@ -72,7 +75,7 @@ analytics.
 
 - JCS-26 may ship completion analytics and estimated completed learning time
   from existing current-state projections.
-- JCS-27 must add append-only learning activity history before any historical
-  analytics ship.
+- JCS-27 adds append-only learning activity history in
+  `learning_activity_events`; no historical analytics ship in that slice.
 - JCS-28 may build streaks, weekly summaries, and trends only from recorded
   activity history.

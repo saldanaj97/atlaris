@@ -27,6 +27,14 @@ describe('server-owned write privilege bootstrap sync', () => {
       ),
       'utf8',
     );
+    const learningActivityMigration = readFileSync(
+      resolve(
+        REPO_ROOT,
+        'supabase/migrations/0036_add_learning_activity_events.sql',
+      ),
+      'utf8',
+    );
+    const serverOwnedMigrationSql = `${migration}\n${learningActivityMigration}`;
     const bootstrap = readFileSync(
       resolve(TEST_DIR, '../../../helpers/db/bootstrap.ts'),
       'utf8',
@@ -41,7 +49,7 @@ describe('server-owned write privilege bootstrap sync', () => {
     expect(migration).toMatch(migrationRevokeBlock);
 
     for (const table of AUTHENTICATED_SERVER_OWNED_WRITE_TABLES) {
-      expect(migration).toContain(`"${table}"`);
+      expect(serverOwnedMigrationSql).toContain(`"${table}"`);
     }
 
     expect(bootstrap).toContain('AUTHENTICATED_SERVER_OWNED_WRITE_TABLES');

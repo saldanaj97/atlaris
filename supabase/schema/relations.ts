@@ -5,6 +5,7 @@ import {
   planSchedules,
 } from './tables/plans';
 import {
+  learningActivityEvents,
   modules,
   resources,
   taskProgress,
@@ -21,6 +22,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   aiUsageEvents: many(aiUsageEvents),
   jobQueue: many(jobQueue),
   taskProgress: many(taskProgress),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const learningPlansRelations = relations(
@@ -34,6 +36,7 @@ export const learningPlansRelations = relations(
     planSchedules: one(planSchedules),
     generationAttempts: many(generationAttempts),
     jobQueue: many(jobQueue),
+    learningActivityEvents: many(learningActivityEvents),
   }),
 );
 
@@ -60,6 +63,7 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
     references: [learningPlans.id],
   }),
   tasks: many(tasks),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -69,6 +73,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   taskResources: many(taskResources),
   taskProgress: many(taskProgress),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -96,6 +101,28 @@ export const taskProgressRelations = relations(taskProgress, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const learningActivityEventsRelations = relations(
+  learningActivityEvents,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [learningActivityEvents.userId],
+      references: [users.id],
+    }),
+    plan: one(learningPlans, {
+      fields: [learningActivityEvents.planId],
+      references: [learningPlans.id],
+    }),
+    module: one(modules, {
+      fields: [learningActivityEvents.moduleId],
+      references: [modules.id],
+    }),
+    task: one(tasks, {
+      fields: [learningActivityEvents.taskId],
+      references: [tasks.id],
+    }),
+  }),
+);
 
 export const usageMetricsRelations = relations(usageMetrics, ({ one }) => ({
   user: one(users, {

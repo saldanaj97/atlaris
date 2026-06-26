@@ -79,9 +79,7 @@ async function setTaskProgress(
       tx,
       userId,
       eq(tasks.id, taskId),
-    )
-      .limit(1)
-      .for('update');
+    ).limit(1);
 
     if (!taskRow) {
       throw new Error('Task not found or access denied');
@@ -173,7 +171,7 @@ export async function setTaskProgressBatch(
       tx,
       userId,
       and(...scopeConditions)!,
-    ).for('update');
+    );
 
     const ownedIds = new Set(ownedTasks.map((row) => row.task.id));
     const missingIds = taskIds.filter((id) => !ownedIds.has(id));

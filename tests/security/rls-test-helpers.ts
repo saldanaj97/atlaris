@@ -18,6 +18,7 @@ export const expectedPolicyTables = [
   'tasks',
   'resources',
   'task_progress',
+  'learning_activity_events',
   'usage_metrics',
   'ai_usage_events',
 ] as const;
