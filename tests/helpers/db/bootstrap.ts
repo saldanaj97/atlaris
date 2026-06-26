@@ -58,7 +58,8 @@ export async function grantRlsPermissions(
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
       REVOKE INSERT, UPDATE, DELETE ON ${serverOwnedTablesSql} FROM authenticated;
-      GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated;
+      GRANT INSERT, UPDATE ON "task_progress" TO authenticated;
+      REVOKE DELETE ON "task_progress" FROM authenticated;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`

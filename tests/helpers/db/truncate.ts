@@ -2,6 +2,7 @@ import {
   aiUsageEvents,
   generationAttempts,
   jobQueue,
+  learningActivityEvents,
   learningPlans,
   modules,
   oauthStateTokens,
@@ -65,6 +66,7 @@ function assertSafeToTruncate() {
  */
 const TRUNCATE_TABLES = [
   taskResources,
+  learningActivityEvents,
   taskProgress,
   aiUsageEvents,
   generationAttempts,

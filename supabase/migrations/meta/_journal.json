@@ -253,6 +253,13 @@
       "when": 1779489548000,
       "tag": "20260522223908_schedule_retention_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1782430837257,
+      "tag": "0036_add_learning_activity_events",
+      "breakpoints": true
     }
   ]
 }
