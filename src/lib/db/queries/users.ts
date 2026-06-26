@@ -73,6 +73,7 @@ function isDbUser(user: unknown): user is DbUser {
     typeof maybeUser.monthlyExportCount === 'number' &&
     maybeUser.createdAt instanceof Date &&
     maybeUser.updatedAt instanceof Date &&
+    typeof maybeUser.analyticsTimezone === 'string' &&
     isOptionalString(maybeUser.name) &&
     isOptionalString(maybeUser.stripeCustomerId) &&
     isOptionalString(maybeUser.stripeSubscriptionId) &&

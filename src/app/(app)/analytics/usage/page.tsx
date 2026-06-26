@@ -4,7 +4,9 @@ import {
   buildUsageAnalyticsModel,
   type UsageAnalyticsModel,
   type UsageAnalyticsPlanRow,
+  type UsageAnalyticsWeekRow,
 } from './usage-analytics-model';
+import { UsageAnalyticsTimezoneSync } from './usage-analytics-timezone-sync';
 import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -14,12 +16,16 @@ import { ROUTES } from '@/features/navigation/routes';
 import { formatMinutes } from '@/features/plans/formatters';
 import { listUsageAnalyticsPlanSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { getLearningActivityEventsForUser } from '@/lib/db/queries/tasks';
 import {
   BarChart3,
   BookOpenCheck,
+  CalendarDays,
   Clock,
+  Flame,
   ListChecks,
   Plus,
+  TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -40,17 +46,21 @@ export const metadata: Metadata = {
 const SIGN_IN_RETURN_PATH = `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.ANALYTICS.USAGE)}`;
 const ESTIMATED_TIME_HELPER =
   'Based on estimates for tasks currently marked complete. This is not recorded study time.';
-const HISTORICAL_PLACEHOLDER =
-  'Streaks and weekly summaries start after activity tracking launches.';
 
 export default async function UsageAnalyticsPage() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
-    const summaries = await listUsageAnalyticsPlanSummaries({
-      userId: actor.id,
-      dbClient: db,
-    });
+    const [summaries, activityEvents] = await Promise.all([
+      listUsageAnalyticsPlanSummaries({
+        userId: actor.id,
+        dbClient: db,
+      }),
+      getLearningActivityEventsForUser(actor.id, db),
+    ]);
 
-    return buildUsageAnalyticsModel(summaries);
+    return buildUsageAnalyticsModel(summaries, {
+      activityEvents,
+      analyticsTimezone: actor.analyticsTimezone,
+    });
   });
 
   if (!result) {
@@ -63,6 +73,7 @@ export default async function UsageAnalyticsPage() {
 function UsageAnalyticsView({ model }: { model: UsageAnalyticsModel }) {
   return (
     <>
+      <UsageAnalyticsTimezoneSync analyticsTimezone={model.analyticsTimezone} />
       <PageHeader
         title='Usage'
         subtitle='Current completion progress and estimated completed learning time from your plans.'
@@ -71,7 +82,7 @@ function UsageAnalyticsView({ model }: { model: UsageAnalyticsModel }) {
       {model.planCount === 0 ? (
         <div className='space-y-6'>
           <NoPlansState />
-          <HistoricalPlaceholder />
+          <HistoricalAnalyticsSection model={model} />
         </div>
       ) : (
         <AnalyticsContent model={model} />
@@ -118,22 +129,105 @@ function AnalyticsContent({ model }: { model: UsageAnalyticsModel }) {
 
       {model.completedTasks === 0 ? <NoCompletedWorkState /> : null}
 
+      <HistoricalAnalyticsSection model={model} />
+
       <PlanCompletionSection plans={model.plans} />
 
-      <HistoricalPlaceholder />
+      {model.history.hasActivity ? (
+        <PlanActivitySection plans={model.plans} />
+      ) : null}
     </div>
   );
 }
 
-function HistoricalPlaceholder() {
+function HistoricalAnalyticsSection({ model }: { model: UsageAnalyticsModel }) {
+  const currentWeek = model.history.currentWeek;
+
   return (
-    <Surface variant='muted'>
+    <section aria-label='Historical activity' className='space-y-4'>
       <div className='space-y-2'>
         <h2 className='text-lg font-semibold text-foreground'>
-          Historical analytics
+          Historical activity
         </h2>
         <p className='text-sm leading-6 text-muted-foreground'>
-          {HISTORICAL_PLACEHOLDER}
+          Based on recorded task progress changes since activity tracking
+          launched. Calendar days use {model.analyticsTimezone}.
+        </p>
+      </div>
+
+      {!model.history.hasActivity ? (
+        <NoHistoricalActivityState />
+      ) : (
+        <>
+          <section
+            aria-label='Historical activity summary'
+            className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'
+          >
+            <MetricCard
+              icon={<Flame aria-hidden />}
+              label='Current streak'
+              value={formatDayCount(model.history.currentStreakDays)}
+              sublabel={`Longest: ${formatDayCount(model.history.longestStreakDays)}`}
+            />
+            <MetricCard
+              icon={<CalendarDays aria-hidden />}
+              label='Active days this week'
+              value={`${currentWeek.activeDays}/7`}
+              sublabel={`${currentWeek.progressChangeCount} progress changes`}
+            />
+            <MetricCard
+              icon={<ListChecks aria-hidden />}
+              label='Completed events this week'
+              value={currentWeek.completedEvents.toString()}
+              sublabel='From recorded status changes'
+            />
+            <MetricCard
+              icon={<TrendingUp aria-hidden />}
+              label='Estimated completion added'
+              value={formatMinutes(currentWeek.estimatedCompletionAddedMinutes)}
+              sublabel='From completed event estimates'
+            />
+          </section>
+
+          {currentWeek.progressChangeCount === 0 ? (
+            <NoCurrentWeekActivityState />
+          ) : null}
+
+          <WeeklyTrendSection
+            weeks={model.history.weeklyTrends}
+            maxProgressChanges={model.history.maxWeeklyProgressChanges}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+function NoHistoricalActivityState() {
+  return (
+    <Surface variant='inset'>
+      <div className='space-y-2'>
+        <h3 className='text-base font-semibold text-foreground'>
+          No recorded activity yet
+        </h3>
+        <p className='text-sm leading-6 text-muted-foreground'>
+          Streaks and weekly summaries start after task progress changes are
+          recorded. Earlier study activity is not backfilled.
+        </p>
+      </div>
+    </Surface>
+  );
+}
+
+function NoCurrentWeekActivityState() {
+  return (
+    <Surface variant='inset'>
+      <div className='space-y-2'>
+        <h3 className='text-base font-semibold text-foreground'>
+          No activity recorded this week
+        </h3>
+        <p className='text-sm leading-6 text-muted-foreground'>
+          Weekly summaries update when task progress changes are recorded.
         </p>
       </div>
     </Surface>
@@ -192,6 +286,116 @@ function PlanCompletionSection({ plans }: { plans: UsageAnalyticsPlanRow[] }) {
         ))}
       </div>
     </Surface>
+  );
+}
+
+function WeeklyTrendSection({
+  weeks,
+  maxProgressChanges,
+}: {
+  weeks: UsageAnalyticsWeekRow[];
+  maxProgressChanges: number;
+}) {
+  return (
+    <Surface>
+      <div className='mb-5 space-y-2'>
+        <h2 className='text-lg font-semibold text-foreground'>Weekly trend</h2>
+        <p className='text-sm leading-6 text-muted-foreground'>
+          Progress changes and completion events from recorded activity history.
+        </p>
+      </div>
+
+      <div className='space-y-4'>
+        {weeks.map((week) => (
+          <WeeklyTrendRow
+            key={week.weekStartDate}
+            week={week}
+            maxProgressChanges={maxProgressChanges}
+          />
+        ))}
+      </div>
+    </Surface>
+  );
+}
+
+function WeeklyTrendRow({
+  week,
+  maxProgressChanges,
+}: {
+  week: UsageAnalyticsWeekRow;
+  maxProgressChanges: number;
+}) {
+  const width = `${Math.round(
+    (week.progressChangeCount / maxProgressChanges) * 100,
+  )}%`;
+
+  return (
+    <div className='grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)_12rem] sm:items-center'>
+      <div>
+        <p className='text-sm font-medium text-foreground'>{week.label}</p>
+        {week.isCurrentWeek ? (
+          <p className='text-xs text-muted-foreground'>Current week</p>
+        ) : null}
+      </div>
+      <div className='h-2 overflow-hidden rounded-full bg-muted'>
+        <div className='h-full rounded-full bg-primary' style={{ width }} />
+      </div>
+      <p className='text-sm text-muted-foreground tabular-nums sm:text-right'>
+        {week.progressChangeCount} changes · {week.completedEvents} completed
+      </p>
+    </div>
+  );
+}
+
+function PlanActivitySection({ plans }: { plans: UsageAnalyticsPlanRow[] }) {
+  return (
+    <Surface>
+      <div className='mb-5 space-y-2'>
+        <h2 className='text-lg font-semibold text-foreground'>Plan activity</h2>
+        <p className='text-sm leading-6 text-muted-foreground'>
+          Per-plan streaks and this week&apos;s recorded progress changes.
+        </p>
+      </div>
+
+      <div className='divide-y divide-border'>
+        {plans.map((plan) => (
+          <PlanActivityRow key={plan.id} plan={plan} />
+        ))}
+      </div>
+    </Surface>
+  );
+}
+
+function PlanActivityRow({ plan }: { plan: UsageAnalyticsPlanRow }) {
+  return (
+    <article className='grid gap-4 py-5 first:pt-0 last:pb-0 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-center'>
+      <div className='min-w-0'>
+        <h3 className='text-base font-semibold text-foreground'>
+          {plan.topic}
+        </h3>
+        <p className='mt-1 text-sm text-muted-foreground'>
+          {plan.activeDaysThisWeek === 0
+            ? 'No progress changes recorded this week.'
+            : `${formatDayCount(plan.activeDaysThisWeek)} active this week.`}
+        </p>
+      </div>
+
+      <dl className='grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 lg:grid-cols-2'>
+        <Metric label='Streak' value={formatDayCount(plan.currentStreakDays)} />
+        <Metric
+          label='Active days'
+          value={plan.activeDaysThisWeek.toString()}
+        />
+        <Metric
+          label='Completed'
+          value={plan.completedEventsThisWeek.toString()}
+        />
+        <Metric
+          label='Est. added'
+          value={formatMinutes(plan.estimatedCompletionAddedThisWeek)}
+        />
+      </dl>
+    </article>
   );
 }
 
@@ -255,4 +459,8 @@ function ProgressBar({ value }: { value: number }) {
       />
     </div>
   );
+}
+
+function formatDayCount(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

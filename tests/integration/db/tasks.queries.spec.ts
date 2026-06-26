@@ -1,4 +1,7 @@
-import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
+import {
+  getLearningActivityEventsForUser,
+  setTaskProgressBatch,
+} from '@/lib/db/queries/tasks';
 import {
   learningActivityEvents,
   learningPlans,
@@ -10,9 +13,13 @@ import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
+import {
+  cleanupTrackedRlsClients,
+  createRlsDbForUser,
+} from '@tests/helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { asc, eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 const RECENT_TIMESTAMP_THRESHOLD_MS = 10_000;
 
@@ -30,6 +37,10 @@ function expectRecentTimestamp(value: Date) {
 }
 
 describe('Task Queries', () => {
+  afterEach(async () => {
+    await cleanupTrackedRlsClients();
+  });
+
   it('rejects single-item writes when module scope does not match the task module', async () => {
     const authUserId = buildTestAuthUserId('db-tasks-scope');
     const userId = await ensureUser({
@@ -128,6 +139,61 @@ describe('Task Queries', () => {
     });
     expectDate(secondEvent.occurredAt, 'second occurredAt');
     expectRecentTimestamp(secondEvent.occurredAt);
+  });
+
+  it('returns only owner-visible learning activity events from the read path', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('db-tasks-activity-owner');
+    const ownerUserId = await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+    const otherAuthUserId = buildTestAuthUserId('db-tasks-activity-other');
+    const otherUserId = await ensureUser({
+      authUserId: otherAuthUserId,
+      email: buildTestEmail(otherAuthUserId),
+    });
+    const ownerPlan = await createTestPlan({
+      userId: ownerUserId,
+      topic: 'owner activity',
+    });
+    const ownerModule = await createTestModule({ planId: ownerPlan.id });
+    const ownerTask = await createTestTask({ moduleId: ownerModule.id });
+    const otherPlan = await createTestPlan({
+      userId: otherUserId,
+      topic: 'other activity',
+    });
+    const otherModule = await createTestModule({ planId: otherPlan.id });
+    const otherTask = await createTestTask({ moduleId: otherModule.id });
+
+    await setTaskProgressBatch(
+      ownerUserId,
+      [{ taskId: ownerTask.id, status: 'completed' }],
+      db,
+    );
+    await setTaskProgressBatch(
+      otherUserId,
+      [{ taskId: otherTask.id, status: 'completed' }],
+      db,
+    );
+
+    const ownerDb = await createRlsDbForUser(ownerAuthUserId);
+    const ownerRows = await getLearningActivityEventsForUser(
+      ownerUserId,
+      ownerDb,
+    );
+    const crossTenantRows = await getLearningActivityEventsForUser(
+      otherUserId,
+      ownerDb,
+    );
+
+    expect(ownerRows).toHaveLength(1);
+    expect(ownerRows[0]).toMatchObject({
+      userId: ownerUserId,
+      planId: ownerPlan.id,
+      taskId: ownerTask.id,
+      status: 'completed',
+    });
+    expect(crossTenantRows).toHaveLength(0);
   });
 
   it.each([

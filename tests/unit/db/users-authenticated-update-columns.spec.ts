@@ -10,6 +10,10 @@ import { describe, expect, it } from 'vitest';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 
+type MigrationJournal = {
+  entries: Array<{ tag: string }>;
+};
+
 function normalizeColumns(rawColumns: string): string[] {
   return rawColumns
     .split(',')
@@ -29,19 +33,20 @@ function extractUsersUpdateGrantColumns(fileContents: string): string[][] {
 describe('authenticated users UPDATE allowlist sync', () => {
   const expectedColumns = [...USERS_AUTHENTICATED_UPDATE_COLUMNS].sort();
 
-  it('keeps migration 0018 in sync with the canonical allowlist', () => {
-    const migrationContents = readFileSync(
-      resolve(
-        TEST_DIR,
-        '../../../supabase/migrations/0018_harden_users_update_columns.sql',
-      ),
-      'utf8',
-    );
+  it('keeps the final migration grant in sync with the canonical allowlist', () => {
+    const migrationsDir = resolve(TEST_DIR, '../../../supabase/migrations');
+    const journal = JSON.parse(
+      readFileSync(resolve(migrationsDir, 'meta/_journal.json'), 'utf8'),
+    ) as MigrationJournal;
+    const migrationContents = journal.entries
+      .map((entry) =>
+        readFileSync(resolve(migrationsDir, `${entry.tag}.sql`), 'utf8'),
+      )
+      .join('\n');
 
     const migrationMatches = extractUsersUpdateGrantColumns(migrationContents);
 
-    expect(migrationMatches).toHaveLength(1);
-    expect(migrationMatches[0]).toEqual(expectedColumns);
+    expect(migrationMatches.at(-1)).toEqual(expectedColumns);
   });
 
   it('keeps shared Postgres bootstrap using the canonical column list for users UPDATE', () => {

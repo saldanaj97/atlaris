@@ -8,6 +8,11 @@ const profileSchema = z.object({
   subscriptionTier: z.string(),
   subscriptionStatus: z.string().nullable(),
   createdAt: z.string(),
+  analyticsTimezone: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? 'UTC'),
 });
 
 export type ProfileData = z.infer<typeof profileSchema>;

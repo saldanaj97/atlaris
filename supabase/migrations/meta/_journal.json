@@ -260,6 +260,13 @@
       "when": 1782430837257,
       "tag": "0036_add_learning_activity_events",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1782437094261,
+      "tag": "0037_add_user_analytics_timezone",
+      "breakpoints": true
     }
   ]
 }

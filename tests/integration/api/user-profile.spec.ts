@@ -64,6 +64,7 @@ describe('GET /api/v1/user/profile', () => {
       email: 'profile@example.com',
       subscriptionTier: 'starter',
       subscriptionStatus: 'active',
+      analyticsTimezone: 'UTC',
     });
     expect(typeof body.id).toBe('string');
     expect(new Date(body.createdAt).toString()).not.toBe('Invalid Date');
@@ -118,6 +119,7 @@ describe('PUT /api/v1/user/profile', () => {
     expect(body).toMatchObject({
       name: 'New Name',
       email: 'update-profile@example.com',
+      analyticsTimezone: 'UTC',
     });
     expect(body).not.toHaveProperty('authUserId');
     expect(body).not.toHaveProperty('stripeCustomerId');
@@ -153,6 +155,29 @@ describe('PUT /api/v1/user/profile', () => {
       where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
     });
     expect(updated?.name).toBeNull();
+  });
+
+  it('updates analytics timezone without requiring a name change', async () => {
+    const { PUT } = await import('@/app/api/v1/user/profile/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ analyticsTimezone: 'America/Chicago' }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.analyticsTimezone).toBe('America/Chicago');
+    expect(body.name).toBe('Before Update');
+
+    const updated = await db.query.users.findFirst({
+      where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
+    });
+    expect(updated?.analyticsTimezone).toBe('America/Chicago');
   });
 
   it('returns 400 when PUT body is not valid JSON', async () => {
@@ -194,6 +219,23 @@ describe('PUT /api/v1/user/profile', () => {
     const body = await response.json();
     expect(body.code).toBe('VALIDATION_ERROR');
     expect(typeof body.error).toBe('string');
+  });
+
+  it('rejects invalid analytics timezones', async () => {
+    const { PUT } = await import('@/app/api/v1/user/profile/route');
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ analyticsTimezone: 'Not/AZone' }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
   });
 
   it('rejects names longer than 100 characters', async () => {

@@ -1,13 +1,14 @@
 /**
  * PostgreSQL column names the `authenticated` role may UPDATE on `public.users`.
  *
- * Must stay aligned with `supabase/migrations/0018_harden_users_update_columns.sql`.
+ * Must stay aligned with the latest effective migration grant for `public.users`.
  * Consumed by Testcontainers (`tests/setup/testcontainers.ts`) and
  * `tests/helpers/db/rls-bootstrap.ts` when mirroring production grants in ephemeral DBs.
  */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS = [
   'name',
   'preferred_ai_model',
+  'analytics_timezone',
   'updated_at',
 ] as const;
 
