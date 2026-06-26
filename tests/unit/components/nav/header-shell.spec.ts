@@ -43,7 +43,7 @@ describe('header shell variants', () => {
     expect(desktopHeaderShellClass('protected')).toContain('rounded-2xl');
     expect(desktopHeaderShellClass('protected')).toContain('border-white/40');
     expect(desktopHeaderShellClass('protected')).toContain(
-      'grid-cols-[auto_minmax(0,1fr)_auto]',
+      'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
     );
     expect(desktopHeaderShellClass('protected')).not.toContain(
       'overflow-hidden',
