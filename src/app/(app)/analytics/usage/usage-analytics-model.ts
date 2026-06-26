@@ -1,10 +1,11 @@
-import type { LightweightPlanSummary } from '@/shared/types/db.types';
-
-type ActivityStatus = 'not_started' | 'in_progress' | 'completed';
+import type {
+  LightweightPlanSummary,
+  ProgressStatus,
+} from '@/shared/types/db.types';
 
 export type UsageAnalyticsActivityEvent = {
   planId: string;
-  status: ActivityStatus;
+  status: ProgressStatus;
   taskEstimatedMinutes: number;
   occurredAt: Date;
 };

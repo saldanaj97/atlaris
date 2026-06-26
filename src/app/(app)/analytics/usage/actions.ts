@@ -11,15 +11,18 @@ export async function syncAnalyticsTimezoneAction(
   const parsed = updateUserProfileSchema.safeParse({ analyticsTimezone });
   if (!parsed.success) return false;
 
+  const nextAnalyticsTimezone = parsed.data.analyticsTimezone;
+  if (!nextAnalyticsTimezone) return false;
+
   const result = await requestBoundary.action(async ({ actor, db }) => {
-    if (actor.analyticsTimezone === parsed.data.analyticsTimezone) {
+    if (actor.analyticsTimezone === nextAnalyticsTimezone) {
       return false;
     }
 
     await db
       .update(users)
       .set({
-        analyticsTimezone: parsed.data.analyticsTimezone,
+        analyticsTimezone: nextAnalyticsTimezone,
         updatedAt: sql<Date>`now()`,
       })
       .where(eq(users.authUserId, actor.authUserId));
