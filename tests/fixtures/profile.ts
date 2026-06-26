@@ -9,6 +9,7 @@ interface ProfileFixture {
   subscriptionTier: string;
   subscriptionStatus: string;
   createdAt: string;
+  analyticsTimezone: string;
 }
 
 export function buildProfile(
@@ -21,6 +22,7 @@ export function buildProfile(
     subscriptionTier: 'free',
     subscriptionStatus: 'active',
     createdAt: '2025-06-15T10:00:00.000Z',
+    analyticsTimezone: 'UTC',
     ...overrides,
   };
 }

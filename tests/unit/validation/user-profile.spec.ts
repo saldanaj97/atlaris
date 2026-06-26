@@ -23,6 +23,17 @@ describe('updateUserProfileSchema', () => {
     }
   });
 
+  it('accepts a valid analytics timezone', () => {
+    const result = updateUserProfileSchema.safeParse({
+      analyticsTimezone: 'America/Chicago',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.analyticsTimezone).toBe('America/Chicago');
+    }
+  });
+
   it('accepts names at the maximum length boundary', () => {
     const maxLengthName = 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH);
     const result = updateUserProfileSchema.safeParse({ name: maxLengthName });
@@ -46,6 +57,20 @@ describe('updateUserProfileSchema', () => {
       name: 'Valid Name',
       email: 'should-not-be-allowed@example.com',
     });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid analytics timezones', () => {
+    const result = updateUserProfileSchema.safeParse({
+      analyticsTimezone: 'Not/AZone',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty updates', () => {
+    const result = updateUserProfileSchema.safeParse({});
 
     expect(result.success).toBe(false);
   });

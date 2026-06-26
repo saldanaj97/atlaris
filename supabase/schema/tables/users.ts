@@ -37,6 +37,7 @@ export const users = pgTable(
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
     preferredAiModel: preferredAiModelEnum('preferred_ai_model'),
+    analyticsTimezone: text('analytics_timezone').notNull().default('UTC'),
     ...timestampFields,
   },
   (table) => [

@@ -1,20 +1,22 @@
 # Usage Analytics Metric Contract
 
-This contract defines what the first user-facing usage analytics release may
-promise, and what must wait for append-only learning activity history.
+This contract defines what user-facing usage analytics may promise from current
+completion state and append-only learning activity history.
 
 ## First Release Boundary
 
 The first `/analytics/usage` release may show completion analytics and clearly
-labeled estimated completed learning time. It must not promise actual study
-time, streaks, weekly summaries, or trends until Atlaris records durable
-activity history.
+labeled estimated completed learning time. After JCS-27, historical analytics
+may show streaks, weekly summaries, and trends only from recorded
+`learning_activity_events`.
 
 Use this wording for the MVP time metric:
 
 - Label: `Estimated completed learning time`
 - Helper copy: `Based on estimates for tasks currently marked complete. This is not recorded study time.`
-- Historical placeholder copy: `Streaks and weekly summaries start after activity tracking launches.`
+- No-history copy: explain that streaks and weekly summaries start after task
+  progress changes are recorded, and that earlier study activity is not
+  backfilled.
 
 ## Metric Glossary
 
@@ -25,14 +27,14 @@ Use this wording for the MVP time metric:
 | `plan_completion` | Existing completion read projections over plan tasks | Current-state | `completedTasks / totalTasks`; plans with zero tasks have `0` completion. |
 | `estimated_completed_learning_time` | `tasks.estimated_minutes` for currently completed tasks | Current-state, estimated | Sum task estimates for tasks currently marked complete. This is not actual recorded study time. |
 | `actual_study_time` | Future append-only learning activity history | Historical, actual | Unavailable until explicit study-duration events or another accepted actual-time source exists. |
-| `streaks` | `learning_activity_events` | Historical | Unavailable until JCS-28 defines date bucketing and reads recorded post-launch progress-change activity. |
-| `weekly_summaries` | `learning_activity_events` | Historical | Unavailable until JCS-28 reads recorded post-launch activity events. |
-| `trends` | `learning_activity_events` | Historical | Unavailable until JCS-28 reads recorded post-launch activity events. |
+| `streaks` | `learning_activity_events` | Historical | Count local study days from recorded post-launch progress-change activity. Current streak may continue through yesterday when today has no activity yet. |
+| `weekly_summaries` | `learning_activity_events` | Historical | Summarize recorded progress-change activity in Monday-start learning weeks. |
+| `trends` | `learning_activity_events` | Historical | Show recent weekly progress-change and completed-event history from recorded events only. |
 
 ## Future Activity Semantics
 
-JCS-27 creates `learning_activity_events` as the durable activity source before
-JCS-28 exposes historical analytics.
+JCS-27 creates `learning_activity_events` as the durable activity source. JCS-28
+exposes historical analytics from that source.
 
 - A study day is any calendar day with at least one recorded task progress
   status change.
@@ -42,10 +44,10 @@ JCS-28 exposes historical analytics.
   deleted.
 - Do not reconstruct complete pre-launch history from mutable current-state
   rows.
-- Streaks should support both global and per-plan views when implemented.
-- Date bucketing must not ship until the history implementation chooses a
-  canonical timezone source. The current schema has schedule timezone data, but
-  no general user timezone.
+- Streaks support both global and per-plan views.
+- Date bucketing uses `users.analytics_timezone`. New and existing users default
+  to `UTC`; `/analytics/usage` may update the setting from the browser's IANA
+  timezone after authenticated render.
 
 ## Guardrails
 
@@ -70,6 +72,8 @@ JCS-28 exposes historical analytics.
   `src/features/plans/read-projection/summary-projection.ts`
 - Current task progress schema:
   `supabase/schema/tables/tasks.ts`
+- Analytics timezone source:
+  `supabase/schema/tables/users.ts`
 
 ## Downstream Issue Boundaries
 
@@ -77,5 +81,5 @@ JCS-28 exposes historical analytics.
   from existing current-state projections.
 - JCS-27 adds append-only learning activity history in
   `learning_activity_events`; no historical analytics ship in that slice.
-- JCS-28 may build streaks, weekly summaries, and trends only from recorded
-  activity history.
+- JCS-28 builds streaks, weekly summaries, and trends only from recorded
+  activity history and the stored analytics timezone.

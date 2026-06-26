@@ -43,7 +43,10 @@ function resolveSubscriptionLifecycle(
 }
 
 type CreateTestUserParams = Partial<
-  Pick<UserInsert, 'authUserId' | 'email' | 'name' | 'subscriptionTier'> &
+  Pick<
+    UserInsert,
+    'analyticsTimezone' | 'authUserId' | 'email' | 'name' | 'subscriptionTier'
+  > &
     SubscriptionLifecycleFields
 >;
 
@@ -106,6 +109,7 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
     }),
     monthlyExportCount: 0,
     preferredAiModel: null,
+    analyticsTimezone: 'UTC',
     createdAt: now,
     updatedAt: now,
     ...userOverrides,

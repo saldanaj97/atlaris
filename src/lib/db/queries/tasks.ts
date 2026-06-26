@@ -1,5 +1,6 @@
 import type {
   DbTask,
+  DbLearningActivityEvent,
   DbTaskProgress,
   TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
@@ -7,8 +8,14 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import type { SQL } from 'drizzle-orm';
 
 import { getDb } from '@supabase/runtime';
-import { learningPlans, modules, taskProgress, tasks } from '@supabase/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import {
+  learningActivityEvents,
+  learningPlans,
+  modules,
+  taskProgress,
+  tasks,
+} from '@supabase/schema';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 interface TaskProgressBatchScope {
   planId?: string;
@@ -52,6 +59,19 @@ export async function getAllTasksInPlan(
     eq(learningPlans.id, planId),
   );
   return rows.map((row) => row.task);
+}
+
+export async function getLearningActivityEventsForUser(
+  userId: string,
+  dbClient?: TasksDbClient,
+): Promise<DbLearningActivityEvent[]> {
+  const client = dbClient ?? getDb();
+
+  return client
+    .select()
+    .from(learningActivityEvents)
+    .where(eq(learningActivityEvents.userId, userId))
+    .orderBy(asc(learningActivityEvents.occurredAt));
 }
 
 /**

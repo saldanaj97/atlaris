@@ -17,6 +17,7 @@ type UserProfileResponse = Pick<
   | 'subscriptionTier'
   | 'subscriptionStatus'
   | 'createdAt'
+  | 'analyticsTimezone'
 >;
 
 function toUserProfileResponse(user: DbUser): UserProfileResponse {
@@ -27,6 +28,7 @@ function toUserProfileResponse(user: DbUser): UserProfileResponse {
     subscriptionTier: user.subscriptionTier,
     subscriptionStatus: user.subscriptionStatus,
     createdAt: user.createdAt,
+    analyticsTimezone: user.analyticsTimezone,
   };
 }
 
@@ -66,7 +68,10 @@ export const PUT = requestBoundary.route(
     const updatedRows = await db
       .update(users)
       .set({
-        name: parsed.data.name,
+        ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+        ...(parsed.data.analyticsTimezone !== undefined
+          ? { analyticsTimezone: parsed.data.analyticsTimezone }
+          : {}),
         updatedAt: sql<Date>`now()`,
       })
       .where(eq(users.authUserId, actor.authUserId))

@@ -2,6 +2,7 @@ import type { LightweightPlanSummary } from '@/shared/types/db.types';
 
 import {
   buildUsageAnalyticsModel,
+  type UsageAnalyticsActivityEvent,
   type UsageAnalyticsModel,
 } from '@/app/(app)/analytics/usage/usage-analytics-model';
 import { describe, expect, it } from 'vitest';
@@ -47,6 +48,18 @@ function pickTotals(model: UsageAnalyticsModel) {
   };
 }
 
+function activityEvent(
+  overrides: Partial<UsageAnalyticsActivityEvent>,
+): UsageAnalyticsActivityEvent {
+  return {
+    planId: 'plan-1',
+    status: 'in_progress',
+    taskEstimatedMinutes: 30,
+    occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+    ...overrides,
+  };
+}
+
 describe('buildUsageAnalyticsModel', () => {
   it('returns zeroed analytics when no plans exist', () => {
     const model = buildUsageAnalyticsModel([]);
@@ -63,6 +76,9 @@ describe('buildUsageAnalyticsModel', () => {
       totalMinutes: 0,
     });
     expect(model.plans).toEqual([]);
+    expect(model.history.hasActivity).toBe(false);
+    expect(model.history.currentStreakDays).toBe(0);
+    expect(model.history.longestStreakDays).toBe(0);
   });
 
   it('keeps available plan scope when no tasks are completed', () => {
@@ -181,5 +197,166 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.totalMinutes).toBe(140);
     expect(model.plans[0].completedMinutes).toBe(25);
     expect(model.plans[0].totalMinutes).toBe(140);
+  });
+
+  it('buckets activity days in the analytics timezone', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      analyticsTimezone: 'America/Chicago',
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-06-25T04:30:00.000Z'),
+        }),
+        activityEvent({
+          occurredAt: new Date('2026-06-25T05:30:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.currentStreakDays).toBe(2);
+    expect(model.history.currentWeek.activeDays).toBe(2);
+    expect(model.plans[0].currentStreakDays).toBe(2);
+  });
+
+  it('counts the current streak through yesterday when today has no activity', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.currentStreakDays).toBe(1);
+  });
+
+  it('tracks broken streaks and longest streaks independently', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-06-21T12:00:00.000Z'),
+        }),
+        activityEvent({
+          occurredAt: new Date('2026-06-22T12:00:00.000Z'),
+        }),
+        activityEvent({
+          occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.currentStreakDays).toBe(1);
+    expect(model.history.longestStreakDays).toBe(2);
+  });
+
+  it('keeps global and per-plan streaks separate', () => {
+    const model = buildUsageAnalyticsModel(
+      [
+        planSummary({ id: 'plan-1', topic: 'React' }),
+        planSummary({ id: 'plan-2', topic: 'SQL' }),
+      ],
+      {
+        referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+        activityEvents: [
+          activityEvent({
+            planId: 'plan-1',
+            occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-2',
+            occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-2',
+            occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+          }),
+        ],
+      },
+    );
+
+    expect(model.history.currentStreakDays).toBe(2);
+    expect(model.plans).toMatchObject([
+      { topic: 'React', currentStreakDays: 1 },
+      { topic: 'SQL', currentStreakDays: 2 },
+    ]);
+  });
+
+  it('builds Monday-start weekly trend rows', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-06-21T12:00:00.000Z'),
+        }),
+        activityEvent({
+          occurredAt: new Date('2026-06-22T12:00:00.000Z'),
+        }),
+        activityEvent({
+          occurredAt: new Date('2026-06-28T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.weeklyTrends).toHaveLength(8);
+    expect(model.history.currentWeek).toMatchObject({
+      weekStartDate: '2026-06-22',
+      activeDays: 2,
+      progressChangeCount: 2,
+    });
+  });
+
+  it('keeps uncomplete and recomplete events in historical summaries', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          status: 'completed',
+          taskEstimatedMinutes: 25,
+          occurredAt: new Date('2026-06-23T12:00:00.000Z'),
+        }),
+        activityEvent({
+          status: 'in_progress',
+          taskEstimatedMinutes: 25,
+          occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+        }),
+        activityEvent({
+          status: 'completed',
+          taskEstimatedMinutes: 25,
+          occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.currentWeek).toMatchObject({
+      activeDays: 3,
+      progressChangeCount: 3,
+      completedEvents: 2,
+      estimatedCompletionAddedMinutes: 50,
+    });
+  });
+
+  it('sums estimated completion added only from completed-status events', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          status: 'completed',
+          taskEstimatedMinutes: 40,
+        }),
+        activityEvent({
+          status: 'in_progress',
+          taskEstimatedMinutes: 80,
+        }),
+      ],
+    });
+
+    expect(model.history.currentWeek.completedEvents).toBe(1);
+    expect(model.history.currentWeek.estimatedCompletionAddedMinutes).toBe(40);
+    expect(model.plans[0]).toMatchObject({
+      completedEventsThisWeek: 1,
+      estimatedCompletionAddedThisWeek: 40,
+    });
   });
 });
