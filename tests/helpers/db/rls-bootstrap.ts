@@ -62,7 +62,8 @@ export async function ensureRlsRolesAndPermissions() {
     REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(
       AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL,
     )} FROM authenticated;
-    GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated;
+    GRANT INSERT, UPDATE ON "task_progress" TO authenticated;
+    REVOKE DELETE ON "task_progress" FROM authenticated;
   `);
 
   // Grant read-only permissions to anon role

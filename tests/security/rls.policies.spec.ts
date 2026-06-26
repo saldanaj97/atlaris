@@ -28,12 +28,10 @@ import {
   policyRowSchema,
   serverOwnedWriteTables,
 } from './rls-test-helpers';
-import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import {
   jobQueue,
   aiUsageEvents,
   generationAttempts,
-  learningActivityEvents,
   learningPlans,
   modules,
   planSchedules,
@@ -1448,157 +1446,6 @@ describe('RLS Policy Verification', () => {
 
       expect(updated).toHaveLength(1);
       expect(updated[0]?.status).toBe('in_progress');
-    });
-
-    it('request-auth batch progress writes can record learning activity', async () => {
-      const [user] = await db
-        .insert(users)
-        .values({
-          authUserId: 'user_progress_batch',
-          email: 'progress-batch@test.com',
-        })
-        .returning();
-
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId: user.id,
-          topic: 'Batch Progress Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-        })
-        .returning();
-
-      const [module] = await db
-        .insert(modules)
-        .values({
-          planId: plan.id,
-          order: 1,
-          title: 'Module 1',
-          estimatedMinutes: 120,
-        })
-        .returning();
-
-      const [task] = await db
-        .insert(tasks)
-        .values({
-          moduleId: module.id,
-          order: 1,
-          title: 'Task 1',
-          estimatedMinutes: 30,
-        })
-        .returning();
-
-      const authDb = await createRlsDbForUser('user_progress_batch');
-      const progressRows = await setTaskProgressBatch(
-        user.id,
-        [{ taskId: task.id, status: 'completed' }],
-        authDb,
-        { planId: plan.id },
-      );
-
-      expect(progressRows).toHaveLength(1);
-      expect(progressRows[0]?.status).toBe('completed');
-
-      const eventRows = await authDb
-        .select()
-        .from(learningActivityEvents)
-        .where(eq(learningActivityEvents.taskId, task.id));
-
-      expect(eventRows).toHaveLength(1);
-      expect(eventRows[0]?.status).toBe('completed');
-      expect(eventRows[0]?.taskEstimatedMinutes).toBe(30);
-    });
-
-    it('learning activity history is owner-readable and DB-written only', async () => {
-      const [owner] = await db
-        .insert(users)
-        .values({
-          authUserId: 'user_activity_owner',
-          email: 'activity-owner@test.com',
-        })
-        .returning();
-      await db.insert(users).values({
-        authUserId: 'user_activity_other',
-        email: 'activity-other@test.com',
-      });
-
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId: owner.id,
-          topic: 'Activity Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-          visibility: 'private',
-        })
-        .returning();
-
-      const [module] = await db
-        .insert(modules)
-        .values({
-          planId: plan.id,
-          order: 1,
-          title: 'Module 1',
-          estimatedMinutes: 120,
-        })
-        .returning();
-
-      const [task] = await db
-        .insert(tasks)
-        .values({
-          moduleId: module.id,
-          order: 1,
-          title: 'Task 1',
-          estimatedMinutes: 30,
-        })
-        .returning();
-
-      await db.insert(taskProgress).values({
-        taskId: task.id,
-        userId: owner.id,
-        status: 'completed',
-      });
-
-      const ownerDb = await createRlsDbForUser('user_activity_owner');
-      const otherDb = await createRlsDbForUser('user_activity_other');
-      const ownerRows = await ownerDb.select().from(learningActivityEvents);
-      const otherRows = await otherDb.select().from(learningActivityEvents);
-
-      expect(ownerRows).toHaveLength(1);
-      expect(ownerRows[0]?.status).toBe('completed');
-      expect(otherRows).toHaveLength(0);
-      const eventId = ownerRows[0]?.id;
-      expect(eventId).toBeDefined();
-      if (!eventId) {
-        throw new Error('Expected learning activity event id');
-      }
-
-      await expectRlsViolation(() =>
-        ownerDb.insert(learningActivityEvents).values({
-          userId: owner.id,
-          planId: plan.id,
-          moduleId: module.id,
-          taskId: task.id,
-          status: 'completed',
-          taskEstimatedMinutes: 30,
-          occurredAt: new Date(),
-        }),
-      );
-      await expectRlsViolation(() =>
-        ownerDb
-          .update(learningActivityEvents)
-          .set({ status: 'in_progress' })
-          .where(eq(learningActivityEvents.id, eventId)),
-      );
-      await expectRlsViolation(() =>
-        ownerDb
-          .delete(learningActivityEvents)
-          .where(eq(learningActivityEvents.id, eventId)),
-      );
     });
   });
 

@@ -102,7 +102,11 @@ describe('Task Queries', () => {
       .orderBy(asc(learningActivityEvents.occurredAt));
 
     expect(events).toHaveLength(2);
-    expect(events[0]).toMatchObject({
+    const [firstEvent, secondEvent] = events;
+    if (!firstEvent || !secondEvent) {
+      throw new Error('Expected two learning activity events');
+    }
+    expect(firstEvent).toMatchObject({
       userId,
       planId: plan.id,
       moduleId: mod.id,
@@ -110,9 +114,10 @@ describe('Task Queries', () => {
       previousStatus: null,
       status: 'completed',
       taskEstimatedMinutes: 45,
-      occurredAt: new Date('2026-06-25T10:00:00.000Z'),
     });
-    expect(events[1]).toMatchObject({
+    expectDate(firstEvent.occurredAt, 'first occurredAt');
+    expectRecentTimestamp(firstEvent.occurredAt);
+    expect(secondEvent).toMatchObject({
       userId,
       planId: plan.id,
       moduleId: mod.id,
@@ -120,8 +125,9 @@ describe('Task Queries', () => {
       previousStatus: 'completed',
       status: 'in_progress',
       taskEstimatedMinutes: 45,
-      occurredAt: new Date('2026-06-25T10:10:00.000Z'),
     });
+    expectDate(secondEvent.occurredAt, 'second occurredAt');
+    expectRecentTimestamp(secondEvent.occurredAt);
   });
 
   it.each([

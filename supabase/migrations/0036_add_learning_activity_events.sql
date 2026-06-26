@@ -27,6 +27,7 @@ CREATE POLICY "learning_activity_events_select_own" ON "learning_activity_events
   );--> statement-breakpoint
 GRANT SELECT ON TABLE "learning_activity_events" TO authenticated;--> statement-breakpoint
 REVOKE INSERT, UPDATE, DELETE ON TABLE "learning_activity_events" FROM authenticated;--> statement-breakpoint
+REVOKE DELETE ON TABLE "task_progress" FROM authenticated;--> statement-breakpoint
 CREATE SCHEMA IF NOT EXISTS "private";--> statement-breakpoint
 CREATE OR REPLACE FUNCTION "private"."record_learning_activity_event"()
 RETURNS trigger
@@ -78,7 +79,7 @@ BEGIN
     CASE WHEN TG_OP = 'UPDATE' THEN OLD.status ELSE NULL END,
     NEW.status,
     task_context."task_estimated_minutes",
-    NEW.updated_at
+    statement_timestamp()
   );
 
   RETURN NEW;
