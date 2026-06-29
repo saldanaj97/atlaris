@@ -8,7 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default:
+          'bg-primary-dark text-primary-foreground hover:bg-primary-dark/90',
         destructive:
           'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
@@ -18,7 +19,7 @@ const buttonVariants = cva(
         ghost:
           'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
-        cta: 'group rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25',
+        cta: 'group rounded-lg bg-primary-dark text-primary-foreground shadow-lg shadow-primary-dark/20 hover:-translate-y-0.5 hover:bg-primary-dark/90 hover:shadow-xl hover:shadow-primary-dark/25',
         'soft-primary':
           'border border-primary/25 bg-primary/10 text-primary hover:border-primary/35 hover:bg-primary/15 dark:border-primary/40 dark:bg-primary/15 dark:hover:bg-primary/25',
         success:
@@ -40,6 +41,7 @@ const buttonVariants = cva(
   },
 );
 
+/** Renders a styled button or Slot-wrapped control with variant and size options. */
 function Button({
   className,
   variant = 'default',
