@@ -16,6 +16,7 @@
     "check:lint": "oxlint src tests scripts supabase --max-warnings=0",
     "check:lint:ci": "oxlint src tests scripts supabase --format=github --max-warnings=0",
     "check:type": "tsc --noEmit",
+    "design:lint": "designmd lint DESIGN.md",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:dev:start": "supabase start",
@@ -77,6 +78,7 @@
   },
   "devDependencies": {
     "@clerk/testing": "^2.0.25",
+    "@google/design.md": "^0.3.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testcontainers/postgresql": "^11.14.0",
