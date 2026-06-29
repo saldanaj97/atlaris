@@ -4,6 +4,12 @@ import { syncAnalyticsTimezoneAction } from './actions';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
+/**
+ * React component that synchronizes the user's analytics timezone preference
+ * with their current browser timezone if they differ. This runs as a side-effect
+ * when mounted and performs a best-effort update by calling an action,
+ * then refreshes the router if the timezone is updated.
+ */
 export function UsageAnalyticsTimezoneSync({
   analyticsTimezone,
 }: {
