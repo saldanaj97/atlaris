@@ -8,9 +8,22 @@ let observedResizeEntries: {
   element: HTMLElement;
   callback: ResizeObserverCallback;
 }[] = [];
+let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
+let nextAnimationFrameId = 1;
 
 beforeEach(() => {
   observedResizeEntries = [];
+  animationFrameCallbacks = new Map();
+  nextAnimationFrameId = 1;
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    const id = nextAnimationFrameId;
+    nextAnimationFrameId += 1;
+    animationFrameCallbacks.set(id, callback);
+    return id;
+  });
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => {
+    animationFrameCallbacks.delete(id);
+  });
 
   /** Records observed elements and callbacks for test-controlled resize events. */
   class TestResizeObserver {
@@ -201,20 +214,20 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.getByLabelText('Eight-week pulse analytics design'),
     ).toHaveClass('w-full');
-    expect(screen.getByText('Tasks')).toBeInTheDocument();
-    expect(screen.getByText('47%')).toBeInTheDocument();
+    expect(screen.getAllByText('Tasks')).toHaveLength(2);
+    expect(screen.getAllByText('47%')).toHaveLength(2);
     expect(screen.getByText('28 / 60 complete')).toBeInTheDocument();
     expect(screen.getByText('32 tasks left')).toBeInTheDocument();
-    expect(screen.getByText('Modules')).toBeInTheDocument();
-    expect(screen.getByText('44%')).toBeInTheDocument();
+    expect(screen.getAllByText('Modules')).toHaveLength(2);
+    expect(screen.getAllByText('44%')).toHaveLength(2);
     expect(screen.getByText('8 / 18 complete')).toBeInTheDocument();
     expect(screen.getByText('10 modules left')).toBeInTheDocument();
     expect(screen.getByText('Completed time')).toBeInTheDocument();
-    expect(screen.getByText('16 hrs')).toBeInTheDocument();
+    expect(screen.getAllByText('16 hrs')).toHaveLength(2);
     expect(screen.getByText('41 hrs planned total')).toBeInTheDocument();
     expect(screen.getByText('-1.5 hrs vs last week')).toBeInTheDocument();
-    expect(screen.getByText('Active days')).toBeInTheDocument();
-    expect(screen.getByText('3/7')).toBeInTheDocument();
+    expect(screen.getAllByText('Active days')).toHaveLength(2);
+    expect(screen.getAllByText('3/7')).toHaveLength(2);
     expect(screen.getByText('-2 days vs last week')).toBeInTheDocument();
     expect(screen.getByText('Streak')).toBeInTheDocument();
     expect(screen.getByText('4 days')).toBeInTheDocument();
@@ -246,17 +259,14 @@ describe('UsageAnalyticsContent', () => {
     ).not.toBeInTheDocument();
     expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(2);
     expect(
-      container.querySelectorAll('.analytics-point-label').length,
-    ).toBeGreaterThan(0);
-    expect(container.querySelector('.recharts-line-dots')).not.toBeInTheDocument();
+      container.querySelector('.recharts-line-dots'),
+    ).not.toBeInTheDocument();
     const linePath = container.querySelector(
       '.analytics-plan-line .recharts-line-curve',
     );
 
     expect(linePath).not.toBeNull();
-    expect(
-      linePath?.getAttribute('d'),
-    ).not.toContain('C');
+    expect(linePath?.getAttribute('d')).not.toContain('C');
 
     resizeChart(780);
 
@@ -269,7 +279,7 @@ describe('UsageAnalyticsContent', () => {
 /** Simulates a chart container resize and triggers registered ResizeObserver callbacks. */
 function resizeChart(width: number) {
   const observedChart = observedResizeEntries.find(
-    ({ element }) => element.getAttribute('role') === 'img',
+    ({ element }) => element.dataset.testid === 'weekly-line-chart',
   );
 
   if (!observedChart) {
@@ -319,6 +329,19 @@ function resizeChart(width: number) {
         ],
         {} as ResizeObserver,
       );
+    }
+
+    for (
+      let frame = 0;
+      frame < 5 && animationFrameCallbacks.size > 0;
+      frame += 1
+    ) {
+      const callbacks = [...animationFrameCallbacks.values()];
+      animationFrameCallbacks.clear();
+
+      for (const callback of callbacks) {
+        callback(frame);
+      }
     }
   });
 }

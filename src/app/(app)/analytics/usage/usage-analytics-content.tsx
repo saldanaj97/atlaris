@@ -19,12 +19,19 @@ import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import { PLAN_CHART_COLORS } from '@/shared/constants/chart-colors';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Bar,
+  BarChart as RechartsBarChart,
   CartesianGrid,
+  Cell,
   LabelList,
+  type LabelProps,
   Line,
   LineChart,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -34,6 +41,9 @@ const LEGEND_ITEM_WIDTH = 180;
 const LEGEND_COLUMN_GAP = 16;
 const LINE_ENTER_ANIMATION_MS = 650;
 const LINE_EXIT_ANIMATION_MS = 260;
+const LABEL_ENTER_ANIMATION_MS = 140;
+const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
+const COMPACT_AXIS_TICK = { fontSize: 10 };
 
 /** Renders the usage analytics page: eight-week pulse chart and summary metric tiles. */
 export function UsageAnalyticsContent({
@@ -60,6 +70,13 @@ export function UsageAnalyticsContent({
         model.totalTasks > 0
           ? remainingLabel(model.totalTasks - model.completedTasks, 'task')
           : 'Create a plan to track tasks',
+      chart: (
+        <RadialTextMetricChart
+          value={`${model.taskCompletionPercent}%`}
+          sublabel='Tasks'
+          percent={model.taskCompletionPercent}
+        />
+      ),
       className: 'sm:col-span-2',
     },
     {
@@ -81,6 +98,13 @@ export function UsageAnalyticsContent({
               'module',
             )
           : 'Create a plan to track modules',
+      chart: (
+        <RadialTextMetricChart
+          value={`${model.moduleCompletionPercent}%`}
+          sublabel='Modules'
+          percent={model.moduleCompletionPercent}
+        />
+      ),
     },
     {
       label: 'Completed time',
@@ -101,6 +125,14 @@ export function UsageAnalyticsContent({
               previousWeek?.estimatedCompletionAddedMinutes ?? 0,
             )
           : 'Create a plan to track time',
+      chart: (
+        <RadialStackedMetricChart
+          completed={model.completedMinutes}
+          total={model.totalMinutes}
+          value={formatMinutes(model.completedMinutes)}
+          sublabel='Completed'
+        />
+      ),
     },
     {
       label: 'Progress changes',
@@ -116,6 +148,7 @@ export function UsageAnalyticsContent({
         previousWeek?.progressChangeCount ?? 0,
         'change',
       ),
+      chart: <ActiveProgressBarChart weeks={model.history.weeklyTrends} />,
     },
     {
       label: 'Completed events',
@@ -131,6 +164,7 @@ export function UsageAnalyticsContent({
         previousWeek?.completedEvents ?? 0,
         'event',
       ),
+      chart: <StackedEventsBarChart weeks={model.history.weeklyTrends} />,
     },
     {
       label: 'Active days',
@@ -148,6 +182,13 @@ export function UsageAnalyticsContent({
         previousWeek?.activeDays ?? 0,
         'day',
       ),
+      chart: (
+        <RadialTextMetricChart
+          value={`${currentWeek.activeDays}/7`}
+          sublabel='Active days'
+          percent={(currentWeek.activeDays / 7) * 100}
+        />
+      ),
     },
     {
       label: 'Streak',
@@ -161,6 +202,12 @@ export function UsageAnalyticsContent({
         model.history.currentStreakDays,
         model.history.longestStreakDays,
       ),
+      chart: (
+        <StreakStepLineChart
+          current={model.history.currentStreakDays}
+          longest={model.history.longestStreakDays}
+        />
+      ),
     },
   ] as const;
 
@@ -173,8 +220,8 @@ export function UsageAnalyticsContent({
 
       <Surface
         aria-label='Eight-week pulse analytics design'
-        padding='comfortable'
-        className='w-full rounded-lg'
+        padding='none'
+        className='w-full rounded-lg px-5 pt-5'
       >
         <div className='min-w-0'>
           <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -215,6 +262,7 @@ function MetricTile({
   detail,
   status,
   comparison,
+  chart,
   className,
 }: {
   label: string;
@@ -222,43 +270,322 @@ function MetricTile({
   detail: string;
   status: MetricStatus;
   comparison: string;
+  chart: ReactNode;
   className?: string;
 }) {
   return (
     <div
-      className={`flex min-h-32 flex-col rounded-lg border border-panel-border bg-panel p-4 ${className ?? ''}`}
+      className={cn(
+        'flex min-h-72 flex-col rounded-lg border border-panel-border bg-panel p-4',
+        className,
+      )}
     >
-      <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-        {label}
-      </p>
-      <div className='mt-auto flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
-        <div className='min-w-0'>
-          <p className='text-4xl font-semibold text-foreground tabular-nums'>
-            {value}
-          </p>
-          <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
-        </div>
+      <div className='flex items-start justify-between gap-3'>
+        <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+          {label}
+        </p>
+        <MetricStatusBadge status={status} />
+      </div>
 
-        <div className='min-w-0 sm:max-w-36 sm:text-right'>
-          {status.trendIcon ? (
-            <span aria-label={status.label} className='inline-flex'>
-              <TrendStatusIcon kind={status.trendIcon} />
-            </span>
-          ) : (
-            <Badge
-              variant='product'
-              className={cn(
-                'border-transparent px-2 py-1 text-[10px] font-semibold uppercase',
-                STATUS_TONE_CLASSNAME[status.tone],
-              )}
-            >
-              {status.label}
-            </Badge>
-          )}
-          <p className='mt-2 text-sm text-muted-foreground'>{comparison}</p>
-        </div>
+      <div className='mt-3 min-w-0'>
+        <p className='text-4xl font-semibold text-foreground tabular-nums'>
+          {value}
+        </p>
+        <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
+      </div>
+
+      <div className='mt-4 min-h-36 overflow-visible'>{chart}</div>
+      <p className='mt-auto pt-3 text-sm text-muted-foreground'>{comparison}</p>
+    </div>
+  );
+}
+
+function MetricStatusBadge({ status }: { status: MetricStatus }) {
+  if (status.trendIcon) {
+    return (
+      <span aria-label={status.label} className='inline-flex'>
+        <TrendStatusIcon kind={status.trendIcon} />
+      </span>
+    );
+  }
+
+  return (
+    <Badge
+      variant='product'
+      className={cn(
+        'border-transparent px-2 py-1 text-[10px] font-semibold uppercase',
+        STATUS_TONE_CLASSNAME[status.tone],
+      )}
+    >
+      {status.label}
+    </Badge>
+  );
+}
+
+function RadialTextMetricChart({
+  value,
+  sublabel,
+  percent,
+}: {
+  value: string;
+  sublabel: string;
+  percent: number;
+}) {
+  const chartData = [{ value: clampPercent(percent) }];
+
+  return (
+    <div className='relative mx-auto h-32 w-32 overflow-visible'>
+      <ChartContainer
+        aria-hidden='true'
+        config={{ value: { color: 'var(--chart-2)' } }}
+        className='aspect-auto h-32 w-32 overflow-visible'
+      >
+        <RadialBarChart
+          data={chartData}
+          startAngle={90}
+          endAngle={-270}
+          innerRadius={46}
+          outerRadius={58}
+          margin={{ top: 4, right: 4, bottom: 4, left: 4 }}
+        >
+          <PolarAngleAxis type='number' domain={[0, 100]} tick={false} />
+          <RadialBar
+            dataKey='value'
+            background={{ fill: 'var(--border)' }}
+            cornerRadius={8}
+            fill='var(--color-value)'
+          />
+        </RadialBarChart>
+      </ChartContainer>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center'
+      >
+        <span className='text-2xl font-semibold text-foreground tabular-nums'>
+          {value}
+        </span>
+        <span className='text-xs text-muted-foreground'>{sublabel}</span>
       </div>
     </div>
+  );
+}
+
+function RadialStackedMetricChart({
+  completed,
+  total,
+  value,
+  sublabel,
+}: {
+  completed: number;
+  total: number;
+  value: string;
+  sublabel: string;
+}) {
+  const safeTotal = Math.max(0, total);
+  const completedValue = Math.min(Math.max(0, completed), safeTotal);
+  const chartTotal = Math.max(1, safeTotal);
+  const chartData = [
+    {
+      completed: completedValue,
+      remaining: safeTotal > 0 ? Math.max(0, safeTotal - completedValue) : 1,
+    },
+  ];
+
+  return (
+    <div className='relative mx-auto h-36 w-44 overflow-visible'>
+      <ChartContainer
+        aria-hidden='true'
+        config={{
+          completed: { color: 'var(--chart-2)' },
+          remaining: { color: 'var(--border)' },
+        }}
+        className='aspect-auto h-36 w-44 overflow-visible'
+      >
+        <RadialBarChart
+          data={chartData}
+          startAngle={180}
+          endAngle={0}
+          innerRadius={48}
+          outerRadius={62}
+          margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+        >
+          <PolarAngleAxis type='number' domain={[0, chartTotal]} tick={false} />
+          <RadialBar
+            dataKey='completed'
+            stackId='time'
+            cornerRadius={8}
+            fill='var(--color-completed)'
+          />
+          <RadialBar
+            dataKey='remaining'
+            stackId='time'
+            cornerRadius={8}
+            fill='var(--color-remaining)'
+          />
+        </RadialBarChart>
+      </ChartContainer>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center'
+      >
+        <span className='text-2xl font-semibold text-foreground tabular-nums'>
+          {value}
+        </span>
+        <span className='text-xs text-muted-foreground'>{sublabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function ActiveProgressBarChart({ weeks }: { weeks: UsageAnalyticsWeekRow[] }) {
+  const chartData = weeks.map((week) => ({
+    week: week.label.split('-')[0],
+    changes: week.progressChangeCount,
+    isCurrentWeek: week.isCurrentWeek,
+  }));
+
+  return (
+    <ChartContainer
+      aria-hidden='true'
+      config={{ changes: { label: 'Changes', color: 'var(--chart-2)' } }}
+      className='aspect-auto h-36 w-full overflow-visible'
+    >
+      <RechartsBarChart data={chartData} margin={METRIC_BAR_CHART_MARGIN}>
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey='week'
+          tickLine={false}
+          axisLine={false}
+          tick={COMPACT_AXIS_TICK}
+          interval={0}
+          minTickGap={0}
+        />
+        <YAxis hide domain={[0, 'dataMax + 1']} />
+        <ChartTooltip
+          cursor={false}
+          content={<ChartTooltipContent indicator='dot' />}
+        />
+        <Bar dataKey='changes' name='Changes' radius={[4, 4, 0, 0]}>
+          {chartData.map((week) => (
+            <Cell
+              key={week.week}
+              fill={week.isCurrentWeek ? 'var(--chart-2)' : 'var(--chart-1)'}
+              opacity={week.isCurrentWeek ? 1 : 0.45}
+            />
+          ))}
+        </Bar>
+      </RechartsBarChart>
+    </ChartContainer>
+  );
+}
+
+function StackedEventsBarChart({ weeks }: { weeks: UsageAnalyticsWeekRow[] }) {
+  const chartData = weeks.map((week) => ({
+    week: week.label.split('-')[0],
+    completed: week.completedEvents,
+    other: Math.max(0, week.progressChangeCount - week.completedEvents),
+  }));
+
+  return (
+    <div>
+      <ChartContainer
+        aria-hidden='true'
+        config={{
+          completed: { label: 'Completed', color: 'var(--chart-2)' },
+          other: { label: 'Other', color: 'var(--chart-1)' },
+        }}
+        className='aspect-auto h-36 w-full overflow-visible'
+      >
+        <RechartsBarChart data={chartData} margin={METRIC_BAR_CHART_MARGIN}>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey='week'
+            tickLine={false}
+            axisLine={false}
+            tick={COMPACT_AXIS_TICK}
+            interval={0}
+            minTickGap={0}
+          />
+          <YAxis hide domain={[0, 'dataMax + 1']} />
+          <ChartTooltip
+            cursor={false}
+            content={<ChartTooltipContent indicator='dot' />}
+          />
+          <Bar
+            dataKey='other'
+            name='Other changes'
+            stackId='events'
+            fill='var(--color-other)'
+            radius={[0, 0, 4, 4]}
+          />
+          <Bar
+            dataKey='completed'
+            name='Completed events'
+            stackId='events'
+            fill='var(--color-completed)'
+            radius={[4, 4, 0, 0]}
+          />
+        </RechartsBarChart>
+      </ChartContainer>
+      <div className='mt-2 flex justify-center gap-4 text-xs text-muted-foreground'>
+        <span className='flex items-center gap-1.5'>
+          <span className='size-2 rounded-full bg-chart-2' />
+          Completed
+        </span>
+        <span className='flex items-center gap-1.5'>
+          <span className='size-2 rounded-full bg-chart-1 opacity-60' />
+          Other
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function StreakStepLineChart({
+  current,
+  longest,
+}: {
+  current: number;
+  longest: number;
+}) {
+  const chartData = [
+    { label: 'Best', days: longest },
+    { label: 'Current', days: current },
+  ];
+
+  return (
+    <ChartContainer
+      aria-hidden='true'
+      config={{ days: { label: 'Days', color: 'var(--chart-2)' } }}
+      className='aspect-auto h-36 w-full overflow-visible'
+    >
+      <LineChart
+        data={chartData}
+        margin={{ top: 8, right: 8, left: -4, bottom: 16 }}
+      >
+        <CartesianGrid vertical={false} strokeDasharray='4 6' />
+        <XAxis
+          dataKey='label'
+          tickLine={false}
+          axisLine={false}
+          tick={COMPACT_AXIS_TICK}
+        />
+        <YAxis hide domain={[0, Math.max(1, longest, current)]} />
+        <ChartTooltip
+          cursor={false}
+          content={<ChartTooltipContent indicator='line' />}
+        />
+        <Line
+          dataKey='days'
+          name='Streak'
+          type='step'
+          stroke='var(--color-days)'
+          strokeWidth={3}
+          dot={false}
+          activeDot={false}
+        />
+      </LineChart>
+    </ChartContainer>
   );
 }
 
@@ -312,6 +639,15 @@ function TrendStatusIcon({
       throw new Error(`Unhandled trend icon: ${unhandled}`);
     }
   }
+}
+
+/** Keeps radial gauges inside their expected 0-100 progress range. */
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, value));
 }
 
 /** Formats a day count with correct singular or plural labeling. */
@@ -443,10 +779,9 @@ function WeeklyLineChart({
   plans: UsageAnalyticsPlanRow[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [visiblePlanCount, setVisiblePlanCount] = useState(() =>
-    planCapacityForWidth(0, plans.length),
-  );
-  const [renderedPlanCount, setRenderedPlanCount] = useState(visiblePlanCount);
+  const [hasMeasuredChart, setHasMeasuredChart] = useState(false);
+  const [visiblePlanCount, setVisiblePlanCount] = useState(0);
+  const [renderedPlanCount, setRenderedPlanCount] = useState(0);
   const [vanishingPlanCount, setVanishingPlanCount] = useState<number | null>(
     null,
   );
@@ -495,28 +830,45 @@ function WeeklyLineChart({
       return;
     }
 
-    const updateVisiblePlanCount = () => {
-      const nextPlanCount = planCapacityForWidth(
-        element.clientWidth,
-        plans.length,
-      );
+    let updateFrame: number | null = null;
 
-      setVisiblePlanCount((currentPlanCount) =>
-        currentPlanCount === nextPlanCount ? currentPlanCount : nextPlanCount,
-      );
+    const updateVisiblePlanCount = () => {
+      const chartWidth = element.clientWidth;
+
+      if (chartWidth <= 0) {
+        return;
+      }
+
+      if (updateFrame !== null) {
+        window.cancelAnimationFrame(updateFrame);
+      }
+
+      updateFrame = window.requestAnimationFrame(() => {
+        updateFrame = null;
+        setHasMeasuredChart(true);
+
+        const nextPlanCount = planCapacityForWidth(chartWidth, plans.length);
+
+        setVisiblePlanCount((currentPlanCount) =>
+          currentPlanCount === nextPlanCount ? currentPlanCount : nextPlanCount,
+        );
+      });
     };
 
     updateVisiblePlanCount();
 
-    if (typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    const resizeObserver = new ResizeObserver(updateVisiblePlanCount);
-    resizeObserver.observe(element);
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(updateVisiblePlanCount);
+    resizeObserver?.observe(element);
 
     return () => {
-      resizeObserver.disconnect();
+      if (updateFrame !== null) {
+        window.cancelAnimationFrame(updateFrame);
+      }
+
+      resizeObserver?.disconnect();
     };
   }, [plans.length]);
 
@@ -540,76 +892,97 @@ function WeeklyLineChart({
   }, [renderedPlanCount, visiblePlanCount]);
 
   return (
-    <div
-      ref={containerRef}
-      role='img'
-      aria-label='Progress changes by week for each plan'
-    >
-      <p className='mb-2 ml-11 text-sm text-muted-foreground'>
-        Progress changes
-      </p>
-      <ChartContainer config={chartConfig} className='h-80 w-full'>
-        <LineChart
-          accessibilityLayer
-          data={chartData}
-          margin={{ top: 16, right: 18, bottom: 28, left: 0 }}
+    <div role='img' aria-label='Progress changes by week for each plan'>
+      <style>
+        {`
+          @keyframes usage-analytics-point-label-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}
+      </style>
+      <div className='flex gap-2'>
+        <div className='flex h-80 w-11 shrink-0 items-center justify-center'>
+          <p className='-rotate-90 text-sm whitespace-nowrap text-muted-foreground'>
+            Progress changes
+          </p>
+        </div>
+        <div
+          ref={containerRef}
+          data-testid='weekly-line-chart'
+          className='min-w-0 flex-1'
         >
-          <CartesianGrid vertical={false} strokeDasharray='4 6' />
-          <XAxis
-            dataKey='week'
-            tickLine={false}
-            axisLine={false}
-            tickMargin={10}
-            label={{
-              value: 'Week',
-              position: 'insideBottom',
-              offset: -16,
-            }}
-          />
-          <YAxis
-            allowDecimals={false}
-            axisLine={false}
-            domain={[0, maxValue]}
-            tickLine={false}
-            tickMargin={10}
-            ticks={yAxisTicks}
-            width={34}
-          />
-          <ChartTooltip
-            cursor={false}
-            content={<ChartTooltipContent indicator='line' />}
-          />
-          {series.map(({ plan, isVanishing }) => (
-            <Line
-              key={plan.id}
-              className='analytics-plan-line'
-              data-testid='plan-series'
-              dataKey={plan.id}
-              name={plan.topic}
-              type='linear'
-              stroke={`var(--color-${plan.id})`}
-              strokeWidth={4}
-              dot={false}
-              activeDot={false}
-              isAnimationActive={!isVanishing}
-              animationDuration={LINE_ENTER_ANIMATION_MS}
-              animationEasing='ease-out'
-              opacity={isVanishing ? 0 : 1}
-              style={{
-                transition: `opacity ${LINE_EXIT_ANIMATION_MS}ms ease`,
-              }}
+          <ChartContainer
+            config={chartConfig}
+            className='h-80 w-full overflow-visible'
+          >
+            <LineChart
+              accessibilityLayer
+              data={chartData}
+              margin={{ top: 28, right: 18, bottom: 28, left: 0 }}
             >
-              <LabelList
-                className='analytics-point-label fill-foreground'
-                fontSize={12}
-                offset={12}
-                position='top'
+              <CartesianGrid vertical={false} strokeDasharray='4 6' />
+              <XAxis
+                dataKey='week'
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                label={{
+                  value: 'Week',
+                  position: 'insideBottom',
+                  offset: -16,
+                }}
               />
-            </Line>
-          ))}
-        </LineChart>
-      </ChartContainer>
-      <div className='mt-4 flex min-h-6 flex-nowrap gap-4 overflow-hidden'>
+              <YAxis
+                allowDecimals={false}
+                axisLine={false}
+                domain={[0, maxValue]}
+                tickLine={false}
+                tickMargin={10}
+                ticks={yAxisTicks}
+                width={34}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent indicator='line' />}
+              />
+              {series.map(({ plan, isVanishing }) => (
+                <Line
+                  key={plan.id}
+                  className='analytics-plan-line'
+                  data-testid='plan-series'
+                  dataKey={plan.id}
+                  name={plan.topic}
+                  type='linear'
+                  stroke={`var(--color-${plan.id})`}
+                  strokeWidth={4}
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={!isVanishing}
+                  animationDuration={LINE_ENTER_ANIMATION_MS}
+                  animationEasing='ease-out'
+                  opacity={isVanishing ? 0 : 1}
+                  style={{
+                    transition: `opacity ${LINE_EXIT_ANIMATION_MS}ms ease`,
+                  }}
+                >
+                  <LabelList
+                    dataKey={plan.id}
+                    content={(labelProps) => (
+                      <AnimatedPointLabel
+                        {...labelProps}
+                        isVanishing={isVanishing}
+                        pointCount={weeks.length}
+                      />
+                    )}
+                  />
+                </Line>
+              ))}
+            </LineChart>
+          </ChartContainer>
+        </div>
+      </div>
+      <div className='mt-4 flex min-h-6 flex-nowrap gap-4 overflow-x-auto'>
         {series.length > 0 ? (
           series.map(({ plan, color, isVanishing }) => (
             <div
@@ -627,11 +1000,51 @@ function WeeklyLineChart({
               <span className='min-w-0 truncate'>{plan.topic}</span>
             </div>
           ))
-        ) : (
+        ) : hasMeasuredChart ? (
           <p className='text-xs text-muted-foreground'>No plans yet</p>
-        )}
+        ) : null}
       </div>
     </div>
+  );
+}
+
+function AnimatedPointLabel({
+  index = 0,
+  isVanishing,
+  pointCount,
+  value,
+  x,
+  y,
+}: LabelProps & { isVanishing: boolean; pointCount: number }) {
+  const labelX = typeof x === 'number' ? x : Number(x);
+  const labelY = typeof y === 'number' ? y : Number(y);
+
+  if (value == null || !Number.isFinite(labelX) || !Number.isFinite(labelY)) {
+    return null;
+  }
+
+  const delay = Math.round(
+    (Math.max(0, index) / Math.max(1, pointCount - 1)) *
+      LINE_ENTER_ANIMATION_MS,
+  );
+
+  return (
+    <text
+      x={labelX}
+      y={labelY - 10}
+      textAnchor='middle'
+      className='analytics-point-label fill-foreground'
+      fontSize={12}
+      style={{
+        animation: isVanishing
+          ? undefined
+          : `usage-analytics-point-label-in ${LABEL_ENTER_ANIMATION_MS}ms ease-out ${delay}ms both`,
+        opacity: isVanishing ? 0 : undefined,
+        transition: `opacity ${LINE_EXIT_ANIMATION_MS}ms ease`,
+      }}
+    >
+      {value}
+    </text>
   );
 }
 
