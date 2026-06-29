@@ -34,6 +34,7 @@ export type UsageAnalyticsPlanRow = {
   activeDaysThisWeek: number;
   completedEventsThisWeek: number;
   estimatedCompletionAddedThisWeek: number;
+  weeklyTrends: UsageAnalyticsWeekRow[];
 };
 
 export type UsageAnalyticsModel = {
@@ -73,16 +74,20 @@ type MutablePlanHistory = {
   activeDaysThisWeek: Set<string>;
   completedEventsThisWeek: number;
   estimatedCompletionAddedThisWeek: number;
+  weekRows: MutableWeekRow[];
+  weekRowsByStart: Map<string, MutableWeekRow>;
 };
 
 const DEFAULT_ANALYTICS_TIMEZONE = 'UTC';
 const WEEK_TREND_COUNT = 8;
 
+/** Returns floored completion percent, capped at 100 when fully complete. */
 function completionPercent(completed: number, total: number): number {
   if (total <= 0) return 0;
   return completed >= total ? 100 : Math.floor((completed / total) * 100);
 }
 
+/** Validates and returns the analytics timezone, falling back to UTC. */
 function normalizeTimeZone(value: string | undefined): string {
   if (!value) return DEFAULT_ANALYTICS_TIMEZONE;
   try {
@@ -93,6 +98,7 @@ function normalizeTimeZone(value: string | undefined): string {
   }
 }
 
+/** Formats a date as YYYY-MM-DD in the given IANA timezone. */
 function dateKeyInTimeZone(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -111,17 +117,20 @@ function dateKeyInTimeZone(date: Date, timeZone: string): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Parses a YYYY-MM-DD key into a UTC midnight Date. */
 function dateFromKey(dateKey: string): Date {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+/** Returns a YYYY-MM-DD key offset by the given number of days. */
 function addDays(dateKey: string, days: number): string {
   const date = dateFromKey(dateKey);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
+/** Returns the Monday-start YYYY-MM-DD key for the week containing the date. */
 function weekStartKey(dateKey: string): string {
   const date = dateFromKey(dateKey);
   const mondayOffset = (date.getUTCDay() + 6) % 7;
@@ -129,6 +138,7 @@ function weekStartKey(dateKey: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** Formats a week range label such as "Jun 1-Jun 7". */
 function formatWeekLabel(weekStartDate: string): string {
   const weekEndDate = addDays(weekStartDate, 6);
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -142,6 +152,7 @@ function formatWeekLabel(weekStartDate: string): string {
   )}`;
 }
 
+/** Builds mutable weekly trend rows ending at the current week. */
 function buildWeekRows(currentWeekStart: string): MutableWeekRow[] {
   return Array.from({ length: WEEK_TREND_COUNT }, (_, index) => {
     const weekStartDate = addDays(
@@ -161,6 +172,20 @@ function buildWeekRows(currentWeekStart: string): MutableWeekRow[] {
   });
 }
 
+/** Converts a mutable week row into the public analytics week shape. */
+function toWeekRow(row: MutableWeekRow): UsageAnalyticsWeekRow {
+  return {
+    weekStartDate: row.weekStartDate,
+    label: row.label,
+    activeDays: row.activeDayKeys.size,
+    progressChangeCount: row.progressChangeCount,
+    completedEvents: row.completedEvents,
+    estimatedCompletionAddedMinutes: row.estimatedCompletionAddedMinutes,
+    isCurrentWeek: row.isCurrentWeek,
+  };
+}
+
+/** Counts consecutive active days ending today or yesterday. */
 function currentStreakDays(dayKeys: Set<string>, todayKey: string): number {
   let cursor = dayKeys.has(todayKey) ? todayKey : addDays(todayKey, -1);
   let streak = 0;
@@ -173,6 +198,7 @@ function currentStreakDays(dayKeys: Set<string>, todayKey: string): number {
   return streak;
 }
 
+/** Finds the longest run of consecutive active days in the set. */
 function longestStreakDays(dayKeys: Set<string>): number {
   let longest = 0;
   let current = 0;
@@ -187,6 +213,7 @@ function longestStreakDays(dayKeys: Set<string>): number {
   return longest;
 }
 
+/** Builds the usage analytics view model from plan summaries and activity events. */
 export function buildUsageAnalyticsModel(
   summaries: LightweightPlanSummary[],
   options: BuildUsageAnalyticsOptions = {},
@@ -206,11 +233,16 @@ export function buildUsageAnalyticsModel(
   const planHistoryById = new Map<string, MutablePlanHistory>();
 
   for (const summary of summaries) {
+    const planWeekRows = buildWeekRows(currentWeekStart);
     planHistoryById.set(summary.id, {
       dayKeys: new Set<string>(),
       activeDaysThisWeek: new Set<string>(),
       completedEventsThisWeek: 0,
       estimatedCompletionAddedThisWeek: 0,
+      weekRows: planWeekRows,
+      weekRowsByStart: new Map(
+        planWeekRows.map((row) => [row.weekStartDate, row]),
+      ),
     });
   }
 
@@ -235,6 +267,17 @@ export function buildUsageAnalyticsModel(
     if (!planHistory) continue;
 
     planHistory.dayKeys.add(dayKey);
+    const planWeekRow = planHistory.weekRowsByStart.get(eventWeekStart);
+    if (planWeekRow) {
+      planWeekRow.activeDayKeys.add(dayKey);
+      planWeekRow.progressChangeCount += 1;
+      if (isCompletedEvent) {
+        planWeekRow.completedEvents += 1;
+        planWeekRow.estimatedCompletionAddedMinutes +=
+          event.taskEstimatedMinutes;
+      }
+    }
+
     if (eventWeekStart === currentWeekStart) {
       planHistory.activeDaysThisWeek.add(dayKey);
       if (isCompletedEvent) {
@@ -245,30 +288,30 @@ export function buildUsageAnalyticsModel(
     }
   }
 
-  const plans = summaries.map((summary) => ({
-    id: summary.id,
-    topic: summary.topic,
-    completedTasks: summary.completedTasks,
-    totalTasks: summary.totalTasks,
-    taskCompletionPercent: completionPercent(
-      summary.completedTasks,
-      summary.totalTasks,
-    ),
-    completedModules: summary.completedModules,
-    totalModules: summary.moduleCount,
-    completedMinutes: summary.completedMinutes,
-    totalMinutes: summary.totalMinutes,
-    currentStreakDays: currentStreakDays(
-      planHistoryById.get(summary.id)?.dayKeys ?? new Set<string>(),
-      todayKey,
-    ),
-    activeDaysThisWeek:
-      planHistoryById.get(summary.id)?.activeDaysThisWeek.size ?? 0,
-    completedEventsThisWeek:
-      planHistoryById.get(summary.id)?.completedEventsThisWeek ?? 0,
-    estimatedCompletionAddedThisWeek:
-      planHistoryById.get(summary.id)?.estimatedCompletionAddedThisWeek ?? 0,
-  }));
+  const plans = summaries.map((summary) => {
+    const planHistory = planHistoryById.get(summary.id)!;
+
+    return {
+      id: summary.id,
+      topic: summary.topic,
+      completedTasks: summary.completedTasks,
+      totalTasks: summary.totalTasks,
+      taskCompletionPercent: completionPercent(
+        summary.completedTasks,
+        summary.totalTasks,
+      ),
+      completedModules: summary.completedModules,
+      totalModules: summary.moduleCount,
+      completedMinutes: summary.completedMinutes,
+      totalMinutes: summary.totalMinutes,
+      currentStreakDays: currentStreakDays(planHistory.dayKeys, todayKey),
+      activeDaysThisWeek: planHistory.activeDaysThisWeek.size,
+      completedEventsThisWeek: planHistory.completedEventsThisWeek,
+      estimatedCompletionAddedThisWeek:
+        planHistory.estimatedCompletionAddedThisWeek,
+      weeklyTrends: planHistory.weekRows.map(toWeekRow),
+    };
+  });
 
   const totals = plans.reduce(
     (acc, plan) => {
@@ -290,15 +333,7 @@ export function buildUsageAnalyticsModel(
     },
   );
 
-  const weeklyTrends = weekRows.map((row) => ({
-    weekStartDate: row.weekStartDate,
-    label: row.label,
-    activeDays: row.activeDayKeys.size,
-    progressChangeCount: row.progressChangeCount,
-    completedEvents: row.completedEvents,
-    estimatedCompletionAddedMinutes: row.estimatedCompletionAddedMinutes,
-    isCurrentWeek: row.isCurrentWeek,
-  }));
+  const weeklyTrends = weekRows.map(toWeekRow);
   const currentWeek = weeklyTrends.find((row) => row.isCurrentWeek);
 
   if (!currentWeek) {
