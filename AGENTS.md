@@ -4,7 +4,7 @@
 
 **Agent Memory:** Recurring preferences and durable workspace facts live in `.agents/lessons.md`. Read that file whenever you read or apply this file.
 
-**Agent Context:** Repo-writable planning and handoff artifacts are local-only and belong under the daily recap layout (see below). Do not create or update planning artifacts under legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/` paths.`.cursor/plans/` is treated as a read-only export/import surface.
+**Agent Context:** Repo-writable planning and handoff artifacts are local-only and belong under the daily recap layout (see below). DO NOT create or update planning artifacts under legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/` paths.`.cursor/plans/` is treated as a read-only export/import surface.
 
 Organize same-day plans and handoff prompts under `.agents/recaps/MM-DD-YYYY/`, where the date folder uses the **current local calendar day** in `MM-DD-YYYY` format (for example, `06-10-2026`).
 
@@ -16,8 +16,8 @@ Organize same-day plans and handoff prompts under `.agents/recaps/MM-DD-YYYY/`, 
 Before writing a plan or handoff file:
 
 1. Resolve today's date folder: `.agents/recaps/MM-DD-YYYY/`.
-2. If it does not exist, create it plus `plans/` and `handoffs/` subfolders for that day.
-3. Write the artifact under the matching subfolder for its type.
+2. If it does not exist, create it plus `plans/` and `handoffs/` subfolders for that day. ie. `.agents/recaps/MM-DD-YYYY/plans/` and `.agents/recaps/MM-DD-YYYY/handoffs/`
+3. Write the artifact under the matching subfolder for its type. ie. `.agents/recaps/MM-DD-YYYY/plans/` for plans, `.agents/recaps/MM-DD-YYYY/handoffs/` for handoff prompts.
 
 Keep the day's `plans/` folder updated with task progress and verification notes when the work calls for it. Durable cross-session lessons still belong in `.agents/lessons.md`, not in daily recap folders.
 
@@ -97,8 +97,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Use TDD for new features and bug fixes when applicable
 - Ensure tests cover relevant scenarios and edge cases
 - Write clear, descriptive test cases that explain the intent of the test
-- Regularly run tests after changes to maintain code quality and reliability (prefer explicit scoped commands like `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted spec file)
-- Before considering any implementation complete, always run `pnpm test` and `pnpm check:full` as the final validation baseline to catch regressions outside the immediately edited files.
+- Do not run tests, `check:full`, or automated reviews after small edits by default — see `.cursor/rules/selective-verification.mdc`
+- Run verification only when asked, when fixing CI failures, or when the current thread has changed 10+ files; prefer scoped commands (`pnpm test:unit:changed`, a targeted spec file) over full suites
 
 # Core Principles
 
@@ -106,6 +106,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
 - Minimal Impact: Only touch what's necessary. No side effects with new bugs.
 - Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
-- Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test` and `pnpm check:full`.
+- Verification: Prove correctness when it matters — diffs, targeted tests, logs, demos. Full-suite runs follow `.cursor/rules/selective-verification.mdc`, not every small change.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
