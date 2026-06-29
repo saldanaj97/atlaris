@@ -32,6 +32,8 @@ import {
 const MIN_VISIBLE_PLAN_COUNT = 1;
 const LEGEND_ITEM_WIDTH = 180;
 const LEGEND_COLUMN_GAP = 16;
+const LINE_ENTER_ANIMATION_MS = 650;
+const LINE_EXIT_ANIMATION_MS = 260;
 
 /** Renders the usage analytics page: eight-week pulse chart and summary metric tiles. */
 export function UsageAnalyticsContent({
@@ -444,18 +446,23 @@ function WeeklyLineChart({
   const [visiblePlanCount, setVisiblePlanCount] = useState(() =>
     planCapacityForWidth(0, plans.length),
   );
-  const visiblePlans = plans.slice(0, visiblePlanCount);
+  const [renderedPlanCount, setRenderedPlanCount] = useState(visiblePlanCount);
+  const [vanishingPlanCount, setVanishingPlanCount] = useState<number | null>(
+    null,
+  );
+  const renderedPlans = plans.slice(0, renderedPlanCount);
   const dataMaxValue = Math.max(
     1,
-    ...visiblePlans.flatMap((plan) =>
+    ...renderedPlans.flatMap((plan) =>
       plan.weeklyTrends.map((week) => week.progressChangeCount),
     ),
   );
   const maxValue = dataMaxValue + 1;
   const yAxisTicks = yAxisTicksForMax(maxValue);
-  const series = visiblePlans.map((plan, index) => ({
+  const series = renderedPlans.map((plan, index) => ({
     plan,
     color: PLAN_CHART_COLORS[index % PLAN_CHART_COLORS.length],
+    isVanishing: vanishingPlanCount !== null && index >= vanishingPlanCount,
   }));
   const chartConfig: ChartConfig = Object.fromEntries(
     series.map(({ plan, color }) => [
@@ -513,6 +520,25 @@ function WeeklyLineChart({
     };
   }, [plans.length]);
 
+  useEffect(() => {
+    if (visiblePlanCount >= renderedPlanCount) {
+      setVanishingPlanCount(null);
+      setRenderedPlanCount(visiblePlanCount);
+      return;
+    }
+
+    setVanishingPlanCount(visiblePlanCount);
+
+    const timeout = window.setTimeout(() => {
+      setRenderedPlanCount(visiblePlanCount);
+      setVanishingPlanCount(null);
+    }, LINE_EXIT_ANIMATION_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [renderedPlanCount, visiblePlanCount]);
+
   return (
     <div
       ref={containerRef}
@@ -553,7 +579,7 @@ function WeeklyLineChart({
             cursor={false}
             content={<ChartTooltipContent indicator='line' />}
           />
-          {series.map(({ plan }) => (
+          {series.map(({ plan, isVanishing }) => (
             <Line
               key={plan.id}
               className='analytics-plan-line'
@@ -565,7 +591,13 @@ function WeeklyLineChart({
               strokeWidth={4}
               dot={false}
               activeDot={false}
-              isAnimationActive={false}
+              isAnimationActive={!isVanishing}
+              animationDuration={LINE_ENTER_ANIMATION_MS}
+              animationEasing='ease-out'
+              opacity={isVanishing ? 0 : 1}
+              style={{
+                transition: `opacity ${LINE_EXIT_ANIMATION_MS}ms ease`,
+              }}
             >
               <LabelList
                 className='analytics-point-label fill-foreground'
@@ -579,10 +611,14 @@ function WeeklyLineChart({
       </ChartContainer>
       <div className='mt-4 flex min-h-6 flex-nowrap gap-4 overflow-hidden'>
         {series.length > 0 ? (
-          series.map(({ plan, color }) => (
+          series.map(({ plan, color, isVanishing }) => (
             <div
               key={plan.id}
               className='flex w-45 shrink-0 items-center gap-2 text-xs text-muted-foreground'
+              style={{
+                opacity: isVanishing ? 0 : 1,
+                transition: `opacity ${LINE_EXIT_ANIMATION_MS}ms ease`,
+              }}
             >
               <span
                 className='size-2.5 shrink-0 rounded-full'
