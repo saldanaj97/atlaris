@@ -2,7 +2,6 @@
 
 import { cn } from '@/lib/utils';
 import * as React from 'react';
-import * as RechartsPrimitive from 'recharts';
 
 export type ChartConfig = Record<
   string,
@@ -21,13 +20,16 @@ export function ChartContainer({
   ...props
 }: React.ComponentProps<'div'> & {
   config: ChartConfig;
-  children: React.ReactElement;
+  children: React.ReactNode;
 }) {
-  const chartVars = Object.fromEntries(
-    Object.entries(config)
-      .filter(([, item]) => item.color)
-      .map(([key, item]) => [`--color-${key}`, item.color]),
-  ) as React.CSSProperties;
+  const chartVars: React.CSSProperties &
+    Partial<Record<`--color-${string}`, string>> = {};
+
+  for (const [key, item] of Object.entries(config)) {
+    if (item.color) {
+      chartVars[`--color-${key}`] = item.color;
+    }
+  }
 
   return (
     <div
@@ -39,16 +41,13 @@ export function ChartContainer({
       style={{ ...chartVars, ...style }}
       {...props}
     >
-      <RechartsPrimitive.ResponsiveContainer>
-        {children}
-      </RechartsPrimitive.ResponsiveContainer>
+      {children}
     </div>
   );
 }
 
-export const ChartTooltip = RechartsPrimitive.Tooltip;
-
 type TooltipPayload = {
+  dataKey?: string | number;
   name?: string | number;
   value?: string | number;
   color?: string;
@@ -83,12 +82,16 @@ export function ChartTooltipContent({
     >
       {label ? <div className='font-medium'>{label}</div> : null}
       <div className='grid gap-1.5'>
-        {payload.map((item, index) => {
+        {payload.map((item) => {
           const color = item.color ?? item.stroke ?? item.fill;
+          const itemKey =
+            item.dataKey ??
+            item.name ??
+            `${color ?? 'value'}-${item.value ?? ''}`;
 
           return (
             <div
-              key={`${item.name ?? 'value'}-${index}`}
+              key={itemKey}
               className='flex items-center justify-between gap-4'
             >
               <div className='flex min-w-0 items-center gap-2'>

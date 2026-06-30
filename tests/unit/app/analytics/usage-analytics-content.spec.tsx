@@ -1,7 +1,7 @@
 import type { UsageAnalyticsModel } from '@/app/(app)/analytics/usage/usage-analytics-model';
 
 import { UsageAnalyticsContent } from '@/app/(app)/analytics/usage/usage-analytics-content';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let observedResizeEntries: {
@@ -194,17 +194,18 @@ const model: UsageAnalyticsModel = {
 };
 
 describe('UsageAnalyticsContent', () => {
-  it('renders the selected trend chart and summary metrics', () => {
+  it('renders the selected trend chart and summary metrics', async () => {
     render(<UsageAnalyticsContent model={model} />);
-    resizeChart(780);
+    await resizeChart(780);
 
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
     expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
+    expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
     expect(
-      screen.getByRole('img', {
+      screen.queryByRole('img', {
         name: 'Progress changes by week for each plan',
       }),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText('Applied TypeScript Architecture'),
     ).toBeInTheDocument();
@@ -242,10 +243,16 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
-  it('adds plan labels and chart lines as the chart has room for them', () => {
+  it('adds plan labels and chart lines as the chart has room for them', async () => {
     const { container } = render(<UsageAnalyticsContent model={model} />);
 
-    resizeChart(380);
+    await resizeChart(380);
+    await waitFor(() => {
+      expect(
+        container.querySelector('.recharts-responsive-container'),
+      ).toBeInTheDocument();
+    });
+    await resizeChart(380);
 
     expect(
       screen.getByText('Applied TypeScript Architecture'),
@@ -257,34 +264,42 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.queryByText('Calendar Sync Hardening'),
     ).not.toBeInTheDocument();
-    expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(2);
+    await waitFor(() => {
+      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(2);
+    });
     expect(
       container.querySelector('.recharts-line-dots'),
     ).not.toBeInTheDocument();
-    const linePath = container.querySelector(
-      '.analytics-plan-line .recharts-line-curve',
-    );
 
-    expect(linePath).not.toBeNull();
+    const linePath = await waitFor(() => {
+      const renderedLinePath = container.querySelector(
+        '.analytics-plan-line .recharts-line-curve',
+      );
+
+      expect(renderedLinePath).not.toBeNull();
+      return renderedLinePath;
+    });
     expect(linePath?.getAttribute('d')).not.toContain('C');
 
-    resizeChart(780);
+    await resizeChart(780);
 
     expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
     expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(4);
+    await waitFor(() => {
+      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(4);
+    });
   });
 });
 
 /** Simulates a chart container resize and triggers registered ResizeObserver callbacks. */
-function resizeChart(width: number) {
-  const observedChart = observedResizeEntries.find(
-    ({ element }) => element.dataset.testid === 'weekly-line-chart',
-  );
-
-  if (!observedChart) {
-    throw new Error('Expected the chart to register a resize observer.');
-  }
+async function resizeChart(width: number) {
+  await waitFor(() => {
+    expect(
+      observedResizeEntries.some(
+        ({ element }) => element.dataset.testid === 'weekly-line-chart',
+      ),
+    ).toBe(true);
+  });
 
   for (const { element } of observedResizeEntries) {
     Object.defineProperty(element, 'clientWidth', {
