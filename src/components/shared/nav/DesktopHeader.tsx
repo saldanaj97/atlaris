@@ -56,8 +56,11 @@ export default function DesktopHeader({
           className='gap-1.5 text-muted-foreground hover:text-foreground'
           asChild
         >
-          <Link href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}>
-            <Plus className='size-3.5' />
+          <Link
+            href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}
+            aria-label='New Plan'
+          >
+            <Plus className='size-3.5' aria-hidden='true' />
             <span className='hidden lg:inline'>New Plan</span>
           </Link>
         </Button>

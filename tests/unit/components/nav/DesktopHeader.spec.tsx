@@ -56,6 +56,7 @@ describe('DesktopHeader layout', () => {
       screen.getByRole('button', { name: 'Analytics' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
   });
 
   it('centers navigation in the shell instead of the leftover space', () => {
