@@ -1,3 +1,8 @@
+import {
+  APP_SHELL_COLUMN,
+  APP_SHELL_CONTENT_INSET,
+  APP_SHELL_GUTTER,
+} from '@/components/layout/app-shell-width';
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
@@ -18,13 +23,21 @@ function PageShell({
     <div
       data-slot='page-shell'
       className={cn(
-        'mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6',
+        APP_SHELL_GUTTER,
         fullHeight && 'min-h-[calc(100vh-4rem)]',
         className,
       )}
       {...props}
     >
-      {children}
+      <div
+        className={cn(
+          APP_SHELL_COLUMN,
+          APP_SHELL_CONTENT_INSET,
+          'py-5 sm:py-6',
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

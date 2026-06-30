@@ -39,26 +39,29 @@ export default function DesktopHeader({
   const headerContent = (
     <>
       {/* Brand (left) */}
-      <div className='relative z-10 flex items-center'>
+      <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
         <BrandLogo />
       </div>
 
       {/* Navigation (center column) */}
-      <div className='relative z-10 flex min-w-0 justify-center'>
+      <div className='relative z-10 flex justify-self-center'>
         <DesktopNavigation pathname={pathname} navItems={navItems} />
       </div>
 
       {/* Auth controls (right) */}
-      <div className='relative z-10 flex items-center justify-end gap-1'>
+      <div className='relative z-10 flex min-w-0 items-center justify-end gap-1 justify-self-end'>
         <Button
           variant='ghost'
           size='sm'
           className='gap-1.5 text-muted-foreground hover:text-foreground'
           asChild
         >
-          <Link href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}>
-            <Plus className='size-3.5' />
-            <span>New Plan</span>
+          <Link
+            href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}
+            aria-label='New Plan'
+          >
+            <Plus className='size-3.5' aria-hidden='true' />
+            <span className='hidden lg:inline'>New Plan</span>
           </Link>
         </Button>
 

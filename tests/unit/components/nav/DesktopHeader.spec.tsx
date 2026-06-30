@@ -38,9 +38,9 @@ function renderDesktopHeader(
 }
 
 describe('DesktopHeader layout', () => {
-  it('uses side-auto center-flex grid so nav is not limited to one third width', () => {
+  it('uses equal side tracks so the nav center matches the shell center', () => {
     expect(desktopHeaderShellClass('protected')).toContain(
-      'grid-cols-[auto_minmax(0,1fr)_auto]',
+      'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
     );
     expect(desktopHeaderShellClass('protected')).not.toContain('grid-cols-3');
   });
@@ -56,16 +56,19 @@ describe('DesktopHeader layout', () => {
       screen.getByRole('button', { name: 'Analytics' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
   });
 
-  it('centers navigation between brand and auth controls', () => {
+  it('centers navigation in the shell instead of the leftover space', () => {
     const { container } = renderDesktopHeader();
 
     const shell = container.firstElementChild?.firstElementChild;
     const navColumn = screen.getByRole('navigation').parentElement;
 
-    expect(shell?.className).toContain('grid-cols-[auto_minmax(0,1fr)_auto]');
-    expect(navColumn).toHaveClass('min-w-0', 'justify-center');
+    expect(shell?.className).toContain(
+      'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+    );
+    expect(navColumn).toHaveClass('justify-self-center');
   });
 
   it('renders unauthenticated nav links without clipping at md width', () => {

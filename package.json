@@ -16,6 +16,7 @@
     "check:lint": "oxlint src tests scripts supabase --max-warnings=0",
     "check:lint:ci": "oxlint src tests scripts supabase --format=github --max-warnings=0",
     "check:type": "tsc --noEmit",
+    "design:lint": "designmd lint DESIGN.md",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:dev:start": "supabase start",
@@ -68,6 +69,7 @@
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "2.15.4",
     "sonner": "^2.0.7",
     "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
@@ -76,6 +78,7 @@
   },
   "devDependencies": {
     "@clerk/testing": "^2.0.25",
+    "@google/design.md": "^0.3.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testcontainers/postgresql": "^11.14.0",

@@ -7,6 +7,7 @@ import {
 } from '@/app/(app)/analytics/usage/usage-analytics-model';
 import { describe, expect, it } from 'vitest';
 
+/** Builds a lightweight plan summary fixture with sensible defaults. */
 function planSummary(
   overrides: Partial<LightweightPlanSummary> &
     Pick<LightweightPlanSummary, 'id'>,
@@ -34,6 +35,7 @@ function planSummary(
   };
 }
 
+/** Extracts aggregate completion totals from a usage analytics model. */
 function pickTotals(model: UsageAnalyticsModel) {
   return {
     planCount: model.planCount,
@@ -48,6 +50,7 @@ function pickTotals(model: UsageAnalyticsModel) {
   };
 }
 
+/** Builds a learning activity event fixture with defaults. */
 function activityEvent(
   overrides: Partial<UsageAnalyticsActivityEvent>,
 ): UsageAnalyticsActivityEvent {
@@ -305,6 +308,45 @@ describe('buildUsageAnalyticsModel', () => {
       activeDays: 2,
       progressChangeCount: 2,
     });
+  });
+
+  it('builds separate weekly trend rows for each plan', () => {
+    const model = buildUsageAnalyticsModel(
+      [
+        planSummary({ id: 'plan-1', topic: 'React' }),
+        planSummary({ id: 'plan-2', topic: 'SQL' }),
+      ],
+      {
+        referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+        activityEvents: [
+          activityEvent({
+            planId: 'plan-1',
+            occurredAt: new Date('2026-06-17T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-2',
+            occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-2',
+            occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+          }),
+        ],
+      },
+    );
+
+    const react = model.plans.find((plan) => plan.topic === 'React');
+    const sql = model.plans.find((plan) => plan.topic === 'SQL');
+
+    expect(
+      react?.weeklyTrends.find((week) => week.weekStartDate === '2026-06-15'),
+    ).toMatchObject({ progressChangeCount: 1 });
+    expect(
+      react?.weeklyTrends.find((week) => week.weekStartDate === '2026-06-22'),
+    ).toMatchObject({ progressChangeCount: 0 });
+    expect(
+      sql?.weeklyTrends.find((week) => week.weekStartDate === '2026-06-22'),
+    ).toMatchObject({ progressChangeCount: 2 });
   });
 
   it('keeps uncomplete and recomplete events in historical summaries', () => {

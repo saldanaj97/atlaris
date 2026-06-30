@@ -39,8 +39,8 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | ------------------------------------------------------------- | ------------------------------------------------------- |
 | `background` / `foreground`                                   | Page surface and default text                           |
 | `card` / `card-foreground`                                    | Card surfaces and text on cards                         |
-| `primary` / `primary-foreground`                              | Primary actions, brand emphasis                         |
-| `primary-dark`                                                | Gradient stops, stronger brand contrast (see utilities) |
+| `primary` / `primary-foreground`                              | Brand emphasis, links, and soft primary surfaces        |
+| `primary-dark`                                                | Solid primary fills when paired with white text          |
 | `accent` / `accent-foreground`                                | Secondary emphasis; pairs with primary in gradients     |
 | `muted` / `muted-foreground`                                  | Subtle panels, helper text                              |
 | `secondary` / `secondary-foreground`                          | Secondary surfaces                                      |
@@ -66,7 +66,7 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | `--background`                   | Page background                                            |
 | `--foreground`                   | Primary text                                               |
 | `--card` / `--card-foreground`   | Card fill and card text                                    |
-| `--primary`                      | Brand purple/blue (hue ~260° OKLCH)                        |
+| `--primary`                      | Brand purple/blue (hue ~260° OKLCH); use `--primary-dark` for solid white-text fills |
 | `--primary-foreground`           | Text on primary                                            |
 | `--secondary`                    | Subtle secondary surfaces                                  |
 | `--accent`                       | Complementary to primary (blue/purple range for gradients) |
