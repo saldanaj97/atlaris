@@ -194,6 +194,14 @@ const model: UsageAnalyticsModel = {
 };
 
 describe('UsageAnalyticsContent', () => {
+  it('reserves pulse chart space while chart rendering loads', () => {
+    render(<UsageAnalyticsContent model={model} />);
+
+    expect(
+      screen.getByRole('status', { name: 'Loading eight-week pulse chart' }),
+    ).toHaveClass('h-80');
+  });
+
   it('renders the selected trend chart and summary metrics', async () => {
     render(<UsageAnalyticsContent model={model} />);
     await resizeChart(780);
@@ -202,10 +210,10 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
     expect(
-      screen.queryByRole('img', {
-        name: 'Progress changes by week for each plan',
-      }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('img', { name: 'Eight-week pulse' }),
+    ).toHaveAccessibleDescription(
+      /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
+    );
     expect(
       screen.getByText('Applied TypeScript Architecture'),
     ).toBeInTheDocument();

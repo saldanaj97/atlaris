@@ -2,55 +2,25 @@
 
 import type { UsageAnalyticsModel } from './usage-analytics-model';
 
+import {
+  ActiveProgressBarChart,
+  RadialStackedMetricChart,
+  RadialTextMetricChart,
+  StackedEventsBarChart,
+  StreakStepLineChart,
+  WeeklyLineChart,
+} from './usage-analytics-charts';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 
-const ActiveProgressBarChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then(
-      (module) => module.ActiveProgressBarChart,
-    ),
-  { ssr: false },
-);
-const RadialStackedMetricChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then(
-      (module) => module.RadialStackedMetricChart,
-    ),
-  { ssr: false },
-);
-const RadialTextMetricChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then(
-      (module) => module.RadialTextMetricChart,
-    ),
-  { ssr: false },
-);
-const StackedEventsBarChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then(
-      (module) => module.StackedEventsBarChart,
-    ),
-  { ssr: false },
-);
-const StreakStepLineChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then(
-      (module) => module.StreakStepLineChart,
-    ),
-  { ssr: false },
-);
-const WeeklyLineChart = dynamic(
-  () =>
-    import('./usage-analytics-charts').then((module) => module.WeeklyLineChart),
-  { ssr: false },
-);
+const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
+const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
+const EIGHT_WEEK_PULSE_SUMMARY_ID = 'usage-eight-week-pulse-summary';
 
 /** Renders the usage analytics page: eight-week pulse chart and summary metric tiles. */
 export function UsageAnalyticsContent({
@@ -234,11 +204,20 @@ export function UsageAnalyticsContent({
           <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
             Trend
           </p>
-          <h2 className='mt-1 text-xl font-semibold text-foreground'>
+          <h2
+            id={EIGHT_WEEK_PULSE_TITLE_ID}
+            className='mt-1 text-xl font-semibold text-foreground'
+          >
             Eight-week pulse
           </h2>
-          <p className='mt-1 text-sm text-muted-foreground'>
+          <p
+            id={EIGHT_WEEK_PULSE_DESCRIPTION_ID}
+            className='mt-1 text-sm text-muted-foreground'
+          >
             Progress changes by week
+          </p>
+          <p id={EIGHT_WEEK_PULSE_SUMMARY_ID} className='sr-only'>
+            Line chart showing progress changes by week for each plan.
           </p>
         </div>
 
@@ -246,6 +225,8 @@ export function UsageAnalyticsContent({
           <WeeklyLineChart
             weeks={model.history.weeklyTrends}
             plans={model.plans}
+            labelledBy={EIGHT_WEEK_PULSE_TITLE_ID}
+            describedBy={`${EIGHT_WEEK_PULSE_DESCRIPTION_ID} ${EIGHT_WEEK_PULSE_SUMMARY_ID}`}
           />
         </div>
       </Surface>
@@ -366,14 +347,14 @@ function TrendStatusIcon({
   switch (kind) {
     case 'up':
       return (
-        <TrendingUp aria-hidden='true' className='size-4' style={iconStyle} />
+        <TrendingUp aria-hidden='true' className='size-5' style={iconStyle} />
       );
     case 'down':
       return (
-        <TrendingDown aria-hidden='true' className='size-4' style={iconStyle} />
+        <TrendingDown aria-hidden='true' className='size-5' style={iconStyle} />
       );
     case 'flat':
-      return <Minus aria-hidden='true' className='size-4' style={iconStyle} />;
+      return <Minus aria-hidden='true' className='size-5' style={iconStyle} />;
     default: {
       const unhandled: never = kind;
       throw new Error(`Unhandled trend icon: ${unhandled}`);

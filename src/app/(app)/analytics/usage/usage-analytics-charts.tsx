@@ -19,6 +19,7 @@ import {
   useState,
   type ComponentProps,
   type ReactElement,
+  type ReactNode,
 } from 'react';
 
 const MIN_VISIBLE_PLAN_COUNT = 1;
@@ -32,6 +33,9 @@ const COMPACT_AXIS_TICK = { fontSize: 10 };
 type RechartsModule = typeof import('recharts');
 type RechartsRendererProps = {
   children: (recharts: RechartsModule) => ReactElement;
+};
+type WithRechartsProps = RechartsRendererProps & {
+  fallback?: ReactNode;
 };
 type PointLabelProps = {
   index?: number;
@@ -50,9 +54,9 @@ const RechartsRenderer = lazy(async () => {
   };
 });
 
-function WithRecharts({ children }: RechartsRendererProps) {
+function WithRecharts({ children, fallback = null }: WithRechartsProps) {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={fallback}>
       <RechartsRenderer>{children}</RechartsRenderer>
     </Suspense>
   );
@@ -407,9 +411,13 @@ export function StreakStepLineChart({
 export function WeeklyLineChart({
   weeks,
   plans,
+  labelledBy,
+  describedBy,
 }: {
   weeks: UsageAnalyticsWeekRow[];
   plans: UsageAnalyticsPlanRow[];
+  labelledBy?: string;
+  describedBy?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [{ hasMeasuredChart, renderedPlanCount }, setChartLayout] = useState({
@@ -531,7 +539,14 @@ export function WeeklyLineChart({
           data-testid='weekly-line-chart'
           className='min-w-0 flex-1'
         >
-          <WithRecharts>
+          <WithRecharts
+            fallback={
+              <output
+                aria-label='Loading eight-week pulse chart'
+                className='h-80 w-full'
+              />
+            }
+          >
             {({
               CartesianGrid,
               LabelList,
@@ -544,8 +559,11 @@ export function WeeklyLineChart({
             }) => (
               <ResponsiveChartContainer
                 ResponsiveContainer={ResponsiveContainer}
+                aria-describedby={describedBy}
+                aria-labelledby={labelledBy}
                 config={chartConfig}
                 className='h-80 w-full overflow-visible'
+                role='img'
               >
                 <LineChart
                   accessibilityLayer
