@@ -17,7 +17,7 @@
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:dev:start": "supabase start",
     "db:dev:stop": "supabase stop",
-    "db:dev:seed": "tsx scripts/seed-local-supabase.ts",
+    "db:dev:seed": "tsx scripts/db/seed-local-supabase.ts",
     "db:dev:bootstrap": "pnpm db:dev:seed",
     "db:dev:reset": "supabase db reset",
     "test": "pnpm test:changed",
