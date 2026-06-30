@@ -21,7 +21,7 @@
     "db:push": "drizzle-kit push --config drizzle.config.ts",
     "db:dev:start": "supabase start",
     "db:dev:stop": "supabase stop",
-    "db:dev:seed": "tsx scripts/seed-local-supabase.ts",
+    "db:dev:seed": "tsx scripts/db/seed-local-supabase.ts",
     "db:dev:reset": "supabase db reset",
     "test": "tsx scripts/tests/run-phases.ts test:unit:changed test:integration:changed",
     "test:unit": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit",
