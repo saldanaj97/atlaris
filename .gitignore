@@ -44,6 +44,7 @@ yarn-error.log*
 !.env.local.example
 !.env.staging.example
 !.env.prod.example
+!.env.agents.example
 
 # vercel
 .vercel
@@ -66,4 +67,6 @@ next-env.d.ts
 screenshots/
 .fallow/
 .daily-recap/
+.agents/recaps/**
 .agents/plans/
+.codex/environments/
