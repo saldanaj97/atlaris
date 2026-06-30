@@ -3,7 +3,6 @@
 import { LiquidGlassButton } from '@/app/(marketing)/_shared/LiquidGlassButton';
 import { MarketingHero } from '@/app/(marketing)/_shared/MarketingHero';
 import { LandingHeroVisual } from '@/app/(marketing)/landing/components/LandingHeroVisual';
-import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
@@ -15,12 +14,6 @@ export function HeroSection() {
     <MarketingHero
       variant='landing'
       headingId={headingId}
-      badge={
-        <Badge variant='glassmorphic' className='px-4 py-2'>
-          <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent' />
-          Learning plans built around your time
-        </Badge>
-      }
       title={
         <>
           Turn goals into a{' '}
