@@ -272,8 +272,13 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.queryByText('Calendar Sync Hardening'),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText('2 more plans not shown at this width'),
+    ).toHaveTextContent('+2 more');
     await waitFor(() => {
-      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(2);
+      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
+        2,
+      );
     });
     expect(
       container.querySelector('.recharts-line-dots'),
@@ -293,8 +298,11 @@ describe('UsageAnalyticsContent', () => {
 
     expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
     expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
+    expect(screen.queryByText('+2 more')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(4);
+      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
+        4,
+      );
     });
   });
 });

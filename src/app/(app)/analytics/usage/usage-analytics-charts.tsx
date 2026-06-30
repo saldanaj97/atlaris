@@ -425,6 +425,7 @@ export function WeeklyLineChart({
     renderedPlanCount: 0,
   });
   const renderedPlans = plans.slice(0, renderedPlanCount);
+  const hiddenPlanCount = Math.max(0, plans.length - renderedPlans.length);
   const dataMaxValue = Math.max(
     1,
     ...renderedPlans.flatMap((plan) =>
@@ -628,7 +629,7 @@ export function WeeklyLineChart({
           </WithRecharts>
         </div>
       </div>
-      <div className='mt-4 flex min-h-6 flex-nowrap gap-4 overflow-x-auto'>
+      <div className='mt-6 flex min-h-8 flex-nowrap gap-4 overflow-x-auto py-2'>
         {series.length > 0 ? (
           series.map(({ plan, color }) => (
             <div
@@ -644,6 +645,14 @@ export function WeeklyLineChart({
           ))
         ) : hasMeasuredChart ? (
           <p className='text-xs text-muted-foreground'>No plans yet</p>
+        ) : null}
+        {hiddenPlanCount > 0 ? (
+          <div
+            aria-label={`${hiddenPlanCount} more ${hiddenPlanCount === 1 ? 'plan' : 'plans'} not shown at this width`}
+            className='flex w-45 shrink-0 items-center text-xs font-medium text-muted-foreground'
+          >
+            +{hiddenPlanCount} more
+          </div>
         ) : null}
       </div>
     </div>
