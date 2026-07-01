@@ -6,7 +6,8 @@ import { toValidDate } from '@/lib/date/relative-time';
 
 /**
  * UI-facing plan status for list/dashboard: canonical summary status plus
- * inactivity → `paused` when underlying status is `active`.
+ * no progress → `not_started` and inactivity → `paused` when underlying
+ * status is `active`.
  *
  * `referenceDate` defaults to `new Date()` so callers only need to pass it when
  * they want deterministic comparisons (for example, tests).
@@ -23,6 +24,10 @@ export function derivePlanSummaryDisplayStatus(params: {
 
   if (canonicalStatus !== 'active') {
     return canonicalStatus;
+  }
+
+  if (summary.modules.length > 0 && summary.completedTasks === 0) {
+    return 'not_started';
   }
 
   const updatedAt = toValidDate(summary.plan.updatedAt);

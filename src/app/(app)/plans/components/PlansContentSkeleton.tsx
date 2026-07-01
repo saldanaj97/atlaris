@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { Surface } from '@/components/ui/surface';
 import { Search } from 'lucide-react';
 
 /**
@@ -7,29 +8,50 @@ import { Search } from 'lucide-react';
  */
 export function PlansContentSkeleton() {
   return (
-    <>
-      {/* Search Bar skeleton */}
-      <div className='relative mb-6'>
-        <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
-        <Skeleton className='h-11 w-full rounded-md' />
-      </div>
+    <div className='space-y-5'>
+      <Surface className='space-y-5 border-primary/20 bg-linear-to-br from-primary/10 via-panel to-success/5'>
+        <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
+          <div className='min-w-0 space-y-2'>
+            <Skeleton className='h-8 w-64 max-w-full' />
+            <Skeleton className='h-4 w-full max-w-xl' />
+          </div>
+          <div className='grid gap-3 sm:grid-cols-2 lg:min-w-[16rem]'>
+            {[1, 2].map((statSkeletonId) => (
+              <div
+                key={`plans-stat-skeleton-${statSkeletonId}`}
+                className='border-l border-border/80 pl-3'
+              >
+                <Skeleton className='mb-2 h-7 w-10' />
+                <Skeleton className='mb-1 h-3 w-20' />
+                <Skeleton className='h-3 w-24' />
+              </div>
+            ))}
+          </div>
+        </div>
+      </Surface>
 
-      <div className='mb-6 flex flex-wrap items-center gap-2 border-b border-border pb-4'>
-        <Skeleton className='h-9 w-24 rounded-lg' />
-        <Skeleton className='h-9 w-24 rounded-lg' />
-        <Skeleton className='h-9 w-28 rounded-lg' />
-        <Skeleton className='h-9 w-24 rounded-lg' />
-        <Skeleton className='h-9 w-28 rounded-lg' />
-        <Skeleton className='h-9 w-20 rounded-lg' />
-      </div>
+      <Surface padding='compact' className='space-y-4'>
+        <div className='relative'>
+          <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+          <Skeleton className='h-11 w-full rounded-md' />
+        </div>
 
-      {/* Plans List skeleton */}
+        <div className='flex flex-wrap items-center gap-2'>
+          <Skeleton className='h-9 w-24 rounded-lg' />
+          <Skeleton className='h-9 w-24 rounded-lg' />
+          <Skeleton className='h-9 w-28 rounded-lg' />
+          <Skeleton className='h-9 w-24 rounded-lg' />
+          <Skeleton className='h-9 w-28 rounded-lg' />
+          <Skeleton className='h-9 w-20 rounded-lg' />
+        </div>
+      </Surface>
+
       <div className='space-y-2'>
         {[1, 2, 3, 4, 5].map((planSkeletonId) => (
           <PlanRowSkeleton key={`plan-row-skeleton-${planSkeletonId}`} />
         ))}
       </div>
-    </>
+    </div>
   );
 }
 

@@ -36,6 +36,7 @@ type PlansPageProps = {
 
 const PLAN_FILTERS = new Set<FilterStatus>([
   'all',
+  'not_started',
   'active',
   'completed',
   'generating',
@@ -76,8 +77,9 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
       {/* Static header - renders immediately; count waits independently. */}
       <PageHeader
         title='Your Plans'
+        subtitle='Search, filter, and compare your learning plan library.'
         actions={
-          <>
+          <div className='flex items-center gap-2 sm:pt-8'>
             <Suspense fallback={<Skeleton className='h-6 w-16 rounded-full' />}>
               <PlanCountBadgeContent dataPromise={plansPageData} />
             </Suspense>
@@ -87,7 +89,7 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
                 New Plan
               </Link>
             </Button>
-          </>
+          </div>
         }
       />
 

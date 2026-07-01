@@ -1,6 +1,5 @@
 'use client';
 
-import type { UsageData } from '@/app/_shared/usage-formatting';
 import type {
   FilterStatus,
   PlanListPage,
@@ -13,6 +12,7 @@ import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Surface } from '@/components/ui/surface';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
@@ -21,7 +21,6 @@ import Link from 'next/link';
 interface PlansListProps {
   page: PlanListPage;
   query: PlanListQuery;
-  usage?: UsageData;
 }
 
 const FILTER_TABS: {
@@ -30,12 +29,17 @@ const FILTER_TABS: {
   status?: PlanReadStatus;
 }[] = [
   { id: 'all', label: 'All' },
+  { id: 'not_started', label: 'Not started', status: 'not_started' },
   { id: 'active', label: 'Active', status: 'active' },
   { id: 'completed', label: 'Completed', status: 'completed' },
   { id: 'inactive', label: 'Inactive', status: 'paused' },
   { id: 'generating', label: 'Generating', status: 'generating' },
   { id: 'failed', label: 'Failed', status: 'failed' },
 ];
+
+const ATLAS_CONTROL_CLASS = 'border-primary/20 bg-panel';
+const ATLAS_TAB_CLASS =
+  'data-[state=active]:border-primary/40 data-[state=active]:bg-primary/10 data-[state=active]:text-primary-dark dark:data-[state=active]:text-primary';
 
 function plansHref(params: {
   search: string;
@@ -67,10 +71,62 @@ function getFilterCount(
   return tab.status ? page.statusCounts[tab.status] : 0;
 }
 
-export function PlansList({ page, query, usage: _usage }: PlansListProps) {
+function PlansHero({ page }: { page: PlanListPage }) {
   return (
-    <>
-      <form action='/plans' className='relative mb-6'>
+    <section
+      aria-label='Plans overview'
+      className='relative overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-br from-primary/10 via-panel to-success/5 p-5 shadow-sm sm:p-6'
+    >
+      <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
+        <div className='min-w-0'>
+          <h2 className='text-2xl font-semibold text-foreground sm:text-3xl'>
+            Learning plan library
+          </h2>
+          <p className='mt-2 max-w-2xl text-sm leading-6 text-muted-foreground'>
+            A mapped library with milestone rails and calm progress cues.
+          </p>
+        </div>
+
+        <div className='grid gap-3 sm:grid-cols-2 lg:min-w-[16rem]'>
+          <div className='min-w-0 border-l border-border/80 pl-3'>
+            <div className='text-2xl font-semibold text-foreground tabular-nums'>
+              {page.statusCounts.active}
+            </div>
+            <div className='text-xs font-medium text-foreground'>Active</div>
+            <div className='truncate text-xs text-muted-foreground'>
+              In progress
+            </div>
+          </div>
+          <div className='min-w-0 border-l border-border/80 pl-3'>
+            <div className='text-2xl font-semibold text-foreground tabular-nums'>
+              {page.statusCounts.completed}
+            </div>
+            <div className='text-xs font-medium text-foreground'>
+              Completed
+            </div>
+            <div className='truncate text-xs text-muted-foreground'>
+              Finished plans
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlansControls({
+  page,
+  query,
+}: {
+  page: PlanListPage;
+  query: PlanListQuery;
+}) {
+  return (
+    <Surface
+      padding='compact'
+      className={cn('space-y-4', ATLAS_CONTROL_CLASS)}
+    >
+      <form action='/plans' className='relative'>
         <Search
           className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
           aria-hidden='true'
@@ -81,51 +137,61 @@ export function PlansList({ page, query, usage: _usage }: PlansListProps) {
         <Input
           type='search'
           name='search'
-          placeholder='Search plans…'
+          placeholder='Search plans...'
           aria-label='Search learning plans'
-          className='h-11 border-border bg-muted/50 pl-9 dark:bg-muted/30'
+          className='h-11 border-border bg-background pl-9 dark:bg-input/30'
           defaultValue={query.search}
         />
       </form>
 
-      <div className='mb-6 flex items-center gap-2 border-b border-border pb-4'>
-        <Tabs value={query.status}>
-          <TabsList className='h-auto flex-wrap gap-1 bg-transparent p-0'>
-            {FILTER_TABS.map((tab) => {
-              const count = getFilterCount(tab, page);
-              return (
-                <TabsTrigger
-                  asChild
-                  key={tab.id}
-                  value={tab.id}
-                  className='rounded-lg px-3 py-1.5'
+      <Tabs value={query.status}>
+        <TabsList className='h-auto flex-wrap gap-1 bg-transparent p-0'>
+          {FILTER_TABS.map((tab) => {
+            const count = getFilterCount(tab, page);
+            return (
+              <TabsTrigger
+                asChild
+                key={tab.id}
+                value={tab.id}
+                className={cn(
+                  'rounded-lg border border-transparent px-3 py-1.5 text-sm',
+                  ATLAS_TAB_CLASS,
+                )}
+              >
+                <Link
+                  href={plansHref({
+                    search: query.search,
+                    status: tab.id,
+                  })}
                 >
-                  <Link
-                    href={plansHref({
-                      search: query.search,
-                      status: tab.id,
-                    })}
-                  >
-                    {tab.status ? (
-                      <span
-                        className={cn(
-                          'size-2 rounded-full',
-                          getPlanStatusDotClassName(tab.status),
-                        )}
-                        aria-hidden='true'
-                      />
-                    ) : null}
-                    {tab.label}
-                    <span className='text-muted-foreground tabular-nums'>
-                      ({count})
-                    </span>
-                  </Link>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </Tabs>
-      </div>
+                  {tab.status ? (
+                    <span
+                      className={cn(
+                        'size-2 rounded-full',
+                        getPlanStatusDotClassName(tab.status),
+                      )}
+                      aria-hidden='true'
+                    />
+                  ) : null}
+                  {tab.label}
+                  <span className='text-muted-foreground tabular-nums'>
+                    ({count})
+                  </span>
+                </Link>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+    </Surface>
+  );
+}
+
+export function PlansList({ page, query }: PlansListProps) {
+  return (
+    <div className='space-y-5'>
+      <PlansHero page={page} />
+      <PlansControls page={page} query={query} />
 
       <div>
         {page.items.length === 0 ? (
@@ -134,7 +200,7 @@ export function PlansList({ page, query, usage: _usage }: PlansListProps) {
             filterStatus={query.status}
           />
         ) : (
-          <div className='space-y-2'>
+          <section aria-label='Learning plans' className='space-y-3'>
             {page.items.map((plan) => (
               <PlanRow
                 key={plan.id}
@@ -142,14 +208,17 @@ export function PlansList({ page, query, usage: _usage }: PlansListProps) {
                 referenceTimestamp={page.referenceTimestamp}
               />
             ))}
-          </div>
+          </section>
         )}
       </div>
 
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className='mt-6 flex items-center justify-between gap-4 text-sm text-muted-foreground'
+          className={cn(
+            'mt-6 flex flex-col gap-3 rounded-2xl border p-4 text-sm text-muted-foreground shadow-sm sm:flex-row sm:items-center sm:justify-between',
+            ATLAS_CONTROL_CLASS,
+          )}
         >
           <span>
             Page {page.page} of {page.totalPages}
@@ -206,6 +275,6 @@ export function PlansList({ page, query, usage: _usage }: PlansListProps) {
           </div>
         </nav>
       ) : null}
-    </>
+    </div>
   );
 }

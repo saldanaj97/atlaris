@@ -5,6 +5,7 @@ import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
 export type PlanListRowStatus =
+  | 'not_started'
   | 'active'
   | 'paused'
   | 'completed'
@@ -52,6 +53,7 @@ type PlanListItemRow = {
 };
 
 const EMPTY_STATUS_COUNTS: PlanListQueryStatusCounts = {
+  not_started: 0,
   active: 0,
   paused: 0,
   completed: 0,
@@ -134,6 +136,8 @@ function planListRowsSql(params: {
             and coalesce(tm.total_tasks, 0) > 0
             and tm.completed_tasks >= tm.total_tasks then 'completed'
           when coalesce(mc.module_count, 0) > 0
+            and coalesce(tm.completed_tasks, 0) = 0 then 'not_started'
+          when coalesce(mc.module_count, 0) > 0
             and up.updated_at is not null
             and ${params.referenceTimestamp}::timestamptz - up.updated_at >= interval '30 days' then 'paused'
           when coalesce(mc.module_count, 0) > 0 then 'active'
@@ -195,7 +199,20 @@ export async function getPlanListPageRowsForUser(params: {
       total_tasks
     from status_rows
     ${statusFilter}
-    order by created_at desc, id desc
+    order by
+      case status
+        when 'active' then 0
+        when 'not_started' then 1
+        when 'generating' then 2
+        when 'failed' then 3
+        when 'paused' then 4
+        when 'completed' then 5
+        else 6
+      end,
+      case when status = 'active' then coalesce(updated_at, created_at) end desc nulls last,
+      case when status = 'not_started' then created_at end desc nulls last,
+      case when status in ('generating', 'failed', 'paused', 'completed') then coalesce(updated_at, created_at) end desc nulls last,
+      id desc
     limit ${pageSize}
     offset ${(page - 1) * pageSize}
   `)) as PlanListItemRow[];

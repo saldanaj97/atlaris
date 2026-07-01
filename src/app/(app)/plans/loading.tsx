@@ -7,6 +7,7 @@ export default function PlansLoading() {
     <>
       <PageHeader
         title='Your Plans'
+        subtitle='Search, filter, and compare your learning plan library.'
         actions={
           <>
             <Skeleton className='h-6 w-16 rounded-full' />

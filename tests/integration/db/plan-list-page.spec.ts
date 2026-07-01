@@ -121,6 +121,7 @@ describe('aggregate plans page query', () => {
     expect(page.items.map((item) => item.id)).toEqual([literal.id]);
     expect(page.totalSearchResults).toBe(1);
     expect(page.statusCounts).toEqual({
+      not_started: 0,
       active: 0,
       paused: 0,
       completed: 0,
@@ -145,15 +146,52 @@ describe('aggregate plans page query', () => {
     });
     const activeModule = await createTestModule({ planId: activePlan.id });
     const activeTask = await createTestTask({ moduleId: activeModule.id });
+    const activeRemainingTask = await createTestTask({
+      moduleId: activeModule.id,
+      order: 2,
+    });
+    await db.insert(taskProgress).values({
+      taskId: activeTask.id,
+      userId,
+      status: 'completed',
+    });
     statusFixtures.push({
       expectedFilter: 'active',
       summary: {
         plan: activePlan,
         modules: [activeModule],
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
+        totalMinutes:
+          activeTask.estimatedMinutes + activeRemainingTask.estimatedMinutes,
+        completedMinutes: activeTask.estimatedMinutes,
+        completedModules: 0,
+        attemptsCount: 0,
+      },
+    });
+
+    const notStartedPlan = await createTestPlan({
+      userId,
+      topic: 'Scope Not started',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-06-20T18:00:00.000Z'),
+    });
+    const notStartedModule = await createTestModule({
+      planId: notStartedPlan.id,
+    });
+    const notStartedTask = await createTestTask({
+      moduleId: notStartedModule.id,
+    });
+    statusFixtures.push({
+      expectedFilter: 'not_started',
+      summary: {
+        plan: notStartedPlan,
+        modules: [notStartedModule],
         completion: 0,
         completedTasks: 0,
         totalTasks: 1,
-        totalMinutes: activeTask.estimatedMinutes,
+        totalMinutes: notStartedTask.estimatedMinutes,
         completedMinutes: 0,
         completedModules: 0,
         attemptsCount: 0,
@@ -168,16 +206,26 @@ describe('aggregate plans page query', () => {
     });
     const pausedModule = await createTestModule({ planId: pausedPlan.id });
     const pausedTask = await createTestTask({ moduleId: pausedModule.id });
+    const pausedRemainingTask = await createTestTask({
+      moduleId: pausedModule.id,
+      order: 2,
+    });
+    await db.insert(taskProgress).values({
+      taskId: pausedTask.id,
+      userId,
+      status: 'completed',
+    });
     statusFixtures.push({
       expectedFilter: 'inactive',
       summary: {
         plan: pausedPlan,
         modules: [pausedModule],
-        completion: 0,
-        completedTasks: 0,
-        totalTasks: 1,
-        totalMinutes: pausedTask.estimatedMinutes,
-        completedMinutes: 0,
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
+        totalMinutes:
+          pausedTask.estimatedMinutes + pausedRemainingTask.estimatedMinutes,
+        completedMinutes: pausedTask.estimatedMinutes,
         completedModules: 0,
         attemptsCount: 0,
       },
@@ -291,6 +339,7 @@ describe('aggregate plans page query', () => {
     }
 
     expect(all.statusCounts).toEqual({
+      not_started: 1,
       active: 1,
       paused: 1,
       completed: 1,

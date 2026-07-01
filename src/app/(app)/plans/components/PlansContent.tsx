@@ -1,13 +1,10 @@
 import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
 import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
+import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
-import { Button } from '@/components/ui/button';
-import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { ROUTES } from '@/features/navigation/routes';
-import { Plus, Sparkles } from 'lucide-react';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 /**
@@ -54,7 +51,7 @@ export async function PlansContent({
     );
   }
 
-  const { plansPage, usage } = result;
+  const { plansPage } = result;
 
   if (
     plansPage.totalSearchResults === 0 &&
@@ -63,19 +60,10 @@ export async function PlansContent({
   ) {
     return (
       <section aria-label='No plans found'>
-        <RouteEmptyState
-          className='min-h-72'
-          icon={Sparkles}
-          title='No learning plans yet'
-          description="Start by describing what you want to learn and we'll create a personalized learning plan with resources and milestones."
-          action={
-            <Button asChild size='lg'>
-              <Link href='/plans/new'>
-                <Plus />
-                Create your first plan
-              </Link>
-            </Button>
-          }
+        <EmptyPlansList
+          filterStatus='all'
+          isFirstRun
+          searchQuery=''
         />
       </section>
     );
@@ -85,12 +73,6 @@ export async function PlansContent({
     <PlansList
       page={plansPage}
       query={query}
-      usage={{
-        tier: usage.tier,
-        activePlans: usage.activePlans,
-        regenerations: usage.regenerations,
-        exports: usage.exports,
-      }}
     />
   );
 }

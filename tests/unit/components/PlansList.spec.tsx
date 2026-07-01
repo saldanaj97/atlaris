@@ -9,7 +9,7 @@ import type React from 'react';
 
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/link', () => ({
@@ -30,6 +30,7 @@ describe('PlansList', () => {
   const referenceTimestamp = '2024-06-01T00:00:00.000Z';
 
   const statusCounts: PlanListStatusCounts = {
+    not_started: 0,
     active: 1,
     paused: 0,
     completed: 1,
@@ -106,6 +107,7 @@ describe('PlansList', () => {
         totalPages: 0,
         totalSearchResults: 0,
         statusCounts: {
+          not_started: 0,
           active: 0,
           paused: 0,
           completed: 0,
@@ -137,7 +139,11 @@ describe('PlansList', () => {
       query: { search: 'react hooks' },
     });
 
-    expect(screen.getByRole('link', { name: /Active/ })).toHaveAttribute(
+    expect(
+      within(screen.getByRole('tablist')).getByRole('link', {
+        name: /Active/,
+      }),
+    ).toHaveAttribute(
       'href',
       '/plans?search=react+hooks&status=active',
     );
@@ -181,6 +187,7 @@ describe('PlansList', () => {
   });
 
   it.each([
+    ['not_started', 'Not started', '(0)'],
     ['active', 'Active', '(1)'],
     ['inactive', 'Inactive', '(0)'],
     ['completed', 'Completed', '(1)'],
@@ -190,7 +197,9 @@ describe('PlansList', () => {
       renderPlansList();
 
       expect(
-        screen.getByRole('link', { name: new RegExp(label) }),
+        within(screen.getByRole('tablist')).getByRole('link', {
+          name: new RegExp(label),
+        }),
       ).toHaveTextContent(count);
     },
   );
