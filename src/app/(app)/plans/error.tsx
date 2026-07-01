@@ -32,12 +32,14 @@ export default function PlansError({ error, reset }: ErrorProps) {
         title='Your Plans'
         subtitle='Search, filter, and compare your learning plan library.'
         actions={
-          <Button asChild>
-            <Link href='/plans/new'>
-              <Plus />
-              New Plan
-            </Link>
-          </Button>
+          <div className='flex items-center gap-2 sm:pt-8'>
+            <Button asChild>
+              <Link href='/plans/new'>
+                <Plus />
+                New Plan
+              </Link>
+            </Button>
+          </div>
         }
       />
 

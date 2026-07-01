@@ -1,5 +1,10 @@
+import {
+  ATLAS_CONTROL_CLASS,
+  ATLAS_HERO_SURFACE_CLASS,
+} from '@/app/(app)/plans/components/plans-atlas-classes';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
+import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
 
 /**
@@ -9,7 +14,7 @@ import { Search } from 'lucide-react';
 export function PlansContentSkeleton() {
   return (
     <div className='space-y-5'>
-      <Surface className='space-y-5 border-primary/20 bg-linear-to-br from-primary/10 via-panel to-success/5'>
+      <Surface className={cn('space-y-5', ATLAS_HERO_SURFACE_CLASS)}>
         <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
           <div className='min-w-0 space-y-2'>
             <Skeleton className='h-8 w-64 max-w-full' />
@@ -30,7 +35,10 @@ export function PlansContentSkeleton() {
         </div>
       </Surface>
 
-      <Surface padding='compact' className='space-y-4'>
+      <Surface
+        padding='compact'
+        className={cn('space-y-4', ATLAS_CONTROL_CLASS)}
+      >
         <div className='relative'>
           <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
           <Skeleton className='h-11 w-full rounded-md' />

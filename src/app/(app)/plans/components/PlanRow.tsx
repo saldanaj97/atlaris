@@ -65,13 +65,22 @@ function PlanTitle({
 }
 
 function NextTask({ plan }: { plan: PlanListItem }) {
-  const nextTask =
-    plan.status === 'completed'
-      ? 'All tasks completed'
-      : plan.completedTasks === 0
-        ? 'Not started'
-        : 'Continue learning';
-  const showArrow = plan.status !== 'completed' && plan.completedTasks > 0;
+  let nextTask: string;
+  let showArrow: boolean;
+
+  if (plan.status === 'completed') {
+    nextTask = 'All tasks completed';
+    showArrow = false;
+  } else if (plan.status === 'generating' || plan.status === 'failed') {
+    nextTask = PLAN_STATUS_LABELS[plan.status];
+    showArrow = false;
+  } else if (plan.completedTasks === 0) {
+    nextTask = 'Not started';
+    showArrow = false;
+  } else {
+    nextTask = 'Continue learning';
+    showArrow = true;
+  }
 
   return (
     <div className='flex min-w-0 items-center gap-2 text-xs text-muted-foreground'>

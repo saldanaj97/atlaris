@@ -199,6 +199,7 @@ export async function getPlanListPageRowsForUser(params: {
       total_tasks
     from status_rows
     ${statusFilter}
+    -- Bucket by status first; each following CASE only sorts within its bucket (NULLS LAST elsewhere).
     order by
       case status
         when 'active' then 0

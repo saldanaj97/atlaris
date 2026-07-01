@@ -9,6 +9,11 @@ import type {
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
+import {
+  ATLAS_CONTROL_CLASS,
+  ATLAS_HERO_SURFACE_CLASS,
+  ATLAS_TAB_CLASS,
+} from '@/app/(app)/plans/components/plans-atlas-classes';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,10 +41,6 @@ const FILTER_TABS: {
   { id: 'generating', label: 'Generating', status: 'generating' },
   { id: 'failed', label: 'Failed', status: 'failed' },
 ];
-
-const ATLAS_CONTROL_CLASS = 'border-primary/20 bg-panel';
-const ATLAS_TAB_CLASS =
-  'data-[state=active]:border-primary/40 data-[state=active]:bg-primary/10 data-[state=active]:text-primary-dark dark:data-[state=active]:text-primary';
 
 function plansHref(params: {
   search: string;
@@ -75,7 +76,10 @@ function PlansHero({ page }: { page: PlanListPage }) {
   return (
     <section
       aria-label='Plans overview'
-      className='relative overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-br from-primary/10 via-panel to-success/5 p-5 shadow-sm sm:p-6'
+      className={cn(
+        'relative overflow-hidden rounded-2xl p-5 shadow-sm sm:p-6',
+        ATLAS_HERO_SURFACE_CLASS,
+      )}
     >
       <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
         <div className='min-w-0'>
@@ -101,9 +105,7 @@ function PlansHero({ page }: { page: PlanListPage }) {
             <div className='text-2xl font-semibold text-foreground tabular-nums'>
               {page.statusCounts.completed}
             </div>
-            <div className='text-xs font-medium text-foreground'>
-              Completed
-            </div>
+            <div className='text-xs font-medium text-foreground'>Completed</div>
             <div className='truncate text-xs text-muted-foreground'>
               Finished plans
             </div>
@@ -122,10 +124,7 @@ function PlansControls({
   query: PlanListQuery;
 }) {
   return (
-    <Surface
-      padding='compact'
-      className={cn('space-y-4', ATLAS_CONTROL_CLASS)}
-    >
+    <Surface padding='compact' className={cn('space-y-4', ATLAS_CONTROL_CLASS)}>
       <form action='/plans' className='relative'>
         <Search
           className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
