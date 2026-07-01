@@ -1,14 +1,14 @@
 # Supply-chain policy: pnpm `minimumReleaseAge`
 
-## Current decision (2026-06-24)
+## Current decision (2026-07-01)
 
-**Adopted** with pnpm 10.33.0 and enforced through `pnpm-workspace.yaml`.
+**Adopted** with pnpm 11.9.0 and enforced through `pnpm-workspace.yaml`.
 
 ### Rationale
 
 - `minimumReleaseAge` is supported in **pnpm 10.16+** and is configured in **`pnpm-workspace.yaml`** per upstream docs.
-- Atlaris pins **pnpm 10.33.0** in `package.json` and CI (`.github/workflows/ci-pr.yml`, `.github/workflows/ci-trunk.yml`).
-- Package-specific pnpm settings such as overrides and approved build scripts remain under the **`pnpm`** key in `package.json`.
+- Atlaris pins **pnpm 11.9.0** in `package.json` and CI (`.github/workflows/ci-pr.yml`, `.github/workflows/ci-trunk.yml`).
+- Package-specific pnpm settings such as overrides and approved build scripts live in **`pnpm-workspace.yaml`**; `package.json` only pins the package manager and engine range.
 
 ### Intended policy when adopted
 
@@ -17,7 +17,9 @@
 | `minimumReleaseAge`       | `10080` (7 days)      | Blocks installs of packages published within the window |
 | `minimumReleaseAgeStrict` | `true` (explicit)     | Fail when only fresh versions satisfy semver ranges     |
 | `trustPolicy`             | `no-downgrade`        | Refuses packages whose trust signals weaken             |
-| Config location           | `pnpm-workspace.yaml` | Shared release-age and trust policy                     |
+| `trustPolicyExclude`      | Exact package versions | Allows reviewed transitive versions that pnpm flags     |
+| `allowBuilds`             | Explicit package map   | Allows or denies install scripts by package name        |
+| Config location           | `pnpm-workspace.yaml` | Shared release-age, trust, overrides, and build policy  |
 
 ### CVE exception workflow
 

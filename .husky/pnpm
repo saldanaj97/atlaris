@@ -1,0 +1,47 @@
+#!/bin/sh
+set -e
+
+required_pnpm="11.9.0"
+required_node_major="24"
+pnpm_home="${PNPM_HOME:-$HOME/Library/pnpm}"
+managed_pnpm="$pnpm_home/.tools/pnpm/$required_pnpm/bin/pnpm"
+preferred_pnpm="$pnpm_home/pnpm"
+
+# ponytail: prefer the exact pnpm tool; replace with a repo toolchain manager if one lands.
+if [ -x "$managed_pnpm" ]; then
+  pnpm_bin="$managed_pnpm"
+elif [ -x "$preferred_pnpm" ]; then
+  pnpm_bin="$preferred_pnpm"
+else
+  pnpm_bin="$(command -v pnpm || true)"
+fi
+
+if [ -z "$pnpm_bin" ]; then
+  echo "pnpm $required_pnpm is required for git hooks, but pnpm was not found." >&2
+  exit 127
+fi
+
+actual_pnpm="$("$pnpm_bin" --version 2>/dev/null || true)"
+if [ "$actual_pnpm" != "$required_pnpm" ]; then
+  echo "pnpm $required_pnpm is required for git hooks." >&2
+  echo "Found pnpm ${actual_pnpm:-unknown} at $pnpm_bin." >&2
+  echo "Install pnpm $required_pnpm or put it first in PATH before committing." >&2
+  exit 1
+fi
+
+pnpm_dir="$(dirname "$pnpm_bin")"
+export PATH="$pnpm_dir:$pnpm_home:$PATH"
+export PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false
+
+actual_node="$(node -p 'process.versions.node' 2>/dev/null || true)"
+case "$actual_node" in
+  "$required_node_major".*) ;;
+  *)
+    echo "Node $required_node_major.x is required for git hooks." >&2
+    echo "Found Node ${actual_node:-unknown} at $(command -v node || echo unknown)." >&2
+    echo "Run: pnpm env use --global $required_node_major" >&2
+    exit 1
+    ;;
+esac
+
+exec "$pnpm_bin" "$@"

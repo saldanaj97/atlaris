@@ -2,7 +2,7 @@
 set -e
 
 echo "Running Oxlint and Oxfmt on staged files..."
-pnpm exec lint-staged
+sh "$(dirname "$0")/pnpm" exec lint-staged
 
 echo "Running ggshield secret scan..."
 if ! command -v ggshield >/dev/null 2>&1; then
