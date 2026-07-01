@@ -30,6 +30,10 @@ import { useState } from 'react';
 interface PlanRowProps {
   plan: PlanListItem;
   referenceTimestamp: string;
+  selectionMode?: boolean;
+  selected?: boolean;
+  selectable?: boolean;
+  onSelectionChange?: (planId: string, selected: boolean) => void;
 }
 
 function StatusPill({ plan }: { plan: PlanListItem }) {
@@ -126,7 +130,14 @@ function ProgressTrack({ progressPercent }: { progressPercent: number }) {
   );
 }
 
-export function PlanRow({ plan, referenceTimestamp }: PlanRowProps) {
+export function PlanRow({
+  plan,
+  referenceTimestamp,
+  selectionMode = false,
+  selected = false,
+  selectable = true,
+  onSelectionChange,
+}: PlanRowProps) {
   const progressPercent = Math.max(
     0,
     Math.min(100, Math.round(plan.completion * 100)),
@@ -147,55 +158,81 @@ export function PlanRow({ plan, referenceTimestamp }: PlanRowProps) {
         onOpenChange={setDeleteDialogOpen}
       />
 
-      <div className='relative'>
-        <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted/35 hover:shadow-md'>
-          <Link href={`/plans/${plan.id}`} className='block min-w-0 pr-12'>
-            <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
-              <div className='min-w-0 space-y-1.5'>
-                <div className='flex min-w-0 flex-wrap items-center gap-2'>
-                  <StatusPill plan={plan} />
-                  <PlanTitle plan={plan} progressPercent={progressPercent} />
+      <div className='relative flex items-start gap-3'>
+        {selectionMode ? (
+          <div className='flex shrink-0 pt-4'>
+            <input
+              type='checkbox'
+              checked={selected}
+              disabled={!selectable}
+              aria-label={
+                selectable
+                  ? `Select ${plan.topic}`
+                  : `Cannot select ${plan.topic} while it is generating`
+              }
+              onChange={(event) =>
+                onSelectionChange?.(plan.id, event.currentTarget.checked)
+              }
+              className='size-4 rounded border-border text-primary focus-visible:ring-ring/50'
+            />
+          </div>
+        ) : null}
+
+        <div className='relative min-w-0 flex-1'>
+          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted/35 hover:shadow-md'>
+            <Link
+              href={`/plans/${plan.id}`}
+              className={cn('block min-w-0', !selectionMode && 'pr-12')}
+            >
+              <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
+                <div className='min-w-0 space-y-1.5'>
+                  <div className='flex min-w-0 flex-wrap items-center gap-2'>
+                    <StatusPill plan={plan} />
+                    <PlanTitle plan={plan} progressPercent={progressPercent} />
+                  </div>
+                  <NextTask plan={plan} />
                 </div>
-                <NextTask plan={plan} />
+
+                <div className='min-w-0 md:pt-1'>
+                  <TaskCount plan={plan} />
+                </div>
+                <div className='min-w-0 md:pt-1'>
+                  <LastActivity value={lastActivity} />
+                </div>
               </div>
 
-              <div className='min-w-0 md:pt-1'>
-                <TaskCount plan={plan} />
+              <div className='mt-3'>
+                <ProgressTrack progressPercent={progressPercent} />
               </div>
-              <div className='min-w-0 md:pt-1'>
-                <LastActivity value={lastActivity} />
-              </div>
+            </Link>
+          </div>
+
+          {!selectionMode ? (
+            <div className='absolute top-2 right-2'>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    title='Plan actions'
+                    aria-label='Plan actions'
+                  >
+                    <MoreVertical className='size-4' />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end'>
+                  <DropdownMenuItem
+                    variant='destructive'
+                    disabled={plan.status === 'generating'}
+                    onSelect={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className='mr-2 size-4' />
+                    Delete plan
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-
-            <div className='mt-3'>
-              <ProgressTrack progressPercent={progressPercent} />
-            </div>
-          </Link>
-        </div>
-
-        <div className='absolute top-2 right-2'>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant='ghost'
-                size='icon'
-                title='Plan actions'
-                aria-label='Plan actions'
-              >
-                <MoreVertical className='size-4' />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align='end'>
-              <DropdownMenuItem
-                variant='destructive'
-                disabled={plan.status === 'generating'}
-                onSelect={() => setDeleteDialogOpen(true)}
-              >
-                <Trash2 className='mr-2 size-4' />
-                Delete plan
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          ) : null}
         </div>
       </div>
     </div>

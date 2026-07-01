@@ -27,3 +27,62 @@ export async function removePlanForWrite(params: {
 
   throw new ConflictError('Cannot delete learning plan in its current state.');
 }
+
+export type BulkRemovePlanFailureReason =
+  | 'not_found'
+  | 'currently_generating'
+  | 'unknown';
+
+export type BulkRemovePlanResult =
+  | { planId: string; success: true }
+  | {
+      planId: string;
+      success: false;
+      reason: BulkRemovePlanFailureReason;
+      message: string;
+    };
+
+export async function removePlansForWrite(params: {
+  planIds: string[];
+  userId: string;
+}): Promise<BulkRemovePlanResult[]> {
+  const results: BulkRemovePlanResult[] = [];
+
+  for (const planId of params.planIds) {
+    const result = await deletePlan(planId, params.userId);
+
+    if (result.success) {
+      results.push({ planId, success: true });
+      continue;
+    }
+
+    if (result.reason === 'not_found') {
+      results.push({
+        planId,
+        success: false,
+        reason: 'not_found',
+        message: 'Learning plan not found.',
+      });
+      continue;
+    }
+
+    if (result.reason === 'currently_generating') {
+      results.push({
+        planId,
+        success: false,
+        reason: 'currently_generating',
+        message: 'Cannot delete a plan that is currently generating.',
+      });
+      continue;
+    }
+
+    results.push({
+      planId,
+      success: false,
+      reason: 'unknown',
+      message: 'Cannot delete learning plan in its current state.',
+    });
+  }
+
+  return results;
+}

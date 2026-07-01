@@ -1,6 +1,7 @@
 import type {
   FilterStatus,
   PlanListQuery,
+  PlanListSort,
 } from '@/features/plans/read-projection/types';
 import type { Metadata } from 'next';
 
@@ -44,6 +45,12 @@ const PLAN_FILTERS = new Set<FilterStatus>([
   'inactive',
 ]);
 
+const PLAN_SORTS = new Set<PlanListSort>([
+  'recommended',
+  'recently_updated',
+  'newest',
+]);
+
 function firstSearchParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
@@ -59,12 +66,17 @@ async function parsePlansQuery(
   const status = PLAN_FILTERS.has(canonicalStatusValue as FilterStatus)
     ? (canonicalStatusValue as FilterStatus)
     : 'all';
+  const sortValue = firstSearchParam(params?.sort);
+  const sort = PLAN_SORTS.has(sortValue as PlanListSort)
+    ? (sortValue as PlanListSort)
+    : 'recommended';
 
   return {
     page:
       Number.isFinite(pageValue) && pageValue >= 1 ? Math.floor(pageValue) : 1,
     search: firstSearchParam(params?.search).trim(),
     status,
+    sort,
   };
 }
 

@@ -15,10 +15,13 @@ export type PlanListFilterStatus =
   | 'all'
   | Exclude<PlanListRowStatus, 'paused'>
   | 'inactive';
+export type PlanListSort = 'recommended' | 'recently_updated' | 'newest';
+
 export type PlanListPageQuery = {
   page: number;
   search: string;
   status: PlanListFilterStatus;
+  sort: PlanListSort;
 };
 export type PlanListQueryItemRow = {
   id: string;
@@ -70,6 +73,34 @@ function normalizedStatus(
 ): PlanListRowStatus | null {
   if (status === 'all') return null;
   return status === 'inactive' ? 'paused' : status;
+}
+
+function planListOrderBy(sort: PlanListSort): SQL {
+  if (sort === 'recently_updated') {
+    return sql`order by coalesce(updated_at, created_at) desc, id desc`;
+  }
+
+  if (sort === 'newest') {
+    return sql`order by created_at desc, id desc`;
+  }
+
+  return sql`
+    -- Bucket by status first; each following CASE only sorts within its bucket (NULLS LAST elsewhere).
+    order by
+      case status
+        when 'active' then 0
+        when 'not_started' then 1
+        when 'generating' then 2
+        when 'failed' then 3
+        when 'paused' then 4
+        when 'completed' then 5
+        else 6
+      end,
+      case when status = 'active' then coalesce(updated_at, created_at) end desc nulls last,
+      case when status = 'not_started' then created_at end desc nulls last,
+      case when status in ('generating', 'failed', 'paused', 'completed') then coalesce(updated_at, created_at) end desc nulls last,
+      id desc
+  `;
 }
 
 function planListRowsSql(params: {
@@ -199,21 +230,7 @@ export async function getPlanListPageRowsForUser(params: {
       total_tasks
     from status_rows
     ${statusFilter}
-    -- Bucket by status first; each following CASE only sorts within its bucket (NULLS LAST elsewhere).
-    order by
-      case status
-        when 'active' then 0
-        when 'not_started' then 1
-        when 'generating' then 2
-        when 'failed' then 3
-        when 'paused' then 4
-        when 'completed' then 5
-        else 6
-      end,
-      case when status = 'active' then coalesce(updated_at, created_at) end desc nulls last,
-      case when status = 'not_started' then created_at end desc nulls last,
-      case when status in ('generating', 'failed', 'paused', 'completed') then coalesce(updated_at, created_at) end desc nulls last,
-      id desc
+    ${planListOrderBy(params.query.sort)}
     limit ${pageSize}
     offset ${(page - 1) * pageSize}
   `)) as PlanListItemRow[];

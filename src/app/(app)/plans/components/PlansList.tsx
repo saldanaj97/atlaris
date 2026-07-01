@@ -2,11 +2,17 @@
 
 import type {
   FilterStatus,
+  PlanListItem,
   PlanListPage,
   PlanListQuery,
+  PlanListSort,
   PlanReadStatus,
 } from '@/features/plans/read-projection/types';
 
+import {
+  BulkDeletePlansDialog,
+  type BulkDeletePlansResult,
+} from '@/app/(app)/plans/components/BulkDeletePlansDialog';
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import {
@@ -22,6 +28,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 interface PlansListProps {
   page: PlanListPage;
@@ -42,9 +51,20 @@ const FILTER_TABS: {
   { id: 'failed', label: 'Failed', status: 'failed' },
 ];
 
+const SORT_OPTIONS: { value: PlanListSort; label: string }[] = [
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'recently_updated', label: 'Recently updated' },
+  { value: 'newest', label: 'Newest' },
+];
+
+function isPlanBulkDeletable(plan: PlanListItem): boolean {
+  return plan.status !== 'generating';
+}
+
 function plansHref(params: {
   search: string;
   status: FilterStatus;
+  sort: PlanListSort;
   page?: number;
 }): string {
   const searchParams = new URLSearchParams();
@@ -54,6 +74,9 @@ function plansHref(params: {
   }
   if (params.status !== 'all') {
     searchParams.set('status', params.status);
+  }
+  if (params.sort !== 'recommended') {
+    searchParams.set('sort', params.sort);
   }
   if (params.page && params.page > 1) {
     searchParams.set('page', String(params.page));
@@ -116,12 +139,96 @@ function PlansHero({ page }: { page: PlanListPage }) {
   );
 }
 
+function BulkPlanActionsToolbar({
+  selectedCount,
+  deletableCount,
+  toolbarMessage,
+  onSelectAll,
+  onClear,
+  onDelete,
+  onCancelSelection,
+}: {
+  selectedCount: number;
+  deletableCount: number;
+  toolbarMessage: string | null;
+  onSelectAll: () => void;
+  onClear: () => void;
+  onDelete: () => void;
+  onCancelSelection: () => void;
+}) {
+  return (
+    <Surface
+      padding='compact'
+      className={cn('space-y-3', ATLAS_CONTROL_CLASS)}
+      aria-label='Bulk plan actions'
+    >
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='space-y-1'>
+          <p className='text-sm font-medium text-foreground'>
+            {selectedCount} selected
+          </p>
+          {toolbarMessage ? (
+            <p className='text-sm text-destructive'>{toolbarMessage}</p>
+          ) : deletableCount === 0 ? (
+            <p className='text-sm text-muted-foreground'>
+              No deletable plans on this page.
+            </p>
+          ) : null}
+        </div>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={onSelectAll}
+            disabled={deletableCount === 0}
+          >
+            Select all on page
+          </Button>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={onClear}
+            disabled={selectedCount === 0}
+          >
+            Clear
+          </Button>
+          <Button
+            type='button'
+            variant='destructive'
+            size='sm'
+            onClick={onDelete}
+            disabled={selectedCount === 0}
+          >
+            Delete selected
+          </Button>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            onClick={onCancelSelection}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </Surface>
+  );
+}
+
 function PlansControls({
   page,
   query,
+  selectionMode,
+  onEnterSelectionMode,
+  canEnterSelectionMode,
 }: {
   page: PlanListPage;
   query: PlanListQuery;
+  selectionMode: boolean;
+  onEnterSelectionMode: () => void;
+  canEnterSelectionMode: boolean;
 }) {
   return (
     <Surface padding='compact' className={cn('space-y-4', ATLAS_CONTROL_CLASS)}>
@@ -133,6 +240,9 @@ function PlansControls({
         {query.status !== 'all' ? (
           <input type='hidden' name='status' value={query.status} />
         ) : null}
+        {query.sort !== 'recommended' ? (
+          <input type='hidden' name='sort' value={query.sort} />
+        ) : null}
         <Input
           type='search'
           name='search'
@@ -142,6 +252,46 @@ function PlansControls({
           defaultValue={query.search}
         />
       </form>
+
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+        <form action='/plans' className='flex items-center gap-2'>
+          <label htmlFor='plans-sort' className='text-sm text-muted-foreground'>
+            Sort
+          </label>
+          {query.search ? (
+            <input type='hidden' name='search' value={query.search} />
+          ) : null}
+          {query.status !== 'all' ? (
+            <input type='hidden' name='status' value={query.status} />
+          ) : null}
+          <select
+            id='plans-sort'
+            name='sort'
+            defaultValue={query.sort}
+            onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            className='h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs dark:bg-input/30'
+            aria-label='Sort learning plans'
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </form>
+
+        {!selectionMode ? (
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={onEnterSelectionMode}
+            disabled={!canEnterSelectionMode}
+          >
+            Select
+          </Button>
+        ) : null}
+      </div>
 
       <Tabs value={query.status}>
         <TabsList className='h-auto flex-wrap gap-1 bg-transparent p-0'>
@@ -161,6 +311,7 @@ function PlansControls({
                   href={plansHref({
                     search: query.search,
                     status: tab.id,
+                    sort: query.sort,
                   })}
                 >
                   {tab.status ? (
@@ -187,10 +338,151 @@ function PlansControls({
 }
 
 export function PlansList({ page, query }: PlansListProps) {
+  const router = useRouter();
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
+
+  const visiblePlanIds = useMemo(
+    () => page.items.map((plan) => plan.id).join(','),
+    [page.items],
+  );
+
+  const deletablePlans = useMemo(
+    () => page.items.filter(isPlanBulkDeletable),
+    [page.items],
+  );
+  const selectedPlans = useMemo(
+    () => page.items.filter((plan) => selectedPlanIds.has(plan.id)),
+    [page.items, selectedPlanIds],
+  );
+  const selectedDeletablePlans = useMemo(
+    () => selectedPlans.filter(isPlanBulkDeletable),
+    [selectedPlans],
+  );
+
+  useEffect(() => {
+    const visibleIds = new Set(page.items.map((plan) => plan.id));
+    setSelectedPlanIds((current) => {
+      const next = new Set(
+        [...current].filter((planId) => visibleIds.has(planId)),
+      );
+      return next.size === current.size ? current : next;
+    });
+  }, [visiblePlanIds, page.items]);
+
+  const handleSelectionChange = (planId: string, selected: boolean): void => {
+    setSelectedPlanIds((current) => {
+      const next = new Set(current);
+      if (selected) {
+        next.add(planId);
+      } else {
+        next.delete(planId);
+      }
+      return next;
+    });
+    setToolbarMessage(null);
+  };
+
+  const handleSelectAllOnPage = (): void => {
+    setSelectedPlanIds(() => new Set(deletablePlans.map((plan) => plan.id)));
+    setToolbarMessage(null);
+  };
+
+  const handleClearSelection = (): void => {
+    setSelectedPlanIds(() => new Set());
+    setToolbarMessage(null);
+  };
+
+  const handleEnterSelectionMode = (): void => {
+    setSelectionMode(true);
+    setToolbarMessage(null);
+  };
+
+  const handleCancelSelectionMode = (): void => {
+    setSelectionMode(false);
+    setSelectedPlanIds(() => new Set());
+    setToolbarMessage(null);
+  };
+
+  const handleBulkDeleted = (result: BulkDeletePlansResult): void => {
+    const deletedIds = new Set(
+      result.results
+        .filter((entry) => entry.success)
+        .map((entry) => entry.planId),
+    );
+    const failedResults = result.results.filter((entry) => !entry.success);
+
+    setSelectedPlanIds((current) => {
+      const next = new Set(
+        [...current].filter((planId) => !deletedIds.has(planId)),
+      );
+      return next;
+    });
+
+    if (result.deletedCount > 0 && result.failedCount === 0) {
+      toast.success(
+        `Deleted ${result.deletedCount} plan${result.deletedCount === 1 ? '' : 's'}`,
+      );
+      setSelectionMode(false);
+      setSelectedPlanIds(() => new Set());
+      setToolbarMessage(null);
+      router.refresh();
+      return;
+    }
+
+    if (result.deletedCount > 0 && result.failedCount > 0) {
+      toast.error(
+        `Deleted ${result.deletedCount} plans. ${result.failedCount} could not be deleted.`,
+      );
+      const hasGeneratingFailure = failedResults.some(
+        (entry) => entry.reason === 'currently_generating',
+      );
+      setToolbarMessage(
+        hasGeneratingFailure
+          ? 'Some plans started generating and could not be deleted.'
+          : (failedResults[0]?.message ?? null),
+      );
+      router.refresh();
+      return;
+    }
+
+    toast.error('No plans were deleted');
+    setToolbarMessage(failedResults[0]?.message ?? null);
+  };
+
   return (
     <div className='space-y-5'>
       <PlansHero page={page} />
-      <PlansControls page={page} query={query} />
+      <PlansControls
+        page={page}
+        query={query}
+        selectionMode={selectionMode}
+        onEnterSelectionMode={handleEnterSelectionMode}
+        canEnterSelectionMode={deletablePlans.length > 0}
+      />
+
+      {selectionMode ? (
+        <BulkPlanActionsToolbar
+          selectedCount={selectedDeletablePlans.length}
+          deletableCount={deletablePlans.length}
+          toolbarMessage={toolbarMessage}
+          onSelectAll={handleSelectAllOnPage}
+          onClear={handleClearSelection}
+          onDelete={() => setBulkDeleteOpen(true)}
+          onCancelSelection={handleCancelSelectionMode}
+        />
+      ) : null}
+
+      <BulkDeletePlansDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        plans={selectedDeletablePlans}
+        onDeleted={handleBulkDeleted}
+      />
 
       <div>
         {page.items.length === 0 ? (
@@ -205,6 +497,10 @@ export function PlansList({ page, query }: PlansListProps) {
                 key={plan.id}
                 plan={plan}
                 referenceTimestamp={page.referenceTimestamp}
+                selectionMode={selectionMode}
+                selected={selectedPlanIds.has(plan.id)}
+                selectable={isPlanBulkDeletable(plan)}
+                onSelectionChange={handleSelectionChange}
               />
             ))}
           </section>
@@ -234,6 +530,7 @@ export function PlansList({ page, query }: PlansListProps) {
                   href={plansHref({
                     search: query.search,
                     status: query.status,
+                    sort: query.sort,
                     page: page.page - 1,
                   })}
                 >
@@ -258,6 +555,7 @@ export function PlansList({ page, query }: PlansListProps) {
                   href={plansHref({
                     search: query.search,
                     status: query.status,
+                    sort: query.sort,
                     page: page.page + 1,
                   })}
                 >

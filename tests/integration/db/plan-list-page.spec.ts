@@ -23,7 +23,13 @@ async function createUser(scenario: string): Promise<string> {
 }
 
 function query(overrides: Partial<PlanListQuery> = {}): PlanListQuery {
-  return { page: 1, search: '', status: 'all', ...overrides };
+  return {
+    page: 1,
+    search: '',
+    status: 'all',
+    sort: 'recommended',
+    ...overrides,
+  };
 }
 
 describe('aggregate plans page query', () => {
@@ -346,5 +352,59 @@ describe('aggregate plans page query', () => {
       generating: 1,
       failed: 1,
     });
+  });
+
+  it('orders plans by recently updated when sort is recently_updated', async () => {
+    const userId = await createUser('sort-recent');
+    const older = await createTestPlan({
+      userId,
+      topic: 'Older Update',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-05-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-05-10T12:00:00.000Z'),
+    });
+    const newer = await createTestPlan({
+      userId,
+      topic: 'Newer Update',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-05-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-06-15T12:00:00.000Z'),
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ sort: 'recently_updated' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('orders plans by created date when sort is newest', async () => {
+    const userId = await createUser('sort-newest');
+    const older = await createTestPlan({
+      userId,
+      topic: 'Older Created',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-04-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-06-01T12:00:00.000Z'),
+    });
+    const newer = await createTestPlan({
+      userId,
+      topic: 'Newer Created',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-06-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T12:00:00.000Z'),
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ sort: 'newest' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual([newer.id, older.id]);
   });
 });
