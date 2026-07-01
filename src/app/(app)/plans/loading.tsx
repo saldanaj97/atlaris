@@ -9,7 +9,7 @@ export default function PlansLoading() {
         title='Your Plans'
         subtitle='Search, filter, and compare your learning plan library.'
         actions={
-          <div className='flex items-center gap-2 sm:pt-8'>
+          <div className='flex items-center gap-2'>
             <Skeleton className='h-6 w-16 rounded-full' />
             <Skeleton className='h-10 w-24 rounded-lg' />
           </div>

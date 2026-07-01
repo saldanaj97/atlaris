@@ -40,7 +40,7 @@ function StatusPill({ plan }: { plan: PlanListItem }) {
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground',
+        'ml-auto inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground',
         getPlanStatusPillClassName(plan.status),
       )}
     >
@@ -52,64 +52,74 @@ function StatusPill({ plan }: { plan: PlanListItem }) {
 function PlanTitle({
   plan,
   progressPercent,
+  lastActivity,
 }: {
   plan: PlanListItem;
   progressPercent: number;
+  lastActivity: string;
 }) {
   return (
-    <div className='flex min-w-0 items-center gap-2'>
+    <div className='flex min-w-0 flex-1 items-center gap-2'>
       <span className='truncate font-semibold text-foreground'>
         {plan.topic}
       </span>
       {progressPercent >= 80 ? (
         <Sparkles className='size-3.5 shrink-0 text-warning' />
       ) : null}
+      <LastActivity value={lastActivity} />
     </div>
   );
 }
 
 function NextTask({ plan }: { plan: PlanListItem }) {
-  let nextTask: string;
-  let showArrow: boolean;
+  let label: string;
+  let showArrow = false;
 
   if (plan.status === 'completed') {
-    nextTask = 'All tasks completed';
-    showArrow = false;
+    label = 'All tasks completed';
   } else if (plan.status === 'generating' || plan.status === 'failed') {
-    nextTask = PLAN_STATUS_LABELS[plan.status];
-    showArrow = false;
+    label = PLAN_STATUS_LABELS[plan.status];
   } else if (plan.completedTasks === 0) {
-    nextTask = 'Not started';
-    showArrow = false;
+    label = 'Not started';
   } else {
-    nextTask = 'Continue learning';
+    label = 'Continue learning';
     showArrow = true;
   }
 
   return (
     <div className='flex min-w-0 items-center gap-2 text-xs text-muted-foreground'>
       {showArrow ? <ArrowRight className='size-3 shrink-0' /> : null}
-      <span className='truncate'>{nextTask}</span>
+      <span className='truncate'>{label}</span>
     </div>
   );
 }
 
-function TaskCount({ plan }: { plan: PlanListItem }) {
+function TaskProgress({
+  plan,
+  progressPercent,
+}: {
+  plan: PlanListItem;
+  progressPercent: number;
+}) {
   return (
-    <div className='flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
-      <CheckCircle2 className='size-3.5 shrink-0' />
-      <span className='truncate tabular-nums'>
-        {plan.completedTasks}/{plan.totalTasks} tasks
-      </span>
+    <div className='space-y-1.5'>
+      <div className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
+        <NextTask plan={plan} />
+        <span className='flex shrink-0 items-center gap-1.5 tabular-nums'>
+          <CheckCircle2 className='size-3.5 shrink-0' aria-hidden='true' />
+          {plan.completedTasks}/{plan.totalTasks} tasks
+        </span>
+      </div>
+      <ProgressTrack progressPercent={progressPercent} />
     </div>
   );
 }
 
 function LastActivity({ value }: { value: string }) {
   return (
-    <div className='flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground'>
+    <div className='flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground'>
       <Clock className='size-3.5 shrink-0' />
-      <span className='truncate'>{value}</span>
+      <span className='whitespace-nowrap'>{value}</span>
     </div>
   );
 }
@@ -118,7 +128,7 @@ function ProgressTrack({ progressPercent }: { progressPercent: number }) {
   return (
     <>
       <progress className='sr-only' value={progressPercent} max={100}>
-        {progressPercent}% complete
+        {progressPercent}% of tasks complete
       </progress>
       <div className='h-1 overflow-hidden rounded-full bg-muted-foreground/10'>
         <div
@@ -149,25 +159,17 @@ export function PlanRow({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const rowContent = (
     <>
-      <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
-        <div className='min-w-0 space-y-1.5'>
-          <div className='flex min-w-0 flex-wrap items-center gap-2'>
-            <StatusPill plan={plan} />
-            <PlanTitle plan={plan} progressPercent={progressPercent} />
-          </div>
-          <NextTask plan={plan} />
-        </div>
-
-        <div className='min-w-0 md:pt-1'>
-          <TaskCount plan={plan} />
-        </div>
-        <div className='min-w-0 md:pt-1'>
-          <LastActivity value={lastActivity} />
-        </div>
+      <div className='flex min-w-0 items-center gap-2'>
+        <PlanTitle
+          plan={plan}
+          progressPercent={progressPercent}
+          lastActivity={lastActivity}
+        />
+        <StatusPill plan={plan} />
       </div>
 
       <div className='mt-3'>
-        <ProgressTrack progressPercent={progressPercent} />
+        <TaskProgress plan={plan} progressPercent={progressPercent} />
       </div>
     </>
   );
@@ -214,7 +216,7 @@ export function PlanRow({
           </div>
 
           {!selectionMode ? (
-            <div className='absolute top-2 right-2'>
+            <div className='absolute inset-y-0 right-2 flex items-center'>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button

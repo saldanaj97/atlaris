@@ -6,7 +6,7 @@ import type {
 import type { Metadata } from 'next';
 
 import {
-  PlanCountBadgeContent,
+  PlanHeaderSummaryContent,
   PlansContent,
 } from '@/app/(app)/plans/components/PlansContent';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
@@ -83,14 +83,21 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
 
   return (
     <>
-      {/* Static header - renders immediately; count waits independently. */}
+      {/* Static header - renders immediately; usage summary streams in independently. */}
       <PageHeader
         title='Your Plans'
-        subtitle='Search, filter, and compare your learning plan library.'
+        subtitle='Search, filter, and track your learning plan library.'
         actions={
-          <div className='flex items-center gap-2 sm:pt-8'>
-            <Suspense fallback={<Skeleton className='h-6 w-16 rounded-full' />}>
-              <PlanCountBadgeContent dataPromise={plansPageData} />
+          <>
+            <Suspense
+              fallback={
+                <div className='flex items-center gap-3'>
+                  <Skeleton className='h-4 w-32' />
+                  <Skeleton className='h-6 w-24 rounded-full' />
+                </div>
+              }
+            >
+              <PlanHeaderSummaryContent dataPromise={plansPageData} />
             </Suspense>
             <Button asChild>
               <Link href='/plans/new'>
@@ -98,7 +105,7 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
                 New Plan
               </Link>
             </Button>
-          </div>
+          </>
         }
       />
 

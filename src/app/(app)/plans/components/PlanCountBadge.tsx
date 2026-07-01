@@ -11,11 +11,18 @@ interface PlanCountBadgeProps {
 }
 
 export function PlanCountBadge({ usage }: PlanCountBadgeProps) {
+  const limitLabel = formatCompactUsageLimit(usage.activePlans.limit);
+
   return (
     <UsageHoverCard usage={usage}>
-      <span className='cursor-default rounded-full bg-muted-foreground/10 px-2.5 py-0.5 text-xs font-medium text-muted-foreground'>
-        {usage.activePlans.current} /{' '}
-        {formatCompactUsageLimit(usage.activePlans.limit)}
+      <span
+        className='inline-flex cursor-default items-center gap-1 rounded-full border border-border/70 bg-panel px-3 py-1 text-xs font-medium text-muted-foreground'
+        aria-label={`${usage.activePlans.current} of ${limitLabel} active plans used`}
+      >
+        <span className='text-foreground'>{usage.activePlans.current}</span>
+        <span aria-hidden='true'>/</span>
+        <span>{limitLabel}</span>
+        <span>plans</span>
       </span>
     </UsageHoverCard>
   );

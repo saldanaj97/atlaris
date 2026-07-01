@@ -206,7 +206,7 @@ describe('PlansList', () => {
       'href',
       '/plans?search=react&status=active&sort=newest',
     );
-    expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^Next$/ })).toHaveAttribute(
       'href',
       '/plans?search=react&status=active&sort=newest&page=3',
     );
@@ -469,27 +469,49 @@ describe('PlansList', () => {
       'href',
       '/plans?search=react&status=active',
     );
-    expect(screen.getByRole('link', { name: /Next/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^Next$/ })).toHaveAttribute(
       'href',
       '/plans?search=react&status=active&page=3',
     );
   });
 
+  it('shows the filtered result count in the list toolbar', () => {
+    renderPlansList({
+      page: {
+        totalItems: 2,
+        totalSearchResults: 9,
+        statusCounts: {
+          not_started: 3,
+          active: 2,
+          paused: 1,
+          completed: 2,
+          generating: 1,
+          failed: 0,
+        },
+      },
+      query: { status: 'active' },
+    });
+
+    expect(screen.getByText('2 plans')).toBeInTheDocument();
+    expect(screen.queryByText('9 plans')).not.toBeInTheDocument();
+  });
+
   it.each([
-    ['not_started', 'Not started', '(0)'],
-    ['active', 'Active', '(1)'],
-    ['inactive', 'Inactive', '(0)'],
-    ['completed', 'Completed', '(1)'],
+    ['not_started', 'Not started', '0'],
+    ['active', 'Active', '1'],
+    ['inactive', 'Inactive', '0'],
+    ['completed', 'Completed', '1'],
   ] satisfies [FilterStatus, string, string][])(
     'renders aggregate count for %s filter',
     (_, label, count) => {
       renderPlansList();
 
-      expect(
-        within(screen.getByRole('tablist')).getByRole('link', {
-          name: new RegExp(label),
-        }),
-      ).toHaveTextContent(count);
+      const filterLink = within(screen.getByRole('tablist')).getByRole('link', {
+        name: new RegExp(label),
+      });
+
+      expect(filterLink).toHaveTextContent(label);
+      expect(within(filterLink).getByText(count)).toBeInTheDocument();
     },
   );
 });

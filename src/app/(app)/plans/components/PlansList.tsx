@@ -17,7 +17,6 @@ import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import {
   ATLAS_CONTROL_CLASS,
-  ATLAS_HERO_SURFACE_CLASS,
   ATLAS_TAB_CLASS,
 } from '@/app/(app)/plans/components/plans-atlas-classes';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
@@ -26,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Surface } from '@/components/ui/surface';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListChecks, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -93,50 +92,6 @@ function getFilterCount(
   if (tab.id === 'all') return page.totalSearchResults;
   if (tab.id === 'inactive') return page.statusCounts.paused;
   return tab.status ? page.statusCounts[tab.status] : 0;
-}
-
-function PlansHero({ page }: { page: PlanListPage }) {
-  return (
-    <section
-      aria-label='Plans overview'
-      className={cn(
-        'relative overflow-hidden rounded-2xl p-5 shadow-sm sm:p-6',
-        ATLAS_HERO_SURFACE_CLASS,
-      )}
-    >
-      <div className='flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between'>
-        <div className='min-w-0'>
-          <h2 className='text-2xl font-semibold text-foreground sm:text-3xl'>
-            Learning plan library
-          </h2>
-          <p className='mt-2 max-w-2xl text-sm leading-6 text-muted-foreground'>
-            A mapped library with milestone rails and calm progress cues.
-          </p>
-        </div>
-
-        <div className='grid gap-3 sm:grid-cols-2 lg:min-w-[16rem]'>
-          <div className='min-w-0 border-l border-border/80 pl-3'>
-            <div className='text-2xl font-semibold text-foreground tabular-nums'>
-              {page.statusCounts.active}
-            </div>
-            <div className='text-xs font-medium text-foreground'>Active</div>
-            <div className='truncate text-xs text-muted-foreground'>
-              In progress
-            </div>
-          </div>
-          <div className='min-w-0 border-l border-border/80 pl-3'>
-            <div className='text-2xl font-semibold text-foreground tabular-nums'>
-              {page.statusCounts.completed}
-            </div>
-            <div className='text-xs font-medium text-foreground'>Completed</div>
-            <div className='truncate text-xs text-muted-foreground'>
-              Finished plans
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function BulkPlanActionsToolbar({
@@ -220,44 +175,47 @@ function BulkPlanActionsToolbar({
 function PlansControls({
   page,
   query,
-  selectionMode,
-  onEnterSelectionMode,
-  canEnterSelectionMode,
 }: {
   page: PlanListPage;
   query: PlanListQuery;
-  selectionMode: boolean;
-  onEnterSelectionMode: () => void;
-  canEnterSelectionMode: boolean;
 }) {
   const router = useRouter();
 
   return (
-    <Surface padding='compact' className={cn('space-y-4', ATLAS_CONTROL_CLASS)}>
-      <form action='/plans' className='relative'>
-        <Search
-          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
-          aria-hidden='true'
-        />
-        {query.status !== 'all' ? (
-          <input type='hidden' name='status' value={query.status} />
-        ) : null}
-        {query.sort !== 'recommended' ? (
-          <input type='hidden' name='sort' value={query.sort} />
-        ) : null}
-        <Input
-          type='search'
-          name='search'
-          placeholder='Search plans...'
-          aria-label='Search learning plans'
-          className='h-11 border-border bg-background pl-9 dark:bg-input/30'
-          defaultValue={query.search}
-        />
-      </form>
-
+    <div className='space-y-4 border-b border-border/60 pb-5'>
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <form action='/plans' className='flex items-center gap-2'>
-          <label htmlFor='plans-sort' className='text-sm text-muted-foreground'>
+        <form
+          action='/plans'
+          className='relative min-w-0 sm:max-w-sm sm:flex-1'
+        >
+          <Search
+            className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
+            aria-hidden='true'
+          />
+          {query.status !== 'all' ? (
+            <input type='hidden' name='status' value={query.status} />
+          ) : null}
+          {query.sort !== 'recommended' ? (
+            <input type='hidden' name='sort' value={query.sort} />
+          ) : null}
+          <Input
+            type='search'
+            name='search'
+            placeholder='Search plans...'
+            aria-label='Search learning plans'
+            className='h-9 border-border bg-background pl-9 dark:bg-input/30'
+            defaultValue={query.search}
+          />
+        </form>
+
+        <form
+          action='/plans'
+          className='flex shrink-0 items-center gap-2 self-end sm:self-auto'
+        >
+          <label
+            htmlFor='plans-sort'
+            className='text-xs font-medium tracking-wide text-muted-foreground uppercase'
+          >
             Sort
           </label>
           {query.search ? (
@@ -279,7 +237,7 @@ function PlansControls({
                 }),
               )
             }
-            className='h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs dark:bg-input/30'
+            className='h-9 max-w-[11rem] truncate rounded-md border border-input bg-background px-2.5 text-sm shadow-xs dark:bg-input/30'
             aria-label='Sort learning plans'
           >
             {SORT_OPTIONS.map((option) => (
@@ -289,22 +247,10 @@ function PlansControls({
             ))}
           </select>
         </form>
-
-        {!selectionMode ? (
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            onClick={onEnterSelectionMode}
-            disabled={!canEnterSelectionMode}
-          >
-            Select
-          </Button>
-        ) : null}
       </div>
 
-      <Tabs value={query.status}>
-        <TabsList className='h-auto flex-wrap gap-1 bg-transparent p-0'>
+      <Tabs value={query.status} aria-label='Filter plans by status'>
+        <TabsList className='h-auto w-full justify-start gap-1.5 overflow-x-auto bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden'>
           {FILTER_TABS.map((tab) => {
             const count = getFilterCount(tab, page);
             return (
@@ -313,7 +259,7 @@ function PlansControls({
                 key={tab.id}
                 value={tab.id}
                 className={cn(
-                  'rounded-lg border border-transparent px-3 py-1.5 text-sm',
+                  'group inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm',
                   ATLAS_TAB_CLASS,
                 )}
               >
@@ -327,15 +273,15 @@ function PlansControls({
                   {tab.status ? (
                     <span
                       className={cn(
-                        'size-2 rounded-full',
+                        'size-2 shrink-0 rounded-full',
                         getPlanStatusDotClassName(tab.status),
                       )}
                       aria-hidden='true'
                     />
                   ) : null}
-                  {tab.label}
-                  <span className='text-muted-foreground tabular-nums'>
-                    ({count})
+                  <span>{tab.label}</span>
+                  <span className='rounded-md bg-muted/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums group-data-[state=active]:bg-primary/15 group-data-[state=active]:text-primary-dark dark:group-data-[state=active]:text-primary'>
+                    {count}
                   </span>
                 </Link>
               </TabsTrigger>
@@ -343,7 +289,7 @@ function PlansControls({
           })}
         </TabsList>
       </Tabs>
-    </Surface>
+    </div>
   );
 }
 
@@ -457,35 +403,46 @@ export function PlansList({ page, query }: PlansListProps) {
 
   return (
     <div className='space-y-5'>
-      <PlansHero page={page} />
-      <PlansControls
-        page={page}
-        query={query}
-        selectionMode={selectionMode}
-        onEnterSelectionMode={handleEnterSelectionMode}
-        canEnterSelectionMode={deletablePlans.length > 0}
-      />
+      <PlansControls page={page} query={query} />
 
-      {selectionMode ? (
-        <BulkPlanActionsToolbar
-          selectedCount={selectedDeletablePlans.length}
-          deletableCount={deletablePlans.length}
-          toolbarMessage={toolbarMessage}
-          onSelectAll={handleSelectAllOnPage}
-          onClear={handleClearSelection}
-          onDelete={() => setBulkDeleteOpen(true)}
-          onCancelSelection={handleCancelSelectionMode}
+      <div className='space-y-3'>
+        <div className='flex items-center justify-between'>
+          <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
+            {page.totalItems} plan{page.totalItems === 1 ? '' : 's'}
+          </p>
+          {!selectionMode ? (
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={handleEnterSelectionMode}
+              disabled={deletablePlans.length === 0}
+            >
+              <ListChecks />
+              Select
+            </Button>
+          ) : null}
+        </div>
+
+        {selectionMode ? (
+          <BulkPlanActionsToolbar
+            selectedCount={selectedDeletablePlans.length}
+            deletableCount={deletablePlans.length}
+            toolbarMessage={toolbarMessage}
+            onSelectAll={handleSelectAllOnPage}
+            onClear={handleClearSelection}
+            onDelete={() => setBulkDeleteOpen(true)}
+            onCancelSelection={handleCancelSelectionMode}
+          />
+        ) : null}
+
+        <BulkDeletePlansDialog
+          open={bulkDeleteOpen}
+          onOpenChange={setBulkDeleteOpen}
+          plans={selectedDeletablePlans}
+          onDeleted={handleBulkDeleted}
         />
-      ) : null}
 
-      <BulkDeletePlansDialog
-        open={bulkDeleteOpen}
-        onOpenChange={setBulkDeleteOpen}
-        plans={selectedDeletablePlans}
-        onDeleted={handleBulkDeleted}
-      />
-
-      <div>
         {page.items.length === 0 ? (
           <EmptyPlansList
             searchQuery={query.search}
@@ -511,18 +468,15 @@ export function PlansList({ page, query }: PlansListProps) {
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className={cn(
-            'mt-6 flex flex-col gap-3 rounded-2xl border p-4 text-sm text-muted-foreground shadow-sm sm:flex-row sm:items-center sm:justify-between',
-            ATLAS_CONTROL_CLASS,
-          )}
+          className='flex flex-col gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
         >
-          <span>
+          <span className='tabular-nums'>
             Page {page.page} of {page.totalPages}
           </span>
           <div className='flex items-center gap-2'>
             <Button
               asChild={page.page > 1}
-              variant='outline'
+              variant='ghost'
               size='sm'
               disabled={page.page <= 1}
             >
@@ -547,7 +501,7 @@ export function PlansList({ page, query }: PlansListProps) {
             </Button>
             <Button
               asChild={page.page < page.totalPages}
-              variant='outline'
+              variant='ghost'
               size='sm'
               disabled={page.page >= page.totalPages}
             >
