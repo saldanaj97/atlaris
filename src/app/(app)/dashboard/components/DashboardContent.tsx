@@ -3,6 +3,7 @@ import {
   generateActivities,
 } from '@/app/(app)/dashboard/components/activity-utils';
 import { ActivityFeedClient } from '@/app/(app)/dashboard/components/ActivityFeedClient';
+import { ActivityFeedScoreboard } from '@/app/(app)/dashboard/components/ActivityFeedScoreboard';
 import { ActivityStreamSidebar } from '@/app/(app)/dashboard/components/ActivityStreamSidebar';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,19 +38,25 @@ export async function DashboardContent() {
 
   return (
     <>
-      {/* ResumeLearningHero - only shown if there's an active plan */}
-      {activePlan && (
-        <section aria-label='Resume learning' className='mb-6'>
+      {activePlan ? (
+        <section aria-label='Resume learning' className='mb-5'>
           <ResumeLearningHero plan={activePlan} />
         </section>
-      )}
+      ) : null}
 
-      <div className='grid gap-6 lg:grid-cols-3'>
-        {/* Client island - only filter logic */}
-        <ActivityFeedClient activities={activities} />
+      <div className='grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]'>
+        <div className='min-w-0'>
+          <ActivityFeedClient activities={activities} />
+        </div>
 
-        {/* Sidebar - server rendered */}
-        <ActivityStreamSidebar activePlan={activePlan} />
+        <div className='min-w-0 space-y-5 lg:self-start'>
+          {activePlan ? null : <ActivityStreamSidebar />}
+          <ActivityFeedScoreboard
+            summaries={summaries}
+            activities={activities}
+            activePlan={activePlan}
+          />
+        </div>
       </div>
     </>
   );
@@ -62,7 +69,6 @@ export async function DashboardContent() {
 export function DashboardContentSkeleton() {
   return (
     <>
-      {/* ResumeLearningHero skeleton */}
       <section aria-label='Resume learning loading' className='mb-6'>
         <Surface padding='comfortable' className='flex flex-col gap-4'>
           <div className='flex items-start justify-between gap-4'>
@@ -72,12 +78,6 @@ export function DashboardContentSkeleton() {
 
           <div className='flex flex-wrap items-end justify-between gap-4'>
             <div className='min-w-0 flex-1 space-y-2'>
-              <div className='flex flex-wrap gap-2'>
-                <Skeleton className='h-6 w-20 rounded-full' />
-                <Skeleton className='h-6 w-16 rounded-full' />
-                <Skeleton className='h-6 w-14 rounded-full' />
-                <Skeleton className='h-6 w-24 rounded-full' />
-              </div>
               <Skeleton className='h-9 w-64 md:w-80' />
               <Skeleton className='h-5 w-full max-w-md' />
             </div>
@@ -90,9 +90,8 @@ export function DashboardContentSkeleton() {
         </Surface>
       </section>
 
-      <div className='grid gap-6 lg:grid-cols-3'>
-        {/* Activity Feed skeleton - lg:col-span-2 */}
-        <div className='lg:col-span-2'>
+      <div className='grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]'>
+        <div>
           {/* Filter tabs skeleton */}
           <div className='mb-6 flex items-center gap-3'>
             <Skeleton className='h-9 w-16 rounded-lg' />
@@ -123,15 +122,10 @@ export function DashboardContentSkeleton() {
           </div>
         </div>
 
-        {/* Sidebar skeleton */}
-        <aside className='flex w-full flex-col gap-4'>
-          <Surface>
-            <div className='flex flex-col items-center py-6 text-center'>
-              <Skeleton className='mb-4 size-12 rounded-full' />
-              <Skeleton className='mb-2 h-5 w-40' />
-              <Skeleton className='mb-4 h-4 w-56' />
-              <Skeleton className='h-10 w-28 rounded-lg' />
-            </div>
+        <aside className='flex w-full flex-col gap-4 lg:self-start'>
+          <Surface className='border-primary/20'>
+            <Skeleton className='mb-4 h-5 w-28' />
+            <Skeleton className='h-48 w-full rounded-xl' />
           </Surface>
         </aside>
       </div>

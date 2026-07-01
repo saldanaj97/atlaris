@@ -1,34 +1,26 @@
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
-import { BookOpen } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import Link from 'next/link';
 
-function EmptyStateCard() {
+export function NoUpcomingEventsCard() {
   return (
     <Surface className='border-sidebar-border bg-sidebar text-sidebar-foreground'>
       <div className='flex flex-col items-center py-6 text-center'>
         <div className='mb-4 flex size-12 items-center justify-center rounded-full bg-sidebar-accent text-sidebar-accent-foreground'>
-          <BookOpen className='size-6' />
+          <Calendar className='size-6' />
         </div>
         <h3 className='mb-2 font-medium text-sidebar-foreground'>
-          No active learning plan
+          No upcoming events
         </h3>
         <p className='mb-4 text-sm text-sidebar-foreground/70'>
-          Create a new plan to start your learning journey
+          Add sessions to your active plan to keep learning momentum.
         </p>
         <Button asChild>
-          <Link href={ROUTES.PLANS.NEW}>Create New Plan</Link>
+          <Link href={ROUTES.PLANS.ROOT}>View Plans</Link>
         </Button>
       </div>
     </Surface>
-  );
-}
-
-export function ActivityStreamSidebar() {
-  return (
-    <aside className='flex w-full flex-col gap-4'>
-      <EmptyStateCard />
-    </aside>
   );
 }
