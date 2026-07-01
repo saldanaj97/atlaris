@@ -123,6 +123,14 @@ export function DashboardContentSkeleton() {
         </div>
 
         <aside className='flex w-full flex-col gap-4 lg:self-start'>
+          <Surface className='border-sidebar-border'>
+            <div className='flex flex-col items-center py-6'>
+              <Skeleton className='mb-4 size-12 rounded-full' />
+              <Skeleton className='mb-2 h-5 w-36' />
+              <Skeleton className='mb-4 h-4 w-52' />
+              <Skeleton className='h-10 w-32 rounded-lg' />
+            </div>
+          </Surface>
           <Surface className='border-primary/20'>
             <Skeleton className='mb-4 h-5 w-28' />
             <Skeleton className='h-48 w-full rounded-xl' />

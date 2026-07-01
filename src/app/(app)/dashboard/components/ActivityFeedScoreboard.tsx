@@ -30,10 +30,10 @@ export function ActivityFeedScoreboard({
     (minutes, summary) => minutes + summary.completedMinutes,
     0,
   );
-  const activePlanCount = summaries.filter(
+  const inProgressPlanCount = summaries.filter(
     (summary) => summary.completion < 1 - COMPLETION_EPSILON,
   ).length;
-  const completedPlanCount = summaries.length - activePlanCount;
+  const completedPlanCount = summaries.length - inProgressPlanCount;
   const taskCompletionPercent =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const activePlanProgress = activePlan
@@ -41,8 +41,8 @@ export function ActivityFeedScoreboard({
     : null;
   const metrics = [
     {
-      label: 'Active plans',
-      value: activePlanCount.toString(),
+      label: 'In-progress plans',
+      value: inProgressPlanCount.toString(),
       detail:
         completedPlanCount > 0
           ? `${completedPlanCount} completed`
@@ -70,7 +70,11 @@ export function ActivityFeedScoreboard({
       label: 'Feed events',
       value: activities.length.toString(),
       detail:
-        activities.length === 1 ? '1 recent signal' : 'Recent learning signals',
+        activities.length === 0
+          ? 'No recent signals'
+          : activities.length === 1
+            ? '1 recent signal'
+            : 'Recent learning signals',
       icon: Activity,
     },
   ];
