@@ -94,22 +94,19 @@ async function requestBulkPlanDeletion(
 function finalizeBulkDeleteRequest({
   controller,
   abortControllerRef,
-  isMountedRef,
   setDeleting,
 }: {
   controller: AbortController;
   abortControllerRef: { current: AbortController | null };
-  isMountedRef: { current: boolean };
   setDeleting: (value: boolean) => void;
-}): void {
+}): boolean {
   if (abortControllerRef.current !== controller) {
-    return;
+    return false;
   }
 
   abortControllerRef.current = null;
-  if (isMountedRef.current) {
-    setDeleting(false);
-  }
+  setDeleting(false);
+  return true;
 }
 
 function formatPlanTopicList(plans: Pick<PlanListItem, 'topic'>[]): string {
@@ -131,11 +128,10 @@ export function BulkDeletePlansDialog({
 }: BulkDeletePlansDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const isMountedRef = useRef(true);
 
+  // react-doctor-disable-next-line react-doctor/exhaustive-deps -- unmount cleanup intentionally aborts the active request.
   useEffect(() => {
     return () => {
-      isMountedRef.current = false;
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
     };
@@ -155,37 +151,36 @@ export function BulkDeletePlansDialog({
 
     switch (result.kind) {
       case 'success':
-        finalizeBulkDeleteRequest({
+        if (!finalizeBulkDeleteRequest({
           controller,
           abortControllerRef,
-          isMountedRef,
           setDeleting,
-        });
-        if (isMountedRef.current) {
-          onOpenChange(false);
-          onDeleted(result.result);
+        })) {
+          return;
         }
+        onOpenChange(false);
+        onDeleted(result.result);
         return;
       case 'aborted':
         finalizeBulkDeleteRequest({
           controller,
           abortControllerRef,
-          isMountedRef,
           setDeleting,
         });
         return;
       case 'error':
+        if (!finalizeBulkDeleteRequest({
+          controller,
+          abortControllerRef,
+          setDeleting,
+        })) {
+          return;
+        }
         clientLogger.error('Bulk plan deletion failed', {
           planIds: plans.map((plan) => plan.id),
           error: result.error,
         });
         toast.error(result.message);
-        finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          isMountedRef,
-          setDeleting,
-        });
         return;
     }
   };
