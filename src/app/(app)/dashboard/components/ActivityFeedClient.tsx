@@ -25,7 +25,7 @@ export function ActivityFeedClient({ activities }: ActivityFeedClientProps) {
       : activities.filter((activity) => activity.type === filter);
 
   return (
-    <section aria-label='Activity feed' className='lg:col-span-2'>
+    <section aria-label='Activity feed'>
       <div className='mb-6 flex items-center gap-2 border-b border-border pb-4'>
         <Tabs
           value={filter}

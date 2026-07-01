@@ -2,7 +2,6 @@ import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
-import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import { Play } from 'lucide-react';
 import Link from 'next/link';
 
@@ -108,10 +107,6 @@ function HeroCircularProgress({
 }
 
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
-  const skillLevel = formatSkillLevel(plan.plan.skillLevel ?? 'beginner');
-  const weeklyHours = plan.plan.weeklyHours ?? 10;
-  const moduleCount = plan.modules.length;
-  const totalDuration = formatMinutes(plan.totalMinutes);
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
@@ -132,21 +127,6 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
 
       <div className='flex flex-wrap items-start justify-between gap-4 sm:items-end'>
         <div className='min-w-0 flex-1 space-y-2'>
-          <div className='flex flex-wrap gap-2'>
-            {[
-              skillLevel,
-              `${weeklyHours}h/week`,
-              totalDuration,
-              `${moduleCount} modules`,
-            ].map((label) => (
-              <span
-                key={label}
-                className='rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground'
-              >
-                {label}
-              </span>
-            ))}
-          </div>
           <h2 className='truncate text-2xl font-semibold text-foreground md:text-3xl'>
             {plan.plan.topic}
           </h2>
