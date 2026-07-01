@@ -217,7 +217,9 @@ export function BulkDeletePlansDialog({
               void handleDelete();
             }}
           >
-            {deleting ? 'Deleting...' : `Delete ${plans.length} plans`}
+            {deleting
+              ? 'Deleting...'
+              : `Delete ${plans.length} plan${plans.length === 1 ? '' : 's'}`}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

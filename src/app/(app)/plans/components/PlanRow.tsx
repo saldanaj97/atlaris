@@ -147,6 +147,30 @@ export function PlanRow({
     referenceTimestamp,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const rowContent = (
+    <>
+      <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
+        <div className='min-w-0 space-y-1.5'>
+          <div className='flex min-w-0 flex-wrap items-center gap-2'>
+            <StatusPill plan={plan} />
+            <PlanTitle plan={plan} progressPercent={progressPercent} />
+          </div>
+          <NextTask plan={plan} />
+        </div>
+
+        <div className='min-w-0 md:pt-1'>
+          <TaskCount plan={plan} />
+        </div>
+        <div className='min-w-0 md:pt-1'>
+          <LastActivity value={lastActivity} />
+        </div>
+      </div>
+
+      <div className='mt-3'>
+        <ProgressTrack progressPercent={progressPercent} />
+      </div>
+    </>
+  );
 
   return (
     <div className='relative'>
@@ -180,31 +204,13 @@ export function PlanRow({
 
         <div className='relative min-w-0 flex-1'>
           <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted/35 hover:shadow-md'>
-            <Link
-              href={`/plans/${plan.id}`}
-              className={cn('block min-w-0', !selectionMode && 'pr-12')}
-            >
-              <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
-                <div className='min-w-0 space-y-1.5'>
-                  <div className='flex min-w-0 flex-wrap items-center gap-2'>
-                    <StatusPill plan={plan} />
-                    <PlanTitle plan={plan} progressPercent={progressPercent} />
-                  </div>
-                  <NextTask plan={plan} />
-                </div>
-
-                <div className='min-w-0 md:pt-1'>
-                  <TaskCount plan={plan} />
-                </div>
-                <div className='min-w-0 md:pt-1'>
-                  <LastActivity value={lastActivity} />
-                </div>
-              </div>
-
-              <div className='mt-3'>
-                <ProgressTrack progressPercent={progressPercent} />
-              </div>
-            </Link>
+            {selectionMode ? (
+              <div className='block min-w-0'>{rowContent}</div>
+            ) : (
+              <Link href={`/plans/${plan.id}`} className='block min-w-0 pr-12'>
+                {rowContent}
+              </Link>
+            )}
           </div>
 
           {!selectionMode ? (

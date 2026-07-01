@@ -24,7 +24,13 @@ export type FilterStatus =
 
 export const PLAN_LIST_PAGE_SIZE = 20 as const;
 
-export type PlanListSort = 'recommended' | 'recently_updated' | 'newest';
+export const PLAN_LIST_SORTS = [
+  'recommended',
+  'recently_updated',
+  'newest',
+] as const;
+
+export type PlanListSort = (typeof PLAN_LIST_SORTS)[number];
 
 export type PlanListQuery = {
   page: number;

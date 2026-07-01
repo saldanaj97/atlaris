@@ -30,19 +30,19 @@ function parseBulkDeletePlanIds(body: BulkDeleteRequestBody): string[] {
     });
   }
 
-  const dedupedPlanIds = [...new Set(body.planIds)];
-
-  if (dedupedPlanIds.length === 0) {
+  if (body.planIds.length === 0) {
     throw new ValidationError('Invalid bulk delete request.', {
       planIds: 'At least one plan ID is required.',
     });
   }
 
-  if (dedupedPlanIds.length > PLAN_LIST_PAGE_SIZE) {
+  if (body.planIds.length > PLAN_LIST_PAGE_SIZE) {
     throw new ValidationError('Invalid bulk delete request.', {
       planIds: `No more than ${PLAN_LIST_PAGE_SIZE} plan IDs are allowed.`,
     });
   }
+
+  const dedupedPlanIds = [...new Set(body.planIds)];
 
   const invalidIds = dedupedPlanIds.filter(
     (planId) => typeof planId !== 'string' || !UUID_REGEX.test(planId),

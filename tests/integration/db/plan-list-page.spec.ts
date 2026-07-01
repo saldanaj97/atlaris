@@ -354,6 +354,43 @@ describe('aggregate plans page query', () => {
     });
   });
 
+  it('keeps non-ready plans with modules out of the not-started bucket', async () => {
+    const userId = await createUser('non-ready-modules');
+    const generatingPlan = await createTestPlan({
+      userId,
+      topic: 'Lifecycle Generating With Modules',
+      generationStatus: 'generating',
+    });
+    const generatingModule = await createTestModule({
+      planId: generatingPlan.id,
+    });
+    await createTestTask({ moduleId: generatingModule.id });
+
+    const failedPlan = await createTestPlan({
+      userId,
+      topic: 'Lifecycle Failed With Modules',
+      generationStatus: 'failed',
+    });
+    const failedModule = await createTestModule({ planId: failedPlan.id });
+    await createTestTask({ moduleId: failedModule.id });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ search: 'lifecycle' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+    const byId = new Map(page.items.map((item) => [item.id, item.status]));
+
+    expect(byId.get(generatingPlan.id)).toBe('generating');
+    expect(byId.get(failedPlan.id)).toBe('failed');
+    expect(page.statusCounts).toMatchObject({
+      not_started: 0,
+      generating: 1,
+      failed: 1,
+    });
+  });
+
   it('orders plans by recently updated when sort is recently_updated', async () => {
     const userId = await createUser('sort-recent');
     const older = await createTestPlan({

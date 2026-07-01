@@ -14,6 +14,7 @@ import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -45,11 +46,7 @@ const PLAN_FILTERS = new Set<FilterStatus>([
   'inactive',
 ]);
 
-const PLAN_SORTS = new Set<PlanListSort>([
-  'recommended',
-  'recently_updated',
-  'newest',
-]);
+const PLAN_SORTS = new Set<PlanListSort>(PLAN_LIST_SORTS);
 
 function firstSearchParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');

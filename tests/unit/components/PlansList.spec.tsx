@@ -221,6 +221,12 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
+    ).toHaveLength(2);
+
     await user.click(screen.getByRole('button', { name: 'Select' }));
 
     expect(screen.getByLabelText('Bulk plan actions')).toBeInTheDocument();
@@ -230,6 +236,11 @@ describe('PlansList', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Select Learn TypeScript' }),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
+    ).toHaveLength(0);
   });
 
   it('disables selection for generating plans', async () => {
@@ -307,6 +318,21 @@ describe('PlansList', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Delete 2 plans' }),
+    ).toBeInTheDocument();
+  });
+
+  it('pluralizes the bulk delete action for one selected plan', async () => {
+    const user = userEvent.setup();
+    renderPlansList();
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+
+    expect(
+      screen.getByRole('button', { name: 'Delete 1 plan' }),
     ).toBeInTheDocument();
   });
 

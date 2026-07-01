@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 interface PlansListProps {
@@ -345,34 +345,18 @@ export function PlansList({ page, query }: PlansListProps) {
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
+  const deletablePlans: PlanListItem[] = [];
+  const selectedDeletablePlans: PlanListItem[] = [];
 
-  const visiblePlanIds = useMemo(
-    () => page.items.map((plan) => plan.id).join(','),
-    [page.items],
-  );
-
-  const deletablePlans = useMemo(
-    () => page.items.filter(isPlanBulkDeletable),
-    [page.items],
-  );
-  const selectedPlans = useMemo(
-    () => page.items.filter((plan) => selectedPlanIds.has(plan.id)),
-    [page.items, selectedPlanIds],
-  );
-  const selectedDeletablePlans = useMemo(
-    () => selectedPlans.filter(isPlanBulkDeletable),
-    [selectedPlans],
-  );
-
-  useEffect(() => {
-    const visibleIds = new Set(page.items.map((plan) => plan.id));
-    setSelectedPlanIds((current) => {
-      const next = new Set(
-        [...current].filter((planId) => visibleIds.has(planId)),
-      );
-      return next.size === current.size ? current : next;
-    });
-  }, [visiblePlanIds, page.items]);
+  for (const plan of page.items) {
+    if (!isPlanBulkDeletable(plan)) {
+      continue;
+    }
+    deletablePlans.push(plan);
+    if (selectedPlanIds.has(plan.id)) {
+      selectedDeletablePlans.push(plan);
+    }
+  }
 
   const handleSelectionChange = (planId: string, selected: boolean): void => {
     setSelectedPlanIds((current) => {
@@ -409,12 +393,19 @@ export function PlansList({ page, query }: PlansListProps) {
   };
 
   const handleBulkDeleted = (result: BulkDeletePlansResult): void => {
-    const deletedIds = new Set(
-      result.results
-        .filter((entry) => entry.success)
-        .map((entry) => entry.planId),
-    );
-    const failedResults = result.results.filter((entry) => !entry.success);
+    const deletedIds = new Set<string>();
+    const failedResults: Extract<
+      BulkDeletePlansResult['results'][number],
+      { success: false }
+    >[] = [];
+
+    for (const entry of result.results) {
+      if (entry.success) {
+        deletedIds.add(entry.planId);
+      } else {
+        failedResults.push(entry);
+      }
+    }
 
     setSelectedPlanIds((current) => {
       const next = new Set(

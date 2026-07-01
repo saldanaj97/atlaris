@@ -264,6 +264,12 @@ describe('POST /api/v1/plans/bulk-delete', () => {
     const tooManyResponse = await POST(buildBulkDeleteRequest(tooManyIds));
     expect(tooManyResponse.status).toBe(400);
 
+    const repeatedId = crypto.randomUUID();
+    const tooManyRawIdsResponse = await POST(
+      buildBulkDeleteRequest(Array.from({ length: 21 }, () => repeatedId)),
+    );
+    expect(tooManyRawIdsResponse.status).toBe(400);
+
     const malformedResponse = await POST(
       buildBulkDeleteRequest([], { body: '{not-json' }),
     );
