@@ -230,6 +230,8 @@ function PlansControls({
   onEnterSelectionMode: () => void;
   canEnterSelectionMode: boolean;
 }) {
+  const router = useRouter();
+
   return (
     <Surface padding='compact' className={cn('space-y-4', ATLAS_CONTROL_CLASS)}>
       <form action='/plans' className='relative'>
@@ -268,7 +270,15 @@ function PlansControls({
             id='plans-sort'
             name='sort'
             defaultValue={query.sort}
-            onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            onChange={(event) =>
+              router.push(
+                plansHref({
+                  search: query.search,
+                  status: query.status,
+                  sort: event.currentTarget.value as PlanListSort,
+                }),
+              )
+            }
             className='h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs dark:bg-input/30'
             aria-label='Sort learning plans'
           >

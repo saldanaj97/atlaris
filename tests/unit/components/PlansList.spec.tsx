@@ -13,6 +13,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockPush = vi.fn();
 const mockRefresh = vi.fn();
 
 vi.mock('next/link', () => ({
@@ -26,7 +27,7 @@ vi.mock('next/link', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: mockRefresh }),
+  useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ describe('PlansList', () => {
   const referenceTimestamp = '2024-06-01T00:00:00.000Z';
 
   beforeEach(() => {
+    mockPush.mockReset();
     mockRefresh.mockReset();
     vi.mocked(toast.success).mockReset();
     vi.mocked(toast.error).mockReset();
@@ -167,6 +169,23 @@ describe('PlansList', () => {
     expect(screen.getByLabelText('Sort learning plans')).toHaveValue(
       'recently_updated',
     );
+  });
+
+  it('uses client navigation when changing sort', async () => {
+    const user = userEvent.setup();
+    renderPlansList({
+      page: { page: 2, totalPages: 3 },
+      query: { page: 2, search: 'react', status: 'active' },
+    });
+
+    await user.selectOptions(screen.getByLabelText('Sort learning plans'), [
+      'newest',
+    ]);
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/plans?search=react&status=active&sort=newest',
+    );
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('preserves sort in filter tab links and pagination links', () => {
