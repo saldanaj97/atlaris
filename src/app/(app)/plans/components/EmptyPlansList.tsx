@@ -1,7 +1,7 @@
 import type { FilterStatus } from '@/features/plans/read-projection/types';
 
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { FileText, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,27 +26,19 @@ export function EmptyPlansList({
   const Icon = isFirstRun ? Sparkles : FileText;
 
   return (
-    <Surface
-      className='flex min-h-72 flex-col items-center justify-center overflow-hidden border-primary/20 bg-linear-to-br from-primary/10 to-panel px-6 py-12 text-center'
-    >
-      <div
-        className='mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground'
-        aria-hidden='true'
-      >
-        <Icon className='size-5' />
-      </div>
-      <h2 className='text-xl font-semibold text-foreground'>{title}</h2>
-      <p className='mt-2 max-w-md text-sm leading-6 text-muted-foreground'>
-        {description}
-      </p>
-      <div className='mt-5'>
+    <RouteEmptyState
+      icon={Icon}
+      title={title}
+      description={description}
+      className='flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-br from-primary/10 to-panel px-6 py-12 text-center'
+      action={
         <Button asChild>
           <Link href='/plans/new'>
             <Plus />
             New plan
           </Link>
         </Button>
-      </div>
-    </Surface>
+      }
+    />
   );
 }

@@ -1,4 +1,5 @@
 import type { ActivityItem } from '../types';
+import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
 
 import { formatMinutes } from '@/features/plans/formatters';
@@ -8,6 +9,12 @@ import { formatRelativePast } from '@/lib/date/relative-time';
 type DatedActivity = {
   activity: ActivityItem;
   activityDate: Date;
+};
+
+const DASHBOARD_PLAN_STATUS_RANK: Partial<Record<PlanReadStatus, number>> = {
+  active: 0,
+  not_started: 1,
+  generating: 2,
 };
 
 /**
@@ -101,7 +108,7 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
 }
 
 /**
- * Finds the most recently active (incomplete) plan from summaries.
+ * Finds the highest-priority incomplete plan from summaries.
  */
 export function findActivePlan(
   summaries: PlanSummary[],
@@ -115,13 +122,14 @@ export function findActivePlan(
         referenceDate: now,
       }),
     }))
-    .filter(({ status }) => status === 'active' || status === 'generating')
+    .filter(({ status }) => status in DASHBOARD_PLAN_STATUS_RANK)
     .toSorted((a, b) => {
-      const aStatus = a.status;
-      const bStatus = b.status;
+      const rankDifference =
+        (DASHBOARD_PLAN_STATUS_RANK[a.status] ?? 99) -
+        (DASHBOARD_PLAN_STATUS_RANK[b.status] ?? 99);
 
-      if (aStatus !== bStatus) {
-        return aStatus === 'active' ? -1 : 1;
+      if (rankDifference !== 0) {
+        return rankDifference;
       }
 
       const aTime = a.summary.plan.updatedAt

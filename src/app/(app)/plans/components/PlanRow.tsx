@@ -4,6 +4,10 @@ import type { PlanListItem } from '@/features/plans/read-projection/types';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
+import {
+  getPlanStatusPillClassName,
+  PLAN_STATUS_LABELS,
+} from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,30 +32,12 @@ interface PlanRowProps {
   referenceTimestamp: string;
 }
 
-const PLAN_STATUS_LABELS: Record<PlanListItem['status'], string> = {
-  not_started: 'Not started',
-  active: 'Active',
-  paused: 'Inactive',
-  completed: 'Completed',
-  generating: 'Generating',
-  failed: 'Failed',
-};
-
-const PLAN_STATUS_PILL_CLASS: Record<PlanListItem['status'], string> = {
-  not_started: 'border-muted-foreground/35 bg-muted-foreground/5',
-  active: 'border-success/50 bg-success/5 text-success',
-  paused: 'border-warning/50 bg-warning/5 text-warning',
-  completed: 'border-chart-3/50 bg-chart-3/5 text-chart-3',
-  generating: 'border-primary/50 bg-primary/5 text-primary',
-  failed: 'border-destructive/50 bg-destructive/5 text-destructive',
-};
-
 function StatusPill({ plan }: { plan: PlanListItem }) {
   return (
     <span
       className={cn(
         'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground',
-        PLAN_STATUS_PILL_CLASS[plan.status],
+        getPlanStatusPillClassName(plan.status),
       )}
     >
       {PLAN_STATUS_LABELS[plan.status]}
@@ -154,10 +140,7 @@ export function PlanRow({ plan, referenceTimestamp }: PlanRowProps) {
 
       <div className='relative'>
         <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted/35 hover:shadow-md'>
-          <Link
-            href={`/plans/${plan.id}`}
-            className='block min-w-0 pr-12'
-          >
+          <Link href={`/plans/${plan.id}`} className='block min-w-0 pr-12'>
             <div className='grid gap-3 md:grid-cols-[minmax(0,1fr)_7.5rem_7rem] md:items-start md:gap-4'>
               <div className='min-w-0 space-y-1.5'>
                 <div className='flex min-w-0 flex-wrap items-center gap-2'>
