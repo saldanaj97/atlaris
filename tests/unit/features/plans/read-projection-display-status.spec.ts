@@ -5,7 +5,11 @@ import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import { createId } from '@tests/fixtures/ids';
-import { buildPlan, buildPlanSummary } from '@tests/fixtures/plan-detail';
+import {
+  buildModuleRows,
+  buildPlan,
+  buildPlanSummary,
+} from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
 
 type SummaryFixture = Omit<Partial<PlanSummary>, 'plan'> & {
@@ -33,7 +37,7 @@ function summary(partial: SummaryFixture = {}): PlanSummary {
 
   return buildPlanSummary({
     plan,
-    modules: partial.modules ?? [],
+    modules: partial.modules ?? buildModuleRows(planId, 1),
     completion: partial.completion ?? 0,
     completedTasks: partial.completedTasks ?? 0,
     totalTasks: partial.totalTasks ?? 1,
@@ -53,8 +57,13 @@ describe('derivePlanSummaryDisplayStatus', () => {
     expected: PlanReadStatus;
   }>([
     {
-      name: 'active when canonical active and recently updated',
+      name: 'not_started when canonical active has no progress',
       overrides: {},
+      expected: 'not_started',
+    },
+    {
+      name: 'active when canonical active is started and recently updated',
+      overrides: { completion: 0.5, completedTasks: 1, totalTasks: 2 },
       expected: 'active',
     },
     {
@@ -81,6 +90,9 @@ describe('derivePlanSummaryDisplayStatus', () => {
       name: 'paused when canonical active but not updated 30+ days',
       overrides: {
         plan: { updatedAt: new Date('2026-03-01T00:00:00.000Z') },
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
       },
       expected: 'paused',
     },
@@ -88,6 +100,9 @@ describe('derivePlanSummaryDisplayStatus', () => {
       name: 'active when <30d since update (boundary)',
       overrides: {
         plan: { updatedAt: new Date('2026-03-24T00:00:00.000Z') },
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
       },
       expected: 'active',
     },
@@ -168,6 +183,9 @@ describe('derivePlanSummaryDisplayStatus', () => {
       derivePlanSummaryDisplayStatus({
         summary: summary({
           plan: { updatedAt: new Date(Number.NaN) },
+          completion: 0.5,
+          completedTasks: 1,
+          totalTasks: 2,
         }),
         referenceDate: ref,
       }),
@@ -178,6 +196,9 @@ describe('derivePlanSummaryDisplayStatus', () => {
     expect(
       derivePlanSummaryDisplayStatus({
         summary: summary({
+          completion: 0.5,
+          completedTasks: 1,
+          totalTasks: 2,
           plan: {
             updatedAt: 'not-a-date' as unknown as Date,
           },
@@ -192,6 +213,9 @@ describe('derivePlanSummaryDisplayStatus', () => {
       derivePlanSummaryDisplayStatus({
         summary: summary({
           plan: { updatedAt: new Date('2026-03-01T00:00:00.000Z') },
+          completion: 0.5,
+          completedTasks: 1,
+          totalTasks: 2,
         }),
         referenceDate: 'not-a-date',
       }),

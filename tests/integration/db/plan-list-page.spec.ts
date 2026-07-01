@@ -23,7 +23,13 @@ async function createUser(scenario: string): Promise<string> {
 }
 
 function query(overrides: Partial<PlanListQuery> = {}): PlanListQuery {
-  return { page: 1, search: '', status: 'all', ...overrides };
+  return {
+    page: 1,
+    search: '',
+    status: 'all',
+    sort: 'recommended',
+    ...overrides,
+  };
 }
 
 describe('aggregate plans page query', () => {
@@ -121,6 +127,7 @@ describe('aggregate plans page query', () => {
     expect(page.items.map((item) => item.id)).toEqual([literal.id]);
     expect(page.totalSearchResults).toBe(1);
     expect(page.statusCounts).toEqual({
+      not_started: 0,
       active: 0,
       paused: 0,
       completed: 0,
@@ -145,15 +152,52 @@ describe('aggregate plans page query', () => {
     });
     const activeModule = await createTestModule({ planId: activePlan.id });
     const activeTask = await createTestTask({ moduleId: activeModule.id });
+    const activeRemainingTask = await createTestTask({
+      moduleId: activeModule.id,
+      order: 2,
+    });
+    await db.insert(taskProgress).values({
+      taskId: activeTask.id,
+      userId,
+      status: 'completed',
+    });
     statusFixtures.push({
       expectedFilter: 'active',
       summary: {
         plan: activePlan,
         modules: [activeModule],
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
+        totalMinutes:
+          activeTask.estimatedMinutes + activeRemainingTask.estimatedMinutes,
+        completedMinutes: activeTask.estimatedMinutes,
+        completedModules: 0,
+        attemptsCount: 0,
+      },
+    });
+
+    const notStartedPlan = await createTestPlan({
+      userId,
+      topic: 'Scope Not started',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-06-20T18:00:00.000Z'),
+    });
+    const notStartedModule = await createTestModule({
+      planId: notStartedPlan.id,
+    });
+    const notStartedTask = await createTestTask({
+      moduleId: notStartedModule.id,
+    });
+    statusFixtures.push({
+      expectedFilter: 'not_started',
+      summary: {
+        plan: notStartedPlan,
+        modules: [notStartedModule],
         completion: 0,
         completedTasks: 0,
         totalTasks: 1,
-        totalMinutes: activeTask.estimatedMinutes,
+        totalMinutes: notStartedTask.estimatedMinutes,
         completedMinutes: 0,
         completedModules: 0,
         attemptsCount: 0,
@@ -168,16 +212,26 @@ describe('aggregate plans page query', () => {
     });
     const pausedModule = await createTestModule({ planId: pausedPlan.id });
     const pausedTask = await createTestTask({ moduleId: pausedModule.id });
+    const pausedRemainingTask = await createTestTask({
+      moduleId: pausedModule.id,
+      order: 2,
+    });
+    await db.insert(taskProgress).values({
+      taskId: pausedTask.id,
+      userId,
+      status: 'completed',
+    });
     statusFixtures.push({
       expectedFilter: 'inactive',
       summary: {
         plan: pausedPlan,
         modules: [pausedModule],
-        completion: 0,
-        completedTasks: 0,
-        totalTasks: 1,
-        totalMinutes: pausedTask.estimatedMinutes,
-        completedMinutes: 0,
+        completion: 0.5,
+        completedTasks: 1,
+        totalTasks: 2,
+        totalMinutes:
+          pausedTask.estimatedMinutes + pausedRemainingTask.estimatedMinutes,
+        completedMinutes: pausedTask.estimatedMinutes,
         completedModules: 0,
         attemptsCount: 0,
       },
@@ -291,11 +345,103 @@ describe('aggregate plans page query', () => {
     }
 
     expect(all.statusCounts).toEqual({
+      not_started: 1,
       active: 1,
       paused: 1,
       completed: 1,
       generating: 1,
       failed: 1,
     });
+  });
+
+  it('keeps non-ready plans with modules out of the not-started bucket', async () => {
+    const userId = await createUser('non-ready-modules');
+    const generatingPlan = await createTestPlan({
+      userId,
+      topic: 'Lifecycle Generating With Modules',
+      generationStatus: 'generating',
+    });
+    const generatingModule = await createTestModule({
+      planId: generatingPlan.id,
+    });
+    await createTestTask({ moduleId: generatingModule.id });
+
+    const failedPlan = await createTestPlan({
+      userId,
+      topic: 'Lifecycle Failed With Modules',
+      generationStatus: 'failed',
+    });
+    const failedModule = await createTestModule({ planId: failedPlan.id });
+    await createTestTask({ moduleId: failedModule.id });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ search: 'lifecycle' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+    const byId = new Map(page.items.map((item) => [item.id, item.status]));
+
+    expect(byId.get(generatingPlan.id)).toBe('generating');
+    expect(byId.get(failedPlan.id)).toBe('failed');
+    expect(page.statusCounts).toMatchObject({
+      not_started: 0,
+      generating: 1,
+      failed: 1,
+    });
+  });
+
+  it('orders plans by recently updated when sort is recently_updated', async () => {
+    const userId = await createUser('sort-recent');
+    const older = await createTestPlan({
+      userId,
+      topic: 'Older Update',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-05-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-05-10T12:00:00.000Z'),
+    });
+    const newer = await createTestPlan({
+      userId,
+      topic: 'Newer Update',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-05-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-06-15T12:00:00.000Z'),
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ sort: 'recently_updated' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('orders plans by created date when sort is newest', async () => {
+    const userId = await createUser('sort-newest');
+    const older = await createTestPlan({
+      userId,
+      topic: 'Older Created',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-04-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-06-01T12:00:00.000Z'),
+    });
+    const newer = await createTestPlan({
+      userId,
+      topic: 'Newer Created',
+      generationStatus: 'ready',
+      createdAt: new Date('2026-06-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T12:00:00.000Z'),
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ sort: 'newest' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items.map((item) => item.id)).toEqual([newer.id, older.id]);
   });
 });

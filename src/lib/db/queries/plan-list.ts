@@ -1,24 +1,18 @@
+import type {
+  FilterStatus,
+  PlanListQuery,
+  PlanListSort,
+  PlanReadStatus,
+} from '@/features/plans/read-projection/types';
 import type { DbClient } from '@/lib/db/types';
 
 import { getAttemptCap } from '@/lib/config/env';
 import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
-export type PlanListRowStatus =
-  | 'active'
-  | 'paused'
-  | 'completed'
-  | 'generating'
-  | 'failed';
-export type PlanListFilterStatus =
-  | 'all'
-  | Exclude<PlanListRowStatus, 'paused'>
-  | 'inactive';
-export type PlanListPageQuery = {
-  page: number;
-  search: string;
-  status: PlanListFilterStatus;
-};
+export type PlanListRowStatus = PlanReadStatus;
+export type PlanListFilterStatus = FilterStatus;
+export type PlanListPageQuery = PlanListQuery;
 export type PlanListQueryItemRow = {
   id: string;
   topic: string;
@@ -52,6 +46,7 @@ type PlanListItemRow = {
 };
 
 const EMPTY_STATUS_COUNTS: PlanListQueryStatusCounts = {
+  not_started: 0,
   active: 0,
   paused: 0,
   completed: 0,
@@ -68,6 +63,34 @@ function normalizedStatus(
 ): PlanListRowStatus | null {
   if (status === 'all') return null;
   return status === 'inactive' ? 'paused' : status;
+}
+
+function planListOrderBy(sort: PlanListSort): SQL {
+  if (sort === 'recently_updated') {
+    return sql`order by coalesce(updated_at, created_at) desc, id desc`;
+  }
+
+  if (sort === 'newest') {
+    return sql`order by created_at desc, id desc`;
+  }
+
+  return sql`
+    -- Bucket by status first; each following CASE only sorts within its bucket (NULLS LAST elsewhere).
+    order by
+      case status
+        when 'active' then 0
+        when 'not_started' then 1
+        when 'generating' then 2
+        when 'failed' then 3
+        when 'paused' then 4
+        when 'completed' then 5
+        else 6
+      end,
+      case when status = 'active' then coalesce(updated_at, created_at) end desc nulls last,
+      case when status = 'not_started' then created_at end desc nulls last,
+      case when status in ('generating', 'failed', 'paused', 'completed') then coalesce(updated_at, created_at) end desc nulls last,
+      id desc
+  `;
 }
 
 function planListRowsSql(params: {
@@ -127,20 +150,23 @@ function planListRowsSql(params: {
         up.topic,
         up.created_at,
         up.updated_at,
-        coalesce(tm.total_tasks, 0)::int as total_tasks,
-        coalesce(tm.completed_tasks, 0)::int as completed_tasks,
-        case
+	        coalesce(tm.total_tasks, 0)::int as total_tasks,
+	        coalesce(tm.completed_tasks, 0)::int as completed_tasks,
+	        case
+	          when up.generation_status = 'failed' then 'failed'
+	          when up.generation_status in ('generating', 'pending_retry') then 'generating'
+	          when coalesce(mc.module_count, 0) > 0
+	            and coalesce(tm.total_tasks, 0) > 0
+	            and tm.completed_tasks >= tm.total_tasks then 'completed'
           when coalesce(mc.module_count, 0) > 0
-            and coalesce(tm.total_tasks, 0) > 0
-            and tm.completed_tasks >= tm.total_tasks then 'completed'
+            and coalesce(tm.completed_tasks, 0) = 0 then 'not_started'
           when coalesce(mc.module_count, 0) > 0
-            and up.updated_at is not null
-            and ${params.referenceTimestamp}::timestamptz - up.updated_at >= interval '30 days' then 'paused'
-          when coalesce(mc.module_count, 0) > 0 then 'active'
-          when up.generation_status = 'failed' then 'failed'
-          when coalesce(ac.attempt_count, 0) >= ${attemptCap} then 'failed'
-          else 'generating'
-        end as status
+	            and up.updated_at is not null
+	            and ${params.referenceTimestamp}::timestamptz - up.updated_at >= interval '30 days' then 'paused'
+	          when coalesce(mc.module_count, 0) > 0 then 'active'
+	          when coalesce(ac.attempt_count, 0) >= ${attemptCap} then 'failed'
+	          else 'generating'
+	        end as status
       from filtered_user_plans up
       left join module_counts mc on mc.plan_id = up.id
       left join attempt_counts ac on ac.plan_id = up.id
@@ -195,7 +221,7 @@ export async function getPlanListPageRowsForUser(params: {
       total_tasks
     from status_rows
     ${statusFilter}
-    order by created_at desc, id desc
+    ${planListOrderBy(params.query.sort)}
     limit ${pageSize}
     offset ${(page - 1) * pageSize}
   `)) as PlanListItemRow[];

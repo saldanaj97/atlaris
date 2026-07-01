@@ -5,6 +5,7 @@ import type { LessonContent } from '@/shared/types/lesson-content.types';
 export type PlanDbClient = DbClient;
 
 export type PlanReadStatus =
+  | 'not_started'
   | 'active'
   | 'paused'
   | 'completed'
@@ -14,6 +15,7 @@ export type PlanReadStatus =
 /**
  * List-filter status used by plan read projections.
  * `inactive` is the canonical URL/UI aggregate for paused rows.
+ * `not_started` is the URL/UI bucket for ready plans with no completed tasks.
  */
 export type FilterStatus =
   | 'all'
@@ -22,10 +24,19 @@ export type FilterStatus =
 
 export const PLAN_LIST_PAGE_SIZE = 20 as const;
 
+export const PLAN_LIST_SORTS = [
+  'recommended',
+  'recently_updated',
+  'newest',
+] as const;
+
+export type PlanListSort = (typeof PLAN_LIST_SORTS)[number];
+
 export type PlanListQuery = {
   page: number;
   search: string;
   status: FilterStatus;
+  sort: PlanListSort;
 };
 
 export type PlanListItem = {

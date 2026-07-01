@@ -30,17 +30,21 @@ export default function PlansError({ error, reset }: ErrorProps) {
     <>
       <PageHeader
         title='Your Plans'
+        subtitle='Search, filter, and compare your learning plan library.'
         actions={
-          <Button asChild>
-            <Link href='/plans/new'>
-              <Plus />
-              New Plan
-            </Link>
-          </Button>
+          <div className='flex items-center gap-2 sm:pt-8'>
+            <Button asChild>
+              <Link href='/plans/new'>
+                <Plus />
+                New Plan
+              </Link>
+            </Button>
+          </div>
         }
       />
 
       <RouteErrorState
+        className='border-destructive/20 bg-destructive/5'
         title='Error Loading Plans'
         message="We couldn't load your learning plans. This could be a temporary issue."
         onRetry={reset}

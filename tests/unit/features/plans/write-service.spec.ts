@@ -1,4 +1,7 @@
-import { removePlanForWrite } from '@/features/plans/write-service';
+import {
+  removePlanForWrite,
+  removePlansForWrite,
+} from '@/features/plans/write-service';
 import { deletePlan } from '@/lib/db/queries/plans';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -42,5 +45,95 @@ describe('removePlanForWrite', () => {
     await expect(removePlanForWrite({ planId, userId })).rejects.toThrow(
       'Cannot delete a plan that is currently generating.',
     );
+  });
+});
+
+describe('removePlansForWrite', () => {
+  const userId = createId('user');
+  const firstPlanId = createId('plan');
+  const secondPlanId = createId('plan');
+
+  beforeEach(() => {
+    mockDeletePlan.mockReset();
+  });
+
+  it('returns all successes when every plan deletes', async () => {
+    mockDeletePlan.mockResolvedValue({ success: true });
+
+    const results = await removePlansForWrite({
+      planIds: [firstPlanId, secondPlanId],
+      userId,
+    });
+
+    expect(results).toEqual([
+      { planId: firstPlanId, success: true },
+      { planId: secondPlanId, success: true },
+    ]);
+  });
+
+  it('returns per-plan success and failure results without throwing', async () => {
+    mockDeletePlan
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false, reason: 'not_found' });
+
+    const results = await removePlansForWrite({
+      planIds: [firstPlanId, secondPlanId],
+      userId,
+    });
+
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(1, firstPlanId, userId);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(2, secondPlanId, userId);
+    expect(results).toEqual([
+      { planId: firstPlanId, success: true },
+      {
+        planId: secondPlanId,
+        success: false,
+        reason: 'not_found',
+        message: 'Learning plan not found.',
+      },
+    ]);
+  });
+
+  it('maps currently_generating failures to readable messages', async () => {
+    mockDeletePlan.mockResolvedValue({
+      success: false,
+      reason: 'currently_generating',
+    });
+
+    const results = await removePlansForWrite({
+      planIds: [firstPlanId],
+      userId,
+    });
+
+    expect(results).toEqual([
+      {
+        planId: firstPlanId,
+        success: false,
+        reason: 'currently_generating',
+        message: 'Cannot delete a plan that is currently generating.',
+      },
+    ]);
+  });
+
+  it('returns per-plan unknown failures when deletePlan throws', async () => {
+    mockDeletePlan
+      .mockRejectedValueOnce(new Error('database unavailable'))
+      .mockResolvedValueOnce({ success: true });
+
+    const results = await removePlansForWrite({
+      planIds: [firstPlanId, secondPlanId],
+      userId,
+    });
+
+    expect(mockDeletePlan).toHaveBeenCalledTimes(2);
+    expect(results).toEqual([
+      {
+        planId: firstPlanId,
+        success: false,
+        reason: 'unknown',
+        message: 'Cannot delete learning plan in its current state.',
+      },
+      { planId: secondPlanId, success: true },
+    ]);
   });
 });
