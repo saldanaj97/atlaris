@@ -7,7 +7,7 @@ export default function PlansLoading() {
     <>
       <PageHeader
         title='Your Plans'
-        subtitle='Search, filter, and compare your learning plan library.'
+        subtitle='Search, filter, and track your learning plan library.'
         actions={
           <div className='flex items-center gap-2'>
             <Skeleton className='h-6 w-16 rounded-full' />
