@@ -89,3 +89,47 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Verification: Prove correctness before marking done. Tests, diffs, logs, demos. Final validation must include `pnpm test:changed` and `pnpm check:full`.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+
+## Cursor Cloud specific instructions
+
+This project is a Next.js 16 app ("Atlaris") backed by a local Supabase Postgres stack. The startup update script runs `pnpm install` only; everything below is service startup / non-obvious runtime context that the update script intentionally does not handle.
+
+### Docker is required and must be started manually
+
+Docker (installed as a system package) powers both the local Supabase stack and the Testcontainers-based integration/security tests. This VM does not run systemd as PID 1, so Docker does not auto-start. At the beginning of a session run:
+
+```bash
+sudo service docker start        # start the daemon
+sudo chmod 666 /var/run/docker.sock   # allow docker without sudo in this shell
+docker ps                        # verify
+```
+
+### Local database (Supabase) — start + seed
+
+Standard commands live in `docs/development/local-database.md` and `package.json`. Typical flow after Docker is up:
+
+```bash
+pnpm db:dev:start   # supabase start (containers named supabase_*_atlaris)
+pnpm db:dev:reset   # apply migrations + seed the local product-testing user
+```
+
+The seeded local user's `auth_user_id` is `00000000-0000-4000-8000-000000000001`, which must equal `DEV_AUTH_USER_ID` in `.env.local`. Only the DB and Studio services are enabled in `supabase/config.toml`; the Supabase API/auth/storage are off because the app talks to Postgres directly via Drizzle and uses `LOCAL_PRODUCT_TESTING` (auth bypass) locally.
+
+### `.env.local` and injected secrets (important gotchas)
+
+- Copy `.env.local.example` to `.env.local` (gitignored). For local dev use `LOCAL_PRODUCT_TESTING=true`, `POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres`, `AI_PROVIDER=mock`, `STRIPE_LOCAL_MODE=true`.
+- The Cloud Agent VM injects several secrets as real OS environment variables (see `CLOUD_AGENT_INJECTED_SECRET_NAMES`). OS env vars take precedence over `.env.local` in Next.js. In this environment those injected values already point at the local Supabase DB and mock AI, so `pnpm dev` works, but be aware of two side effects:
+  - `FLAGS`/`FLAGS_SECRET` are injected, which activates the remote Vercel flags adapter and makes the `maintenance-mode` flag resolve to `true`, redirecting every route to `/maintenance`. To develop locally, run the dev server with those unset: `env -u FLAGS -u FLAGS_SECRET pnpm dev`.
+  - `MOCK_GENERATION_FAILURE_RATE` is injected as `0.1`, so AI plan generation randomly fails ~10%. For deterministic manual testing, override per-run: `MOCK_GENERATION_FAILURE_RATE=0 pnpm dev`.
+
+### Running the app + hello-world
+
+```bash
+env -u FLAGS -u FLAGS_SECRET MOCK_GENERATION_FAILURE_RATE=0 pnpm dev
+```
+
+Then open `http://localhost:3000` (redirects to `/dashboard`; auth is bypassed). Create a plan at `/plans/new`. Note: free tier is server-side limited to 2-week plans, so choose "Finish by: 2 weeks" for the happy path.
+
+### Tests
+
+Standard test commands are in `docs/development/commands.md`. Integration/security suites use Testcontainers, so Docker must be running. Note: running the full `pnpm test:unit` suite on this VM fails ~8 env-sensitive specs (`tests/unit/config/env.spec.ts`, `tests/unit/stripe/client.spec.ts`, `tests/unit/ai/providers/router.spec.ts`, `tests/unit/api/auth.spec.ts`) purely because injected secret env vars are present and those specs assert the vars are unset. They pass with the vars cleared (e.g. `env -u AI_PROVIDER -u AI_USE_MOCK -u STRIPE_SECRET_KEY -u STRIPE_LOCAL_MODE -u MOCK_GENERATION_FAILURE_RATE -u LOCAL_PRODUCT_TESTING ... pnpm test:unit`). This is an environment artifact, not a code regression.
