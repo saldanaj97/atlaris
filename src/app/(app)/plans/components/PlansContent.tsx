@@ -8,28 +8,48 @@ import { ROUTES } from '@/features/navigation/routes';
 import { redirect } from 'next/navigation';
 
 /**
- * Async component that fetches usage data and renders the plan count badge.
- * Wrapped in its own Suspense boundary by the parent page.
+ * Async component that renders the page-header summary: Active/Completed plan
+ * counts plus the plan quota badge. Reads from the same page-data promise
+ * already awaited by `PlansContent`, so no additional DB calls are made.
+ * Wrapped in its own Suspense boundary by the parent page so the static
+ * title and New Plan CTA can render immediately.
  */
-export async function PlanCountBadgeContent({
+export async function PlanHeaderSummaryContent({
   dataPromise,
 }: {
   dataPromise: Promise<PlansPageData | null>;
 }) {
   const result = await dataPromise;
-  const usage = result?.usage;
+  if (!result) return null;
 
-  if (!usage) return null;
+  const { plansPage, usage } = result;
 
   return (
-    <PlanCountBadge
-      usage={{
-        tier: usage.tier,
-        activePlans: usage.activePlans,
-        regenerations: usage.regenerations,
-        exports: usage.exports,
-      }}
-    />
+    <div className='flex flex-wrap items-center gap-3 sm:gap-4'>
+      <div className='flex items-center gap-3 text-sm text-muted-foreground'>
+        <span>
+          <span className='font-semibold text-foreground tabular-nums'>
+            {plansPage.statusCounts.active}
+          </span>{' '}
+          Active
+        </span>
+        <span>
+          <span className='font-semibold text-foreground tabular-nums'>
+            {plansPage.statusCounts.completed}
+          </span>{' '}
+          Completed
+        </span>
+      </div>
+      <span className='hidden h-4 w-px bg-border sm:block' aria-hidden='true' />
+      <PlanCountBadge
+        usage={{
+          tier: usage.tier,
+          activePlans: usage.activePlans,
+          regenerations: usage.regenerations,
+          exports: usage.exports,
+        }}
+      />
+    </div>
   );
 }
 
@@ -60,19 +80,10 @@ export async function PlansContent({
   ) {
     return (
       <section aria-label='No plans found'>
-        <EmptyPlansList
-          filterStatus='all'
-          isFirstRun
-          searchQuery=''
-        />
+        <EmptyPlansList filterStatus='all' isFirstRun searchQuery='' />
       </section>
     );
   }
 
-  return (
-    <PlansList
-      page={plansPage}
-      query={query}
-    />
-  );
+  return <PlansList page={plansPage} query={query} />;
 }

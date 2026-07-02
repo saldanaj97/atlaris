@@ -30,9 +30,9 @@ export default function PlansError({ error, reset }: ErrorProps) {
     <>
       <PageHeader
         title='Your Plans'
-        subtitle='Search, filter, and compare your learning plan library.'
+        subtitle='Search, filter, and track your learning plan library.'
         actions={
-          <div className='flex items-center gap-2 sm:pt-8'>
+          <div className='flex items-center gap-2'>
             <Button asChild>
               <Link href='/plans/new'>
                 <Plus />
