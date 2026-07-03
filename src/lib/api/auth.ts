@@ -97,7 +97,7 @@ async function ensureUserRecord(
     throw new AuthError('Auth user must have an email address.');
   }
 
-  const created = await getOrCreateUser(
+  const actor = await getOrCreateUser(
     {
       authUserId,
       email,
@@ -106,13 +106,8 @@ async function ensureUserRecord(
     dbClient,
   );
 
-  if (!created) {
-    throw new AuthError('Failed to provision user record.');
-  }
-
-  const actor = await getUserByAuthId(authUserId, dbClient);
   if (!actor) {
-    throw new AuthError('Failed to load provisioned user record.');
+    throw new AuthError('Failed to provision user record.');
   }
 
   return actor;

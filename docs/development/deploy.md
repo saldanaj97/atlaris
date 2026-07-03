@@ -13,6 +13,21 @@ Required order:
 
 Do not reverse the order. Running the migration first can break rolling deploys or failovers against still-old binaries.
 
+## User Preferences Cutover
+
+The `user_preferences` rollout is split into expand and contract phases. The expand migration (`20260703181947_create_user_preferences_foundation`) must exist in the database before deploying application code that joins `user_preferences` during auth lookup.
+
+Required order:
+
+1. Run the Supabase migration workflow so `20260703181947_create_user_preferences_foundation` is applied to the target environment (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
+2. Deploy the application release that reads and writes `user_preferences`.
+3. Wait for the rollout to finish across all pods/instances and verify the new release is healthy.
+4. Run the Supabase migration workflow again to apply the contract migration `20260801120000_drop_user_preference_columns`, which removes legacy preference columns from `users`.
+
+Do not deploy the application release before the expand migration is applied. Authenticated requests load actor records via a `user_preferences` join and will fail with a missing-table error until that migration completes.
+
+Do not run the contract migration before the new application release is fully rolled out. Older binaries may still read or write the legacy `users` preference columns during rolling deploys.
+
 ## Database migrations and internal workers
 
 After deploying a release that includes new Supabase migrations:

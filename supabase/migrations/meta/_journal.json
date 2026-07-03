@@ -278,8 +278,8 @@
     {
       "idx": 39,
       "version": "7",
-      "when": 1783120788000,
-      "tag": "20260703181948_drop_user_preference_columns",
+      "when": 1783723200000,
+      "tag": "20260801120000_drop_user_preference_columns",
       "breakpoints": true
     }
   ]
