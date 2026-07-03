@@ -48,7 +48,7 @@ install_1password_cli() {
     run_as_root gpg --batch --yes --dearmor \
       --output /usr/share/keyrings/1password-archive-keyring.gpg
 
-  printf 'deb [arch=%s signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/%s stable main\n' \
+  printf 'deb [arch=%s signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/%s beta main\n' \
     "$(dpkg --print-architecture)" \
     "$(dpkg --print-architecture)" |
     run_as_root tee /etc/apt/sources.list.d/1password.list >/dev/null
