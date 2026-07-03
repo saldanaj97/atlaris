@@ -1,4 +1,12 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL } from '../../../supabase/privileges/authenticated-table-privileges';
+import {
+  USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL,
+  USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL,
+  USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_INSERT_COLUMNS_SQL,
+  USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_UPDATE_COLUMNS_SQL,
+  USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL,
+  USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL,
+} from '../../../supabase/privileges/user-preferences-authenticated-columns';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/users-authenticated-update-columns';
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 import { db } from '@supabase/service-role';
@@ -50,13 +58,28 @@ export async function ensureRlsRolesAndPermissions() {
     GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
   `);
 
+  // Grant read-only permissions to anon role before table-specific revokes.
+  await db.execute(sql`
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+  `);
+
   // Restrict authenticated role to user-editable columns on users table.
-  // Matches migration 0018 and @/lib/db/privileges/users-authenticated-update-columns.
+  // Matches the final migration grant and users-authenticated-update-columns.
   // Harden `job_queue` to match 0028: no role writes from clients (service role for workers only).
   await db.execute(sql`
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
     REVOKE DELETE ON "users" FROM authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "user_preferences" FROM authenticated;
+    GRANT INSERT (${sql.raw(USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL)}) ON "user_preferences" TO authenticated;
+    GRANT UPDATE (${sql.raw(USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "user_preferences" TO authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_settings" FROM authenticated;
+    GRANT INSERT (${sql.raw(USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_INSERT_COLUMNS_SQL)}) ON "user_email_notification_settings" TO authenticated;
+    GRANT UPDATE (${sql.raw(USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "user_email_notification_settings" TO authenticated;
+    REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_preferences" FROM authenticated;
+    GRANT INSERT (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
+    GRANT UPDATE (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
+    REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences" FROM anon;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
     REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(
@@ -64,11 +87,6 @@ export async function ensureRlsRolesAndPermissions() {
     )} FROM authenticated;
     GRANT INSERT, UPDATE ON "task_progress" TO authenticated;
     REVOKE DELETE ON "task_progress" FROM authenticated;
-  `);
-
-  // Grant read-only permissions to anon role
-  await db.execute(sql`
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
   `);
 
   // Grant permissions on sequences (for auto-increment IDs)

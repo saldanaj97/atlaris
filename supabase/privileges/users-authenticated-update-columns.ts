@@ -7,8 +7,6 @@
  */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS = [
   'name',
-  'preferred_ai_model',
-  'analytics_timezone',
   'updated_at',
 ] as const;
 

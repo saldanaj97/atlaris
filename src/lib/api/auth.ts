@@ -5,7 +5,10 @@ import type {
   PlainHandler,
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
-import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
+import type {
+  ActorUser,
+  UsersDbClient,
+} from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
 import { AuthError } from './errors';
@@ -71,7 +74,7 @@ async function requireUser(): Promise<string> {
 async function ensureUserRecord(
   authUserId: string,
   dbClient?: UsersDbClient,
-): Promise<DbUser> {
+): Promise<ActorUser> {
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
     return existing;
@@ -107,10 +110,15 @@ async function ensureUserRecord(
     throw new AuthError('Failed to provision user record.');
   }
 
-  return created;
+  const actor = await getUserByAuthId(authUserId, dbClient);
+  if (!actor) {
+    throw new AuthError('Failed to load provisioned user record.');
+  }
+
+  return actor;
 }
 
-export async function requireCurrentUserRecord(): Promise<DbUser> {
+export async function requireCurrentUserRecord(): Promise<ActorUser> {
   const userId = await requireUser();
   return ensureUserRecord(userId);
 }
@@ -121,7 +129,7 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
  */
 async function runWithAuthenticatedContext<T>(
   authUserId: string,
-  fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
+  fn: (user: ActorUser, rlsDb: RlsClient) => MaybePromise<T>,
   req?: Request,
 ): Promise<T> {
   const { createAuthenticatedRlsClient } =
@@ -147,7 +155,7 @@ async function runWithAuthenticatedContext<T>(
 
 async function runWithTestContext<T>(
   authUserId: string,
-  fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
+  fn: (user: ActorUser, db: DbClient) => MaybePromise<T>,
   req?: Request,
 ): Promise<T> {
   const requestDb = getDb();
@@ -202,7 +210,7 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 let didWarnWithServerComponentContextDeprecation = false;
 
 export async function withServerComponentContext<T>(
-  fn: (user: DbUser) => MaybePromise<T>,
+  fn: (user: ActorUser) => MaybePromise<T>,
 ): Promise<T | null> {
   if (!didWarnWithServerComponentContextDeprecation) {
     didWarnWithServerComponentContextDeprecation = true;
@@ -234,7 +242,7 @@ export async function withServerComponentContext<T>(
  * Returns null if user is not authenticated (caller should handle).
  */
 export async function withServerActionContext<T>(
-  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>,
+  fn: (user: ActorUser, db: RlsClient) => MaybePromise<T>,
 ): Promise<T | null> {
   const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;

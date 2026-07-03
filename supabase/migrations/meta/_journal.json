@@ -267,6 +267,20 @@
       "when": 1782437094261,
       "tag": "0037_add_user_analytics_timezone",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783120787000,
+      "tag": "20260703181947_create_user_preferences_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783120788000,
+      "tag": "20260703181948_drop_user_preference_columns",
+      "breakpoints": true
     }
   ]
 }

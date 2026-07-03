@@ -21,6 +21,9 @@ export const expectedPolicyTables = [
   'learning_activity_events',
   'usage_metrics',
   'ai_usage_events',
+  'user_preferences',
+  'user_email_notification_settings',
+  'user_email_notification_preferences',
 ] as const;
 
 /** Re-exported from supabase/privileges — keep in sync via drift unit test. */

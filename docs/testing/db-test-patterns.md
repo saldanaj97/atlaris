@@ -35,7 +35,7 @@ const mockDb = { insert } as unknown as ReturnType<typeof getDb>;
 // UPDATE
 const returning = vi
   .fn()
-  .mockResolvedValue([{ id: 'user-1', preferredAiModel: 'claude-3' }]);
+  .mockResolvedValue([{ id: 'user-1', name: 'Alice' }]);
 const where = vi.fn().mockReturnValue({ returning });
 const set = vi.fn().mockReturnValue({ where });
 const update = vi.fn().mockReturnValue({ set });

@@ -2,8 +2,7 @@
 
 import { updateUserProfileSchema } from '@/app/api/v1/user/profile/validation';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { users } from '@supabase/schema';
-import { eq, sql } from 'drizzle-orm';
+import { upsertUserAnalyticsTimezone } from '@/lib/db/queries/user-preferences';
 
 export async function syncAnalyticsTimezoneAction(
   analyticsTimezone: string,
@@ -19,13 +18,7 @@ export async function syncAnalyticsTimezoneAction(
       return false;
     }
 
-    await db
-      .update(users)
-      .set({
-        analyticsTimezone: nextAnalyticsTimezone,
-        updatedAt: sql<Date>`now()`,
-      })
-      .where(eq(users.authUserId, actor.authUserId));
+    await upsertUserAnalyticsTimezone(actor.id, nextAnalyticsTimezone, db);
 
     return true;
   });

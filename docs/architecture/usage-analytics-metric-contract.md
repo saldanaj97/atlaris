@@ -45,9 +45,9 @@ exposes historical analytics from that source.
 - Do not reconstruct complete pre-launch history from mutable current-state
   rows.
 - Streaks support both global and per-plan views.
-- Date bucketing uses `users.analytics_timezone`. New and existing users default
-  to `UTC`; `/analytics/usage` may update the setting from the browser's IANA
-  timezone after authenticated render.
+- Date bucketing uses `user_preferences.analytics_timezone`. New and existing
+  users default to `UTC`; `/analytics/usage` may update the setting from the
+  browser's IANA timezone after authenticated render.
 
 ## Guardrails
 
