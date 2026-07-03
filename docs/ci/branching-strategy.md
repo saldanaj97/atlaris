@@ -110,10 +110,12 @@ We use 4 core GitHub Actions workflows:
 
 ### 3. `staging-db-migrations.yaml` - Staging Database Migration Workflow
 
-**Triggers:** Push to `develop`, or `workflow_dispatch`
+**Triggers:** Push to `develop`, or `workflow_dispatch` from `develop`
 
 **What it does:**
 
+- Skips any run whose ref is not `refs/heads/develop`
+- Checks out `develop`
 - Links the Supabase CLI to the project in `STAGING_PROJECT_ID`
 - Runs `supabase db push`
 
@@ -121,10 +123,12 @@ We use 4 core GitHub Actions workflows:
 
 ### 4. `production-db-migrations.yaml` - Production Database Migration Workflow
 
-**Triggers:** Push to `main`, or `workflow_dispatch`
+**Triggers:** Push to `main`, or `workflow_dispatch` from `main`
 
 **What it does:**
 
+- Skips any run whose ref is not `refs/heads/main`
+- Checks out `main`
 - Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
 - Runs `supabase db push`
 
@@ -201,7 +205,7 @@ Target `develop` unless it is a true production hotfix.
 
 ### What if a migration workflow fails?
 
-Check the GitHub Actions logs for `supabase db push`, confirm the branch is targeting the intended project secret, and fix the failing migration SQL in a follow-up commit.
+Check the GitHub Actions logs for `supabase db push`, confirm the run used the intended environment and branch (`develop` for staging, `main` for production), and fix the failing migration SQL in a follow-up commit.
 
 ### How do I test against a real DB before merge?
 

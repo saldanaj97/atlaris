@@ -50,17 +50,21 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### 3) `.github/workflows/staging-db-migrations.yaml`
 
-- Trigger: push to `develop` (or manual dispatch)
+- Trigger: push to `develop` (or manual dispatch from `develop`)
 - Purpose: apply committed Supabase migrations to the staging Supabase project
 - Behavior:
+  - Skips any run whose ref is not `refs/heads/develop`
+  - Checks out `develop`
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
   - Runs `supabase db push`
 
 ### 4) `.github/workflows/production-db-migrations.yaml`
 
-- Trigger: push to `main` (or manual dispatch)
+- Trigger: push to `main` (or manual dispatch from `main`)
 - Purpose: apply committed Supabase migrations to the production Supabase project
 - Behavior:
+  - Skips any run whose ref is not `refs/heads/main`
+  - Checks out `main`
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
   - Runs `supabase db push`
 
@@ -94,13 +98,27 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ## Required platform configuration (outside this repo)
 
-### GitHub secrets
+### GitHub environment gates
 
-- `SUPABASE_ACCESS_TOKEN` (used by staging and production migration workflows)
-- `STAGING_PROJECT_ID` (Supabase project ref for staging)
-- `STAGING_DB_PASSWORD` (database password for staging)
-- `PRODUCTION_PROJECT_ID` (Supabase project ref for production)
-- `PRODUCTION_DB_PASSWORD` (database password for production)
+Create protected GitHub environments named `staging` and `production`.
+
+| Environment  | Deployment branch rule | Required reviewers |
+| ------------ | ---------------------- | ------------------ |
+| `staging`    | `develop`              | Yes                |
+| `production` | `main`                 | Yes                |
+
+Store the Supabase migration secrets below as environment secrets on the matching environment, not as broad repository secrets.
+
+### GitHub environment secrets
+
+- `SUPABASE_ACCESS_TOKEN` (set separately on `staging` and `production`)
+- `STAGING_PROJECT_ID` (set on `staging`)
+- `STAGING_DB_PASSWORD` (set on `staging`)
+- `PRODUCTION_PROJECT_ID` (set on `production`)
+- `PRODUCTION_DB_PASSWORD` (set on `production`)
+
+### GitHub repository secrets
+
 - `VERCEL_TOKEN` (used by production deploy workflow)
 - `VERCEL_ORG_ID` (used by production deploy workflow)
 - `VERCEL_PROJECT_ID` (used by production deploy workflow)
@@ -119,6 +137,7 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 - Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
+- For manual runs, confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
 - Inspect the `supabase db push` logs for the failing migration file.
 
 ### Production deploy blocked
