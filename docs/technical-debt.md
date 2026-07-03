@@ -130,10 +130,11 @@ and UI logic.~~
 
 ## `users` table column-level UPDATE grant
 
-Migration `0018_harden_users_update_columns.sql` restricts the `authenticated`
-role to only UPDATE `name`, `preferred_ai_model`, and `updated_at` on the
-`users` table. All other columns (billing, system-managed) are only writable by
-the service-role which has BYPASSRLS.
+The migration chain restricts the `authenticated` role to only UPDATE `name`
+and `updated_at` on the `users` table. User-owned preferences live in
+`user_preferences` with their own RLS policies and column-level grants. All
+other `users` columns (billing, system-managed) are only writable by the
+service-role which has BYPASSRLS.
 
 **Canonical column list:** [`supabase/privileges/users-authenticated-update-columns.ts`](../supabase/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
 

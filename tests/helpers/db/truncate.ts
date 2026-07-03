@@ -13,6 +13,9 @@ import {
   taskResources,
   tasks,
   usageMetrics,
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
   users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -77,6 +80,9 @@ const TRUNCATE_TABLES = [
   resources,
   learningPlans,
   usageMetrics,
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
   stripeWebhookEvents,
   oauthStateTokens,
   users,

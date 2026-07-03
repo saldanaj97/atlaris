@@ -1,7 +1,7 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { USER_PROFILE_NAME_MAX_LENGTH } from '@/app/api/v1/user/profile/validation';
-import { users } from '@supabase/schema';
+import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { eq } from 'drizzle-orm';
@@ -174,10 +174,16 @@ describe('PUT /api/v1/user/profile', () => {
     expect(body.analyticsTimezone).toBe('America/Chicago');
     expect(body.name).toBe('Before Update');
 
-    const updated = await db.query.users.findFirst({
+    const userRow = await db.query.users.findFirst({
       where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
     });
-    expect(updated?.analyticsTimezone).toBe('America/Chicago');
+    expect(userRow).toBeDefined();
+
+    const [preferencesRow] = await db
+      .select({ analyticsTimezone: userPreferences.analyticsTimezone })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    expect(preferencesRow?.analyticsTimezone).toBe('America/Chicago');
   });
 
   it('returns 400 when PUT body is not valid JSON', async () => {

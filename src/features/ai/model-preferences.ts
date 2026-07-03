@@ -1,5 +1,5 @@
 /**
- * Rules for which models can be persisted as `users.preferred_ai_model` vs
+ * Rules for which models can be persisted as `user_preferences.preferred_ai_model` vs
  * runtime-only defaults (e.g. `openrouter/free`).
  */
 

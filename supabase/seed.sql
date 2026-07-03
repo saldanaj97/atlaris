@@ -7,8 +7,7 @@ insert into public.users (
   name,
   subscription_tier,
   cancel_at_period_end,
-  monthly_export_count,
-  analytics_timezone
+  monthly_export_count
 )
 values (
   '11111111-1111-4111-8111-111111111111'::uuid,
@@ -17,16 +16,26 @@ values (
   'Local Product Test',
   'free',
   false,
-  0,
-  'America/Chicago'
+  0
 )
 on conflict (auth_user_id) do update set
   email = excluded.email,
   name = excluded.name,
   subscription_tier = excluded.subscription_tier,
   cancel_at_period_end = excluded.cancel_at_period_end,
-  monthly_export_count = excluded.monthly_export_count,
-  analytics_timezone = excluded.analytics_timezone;
+  monthly_export_count = excluded.monthly_export_count;
+
+insert into public.user_preferences (
+  user_id,
+  analytics_timezone
+)
+values (
+  '11111111-1111-4111-8111-111111111111'::uuid,
+  'America/Chicago'
+)
+on conflict (user_id) do update set
+  analytics_timezone = excluded.analytics_timezone,
+  updated_at = now();
 
 delete from public.learning_plans
 where id in (

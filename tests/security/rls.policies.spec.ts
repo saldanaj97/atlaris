@@ -569,17 +569,6 @@ describe('RLS Policy Verification', () => {
 
       expect(updatedName).toHaveLength(1);
       expect(updatedName[0]?.name).toBe('Updated Name');
-
-      const updatedPreferred = await userDb
-        .update(users)
-        .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
-        .where(eq(users.id, user.id))
-        .returning({ id: users.id, preferredAiModel: users.preferredAiModel });
-
-      expect(updatedPreferred).toHaveLength(1);
-      expect(updatedPreferred[0]?.preferredAiModel).toBe(
-        'google/gemini-2.0-flash-exp:free',
-      );
     });
 
     it('authenticated users cannot directly mutate their own usage metrics', async () => {

@@ -83,4 +83,13 @@ export const preferredAiModel = pgEnum('preferred_ai_model', [
 
 export type PreferredAiModel = (typeof preferredAiModel.enumValues)[number];
 
+export const emailNotificationCategory = pgEnum('email_notification_category', [
+  'weekly_summary',
+  'daily_reminder',
+  'streak_reminder',
+]);
+
+export type EmailNotificationCategory =
+  (typeof emailNotificationCategory.enumValues)[number];
+
 export const planOrigin = pgEnum('plan_origin', ['ai', 'template', 'manual']);

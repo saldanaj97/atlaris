@@ -47,13 +47,13 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 import type { RequestScope } from '@/lib/api/request-boundary';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
 
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
+import { buildUserFixture } from '@tests/fixtures/users';
 
 const actionTestDb = makeDbClient();
-const actionTestActor = { id: 'user-1' } as DbUser;
+const actionTestActor = buildUserFixture({ id: 'user-1' });
 
 function makeActionTestScope(): RequestScope {
   return {

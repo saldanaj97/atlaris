@@ -4,6 +4,7 @@
  * unique/randomized test data per run (e.g. tenant scoping tests).
  */
 
+import type { ActorUser } from '@/lib/db/queries/types/users.types';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { users } from '@supabase/schema';
@@ -43,10 +44,7 @@ function resolveSubscriptionLifecycle(
 }
 
 type CreateTestUserParams = Partial<
-  Pick<
-    UserInsert,
-    'analyticsTimezone' | 'authUserId' | 'email' | 'name' | 'subscriptionTier'
-  > &
+  Pick<UserInsert, 'authUserId' | 'email' | 'name' | 'subscriptionTier'> &
     SubscriptionLifecycleFields
 >;
 
@@ -82,10 +80,11 @@ export async function createTestUser(
 }
 
 /**
- * Builds an in-memory user fixture without database IO.
- * Useful for unit tests that need a full DbUser shape.
+ * Builds an in-memory actor fixture without database IO.
  */
-export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
+export function buildUserFixture(
+  overrides: Partial<ActorUser> = {},
+): ActorUser {
   const now = new Date();
   const {
     subscriptionStatus,

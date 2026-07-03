@@ -6,3 +6,4 @@ export * from './tables/stripe';
 export * from './tables/tasks';
 export * from './tables/usage';
 export * from './tables/users';
+export * from './tables/user-preferences';

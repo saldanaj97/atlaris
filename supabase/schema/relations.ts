@@ -13,10 +13,24 @@ import {
   tasks,
 } from './tables/tasks';
 import { aiUsageEvents, usageMetrics } from './tables/usage';
+import {
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
+} from './tables/user-preferences';
 import { users } from './tables/users';
 import { relations } from 'drizzle-orm';
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  userPreferences: one(userPreferences, {
+    fields: [users.id],
+    references: [userPreferences.userId],
+  }),
+  userEmailNotificationSettings: one(userEmailNotificationSettings, {
+    fields: [users.id],
+    references: [userEmailNotificationSettings.userId],
+  }),
+  userEmailNotificationPreferences: many(userEmailNotificationPreferences),
   learningPlans: many(learningPlans),
   usageMetrics: many(usageMetrics),
   aiUsageEvents: many(aiUsageEvents),
@@ -148,3 +162,33 @@ export const jobQueueRelations = relations(jobQueue, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const userPreferencesRelations = relations(
+  userPreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userPreferences.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userEmailNotificationSettingsRelations = relations(
+  userEmailNotificationSettings,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userEmailNotificationSettings.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userEmailNotificationPreferencesRelations = relations(
+  userEmailNotificationPreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userEmailNotificationPreferences.userId],
+      references: [users.id],
+    }),
+  }),
+);

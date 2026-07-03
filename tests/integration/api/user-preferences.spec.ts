@@ -4,7 +4,7 @@ import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
-import { users } from '@supabase/schema';
+import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -189,6 +189,18 @@ describe('PATCH /api/v1/user/preferences', () => {
     const data = expectJsonObject(await response.json());
     expect(data.message).toBe('Preferences updated');
     expect(data.preferredAiModel).toBe(FREE_MODEL_ID);
+
+    const userRow = await db.query.users.findFirst({
+      where: (fields, operators) =>
+        operators.eq(fields.authUserId, testAuthUserId),
+    });
+    expect(userRow).toBeDefined();
+
+    const [preferencesRow] = await db
+      .select({ preferredAiModel: userPreferences.preferredAiModel })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    expect(preferencesRow?.preferredAiModel).toBe(FREE_MODEL_ID);
   });
 
   it('clears preferredAiModel with null PATCH and GET reflects tier default', async () => {

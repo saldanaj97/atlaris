@@ -53,6 +53,7 @@ describe('requestBoundary', () => {
         id: user.id,
         authUserId: user.authUserId,
       });
+      expect(requestContext?.user).toEqual(user);
       expect(requestContext?.db).toBe(serviceDb);
 
       return currentScope;

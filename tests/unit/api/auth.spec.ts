@@ -70,7 +70,9 @@ describe('auth helpers', () => {
     });
 
     setTestUser('auth_created');
-    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetUserByAuthId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(created);
     mockGetSession.mockResolvedValue({
       data: {
         user: {
@@ -135,13 +137,8 @@ describe('auth helpers', () => {
         const requestContext = getRequestContext();
 
         expect(currentUser).toEqual(user);
-        expect(requestContext).toMatchObject({
-          userId: 'auth_1',
-          user: {
-            id: 'user_1',
-            authUserId: 'auth_1',
-          },
-        });
+        expect(requestContext?.userId).toBe('auth_1');
+        expect(requestContext?.user).toEqual(user);
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.id;
@@ -166,13 +163,8 @@ describe('auth helpers', () => {
 
         expect(currentUser).toEqual(user);
         expect(db).toBe(serviceDb);
-        expect(requestContext).toMatchObject({
-          userId: 'auth_2',
-          user: {
-            id: 'user_2',
-            authUserId: 'auth_2',
-          },
-        });
+        expect(requestContext?.userId).toBe('auth_2');
+        expect(requestContext?.user).toEqual(user);
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.authUserId;
