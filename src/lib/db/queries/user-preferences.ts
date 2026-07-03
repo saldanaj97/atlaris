@@ -16,7 +16,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferenceValues = {
 
 export async function getUserPreferences(
   userId: string,
-  dbClient: DbClient,
+  dbClient: Pick<DbClient, 'select'>,
 ): Promise<UserPreferenceValues> {
   const [row] = await dbClient
     .select({
@@ -32,7 +32,7 @@ export async function getUserPreferences(
 export async function upsertUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
-  dbClient: DbClient,
+  dbClient: Pick<DbClient, 'insert'>,
 ): Promise<UserPreferenceValues | undefined> {
   const [row] = await dbClient
     .insert(userPreferences)
@@ -59,7 +59,7 @@ export async function upsertUserPreferredAiModel(
 export async function upsertUserAnalyticsTimezone(
   userId: string,
   analyticsTimezone: string,
-  dbClient: DbClient,
+  dbClient: Pick<DbClient, 'insert'>,
 ): Promise<UserPreferenceValues | undefined> {
   const [row] = await dbClient
     .insert(userPreferences)
