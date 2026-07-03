@@ -206,7 +206,7 @@ export async function getOrCreateUser(
   userData: CreateUserData,
   dbClient?: UsersDbClient,
   deps: UsersQueryDeps = defaultUsersQueryDeps,
-): Promise<DbUser | undefined> {
+): Promise<ActorUser | undefined> {
   const client = dbClient ?? deps.getDb();
   const inserted = await client
     .insert(users)
@@ -219,7 +219,7 @@ export async function getOrCreateUser(
     .returning();
 
   if (inserted[0]) {
-    return inserted[0];
+    return toActorUser(inserted[0], null);
   }
 
   return getUserByAuthId(userData.authUserId, client);

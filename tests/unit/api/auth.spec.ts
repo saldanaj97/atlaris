@@ -33,6 +33,7 @@ const mockGetSession = mocks.getSession;
 
 describe('auth helpers', () => {
   beforeEach(() => {
+    vi.stubEnv('LOCAL_PRODUCT_TESTING', 'false');
     mockGetUserByAuthId.mockReset();
     mockGetOrCreateUser.mockReset();
     mockGetSession.mockReset();
@@ -70,9 +71,7 @@ describe('auth helpers', () => {
     });
 
     setTestUser('auth_created');
-    mockGetUserByAuthId
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(created);
+    mockGetUserByAuthId.mockResolvedValueOnce(null);
     mockGetSession.mockResolvedValue({
       data: {
         user: {

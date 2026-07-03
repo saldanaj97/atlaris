@@ -186,6 +186,40 @@ describe('PUT /api/v1/user/profile', () => {
     expect(preferencesRow?.analyticsTimezone).toBe('America/Chicago');
   });
 
+  it('updates name and analytics timezone atomically in one request', async () => {
+    const { PUT } = await import('@/app/api/v1/user/profile/route');
+    const request = new NextRequest(
+      'http://localhost/api/v1/user/profile',
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'Combined Update',
+          analyticsTimezone: 'Europe/London',
+        }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      name: 'Combined Update',
+      analyticsTimezone: 'Europe/London',
+    });
+
+    const userRow = await db.query.users.findFirst({
+      where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
+    });
+    expect(userRow?.name).toBe('Combined Update');
+
+    const [preferencesRow] = await db
+      .select({ analyticsTimezone: userPreferences.analyticsTimezone })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    expect(preferencesRow?.analyticsTimezone).toBe('Europe/London');
+  });
+
   it('returns 400 when PUT body is not valid JSON', async () => {
     const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
