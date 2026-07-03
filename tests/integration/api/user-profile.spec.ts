@@ -189,7 +189,7 @@ describe('PUT /api/v1/user/profile', () => {
   it('updates name and analytics timezone atomically in one request', async () => {
     const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
-      '[REDACTED]/api/v1/user/profile',
+      'http://localhost/api/v1/user/profile',
       {
         method: 'PUT',
         body: JSON.stringify({
