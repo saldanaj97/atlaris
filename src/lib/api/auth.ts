@@ -145,7 +145,7 @@ async function runWithAuthenticatedContext<T>(
   try {
     return await withRequestContext(requestContext, async () => {
       const user = await ensureUserRecord(authUserId, rlsDb);
-      requestContext.user = { id: user.id, authUserId: user.authUserId };
+      requestContext.user = user;
       return fn(user, rlsDb);
     });
   } finally {
@@ -162,7 +162,7 @@ async function runWithTestContext<T>(
   const user = await ensureUserRecord(authUserId, requestDb);
   const requestContext = createRequestContext(req, {
     userId: authUserId,
-    user: { id: user.id, authUserId: user.authUserId },
+    user,
     db: requestDb,
     cleanup: async () => {},
   });
