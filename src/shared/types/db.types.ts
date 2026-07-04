@@ -18,6 +18,8 @@ export type ProgressStatus =
   DbEnumsModule['progressStatus']['enumValues'][number];
 export type GenerationStatus =
   DbEnumsModule['generationStatus']['enumValues'][number];
+export type EmailNotificationCategory =
+  DbEnumsModule['emailNotificationCategory']['enumValues'][number];
 
 export type LearningPlan = InferSelectModel<DbSchemaModule['learningPlans']>;
 

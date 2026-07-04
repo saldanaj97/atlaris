@@ -1,5 +1,10 @@
 import { ensureUser } from '../../helpers/db/users';
-import { getUserPreferences } from '@/lib/db/queries/user-preferences';
+import {
+  getEmailNotificationPreferences,
+  getUserPreferences,
+  saveEmailNotificationPreferences,
+} from '@/lib/db/queries/user-preferences';
+import { resolveEffectiveEmailPreferences } from '@/shared/notifications/email-preferences';
 import {
   userEmailNotificationPreferences,
   userEmailNotificationSettings,
@@ -44,6 +49,52 @@ describe('user preference persistence', () => {
       enabled: false,
       unsubscribedAt: null,
     });
+  });
+
+  it('round trips email notification preferences with unsubscribe-all masking', async () => {
+    const userId = await ensureUser({
+      authUserId: 'notification_round_trip',
+      email: 'notification-round-trip@example.com',
+    });
+
+    await expect(getEmailNotificationPreferences(userId, db)).resolves.toEqual({
+      unsubscribeAllOptionalEmails: false,
+      categories: {
+        weekly_summary: false,
+        daily_reminder: false,
+        streak_reminder: false,
+      },
+    });
+
+    const savedPreferences = await saveEmailNotificationPreferences(
+      userId,
+      {
+        unsubscribeAllOptionalEmails: true,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      },
+      db,
+    );
+
+    expect(savedPreferences).toEqual({
+      unsubscribeAllOptionalEmails: true,
+      categories: {
+        weekly_summary: true,
+        daily_reminder: true,
+        streak_reminder: false,
+      },
+    });
+    expect(resolveEffectiveEmailPreferences(savedPreferences!)).toEqual({
+      weekly_summary: false,
+      daily_reminder: false,
+      streak_reminder: false,
+    });
+    await expect(getEmailNotificationPreferences(userId, db)).resolves.toEqual(
+      savedPreferences,
+    );
   });
 
   it('cascades preference rows when a user is deleted', async () => {

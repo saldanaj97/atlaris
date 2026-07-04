@@ -1,8 +1,25 @@
-import type { PreferredAiModel } from '../../../../supabase/enums';
 import type { DbClient } from '@/lib/db/types';
+import type { EmailNotificationCategory } from '@/shared/types/db.types';
+import type { PreferredAiModel } from '@supabase/enums';
 
-import { userPreferences } from '@supabase/schema';
+import {
+  prepareRlsTransactionContext,
+  reapplyJwtClaimsInTransaction,
+} from '@/lib/db/queries/helpers/rls-jwt-claims';
+import {
+  DEFAULT_EMAIL_NOTIFICATION_PREFERENCES,
+  type EmailNotificationPreferenceValues,
+} from '@/shared/notifications/email-preferences';
+import { emailNotificationCategory } from '@supabase/enums';
+import {
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
+} from '@supabase/schema';
 import { eq, sql } from 'drizzle-orm';
+
+export const EMAIL_NOTIFICATION_CATEGORIES =
+  emailNotificationCategory.enumValues;
 
 export type UserPreferenceValues = {
   preferredAiModel: PreferredAiModel | null;
@@ -27,6 +44,149 @@ export async function getUserPreferences(
     .where(eq(userPreferences.userId, userId));
 
   return row ?? DEFAULT_USER_PREFERENCES;
+}
+
+export async function getEmailNotificationPreferences(
+  userId: string,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<EmailNotificationPreferenceValues> {
+  const [settingsRow] = await dbClient
+    .select({
+      unsubscribeAllOptionalEmails:
+        userEmailNotificationSettings.unsubscribeAllOptionalEmails,
+    })
+    .from(userEmailNotificationSettings)
+    .where(eq(userEmailNotificationSettings.userId, userId));
+
+  const categoryRows = await dbClient
+    .select({
+      category: userEmailNotificationPreferences.category,
+      enabled: userEmailNotificationPreferences.enabled,
+    })
+    .from(userEmailNotificationPreferences)
+    .where(eq(userEmailNotificationPreferences.userId, userId));
+
+  const categories = {
+    ...DEFAULT_EMAIL_NOTIFICATION_PREFERENCES.categories,
+  };
+
+  for (const row of categoryRows) {
+    categories[row.category] = row.enabled;
+  }
+
+  return {
+    unsubscribeAllOptionalEmails:
+      settingsRow?.unsubscribeAllOptionalEmails ??
+      DEFAULT_EMAIL_NOTIFICATION_PREFERENCES.unsubscribeAllOptionalEmails,
+    categories,
+  };
+}
+
+export async function saveEmailNotificationPreferences(
+  userId: string,
+  values: EmailNotificationPreferenceValues,
+  dbClient: Pick<DbClient, 'execute' | 'transaction'>,
+): Promise<EmailNotificationPreferenceValues> {
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
+
+  return dbClient.transaction(async (tx) => {
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
+
+    const currentRows = await tx
+      .select({
+        category: userEmailNotificationPreferences.category,
+        enabled: userEmailNotificationPreferences.enabled,
+        unsubscribedAt: userEmailNotificationPreferences.unsubscribedAt,
+      })
+      .from(userEmailNotificationPreferences)
+      .where(eq(userEmailNotificationPreferences.userId, userId));
+
+    const currentByCategory = new Map<
+      EmailNotificationCategory,
+      (typeof currentRows)[number]
+    >();
+
+    for (const row of currentRows) {
+      currentByCategory.set(row.category, row);
+    }
+
+    const [settingsRow] = await tx
+      .insert(userEmailNotificationSettings)
+      .values({
+        userId,
+        unsubscribeAllOptionalEmails: values.unsubscribeAllOptionalEmails,
+        updatedAt: sql<Date>`now()`,
+      })
+      .onConflictDoUpdate({
+        target: userEmailNotificationSettings.userId,
+        set: {
+          unsubscribeAllOptionalEmails: sql`excluded.unsubscribe_all_optional_emails`,
+          updatedAt: sql<Date>`now()`,
+        },
+      })
+      .returning({
+        unsubscribeAllOptionalEmails:
+          userEmailNotificationSettings.unsubscribeAllOptionalEmails,
+      });
+
+    if (!settingsRow) {
+      throw new Error('Failed to persist email notification settings row.');
+    }
+
+    const categories = {
+      ...DEFAULT_EMAIL_NOTIFICATION_PREFERENCES.categories,
+    };
+
+    const categoryValues = EMAIL_NOTIFICATION_CATEGORIES.map((category) => {
+      const enabled = values.categories[category];
+      const current = currentByCategory.get(category);
+      const unsubscribedAt = enabled
+        ? null
+        : current?.enabled === true
+          ? sql<Date>`now()`
+          : (current?.unsubscribedAt ?? null);
+
+      return {
+        userId,
+        category,
+        enabled,
+        unsubscribedAt,
+        updatedAt: sql<Date>`now()`,
+      };
+    });
+
+    const categoryRows = await tx
+      .insert(userEmailNotificationPreferences)
+      .values(categoryValues)
+      .onConflictDoUpdate({
+        target: [
+          userEmailNotificationPreferences.userId,
+          userEmailNotificationPreferences.category,
+        ],
+        set: {
+          enabled: sql`excluded.enabled`,
+          unsubscribedAt: sql`excluded.unsubscribed_at`,
+          updatedAt: sql<Date>`now()`,
+        },
+      })
+      .returning({
+        category: userEmailNotificationPreferences.category,
+        enabled: userEmailNotificationPreferences.enabled,
+      });
+
+    if (categoryRows.length !== EMAIL_NOTIFICATION_CATEGORIES.length) {
+      throw new Error('Failed to persist email notification category rows.');
+    }
+
+    for (const row of categoryRows) {
+      categories[row.category] = row.enabled;
+    }
+
+    return {
+      unsubscribeAllOptionalEmails: settingsRow.unsubscribeAllOptionalEmails,
+      categories,
+    };
+  });
 }
 
 export async function upsertUserPreferredAiModel(
