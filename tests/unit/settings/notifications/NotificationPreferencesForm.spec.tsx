@@ -198,6 +198,9 @@ describe('NotificationPreferencesForm', () => {
     expect(
       screen.getByRole('switch', { name: /streak reminder emails/i }),
     ).toBeDisabled();
+    expect(
+      screen.queryByText(/unsubscribe-all is currently overriding/i),
+    ).not.toBeInTheDocument();
 
     resolveFetch!(
       mockJsonResponse({

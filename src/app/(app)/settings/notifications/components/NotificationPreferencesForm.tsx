@@ -74,8 +74,8 @@ export function NotificationPreferencesForm({
   const [preferences, setPreferences] = useState(initialPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const hasChanges = isDirty(preferences, savedPreferences);
-  const categoriesDisabled =
-    preferences.unsubscribeAllOptionalEmails || isSaving;
+  const unsubscribeOverrideActive = preferences.unsubscribeAllOptionalEmails;
+  const categoriesDisabled = unsubscribeOverrideActive || isSaving;
 
   function updateField(
     field: keyof EmailNotificationPreferenceFormValues,
@@ -183,7 +183,7 @@ export function NotificationPreferencesForm({
                   >
                     {copy.description}
                   </p>
-                  {categoriesDisabled && (
+                  {unsubscribeOverrideActive && (
                     <p className='text-xs text-muted-foreground'>
                       Unsubscribe-all is currently overriding this preference.
                     </p>
