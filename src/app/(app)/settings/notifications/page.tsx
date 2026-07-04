@@ -1,64 +1,64 @@
 import type { Metadata } from 'next';
 
-import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
-import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
+import { NotificationPreferencesForm } from '@/app/(app)/settings/notifications/components/NotificationPreferencesForm';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { BellRing, BookOpen, Clock, CreditCard } from 'lucide-react';
+import { ROUTES } from '@/features/navigation/routes';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import {
+  EMAIL_NOTIFICATION_CATEGORIES,
+  getEmailNotificationPreferences,
+} from '@/lib/db/queries/user-preferences';
+import { emailNotificationPreferenceFormValuesFromPreferences } from '@/shared/notifications/email-preferences';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Notifications',
   description: 'Manage your notification preferences.',
 };
 
-const iconClass = 'text-primary size-8 shrink-0';
+export default async function NotificationsSettingsPage() {
+  const preferences = await requestBoundary.component(({ actor, db }) =>
+    getEmailNotificationPreferences(actor.id, db),
+  );
 
-const NOTIFICATION_CATEGORIES = [
-  {
-    icon: <Clock className={iconClass} aria-hidden />,
-    title: 'Learning reminders',
-    description:
-      'Daily and weekly nudges, progress summaries, and streak alerts when personalized notifications launch.',
-  },
-  {
-    icon: <BookOpen className={iconClass} aria-hidden />,
-    title: 'Plan updates',
-    description:
-      'Alerts when plans finish generating, new resources are ready, or you hit module milestones.',
-  },
-  {
-    icon: <CreditCard className={iconClass} aria-hidden />,
-    title: 'Account & billing',
-    description:
-      'Updates about subscription changes, usage limits, and account security events.',
-  },
-];
+  if (!preferences) {
+    redirect(
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.NOTIFICATIONS)}`,
+    );
+  }
 
-export default function NotificationsSettingsPage() {
   return (
     <>
       <PageHeader
         title='Notifications'
         titleAs='h2'
-        subtitle='Manage how you stay informed about your learning progress and account activity'
+        subtitle='Choose which optional product emails Atlaris can send.'
       />
 
-      <ComingSoonAlert
-        title='Personalized alerts are on the way'
-        description="We're building notification preferences so you can choose how and when you receive updates about your learning and account."
-        icon={BellRing}
-        className='mb-6'
-      />
-
-      <div className='grid gap-6 md:grid-cols-2'>
-        {NOTIFICATION_CATEGORIES.map((category) => (
-          <LockedFeatureCard
-            key={category.title}
-            icon={category.icon}
-            title={category.title}
-            description={category.description}
+      <Card>
+        <CardHeader>
+          <CardTitle as='h3'>Email Preferences</CardTitle>
+          <CardDescription>
+            Weekly summaries, daily reminders, and streak reminders are optional
+            and stay off until you enable them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <NotificationPreferencesForm
+            initialPreferences={emailNotificationPreferenceFormValuesFromPreferences(
+              preferences,
+            )}
+            categories={[...EMAIL_NOTIFICATION_CATEGORIES]}
           />
-        ))}
-      </div>
+        </CardContent>
+      </Card>
     </>
   );
 }
