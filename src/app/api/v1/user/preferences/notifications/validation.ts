@@ -1,8 +1,4 @@
-import { z } from 'zod';
+import { emailNotificationPreferenceFormValuesSchema } from '@/shared/notifications/email-preferences';
 
-export const updateEmailNotificationPreferencesSchema = z.strictObject({
-  unsubscribeAllOptionalEmails: z.boolean(),
-  weeklySummary: z.boolean(),
-  dailyReminder: z.boolean(),
-  streakReminder: z.boolean(),
-});
+export const updateEmailNotificationPreferencesSchema =
+  emailNotificationPreferenceFormValuesSchema;

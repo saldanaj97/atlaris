@@ -1,4 +1,5 @@
 import {
+  emailNotificationPreferenceFormValuesSchema,
   emailNotificationPreferenceFormValuesFromPreferences,
   emailNotificationPreferencesFromFormValues,
   getEmailNotificationCategoryCopy,
@@ -45,6 +46,25 @@ describe('email notification preference helpers', () => {
     expect(
       emailNotificationPreferenceFormValuesFromPreferences(preferences),
     ).toEqual(formValues);
+  });
+
+  it('validates the strict form value contract', () => {
+    const formValues = {
+      unsubscribeAllOptionalEmails: false,
+      weeklySummary: true,
+      dailyReminder: false,
+      streakReminder: true,
+    };
+
+    expect(
+      emailNotificationPreferenceFormValuesSchema.parse(formValues),
+    ).toEqual(formValues);
+    expect(
+      emailNotificationPreferenceFormValuesSchema.safeParse({
+        ...formValues,
+        extraField: true,
+      }).success,
+    ).toBe(false);
   });
 
   it('has copy for each email notification category', () => {

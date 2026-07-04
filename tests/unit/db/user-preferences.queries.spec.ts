@@ -156,6 +156,56 @@ describe('user preference queries', () => {
     });
   });
 
+  it('throws when email notification category writes are incomplete', async () => {
+    function insertReturning(rows: unknown[]) {
+      return {
+        values: vi.fn(() => ({
+          onConflictDoUpdate: vi.fn(() => ({
+            returning: vi.fn().mockResolvedValue(rows),
+          })),
+        })),
+      };
+    }
+
+    const tx = {
+      select: vi.fn(() => ({
+        from: () => ({
+          where: () => Promise.resolve([]),
+        }),
+      })),
+      insert: vi
+        .fn()
+        .mockReturnValueOnce(
+          insertReturning([{ unsubscribeAllOptionalEmails: false }]),
+        )
+        .mockReturnValueOnce(
+          insertReturning([{ category: 'weekly_summary', enabled: true }]),
+        ),
+      execute: vi.fn(),
+    };
+    const dbClient = makeDbClient({
+      execute: vi.fn().mockResolvedValue([]) as unknown as DbClient['execute'],
+      transaction: vi.fn((run) =>
+        run(tx),
+      ) as unknown as DbClient['transaction'],
+    });
+
+    await expect(
+      saveEmailNotificationPreferences(
+        'user-1',
+        {
+          unsubscribeAllOptionalEmails: false,
+          categories: {
+            weekly_summary: true,
+            daily_reminder: false,
+            streak_reminder: false,
+          },
+        },
+        dbClient,
+      ),
+    ).rejects.toThrow('Failed to persist email notification category rows.');
+  });
+
   it('upserts preferred AI model on the user preference row', async () => {
     const returning = vi.fn().mockResolvedValue([
       {

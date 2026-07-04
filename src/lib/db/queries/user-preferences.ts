@@ -1,8 +1,7 @@
-import type { PreferredAiModel } from '../../../../supabase/enums';
 import type { DbClient } from '@/lib/db/types';
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
+import type { PreferredAiModel } from '@supabase/enums';
 
-import { emailNotificationCategory } from '../../../../supabase/enums';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
@@ -11,6 +10,7 @@ import {
   DEFAULT_EMAIL_NOTIFICATION_PREFERENCES,
   type EmailNotificationPreferenceValues,
 } from '@/shared/notifications/email-preferences';
+import { emailNotificationCategory } from '@supabase/enums';
 import {
   userEmailNotificationPreferences,
   userEmailNotificationSettings,
@@ -86,7 +86,7 @@ export async function saveEmailNotificationPreferences(
   userId: string,
   values: EmailNotificationPreferenceValues,
   dbClient: Pick<DbClient, 'execute' | 'transaction'>,
-): Promise<EmailNotificationPreferenceValues | undefined> {
+): Promise<EmailNotificationPreferenceValues> {
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   return dbClient.transaction(async (tx) => {
@@ -130,7 +130,7 @@ export async function saveEmailNotificationPreferences(
       });
 
     if (!settingsRow) {
-      return undefined;
+      throw new Error('Failed to persist email notification settings row.');
     }
 
     const categories = {
@@ -175,7 +175,7 @@ export async function saveEmailNotificationPreferences(
       });
 
     if (categoryRows.length !== EMAIL_NOTIFICATION_CATEGORIES.length) {
-      return undefined;
+      throw new Error('Failed to persist email notification category rows.');
     }
 
     for (const row of categoryRows) {

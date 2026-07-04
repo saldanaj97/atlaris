@@ -168,6 +168,54 @@ describe('NotificationPreferencesForm', () => {
     });
   });
 
+  it('disables all switches while saving', async () => {
+    let resolveFetch: (response: ReturnType<typeof mockJsonResponse>) => void;
+    const fetchPromise = new Promise<ReturnType<typeof mockJsonResponse>>(
+      (resolve) => {
+        resolveFetch = resolve;
+      },
+    );
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchPromise));
+
+    renderForm();
+
+    await user.click(
+      screen.getByRole('switch', { name: /weekly summary emails/i }),
+    );
+    await user.click(screen.getByRole('button', { name: /save preferences/i }));
+
+    expect(
+      screen.getByRole('switch', {
+        name: /unsubscribe from optional emails/i,
+      }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('switch', { name: /weekly summary emails/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('switch', { name: /daily reminder emails/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('switch', { name: /streak reminder emails/i }),
+    ).toBeDisabled();
+
+    resolveFetch!(
+      mockJsonResponse({
+        message: 'Notification preferences updated',
+        preferences: {
+          ...DEFAULT_PREFERENCES,
+          weeklySummary: true,
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        'Notification preferences saved',
+      );
+    });
+  });
+
   it('keeps local changes and shows an error when save fails', async () => {
     vi.stubGlobal(
       'fetch',

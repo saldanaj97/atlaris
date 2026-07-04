@@ -1,5 +1,7 @@
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
 
+import { z } from 'zod';
+
 export type EmailNotificationCategoryPreferences = Record<
   EmailNotificationCategory,
   boolean
@@ -10,12 +12,16 @@ export type EmailNotificationPreferenceValues = {
   categories: EmailNotificationCategoryPreferences;
 };
 
-export type EmailNotificationPreferenceFormValues = {
-  unsubscribeAllOptionalEmails: boolean;
-  weeklySummary: boolean;
-  dailyReminder: boolean;
-  streakReminder: boolean;
-};
+export const emailNotificationPreferenceFormValuesSchema = z.strictObject({
+  unsubscribeAllOptionalEmails: z.boolean(),
+  weeklySummary: z.boolean(),
+  dailyReminder: z.boolean(),
+  streakReminder: z.boolean(),
+});
+
+export type EmailNotificationPreferenceFormValues = z.infer<
+  typeof emailNotificationPreferenceFormValuesSchema
+>;
 
 export type EmailNotificationCategoryCopy = {
   label: string;

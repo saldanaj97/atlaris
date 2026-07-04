@@ -5,7 +5,7 @@ import { PATCH } from '@/app/api/v1/user/preferences/notifications/route';
 import { USER_RATE_LIMIT_CONFIGS } from '@/lib/api/user-rate-limit';
 import { getEmailNotificationPreferences } from '@/lib/db/queries/user-preferences';
 import { db } from '@supabase/service-role';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 assertLocalIntegrationDatabaseUrl();
 
@@ -27,7 +27,7 @@ describe('PATCH /api/v1/user/preferences/notifications', () => {
   const testAuthUserId = `notification-preferences-user-${Date.now()}`;
   let userId: string;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     userId = await ensureUser({
       authUserId: testAuthUserId,
       email: `${testAuthUserId}@example.com`,

@@ -7,7 +7,10 @@ import { requestJson } from '@/app/_shared/client-api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { getEmailNotificationCategoryCopy } from '@/shared/notifications/email-preferences';
+import {
+  emailNotificationPreferenceFormValuesSchema,
+  getEmailNotificationCategoryCopy,
+} from '@/shared/notifications/email-preferences';
 import { CheckCircle2, MailWarning } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useId, useState } from 'react';
@@ -16,12 +19,7 @@ import { z } from 'zod';
 
 const notificationPreferencesResponseSchema = z.object({
   message: z.string(),
-  preferences: z.object({
-    unsubscribeAllOptionalEmails: z.boolean(),
-    weeklySummary: z.boolean(),
-    dailyReminder: z.boolean(),
-    streakReminder: z.boolean(),
-  }),
+  preferences: emailNotificationPreferenceFormValuesSchema,
 });
 
 type NotificationPreferencesResponse = z.infer<
@@ -76,7 +74,8 @@ export function NotificationPreferencesForm({
   const [preferences, setPreferences] = useState(initialPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const hasChanges = isDirty(preferences, savedPreferences);
-  const categoriesDisabled = preferences.unsubscribeAllOptionalEmails;
+  const categoriesDisabled =
+    preferences.unsubscribeAllOptionalEmails || isSaving;
 
   function updateField(
     field: keyof EmailNotificationPreferenceFormValues,
@@ -115,13 +114,7 @@ export function NotificationPreferencesForm({
   }
 
   return (
-    <form
-      className='space-y-6'
-      onSubmit={(event) => {
-        event.preventDefault();
-        void handleSave();
-      }}
-    >
+    <div className='space-y-6'>
       <section
         aria-labelledby={`${idPrefix}-unsubscribe-label`}
         className='rounded-lg border border-border bg-card p-5'
@@ -149,6 +142,7 @@ export function NotificationPreferencesForm({
           <Switch
             id={`${idPrefix}-unsubscribe`}
             checked={preferences.unsubscribeAllOptionalEmails}
+            disabled={isSaving}
             onCheckedChange={(checked) =>
               updateField('unsubscribeAllOptionalEmails', checked)
             }
@@ -214,10 +208,14 @@ export function NotificationPreferencesForm({
           <CheckCircle2 aria-hidden className='size-4' />
           Optional emails are off until you enable them.
         </div>
-        <Button type='submit' disabled={!hasChanges || isSaving}>
+        <Button
+          type='button'
+          disabled={!hasChanges || isSaving}
+          onClick={() => void handleSave()}
+        >
           {isSaving ? 'Saving...' : 'Save Preferences'}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
