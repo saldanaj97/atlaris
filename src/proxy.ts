@@ -83,6 +83,7 @@ const proxy = clerkMiddleware(
 
     if (isWorkflowCallbackPath(pathname)) {
       const tokenConfig = readWorkflowCallbackTokenConfig();
+      // Fail-fast on misconfigured token (e.g. whitespace-only); all workflow routes 503 until fixed.
       if (tokenConfig.status === 'invalid') {
         return new NextResponse(null, { status: 503 });
       }
