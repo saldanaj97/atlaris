@@ -61,18 +61,16 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 - `smoke-anon`
   - `DEV_AUTH_USER_ID=''`
   - `LOCAL_PRODUCT_TESTING=false`
-  - `STRIPE_LOCAL_MODE=false`
   - app server on `http://127.0.0.1:3100`
 - `smoke-auth`
   - uses the seeded local smoke user id
   - `LOCAL_PRODUCT_TESTING=true`
-  - `STRIPE_LOCAL_MODE=true`
   - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
 
 `smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
-product launch blockers against local auth, local billing, mock AI, and disposable
-Postgres.
+product launch blockers against local auth, Clerk Billing fixture state, mock AI,
+and disposable Postgres.
 
 Clerk auth parity is isolated in `smoke-clerk`. It runs against the anonymous
 server and skips unless a real Clerk test user is configured. Prefer a
@@ -121,7 +119,7 @@ Do not re-enable concurrent dual dev servers or project-level Playwright paralle
 
 - protected-route redirect checks
 - core authenticated journeys
-- local billing flow
+- Clerk Billing pricing and billing settings surfaces
 - settings persistence sanity
 
 ## What Does Not Belong Here

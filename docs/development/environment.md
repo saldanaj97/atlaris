@@ -15,7 +15,6 @@ Prefer the exported grouped configs instead of raw keys:
 - `appEnv` - Runtime mode, app URL, maintenance mode
 - `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
-- `stripeEnv` - Stripe API keys, settings, and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
@@ -113,10 +112,9 @@ Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using 
 | Variable                | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
 | `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |
-| `STRIPE_LOCAL_MODE`     | Use local billing catalog + in-process Stripe mock (forbidden in hosted deploys)  |
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
-Clerk Billing local fixtures do not require `STRIPE_LOCAL_MODE`. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks.
+Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
 
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
 
