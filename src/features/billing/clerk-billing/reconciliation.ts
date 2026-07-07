@@ -56,10 +56,15 @@ async function refreshClerkBillingSource(
   const subscription = await client.billing.getUserBillingSubscription(
     source.payerUserId,
   );
+  const refreshedSource =
+    clerkBillingSourceFromBackendSubscription(subscription);
 
   return {
-    ...clerkBillingSourceFromBackendSubscription(subscription),
+    ...refreshedSource,
+    type: source.type,
     payerUserId: source.payerUserId,
+    paymentAttemptStatus:
+      source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
   };
 }
 

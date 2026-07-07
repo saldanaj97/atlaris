@@ -21,6 +21,28 @@ function makeBillingEvent(): WebhookEvent {
   } as unknown as WebhookEvent;
 }
 
+function makeFailedPaymentAttemptEvent(): WebhookEvent {
+  return {
+    type: 'paymentAttempt.failed',
+    data: {
+      id: 'attempt_fixture',
+      status: 'failed',
+      payer: { user_id: 'user_missing' },
+      subscription_items: [
+        {
+          id: 'item_pro',
+          status: 'active',
+          plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
+          plan: null,
+          amount: { amount: 2_000 },
+          period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
+          is_free_trial: false,
+        },
+      ],
+    },
+  } as unknown as WebhookEvent;
+}
+
 function makeLogger() {
   return Object.assign(createLogger({ test: 'clerk-reconciliation.spec' }), {
     debug: vi.fn(),
@@ -194,6 +216,30 @@ describe('applyVerifiedClerkBillingEvent', () => {
       expect.objectContaining({
         subscriptionStatus: 'active',
         subscriptionTier: 'pro',
+      }),
+    );
+  });
+
+  it('preserves failed payment-attempt state across Clerk refresh', async () => {
+    const db = makeDb({ selectReturns: [makeLocalUser()] });
+    const clerkClient = makeClerkClient();
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeFailedPaymentAttemptEvent(),
+        'evt_failed_attempt',
+        {
+          clerkClient,
+          db,
+          logger: makeLogger(),
+        },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionStatus: 'past_due',
+        subscriptionTier: 'starter',
       }),
     );
   });
