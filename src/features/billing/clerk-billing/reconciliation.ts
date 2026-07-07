@@ -216,7 +216,10 @@ export async function reconcileClerkBillingEntitlements({
         localUser.authUserId,
       );
       const result = await applyClerkBillingSource(
-        clerkBillingSourceFromBackendSubscription(subscription),
+        {
+          ...clerkBillingSourceFromBackendSubscription(subscription),
+          payerUserId: localUser.authUserId,
+        },
         { db, logger },
       );
 

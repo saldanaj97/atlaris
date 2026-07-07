@@ -2,6 +2,8 @@ import type { NextResponse } from 'next/server';
 
 const CLERK_FRONTEND_API_SRC = 'https://*.clerk.accounts.dev';
 const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
+const STRIPE_CHECKOUT_SRC = 'https://js.stripe.com';
+const STRIPE_HOOKS_SRC = 'https://hooks.stripe.com';
 
 export type CreateContentSecurityPolicyInput =
   | { isDevelopment: true; nonce?: string }
@@ -25,12 +27,14 @@ export function createContentSecurityPolicy(
         "'unsafe-eval'",
         CLERK_FRONTEND_API_SRC,
         CLOUDFLARE_CHALLENGES_SRC,
+        STRIPE_CHECKOUT_SRC,
       ]
     : [
         "'self'",
         `'nonce-${input.nonce}'`,
         CLERK_FRONTEND_API_SRC,
         CLOUDFLARE_CHALLENGES_SRC,
+        STRIPE_CHECKOUT_SRC,
       ];
 
   return [
@@ -40,7 +44,7 @@ export function createContentSecurityPolicy(
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https: wss:",
-    `frame-src 'self' ${CLOUDFLARE_CHALLENGES_SRC}`,
+    `frame-src 'self' ${CLOUDFLARE_CHALLENGES_SRC} ${STRIPE_CHECKOUT_SRC} ${STRIPE_HOOKS_SRC}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

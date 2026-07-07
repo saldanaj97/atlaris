@@ -214,7 +214,7 @@ export function clerkBillingSourceFromBackendSubscription(
 ): ClerkBillingProjectionSource {
   return {
     type: 'reconciliation.subscription',
-    payerUserId: subscription.payerId,
+    payerUserId: userIdFromPayer(undefined, subscription.payerId),
     subscriptionStatus: subscription.status,
     paymentAttemptStatus: null,
     items: subscription.subscriptionItems.map(toProjectionItemFromBackend),
@@ -284,10 +284,24 @@ export function projectClerkBillingSource(
     return null;
   }
 
-  if (
-    source.paymentAttemptStatus === 'failed' ||
-    source.subscriptionStatus === 'past_due'
-  ) {
+  if (source.paymentAttemptStatus === 'failed') {
+    // Failed initial checkouts can include active paid items; never promote free users.
+    if (!isPaidTier(current.subscriptionTier)) {
+      return null;
+    }
+
+    const paidItems = source.items.filter((item) => isPaidTier(item.tier));
+    const highestPaidTier = chooseHighestTierItem(paidItems)?.tier;
+    return {
+      subscriptionTier: highestPaidTier ?? current.subscriptionTier,
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd:
+        latestPeriodEnd(source.items) ?? current.subscriptionPeriodEnd,
+      cancelAtPeriodEnd: current.cancelAtPeriodEnd,
+    };
+  }
+
+  if (source.subscriptionStatus === 'past_due') {
     const paidItems = source.items.filter((item) => isPaidTier(item.tier));
     const highestPaidTier = chooseHighestTierItem(paidItems)?.tier;
     return {

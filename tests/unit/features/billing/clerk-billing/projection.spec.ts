@@ -18,6 +18,13 @@ const currentPaidState: CurrentBillingState = {
   cancelAtPeriodEnd: false,
 };
 
+const currentFreeState: CurrentBillingState = {
+  subscriptionTier: 'free',
+  subscriptionStatus: 'active',
+  subscriptionPeriodEnd: null,
+  cancelAtPeriodEnd: false,
+};
+
 function item(
   overrides: Partial<ClerkBillingProjectionItem>,
 ): ClerkBillingProjectionItem {
@@ -163,6 +170,26 @@ describe('projectClerkBillingSource', () => {
       subscriptionPeriodEnd: futurePeriodEnd,
       cancelAtPeriodEnd: false,
     });
+  });
+
+  it('does not promote failed checkouts for free users', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: null,
+          paymentAttemptStatus: 'failed',
+          items: [
+            item({
+              status: 'active',
+              tier: 'starter',
+              planSlug: 'starter_plan',
+            }),
+          ],
+        }),
+        currentFreeState,
+        now,
+      ),
+    ).toBeNull();
   });
 
   it('maps Clerk webhook item timestamps and trial state from the payload', () => {
