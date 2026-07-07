@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
+import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
 import { PricingFinalCta } from '@/app/(marketing)/pricing/components/PricingFinalCta';
 import { ROUTES } from '@/features/navigation/routes';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { PricingTable } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
@@ -13,6 +15,8 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingPage(): Promise<ReactElement> {
+  const showClerkBilling = shouldUseClerkUi();
+
   return (
     <MarketingPageShell withHeaderOffset>
       <div className='px-6 py-10 sm:py-12'>
@@ -29,9 +33,13 @@ export default async function PricingPage(): Promise<ReactElement> {
           </div>
 
           <div className='w-full'>
-            <PricingTable
-              newSubscriptionRedirectUrl={ROUTES.SETTINGS.BILLING}
-            />
+            {showClerkBilling ? (
+              <PricingTable
+                newSubscriptionRedirectUrl={ROUTES.SETTINGS.BILLING}
+              />
+            ) : (
+              <LocalClerkBillingNotice />
+            )}
           </div>
 
           <PricingFinalCta />

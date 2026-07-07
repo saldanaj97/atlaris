@@ -4,6 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   pricingTableMock: vi.fn(),
+  shouldUseClerkUiMock: vi.fn(() => true),
+}));
+
+vi.mock('@/lib/auth/local-identity', () => ({
+  shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
 vi.mock('@clerk/nextjs', () => ({
@@ -23,6 +28,7 @@ async function renderPricingPage(): Promise<void> {
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.shouldUseClerkUiMock.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -42,5 +48,18 @@ describe('PricingPage', () => {
         newSubscriptionRedirectUrl: ROUTES.SETTINGS.BILLING,
       }),
     );
+  });
+
+  it('renders local billing notice instead of Clerk pricing when Clerk UI is disabled', async () => {
+    mocks.shouldUseClerkUiMock.mockReturnValue(false);
+
+    await renderPricingPage();
+
+    expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeVisible();
+    expect(
+      screen.getByText(/local product testing mode/i),
+    ).toBeVisible();
+    expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();
   });
 });
