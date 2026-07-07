@@ -1,5 +1,6 @@
 import {
   aiUsageEvents,
+  clerkWebhookEvents,
   generationAttempts,
   jobQueue,
   learningActivityEvents,
@@ -83,6 +84,7 @@ const TRUNCATE_TABLES = [
   userEmailNotificationPreferences,
   userEmailNotificationSettings,
   userPreferences,
+  clerkWebhookEvents,
   stripeWebhookEvents,
   oauthStateTokens,
   users,

@@ -9,6 +9,7 @@ modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no se
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
 task_resources —* resources
 users 1—* oauth_state_tokens
+clerk_webhook_events / stripe_webhook_events  (service-owned idempotency ledgers)
 ```
 
 ## Enums
@@ -59,6 +60,8 @@ RLS is enforced through request-scoped Postgres session state:
 | `usage_metrics`      | `(user_id, month)` unique; `lesson_modules_generated` counts successful module lesson batches (billing meter) |
 | `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
 | `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
+| `clerk_webhook_events` | `(event_id)` unique, `(created_at)`                                                                         |
+| `stripe_webhook_events` | `(event_id)` unique, `(created_at)`                                                                        |
 
 ## Ownership and retention
 
@@ -66,6 +69,7 @@ RLS is enforced through request-scoped Postgres session state:
 - `resources` and `task_resources` are active read surfaces for plan detail/resource display. A production writer is still a product follow-up; the tables are not removed while the UI/API read surface exists.
 - `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `private.cleanup_retained_db_rows()` via Supabase Cron.
 - `stripe_webhook_events` keeps event IDs for 45 days to cover Stripe automatic retries plus manual resend windows before `private.cleanup_retained_db_rows()` prunes old idempotency rows.
+- `clerk_webhook_events` keeps Clerk/Svix delivery IDs for 45 days before `private.cleanup_retained_db_rows()` prunes old idempotency rows.
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
 
 Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).

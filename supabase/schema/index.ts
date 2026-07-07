@@ -1,4 +1,5 @@
 export * from './relations';
+export * from './tables/clerk';
 export * from './tables/integrations';
 export * from './tables/jobs';
 export * from './tables/plans';

@@ -12,6 +12,7 @@ export async function cleanupRetainedDbRows({
 } = {}): Promise<{
   expiredOauthStateTokens: number;
   oldStripeWebhookEvents: number;
+  oldClerkWebhookEvents: number;
   oldJobQueueRows: number;
 }> {
   const [deleted] = (await dbClient.execute(sql`
@@ -20,12 +21,14 @@ export async function cleanupRetainedDbRows({
   `)) as Array<{
     expired_oauth_state_tokens: number;
     old_stripe_webhook_events: number;
+    old_clerk_webhook_events: number;
     old_job_queue_rows: number;
   }>;
 
   return {
     expiredOauthStateTokens: deleted?.expired_oauth_state_tokens ?? 0,
     oldStripeWebhookEvents: deleted?.old_stripe_webhook_events ?? 0,
+    oldClerkWebhookEvents: deleted?.old_clerk_webhook_events ?? 0,
     oldJobQueueRows: deleted?.old_job_queue_rows ?? 0,
   };
 }

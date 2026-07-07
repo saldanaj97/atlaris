@@ -1,4 +1,5 @@
 import {
+  clerkWebhookEvents,
   jobQueue,
   learningPlans,
   oauthStateTokens,
@@ -10,6 +11,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 export const JOB_QUEUE_RETENTION_DAYS = 30;
 export const STRIPE_WEBHOOK_EVENT_RETENTION_DAYS = 45;
+export const CLERK_WEBHOOK_EVENT_RETENTION_DAYS = 45;
 
 export function retentionDaysBefore(now: Date, days: number): Date {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -31,6 +33,10 @@ export type SeedRetentionCleanupRowsResult = {
     futureHash: string;
   };
   stripe: {
+    oldEventId: string;
+    recentEventId: string;
+  };
+  clerk: {
     oldEventId: string;
     recentEventId: string;
   };
@@ -59,6 +65,8 @@ export async function seedRetentionCleanupRows(
   const futureHash = `${key}-future-oauth-state`;
   const oldEventId = `evt_${key}_old`;
   const recentEventId = `evt_${key}_recent`;
+  const oldClerkEventId = `clerk_${key}_old`;
+  const recentClerkEventId = `clerk_${key}_recent`;
 
   await db.insert(oauthStateTokens).values([
     {
@@ -90,6 +98,25 @@ export async function seedRetentionCleanupRows(
       createdAt: retentionDaysBefore(
         now,
         STRIPE_WEBHOOK_EVENT_RETENTION_DAYS - 1,
+      ),
+    },
+  ]);
+
+  await db.insert(clerkWebhookEvents).values([
+    {
+      eventId: oldClerkEventId,
+      type: 'subscription.updated',
+      createdAt: retentionDaysBefore(
+        now,
+        CLERK_WEBHOOK_EVENT_RETENTION_DAYS + 1,
+      ),
+    },
+    {
+      eventId: recentClerkEventId,
+      type: 'subscription.updated',
+      createdAt: retentionDaysBefore(
+        now,
+        CLERK_WEBHOOK_EVENT_RETENTION_DAYS - 1,
       ),
     },
   ]);
@@ -185,6 +212,10 @@ export async function seedRetentionCleanupRows(
     stripe: {
       oldEventId,
       recentEventId,
+    },
+    clerk: {
+      oldEventId: oldClerkEventId,
+      recentEventId: recentClerkEventId,
     },
     jobRowIds: rows.map((row) => row.id),
   };
