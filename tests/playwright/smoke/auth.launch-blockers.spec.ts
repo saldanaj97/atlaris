@@ -21,7 +21,6 @@ const MODULE_URL = /\/plans\/[0-9a-f-]{36}\/modules\/[0-9a-f-]{36}$/i;
 const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
-const CHECKOUT_TIMEOUT_MS = 20_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
   await expectHeading(page, 'Settings', 1);
@@ -119,38 +118,13 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     await expectHeading(page, 'Usage');
   });
 
-  await test.step('starter checkout and local billing portal stay green', async () => {
+  await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
     await expectHeading(page, /invest in your growth/i);
 
-    const starterCard = page.locator('[data-slot="card"]').filter({
-      has: page.locator('[data-slot="card-title"]', { hasText: /^Starter$/ }),
-    });
-    const starterCheckoutButton = starterCard.getByRole('button', {
-      name: 'Subscribe monthly',
-    });
-
-    await expect(starterCheckoutButton).toBeVisible();
-    await Promise.all([
-      page.waitForURL(BILLING_URL, { timeout: CHECKOUT_TIMEOUT_MS }),
-      starterCheckoutButton.click(),
-    ]);
+    await page.goto('/settings/billing');
+    await expect(page).toHaveURL(BILLING_URL);
     await expectBillingPage(page);
-
-    const manageSubscriptionButton = page.getByRole('button', {
-      name: 'Manage Subscription',
-    });
-    await expect(manageSubscriptionButton).toBeVisible();
-    await Promise.all([
-      page.waitForURL(
-        (url) =>
-          url.pathname === '/settings/billing' &&
-          url.searchParams.get('local_portal') === '1',
-        { timeout: CHECKOUT_TIMEOUT_MS },
-      ),
-      manageSubscriptionButton.click(),
-    ]);
-    await expect(page.getByRole('heading', { name: 'Billing' })).toBeVisible();
   });
 });

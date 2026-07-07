@@ -66,7 +66,7 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
       return this.nodeEnv === 'test' || Boolean(this.vitestWorkerId);
     },
     /**
-     * Application base URL for constructing absolute URLs (e.g., Stripe redirects).
+     * Application base URL for constructing absolute URLs.
      * Required in production, falls back to localhost in development/test environments.
      */
     get url(): string {

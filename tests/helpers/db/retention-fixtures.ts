@@ -3,14 +3,12 @@ import {
   jobQueue,
   learningPlans,
   oauthStateTokens,
-  stripeWebhookEvents,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { and, eq, inArray } from 'drizzle-orm';
 
 export const JOB_QUEUE_RETENTION_DAYS = 30;
-export const STRIPE_WEBHOOK_EVENT_RETENTION_DAYS = 45;
 export const CLERK_WEBHOOK_EVENT_RETENTION_DAYS = 45;
 
 export function retentionDaysBefore(now: Date, days: number): Date {
@@ -31,10 +29,6 @@ export type SeedRetentionCleanupRowsResult = {
   oauth: {
     expiredHash: string;
     futureHash: string;
-  };
-  stripe: {
-    oldEventId: string;
-    recentEventId: string;
   };
   clerk: {
     oldEventId: string;
@@ -63,8 +57,6 @@ export async function seedRetentionCleanupRows(
   const { now, key, extendedJobCoverage = false } = options;
   const expiredHash = `${key}-expired-oauth-state`;
   const futureHash = `${key}-future-oauth-state`;
-  const oldEventId = `evt_${key}_old`;
-  const recentEventId = `evt_${key}_recent`;
   const oldClerkEventId = `clerk_${key}_old`;
   const recentClerkEventId = `clerk_${key}_recent`;
 
@@ -78,27 +70,6 @@ export async function seedRetentionCleanupRows(
       stateTokenHash: futureHash,
       authUserId: `${key}-oauth`,
       expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
-    },
-  ]);
-
-  await db.insert(stripeWebhookEvents).values([
-    {
-      eventId: oldEventId,
-      livemode: false,
-      type: 'customer.subscription.updated',
-      createdAt: retentionDaysBefore(
-        now,
-        STRIPE_WEBHOOK_EVENT_RETENTION_DAYS + 1,
-      ),
-    },
-    {
-      eventId: recentEventId,
-      livemode: false,
-      type: 'customer.subscription.updated',
-      createdAt: retentionDaysBefore(
-        now,
-        STRIPE_WEBHOOK_EVENT_RETENTION_DAYS - 1,
-      ),
     },
   ]);
 
@@ -208,10 +179,6 @@ export async function seedRetentionCleanupRows(
     oauth: {
       expiredHash,
       futureHash,
-    },
-    stripe: {
-      oldEventId,
-      recentEventId,
     },
     clerk: {
       oldEventId: oldClerkEventId,

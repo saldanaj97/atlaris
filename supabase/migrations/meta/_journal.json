@@ -278,6 +278,20 @@
     {
       "idx": 39,
       "version": "7",
+      "when": 1783368722000,
+      "tag": "20260706201202_create_clerk_billing_webhook_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783376417000,
+      "tag": "20260706222017_remove_legacy_stripe_entitlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
       "when": 1783723200000,
       "tag": "20260801120000_drop_user_preference_columns",
       "breakpoints": true

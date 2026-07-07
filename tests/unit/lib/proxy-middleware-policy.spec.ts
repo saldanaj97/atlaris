@@ -7,11 +7,6 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('middleware policy', () => {
-  it('isProtectedRoute skips stripe webhook', () => {
-    expect(isProtectedRoute('/api/v1/stripe/webhook')).toBe(false);
-    expect(isProtectedRoute('/dashboard')).toBe(true);
-  });
-
   it('isProtectedRoute skips Clerk Billing webhook', () => {
     expect(isProtectedRoute('/api/v1/clerk/billing/webhook')).toBe(false);
     expect(isProviderWebhookRoute('/api/v1/clerk/billing/webhook')).toBe(true);

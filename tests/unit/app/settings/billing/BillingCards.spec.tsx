@@ -42,9 +42,6 @@ describe('BillingCards', () => {
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: new Date('2026-07-01T00:00:00.000Z'),
       cancelAtPeriodEnd: false,
-      stripeCustomerId: 'cus_test',
-      stripeSubscriptionId: 'sub_test',
-      canOpenBillingPortal: true,
       usage: {
         tier: 'pro',
         activePlans: { current: 2, limit: 5 },

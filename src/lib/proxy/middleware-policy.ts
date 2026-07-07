@@ -18,7 +18,6 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
 const MAINTENANCE_MODE_BYPASS_PATHS = ['/api/health/worker'] as const;
 
 const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
-  '/api/v1/stripe/webhook',
   '/api/v1/clerk/billing/webhook',
 ] as const;
 

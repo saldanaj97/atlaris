@@ -99,8 +99,6 @@ export function buildUserFixture(
     email: `test-${nanoid(12)}@example.test`,
     name: null,
     subscriptionTier: 'free',
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
     ...resolveSubscriptionLifecycle({
       subscriptionStatus,
       subscriptionPeriodEnd,

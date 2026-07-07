@@ -108,7 +108,6 @@ describe('Environment Configuration', () => {
         assertHostedDeployForbiddenFlags({
           NODE_ENV: 'production',
           LOCAL_PRODUCT_TESTING: 'true',
-          STRIPE_LOCAL_MODE: 'true',
         }),
       ).not.toThrow();
     });
@@ -121,14 +120,6 @@ describe('Environment Configuration', () => {
           LOCAL_PRODUCT_TESTING: 'true',
         }),
       ).toThrow(/LOCAL_PRODUCT_TESTING cannot be enabled in production/);
-
-      expect(() =>
-        assertHostedDeployForbiddenFlags({
-          NODE_ENV: 'production',
-          VERCEL: '1',
-          STRIPE_LOCAL_MODE: 'true',
-        }),
-      ).toThrow(/STRIPE_LOCAL_MODE cannot be enabled in production/);
     });
   });
 
@@ -935,7 +926,6 @@ describe('Environment Configuration', () => {
 
       expect(env.appEnv).toBeDefined();
       expect(env.databaseEnv).toBeDefined();
-      expect(env.stripeEnv).toBeDefined();
       expect(env.aiEnv).toBeDefined();
       expect(env.workflowEnv).toBeDefined();
       expect(env.getAttemptCap).toBeTypeOf('function');

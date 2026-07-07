@@ -24,8 +24,6 @@ export const users = pgTable(
     subscriptionTier: subscriptionTier('subscription_tier')
       .notNull()
       .default('free'),
-    stripeCustomerId: text('stripe_customer_id').unique(),
-    stripeSubscriptionId: text('stripe_subscription_id').unique(),
     subscriptionStatus: subscriptionStatus('subscription_status'),
     subscriptionPeriodEnd: timestamp('subscription_period_end', {
       withTimezone: true,

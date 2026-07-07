@@ -290,16 +290,6 @@ export function assertHostedDeployForbiddenFlags(env: EnvSource): void {
       'LOCAL_PRODUCT_TESTING',
     );
   }
-  const stripeLocalModeEnabled = toBoolean(
-    optionalEnvFrom(env, 'STRIPE_LOCAL_MODE'),
-    false,
-  );
-  if (stripeLocalModeEnabled) {
-    throw new EnvValidationError(
-      'STRIPE_LOCAL_MODE cannot be enabled in production',
-      'STRIPE_LOCAL_MODE',
-    );
-  }
 }
 
 assertHostedDeployForbiddenFlags(getProcessEnvSource());

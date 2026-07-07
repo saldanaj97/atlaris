@@ -34,7 +34,7 @@ describe('smoke mode-config', () => {
     expect(layer.POSTGRES_URL).toBe(FAKE_STATE.POSTGRES_URL);
   });
 
-  it('buildAuthModeLayer sets seeded auth id and local mocks', () => {
+  it('buildAuthModeLayer sets seeded auth id and local AI mocks', () => {
     const layer = buildAuthModeLayer(FAKE_STATE);
     expect(layer.DEV_AUTH_USER_ID).toBe(
       LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
@@ -42,7 +42,6 @@ describe('smoke mode-config', () => {
     expect(layer.LOCAL_PRODUCT_TESTING).toBe('true');
     expect(layer.ENABLE_SENTRY).toBe('false');
     expect(layer.NEXT_PUBLIC_ENABLE_SENTRY).toBe('false');
-    expect(layer.STRIPE_LOCAL_MODE).toBe('true');
     expect(layer.AI_PROVIDER).toBe('');
     expect(layer.AI_USE_MOCK).toBe('true');
     expect(layer.MOCK_AI_SCENARIO).toBe('success');
@@ -87,7 +86,6 @@ describe('smoke mode-config', () => {
       MOCK_GENERATION_FAILURE_RATE: '1',
       NEXT_PUBLIC_ENABLE_SENTRY: 'true',
       NODE_ENV: 'test',
-      STRIPE_LOCAL_MODE: 'true',
     };
 
     const merged = mergeSmokeProcessEnv(base, buildAnonModeLayer(FAKE_STATE));
@@ -95,7 +93,6 @@ describe('smoke mode-config', () => {
     expect(merged.DEV_AUTH_USER_ID).toBe('');
     expect(merged.ENABLE_SENTRY).toBe('false');
     expect(merged.NEXT_PUBLIC_ENABLE_SENTRY).toBe('false');
-    expect(merged.STRIPE_LOCAL_MODE).toBe('false');
     expect(merged.AI_PROVIDER).toBe('');
     expect(merged.AI_USE_MOCK).toBe('false');
     expect(merged.MOCK_AI_SCENARIO).toBe('success');

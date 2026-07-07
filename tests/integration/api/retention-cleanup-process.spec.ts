@@ -1,9 +1,5 @@
 import { POST as POST_RETENTION_CLEANUP } from '@/app/api/internal/maintenance/retention/cleanup/route';
-import {
-  clerkWebhookEvents,
-  oauthStateTokens,
-  stripeWebhookEvents,
-} from '@supabase/schema';
+import { clerkWebhookEvents, oauthStateTokens } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import {
   seedRetentionCleanupRows,
@@ -77,13 +73,11 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
     const body = (await response.json()) as {
       ok: boolean;
       expiredOauthStateTokens: number;
-      oldStripeWebhookEvents: number;
       oldClerkWebhookEvents: number;
       oldJobQueueRows: number;
     };
     expect(body.ok).toBe(true);
     expect(body.expiredOauthStateTokens).toBeGreaterThanOrEqual(1);
-    expect(body.oldStripeWebhookEvents).toBeGreaterThanOrEqual(1);
     expect(body.oldClerkWebhookEvents).toBeGreaterThanOrEqual(1);
     expect(body.oldJobQueueRows).toBeGreaterThanOrEqual(1);
 
@@ -97,19 +91,6 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
         ]),
       );
     expect(remainingOauth).toEqual([{ hash: fixture.oauth.futureHash }]);
-
-    const remainingStripe = await db
-      .select({ eventId: stripeWebhookEvents.eventId })
-      .from(stripeWebhookEvents)
-      .where(
-        inArray(stripeWebhookEvents.eventId, [
-          fixture.stripe.oldEventId,
-          fixture.stripe.recentEventId,
-        ]),
-      );
-    expect(remainingStripe).toEqual([
-      { eventId: fixture.stripe.recentEventId },
-    ]);
 
     const remainingClerk = await db
       .select({ eventId: clerkWebhookEvents.eventId })

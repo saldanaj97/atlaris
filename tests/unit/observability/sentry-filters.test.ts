@@ -101,9 +101,9 @@ describe('shouldCaptureRequestError', () => {
 
   it('keeps real runtime errors', () => {
     withEnv('development', () => {
-      expect(
-        shouldCaptureRequestError(new Error('Stripe webhook failed')),
-      ).toBe(true);
+      expect(shouldCaptureRequestError(new Error('Clerk webhook failed'))).toBe(
+        true,
+      );
     });
   });
 });
@@ -149,7 +149,7 @@ describe('beforeSendSentryEvent', () => {
     withEnv('development', () => {
       const event = { event_id: '1' } as ErrorEvent;
       const hint = {
-        originalException: new Error('Stripe webhook failed'),
+        originalException: new Error('Clerk webhook failed'),
       } as EventHint;
 
       expect(beforeSendSentryEvent(event, hint)).toBe(event);

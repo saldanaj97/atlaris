@@ -9,7 +9,6 @@ import {
   oauthStateTokens,
   planSchedules,
   resources,
-  stripeWebhookEvents,
   taskProgress,
   taskResources,
   tasks,
@@ -85,7 +84,6 @@ const TRUNCATE_TABLES = [
   userEmailNotificationSettings,
   userPreferences,
   clerkWebhookEvents,
-  stripeWebhookEvents,
   oauthStateTokens,
   users,
 ] as const;

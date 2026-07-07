@@ -35,9 +35,8 @@ function parsePositiveContentLength(value: string | null): number | null {
 }
 
 /**
- * Heuristic matching `create-portal`: treat the request as carrying JSON when
- * `Content-Type` includes `application/json` or `Content-Length` is a positive
- * finite number (after trim).
+ * Treat the request as carrying JSON when `Content-Type` includes
+ * `application/json` or `Content-Length` is a positive finite number.
  */
 export function detectJsonBodyPresence(req: Request): boolean {
   const contentType = req.headers.get('content-type') ?? '';

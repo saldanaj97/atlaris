@@ -1,6 +1,5 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import {
   startModuleLessonGeneration,
   type StartModuleLessonGenerationResult,
@@ -34,19 +33,12 @@ export function createModuleLessonContentGenerateHandler(
         dbClient: db,
       });
 
-      const billing = await getBillingAccountSnapshot({
-        userId: actor.id,
-        dbClient: db,
-        projection: 'subscription',
-        correlationId,
-      });
-
       const result = await startGeneration({
         dbClient: db,
         userId: actor.id,
         planId,
         moduleId,
-        userTier: billing.tier,
+        userTier: actor.subscriptionTier,
         signal: req.signal,
         correlationId,
       });

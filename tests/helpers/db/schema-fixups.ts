@@ -1,11 +1,5 @@
-import { clerkWebhookEvents, stripeWebhookEvents } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { sql } from 'drizzle-orm';
-
-export async function ensureStripeWebhookEvents() {
-  await db.select().from(stripeWebhookEvents).limit(1);
-  await db.select().from(clerkWebhookEvents).limit(1);
-}
 
 export async function ensureJobTypeEnumValue() {
   // Add plan_regeneration to job_type enum if it doesn't exist
