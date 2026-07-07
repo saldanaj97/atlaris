@@ -1,6 +1,8 @@
 import {
   type EnvSource,
+  createServerEnvAccess,
   EnvValidationError,
+  getProcessEnvSource,
   getServerOptional,
   requireEnvFrom,
 } from '@/lib/config/env/shared';
@@ -25,6 +27,7 @@ const clerkAuthFields = z.object({
 });
 
 type ClerkAuthEnv = z.infer<typeof clerkAuthFields>;
+const defaultClerkAuthAccess = createServerEnvAccess(getProcessEnvSource);
 
 /**
  * Parse Clerk Auth config from an explicit env source (unit tests; no process mutation).
@@ -71,5 +74,13 @@ export const devAuthEnv = {
   },
   get name() {
     return getServerOptional('DEV_AUTH_USER_NAME') ?? 'Dev User';
+  },
+} as const;
+
+export const clerkAuthEnv = {
+  get webhookSigningSecret(): string {
+    return defaultClerkAuthAccess.getServerRequired(
+      'CLERK_WEBHOOK_SIGNING_SECRET',
+    );
   },
 } as const;

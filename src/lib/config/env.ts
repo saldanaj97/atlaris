@@ -6,7 +6,11 @@ export {
   openRouterEnv,
 } from '@/lib/config/env/ai';
 export { appEnv, createAppEnv } from '@/lib/config/env/app';
-export { createClerkAuthEnv, devAuthEnv } from '@/lib/config/env/auth';
+export {
+  clerkAuthEnv,
+  createClerkAuthEnv,
+  devAuthEnv,
+} from '@/lib/config/env/auth';
 export { stripeEnv } from '@/lib/config/env/billing';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
