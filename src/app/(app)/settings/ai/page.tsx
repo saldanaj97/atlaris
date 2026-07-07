@@ -1,70 +1,7 @@
 import type { ReactElement } from 'react';
 
-import { ModelSelectionCard } from '@/app/(app)/settings/ai/components/ModelSelectionCard';
-import { ModelSelectionCardSkeleton } from '@/app/(app)/settings/ai/components/ModelSelectionCardSkeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeader } from '@/components/ui/page-header';
-import { Suspense } from 'react';
+import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
 
-/**
- * AI Settings sub-page.
- *
- * Rendered inside the shared settings layout.
- * Only the Model Selection card waits for user tier data.
- */
 export default function AISettingsPage(): ReactElement {
-  return (
-    <>
-      <PageHeader
-        title='AI Preferences'
-        titleAs='h2'
-        subtitle={
-          <>
-            Save the model Atlaris should use for future plan generations. If
-            you do not save one, your tier default applies. A one-off{' '}
-            <code className='font-mono text-xs'>?model=</code> still overrides a
-            single generation request.
-          </>
-        }
-      />
-
-      <div className='grid gap-6 md:grid-cols-2'>
-        {/* Data-dependent card - wrapped in Suspense */}
-        <Suspense fallback={<ModelSelectionCardSkeleton />}>
-          <ModelSelectionCard />
-        </Suspense>
-
-        {/* Static content - renders immediately */}
-        <Card>
-          <CardHeader>
-            <CardTitle as='h3'>About AI Models</CardTitle>
-          </CardHeader>
-          <CardContent className='space-y-4 text-sm text-muted-foreground'>
-            <p>
-              Different models trade off speed, price, and reasoning quality.
-            </p>
-            <ul className='list-inside list-disc space-y-2'>
-              <li>
-                <strong>Free models</strong> - Best for everyday plan generation
-              </li>
-              <li>
-                <strong>Pro models</strong> - Better for harder topics and
-                larger contexts
-              </li>
-            </ul>
-            <p>
-              Your saved model stays in effect until you change it. Only listed
-              models can be saved.
-            </p>
-            <div className='mt-4 rounded-md border border-border bg-muted/50 p-3'>
-              <p className='text-xs'>
-                <strong>Note:</strong> Availability and pricing can change over
-                time.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  );
+  return <SettingsLedgerPage scrollTo='ai' />;
 }

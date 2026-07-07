@@ -1,51 +1,7 @@
 import type { ReactElement } from 'react';
 
-import { BillingCards } from '@/app/(app)/settings/billing/components/BillingCards';
-import { BillingCardsSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
-import { PageHeader } from '@/components/ui/page-header';
-import { shouldUseClerkUi } from '@/lib/auth/local-identity';
-import { getSupportedLocale } from '@/lib/i18n/locale';
-import { UserProfile } from '@clerk/nextjs';
-import { headers } from 'next/headers';
-import { Suspense } from 'react';
+import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
 
-/**
- * Billing Settings sub-page.
- *
- * Rendered inside the shared settings layout.
- * The billing cards (Current Plan + Usage) wait for subscription and usage data.
- */
 export default async function BillingSettingsPage(): Promise<ReactElement> {
-  const locale = getSupportedLocale((await headers()).get('accept-language'));
-  const showClerkBilling = shouldUseClerkUi();
-
-  return (
-    <>
-      <PageHeader
-        title='Billing'
-        titleAs='h2'
-        subtitle='Manage your subscription and view usage'
-      />
-
-      <div className='grid gap-6 md:grid-cols-2'>
-        <Suspense fallback={<BillingCardsSkeleton />}>
-          <BillingCards locale={locale} />
-        </Suspense>
-      </div>
-
-      {showClerkBilling ? (
-        <div className='mt-6'>
-          <UserProfile
-            routing='hash'
-            appearance={{
-              elements: {
-                rootBox: 'w-full',
-                cardBox: 'w-full shadow-none',
-              },
-            }}
-          />
-        </div>
-      ) : null}
-    </>
-  );
+  return <SettingsLedgerPage scrollTo='billing' />;
 }

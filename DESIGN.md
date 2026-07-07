@@ -1,44 +1,44 @@
 ---
 version: alpha
 name: Atlaris
-description: Product-native learning platform design tokens for agents and design.md tooling.
+description: Product-native learning platform design tokens for agents and design.md tooling. Brand palette is Progress Jam (violet ink on soft lavender surfaces).
 colors:
-  background: "oklch(0.985 0.004 255)"
-  foreground: "oklch(0.25 0.02 60)"
-  card: "oklch(1 0 0)"
-  card-foreground: "oklch(0.32 0 0)"
-  primary: "oklch(0.62 0.19 259.76)"
-  primary-dark: "oklch(0.49 0.22 264.43)"
-  primary-foreground: "oklch(1 0 0)"
-  secondary: "oklch(0.97 0 0)"
-  secondary-foreground: "oklch(0.45 0.03 257.68)"
-  muted: "oklch(0.98 0 0)"
-  muted-foreground: "oklch(0.55 0.02 264.41)"
-  accent: "oklch(0.95 0.03 233.56)"
-  accent-foreground: "oklch(0.38 0.14 265.59)"
+  background: "#ffffff"
+  foreground: "#0f0f12"
+  card: "#ffffff"
+  card-foreground: "#0f0f12"
+  primary: "#6d3df5"
+  primary-dark: "#5528c9"
+  primary-foreground: "#ffffff"
+  secondary: "#efe7ff"
+  secondary-foreground: "#5f6472"
+  muted: "#efe7ff"
+  muted-foreground: "#5f6472"
+  accent: "#efe7ff"
+  accent-foreground: "#6d3df5"
   destructive: "oklch(0.64 0.21 25.39)"
   success: "oklch(0.52 0.14 155)"
   success-foreground: "oklch(0.99 0 0)"
-  panel: "oklch(1 0 0)"
-  panel-foreground: "oklch(0.32 0 0)"
-  panel-muted: "oklch(0.98 0 0)"
-  panel-border: "oklch(0.93 0.01 261.82)"
+  panel: "#ffffff"
+  panel-foreground: "#0f0f12"
+  panel-muted: "#efe7ff"
+  panel-border: "#e8e4ef"
   warning: "oklch(0.75 0.15 85)"
   warning-foreground: "oklch(0.22 0.04 85)"
-  border: "oklch(0.93 0.01 261.82)"
-  input: "oklch(0.93 0.01 261.82)"
-  ring: "oklch(0.62 0.19 259.76)"
-  chart-1: "oklch(0.62 0.19 259.76)"
-  chart-2: "oklch(0.55 0.22 262.96)"
-  chart-3: "oklch(0.49 0.22 264.43)"
+  border: "#e8e4ef"
+  input: "#e8e4ef"
+  ring: "#6d3df5"
+  chart-1: "#6d3df5"
+  chart-2: "#8559f7"
+  chart-3: "#5528c9"
   chart-4: "oklch(0.42 0.18 265.55)"
   chart-5: "oklch(0.38 0.14 265.59)"
-  dark-background: "oklch(0.2 0 0)"
-  dark-foreground: "oklch(0.92 0 0)"
-  dark-card: "oklch(0.27 0 0)"
-  dark-card-foreground: "oklch(0.92 0 0)"
-  dark-panel: "oklch(0.24 0 0)"
-  dark-panel-border: "oklch(0.37 0 0)"
+  dark-background: "#0f0f12"
+  dark-foreground: "#e8e6ee"
+  dark-card: "#17171d"
+  dark-card-foreground: "#e8e6ee"
+  dark-panel: "#141419"
+  dark-panel-border: "color-mix(in srgb, #6d3df5 14%, #0f0f12)"
 typography:
   app-h1:
     fontFamily: "Work Sans"
@@ -152,13 +152,34 @@ This file is the agent-facing design.md entry point. Runtime truth stays in
 
 Use semantic Tailwind classes and CSS variables from `globals.css`.
 
-- `primary` is the blue-violet brand action color.
+The product ships one brand palette, **Progress Jam**: violet actions on soft
+lavender surfaces with cool ink text. Core brand hex values:
+
+| Role | Light | Dark |
+| --- | --- | --- |
+| Primary violet | `#6d3df5` | `#6d3df5` |
+| Primary fill (buttons) | `#5528c9` | `#8559f7` |
+| Accent soft / secondary wash | `#efe7ff` | violet `color-mix` into `#0f0f12` |
+| Ink / foreground | `#0f0f12` | `#e8e6ee` |
+| Muted text | `#5f6472` | `#9a9fae` |
+| Surface / card | `#ffffff` | `#17171d` |
+| Panel | `#ffffff` | `#141419` |
+| Border | `#e8e4ef` | violet `color-mix` into `#0f0f12` |
+| Background glow | `#f4efff` | subtle violet radial on `#0f0f12` |
+| Cool background end | `#f3f5f9` | purple-tinted `#211f2a` gradient stop |
+
+- `primary` is the violet brand action color (`#6d3df5`).
 - `primary-dark` is the solid fill for white text on primary buttons and badges.
-- `accent` supports secondary emphasis and brand gradients.
+- `accent` and `secondary` use the soft lavender wash (`#efe7ff`) for emphasis
+  and tinted surfaces.
 - `background`, `card`, `panel`, and their foreground partners define the app
   surface stack.
 - `muted-foreground` is the default for helper text and metadata.
 - `destructive`, `warning`, and `success` are reserved for stateful feedback.
+
+Page backgrounds use `--app-background-image`: a dotted grid plus soft glow and
+gradient in both light and dark mode. Do not replace this with flat fills on app
+shell pages.
 
 Do not hard-code product UI hex values. Add or change tokens in
 `src/app/globals.css` first, then mirror the stable public tokens here.
@@ -199,8 +220,9 @@ Use these live routes as visual anchors:
 
 Use the Tailwind shadow utilities backed by `globals.css` shadow tokens.
 Product cards usually use `shadow-sm`; interactive surfaces may rise to
-`shadow-md`. Reserve heavier glass depth and backdrop blur for marketing or
-explicit overlay surfaces.
+`shadow-md`. The app header uses primary-tinted liquid glass (`bg-primary/*`
+with backdrop blur). Reserve heavier glass depth for marketing or explicit
+overlay surfaces.
 
 ## Shapes
 

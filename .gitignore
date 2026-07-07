@@ -69,3 +69,6 @@ screenshots/
 .daily-recap/
 .agents/recaps/**
 .codex/environments/
+
+# clerk configuration (can include secrets)
+/.clerk/

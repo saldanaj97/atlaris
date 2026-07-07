@@ -1,22 +1,23 @@
 import {
+  LedgerRow,
+  LedgerStackedRow,
+} from '@/app/(app)/settings/components/LedgerPrimitives';
+import {
   formatCompactUsageLimit,
   formatUsageLimitLabel,
   getUsagePercent,
 } from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import {
+  BillingSnapshotNotFoundError,
+  getBillingAccountSnapshot,
+} from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 
 type UsageMeterRowProps = {
   label: string;
@@ -27,9 +28,8 @@ type UsageMeterRowProps = {
 
 function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
   return (
-    <div>
-      <div className='mb-1 flex items-center justify-between text-sm'>
-        <span>{label}</span>
+    <LedgerStackedRow label={label}>
+      <div className='flex items-center justify-between text-sm'>
         <span className='text-muted-foreground tabular-nums'>
           {used}/{formatCompactUsageLimit(limit)}
         </span>
@@ -38,23 +38,40 @@ function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
         value={getUsagePercent(used, limit)}
         aria-label={`${ariaLabel}: ${used} of ${formatUsageLimitLabel(limit)}`}
       />
-    </div>
+    </LedgerStackedRow>
   );
 }
 
-/**
- * Async component that fetches subscription and usage data.
- * Wrapped in Suspense boundary by the parent page.
- */
-export async function BillingCards({ locale }: { locale?: string }) {
-  const effectiveLocale = locale ?? 'en-US';
-  const result = await requestBoundary.component(async ({ actor, db }) => ({
-    user: actor,
-    snapshot: await getBillingAccountSnapshot({
-      userId: actor.id,
-      dbClient: db,
-    }),
-  }));
+const loadBillingSnapshot = cache(async () => {
+  const result = await requestBoundary.component(async ({ actor, db }) => {
+    try {
+      return {
+        snapshot: await getBillingAccountSnapshot({
+          userId: actor.id,
+          dbClient: db,
+        }),
+      };
+    } catch (error) {
+      if (error instanceof BillingSnapshotNotFoundError) {
+        logger.warn(
+          {
+            userId: actor.id,
+          },
+          'Billing snapshot not found for settings ledger',
+        );
+      } else {
+        logger.error(
+          {
+            error,
+            userId: actor.id,
+          },
+          'Billing snapshot failed for settings ledger',
+        );
+      }
+
+      return { snapshot: null };
+    }
+  });
 
   if (!result) {
     redirect(
@@ -62,89 +79,99 @@ export async function BillingCards({ locale }: { locale?: string }) {
     );
   }
 
-  const { snapshot } = result;
+  return result.snapshot;
+});
+
+function formatNextBilling(
+  subscriptionPeriodEnd: Date | string | null | undefined,
+  locale?: string,
+): string {
+  if (!subscriptionPeriodEnd) {
+    return '—';
+  }
+
+  return new Date(subscriptionPeriodEnd).toLocaleDateString(locale ?? 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Plan & billing rows for the Ledger settings surface.
+ */
+export async function BillingPlanRows({ locale }: { locale?: string }) {
+  const snapshot = await loadBillingSnapshot();
+  const nextBilling = formatNextBilling(
+    snapshot?.subscriptionPeriodEnd,
+    locale,
+  );
 
   if (!snapshot) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle as='h3'>Billing unavailable</CardTitle>
-          <CardDescription>
-            We couldn&apos;t load your billing details right now.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <LedgerRow label='Billing'>
+        <span>Unavailable right now.</span>
+      </LedgerRow>
     );
   }
 
-  const nextBilling = snapshot.subscriptionPeriodEnd
-    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString(
-        effectiveLocale,
-        {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        },
-      )
-    : '—';
+  return (
+    <>
+      <LedgerRow label='Current plan'>
+        <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
+      </LedgerRow>
+      <LedgerRow label='Status'>
+        <span className='text-foreground'>
+          {snapshot.subscriptionStatus ?? '—'}
+        </span>
+      </LedgerRow>
+      <LedgerRow label='Next billing date'>
+        <span className='text-foreground'>{nextBilling}</span>
+      </LedgerRow>
+    </>
+  );
+}
+
+/**
+ * Usage meters for the Ledger settings surface.
+ */
+export async function UsageRows() {
+  const snapshot = await loadBillingSnapshot();
+
+  if (!snapshot) {
+    return (
+      <LedgerRow label='Usage'>
+        <span>Unavailable right now.</span>
+      </LedgerRow>
+    );
+  }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <div className='space-y-1'>
-            <CardTitle as='h3'>Current Plan</CardTitle>
-            <CardDescription>Manage your subscription</CardDescription>
-          </div>
-          <CardAction>
-            <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
-          </CardAction>
-        </CardHeader>
-        <CardContent className='space-y-2 text-sm'>
-          <div className='flex items-center justify-between'>
-            <span>Status</span>
-            <span className='text-muted-foreground'>
-              {snapshot.subscriptionStatus ?? '—'}
-            </span>
-          </div>
-          <div className='flex items-center justify-between'>
-            <span>Next billing date</span>
-            <span className='text-muted-foreground'>{nextBilling}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as='h3'>Usage</CardTitle>
-        </CardHeader>
-        <CardContent className='space-y-5'>
-          <UsageMeterRow
-            label='Active plans'
-            ariaLabel='Active plans'
-            used={snapshot.usage.activePlans.current}
-            limit={snapshot.usage.activePlans.limit}
-          />
-          <UsageMeterRow
-            label='Regenerations (monthly)'
-            ariaLabel='Monthly regenerations'
-            used={snapshot.usage.regenerations.used}
-            limit={snapshot.usage.regenerations.limit}
-          />
-          <UsageMeterRow
-            label='Exports (monthly)'
-            ariaLabel='Monthly exports'
-            used={snapshot.usage.exports.used}
-            limit={snapshot.usage.exports.limit}
-          />
-          <UsageMeterRow
-            label='Lesson generations (monthly)'
-            ariaLabel='Monthly lesson generations'
-            used={snapshot.usage.lessonGenerations.used}
-            limit={snapshot.usage.lessonGenerations.limit}
-          />
-        </CardContent>
-      </Card>
+      <UsageMeterRow
+        label='Active plans'
+        ariaLabel='Active plans'
+        used={snapshot.usage.activePlans.current}
+        limit={snapshot.usage.activePlans.limit}
+      />
+      <UsageMeterRow
+        label='Regenerations (monthly)'
+        ariaLabel='Monthly regenerations'
+        used={snapshot.usage.regenerations.used}
+        limit={snapshot.usage.regenerations.limit}
+      />
+      <UsageMeterRow
+        label='Exports (monthly)'
+        ariaLabel='Monthly exports'
+        used={snapshot.usage.exports.used}
+        limit={snapshot.usage.exports.limit}
+      />
+      <UsageMeterRow
+        label='Lesson generations (monthly)'
+        ariaLabel='Monthly lesson generations'
+        used={snapshot.usage.lessonGenerations.used}
+        limit={snapshot.usage.lessonGenerations.limit}
+      />
     </>
   );
 }

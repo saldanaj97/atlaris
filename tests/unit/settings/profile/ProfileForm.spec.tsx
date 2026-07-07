@@ -67,16 +67,11 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Name is displayed in a click-to-edit button, not an input
     expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
-    expect(
-      screen.getByText(MOCK_PROFILE.subscriptionStatus),
-    ).toBeInTheDocument();
     expect(
       screen.getByText(
         new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
@@ -109,7 +104,7 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
     // Save button only renders when the name has been changed

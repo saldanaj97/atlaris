@@ -2,45 +2,37 @@ import { expect, expectHeading, test } from './fixtures';
 
 test.describe.configure({ mode: 'serial' });
 
-const SETTINGS_SUBPAGES = [
-  { path: '/settings/profile', h2: 'Profile' },
-  { path: '/settings/billing', h2: 'Billing' },
-  { path: '/settings/ai', h2: 'AI Preferences' },
-  { path: '/settings/integrations', h2: 'Integrations' },
-  { path: '/settings/notifications', h2: 'Notifications' },
+const LEDGER_SECTION_HEADINGS = [
+  'Profile',
+  'Plan & billing',
+  'Usage',
+  'AI model',
+  'Integrations',
+  'Notifications',
 ] as const;
 
-const BILLING_CONTENT_TIMEOUT_MS = 15_000;
+const SETTINGS_SUBPAGES = [
+  { path: '/settings/profile', section: 'Profile' },
+  { path: '/settings/billing', section: 'Plan & billing' },
+  { path: '/settings/ai', section: 'AI model' },
+  { path: '/settings/integrations', section: 'Integrations' },
+  { path: '/settings/notifications', section: 'Notifications' },
+] as const;
 
-test('settings subpages expose consistent heading hierarchy', async ({
-  page,
-}) => {
-  for (const { path, h2 } of SETTINGS_SUBPAGES) {
+const ASYNC_SECTION_TIMEOUT_MS = 15_000;
+
+test('settings ledger exposes unified heading hierarchy', async ({ page }) => {
+  for (const { path, section } of SETTINGS_SUBPAGES) {
     await test.step(`${path} headings`, async () => {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(`${path}$`));
       await expectHeading(page, 'Settings', 1);
-      await expectHeading(page, h2, 2);
 
-      if (path === '/settings/billing') {
-        await expectHeading(
-          page,
-          'Current Plan',
-          3,
-          BILLING_CONTENT_TIMEOUT_MS,
-        );
-        await expectHeading(page, 'Usage', 3, BILLING_CONTENT_TIMEOUT_MS);
+      for (const heading of LEDGER_SECTION_HEADINGS) {
+        await expectHeading(page, heading, 2);
       }
 
-      if (path === '/settings/ai') {
-        await expectHeading(
-          page,
-          'Model Selection',
-          3,
-          BILLING_CONTENT_TIMEOUT_MS,
-        );
-        await expectHeading(page, 'About AI Models', 3);
-      }
+      await expectHeading(page, section, 2, ASYNC_SECTION_TIMEOUT_MS);
     });
   }
 });

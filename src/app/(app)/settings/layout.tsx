@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactElement, ReactNode } from 'react';
 
-import { SettingsSidebar } from '@/app/(app)/settings/components/SettingsSidebar';
-import { PageHeader } from '@/components/ui/page-header';
 import { PageShell } from '@/components/ui/page-shell';
 
 export const metadata: Metadata = {
@@ -13,26 +11,12 @@ export const metadata: Metadata = {
 /**
  * Shared settings layout.
  *
- * Left sidebar for navigation, right content area renders the active
- * sub-page via URL routing (no client-side tab state).
- * On mobile the sidebar stacks above the content.
+ * One continuous Ledger surface — no sidebar; sub-routes scroll to sections.
  */
 export default function SettingsLayout({
   children,
 }: {
   children: ReactNode;
 }): ReactElement {
-  return (
-    <PageShell>
-      <PageHeader title='Settings' className='mb-3 sm:mb-5' />
-
-      <div className='flex flex-col gap-4 md:flex-row md:gap-7'>
-        <aside className='w-full shrink-0 md:w-52'>
-          <SettingsSidebar />
-        </aside>
-
-        <section className='min-w-0 flex-1 lg:max-w-5xl'>{children}</section>
-      </div>
-    </PageShell>
-  );
+  return <PageShell>{children}</PageShell>;
 }

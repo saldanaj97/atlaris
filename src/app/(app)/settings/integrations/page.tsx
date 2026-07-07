@@ -1,27 +1,7 @@
-import { IntegrationGrid } from '@/app/(app)/settings/integrations/components/IntegrationGrid';
-import { RequestIntegration } from '@/app/(app)/settings/integrations/components/RequestIntegration';
-import { PageHeader } from '@/components/ui/page-header';
+import type { ReactElement } from 'react';
 
-/**
- * Settings → Integrations sub-page.
- *
- * Rendered inside the shared settings layout.
- * Displays the integration management UI within Settings.
- */
-export default function SettingsIntegrationsPage() {
-  return (
-    <>
-      <PageHeader
-        title='Integrations'
-        titleAs='h2'
-        subtitle='Connect your favorite tools to supercharge your learning workflow'
-      />
+import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
 
-      <IntegrationGrid />
-
-      <div className='mt-10'>
-        <RequestIntegration />
-      </div>
-    </>
-  );
+export default function SettingsIntegrationsPage(): ReactElement {
+  return <SettingsLedgerPage scrollTo='integrations' />;
 }
