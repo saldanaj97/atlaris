@@ -46,6 +46,12 @@ function mockFetchFailure(
   );
 }
 
+async function enterNameEditMode(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
+  await user.click(screen.getByRole('button', { name: /edit name/i }));
+}
+
 describe('ProfileForm', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
@@ -67,16 +73,10 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Name is displayed in a click-to-edit button, not an input
-    expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_PROFILE.subscriptionTier)).toBeInTheDocument();
-    expect(
-      screen.getByText(MOCK_PROFILE.subscriptionStatus),
-    ).toBeInTheDocument();
     expect(
       screen.getByText(
         new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
@@ -109,12 +109,11 @@ describe('ProfileForm', () => {
     render(<ProfileForm />);
 
     await waitFor(() => {
-      expect(screen.getByText('Personal Information')).toBeInTheDocument();
+      expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Save button only renders when the name has been changed
     expect(
-      screen.queryByRole('button', { name: /save changes/i }),
+      screen.queryByRole('button', { name: /^save$/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -127,12 +126,12 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+    await enterNameEditMode(user);
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
     expect(cancelButton).toBeInTheDocument();
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByRole('textbox');
     await user.clear(nameInput);
     await user.type(nameInput, 'Temporary Name');
     await user.click(cancelButton);
@@ -143,7 +142,7 @@ describe('ProfileForm', () => {
 
     expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: /save changes/i }),
+      screen.queryByRole('button', { name: /^save$/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -156,21 +155,19 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Click the name button to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+    await enterNameEditMode(user);
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByRole('textbox');
     await user.clear(nameInput);
     await user.type(nameInput, 'Charles Babbage');
 
-    const saveButton = screen.getByRole('button', { name: /save changes/i });
+    const saveButton = screen.getByRole('button', { name: /^save$/i });
     expect(saveButton).toBeEnabled();
   });
 
   it('saves updated name and shows success toast', async () => {
     const updatedProfile = { ...MOCK_PROFILE, name: 'Charles Babbage' };
 
-    // First call: GET profile, second call: PUT profile
     const mockFn = vi
       .fn()
       .mockResolvedValueOnce({
@@ -190,21 +187,19 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+    await enterNameEditMode(user);
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByRole('textbox');
     await user.clear(nameInput);
     await user.type(nameInput, 'Charles Babbage');
 
-    const saveButton = screen.getByRole('button', { name: /save changes/i });
+    const saveButton = screen.getByRole('button', { name: /^save$/i });
     await user.click(saveButton);
 
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('Profile updated');
     });
 
-    // Verify PUT was called with correct body
     expect(mockFn).toHaveBeenCalledTimes(2);
     const putCall = mockFn.mock.calls[1] as [string, RequestInit];
     expect(putCall[0]).toBe('/api/v1/user/profile');
@@ -213,16 +208,14 @@ describe('ProfileForm', () => {
       name: 'Charles Babbage',
     });
 
-    // Save button should disappear after successful save (name is no longer dirty)
     await waitFor(() => {
       expect(
-        screen.queryByRole('button', { name: /save changes/i }),
+        screen.queryByRole('button', { name: /^save$/i }),
       ).not.toBeInTheDocument();
     });
   });
 
   it('shows error toast when save fails', async () => {
-    // First call: GET succeeds, second call: PUT fails
     const mockFn = vi
       .fn()
       .mockResolvedValueOnce({
@@ -249,14 +242,13 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+    await enterNameEditMode(user);
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByRole('textbox');
     await user.clear(nameInput);
     await user.type(nameInput, 'X');
 
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalled();
@@ -280,14 +272,13 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    // Click to enter edit mode
-    await user.click(screen.getByText(MOCK_PROFILE.name));
+    await enterNameEditMode(user);
 
-    const nameInput = screen.getByLabelText('Name');
+    const nameInput = screen.getByRole('textbox');
     await user.clear(nameInput);
     await user.type(nameInput, 'New Name');
 
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Network failure');
