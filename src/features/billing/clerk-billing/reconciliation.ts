@@ -17,6 +17,7 @@ type ServiceRoleDb = typeof serviceRoleDb;
 
 type ReconciliationDeps = {
   db?: ServiceRoleDb;
+  clerkClient?: ClerkBillingClient;
   logger: Logger;
 };
 
@@ -37,9 +38,29 @@ export type ApplyVerifiedClerkBillingEventResult =
   | { status: 'duplicate' }
   | { status: 'inserted'; result: ClerkBillingApplyResult };
 
+async function refreshClerkBillingSource(
+  source: ClerkBillingProjectionSource,
+  deps: ReconciliationDeps,
+): Promise<ClerkBillingProjectionSource> {
+  if (source.payerUserId === null) {
+    return source;
+  }
+
+  const client = deps.clerkClient ?? (await getClerkClient());
+  const subscription = await client.billing.getUserBillingSubscription(
+    source.payerUserId,
+  );
+
+  return {
+    ...clerkBillingSourceFromBackendSubscription(subscription),
+    payerUserId: source.payerUserId,
+  };
+}
+
 export async function applyClerkBillingSource(
   source: ClerkBillingProjectionSource,
   deps: ReconciliationDeps,
+  options: { refreshFromClerk?: boolean } = {},
 ): Promise<ClerkBillingApplyResult> {
   const db = deps.db ?? serviceRoleDb;
 
@@ -72,11 +93,15 @@ export async function applyClerkBillingSource(
     return 'skipped';
   }
 
-  const projection = projectClerkBillingSource(source, user);
+  const effectiveSource =
+    options.refreshFromClerk === true
+      ? await refreshClerkBillingSource(source, deps)
+      : source;
+  const projection = projectClerkBillingSource(effectiveSource, user);
 
   if (projection === null) {
     deps.logger.info(
-      { authUserId: user.authUserId, type: source.type },
+      { authUserId: user.authUserId, type: effectiveSource.type },
       'Clerk Billing event did not require a local projection update',
     );
     return 'ignored';
@@ -95,7 +120,7 @@ export async function applyClerkBillingSource(
       authUserId: user.authUserId,
       subscriptionStatus: projection.subscriptionStatus,
       subscriptionTier: projection.subscriptionTier,
-      type: source.type,
+      type: effectiveSource.type,
       userId: user.id,
     },
     'Clerk Billing projection applied',
@@ -117,7 +142,7 @@ async function dispatchVerifiedClerkBillingEvent(
     return 'ignored';
   }
 
-  return applyClerkBillingSource(source, deps);
+  return applyClerkBillingSource(source, deps, { refreshFromClerk: true });
 }
 
 export async function applyVerifiedClerkBillingEvent(
@@ -162,7 +187,6 @@ export async function reconcileClerkBillingEntitlements({
   logger,
   startingAfterAuthUserId,
 }: ReconciliationDeps & {
-  clerkClient?: ClerkBillingClient;
   limit?: number;
   startingAfterAuthUserId?: string;
 }): Promise<{

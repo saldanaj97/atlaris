@@ -1,3 +1,4 @@
+import type { BackendBillingSubscription } from '@/features/billing/clerk-billing/projection';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 import type { db as serviceRoleDb } from '@supabase/service-role';
 
@@ -35,24 +36,76 @@ function makeDb(opts: {
 }) {
   const insertReturns = opts.insertReturns ?? [{ eventId: 'evt_fixture' }];
   const selectReturns = opts.selectReturns ?? [];
+  const updateWhere = vi.fn().mockResolvedValue(undefined);
+  const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
 
-  return {
-    delete: vi.fn().mockReturnValue({
-      where: vi.fn().mockResolvedValue(undefined),
-    }),
-    insert: vi.fn().mockReturnValue({
-      onConflictDoNothing: vi.fn().mockReturnThis(),
-      returning: vi.fn().mockResolvedValue(insertReturns),
-      values: vi.fn().mockReturnThis(),
-    }),
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue(selectReturns),
+  return Object.assign(
+    {
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+      insert: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue(insertReturns),
+        values: vi.fn().mockReturnThis(),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue(selectReturns),
+          }),
         }),
       }),
-    }),
-  } as unknown as ServiceRoleDb;
+      update: vi.fn().mockReturnValue({
+        set: updateSet,
+      }),
+    } as unknown as ServiceRoleDb,
+    {
+      updateSet,
+      updateWhere,
+    },
+  );
+}
+
+function makeLocalUser(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'user_row_fixture',
+    authUserId: 'user_missing',
+    subscriptionTier: 'starter',
+    subscriptionStatus: 'active',
+    subscriptionPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
+    cancelAtPeriodEnd: false,
+    ...overrides,
+  };
+}
+
+function makeSubscription(
+  overrides: Partial<BackendBillingSubscription> = {},
+): BackendBillingSubscription {
+  return {
+    payerId: 'user_missing',
+    status: 'active',
+    subscriptionItems: [
+      {
+        id: 'item_pro',
+        status: 'active',
+        planId: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
+        plan: null,
+        amount: { amount: 2_000 },
+        periodEnd: new Date('2026-09-01T00:00:00.000Z').getTime(),
+        isFreeTrial: false,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function makeClerkClient(subscription = makeSubscription()) {
+  return {
+    billing: {
+      getUserBillingSubscription: vi.fn().mockResolvedValue(subscription),
+    },
+  };
 }
 
 describe('applyVerifiedClerkBillingEvent', () => {
@@ -81,5 +134,28 @@ describe('applyVerifiedClerkBillingEvent', () => {
     ).resolves.toEqual({ status: 'inserted', result: 'skipped' });
 
     expect(db.delete).not.toHaveBeenCalled();
+  });
+
+  it('refreshes webhook writes from the current Clerk subscription', async () => {
+    const db = makeDb({ selectReturns: [makeLocalUser()] });
+    const clerkClient = makeClerkClient();
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_current', {
+        clerkClient,
+        db,
+        logger: makeLogger(),
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(clerkClient.billing.getUserBillingSubscription).toHaveBeenCalledWith(
+      'user_missing',
+    );
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionStatus: 'active',
+        subscriptionTier: 'pro',
+      }),
+    );
   });
 });

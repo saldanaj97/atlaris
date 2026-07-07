@@ -290,10 +290,8 @@ export function projectClerkBillingSource(
       return null;
     }
 
-    const paidItems = source.items.filter((item) => isPaidTier(item.tier));
-    const highestPaidTier = chooseHighestTierItem(paidItems)?.tier;
     return {
-      subscriptionTier: highestPaidTier ?? current.subscriptionTier,
+      subscriptionTier: current.subscriptionTier,
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd:
         latestPeriodEnd(source.items) ?? current.subscriptionPeriodEnd,
@@ -302,14 +300,12 @@ export function projectClerkBillingSource(
   }
 
   if (source.subscriptionStatus === 'past_due') {
-    const paidItems = source.items.filter((item) => isPaidTier(item.tier));
-    const highestPaidTier = chooseHighestTierItem(paidItems)?.tier;
+    if (!isPaidTier(current.subscriptionTier)) {
+      return null;
+    }
+
     return {
-      subscriptionTier:
-        highestPaidTier ??
-        (isPaidTier(current.subscriptionTier)
-          ? current.subscriptionTier
-          : 'free'),
+      subscriptionTier: current.subscriptionTier,
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd:
         latestPeriodEnd(source.items) ?? current.subscriptionPeriodEnd,

@@ -18,6 +18,13 @@ const currentPaidState: CurrentBillingState = {
   cancelAtPeriodEnd: false,
 };
 
+const currentStarterState: CurrentBillingState = {
+  subscriptionTier: 'starter',
+  subscriptionStatus: 'active',
+  subscriptionPeriodEnd: futurePeriodEnd,
+  cancelAtPeriodEnd: false,
+};
+
 const currentFreeState: CurrentBillingState = {
   subscriptionTier: 'free',
   subscriptionStatus: 'active',
@@ -190,6 +197,61 @@ describe('projectClerkBillingSource', () => {
         now,
       ),
     ).toBeNull();
+  });
+
+  it('keeps the existing paid tier on failed upgrade attempts', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: null,
+          paymentAttemptStatus: 'failed',
+          items: [item({ status: 'active', tier: 'pro' })],
+        }),
+        currentStarterState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('does not promote past-due checkout payloads for free users', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: 'past_due',
+          items: [
+            item({
+              status: 'past_due',
+              tier: 'pro',
+            }),
+          ],
+        }),
+        currentFreeState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps the existing paid tier on past-due upgrade attempts', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: 'past_due',
+          items: [item({ status: 'past_due', tier: 'pro' })],
+        }),
+        currentStarterState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
   });
 
   it('maps Clerk webhook item timestamps and trial state from the payload', () => {
