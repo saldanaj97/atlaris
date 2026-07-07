@@ -31,18 +31,28 @@ function makeLogger() {
 }
 
 function makeDb(opts: {
+  deleteRejects?: unknown;
   insertReturns?: unknown[];
   selectReturns?: unknown[];
 }) {
   const insertReturns = opts.insertReturns ?? [{ eventId: 'evt_fixture' }];
   const selectReturns = opts.selectReturns ?? [];
+  const deleteWhere =
+    opts.deleteRejects === undefined
+      ? vi.fn().mockResolvedValue(undefined)
+      : vi.fn().mockRejectedValue(opts.deleteRejects);
   const updateWhere = vi.fn().mockResolvedValue(undefined);
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+  let db: ServiceRoleDb & {
+    deleteWhere: typeof deleteWhere;
+    updateSet: typeof updateSet;
+    updateWhere: typeof updateWhere;
+  };
 
-  return Object.assign(
+  db = Object.assign(
     {
       delete: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
+        where: deleteWhere,
       }),
       insert: vi.fn().mockReturnValue({
         onConflictDoNothing: vi.fn().mockReturnThis(),
@@ -59,12 +69,18 @@ function makeDb(opts: {
       update: vi.fn().mockReturnValue({
         set: updateSet,
       }),
+      transaction: vi.fn(<T>(callback: (tx: ServiceRoleDb) => T) =>
+        callback(db),
+      ),
     } as unknown as ServiceRoleDb,
     {
+      deleteWhere,
       updateSet,
       updateWhere,
     },
   );
+
+  return db;
 }
 
 function makeLocalUser(overrides: Record<string, unknown> = {}) {
@@ -133,6 +149,29 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).resolves.toEqual({ status: 'inserted', result: 'skipped' });
 
+    expect(db.delete).not.toHaveBeenCalled();
+  });
+
+  it('rolls back event idempotency when webhook processing fails', async () => {
+    const processingError = new Error('clerk unavailable');
+    const db = makeDb({
+      deleteRejects: new Error('delete failed'),
+      selectReturns: [makeLocalUser()],
+    });
+    const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(
+      processingError,
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_retryable', {
+        clerkClient,
+        db,
+        logger: makeLogger(),
+      }),
+    ).rejects.toBe(processingError);
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(db.delete).not.toHaveBeenCalled();
   });
 

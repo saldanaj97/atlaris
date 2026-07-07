@@ -1,3 +1,4 @@
+import type { DbTransaction } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
@@ -14,11 +15,16 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 import { asc, eq, gt } from 'drizzle-orm';
 
 type ServiceRoleDb = typeof serviceRoleDb;
+type ReconciliationDb = Pick<DbTransaction, 'select' | 'update'>;
 
 type ReconciliationDeps = {
-  db?: ServiceRoleDb;
+  db?: ReconciliationDb;
   clerkClient?: ClerkBillingClient;
   logger: Logger;
+};
+
+type ApplyVerifiedClerkBillingEventDeps = Omit<ReconciliationDeps, 'db'> & {
+  db?: ServiceRoleDb;
 };
 
 type ClerkBillingClient = {
@@ -62,7 +68,7 @@ export async function applyClerkBillingSource(
   deps: ReconciliationDeps,
   options: { refreshFromClerk?: boolean } = {},
 ): Promise<ClerkBillingApplyResult> {
-  const db = deps.db ?? serviceRoleDb;
+  const db: ReconciliationDb = deps.db ?? serviceRoleDb;
 
   if (source.payerUserId === null) {
     deps.logger.warn(
@@ -148,36 +154,34 @@ async function dispatchVerifiedClerkBillingEvent(
 export async function applyVerifiedClerkBillingEvent(
   event: WebhookEvent,
   eventId: string,
-  deps: ReconciliationDeps,
+  deps: ApplyVerifiedClerkBillingEventDeps,
 ): Promise<ApplyVerifiedClerkBillingEventResult> {
   const db = deps.db ?? serviceRoleDb;
 
-  const [insertedRow] = await db
-    .insert(clerkWebhookEvents)
-    .values({
-      eventId,
-      type: event.type,
-    })
-    .onConflictDoNothing({ target: clerkWebhookEvents.eventId })
-    .returning({ eventId: clerkWebhookEvents.eventId });
+  return db.transaction(async (tx) => {
+    const [insertedRow] = await tx
+      .insert(clerkWebhookEvents)
+      .values({
+        eventId,
+        type: event.type,
+      })
+      .onConflictDoNothing({ target: clerkWebhookEvents.eventId })
+      .returning({ eventId: clerkWebhookEvents.eventId });
 
-  if (!insertedRow) {
-    deps.logger.info(
-      { eventId, type: event.type },
-      'Duplicate Clerk webhook event skipped',
-    );
-    return { status: 'duplicate' };
-  }
+    if (!insertedRow) {
+      deps.logger.info(
+        { eventId, type: event.type },
+        'Duplicate Clerk webhook event skipped',
+      );
+      return { status: 'duplicate' };
+    }
 
-  try {
-    const result = await dispatchVerifiedClerkBillingEvent(event, deps);
+    const result = await dispatchVerifiedClerkBillingEvent(event, {
+      ...deps,
+      db: tx,
+    });
     return { status: 'inserted', result };
-  } catch (error) {
-    await db
-      .delete(clerkWebhookEvents)
-      .where(eq(clerkWebhookEvents.eventId, eventId));
-    throw error;
-  }
+  });
 }
 
 export async function reconcileClerkBillingEntitlements({
