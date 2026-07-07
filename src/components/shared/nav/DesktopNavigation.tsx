@@ -30,7 +30,7 @@ interface DropdownNavItemProps {
  */
 function getNavItemClass(isActive: boolean): string {
   return cn(
-    'flex shrink-0 items-center gap-1 whitespace-nowrap text-sm font-medium transition',
+    'inline-flex h-auto shrink-0 items-center gap-1 whitespace-nowrap px-0 py-0 text-sm font-medium transition',
     'hover:text-primary dark:hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
     isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground',
@@ -53,7 +53,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           aria-expanded={isOpen}
           className={cn(
             getNavItemClass(isActive),
-            'px-0 hover:bg-transparent dark:hover:bg-transparent',
+            'has-[>svg]:px-0 hover:bg-transparent dark:hover:bg-transparent',
           )}
         >
           <span>{item.label}</span>

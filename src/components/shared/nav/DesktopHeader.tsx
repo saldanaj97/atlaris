@@ -10,7 +10,6 @@ import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import HeaderLiquidGlassShell from '@/components/shared/nav/HeaderLiquidGlassShell';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
@@ -49,7 +48,7 @@ export default function DesktopHeader({
       </div>
 
       {/* Auth controls (right) */}
-      <div className='relative z-10 flex min-w-0 items-center justify-end gap-1 justify-self-end'>
+      <div className='relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end'>
         <Button
           variant='ghost'
           size='sm'
@@ -66,8 +65,6 @@ export default function DesktopHeader({
         </Button>
 
         <ThemeToggle withTooltip />
-
-        <Separator orientation='vertical' className='mx-1 h-5' />
 
         <AuthControls
           isAuthenticated={isAuthenticated}
