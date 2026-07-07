@@ -23,6 +23,7 @@ That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env
 4. Set local product-testing flags as needed: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id.
 5. `pnpm dev` — open protected routes such as dashboard; header should show authenticated nav for the seeded user.
 6. Billing fixtures: run `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to update local subscription state through the Clerk Billing projection path.
+   Run it after a local DB reset/reseed or when changing the test plan/status; the fixture persists in the local `users` row and does not need to run before every `pnpm dev`.
 7. AI: use the mock provider for local-safe plan-generation flows.
 8. Real Clerk sessions, real third-party OAuth, and hosted payment processing remain staging/production concerns; see [environment.md](./environment.md).
 
