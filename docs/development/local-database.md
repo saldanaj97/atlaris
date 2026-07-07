@@ -20,11 +20,11 @@ That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env
 1. `pnpm db:dev:start`
 2. `pnpm db:dev:reset`
 3. Copy local Supabase URL and keys from `supabase status` into `.env.local`.
-4. Set local product-testing flags as needed: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id, optional `STRIPE_LOCAL_MODE=true`.
+4. Set local product-testing flags as needed: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id.
 5. `pnpm dev` — open protected routes such as dashboard; header should show authenticated nav for the seeded user.
-6. Pricing / checkout: with `STRIPE_LOCAL_MODE`, complete checkout redirects through `/api/v1/stripe/local/complete-checkout` and subscription state updates via webhook processor.
+6. Billing fixtures: run `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to update local subscription state through the Clerk Billing projection path.
 7. AI: use the mock provider for local-safe plan-generation flows.
-8. Real Clerk sessions, real third-party OAuth, and hosted Stripe remain staging/production concerns; see [environment.md](./environment.md).
+8. Real Clerk sessions, real third-party OAuth, and hosted payment processing remain staging/production concerns; see [environment.md](./environment.md).
 
 ## Ports and local services
 
@@ -104,6 +104,7 @@ supabase db reset
 | Stop Supabase     | `pnpm db:dev:stop`      |
 | Reset DB + seed   | `pnpm db:dev:reset`     |
 | Re-run seed only  | `pnpm db:dev:seed`      |
+| Apply Clerk Billing fixture | `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` |
 
 `pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
 
