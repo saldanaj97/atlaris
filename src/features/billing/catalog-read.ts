@@ -351,7 +351,7 @@ async function readLiveBillingCatalog(
 }
 
 /**
- * Reads paid-tier display facts for the marketing pricing page.
+ * Reads paid-tier display facts for the legacy Stripe pricing grid.
  * Marketing stays decoupled from checkout/portal/webhook (`StripeCommerceBoundary`).
  */
 export async function readBillingCatalogTierData(

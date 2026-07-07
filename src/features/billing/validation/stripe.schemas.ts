@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Response shape from POST /api/v1/stripe/create-checkout (success).
- * Used by SubscribeButton to validate the response before redirecting.
+ * Used by the legacy Stripe SubscribeButton before redirecting.
  */
 export const createCheckoutResponseSchema = z.object({
   sessionUrl: z.string().min(1, 'sessionUrl is required'),
@@ -10,7 +10,7 @@ export const createCheckoutResponseSchema = z.object({
 
 /**
  * Response shape from POST /api/v1/stripe/create-portal (success).
- * Used by ManageSubscriptionButton to validate the response before redirecting.
+ * Kept for the legacy Stripe portal route until Stripe cleanup is scheduled.
  */
 export const createPortalResponseSchema = z.object({
   portalUrl: z.url('portalUrl must be a valid URL').refine((value) => {
@@ -20,7 +20,7 @@ export const createPortalResponseSchema = z.object({
 });
 
 /**
- * Subset of Stripe Price fields consumed by the pricing page.
+ * Subset of Stripe Price fields consumed by the legacy Stripe catalog reader.
  * Guards against Stripe API changes or unexpected field types at runtime.
  */
 export const stripePriceFieldsSchema = z.object({
@@ -29,7 +29,7 @@ export const stripePriceFieldsSchema = z.object({
 });
 
 /**
- * Subset of Stripe Product fields consumed by the pricing page.
+ * Subset of Stripe Product fields consumed by the legacy Stripe catalog reader.
  * Handles both active and soft-deleted products.
  */
 export const stripeProductFieldsSchema = z.union([

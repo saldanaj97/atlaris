@@ -2,7 +2,7 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
-**Last Updated:** May 2026
+**Last Updated:** July 2026
 
 ## Overview
 
@@ -151,7 +151,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
 | Workers / background jobs    | `db` from `@supabase/service-role` | No user session exists                                 |
-| Stripe webhooks              | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
+| Stripe and Clerk webhooks    | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
 
@@ -169,7 +169,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 2. **Double-layered access control.** Application queries filter by `user.id` AND Postgres RLS policies enforce the same filter at the database level. Even if app code has a bug, the database blocks cross-tenant access.
 
-3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
+3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test. Clerk Billing local fixtures run through an explicit script and do not bypass the production webhook signature check.
 
 4. **Service-role usage is restricted.** Do not import `@supabase/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
 
