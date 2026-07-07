@@ -12,6 +12,7 @@ import {
 interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
+  readonly clerkBillingReconciliationEnabled: boolean;
   readonly workerToken: string | undefined;
   readonly workerHealthToken: string | undefined;
 }
@@ -37,10 +38,23 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
       return toBoolean(access.getServerOptional('PLAN_CLEANUP_ENABLED'), false);
     },
     /**
+     * Master switch for the manual Clerk Billing reconciliation HTTP endpoint.
+     */
+    get clerkBillingReconciliationEnabled(): boolean {
+      return toBoolean(
+        access.getServerOptional('CLERK_BILLING_RECONCILIATION_ENABLED'),
+        false,
+      );
+    },
+    /**
      * Bearer token for manual maintenance cleanup via internal HTTP routes.
      */
     get workerToken(): string | undefined {
-      if (!this.retentionCleanupEnabled && !this.planCleanupEnabled) {
+      if (
+        !this.retentionCleanupEnabled &&
+        !this.planCleanupEnabled &&
+        !this.clerkBillingReconciliationEnabled
+      ) {
         return undefined;
       }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');

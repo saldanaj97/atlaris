@@ -16,7 +16,7 @@
  * - **`AI_USE_MOCK` / `AI_PROVIDER`** — AI runtime behavior. `AI_PROVIDER` only
  *   accepts `mock` or `router` (or unset); use `AI_USE_MOCK` for finer control
  *   in test/dev environments.
- * - **`STRIPE_*` / billing env** — Local billing uses additional flags in Phase 1 billing slice.
+ * - **Billing fixtures** — use `pnpm billing:clerk:fixture` to seed local subscription state.
  *
  * Prefer reading feature behavior from the grouped configs in `@/lib/config/env` rather than
  * `process.env` directly.

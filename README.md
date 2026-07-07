@@ -20,7 +20,7 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 - **Database:** Supabase local Postgres / hosted Supabase Postgres via Drizzle ORM
 - **Auth:** Clerk for UI, route protection, and server session reads
 - **AI:** OpenRouter via `@openrouter/sdk`
-- **Payments:** Stripe
+- **Payments:** Clerk Billing (Stripe gateway)
 - **Testing:** Vitest + Testing Library + Testcontainers
 
 ## Getting started
@@ -120,7 +120,7 @@ Workflow SDK runtime, local dev (`pnpm dev:workflow`), feature flags, and correl
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, `workflowEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation

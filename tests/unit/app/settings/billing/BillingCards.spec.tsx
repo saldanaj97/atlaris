@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getBillingAccountSnapshotMock: vi.fn(),
-  manageSubscriptionButtonMock: vi.fn(),
   redirectMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
 }));
@@ -21,16 +20,6 @@ vi.mock('@/lib/api/request-boundary', () => ({
 vi.mock('next/navigation', () => ({
   redirect: mocks.redirectMock,
 }));
-
-vi.mock(
-  '@/app/(app)/settings/billing/components/ManageSubscriptionButton',
-  () => ({
-    default: (props: { canOpenBillingPortal: boolean }) => {
-      mocks.manageSubscriptionButtonMock(props);
-      return <button type='button'>Manage Subscription</button>;
-    },
-  }),
-);
 
 async function renderBillingCards(): Promise<void> {
   const { BillingCards } =
@@ -53,9 +42,6 @@ describe('BillingCards', () => {
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: new Date('2026-07-01T00:00:00.000Z'),
       cancelAtPeriodEnd: false,
-      stripeCustomerId: 'cus_test',
-      stripeSubscriptionId: 'sub_test',
-      canOpenBillingPortal: true,
       usage: {
         tier: 'pro',
         activePlans: { current: 2, limit: 5 },
@@ -73,9 +59,6 @@ describe('BillingCards', () => {
       userId: 'user_billing_cards',
       dbClient: {},
     });
-    expect(mocks.manageSubscriptionButtonMock).toHaveBeenCalledWith(
-      expect.objectContaining({ canOpenBillingPortal: true }),
-    );
     expect(screen.getByText('PRO')).toBeVisible();
     expect(screen.getByText('Active plans')).toBeVisible();
     expect(screen.getByText('Regenerations (monthly)')).toBeVisible();

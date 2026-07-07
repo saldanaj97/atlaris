@@ -80,8 +80,6 @@ function isActorUser(user: unknown): user is ActorUser {
     maybeUser.updatedAt instanceof Date &&
     typeof maybeUser.analyticsTimezone === 'string' &&
     isOptionalString(maybeUser.name) &&
-    isOptionalString(maybeUser.stripeCustomerId) &&
-    isOptionalString(maybeUser.stripeSubscriptionId) &&
     hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
     isOptionalPreferredAiModel(maybeUser.preferredAiModel)

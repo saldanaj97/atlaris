@@ -17,9 +17,19 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = ['/api/health/worker'] as const;
 
+const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
+  '/api/v1/clerk/billing/webhook',
+] as const;
+
+export function isProviderWebhookRoute(pathname: string): boolean {
+  return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix),
+  );
+}
+
 export function isProtectedRoute(pathname: string): boolean {
-  // Stripe webhooks bypass all checks
-  if (pathname.startsWith('/api/v1/stripe/webhook')) {
+  // Payment/auth provider webhooks bypass Clerk; route-level signatures apply.
+  if (isProviderWebhookRoute(pathname)) {
     return false;
   }
   // Internal worker/maintenance routes bypass Clerk; each route must enforce

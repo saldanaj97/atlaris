@@ -70,8 +70,6 @@ describe('GET /api/v1/user/profile', () => {
     expect(new Date(body.createdAt).toString()).not.toBe('Invalid Date');
 
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('stripeCustomerId');
-    expect(body).not.toHaveProperty('stripeSubscriptionId');
     expect(body).not.toHaveProperty('monthlyExportCount');
   });
 });
@@ -122,8 +120,6 @@ describe('PUT /api/v1/user/profile', () => {
       analyticsTimezone: 'UTC',
     });
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('stripeCustomerId');
-    expect(body).not.toHaveProperty('stripeSubscriptionId');
     expect(body).not.toHaveProperty('monthlyExportCount');
 
     const updated = await db.query.users.findFirst({
@@ -188,16 +184,13 @@ describe('PUT /api/v1/user/profile', () => {
 
   it('updates name and analytics timezone atomically in one request', async () => {
     const { PUT } = await import('@/app/api/v1/user/profile/route');
-    const request = new NextRequest(
-      'http://localhost/api/v1/user/profile',
-      {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: 'Combined Update',
-          analyticsTimezone: 'Europe/London',
-        }),
-      },
-    );
+    const request = new NextRequest('http://localhost/api/v1/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: 'Combined Update',
+        analyticsTimezone: 'Europe/London',
+      }),
+    });
 
     const response = await PUT(request);
 

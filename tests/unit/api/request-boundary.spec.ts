@@ -293,11 +293,11 @@ describe('requestBoundary', () => {
     getUserByAuthIdMock.mockResolvedValue(user);
 
     const handler = createRequestBoundary().route(
-      { rateLimit: 'billing' },
+      { rateLimit: 'mutation' },
       async () => new Response('ok', { status: 200 }),
     );
 
-    for (let i = 0; i < USER_RATE_LIMIT_CONFIGS.billing.maxRequests; i += 1) {
+    for (let i = 0; i < USER_RATE_LIMIT_CONFIGS.mutation.maxRequests; i += 1) {
       const allowed = await handler(
         new Request('http://localhost/api', { method: 'POST' }),
         { params: Promise.resolve({}) },
@@ -314,7 +314,7 @@ describe('requestBoundary', () => {
     expect(response.status).toBe(429);
     expect(response.headers.get('Retry-After')).not.toBeNull();
     expect(response.headers.get('X-RateLimit-Limit')).toBe(
-      String(USER_RATE_LIMIT_CONFIGS.billing.maxRequests),
+      String(USER_RATE_LIMIT_CONFIGS.mutation.maxRequests),
     );
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
     expect(response.headers.get('X-RateLimit-Reset')).not.toBeNull();

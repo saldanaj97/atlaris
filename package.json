@@ -23,6 +23,7 @@
     "db:dev:start": "supabase start",
     "db:dev:stop": "supabase stop",
     "db:dev:seed": "tsx scripts/db/seed-local-supabase.ts",
+    "billing:clerk:fixture": "tsx scripts/db/apply-clerk-billing-fixture.ts",
     "db:dev:reset": "supabase db reset",
     "test": "tsx scripts/tests/run-phases.ts test:unit:changed test:integration:changed",
     "test:unit": "SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit",
@@ -73,7 +74,6 @@
     "react-dom": "19.2.4",
     "recharts": "2.15.4",
     "sonner": "^2.0.7",
-    "stripe": "^20.4.1",
     "tailwind-merge": "^3.5.0",
     "workflow": "^4.2.5",
     "zod": "^4.3.6"

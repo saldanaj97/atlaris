@@ -12,7 +12,6 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | `integration`  | 30 requests  | 1 hour   | Reserved for future third-party endpoints |
 | `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
 | `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
-| `billing`      | 10 requests  | 1 minute | Stripe checkout, portal sessions          |
 | `oauth`        | 20 requests  | 1 hour   | Reserved for future OAuth initiation      |
 
 ### Plan Generation Rate Limit
@@ -76,7 +75,6 @@ export const POST = requestBoundary.route(
 | Future third-party integration writes    | `integration`  |
 | Create/update/delete plans, tasks, etc.  | `mutation`     |
 | GET endpoints for data retrieval         | `read`         |
-| Stripe checkout/portal creation          | `billing`      |
 | Future OAuth initiation (not callbacks)  | `oauth`        |
 
 ### Plan Generation (Special Case)
@@ -141,11 +139,6 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 - `POST /api/v1/plans/stream`
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
-
-### Billing (`billing`)
-
-- `POST /api/v1/stripe/create-checkout`
-- `POST /api/v1/stripe/create-portal`
 
 ### Mutation (`mutation`)
 

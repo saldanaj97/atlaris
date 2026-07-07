@@ -519,7 +519,6 @@ describe('RLS Policy Verification', () => {
         .returning({
           id: users.id,
           cancelAtPeriodEnd: users.cancelAtPeriodEnd,
-          stripeCustomerId: users.stripeCustomerId,
           subscriptionStatus: users.subscriptionStatus,
         });
 
@@ -535,13 +534,6 @@ describe('RLS Policy Verification', () => {
       await expectRlsViolation(() =>
         userDb
           .update(users)
-          .set({ stripeCustomerId: 'cus_fake123' })
-          .where(eq(users.id, user.id)),
-      );
-
-      await expectRlsViolation(() =>
-        userDb
-          .update(users)
           .set({ subscriptionStatus: 'active' })
           .where(eq(users.id, user.id)),
       );
@@ -549,7 +541,6 @@ describe('RLS Policy Verification', () => {
       const [billingAfterViolations] = await userDb
         .select({
           cancelAtPeriodEnd: users.cancelAtPeriodEnd,
-          stripeCustomerId: users.stripeCustomerId,
           subscriptionStatus: users.subscriptionStatus,
         })
         .from(users)
@@ -557,7 +548,6 @@ describe('RLS Policy Verification', () => {
 
       expect(billingAfterViolations).toEqual({
         cancelAtPeriodEnd: user.cancelAtPeriodEnd,
-        stripeCustomerId: user.stripeCustomerId,
         subscriptionStatus: user.subscriptionStatus,
       });
 

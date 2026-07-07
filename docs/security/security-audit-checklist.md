@@ -1,6 +1,6 @@
 # Pre-Launch Security & Abuse-Resistance Audit Checklist (24 Areas)
 
-> **Stack context**: Next.js 16 + React 19 + Clerk Auth + Stripe billing + Supabase Postgres + RLS + OpenRouter AI
+> **Stack context**: Next.js 16 + React 19 + Clerk Auth + Clerk Billing (Stripe gateway) + Supabase Postgres + RLS + OpenRouter AI
 
 ---
 
@@ -130,9 +130,9 @@
 - [ ] Subscription status checked on every gated request (not cached too long).
 - [ ] Trial expiry enforced server-side with grace period handling.
 - [ ] Cancelled subscriptions: verify access revoked at period end, not immediately.
-- [ ] Test subscription status with Stripe test clocks for edge cases.
+- [ ] Test subscription status with Clerk Billing fixtures and reconciliation edge cases.
 
-### 12) Webhook security (Stripe, etc.)
+### 12) Webhook security (Clerk Billing, etc.)
 
 - [ ] Verify signatures on every webhook and reject unsigned/invalid payloads.
 - [ ] Add idempotency and replay protection (don't double-process events).
@@ -140,7 +140,7 @@
 - [ ] Webhook endpoint not guessable (use random path segment).
 - [ ] Webhook processing timeout handling (don't hang on slow operations).
 - [ ] Test webhook replay attacks with old valid signatures.
-- [ ] Stripe webhook events verified against expected event types (ignore unknown).
+- [ ] Clerk webhook events verified against expected event types (ignore unknown).
 
 ---
 

@@ -175,7 +175,7 @@ export class AttemptCapExceededError extends AppError {
 }
 
 /**
- * Extracts a string `code` property from an unknown thrown value (e.g. Stripe errors).
+ * Extracts a string `code` property from an unknown thrown value.
  * Returns `undefined` when the value has no string `code` field.
  */
 export function extractErrorCode(error: unknown): string | undefined {
