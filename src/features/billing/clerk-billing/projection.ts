@@ -103,6 +103,13 @@ function userIdFromPayer(
   return payerId?.startsWith('user_') ? payerId : null;
 }
 
+function payerIdFromEventData(data: object): string | undefined {
+  if (!('payer_id' in data)) {
+    return undefined;
+  }
+  return typeof data.payer_id === 'string' ? data.payer_id : undefined;
+}
+
 function amountInCentsFromBillingAmount(
   amount: { amount?: number } | null | undefined,
 ): number | null {
@@ -179,7 +186,10 @@ export function clerkBillingSourceFromWebhook(
   if (isSubscriptionItemEvent(event)) {
     return {
       type: event.type,
-      payerUserId: userIdFromPayer(event.data.payer),
+      payerUserId: userIdFromPayer(
+        event.data.payer,
+        payerIdFromEventData(event.data),
+      ),
       subscriptionStatus: null,
       paymentAttemptStatus: null,
       items: [toProjectionItemFromWebhook(event.data)],
@@ -199,7 +209,10 @@ export function clerkBillingSourceFromWebhook(
   if (isPaymentAttemptEvent(event)) {
     return {
       type: event.type,
-      payerUserId: userIdFromPayer(event.data.payer),
+      payerUserId: userIdFromPayer(
+        event.data.payer,
+        payerIdFromEventData(event.data),
+      ),
       subscriptionStatus: null,
       paymentAttemptStatus: event.data.status,
       items: event.data.subscription_items.map(toProjectionItemFromWebhook),

@@ -283,4 +283,43 @@ describe('projectClerkBillingSource', () => {
       }),
     );
   });
+
+  it('uses payer_id fallback for item and payment-attempt webhooks', () => {
+    const subscriptionItemSource = clerkBillingSourceFromWebhook({
+      type: 'subscriptionItem.active',
+      data: {
+        id: 'item_fallback',
+        status: 'active',
+        payer: {},
+        payer_id: 'user_fallback',
+        plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
+        plan: null,
+        amount: { amount: 2_000 },
+        period_end: futurePeriodEnd.getTime(),
+      },
+    } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
+
+    const paymentAttemptSource = clerkBillingSourceFromWebhook({
+      type: 'paymentAttempt.failed',
+      data: {
+        id: 'attempt_fallback',
+        status: 'failed',
+        payer: {},
+        payer_id: 'user_fallback',
+        subscription_items: [
+          {
+            id: 'item_fallback',
+            status: 'active',
+            plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
+            plan: null,
+            amount: { amount: 2_000 },
+            period_end: futurePeriodEnd.getTime(),
+          },
+        ],
+      },
+    } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
+
+    expect(subscriptionItemSource?.payerUserId).toBe('user_fallback');
+    expect(paymentAttemptSource?.payerUserId).toBe('user_fallback');
+  });
 });
