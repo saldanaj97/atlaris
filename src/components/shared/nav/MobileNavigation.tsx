@@ -51,7 +51,7 @@ export default function MobileNavigation({
             onClick={() => setOpen(true)}
             className={
               usesGlassHeader
-                ? 'rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20'
+                ? 'rounded-xl bg-primary/15 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-primary/25 dark:bg-primary/10 dark:hover:bg-primary/20'
                 : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             }
             aria-label='Open menu'
@@ -67,7 +67,7 @@ export default function MobileNavigation({
         side='left'
         className={
           usesGlassHeader
-            ? 'w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55'
+            ? 'w-72 border-r border-primary/25 bg-primary/15 p-0 shadow-lg backdrop-blur-xl dark:border-primary/15 dark:bg-primary/20'
             : 'w-72 border-r border-border bg-card p-0 shadow-lg'
         }
       >
@@ -110,7 +110,7 @@ export default function MobileNavigation({
                     isActive
                       ? 'bg-primary text-white shadow-md'
                       : usesGlassHeader
-                        ? 'text-muted-foreground hover:bg-white/60 hover:text-primary dark:hover:bg-white/10 dark:hover:text-primary'
+                        ? 'text-muted-foreground hover:bg-primary/15 hover:text-primary dark:hover:bg-primary/10 dark:hover:text-primary'
                         : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
                 >

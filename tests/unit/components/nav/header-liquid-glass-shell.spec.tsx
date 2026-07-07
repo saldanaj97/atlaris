@@ -51,7 +51,7 @@ describe('HeaderLiquidGlassShell', () => {
 
     const layer = document.querySelector('[data-slot="liquid-glass-layer"]');
 
-    expect(layer).toHaveClass('bg-white/20', 'dark:bg-white/5');
+    expect(layer).toHaveClass('bg-primary/5', 'dark:bg-primary/10');
   });
 
   it('clips the glass layer on an inner wrapper so the shell can show focus rings', () => {

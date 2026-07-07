@@ -41,7 +41,7 @@ describe('header shell variants', () => {
 
   it('keeps protected routes on the rounded glass shell classes', () => {
     expect(desktopHeaderShellClass('protected')).toContain('rounded-2xl');
-    expect(desktopHeaderShellClass('protected')).toContain('border-white/40');
+    expect(desktopHeaderShellClass('protected')).toContain('border-primary/25');
     expect(desktopHeaderShellClass('protected')).toContain(
       'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
     );
@@ -53,7 +53,7 @@ describe('header shell variants', () => {
       'overflow-hidden',
     );
     expect(headerGlassSurfaceClass('protected', 'desktop')).toContain(
-      'dark:bg-white/10',
+      'dark:bg-primary/15',
     );
   });
 });
