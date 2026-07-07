@@ -702,6 +702,17 @@ describe('Environment Configuration', () => {
       expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
 
+    it('requires a worker token when Clerk Billing reconciliation is enabled in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        CLERK_BILLING_RECONCILIATION_ENABLED: 'true',
+      });
+
+      expect(maintenance.clerkBillingReconciliationEnabled).toBe(true);
+      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
+    });
+
     it('requires a worker health token in production', () => {
       vi.stubGlobal('window', undefined);
       const maintenance = createMaintenanceEnvForTests({
