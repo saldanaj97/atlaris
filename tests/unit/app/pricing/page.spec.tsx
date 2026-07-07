@@ -1,3 +1,4 @@
+import { ROUTES } from '@/features/navigation/routes';
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -38,7 +39,7 @@ describe('PricingPage', () => {
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: '/settings/billing',
+        newSubscriptionRedirectUrl: ROUTES.SETTINGS.BILLING,
       }),
     );
   });

@@ -34,7 +34,6 @@ export default async function BillingSettingsPage(): Promise<ReactElement> {
       <div className='mt-6'>
         <UserProfile
           routing='hash'
-          __experimental_startPath='/billing'
           appearance={{
             elements: {
               rootBox: 'w-full',

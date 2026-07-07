@@ -8,7 +8,6 @@ import {
   type BackendBillingSubscription,
   type ClerkBillingProjectionSource,
 } from '@/features/billing/clerk-billing/projection';
-import { ServiceUnavailableError } from '@/lib/api/errors';
 import { clerkClient as getClerkClient } from '@clerk/nextjs/server';
 import { clerkWebhookEvents, users } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
@@ -66,11 +65,11 @@ export async function applyClerkBillingSource(
     .limit(1);
 
   if (!user) {
-    throw new ServiceUnavailableError(
-      'No local user found for Clerk Billing payer',
-      undefined,
+    deps.logger.warn(
       { payerUserId: source.payerUserId, type: source.type },
+      'No local user found for Clerk Billing payer; skipping projection',
     );
+    return 'skipped';
   }
 
   const projection = projectClerkBillingSource(source, user);

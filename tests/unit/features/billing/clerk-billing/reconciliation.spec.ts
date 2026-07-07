@@ -70,16 +70,16 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.delete).not.toHaveBeenCalled();
   });
 
-  it('removes the idempotency row when the local user is not ready yet', async () => {
+  it('acks missing local users without retrying the webhook', async () => {
     const db = makeDb({});
 
     await expect(
-      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_retryable', {
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_missing_user', {
         db,
         logger: makeLogger(),
       }),
-    ).rejects.toThrow('No local user found for Clerk Billing payer');
+    ).resolves.toEqual({ status: 'inserted', result: 'skipped' });
 
-    expect(db.delete).toHaveBeenCalledTimes(1);
+    expect(db.delete).not.toHaveBeenCalled();
   });
 });

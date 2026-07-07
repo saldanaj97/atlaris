@@ -96,12 +96,15 @@ export function createClerkBillingWebhookHandler(): PlainHandler {
 
     let event: WebhookEvent;
     try {
+      // Body was read separately for size capping; rebuild a Request for verifyWebhook.
+      const verificationRequest = new Request(req.url, {
+        method: req.method,
+        headers: req.headers,
+        body: rawBody,
+      });
+      // RequestLike's type omits the Web Request API; verifyWebhook accepts it at runtime.
       event = await verifyWebhook(
-        new Request(req.url, {
-          method: req.method,
-          headers: req.headers,
-          body: rawBody,
-        }) as unknown as Parameters<typeof verifyWebhook>[0],
+        verificationRequest as Parameters<typeof verifyWebhook>[0],
         {
           signingSecret: clerkAuthEnv.webhookSigningSecret,
         },

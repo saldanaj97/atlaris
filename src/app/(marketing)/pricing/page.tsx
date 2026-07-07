@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { PricingFinalCta } from '@/app/(marketing)/pricing/components/PricingFinalCta';
+import { ROUTES } from '@/features/navigation/routes';
 import { PricingTable } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
@@ -28,7 +29,9 @@ export default async function PricingPage(): Promise<ReactElement> {
           </div>
 
           <div className='w-full'>
-            <PricingTable newSubscriptionRedirectUrl='/settings/billing' />
+            <PricingTable
+              newSubscriptionRedirectUrl={ROUTES.SETTINGS.BILLING}
+            />
           </div>
 
           <PricingFinalCta />
