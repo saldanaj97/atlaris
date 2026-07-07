@@ -47,7 +47,7 @@ const landing = {
     'Atlaris keeps the plan, current task, and progress history close enough that you do not restart from memory every session.',
   howTitle: 'Connect the learning pieces',
   benefitTitle: 'Know what changed',
-  useCaseTitle: 'Works across learning styles',
+  audienceTitle: 'Works across learning styles',
   finalTitle: 'Stop restarting the plan from scratch.',
   finalCopy:
     'Create the roadmap once, then let your workspace show what to do next.',
@@ -59,39 +59,39 @@ const landing = {
     ],
     steps: [
       {
-        icon: FileText,
+        icon: 'file',
         title: 'Capture the context',
         copy: 'Goal, level, schedule, and focus area become the plan input.',
       },
       {
-        icon: BookOpen,
+        icon: 'book',
         title: 'Study from the plan',
         copy: 'Resources stay attached to the work they support.',
       },
       {
-        icon: BarChart3,
+        icon: 'chart',
         title: 'Read the pulse',
         copy: 'Usage analytics show current completion and recent progress changes.',
       },
     ],
     benefits: [
       {
-        icon: Clock3,
+        icon: 'clock',
         title: 'Estimated time is explicit',
         copy: 'Atlaris labels completed learning time as estimated, not invented history.',
       },
       {
-        icon: TrendingUp,
+        icon: 'trend',
         title: 'Signals over noise',
         copy: 'The dashboard shows recent learning activity without burying the plan.',
       },
       {
-        icon: Compass,
+        icon: 'compass',
         title: 'Easy re-entry',
         copy: 'Come back to the active plan instead of rebuilding your own context.',
       },
     ],
-    useCases: [
+    audiences: [
       {
         title: 'College support',
         copy: 'Add structure around a course without replacing the syllabus.',
@@ -109,10 +109,49 @@ const landing = {
 } as const;
 
 const comparisonRows = [
-  ['Saved links', 'Resources exist, but the route is yours to invent.'],
-  ['Generic courses', 'The sequence is fixed, even when your time is not.'],
-  ['Atlaris', 'The plan starts from your goal, level, and weekly capacity.'],
+  {
+    label: 'Saved links',
+    copy: 'Resources exist, but the route is yours to invent.',
+    highlight: false,
+  },
+  {
+    label: 'Generic courses',
+    copy: 'The sequence is fixed, even when your time is not.',
+    highlight: false,
+  },
+  {
+    label: 'Atlaris',
+    copy: 'The plan starts from your goal, level, and weekly capacity.',
+    highlight: true,
+  },
 ];
+
+type LandingIconName =
+  | (typeof landing.sections.steps)[number]['icon']
+  | (typeof landing.sections.benefits)[number]['icon'];
+
+function LandingIcon({
+  name,
+  className,
+}: {
+  name: LandingIconName;
+  className: string;
+}) {
+  switch (name) {
+    case 'file':
+      return <FileText className={className} aria-hidden='true' />;
+    case 'book':
+      return <BookOpen className={className} aria-hidden='true' />;
+    case 'chart':
+      return <BarChart3 className={className} aria-hidden='true' />;
+    case 'clock':
+      return <Clock3 className={className} aria-hidden='true' />;
+    case 'trend':
+      return <TrendingUp className={className} aria-hidden='true' />;
+    case 'compass':
+      return <Compass className={className} aria-hidden='true' />;
+  }
+}
 
 const faq = [
   {
@@ -142,7 +181,7 @@ export function LandingDesignExplorer() {
         <HowItWorks />
         <Benefits />
         <ProductTour />
-        <UseCases />
+        <AudienceSection />
         <Comparison />
         <Faq />
         <FinalCta />
@@ -196,11 +235,14 @@ function ScreenshotFrame({
         className,
       )}
     >
-      <div className='flex h-9 items-center justify-between border-b border-border/60 px-4'>
+      <div
+        className='flex h-9 items-center justify-between border-b border-border/60 px-4'
+        aria-hidden='true'
+      >
         <div className='flex gap-2'>
-          <span className='size-2.5 rounded-full bg-[#ff6b6b]' />
-          <span className='size-2.5 rounded-full bg-[#ffd166]' />
-          <span className='size-2.5 rounded-full bg-[#06d6a0]' />
+          <span className='size-2.5 rounded-full bg-destructive' />
+          <span className='size-2.5 rounded-full bg-warning' />
+          <span className='size-2.5 rounded-full bg-success' />
         </div>
         <span className='text-xs font-semibold text-muted-foreground'>
           atlaris.app
@@ -270,14 +312,13 @@ function StepCard({
   step: (typeof landing.sections.steps)[number];
   index: number;
 }) {
-  const Icon = step.icon;
   return (
     <article className={cn(landingCardClassName, 'p-6')}>
       <div className='mb-6 flex items-center justify-between'>
         <span className='flex size-12 items-center justify-center rounded-2xl bg-primary-dark text-lg font-black text-primary-foreground'>
           {index + 1}
         </span>
-        <Icon className='size-6 text-primary' aria-hidden='true' />
+        <LandingIcon name={step.icon} className='size-6 text-primary' />
       </div>
       <h3 className='text-2xl font-black [letter-spacing:0] text-foreground'>
         {step.title}
@@ -292,13 +333,15 @@ function Benefits() {
     <Section eyebrow='Benefits' title={landing.benefitTitle}>
       <div className='grid gap-5 md:grid-cols-3'>
         {landing.sections.benefits.map((benefit) => {
-          const Icon = benefit.icon;
           return (
             <article
               key={benefit.title}
               className='rounded-3xl bg-muted p-6 dark:bg-primary/10'
             >
-              <Icon className='mb-6 size-7 text-primary' aria-hidden='true' />
+              <LandingIcon
+                name={benefit.icon}
+                className='mb-6 size-7 text-primary'
+              />
               <h3 className='text-xl font-black [letter-spacing:0] text-foreground'>
                 {benefit.title}
               </h3>
@@ -404,24 +447,24 @@ function AppScreenshot({
   );
 }
 
-function UseCases() {
+function AudienceSection() {
   return (
     <Section
       eyebrow='Use cases'
-      title={landing.useCaseTitle}
+      title={landing.audienceTitle}
       copy='Illustrative scenarios only, not customer testimonials.'
     >
       <div className='grid gap-5 md:grid-cols-3'>
-        {landing.sections.useCases.map((useCase) => (
+        {landing.sections.audiences.map((audience) => (
           <article
-            key={useCase.title}
+            key={audience.title}
             className={cn(landingCardClassName, 'p-6')}
           >
             <h3 className='text-2xl font-black [letter-spacing:0] text-foreground'>
-              {useCase.title}
+              {audience.title}
             </h3>
             <p className='mt-3 leading-7 text-muted-foreground'>
-              {useCase.copy}
+              {audience.copy}
             </p>
           </article>
         ))}
@@ -443,7 +486,7 @@ function Comparison() {
           'overflow-hidden bg-white/80 dark:bg-card/50',
         )}
       >
-        {comparisonRows.map(([label, copy]) => (
+        {comparisonRows.map(({ label, copy, highlight }) => (
           <div
             key={label}
             className='grid gap-4 border-b border-border/60 p-5 last:border-b-0 md:grid-cols-[220px_1fr]'
@@ -451,7 +494,7 @@ function Comparison() {
             <div
               className={cn(
                 'font-black [letter-spacing:0]',
-                label === 'Atlaris' ? 'text-primary' : 'text-foreground',
+                highlight ? 'text-primary' : 'text-foreground',
               )}
             >
               {label}

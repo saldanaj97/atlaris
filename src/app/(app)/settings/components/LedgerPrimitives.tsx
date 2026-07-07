@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -8,7 +8,7 @@ export const ledgerGlassSurface =
 
 export const ledgerGlassDivider = 'divide-white/40 dark:divide-white/10';
 
-export function SettingsLedgerAmbient(): React.ReactElement {
+export function SettingsLedgerAmbient(): ReactElement {
   return (
     <div
       aria-hidden='true'
@@ -21,7 +21,7 @@ export function SettingsLedgerPanel({
   children,
 }: {
   children: ReactNode;
-}): React.ReactElement {
+}): ReactElement {
   return (
     <div className='relative mx-auto max-w-4xl'>
       <SettingsLedgerAmbient />
@@ -48,7 +48,7 @@ export function LedgerSectionBlock({
   label: string;
   description: string;
   children: ReactNode;
-}): React.ReactElement {
+}): ReactElement {
   return (
     <section
       id={id}
@@ -77,11 +77,11 @@ export function LedgerRow({
   children: ReactNode;
   hint?: string;
   className?: string;
-}): React.ReactElement {
+}): ReactElement {
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0',
+        'flex flex-col gap-2 py-3.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4',
         className,
       )}
     >
@@ -91,7 +91,7 @@ export function LedgerRow({
           <p className='mt-0.5 text-xs text-muted-foreground'>{hint}</p>
         ) : null}
       </div>
-      <div className='flex shrink-0 items-center gap-2 text-sm text-muted-foreground'>
+      <div className='flex min-w-0 flex-wrap items-center gap-2 text-sm [overflow-wrap:anywhere] text-muted-foreground sm:justify-end sm:text-right'>
         {children}
       </div>
     </div>
@@ -106,7 +106,7 @@ export function LedgerStackedRow({
   label: string;
   children: ReactNode;
   hint?: string;
-}): React.ReactElement {
+}): ReactElement {
   return (
     <div className='py-3.5 first:pt-0 last:pb-0'>
       <div className='mb-1.5 flex items-center justify-between gap-4 text-sm'>

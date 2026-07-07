@@ -1,36 +1,32 @@
-import { LedgerRow } from '@/app/(app)/settings/components/LedgerPrimitives';
-import { Badge } from '@/components/ui/badge';
+import type { ReactElement } from 'react';
 
-const NOTIFICATION_CATEGORIES = [
-  {
-    title: 'Learning reminders',
-    description:
-      'Daily and weekly nudges, progress summaries, and streak alerts when personalized notifications launch.',
-  },
-  {
-    title: 'Plan updates',
-    description:
-      'Alerts when plans finish generating, new resources are ready, or you hit module milestones.',
-  },
-  {
-    title: 'Account & billing',
-    description:
-      'Updates about subscription changes, usage limits, and account security events.',
-  },
-] as const;
+import { NotificationPreferencesForm } from '@/app/(app)/settings/notifications/components/NotificationPreferencesForm';
+import { ROUTES } from '@/features/navigation/routes';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import {
+  EMAIL_NOTIFICATION_CATEGORIES,
+  getEmailNotificationPreferences,
+} from '@/lib/db/queries/user-preferences';
+import { emailNotificationPreferenceFormValuesFromPreferences } from '@/shared/notifications/email-preferences';
+import { redirect } from 'next/navigation';
 
-export function NotificationsSection() {
+export async function NotificationsSection(): Promise<ReactElement> {
+  const preferences = await requestBoundary.component(({ actor, db }) =>
+    getEmailNotificationPreferences(actor.id, db),
+  );
+
+  if (!preferences) {
+    redirect(
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.NOTIFICATIONS)}`,
+    );
+  }
+
   return (
-    <>
-      {NOTIFICATION_CATEGORIES.map((category) => (
-        <LedgerRow
-          key={category.title}
-          label={category.title}
-          hint={category.description}
-        >
-          <Badge variant='outline'>Coming soon</Badge>
-        </LedgerRow>
-      ))}
-    </>
+    <NotificationPreferencesForm
+      initialPreferences={emailNotificationPreferenceFormValuesFromPreferences(
+        preferences,
+      )}
+      categories={[...EMAIL_NOTIFICATION_CATEGORIES]}
+    />
   );
 }

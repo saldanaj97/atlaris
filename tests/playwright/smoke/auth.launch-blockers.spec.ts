@@ -24,9 +24,8 @@ const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
   await expectHeading(page, 'Settings', 1);
-  await expectHeading(page, 'Billing', 2);
-  await expectHeading(page, 'Current Plan', 3);
-  await expectHeading(page, 'Usage', 3);
+  await expectHeading(page, 'Plan & billing', 2);
+  await expectHeading(page, 'Usage', 2);
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('Next billing date')).toBeVisible();
   await expect(page.getByText(/^active$/i)).toBeVisible();
