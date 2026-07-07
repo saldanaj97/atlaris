@@ -4,6 +4,7 @@ import { BillingCards } from '@/app/(app)/settings/billing/components/BillingCar
 import { BillingCardsSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
 import { PageHeader } from '@/components/ui/page-header';
 import { getSupportedLocale } from '@/lib/i18n/locale';
+import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
 
@@ -28,6 +29,19 @@ export default async function BillingSettingsPage(): Promise<ReactElement> {
         <Suspense fallback={<BillingCardsSkeleton />}>
           <BillingCards locale={locale} />
         </Suspense>
+      </div>
+
+      <div className='mt-6'>
+        <UserProfile
+          routing='hash'
+          __experimental_startPath='/billing'
+          appearance={{
+            elements: {
+              rootBox: 'w-full',
+              cardBox: 'w-full shadow-none',
+            },
+          }}
+        />
       </div>
     </>
   );

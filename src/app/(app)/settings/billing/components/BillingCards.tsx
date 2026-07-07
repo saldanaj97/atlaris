@@ -1,4 +1,3 @@
-import ManageSubscriptionButton from './ManageSubscriptionButton';
 import {
   formatCompactUsageLimit,
   formatUsageLimitLabel,
@@ -111,18 +110,6 @@ export async function BillingCards({ locale }: { locale?: string }) {
           <div className='flex items-center justify-between'>
             <span>Next billing date</span>
             <span className='text-muted-foreground'>{nextBilling}</span>
-          </div>
-
-          <div className='mt-4'>
-            <ManageSubscriptionButton
-              className='w-full'
-              canOpenBillingPortal={snapshot.canOpenBillingPortal}
-            />
-            {!snapshot.canOpenBillingPortal && (
-              <p className='mt-2 text-center text-sm text-muted-foreground'>
-                Billing features are unavailable.
-              </p>
-            )}
           </div>
         </CardContent>
       </Card>
