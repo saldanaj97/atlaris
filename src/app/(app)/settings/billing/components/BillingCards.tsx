@@ -9,9 +9,13 @@ import {
 } from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
+import {
+  BillingSnapshotNotFoundError,
+  getBillingAccountSnapshot,
+} from '@/features/billing/account-snapshot';
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
@@ -26,7 +30,6 @@ function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
   return (
     <LedgerStackedRow label={label}>
       <div className='flex items-center justify-between text-sm'>
-        <span className='sr-only'>{label}</span>
         <span className='text-muted-foreground tabular-nums'>
           {used}/{formatCompactUsageLimit(limit)}
         </span>
@@ -40,13 +43,35 @@ function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
 }
 
 const loadBillingSnapshot = cache(async () => {
-  const result = await requestBoundary.component(async ({ actor, db }) => ({
-    user: actor,
-    snapshot: await getBillingAccountSnapshot({
-      userId: actor.id,
-      dbClient: db,
-    }),
-  }));
+  const result = await requestBoundary.component(async ({ actor, db }) => {
+    try {
+      return {
+        snapshot: await getBillingAccountSnapshot({
+          userId: actor.id,
+          dbClient: db,
+        }),
+      };
+    } catch (error) {
+      if (error instanceof BillingSnapshotNotFoundError) {
+        logger.warn(
+          {
+            userId: actor.id,
+          },
+          'Billing snapshot not found for settings ledger',
+        );
+      } else {
+        logger.error(
+          {
+            error,
+            userId: actor.id,
+          },
+          'Billing snapshot failed for settings ledger',
+        );
+      }
+
+      return { snapshot: null };
+    }
+  });
 
   if (!result) {
     redirect(
@@ -147,18 +172,6 @@ export async function UsageRows() {
         used={snapshot.usage.lessonGenerations.used}
         limit={snapshot.usage.lessonGenerations.limit}
       />
-    </>
-  );
-}
-
-/**
- * @deprecated Use BillingPlanRows and UsageRows in the Ledger settings page.
- */
-export async function BillingCards({ locale }: { locale?: string }) {
-  return (
-    <>
-      <BillingPlanRows locale={locale} />
-      <UsageRows />
     </>
   );
 }

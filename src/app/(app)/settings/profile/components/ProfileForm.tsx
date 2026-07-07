@@ -231,6 +231,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               id={profileNameInputId}
               type='text'
               value={state.name}
+              aria-label='Name'
               className='h-8 w-44 rounded-md'
               onChange={(event) =>
                 dispatch({ type: 'name-changed', name: event.target.value })
@@ -260,15 +261,21 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
                   void handleSave();
                 }}
               >
-                {state.saving ? 'Saving…' : 'Save'}
+                {state.saving ? 'Saving…' : 'Save Changes'}
               </Button>
             ) : null}
           </div>
         ) : (
           <>
-            <span className='text-foreground'>
+            <button
+              type='button'
+              className='text-left text-foreground'
+              onClick={() => {
+                dispatch({ type: 'start-editing' });
+              }}
+            >
               {state.name || 'No name set'}
-            </span>
+            </button>
             <Button
               type='button'
               variant='ghost'

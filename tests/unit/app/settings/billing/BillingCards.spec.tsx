@@ -22,10 +22,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 async function renderBillingCards(): Promise<void> {
-  const { BillingCards } =
+  const { BillingPlanRows, UsageRows } =
     await import('@/app/(app)/settings/billing/components/BillingCards');
 
-  render(await BillingCards({ locale: 'en-US' }));
+  render(
+    <>
+      {await BillingPlanRows({ locale: 'en-US' })}
+      {await UsageRows()}
+    </>,
+  );
 }
 
 describe('BillingCards', () => {
