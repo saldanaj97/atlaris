@@ -1,9 +1,10 @@
-import { ROUTES } from '@/features/navigation/routes';
-import { redirect } from 'next/navigation';
+import type { ReactElement } from 'react';
+
+import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
 
 /**
- * /settings root redirects to the Profile tab.
+ * Unified settings page — Ledger layout with all account sections.
  */
-export default function SettingsPage(): never {
-  redirect(ROUTES.SETTINGS.PROFILE);
+export default async function SettingsPage(): Promise<ReactElement> {
+  return <SettingsLedgerPage />;
 }

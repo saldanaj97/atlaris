@@ -6,6 +6,11 @@
       "sourceType": "github",
       "skillPath": "skills/flags-sdk/SKILL.md",
       "computedHash": "6805b6b7fee6e4316c7ec1b37941af9b96db00ec40521c541ec41363aece12f3"
+    },
+    "sentry-cli": {
+      "source": "cli.sentry.dev",
+      "sourceType": "well-known",
+      "computedHash": "451c0db5e2f16657e6beac3da8e674310e8ac9d1f0e1cdfa46ac25c6601d2f1e"
     }
   }
 }
