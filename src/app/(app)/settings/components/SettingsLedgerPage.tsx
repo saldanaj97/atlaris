@@ -12,6 +12,7 @@ import {
   LedgerSectionBlock,
   SettingsLedgerPanel,
 } from '@/app/(app)/settings/components/LedgerPrimitives';
+import { SettingsScrollTarget } from '@/app/(app)/settings/components/SettingsScrollTarget';
 import { IntegrationRows } from '@/app/(app)/settings/integrations/components/IntegrationRows';
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
@@ -27,6 +28,8 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
 
   return (
     <>
+      <SettingsScrollTarget />
+
       <header className='relative mb-6'>
         <h1>Settings</h1>
         <p className='mt-1 text-sm text-muted-foreground'>
@@ -54,7 +57,6 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
           {showClerkBilling ? (
             <div className='py-3.5 last:pb-0'>
               <UserProfile
-                routing='hash'
                 appearance={{
                   elements: {
                     rootBox: 'w-full',
