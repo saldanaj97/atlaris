@@ -35,7 +35,7 @@ export default async function PricingPage(): Promise<ReactElement> {
           <div className='w-full'>
             {showClerkBilling ? (
               <PricingTable
-                newSubscriptionRedirectUrl={ROUTES.SETTINGS.BILLING}
+                newSubscriptionRedirectUrl={`${ROUTES.SETTINGS.ROOT}#billing`}
               />
             ) : (
               <LocalClerkBillingNotice />

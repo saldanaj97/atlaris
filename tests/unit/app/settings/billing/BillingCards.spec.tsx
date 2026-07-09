@@ -1,3 +1,4 @@
+import { ROUTES } from '@/features/navigation/routes';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -81,5 +82,20 @@ describe('BillingCards', () => {
     expect(
       screen.getByLabelText('Monthly lesson generations: 4 of 20'),
     ).toBeVisible();
+  });
+
+  it('redirects signed-out users back to settings', async () => {
+    mocks.requestBoundaryComponentMock.mockResolvedValueOnce(null);
+    mocks.redirectMock.mockImplementationOnce(() => {
+      throw new Error('redirected');
+    });
+    const { BillingPlanRows } =
+      await import('@/app/(app)/settings/billing/components/BillingCards');
+
+    await expect(BillingPlanRows({})).rejects.toThrow('redirected');
+
+    expect(mocks.redirectMock).toHaveBeenCalledWith(
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#billing`)}`,
+    );
   });
 });

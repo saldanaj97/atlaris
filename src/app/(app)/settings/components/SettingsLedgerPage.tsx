@@ -12,10 +12,6 @@ import {
   LedgerSectionBlock,
   SettingsLedgerPanel,
 } from '@/app/(app)/settings/components/LedgerPrimitives';
-import {
-  SettingsScrollTarget,
-  type SettingsSectionId,
-} from '@/app/(app)/settings/components/SettingsScrollTarget';
 import { IntegrationRows } from '@/app/(app)/settings/integrations/components/IntegrationRows';
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
@@ -25,18 +21,12 @@ import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
 
-export async function SettingsLedgerPage({
-  scrollTo,
-}: {
-  scrollTo?: SettingsSectionId;
-}): Promise<ReactElement> {
+export async function SettingsLedgerPage(): Promise<ReactElement> {
   const locale = getSupportedLocale((await headers()).get('accept-language'));
   const showClerkBilling = shouldUseClerkUi();
 
   return (
     <>
-      <SettingsScrollTarget sectionId={scrollTo} />
-
       <header className='relative mb-6'>
         <h1>Settings</h1>
         <p className='mt-1 text-sm text-muted-foreground'>

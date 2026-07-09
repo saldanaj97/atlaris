@@ -45,11 +45,7 @@
   - `/dashboard`
   - `/plans`
   - `/plans/new`
-  - `/settings/profile`
-  - `/settings/billing`
-  - `/settings/ai`
-  - `/settings/integrations`
-  - `/settings/notifications`
+  - `/settings`
   - `/analytics`
   - `/analytics/usage`
   - `/analytics/achievements`
@@ -75,10 +71,10 @@
   - `/pricing` rendered correctly in auth mode
   - Portal eligibility message showed correctly before checkout
   - Starter subscribe CTA launched local checkout
-  - Local checkout returned to `/settings/billing`
+  - Local checkout returned to `/settings#billing`
   - Billing page showed Starter plan and usage cards
   - Manage Subscription button remained available after checkout
-  - Local portal path returned to `/settings/billing?local_portal=1`
+  - Local portal path returned to `/settings?local_portal=1#billing`
 
 ## Defects
 

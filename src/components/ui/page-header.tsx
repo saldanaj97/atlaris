@@ -19,7 +19,7 @@ function PageHeader({
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
-  /** Use `h2` for nested pages under a parent title (e.g. settings sub-routes). */
+  /** Use `h2` for nested pages under a parent title. */
   titleAs?: 'h1' | 'h2';
   align?: 'start' | 'center';
 }) {

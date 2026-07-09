@@ -17,7 +17,7 @@ export async function NotificationsSection(): Promise<ReactElement> {
 
   if (!preferences) {
     redirect(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.NOTIFICATIONS)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#notifications`)}`,
     );
   }
 

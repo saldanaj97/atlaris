@@ -16,7 +16,7 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(180_000);
 
 const ANALYTICS_USAGE_URL = /\/analytics\/usage$/;
-const BILLING_URL = /\/settings\/billing(?:\?.*)?$/;
+const SETTINGS_URL = /\/settings#billing$/;
 const MODULE_URL = /\/plans\/[0-9a-f-]{36}\/modules\/[0-9a-f-]{36}$/i;
 const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
@@ -122,8 +122,8 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     await expect(page).toHaveURL(/\/pricing$/);
     await expectHeading(page, /invest in your growth/i);
 
-    await page.goto('/settings/billing');
-    await expect(page).toHaveURL(BILLING_URL);
+    await page.goto('/settings#billing');
+    await expect(page).toHaveURL(SETTINGS_URL);
     await expectBillingPage(page);
   });
 });

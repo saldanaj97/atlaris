@@ -68,7 +68,7 @@ const AUTH_ROUTES = [
   '/plans',
   '/plans/new',
   '/analytics/usage',
-  '/settings/profile',
+  '/settings',
 ] as const;
 
 type CaptureManifestEntry = {
