@@ -12,51 +12,21 @@ import {
   LedgerSectionBlock,
   SettingsLedgerPanel,
 } from '@/app/(app)/settings/components/LedgerPrimitives';
-import {
-  SettingsScrollTarget,
-  type SettingsSectionId,
-} from '@/app/(app)/settings/components/SettingsScrollTarget';
 import { IntegrationRows } from '@/app/(app)/settings/integrations/components/IntegrationRows';
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
-import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
 import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
 
-function getSettingsReturnPath(sectionId?: SettingsSectionId): string {
-  switch (sectionId) {
-    case 'profile':
-      return ROUTES.SETTINGS.PROFILE;
-    case 'billing':
-    case 'usage':
-      return ROUTES.SETTINGS.BILLING;
-    case 'ai':
-      return ROUTES.SETTINGS.AI;
-    case 'integrations':
-      return ROUTES.SETTINGS.INTEGRATIONS;
-    case 'notifications':
-      return ROUTES.SETTINGS.NOTIFICATIONS;
-    default:
-      return ROUTES.SETTINGS.ROOT;
-  }
-}
-
-export async function SettingsLedgerPage({
-  scrollTo,
-}: {
-  scrollTo?: SettingsSectionId;
-}): Promise<ReactElement> {
+export async function SettingsLedgerPage(): Promise<ReactElement> {
   const locale = getSupportedLocale((await headers()).get('accept-language'));
   const showClerkBilling = shouldUseClerkUi();
-  const returnPath = getSettingsReturnPath(scrollTo);
 
   return (
     <>
-      <SettingsScrollTarget sectionId={scrollTo} />
-
       <header className='relative mb-6'>
         <h1>Settings</h1>
         <p className='mt-1 text-sm text-muted-foreground'>
@@ -79,7 +49,7 @@ export async function SettingsLedgerPage({
           description='Subscription, renewal, and payment details.'
         >
           <Suspense fallback={<BillingPlanSkeleton />}>
-            <BillingPlanRows locale={locale} returnPath={returnPath} />
+            <BillingPlanRows locale={locale} />
           </Suspense>
           {showClerkBilling ? (
             <div className='py-3.5 last:pb-0'>
@@ -102,7 +72,7 @@ export async function SettingsLedgerPage({
           description='Monthly quota across your workspace.'
         >
           <Suspense fallback={<UsageSkeleton />}>
-            <UsageRows returnPath={returnPath} />
+            <UsageRows />
           </Suspense>
         </LedgerSectionBlock>
 

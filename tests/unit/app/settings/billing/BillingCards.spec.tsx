@@ -84,7 +84,7 @@ describe('BillingCards', () => {
     ).toBeVisible();
   });
 
-  it('uses the caller return path when redirecting signed-out users', async () => {
+  it('redirects signed-out users back to settings', async () => {
     mocks.requestBoundaryComponentMock.mockResolvedValueOnce(null);
     mocks.redirectMock.mockImplementationOnce(() => {
       throw new Error('redirected');
@@ -92,12 +92,10 @@ describe('BillingCards', () => {
     const { BillingPlanRows } =
       await import('@/app/(app)/settings/billing/components/BillingCards');
 
-    await expect(
-      BillingPlanRows({ returnPath: ROUTES.SETTINGS.AI }),
-    ).rejects.toThrow('redirected');
+    await expect(BillingPlanRows({})).rejects.toThrow('redirected');
 
     expect(mocks.redirectMock).toHaveBeenCalledWith(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.AI)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#billing`)}`,
     );
   });
 });

@@ -45,7 +45,7 @@ describe('PricingPage', () => {
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: ROUTES.SETTINGS.BILLING,
+        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}#billing`,
       }),
     );
   });
@@ -57,9 +57,7 @@ describe('PricingPage', () => {
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeVisible();
-    expect(
-      screen.getByText(/local product testing mode/i),
-    ).toBeVisible();
+    expect(screen.getByText(/local product testing mode/i)).toBeVisible();
     expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();
   });
 });

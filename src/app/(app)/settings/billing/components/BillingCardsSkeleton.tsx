@@ -48,15 +48,3 @@ export function UsageSkeleton() {
     </>
   );
 }
-
-/**
- * @deprecated Use BillingPlanSkeleton and UsageSkeleton.
- */
-export function BillingCardsSkeleton() {
-  return (
-    <>
-      <BillingPlanSkeleton />
-      <UsageSkeleton />
-    </>
-  );
-}

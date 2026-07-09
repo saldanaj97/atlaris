@@ -16,7 +16,7 @@ describe('header shell variants', () => {
     expect(getHeaderShellVariant('/pricing')).toBe('pricing');
     expect(getHeaderShellVariant('/dashboard')).toBe('protected');
     expect(getHeaderShellVariant('/plans/plan_123')).toBe('protected');
-    expect(getHeaderShellVariant('/settings/billing')).toBe('protected');
+    expect(getHeaderShellVariant('/settings')).toBe('protected');
     expect(getHeaderShellVariant('/analytics/usage')).toBe('protected');
   });
 

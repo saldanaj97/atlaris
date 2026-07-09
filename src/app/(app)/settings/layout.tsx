@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /**
  * Shared settings layout.
  *
- * One continuous Ledger surface — no sidebar; sub-routes scroll to sections.
+ * One continuous Ledger surface — no sidebar.
  */
 export default function SettingsLayout({
   children,

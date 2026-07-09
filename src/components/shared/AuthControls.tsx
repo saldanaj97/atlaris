@@ -65,7 +65,7 @@ export default function AuthControls({
       ) : isAuthenticated ? (
         <div className='relative inline-flex'>
           <Button variant='ghost' size='sm' className='text-xs' asChild>
-            <Link href={ROUTES.SETTINGS.PROFILE}>Account</Link>
+            <Link href={`${ROUTES.SETTINGS.ROOT}#profile`}>Account</Link>
           </Button>
           {tierBadge}
         </div>

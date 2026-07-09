@@ -6,20 +6,19 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/app/(app)/settings/components/SettingsLedgerPage', () => ({
-  SettingsLedgerPage: (props: { scrollTo?: string }) => {
+  SettingsLedgerPage: (props: Record<string, unknown>) => {
     mocks.settingsLedgerPageMock(props);
     return <div data-testid='settings-ledger-page' />;
   },
 }));
 
-async function renderBillingSettingsPage(): Promise<void> {
+async function renderSettingsPage(): Promise<void> {
   vi.resetModules();
-  const { default: BillingSettingsPage } =
-    await import('@/app/(app)/settings/billing/page');
-  render(await BillingSettingsPage());
+  const { default: SettingsPage } = await import('@/app/(app)/settings/page');
+  render(await SettingsPage());
 }
 
-describe('BillingSettingsPage', () => {
+describe('SettingsPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -29,12 +28,10 @@ describe('BillingSettingsPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders the shared settings ledger at the billing section', async () => {
-    await renderBillingSettingsPage();
+  it('renders the unified settings ledger', async () => {
+    await renderSettingsPage();
 
     expect(screen.getByTestId('settings-ledger-page')).toBeVisible();
-    expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({
-      scrollTo: 'billing',
-    });
+    expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({});
   });
 });

@@ -51,7 +51,7 @@ describe('AuthControls', () => {
 
     expect(screen.getByRole('link', { name: /account/i })).toHaveAttribute(
       'href',
-      '/settings/profile',
+      '/settings#profile',
     );
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
@@ -83,7 +83,7 @@ describe('AuthControls', () => {
         expect(screen.getByText(tier)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /account/i })).toHaveAttribute(
           'href',
-          '/settings/profile',
+          '/settings#profile',
         );
       },
     );

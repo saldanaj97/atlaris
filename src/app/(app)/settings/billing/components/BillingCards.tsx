@@ -42,7 +42,7 @@ function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
   );
 }
 
-const loadBillingSnapshot = cache(async (returnPath: string) => {
+const loadBillingSnapshot = cache(async () => {
   const result = await requestBoundary.component(async ({ actor, db }) => {
     try {
       return {
@@ -75,7 +75,7 @@ const loadBillingSnapshot = cache(async (returnPath: string) => {
 
   if (!result) {
     redirect(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(returnPath)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#billing`)}`,
     );
   }
 
@@ -100,14 +100,8 @@ function formatNextBilling(
 /**
  * Plan & billing rows for the Ledger settings surface.
  */
-export async function BillingPlanRows({
-  locale,
-  returnPath = ROUTES.SETTINGS.BILLING,
-}: {
-  locale?: string;
-  returnPath?: string;
-}) {
-  const snapshot = await loadBillingSnapshot(returnPath);
+export async function BillingPlanRows({ locale }: { locale?: string }) {
+  const snapshot = await loadBillingSnapshot();
   const nextBilling = formatNextBilling(
     snapshot?.subscriptionPeriodEnd,
     locale,
@@ -141,12 +135,8 @@ export async function BillingPlanRows({
 /**
  * Usage meters for the Ledger settings surface.
  */
-export async function UsageRows({
-  returnPath = ROUTES.SETTINGS.BILLING,
-}: {
-  returnPath?: string;
-} = {}) {
-  const snapshot = await loadBillingSnapshot(returnPath);
+export async function UsageRows() {
+  const snapshot = await loadBillingSnapshot();
 
   if (!snapshot) {
     return (
@@ -169,6 +159,12 @@ export async function UsageRows({
         ariaLabel='Monthly regenerations'
         used={snapshot.usage.regenerations.used}
         limit={snapshot.usage.regenerations.limit}
+      />
+      <UsageMeterRow
+        label='Exports (monthly)'
+        ariaLabel='Monthly exports'
+        used={snapshot.usage.exports.used}
+        limit={snapshot.usage.exports.limit}
       />
       <UsageMeterRow
         label='Lesson generations (monthly)'
