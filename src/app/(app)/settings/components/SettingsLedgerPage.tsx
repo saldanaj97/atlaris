@@ -19,11 +19,30 @@ import {
 import { IntegrationRows } from '@/app/(app)/settings/integrations/components/IntegrationRows';
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
+import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
 import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
+
+function getSettingsReturnPath(sectionId?: SettingsSectionId): string {
+  switch (sectionId) {
+    case 'profile':
+      return ROUTES.SETTINGS.PROFILE;
+    case 'billing':
+    case 'usage':
+      return ROUTES.SETTINGS.BILLING;
+    case 'ai':
+      return ROUTES.SETTINGS.AI;
+    case 'integrations':
+      return ROUTES.SETTINGS.INTEGRATIONS;
+    case 'notifications':
+      return ROUTES.SETTINGS.NOTIFICATIONS;
+    default:
+      return ROUTES.SETTINGS.ROOT;
+  }
+}
 
 export async function SettingsLedgerPage({
   scrollTo,
@@ -32,6 +51,7 @@ export async function SettingsLedgerPage({
 }): Promise<ReactElement> {
   const locale = getSupportedLocale((await headers()).get('accept-language'));
   const showClerkBilling = shouldUseClerkUi();
+  const returnPath = getSettingsReturnPath(scrollTo);
 
   return (
     <>
@@ -59,7 +79,7 @@ export async function SettingsLedgerPage({
           description='Subscription, renewal, and payment details.'
         >
           <Suspense fallback={<BillingPlanSkeleton />}>
-            <BillingPlanRows locale={locale} />
+            <BillingPlanRows locale={locale} returnPath={returnPath} />
           </Suspense>
           {showClerkBilling ? (
             <div className='py-3.5 last:pb-0'>
@@ -82,7 +102,7 @@ export async function SettingsLedgerPage({
           description='Monthly quota across your workspace.'
         >
           <Suspense fallback={<UsageSkeleton />}>
-            <UsageRows />
+            <UsageRows returnPath={returnPath} />
           </Suspense>
         </LedgerSectionBlock>
 
