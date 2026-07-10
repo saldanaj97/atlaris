@@ -18,6 +18,13 @@ async function renderSettingsPage(): Promise<void> {
   render(await SettingsPage());
 }
 
+async function renderSettingsUserProfilePage(): Promise<void> {
+  vi.resetModules();
+  const { default: SettingsUserProfilePage } =
+    await import('@/app/(app)/settings/[...user-profile]/page');
+  render(await SettingsUserProfilePage());
+}
+
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -30,6 +37,13 @@ describe('SettingsPage', () => {
 
   it('renders the unified settings ledger', async () => {
     await renderSettingsPage();
+
+    expect(screen.getByTestId('settings-ledger-page')).toBeVisible();
+    expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({});
+  });
+
+  it('renders the unified settings ledger for Clerk profile subpaths', async () => {
+    await renderSettingsUserProfilePage();
 
     expect(screen.getByTestId('settings-ledger-page')).toBeVisible();
     expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({});
