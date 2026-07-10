@@ -141,8 +141,9 @@ async function startReservedEmailNotificationDeliveryWorkflow(
 
 /**
  * Reserves or explicitly requeues a logical run, then starts Workflow SDK.
- * A duplicate invocation only returns the existing state: it never starts a
- * second workflow for the same `(runKind, schedulerDateUtc)` key.
+ * Duplicate invocations return existing state, except an unclaimed
+ * `queued` row (null `workflowRunId`) which restarts Workflow SDK so a
+ * stranded reservation can recover. Claim CAS still admits only one owner.
  */
 export async function startEmailNotificationDeliveryWorkflow(
   input: StartEmailNotificationDeliveryWorkflowInput,
@@ -173,6 +174,37 @@ export async function startEmailNotificationDeliveryWorkflow(
       dbClient,
     );
     if (reservation.outcome === 'existing') {
+      // Unclaimed queued rows have no live workflow owner yet. Restart so
+      // cron/manual start can recover if the first start never claimed.
+      if (
+        reservation.run.status === 'queued' &&
+        reservation.run.workflowRunId === null
+      ) {
+        log.info(
+          {
+            source: 'email_notifications',
+            event: 'unclaimed_queued_restart',
+            runId: reservation.run.id,
+            runKind: reservation.run.runKind,
+          },
+          'Email notification delivery restarting workflow for unclaimed queued run',
+        );
+        countMetric(
+          'atlaris.email.notification.run.unclaimed_queued_restart',
+          1,
+          {
+            attributes: { kind: reservation.run.runKind },
+          },
+        );
+        return startReservedEmailNotificationDeliveryWorkflow(reservation.run, {
+          dbClient,
+          workflowStart,
+          workflowFn,
+          failRun,
+          log,
+        });
+      }
+
       log.info(
         {
           source: 'email_notifications',

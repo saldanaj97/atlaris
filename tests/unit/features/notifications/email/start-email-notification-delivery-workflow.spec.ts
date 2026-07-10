@@ -69,8 +69,29 @@ describe('startEmailNotificationDeliveryWorkflow', () => {
     );
   });
 
-  it('returns an existing queued run without starting a duplicate workflow', async () => {
+  it('restarts workflow for an existing unclaimed queued run', async () => {
     mocks.reserve.mockResolvedValue({ outcome: 'existing', run });
+    mocks.workflowStart.mockResolvedValue({ runId: 'workflow-2' });
+
+    await expect(
+      startEmailNotificationDeliveryWorkflow(
+        { runKind: 'daily', schedulerDateUtc: '2026-07-10', action: 'start' },
+        deps,
+      ),
+    ).resolves.toEqual({
+      outcome: 'started',
+      runId: 'run-1',
+      workflowRunId: 'workflow-2',
+    });
+
+    expect(mocks.workflowStart).toHaveBeenCalledOnce();
+  });
+
+  it('returns already_running for an existing claimed running run', async () => {
+    mocks.reserve.mockResolvedValue({
+      outcome: 'existing',
+      run: { ...run, status: 'running', workflowRunId: 'workflow-1' },
+    });
 
     await expect(
       startEmailNotificationDeliveryWorkflow(
@@ -80,7 +101,7 @@ describe('startEmailNotificationDeliveryWorkflow', () => {
     ).resolves.toEqual({
       outcome: 'already_running',
       runId: 'run-1',
-      workflowRunId: null,
+      workflowRunId: 'workflow-1',
     });
 
     expect(mocks.workflowStart).not.toHaveBeenCalled();
