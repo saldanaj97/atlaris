@@ -356,22 +356,6 @@ describe('IP Rate Limiting', () => {
 
       expect(() => checkIpRateLimit(request, 'webhook')).not.toThrow();
     });
-
-    it('keeps email unsubscribe traffic isolated from public API limits', () => {
-      const request = createMockRequest({
-        'x-forwarded-for': '192.168.1.1',
-      });
-
-      const publicConfig = IP_RATE_LIMIT_CONFIGS.publicApi;
-      for (let i = 0; i < publicConfig.maxRequests; i++) {
-        checkIpRateLimit(request, 'publicApi');
-      }
-      expect(() => checkIpRateLimit(request, 'publicApi')).toThrow(
-        RateLimitError,
-      );
-
-      expect(() => checkIpRateLimit(request, 'emailUnsubscribe')).not.toThrow();
-    });
   });
 
   describe('getRateLimitHeaders', () => {
@@ -411,7 +395,6 @@ describe('IP Rate Limiting', () => {
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('health');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('webhook');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('publicApi');
-      expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('emailUnsubscribe');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('auth');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('docs');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('internal');

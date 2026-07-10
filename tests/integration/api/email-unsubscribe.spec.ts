@@ -97,6 +97,29 @@ describe('email unsubscribe route', () => {
     );
   });
 
+  it('does not enforce a process-local IP bucket on signed one-click POSTs', async () => {
+    const { userId, token } = await seedUser();
+    const providerHeaders = {
+      'x-forwarded-for': '198.51.100.43',
+      'content-type': 'application/x-www-form-urlencoded',
+    };
+
+    for (let index = 0; index < 301; index++) {
+      const response = await POST_UNSUBSCRIBE(
+        new Request(`${BASE_URL}?token=${encodeURIComponent(token)}`, {
+          method: 'POST',
+          headers: providerHeaders,
+          body: 'List-Unsubscribe=One-Click',
+        }),
+      );
+      expect(response.status).toBe(200);
+    }
+
+    expect((await settingsFor(userId))?.unsubscribeAllOptionalEmails).toBe(
+      true,
+    );
+  });
+
   it('accepts RFC-shaped URL-encoded and multipart POSTs using the query token', async () => {
     const first = await seedUser();
     const urlEncoded = await POST_UNSUBSCRIBE(
