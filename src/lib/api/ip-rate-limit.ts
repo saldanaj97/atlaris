@@ -61,6 +61,11 @@ export const IP_RATE_LIMIT_CONFIGS = {
     maxRequests: 30,
     windowMs: 60 * 1000, // 30 requests per minute
   },
+  /** Signed email unsubscribe POSTs - permissive for mailbox provider one-click traffic */
+  emailUnsubscribe: {
+    maxRequests: 300,
+    windowMs: 60 * 1000, // 300 requests per minute
+  },
   /** Auth endpoints - restrictive to prevent brute force */
   auth: {
     maxRequests: 10,

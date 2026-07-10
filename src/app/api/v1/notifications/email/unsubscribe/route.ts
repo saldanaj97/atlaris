@@ -70,14 +70,13 @@ function htmlResponse(body: string, status = 200): Response {
   });
 }
 
-async function handleGet(request: Request): Promise<Response> {
-  checkIpRateLimit(request, 'publicApi');
+async function handleGet(): Promise<Response> {
   // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
 }
 
 async function handlePost(request: Request): Promise<Response> {
-  checkIpRateLimit(request, 'publicApi');
+  checkIpRateLimit(request, 'emailUnsubscribe');
 
   const token = new URL(request.url).searchParams.get('token');
   if (!token) {

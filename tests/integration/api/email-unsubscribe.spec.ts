@@ -3,6 +3,10 @@ import {
   POST as POST_UNSUBSCRIBE,
 } from '@/app/api/v1/notifications/email/unsubscribe/route';
 import { createUnsubscribeToken } from '@/features/notifications/email/unsubscribe-token';
+import {
+  clearAllRateLimiters,
+  IP_RATE_LIMIT_CONFIGS,
+} from '@/lib/api/ip-rate-limit';
 import { userEmailNotificationSettings } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -33,10 +37,12 @@ async function settingsFor(userId: string) {
 
 describe('email unsubscribe route', () => {
   beforeEach(() => {
+    clearAllRateLimiters();
     vi.stubEnv('EMAIL_UNSUBSCRIBE_TOKEN_SECRET', SECRET);
   });
 
   afterEach(() => {
+    clearAllRateLimiters();
     vi.unstubAllEnvs();
   });
 
@@ -54,6 +60,41 @@ describe('email unsubscribe route', () => {
     expect(html).toContain('List-Unsubscribe');
     expect(html).not.toContain(token);
     expect(await settingsFor(userId)).toBeNull();
+  });
+
+  it('keeps scanner GET traffic from starving one-click POSTs', async () => {
+    const { userId, token } = await seedUser();
+    const headers = { 'x-forwarded-for': '198.51.100.42' };
+
+    for (
+      let index = 0;
+      index <= IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests;
+      index++
+    ) {
+      const response = await GET_UNSUBSCRIBE(
+        new Request(
+          `${BASE_URL}?token=${encodeURIComponent(token)}&scan=${index}`,
+          { headers },
+        ),
+      );
+      expect(response.status).toBe(200);
+    }
+
+    const response = await POST_UNSUBSCRIBE(
+      new Request(`${BASE_URL}?token=${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: 'List-Unsubscribe=One-Click',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect((await settingsFor(userId))?.unsubscribeAllOptionalEmails).toBe(
+      true,
+    );
   });
 
   it('accepts RFC-shaped URL-encoded and multipart POSTs using the query token', async () => {
