@@ -672,6 +672,20 @@ describe('Environment Configuration', () => {
       expect(maintenance.workerToken).toBe('maintenance-secret');
     });
 
+    it('requires a cron secret in production and keeps it separate from the worker token', () => {
+      vi.stubGlobal('window', undefined);
+      const missing = createMaintenanceEnvForTests({ NODE_ENV: 'production' });
+      const configured = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        CRON_SECRET: 'cron-secret',
+        MAINTENANCE_WORKER_TOKEN: 'maintenance-secret',
+      });
+
+      expect(() => missing.cronSecret).toThrow(EnvValidationError);
+      expect(configured.cronSecret).toBe('cron-secret');
+      expect(configured.workerToken).toBe('maintenance-secret');
+    });
+
     it('allows an optional worker token outside production', () => {
       vi.stubGlobal('window', undefined);
       const maintenance = createMaintenanceEnvForTests({

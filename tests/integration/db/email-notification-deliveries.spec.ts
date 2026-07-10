@@ -7,6 +7,7 @@ import {
   EmailDeliveryLostLeaseError,
   markEmailNotificationDeliveryFailed,
   markEmailNotificationDeliverySent,
+  summarizeEmailNotificationDeliveriesForRun,
 } from '@/lib/db/queries/email-notification-deliveries';
 import { emailNotificationDeliveries } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -31,6 +32,52 @@ function providerRequest(
 }
 
 describe('email notification deliveries ledger', () => {
+  it('reconciles terminal counts for a logical run from the ledger', async () => {
+    const firstAuthUserId = buildTestAuthUserId('email-ledger-summary-first');
+    const secondAuthUserId = buildTestAuthUserId('email-ledger-summary-second');
+    const [firstUserId, secondUserId] = await Promise.all([
+      ensureUser({
+        authUserId: firstAuthUserId,
+        email: buildTestEmail(firstAuthUserId),
+      }),
+      ensureUser({
+        authUserId: secondAuthUserId,
+        email: buildTestEmail(secondAuthUserId),
+      }),
+    ]);
+
+    await db.insert(emailNotificationDeliveries).values([
+      {
+        userId: firstUserId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        status: 'sent',
+      },
+      {
+        userId: firstUserId,
+        category: 'streak_reminder',
+        deliveryKey: '2026-07-10',
+        status: 'skipped',
+      },
+      {
+        userId: secondUserId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        status: 'manual_review',
+      },
+    ]);
+
+    await expect(
+      summarizeEmailNotificationDeliveriesForRun(
+        {
+          categories: ['daily_reminder', 'streak_reminder'],
+          deliveryKeys: ['2026-07-10'],
+        },
+        db,
+      ),
+    ).resolves.toEqual({ sent: 1, skipped: 1, manualReview: 1 });
+  });
+
   it('claims a new key and persists the provider request', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-new');
     const userId = await ensureUser({
@@ -104,12 +151,16 @@ describe('email notification deliveries ledger', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('reclaims failed rows without resetting a previously rotated idempotency key', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-failed');
+  it('reclaims an expired lease using the retry wall clock', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-expired-lease');
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
     });
+    const referenceNow = new Date('2026-07-10T14:00:00.000Z');
+    const retryNow = new Date(
+      referenceNow.getTime() + EMAIL_DELIVERY_LEASE_MS + 1,
+    );
 
     const first = await claimEmailNotificationDelivery(
       {
@@ -117,6 +168,43 @@ describe('email notification deliveries ledger', () => {
         category: 'daily_reminder',
         deliveryKey: '2026-07-10',
         providerRequest: providerRequest(),
+        now: referenceNow,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+
+    const retried = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: providerRequest(),
+        now: retryNow,
+      },
+      db,
+    );
+
+    expect(retried).toMatchObject({ outcome: 'claimed' });
+  });
+
+  it('reuses the original provider request and domain idempotency key for failed rows', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-failed');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    const originalRequest = providerRequest({
+      subject: 'Original subject',
+      idempotencyKey: 'failed:daily_reminder:2026-07-10',
+    });
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: originalRequest,
       },
       db,
     );
@@ -138,7 +226,8 @@ describe('email notification deliveries ledger', () => {
         category: 'daily_reminder',
         deliveryKey: '2026-07-10',
         providerRequest: providerRequest({
-          subject: 'Corrected subject',
+          subject: 'Recomputed subject',
+          idempotencyKey: 'recomputed:daily_reminder:2026-07-10',
         }),
       },
       db,
@@ -148,11 +237,8 @@ describe('email notification deliveries ledger', () => {
     if (second.outcome !== 'claimed') return;
     expect(second.deliveryId).toBe(first.deliveryId);
     expect(second.claimToken).not.toBe(first.claimToken);
-    expect(second.providerRequest.subject).toBe('Corrected subject');
-    expect(second.providerRequest.idempotencyKey).not.toBe(
-      providerRequest().idempotencyKey,
-    );
-    const rotatedIdempotencyKey = second.providerRequest.idempotencyKey;
+    expect(second.providerRequest).toEqual(originalRequest);
+    expect(second.reusedProviderRequest).toBe(true);
 
     await markEmailNotificationDeliveryFailed(
       {
@@ -169,7 +255,8 @@ describe('email notification deliveries ledger', () => {
         category: 'daily_reminder',
         deliveryKey: '2026-07-10',
         providerRequest: providerRequest({
-          subject: 'Corrected subject',
+          subject: 'Another recomputed subject',
+          idempotencyKey: 'another:daily_reminder:2026-07-10',
         }),
       },
       db,
@@ -177,7 +264,7 @@ describe('email notification deliveries ledger', () => {
 
     expect(third.outcome).toBe('claimed');
     if (third.outcome !== 'claimed') return;
-    expect(third.providerRequest.idempotencyKey).toBe(rotatedIdempotencyKey);
+    expect(third.providerRequest).toEqual(originalRequest);
     expect(third.reusedProviderRequest).toBe(true);
 
     await expect(

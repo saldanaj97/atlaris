@@ -62,3 +62,15 @@ See also:
 - `docs/architecture/regeneration-worker-runbook.md`
 - `docs/architecture/retention-cleanup-runbook.md`
 - `docs/architecture/plan-cleanup-runbook.md`
+
+## Email notification Vercel Cron cutover
+
+The email scheduler must have exactly one active owner. This release removes the GitHub email scheduler and adds the two Vercel Cron entries together.
+
+1. Apply `20260710151930_create_email_notification_delivery_runs` before deploying code that starts email workflows. Its Supabase CLI-generated version precedes the existing future-dated delivery-ledger migration, so the staging and production migration workflows use `supabase db push --include-all` to apply it when the ledger migration is already recorded remotely.
+2. Set a new `CRON_SECRET` in the target Vercel environment. Keep it distinct from `MAINTENANCE_WORKER_TOKEN`.
+3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` and `30 14 * * 1` for `/api/cron/notifications/email`.
+4. Leave the `email-notification-delivery` Vercel Flag disabled and verify both authenticated cron paths return the intentional `disabled` outcome without creating a run.
+5. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Workflow SDK run, Sentry monitor, and delivery ledger before enabling broader delivery.
+
+See [`docs/architecture/email-notification-delivery-runbook.md`](../architecture/email-notification-delivery-runbook.md) for duplicate, failure, and `needs_review` recovery.

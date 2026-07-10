@@ -103,7 +103,9 @@ export function createResendEmailSender(
           throw new EmailProviderError(
             outcome === 'rejected'
               ? 'Email provider rejected the send request.'
-              : 'Email provider request failed with an unknown outcome.',
+              : outcome === 'retryable'
+                ? 'Email provider reported a retryable send failure.'
+                : 'Email provider request failed with an unknown outcome.',
             classifyResendError(error),
             outcome,
           );
@@ -137,6 +139,7 @@ export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
 
   switch (error.name) {
     case 'rate_limit_exceeded':
+      return 'retryable';
     case 'monthly_quota_exceeded':
     case 'daily_quota_exceeded':
     case 'invalid_api_key':
@@ -154,9 +157,10 @@ export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
     case 'not_found':
     case 'method_not_allowed':
       return 'rejected';
-    case 'concurrent_idempotent_requests':
     case 'application_error':
     case 'internal_server_error':
+      return 'retryable';
+    case 'concurrent_idempotent_requests':
     case 'security_error':
       return 'unknown';
     default: {

@@ -28,7 +28,7 @@ export type EmailSendResult = {
   providerMessageId: string | null;
 };
 
-export type ProviderOutcome = 'rejected' | 'unknown';
+export type ProviderOutcome = 'rejected' | 'retryable' | 'unknown';
 
 export interface EmailSender {
   resolveRequest(message: EmailMessage): PersistedProviderRequest;
@@ -54,8 +54,19 @@ export type EmailDeliveryRunCounts = {
   alreadyTerminal: number;
   inFlight: number;
   manualReview: number;
+  recipientErrors: number;
 };
+
+export type EmailDeliveryPageFailure =
+  | {
+      kind: 'retryable';
+      failureClass: string;
+      retryAfterMs: number;
+    }
+  | { kind: 'terminal'; failureClass: string };
 
 export type EmailDeliveryRunResult = EmailDeliveryRunCounts & {
   nextCursor: string | null;
+  pageFailure: EmailDeliveryPageFailure | null;
+  needsReview: boolean;
 };

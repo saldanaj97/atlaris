@@ -26,6 +26,10 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/api/health/worker')).toBe(false);
   });
 
+  it('isProtectedRoute skips the Vercel email cron endpoint', () => {
+    expect(isProtectedRoute('/api/cron/notifications/email')).toBe(false);
+  });
+
   it('isProtectedRoute skips signed email unsubscribe endpoint', () => {
     expect(isProtectedRoute('/api/v1/notifications/email/unsubscribe')).toBe(
       false,
@@ -49,6 +53,9 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(true, '/api/health/worker')).toBe(
       null,
     );
+    expect(
+      resolveMaintenanceRedirectPath(true, '/api/cron/notifications/email'),
+    ).toBe(null);
     expect(
       resolveMaintenanceRedirectPath(
         true,

@@ -1,6 +1,7 @@
 export * from './relations';
 export * from './tables/clerk';
 export * from './tables/email-notification-deliveries';
+export * from './tables/email-notification-delivery-runs';
 export * from './tables/integrations';
 export * from './tables/jobs';
 export * from './tables/plans';

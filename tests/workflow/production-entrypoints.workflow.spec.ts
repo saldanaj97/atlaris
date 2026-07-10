@@ -1,12 +1,15 @@
 import { enqueueJob } from '@/features/jobs/queue';
 import { JOB_TYPES } from '@/features/jobs/types';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
+import { emailNotificationDeliveryWorkflow } from '@/features/notifications/email/workflows/email-notification-delivery.workflow';
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import { reserveEmailNotificationDeliveryRun } from '@/lib/db/queries/email-notification-delivery-runs';
 import {
   generationAttempts,
+  emailNotificationDeliveryRuns,
   jobQueue,
   learningPlans,
   modules,
@@ -145,5 +148,29 @@ describe('production Workflow SDK entrypoints', () => {
       .from(modules)
       .where(eq(modules.id, module.id));
     expect(persistedModule?.status).toBe('ready');
+  });
+
+  it('runs email delivery through its production entrypoint without provider calls while disabled', async () => {
+    const reservation = await reserveEmailNotificationDeliveryRun(
+      {
+        runKind: 'daily',
+        schedulerDateUtc: '2026-07-10',
+        referenceTimestampUtc: new Date('2026-07-10T14:00:00.000Z'),
+      },
+      db,
+    );
+
+    const run = await start(emailNotificationDeliveryWorkflow, [
+      { runId: reservation.run.id },
+    ]);
+
+    await expect(run.returnValue).resolves.toEqual({ kind: 'paused' });
+    expect(await run.status).toBe('completed');
+
+    const [persistedRun] = await db
+      .select({ status: emailNotificationDeliveryRuns.status })
+      .from(emailNotificationDeliveryRuns)
+      .where(eq(emailNotificationDeliveryRuns.id, reservation.run.id));
+    expect(persistedRun?.status).toBe('paused');
   });
 });
