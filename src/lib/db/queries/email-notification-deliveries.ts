@@ -1,5 +1,5 @@
-import type { PersistedProviderRequest } from '@/features/notifications/email/types';
 import type { DbClient } from '@/lib/db/types';
+import type { PersistedProviderRequest } from '@/shared/notifications/email-delivery';
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { EmailNotificationDeliveryStatus } from '@supabase/schema';
 
@@ -33,6 +33,20 @@ export class EmailDeliveryLostLeaseError extends Error {
 }
 
 type DeliveryDb = Pick<DbClient, 'execute' | 'insert' | 'update' | 'select'>;
+
+function claimSnapshotPredicates(existing: {
+  claimToken: string | null;
+  claimExpiresAt: Date | null;
+}) {
+  return [
+    existing.claimToken === null
+      ? isNull(emailNotificationDeliveries.claimToken)
+      : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
+    existing.claimExpiresAt === null
+      ? isNull(emailNotificationDeliveries.claimExpiresAt)
+      : eq(emailNotificationDeliveries.claimExpiresAt, existing.claimExpiresAt),
+  ] as const;
+}
 
 export type EmailNotificationDeliveryLedgerSummary = {
   readonly sent: number;
@@ -260,15 +274,7 @@ export async function claimEmailNotificationDelivery(
         and(
           eq(emailNotificationDeliveries.id, existing.id),
           eq(emailNotificationDeliveries.status, 'failed'),
-          existing.claimToken === null
-            ? isNull(emailNotificationDeliveries.claimToken)
-            : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
-          existing.claimExpiresAt === null
-            ? isNull(emailNotificationDeliveries.claimExpiresAt)
-            : eq(
-                emailNotificationDeliveries.claimExpiresAt,
-                existing.claimExpiresAt,
-              ),
+          ...claimSnapshotPredicates(existing),
         ),
       )
       .returning({
@@ -317,15 +323,7 @@ export async function claimEmailNotificationDelivery(
           and(
             eq(emailNotificationDeliveries.id, existing.id),
             eq(emailNotificationDeliveries.status, 'pending'),
-            existing.claimToken === null
-              ? isNull(emailNotificationDeliveries.claimToken)
-              : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
-            existing.claimExpiresAt === null
-              ? isNull(emailNotificationDeliveries.claimExpiresAt)
-              : eq(
-                  emailNotificationDeliveries.claimExpiresAt,
-                  existing.claimExpiresAt,
-                ),
+            ...claimSnapshotPredicates(existing),
           ),
         )
         .returning({ id: emailNotificationDeliveries.id });
@@ -353,15 +351,7 @@ export async function claimEmailNotificationDelivery(
         and(
           eq(emailNotificationDeliveries.id, existing.id),
           eq(emailNotificationDeliveries.status, 'pending'),
-          existing.claimToken === null
-            ? isNull(emailNotificationDeliveries.claimToken)
-            : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
-          existing.claimExpiresAt === null
-            ? isNull(emailNotificationDeliveries.claimExpiresAt)
-            : eq(
-                emailNotificationDeliveries.claimExpiresAt,
-                existing.claimExpiresAt,
-              ),
+          ...claimSnapshotPredicates(existing),
           sql`(
             ${emailNotificationDeliveries.claimExpiresAt} IS NULL
             OR ${emailNotificationDeliveries.claimExpiresAt} <= ${now.toISOString()}

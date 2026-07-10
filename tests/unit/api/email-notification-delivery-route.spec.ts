@@ -105,6 +105,31 @@ describe('email notification delivery recovery route', () => {
     expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
   });
 
+  it('rejects a future date for a new manual run', async () => {
+    const resolveDeliveryEnabled = vi.fn();
+    const startWorkflow = vi.fn();
+    const POST = createEmailNotificationDeliveryPostRoute({
+      resolveDeliveryEnabled,
+      startWorkflow,
+      now: () => new Date('2026-07-10T23:59:59.000Z'),
+    });
+
+    const response = await POST(
+      createMaintenancePostRequest(URL, {
+        body: JSON.stringify({
+          runKind: 'daily',
+          schedulerDateUtc: '2026-07-11',
+          action: 'start',
+        }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
+    expect(startWorkflow).not.toHaveBeenCalled();
+  });
+
   it('uses the shared starter and returns 202 only for a newly started run', async () => {
     const startWorkflow = vi.fn().mockResolvedValue({
       outcome: 'started',
@@ -114,6 +139,7 @@ describe('email notification delivery recovery route', () => {
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
       startWorkflow,
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
     });
 
     const response = await POST(
@@ -157,6 +183,7 @@ describe('email notification delivery recovery route', () => {
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
       startWorkflow,
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
     });
 
     const resume = await POST(

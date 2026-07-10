@@ -3,6 +3,17 @@ import type {
   ProgressStatus,
 } from '@/shared/types/db.types';
 
+import {
+  addDays,
+  currentStreakDays,
+  dateFromKey,
+  dateKeyInTimeZone,
+  DEFAULT_ANALYTICS_TIMEZONE,
+  longestStreakDays,
+  normalizeTimeZone,
+  weekStartKey,
+} from '@/shared/analytics/learning-activity-time';
+
 export type UsageAnalyticsActivityEvent = {
   planId: string;
   status: ProgressStatus;
@@ -77,17 +88,6 @@ type MutablePlanHistory = {
   weekRows: MutableWeekRow[];
   weekRowsByStart: Map<string, MutableWeekRow>;
 };
-
-import {
-  addDays,
-  currentStreakDays,
-  dateFromKey,
-  dateKeyInTimeZone,
-  DEFAULT_ANALYTICS_TIMEZONE,
-  longestStreakDays,
-  normalizeTimeZone,
-  weekStartKey,
-} from '@/shared/analytics/learning-activity-time';
 
 const WEEK_TREND_COUNT = 8;
 

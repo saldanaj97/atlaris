@@ -22,6 +22,7 @@ const DISABLED_RESULT = { ok: true as const, outcome: 'disabled' as const };
 export type EmailNotificationDeliveryRouteDeps = {
   readonly resolveDeliveryEnabled?: () => Promise<boolean>;
   readonly startWorkflow?: typeof startEmailNotificationDeliveryWorkflow;
+  readonly now?: () => Date;
 };
 
 export function createEmailNotificationDeliveryPostRoute(
@@ -31,6 +32,7 @@ export function createEmailNotificationDeliveryPostRoute(
     deps.resolveDeliveryEnabled ?? resolveEmailNotificationDeliveryEnabled;
   const startWorkflow =
     deps.startWorkflow ?? startEmailNotificationDeliveryWorkflow;
+  const now = deps.now ?? (() => new Date());
 
   return createMaintenancePostRoute({
     // Keep route-token authentication ahead of body parsing and flag evaluation.
@@ -57,6 +59,14 @@ export function createEmailNotificationDeliveryPostRoute(
       ) {
         throw new ValidationError(
           'Weekly email notification delivery requires a Monday UTC date.',
+        );
+      }
+      if (
+        parsed.data.action === 'start' &&
+        parsed.data.schedulerDateUtc > now().toISOString().slice(0, 10)
+      ) {
+        throw new ValidationError(
+          'New email notification delivery runs cannot use a future UTC date.',
         );
       }
 

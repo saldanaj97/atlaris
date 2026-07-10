@@ -13,8 +13,8 @@ Internal POST routes live under `/api/internal/`. They bypass Clerk middleware a
 | `POST /api/internal/maintenance/retention/cleanup` | Retention cleanup (manual fallback) | `maintenanceEnv`       | Supabase `pg_cron` daily; HTTP route is manual fallback |
 | `POST /api/internal/maintenance/plans/cleanup`     | Stuck-plan and orphaned-attempt cleanup | `maintenanceEnv`       | GitHub Actions every 15 minutes |
 | `POST /api/internal/maintenance/billing/reconcile-clerk` | Clerk Billing entitlement reconciliation | `maintenanceEnv`       | Manual drift repair |
-| `GET /api/cron/notifications/email` | Start/reuse the durable opted-in email delivery workflow | `maintenanceEnv.cronSecret` + Vercel Flag `email-notification-delivery` | Vercel Cron daily at 14:00 UTC and weekly Monday at 14:30 UTC |
-| `POST /api/internal/maintenance/notifications/email` | Manual start/resume/replay recovery for opted-in email delivery | `maintenanceEnv.workerToken` + Vercel Flag `email-notification-delivery` | Operator-triggered; no inline delivery |
+| `GET /api/cron/notifications/email` | Start/reuse the durable opted-in email delivery workflow | `maintenanceEnv.cronSecret` + `emailEnv` + `appEnv.url` (`APP_URL`) + Vercel Flag `email-notification-delivery` | Vercel Cron daily at 14:00 UTC and weekly Monday at 14:30 UTC |
+| `POST /api/internal/maintenance/notifications/email` | Manual start/resume/replay recovery for opted-in email delivery | `maintenanceEnv.workerToken` + `emailEnv` + `appEnv.url` (`APP_URL`) + Vercel Flag `email-notification-delivery` | Operator-triggered; no inline delivery |
 
 Maintenance cleanup routes share `assertMaintenanceWorkerAccess()` in `src/lib/api/internal/internal-worker-access.ts`. The regeneration drain uses `assertInternalWorkerAccess()` directly.
 

@@ -5,6 +5,8 @@ import type {
 
 import { runEmailNotificationDelivery } from '@/features/notifications/email/delivery-service';
 import { EmailProviderError } from '@/features/notifications/email/resend-adapter';
+import { verifyUnsubscribeToken } from '@/features/notifications/email/unsubscribe-token';
+import { countMetric } from '@/lib/observability/metrics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listRecipients = vi.hoisted(() => vi.fn());
@@ -167,7 +169,41 @@ describe('runEmailNotificationDelivery', () => {
     );
   });
 
-  it('keeps the resolved provider request stable across retry wall clocks', async () => {
+  it('issues unsubscribe tokens from the delivery wall clock for old logical runs', async () => {
+    const deliveryNow = new Date('2026-07-10T14:16:00.000Z');
+    const sender = createSender();
+    const resolveRequest = vi.fn(sender.resolveRequest);
+    sender.resolveRequest = resolveRequest;
+
+    await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-01-01',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-01-01T14:00:00.000Z'),
+        deliveryNow,
+      },
+    );
+
+    const text = resolveRequest.mock.calls[0]?.[0].text ?? '';
+    const unsubscribeUrl = text.match(/Unsubscribe: (https:\/\/\S+)/)?.[1];
+    const token = new URL(unsubscribeUrl ?? '').searchParams.get('token') ?? '';
+
+    expect(
+      verifyUnsubscribeToken({
+        token,
+        secret: 'secret',
+        nowMs: deliveryNow.getTime(),
+      }),
+    ).toMatchObject({ iat: Math.floor(deliveryNow.getTime() / 1000) });
+  });
+
+  it('keeps content identity stable while refreshing unsubscribe tokens across retry clocks', async () => {
     const referenceNow = new Date('2026-07-10T14:00:00.000Z');
     const sender = createSender();
     const resolveRequest = vi.fn(sender.resolveRequest);
@@ -211,9 +247,14 @@ describe('runEmailNotificationDelivery', () => {
     }
 
     expect(resolveRequest).toHaveBeenCalledTimes(2);
-    expect(resolveRequest.mock.calls[0]?.[0]).toEqual(
-      resolveRequest.mock.calls[1]?.[0],
-    );
+    const firstRequest = resolveRequest.mock.calls[0]![0];
+    const secondRequest = resolveRequest.mock.calls[1]![0];
+    expect(firstRequest).toMatchObject({
+      to: secondRequest.to,
+      subject: secondRequest.subject,
+      idempotencyKey: secondRequest.idempotencyKey,
+    });
+    expect(firstRequest.text).not.toBe(secondRequest.text);
   });
 
   it('continues after a recipient-specific prefetch error', async () => {
@@ -264,6 +305,13 @@ describe('runEmailNotificationDelivery', () => {
     );
     expect(logger.error.mock.calls[0]?.[0]).not.toHaveProperty('userId');
     expect(logger.error.mock.calls[0]?.[0]).not.toHaveProperty('err');
+    expect(countMetric).toHaveBeenCalledWith(
+      'atlaris.email.notification.failed',
+      1,
+      {
+        attributes: { reason: 'recipient_processing_error' },
+      },
+    );
   });
 
   it('retries a page-wide transient recipient data access failure', async () => {
@@ -568,7 +616,54 @@ describe('runEmailNotificationDelivery', () => {
       expect.anything(),
     );
     expect(result.failed).toBe(1);
+    expect(result.pageFailure).toEqual({
+      kind: 'terminal',
+      failureClass: 'provider_configuration',
+    });
     expect(markSent).not.toHaveBeenCalled();
+  });
+
+  it('continues after a recipient-specific provider rejection', async () => {
+    listRecipients.mockResolvedValue({
+      recipients: [
+        { userId: 'u1', email: 'invalid@example.com' },
+        { userId: 'u2', email: 'valid@example.com' },
+      ],
+      nextCursor: 'u2',
+    });
+    const sendResolved = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new EmailProviderError(
+          'invalid recipient',
+          'provider_recipient_invalid',
+          'rejected',
+        ),
+      )
+      .mockResolvedValueOnce({ providerMessageId: 're_2' });
+    const sender = createSender({ sendResolved });
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sendResolved).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({
+      examined: 2,
+      failed: 1,
+      sent: 1,
+      nextCursor: 'u2',
+      pageFailure: null,
+    });
   });
 
   it('retains the lease for outcome-unknown transport failures', async () => {

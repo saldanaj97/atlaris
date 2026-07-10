@@ -6,6 +6,7 @@ import {
 } from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import { tokensMatch } from '@/lib/api/internal/internal-worker-token';
 import { json, jsonError } from '@/lib/api/response';
+import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { maintenanceEnv } from '@/lib/config/env';
 import { EnvValidationError } from '@/lib/config/env/shared';
 import { getLoggingRequestContext } from '@/lib/logging/request-context';
@@ -47,7 +48,9 @@ export function createEmailNotificationDeliveryCronRoute(
     deps.startWorkflow ?? startEmailNotificationDeliveryWorkflow;
   const now = deps.now ?? (() => new Date());
 
-  return async function GET(request: Request): Promise<Response> {
+  return withErrorBoundary(async function GET(
+    request: Request,
+  ): Promise<Response> {
     const { logger } = getLoggingRequestContext(request);
     const expectedSecret = getCronSecret();
     const providedSecret = readBearerToken(request);
@@ -117,11 +120,17 @@ export function createEmailNotificationDeliveryCronRoute(
       'Email notification cron trigger completed',
     );
 
+    if (result.outcome === 'failed_requires_resume') {
+      return jsonError('Email notification workflow could not be started.', {
+        status: 503,
+      });
+    }
+
     return json(
       { ok: true, ...result },
       { status: result.outcome === 'started' ? 202 : 200 },
     );
-  };
+  });
 }
 
 export const GET = createEmailNotificationDeliveryCronRoute();

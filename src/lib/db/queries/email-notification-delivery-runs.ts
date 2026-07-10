@@ -1,6 +1,6 @@
-import type { EmailDeliveryRunCounts } from '@/features/notifications/email/types';
 import type { EmailNotificationDeliveryLedgerSummary } from '@/lib/db/queries/email-notification-deliveries';
 import type { DbClient } from '@/lib/db/types';
+import type { EmailDeliveryRunCounts } from '@/shared/notifications/email-delivery';
 import type {
   EmailNotificationDeliveryRunKind,
   EmailNotificationDeliveryRunStatus,
@@ -11,12 +11,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 type DeliveryRunDb = Pick<DbClient, 'insert' | 'select' | 'update'>;
 
-export type EmailNotificationDeliveryRunCounts = Omit<
-  EmailDeliveryRunCounts,
-  'nextCursor'
-> & {
-  recipientErrors: number;
-};
+export type EmailNotificationDeliveryRunCounts = EmailDeliveryRunCounts;
 
 export type EmailNotificationDeliveryRun =
   typeof emailNotificationDeliveryRuns.$inferSelect;

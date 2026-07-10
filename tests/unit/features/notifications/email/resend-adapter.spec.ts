@@ -27,7 +27,7 @@ describe('classifyResendError', () => {
     ['rate_limit_exceeded', 'provider_rate_limited'],
     ['monthly_quota_exceeded', 'provider_rate_limited'],
     ['daily_quota_exceeded', 'provider_rate_limited'],
-    ['validation_error', 'provider_request_invalid'],
+    ['validation_error', 'provider_recipient_invalid'],
     ['missing_required_field', 'provider_request_invalid'],
     ['invalid_attachment', 'provider_request_invalid'],
     ['invalid_idempotent_request', 'provider_idempotency_conflict'],

@@ -1,4 +1,4 @@
-import type { EmailDeliveryCategory } from '@/features/notifications/email/types';
+import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { EmailNotificationDeliveryRunKind } from '@supabase/schema';
 
 export type EmailNotificationDeliveryWorkflowInput = {
@@ -31,7 +31,7 @@ export type EmailNotificationDeliveryRunAction =
   | 'replay_reviewed';
 
 type EmailNotificationDeliveryRunDefinition = {
-  readonly categories: readonly EmailDeliveryCategory[];
+  readonly categories: readonly EmailNotificationCategory[];
   readonly schedule: string;
   readonly referenceTimeUtc: string;
 };

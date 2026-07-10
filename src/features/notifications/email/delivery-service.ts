@@ -5,6 +5,7 @@ import type {
 } from './types';
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
+import type { EmailNotificationCategory } from '@/shared/types/db.types';
 
 import { buildEmailContents, requiredActivityDateWindow } from './content';
 import { EmailProviderError } from './resend-adapter';
@@ -118,6 +119,19 @@ function emptyCounts(): EmailDeliveryRunResult {
   };
 }
 
+function recordDeliveryFailure(
+  counts: EmailDeliveryRunResult,
+  failureClass: string,
+  category?: EmailNotificationCategory,
+): void {
+  counts.failed += 1;
+  countMetric('atlaris.email.notification.failed', 1, {
+    attributes: category
+      ? { category, reason: failureClass }
+      : { reason: failureClass },
+  });
+}
+
 /**
  * Preference-gated, ledger-idempotent email delivery pass.
  * Service-role only; call from the maintenance worker route.
@@ -195,7 +209,7 @@ export async function runEmailNotificationDelivery(
       const unsubscribeToken = createUnsubscribeToken({
         userId: recipient.userId,
         secret,
-        nowMs: now.getTime(),
+        nowMs: deliveryNow.getTime(),
       });
       const unsubscribeUrl = `${appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
@@ -346,18 +360,12 @@ export async function runEmailNotificationDelivery(
                 db,
               ),
             );
-            counts.failed += 1;
+            recordDeliveryFailure(counts, err.failureClass, content.category);
             counts.pageFailure = {
               kind: 'retryable',
               failureClass: err.failureClass,
               retryAfterMs: RETRYABLE_PROVIDER_BACKOFF_MS,
             };
-            countMetric('atlaris.email.notification.failed', 1, {
-              attributes: {
-                category: content.category,
-                reason: err.failureClass,
-              },
-            });
             deps.logger?.warn(
               {
                 source: 'email_notifications',
@@ -371,6 +379,7 @@ export async function runEmailNotificationDelivery(
           }
 
           if (err instanceof EmailProviderError && err.outcome === 'rejected') {
+            const terminal = err.failureClass !== 'provider_recipient_invalid';
             await persistDeliveryState(() =>
               markEmailNotificationDeliveryFailed(
                 {
@@ -381,27 +390,28 @@ export async function runEmailNotificationDelivery(
                 db,
               ),
             );
-            counts.failed += 1;
-            counts.pageFailure = {
-              kind: 'terminal',
-              failureClass: err.failureClass,
-            };
-            countMetric('atlaris.email.notification.failed', 1, {
-              attributes: {
-                category: content.category,
-                reason: err.failureClass,
-              },
-            });
+            recordDeliveryFailure(counts, err.failureClass, content.category);
             deps.logger?.warn(
               {
                 source: 'email_notifications',
-                event: 'send_terminal_failure',
+                event: terminal
+                  ? 'send_terminal_failure'
+                  : 'send_recipient_failure',
                 category: content.category,
                 failureClass: err.failureClass,
               },
-              'Email notification send failed permanently',
+              terminal
+                ? 'Email notification send failed permanently'
+                : 'Email notification send failed for recipient',
             );
-            break recipients;
+            if (terminal) {
+              counts.pageFailure = {
+                kind: 'terminal',
+                failureClass: err.failureClass,
+              };
+              break recipients;
+            }
+            continue;
           }
 
           // Outcome-unknown transport failures keep the leased pending row for
@@ -410,15 +420,12 @@ export async function runEmailNotificationDelivery(
             err instanceof EmailProviderError
               ? err.failureClass
               : 'send_failed';
-          counts.failed += 1;
+          recordDeliveryFailure(counts, failureClass, content.category);
           counts.pageFailure = {
             kind: 'retryable',
             failureClass,
             retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
           };
-          countMetric('atlaris.email.notification.failed', 1, {
-            attributes: { category: content.category, reason: failureClass },
-          });
           deps.logger?.warn(
             {
               source: 'email_notifications',
@@ -453,13 +460,11 @@ export async function runEmailNotificationDelivery(
         } catch (err) {
           // Provider accepted the message; never mark failed. Leave the lease
           // intact so a later reclaim can reuse the exact stored request.
-          counts.failed += 1;
-          countMetric('atlaris.email.notification.failed', 1, {
-            attributes: {
-              category: content.category,
-              reason: 'ledger_finalization_failed',
-            },
-          });
+          recordDeliveryFailure(
+            counts,
+            'ledger_finalization_failed',
+            content.category,
+          );
           deps.logger?.error(
             {
               source: 'email_notifications',
@@ -484,12 +489,9 @@ export async function runEmailNotificationDelivery(
       ) {
         throw error;
       }
-      counts.failed += 1;
+      recordDeliveryFailure(counts, 'recipient_processing_error');
       counts.recipientErrors += 1;
       counts.needsReview = true;
-      countMetric('atlaris.email.notification.failed', 1, {
-        attributes: { reason: 'recipient_processing_error' },
-      });
       deps.logger?.error(
         {
           source: 'email_notifications',

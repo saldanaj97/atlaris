@@ -99,14 +99,14 @@ export function createResendEmailSender(
         );
 
         if (error) {
-          const outcome = classifyResendOutcome(error);
+          const { failureClass, outcome } = classifyResend(error);
           throw new EmailProviderError(
             outcome === 'rejected'
               ? 'Email provider rejected the send request.'
               : outcome === 'retryable'
                 ? 'Email provider reported a retryable send failure.'
                 : 'Email provider request failed with an unknown outcome.',
-            classifyResendError(error),
+            failureClass,
             outcome,
           );
         }
@@ -132,77 +132,89 @@ export function createResendEmailSender(
  * Transport/server ambiguity — including SDK `application_error` with null
  * statusCode — must stay `unknown` so the leased pending row is retained.
  */
-export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
-  if (error.statusCode === null) {
-    return 'unknown';
-  }
-
-  switch (error.name) {
-    case 'rate_limit_exceeded':
-      return 'retryable';
-    case 'monthly_quota_exceeded':
-    case 'daily_quota_exceeded':
-    case 'invalid_api_key':
-    case 'missing_api_key':
-    case 'restricted_api_key':
-    case 'invalid_from_address':
-    case 'invalid_access':
-    case 'invalid_region':
-    case 'validation_error':
-    case 'invalid_parameter':
-    case 'missing_required_field':
-    case 'invalid_attachment':
-    case 'invalid_idempotency_key':
-    case 'invalid_idempotent_request':
-    case 'not_found':
-    case 'method_not_allowed':
-      return 'rejected';
-    case 'application_error':
-    case 'internal_server_error':
-      return 'retryable';
-    case 'concurrent_idempotent_requests':
-    case 'security_error':
-      return 'unknown';
-    default: {
-      const _exhaustive: never = error.name;
-      void _exhaustive;
-      return 'unknown';
+function classifyResend(error: ErrorResponse): {
+  failureClass: string;
+  outcome: ProviderOutcome;
+} {
+  const classification = (() => {
+    switch (error.name) {
+      case 'rate_limit_exceeded':
+        return {
+          failureClass: 'provider_rate_limited',
+          outcome: 'retryable',
+        } as const;
+      case 'monthly_quota_exceeded':
+      case 'daily_quota_exceeded':
+        return {
+          failureClass: 'provider_rate_limited',
+          outcome: 'rejected',
+        } as const;
+      case 'invalid_api_key':
+      case 'missing_api_key':
+      case 'restricted_api_key':
+      case 'invalid_from_address':
+      case 'invalid_access':
+      case 'invalid_region':
+        return {
+          failureClass: 'provider_configuration',
+          outcome: 'rejected',
+        } as const;
+      case 'validation_error':
+      case 'invalid_parameter':
+        return {
+          failureClass: 'provider_recipient_invalid',
+          outcome: 'rejected',
+        } as const;
+      case 'missing_required_field':
+      case 'invalid_attachment':
+      case 'invalid_idempotency_key':
+        return {
+          failureClass: 'provider_request_invalid',
+          outcome: 'rejected',
+        } as const;
+      case 'invalid_idempotent_request':
+        return {
+          failureClass: 'provider_idempotency_conflict',
+          outcome: 'rejected',
+        } as const;
+      case 'not_found':
+      case 'method_not_allowed':
+        return {
+          failureClass: 'provider_error',
+          outcome: 'rejected',
+        } as const;
+      case 'application_error':
+      case 'internal_server_error':
+        return {
+          failureClass: 'provider_error',
+          outcome: 'retryable',
+        } as const;
+      case 'concurrent_idempotent_requests':
+      case 'security_error':
+        return {
+          failureClass: 'provider_error',
+          outcome: 'unknown',
+        } as const;
+      default: {
+        const _exhaustive: never = error.name;
+        void _exhaustive;
+        return {
+          failureClass: 'provider_error',
+          outcome: 'unknown',
+        } as const;
+      }
     }
-  }
+  })();
+
+  return error.statusCode === null
+    ? { ...classification, outcome: 'unknown' }
+    : classification;
+}
+
+export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
+  return classifyResend(error).outcome;
 }
 
 export function classifyResendError(error: ErrorResponse): string {
-  switch (error.name) {
-    case 'rate_limit_exceeded':
-    case 'monthly_quota_exceeded':
-    case 'daily_quota_exceeded':
-      return 'provider_rate_limited';
-    case 'invalid_api_key':
-    case 'missing_api_key':
-    case 'restricted_api_key':
-    case 'invalid_from_address':
-    case 'invalid_access':
-    case 'invalid_region':
-      return 'provider_configuration';
-    case 'validation_error':
-    case 'invalid_parameter':
-    case 'missing_required_field':
-    case 'invalid_attachment':
-    case 'invalid_idempotency_key':
-      return 'provider_request_invalid';
-    case 'invalid_idempotent_request':
-      return 'provider_idempotency_conflict';
-    case 'concurrent_idempotent_requests':
-    case 'application_error':
-    case 'internal_server_error':
-    case 'security_error':
-    case 'not_found':
-    case 'method_not_allowed':
-      return 'provider_error';
-    default: {
-      const _exhaustive: never = error.name;
-      void _exhaustive;
-      return 'provider_error';
-    }
-  }
+  return classifyResend(error).failureClass;
 }

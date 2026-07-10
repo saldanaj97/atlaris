@@ -100,6 +100,54 @@ describe('email notification delivery cron route', () => {
     expect(startWorkflow).not.toHaveBeenCalled();
   });
 
+  it('sanitizes unexpected workflow start failures', async () => {
+    resolveDeliveryEnabled.mockResolvedValue(true);
+    startWorkflow.mockRejectedValue(new Error('workflow internals'));
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+      now: () => new Date('2026-07-10T14:01:00.000Z'),
+    });
+
+    const response = await GET(
+      request({
+        authorization: 'Bearer cron-secret',
+        'x-vercel-cron-schedule': '0 14 * * *',
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.text()).resolves.not.toContain('workflow internals');
+  });
+
+  it('reports a workflow start failure as unavailable to Vercel Cron', async () => {
+    resolveDeliveryEnabled.mockResolvedValue(true);
+    startWorkflow.mockResolvedValue({
+      outcome: 'failed_requires_resume',
+      runId: 'run-1',
+      workflowRunId: null,
+    });
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+      now: () => new Date('2026-07-10T14:01:00.000Z'),
+    });
+
+    const response = await GET(
+      request({
+        authorization: 'Bearer cron-secret',
+        'x-vercel-cron-schedule': '0 14 * * *',
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Email notification workflow could not be started.',
+    });
+  });
+
   it('maps the daily schedule to a code-owned daily logical run', async () => {
     resolveDeliveryEnabled.mockResolvedValue(true);
     startWorkflow.mockResolvedValue({
