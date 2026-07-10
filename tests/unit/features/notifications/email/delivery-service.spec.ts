@@ -33,6 +33,7 @@ vi.mock('@/lib/db/queries/email-delivery-content', () => ({
 }));
 
 vi.mock('@/lib/db/queries/email-notification-deliveries', () => ({
+  EMAIL_DELIVERY_LEASE_MS: 15 * 60 * 1000,
   claimEmailNotificationDelivery: claim,
   markEmailNotificationDeliverySent: markSent,
   markEmailNotificationDeliveryFailed: markFailed,
@@ -141,6 +142,80 @@ describe('runEmailNotificationDelivery', () => {
     expect(result.nextCursor).toBe('u1');
   });
 
+  it('uses a retry wall clock for ledger leases without changing the content reference clock', async () => {
+    const referenceNow = new Date('2026-07-10T14:00:00.000Z');
+    const deliveryNow = new Date('2026-07-10T14:16:00.000Z');
+
+    await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-10',
+      },
+      {
+        db: {} as never,
+        sender: createSender(),
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: referenceNow,
+        deliveryNow,
+      },
+    );
+
+    expect(claim).toHaveBeenCalledWith(
+      expect.objectContaining({ now: deliveryNow }),
+      expect.anything(),
+    );
+  });
+
+  it('keeps the resolved provider request stable across retry wall clocks', async () => {
+    const referenceNow = new Date('2026-07-10T14:00:00.000Z');
+    const sender = createSender();
+    const resolveRequest = vi.fn(sender.resolveRequest);
+    sender.resolveRequest = resolveRequest;
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-07-10T14:00:00.000Z'));
+      await runEmailNotificationDelivery(
+        {
+          categories: ['daily_reminder'],
+          schedulerDateUtc: '2026-07-10',
+        },
+        {
+          db: {} as never,
+          sender,
+          unsubscribeSecret: 'secret',
+          appUrl: 'https://atlaris.app',
+          now: referenceNow,
+          deliveryNow: new Date('2026-07-10T14:00:00.000Z'),
+        },
+      );
+
+      vi.setSystemTime(new Date('2026-07-10T14:16:00.000Z'));
+      await runEmailNotificationDelivery(
+        {
+          categories: ['daily_reminder'],
+          schedulerDateUtc: '2026-07-10',
+        },
+        {
+          db: {} as never,
+          sender,
+          unsubscribeSecret: 'secret',
+          appUrl: 'https://atlaris.app',
+          now: referenceNow,
+          deliveryNow: new Date('2026-07-10T14:16:00.000Z'),
+        },
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(resolveRequest).toHaveBeenCalledTimes(2);
+    expect(resolveRequest.mock.calls[0]?.[0]).toEqual(
+      resolveRequest.mock.calls[1]?.[0],
+    );
+  });
+
   it('continues after a recipient-specific prefetch error', async () => {
     const error = new Error('preferences unavailable');
     const logger = { error: vi.fn(), info: vi.fn() };
@@ -172,7 +247,10 @@ describe('runEmailNotificationDelivery', () => {
     expect(result).toMatchObject({
       examined: 2,
       sent: 1,
-      failed: 0,
+      failed: 1,
+      recipientErrors: 1,
+      needsReview: true,
+      pageFailure: null,
       nextCursor: 'u2',
     });
     expect(sender.sendResolved).toHaveBeenCalledTimes(1);
@@ -180,11 +258,61 @@ describe('runEmailNotificationDelivery', () => {
       expect.objectContaining({
         source: 'email_notifications',
         event: 'recipient_processing_error',
-        userId: 'u1',
-        err: error,
+        failureClass: 'recipient_processing_error',
       }),
       'Email notification recipient processing failed; skipping user',
     );
+    expect(logger.error.mock.calls[0]?.[0]).not.toHaveProperty('userId');
+    expect(logger.error.mock.calls[0]?.[0]).not.toHaveProperty('err');
+  });
+
+  it('retries a page-wide transient recipient data access failure', async () => {
+    const error = Object.assign(new Error('connection failure'), {
+      code: '08006',
+    });
+    const logger = { error: vi.fn(), info: vi.fn() };
+    getPrefs.mockRejectedValueOnce(error);
+    const sender = createSender();
+
+    await expect(
+      runEmailNotificationDelivery(
+        {
+          categories: ['daily_reminder'],
+          schedulerDateUtc: '2026-07-09',
+        },
+        {
+          db: {} as never,
+          sender,
+          logger: logger as never,
+          unsubscribeSecret: 'secret',
+          appUrl: 'https://atlaris.app',
+          now: new Date('2026-07-09T15:00:00.000Z'),
+        },
+      ),
+    ).rejects.toBe(error);
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it('does not checkpoint a page after a delivery-ledger persistence failure', async () => {
+    claim.mockRejectedValueOnce(new Error('ledger unavailable'));
+
+    await expect(
+      runEmailNotificationDelivery(
+        {
+          categories: ['daily_reminder'],
+          schedulerDateUtc: '2026-07-09',
+        },
+        {
+          db: {} as never,
+          sender: createSender(),
+          unsubscribeSecret: 'secret',
+          appUrl: 'https://atlaris.app',
+          now: new Date('2026-07-09T15:00:00.000Z'),
+        },
+      ),
+    ).rejects.toThrow('Email delivery persistence failed');
   });
 
   it('skips daily when streak was already sent in a prior pass', async () => {
@@ -468,6 +596,49 @@ describe('runEmailNotificationDelivery', () => {
     expect(markFailed).not.toHaveBeenCalled();
     expect(markSent).not.toHaveBeenCalled();
     expect(result.failed).toBe(1);
+  });
+
+  it('returns a retryable page failure for provider rate limiting without advancing a page', async () => {
+    const sender = createSender({
+      sendResolved: vi
+        .fn()
+        .mockRejectedValue(
+          new EmailProviderError(
+            'rate limited',
+            'provider_rate_limited',
+            'retryable',
+          ),
+        ),
+    });
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(markFailed).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'provider_rate_limited',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'provider_rate_limited',
+        retryAfterMs: 60_000,
+      },
+    });
   });
 
   it('does not mark failed when provider succeeds but markSent rejects', async () => {

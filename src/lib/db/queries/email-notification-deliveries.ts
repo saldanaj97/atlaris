@@ -4,7 +4,7 @@ import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { EmailNotificationDeliveryStatus } from '@supabase/schema';
 
 import { emailNotificationDeliveries } from '@supabase/schema';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 export const EMAIL_DELIVERY_LEASE_MS = 15 * 60 * 1000;
@@ -33,6 +33,57 @@ export class EmailDeliveryLostLeaseError extends Error {
 }
 
 type DeliveryDb = Pick<DbClient, 'execute' | 'insert' | 'update' | 'select'>;
+
+export type EmailNotificationDeliveryLedgerSummary = {
+  readonly sent: number;
+  readonly skipped: number;
+  readonly manualReview: number;
+};
+
+/**
+ * The delivery ledger is authoritative when a workflow step is replayed after
+ * a provider side effect but before its run counter checkpoint is committed.
+ */
+export async function summarizeEmailNotificationDeliveriesForRun(
+  args: {
+    categories: readonly EmailNotificationCategory[];
+    deliveryKeys: readonly string[];
+  },
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<EmailNotificationDeliveryLedgerSummary> {
+  const [result] = await dbClient
+    .select({
+      sent: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'sent')::int`,
+      skipped: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'skipped')::int`,
+      manualReview: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'manual_review')::int`,
+    })
+    .from(emailNotificationDeliveries)
+    .where(
+      and(
+        inArray(emailNotificationDeliveries.category, [...args.categories]),
+        inArray(emailNotificationDeliveries.deliveryKey, [
+          ...args.deliveryKeys,
+        ]),
+      ),
+    );
+
+  return {
+    sent: Number(result?.sent ?? 0),
+    skipped: Number(result?.skipped ?? 0),
+    manualReview: Number(result?.manualReview ?? 0),
+  };
+}
+
+export async function countEmailNotificationDeliveryManualReviews(
+  args: {
+    categories: readonly EmailNotificationCategory[];
+    deliveryKeys: readonly string[];
+  },
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  return (await summarizeEmailNotificationDeliveriesForRun(args, dbClient))
+    .manualReview;
+}
 
 function asProviderRequest(value: unknown): PersistedProviderRequest | null {
   if (!value || typeof value !== 'object') {
@@ -67,55 +118,6 @@ function leaseExpiry(now: Date): Date {
   return new Date(now.getTime() + EMAIL_DELIVERY_LEASE_MS);
 }
 
-function providerRequestsEqual(
-  left: PersistedProviderRequest,
-  right: PersistedProviderRequest,
-): boolean {
-  return (
-    left.idempotencyKey === right.idempotencyKey &&
-    providerPayloadEqual(left, right)
-  );
-}
-
-function providerPayloadEqual(
-  left: PersistedProviderRequest,
-  right: PersistedProviderRequest,
-): boolean {
-  return (
-    left.from === right.from &&
-    left.to === right.to &&
-    left.subject === right.subject &&
-    left.html === right.html &&
-    left.text === right.text &&
-    left.replyTo === right.replyTo &&
-    providerHeadersEqual(left.headers, right.headers)
-  );
-}
-
-function providerHeadersEqual(
-  left: Record<string, string> | undefined,
-  right: Record<string, string> | undefined,
-): boolean {
-  const leftHeaders = left ?? {};
-  const rightHeaders = right ?? {};
-  const leftKeys = Object.keys(leftHeaders);
-
-  return (
-    leftKeys.length === Object.keys(rightHeaders).length &&
-    leftKeys.every((key) => leftHeaders[key] === rightHeaders[key])
-  );
-}
-
-function withRotatedIdempotencyKey(
-  request: PersistedProviderRequest,
-  attemptCount: number,
-): PersistedProviderRequest {
-  return {
-    ...request,
-    idempotencyKey: `${request.idempotencyKey}:retry:${attemptCount}`,
-  };
-}
-
 async function readCurrentClaimResult(
   deliveryId: string,
   dbClient: Pick<DbClient, 'select'>,
@@ -144,9 +146,9 @@ async function readCurrentClaimResult(
 
 /**
  * Atomically claim a delivery row for send. Terminal sent/skipped/manual_review
- * is final. Failed rows and expired pending leases can be reclaimed. Fresh
- * pending leases return in_flight. Ambiguous pending older than the provider
- * window becomes manual_review.
+ * is final. Failed rows and expired pending leases can be reclaimed only with
+ * their persisted request. Fresh pending leases return in_flight. Ambiguous
+ * pending older than the provider window becomes manual_review.
  */
 export async function claimEmailNotificationDelivery(
   args: {
@@ -238,15 +240,9 @@ export async function claimEmailNotificationDelivery(
 
   if (existing.status === 'failed') {
     const previousRequest = asProviderRequest(existing.providerRequest);
-    const reusePrevious =
-      previousRequest !== null &&
-      providerPayloadEqual(previousRequest, args.providerRequest);
-    const nextAttempt =
-      // attemptCount is incremented in SQL; use a stable retry suffix from now.
-      Date.now();
-    const nextRequest = reusePrevious
-      ? previousRequest
-      : withRotatedIdempotencyKey(args.providerRequest, nextAttempt);
+    if (!previousRequest) {
+      throw new Error('Failed delivery missing provider request');
+    }
 
     const reclaimed = await dbClient
       .update(emailNotificationDeliveries)
@@ -256,7 +252,7 @@ export async function claimEmailNotificationDelivery(
         providerMessageId: null,
         claimToken,
         claimExpiresAt,
-        providerRequest: nextRequest,
+        providerRequest: previousRequest,
         attemptCount: sql`${emailNotificationDeliveries.attemptCount} + 1`,
         updatedAt: now,
       })
@@ -291,8 +287,7 @@ export async function claimEmailNotificationDelivery(
         deliveryId: reclaimed[0].id,
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
-        reusedProviderRequest:
-          reusePrevious && providerRequestsEqual(stored, nextRequest),
+        reusedProviderRequest: true,
       };
     }
 

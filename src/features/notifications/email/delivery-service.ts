@@ -11,6 +11,7 @@ import { EmailProviderError } from './resend-adapter';
 import { createUnsubscribeToken } from './unsubscribe-token';
 import { appEnv } from '@/lib/config/env/app';
 import { emailEnv } from '@/lib/config/env/email';
+import { EnvValidationError } from '@/lib/config/env/shared';
 import {
   findEmailDailyReminderPlanForUser,
   listEmailActivityDayKeysForUser,
@@ -18,6 +19,7 @@ import {
 import { listEmailDeliveryRecipients } from '@/lib/db/queries/email-delivery-recipients';
 import {
   claimEmailNotificationDelivery,
+  EMAIL_DELIVERY_LEASE_MS,
   EmailDeliveryLostLeaseError,
   markEmailNotificationDeliveryFailed,
   markEmailNotificationDeliveryManualReview,
@@ -37,8 +39,55 @@ import { resolveEffectiveEmailPreferences } from '@/shared/notifications/email-p
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 const DEFAULT_BATCH_SIZE = 50;
+const RETRYABLE_PROVIDER_BACKOFF_MS = 60 * 1000;
+const RETRYABLE_DATABASE_ERROR_CODES = new Set([
+  '40001',
+  '40P01',
+  '53300',
+  '55P03',
+  '57P01',
+  '57P02',
+  '57P03',
+  'CONNECTION_CLOSED',
+  'CONNECTION_DESTROYED',
+  'CONNECTION_ENDED',
+  'CONNECT_TIMEOUT',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ETIMEDOUT',
+]);
 
 type DeliveryDb = DbClient;
+
+function isRetryableDatabaseError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const code = (error as { code?: unknown }).code;
+  return (
+    typeof code === 'string' &&
+    (code.startsWith('08') || RETRYABLE_DATABASE_ERROR_CODES.has(code))
+  );
+}
+
+class EmailDeliveryPersistenceError extends Error {
+  constructor() {
+    super('Email delivery persistence failed');
+    this.name = 'EmailDeliveryPersistenceError';
+  }
+}
+
+async function persistDeliveryState<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch {
+    throw new EmailDeliveryPersistenceError();
+  }
+}
 
 export type RunEmailNotificationDeliveryDeps = {
   db?: DeliveryDb;
@@ -46,6 +95,9 @@ export type RunEmailNotificationDeliveryDeps = {
   logger?: Logger;
   appUrl?: string;
   unsubscribeSecret?: string;
+  /** Wall-clock time for ledger leases; defaults to the content reference time. */
+  deliveryNow?: Date;
+  /** Deterministic logical reference time for content and eligibility. */
   now?: Date;
 };
 
@@ -59,7 +111,10 @@ function emptyCounts(): EmailDeliveryRunResult {
     alreadyTerminal: 0,
     inFlight: 0,
     manualReview: 0,
+    recipientErrors: 0,
     nextCursor: null,
+    pageFailure: null,
+    needsReview: false,
   };
 }
 
@@ -77,11 +132,13 @@ export async function runEmailNotificationDelivery(
   const secret =
     deps.unsubscribeSecret ?? emailEnv.unsubscribeTokenSecret ?? '';
   if (!secret) {
-    throw new Error(
-      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET is required for signed unsubscribe links.',
+    throw new EnvValidationError(
+      'Missing required environment variable: EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
+      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
     );
   }
   const now = deps.now ?? new Date();
+  const deliveryNow = deps.deliveryNow ?? now;
   const batchSize = request.batchSize ?? DEFAULT_BATCH_SIZE;
   const counts = emptyCounts();
 
@@ -94,7 +151,7 @@ export async function runEmailNotificationDelivery(
 
   const requested = new Set(request.categories);
 
-  for (const recipient of recipients) {
+  recipients: for (const recipient of recipients) {
     counts.examined += 1;
 
     try {
@@ -138,6 +195,7 @@ export async function runEmailNotificationDelivery(
       const unsubscribeToken = createUnsubscribeToken({
         userId: recipient.userId,
         secret,
+        nowMs: now.getTime(),
       });
       const unsubscribeUrl = `${appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
@@ -169,15 +227,17 @@ export async function runEmailNotificationDelivery(
           idempotencyKey: candidateIdempotencyKey,
         });
 
-        const claim = await claimEmailNotificationDelivery(
-          {
-            userId: recipient.userId,
-            category: content.category,
-            deliveryKey: content.deliveryKey,
-            providerRequest: candidateRequest,
-            now,
-          },
-          db,
+        const claim = await persistDeliveryState(() =>
+          claimEmailNotificationDelivery(
+            {
+              userId: recipient.userId,
+              category: content.category,
+              deliveryKey: content.deliveryKey,
+              providerRequest: candidateRequest,
+              now: deliveryNow,
+            },
+            db,
+          ),
         );
 
         if (claim.outcome === 'already_terminal') {
@@ -192,10 +252,16 @@ export async function runEmailNotificationDelivery(
         }
         if (claim.outcome === 'in_flight') {
           counts.inFlight += 1;
-          continue;
+          counts.pageFailure = {
+            kind: 'retryable',
+            failureClass: 'delivery_in_flight',
+            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+          };
+          break recipients;
         }
         if (claim.outcome === 'manual_review') {
           counts.manualReview += 1;
+          counts.needsReview = true;
           countMetric('atlaris.email.notification.manual_review', 1, {
             attributes: {
               category: content.category,
@@ -217,13 +283,15 @@ export async function runEmailNotificationDelivery(
         counts.claimed += 1;
 
         if (content.category === 'daily_reminder' && streakSentThisPass) {
-          await markEmailNotificationDeliverySkipped(
-            {
-              deliveryId: claim.deliveryId,
-              claimToken: claim.claimToken,
-              failureClass: 'suppressed_by_streak_reminder',
-            },
-            db,
+          await persistDeliveryState(() =>
+            markEmailNotificationDeliverySkipped(
+              {
+                deliveryId: claim.deliveryId,
+                claimToken: claim.claimToken,
+                failureClass: 'suppressed_by_streak_reminder',
+              },
+              db,
+            ),
           );
           counts.skipped += 1;
           countMetric('atlaris.email.notification.skipped', 1, {
@@ -243,15 +311,18 @@ export async function runEmailNotificationDelivery(
             err instanceof EmailProviderError &&
             err.failureClass === 'provider_idempotency_conflict'
           ) {
-            await markEmailNotificationDeliveryManualReview(
-              {
-                deliveryId: claim.deliveryId,
-                claimToken: claim.claimToken,
-                failureClass: err.failureClass,
-              },
-              db,
+            await persistDeliveryState(() =>
+              markEmailNotificationDeliveryManualReview(
+                {
+                  deliveryId: claim.deliveryId,
+                  claimToken: claim.claimToken,
+                  failureClass: err.failureClass,
+                },
+                db,
+              ),
             );
             counts.manualReview += 1;
+            counts.needsReview = true;
             countMetric('atlaris.email.notification.manual_review', 1, {
               attributes: {
                 category: content.category,
@@ -261,16 +332,26 @@ export async function runEmailNotificationDelivery(
             continue;
           }
 
-          if (err instanceof EmailProviderError && err.outcome === 'rejected') {
-            await markEmailNotificationDeliveryFailed(
-              {
-                deliveryId: claim.deliveryId,
-                claimToken: claim.claimToken,
-                failureClass: err.failureClass,
-              },
-              db,
+          if (
+            err instanceof EmailProviderError &&
+            err.outcome === 'retryable'
+          ) {
+            await persistDeliveryState(() =>
+              markEmailNotificationDeliveryFailed(
+                {
+                  deliveryId: claim.deliveryId,
+                  claimToken: claim.claimToken,
+                  failureClass: err.failureClass,
+                },
+                db,
+              ),
             );
             counts.failed += 1;
+            counts.pageFailure = {
+              kind: 'retryable',
+              failureClass: err.failureClass,
+              retryAfterMs: RETRYABLE_PROVIDER_BACKOFF_MS,
+            };
             countMetric('atlaris.email.notification.failed', 1, {
               attributes: {
                 category: content.category,
@@ -280,13 +361,47 @@ export async function runEmailNotificationDelivery(
             deps.logger?.warn(
               {
                 source: 'email_notifications',
-                event: 'send_failed',
+                event: 'send_retryable_failure',
                 category: content.category,
                 failureClass: err.failureClass,
               },
-              'Email notification send failed',
+              'Email notification send failed; retry scheduled',
             );
-            continue;
+            break recipients;
+          }
+
+          if (err instanceof EmailProviderError && err.outcome === 'rejected') {
+            await persistDeliveryState(() =>
+              markEmailNotificationDeliveryFailed(
+                {
+                  deliveryId: claim.deliveryId,
+                  claimToken: claim.claimToken,
+                  failureClass: err.failureClass,
+                },
+                db,
+              ),
+            );
+            counts.failed += 1;
+            counts.pageFailure = {
+              kind: 'terminal',
+              failureClass: err.failureClass,
+            };
+            countMetric('atlaris.email.notification.failed', 1, {
+              attributes: {
+                category: content.category,
+                reason: err.failureClass,
+              },
+            });
+            deps.logger?.warn(
+              {
+                source: 'email_notifications',
+                event: 'send_terminal_failure',
+                category: content.category,
+                failureClass: err.failureClass,
+              },
+              'Email notification send failed permanently',
+            );
+            break recipients;
           }
 
           // Outcome-unknown transport failures keep the leased pending row for
@@ -296,6 +411,11 @@ export async function runEmailNotificationDelivery(
               ? err.failureClass
               : 'send_failed';
           counts.failed += 1;
+          counts.pageFailure = {
+            kind: 'retryable',
+            failureClass,
+            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+          };
           countMetric('atlaris.email.notification.failed', 1, {
             attributes: { category: content.category, reason: failureClass },
           });
@@ -308,7 +428,7 @@ export async function runEmailNotificationDelivery(
             },
             'Email notification send outcome unknown; lease retained',
           );
-          continue;
+          break recipients;
         }
 
         if (content.category === 'streak_reminder') {
@@ -316,13 +436,15 @@ export async function runEmailNotificationDelivery(
         }
 
         try {
-          await markEmailNotificationDeliverySent(
-            {
-              deliveryId: claim.deliveryId,
-              claimToken: claim.claimToken,
-              providerMessageId: sendResult.providerMessageId,
-            },
-            db,
+          await persistDeliveryState(() =>
+            markEmailNotificationDeliverySent(
+              {
+                deliveryId: claim.deliveryId,
+                claimToken: claim.claimToken,
+                providerMessageId: sendResult.providerMessageId,
+              },
+              db,
+            ),
           );
           counts.sent += 1;
           countMetric('atlaris.email.notification.sent', 1, {
@@ -347,15 +469,32 @@ export async function runEmailNotificationDelivery(
             },
             'Email accepted by provider but ledger finalization failed',
           );
+          counts.pageFailure = {
+            kind: 'retryable',
+            failureClass: 'ledger_finalization_failed',
+            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+          };
+          break recipients;
         }
       }
-    } catch (err) {
+    } catch (error) {
+      if (
+        error instanceof EmailDeliveryPersistenceError ||
+        isRetryableDatabaseError(error)
+      ) {
+        throw error;
+      }
+      counts.failed += 1;
+      counts.recipientErrors += 1;
+      counts.needsReview = true;
+      countMetric('atlaris.email.notification.failed', 1, {
+        attributes: { reason: 'recipient_processing_error' },
+      });
       deps.logger?.error(
         {
           source: 'email_notifications',
           event: 'recipient_processing_error',
-          userId: recipient.userId,
-          err,
+          failureClass: 'recipient_processing_error',
         },
         'Email notification recipient processing failed; skipping user',
       );
@@ -363,11 +502,13 @@ export async function runEmailNotificationDelivery(
     }
   }
 
+  const { nextCursor: _nextCursor, ...loggedCounts } = counts;
   deps.logger?.info(
     {
       source: 'email_notifications',
       event: 'delivery_pass_complete',
-      ...counts,
+      ...loggedCounts,
+      hasNextCursor: counts.nextCursor !== null,
       categories: request.categories,
       schedulerDateUtc: request.schedulerDateUtc,
     },

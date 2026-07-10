@@ -79,7 +79,8 @@ export async function ensureRlsRolesAndPermissions() {
     REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_preferences" FROM authenticated;
     GRANT INSERT (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
     GRANT UPDATE (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
-    REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences" FROM anon;
+    REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences", "email_notification_delivery_runs" FROM anon;
+    REVOKE ALL ON "email_notification_delivery_runs" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
     REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(

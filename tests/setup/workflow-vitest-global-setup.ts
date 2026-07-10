@@ -13,6 +13,7 @@ const dataDir = join(process.cwd(), '.workflow-data');
 
 const defaultWorkflowDirs = [
   'src/features/lesson-content/workflows',
+  'src/features/notifications/email/workflows',
   'src/features/plans/workflows',
   'tests/helpers/workflow',
 ];

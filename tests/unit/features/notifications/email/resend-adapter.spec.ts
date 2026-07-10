@@ -42,10 +42,10 @@ describe('classifyResendOutcome', () => {
   it.each([
     ['invalid_api_key', 401, 'rejected'],
     ['validation_error', 400, 'rejected'],
-    ['rate_limit_exceeded', 429, 'rejected'],
+    ['rate_limit_exceeded', 429, 'retryable'],
     ['invalid_idempotent_request', 409, 'rejected'],
-    ['application_error', 500, 'unknown'],
-    ['internal_server_error', 500, 'unknown'],
+    ['application_error', 500, 'retryable'],
+    ['internal_server_error', 500, 'retryable'],
     ['concurrent_idempotent_requests', 409, 'unknown'],
     ['security_error', 403, 'unknown'],
   ] as const)('maps %s/%s to %s', (name, statusCode, expected) => {
