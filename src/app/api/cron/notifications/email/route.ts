@@ -1,6 +1,9 @@
 import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
 import { startEmailNotificationDeliveryWorkflow } from '@/features/notifications/email/start-email-notification-delivery-workflow';
-import { resolveEmailNotificationDeliveryRunKind } from '@/features/notifications/email/workflows/email-notification-delivery.types';
+import {
+  isEmailNotificationDeliveryWeeklyDate,
+  resolveEmailNotificationDeliveryRunKind,
+} from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import { tokensMatch } from '@/lib/api/internal/internal-worker-token';
 import { json, jsonError } from '@/lib/api/response';
 import { maintenanceEnv } from '@/lib/config/env';
@@ -87,6 +90,15 @@ export function createEmailNotificationDeliveryCronRoute(
     }
 
     const schedulerDateUtc = now().toISOString().slice(0, 10);
+    if (
+      runKind === 'weekly' &&
+      !isEmailNotificationDeliveryWeeklyDate(schedulerDateUtc)
+    ) {
+      return jsonError(
+        'Weekly email notification delivery requires a Monday UTC date.',
+        { status: 400 },
+      );
+    }
     const result = await startWorkflow({
       runKind,
       schedulerDateUtc,

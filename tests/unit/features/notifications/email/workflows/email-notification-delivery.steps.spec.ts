@@ -270,4 +270,74 @@ describe('email notification delivery workflow steps', () => {
       expect.anything(),
     );
   });
+
+  it('continues from the persisted cursor when page advance loses its CAS', async () => {
+    mocks.runDelivery.mockResolvedValue({
+      examined: 1,
+      claimed: 1,
+      sent: 1,
+      skipped: 0,
+      failed: 0,
+      alreadyTerminal: 0,
+      inFlight: 0,
+      manualReview: 0,
+      recipientErrors: 0,
+      nextCursor: 'user-2',
+      needsReview: false,
+    });
+    mocks.advance.mockResolvedValue({ outcome: 'stale' });
+    mocks.loadRun.mockResolvedValueOnce(runningRun).mockResolvedValueOnce({
+      ...runningRun,
+      cursorUserId: 'user-1',
+    });
+
+    await expect(
+      processEmailNotificationDeliveryPageStep(input),
+    ).resolves.toEqual({ kind: 'page_processed', nextCursor: 'user-1' });
+  });
+
+  it('retries finalization when complete loses ownership CAS but run stays owned', async () => {
+    mocks.summarizeLedger.mockResolvedValue({
+      sent: 1,
+      skipped: 0,
+      manualReview: 0,
+    });
+    mocks.complete.mockResolvedValue({ outcome: 'stale' });
+    mocks.loadRun
+      .mockResolvedValueOnce(runningRun)
+      .mockResolvedValueOnce(runningRun);
+
+    await expect(
+      finalizeEmailNotificationDeliveryRunStep(input),
+    ).rejects.toThrow('Email delivery run finalization retry scheduled');
+  });
+
+  it('retries a page failure when retry recording is stale but run stays owned', async () => {
+    mocks.runDelivery.mockResolvedValue({
+      examined: 1,
+      claimed: 1,
+      sent: 0,
+      skipped: 0,
+      failed: 1,
+      alreadyTerminal: 0,
+      inFlight: 0,
+      manualReview: 0,
+      recipientErrors: 0,
+      nextCursor: 'user-1',
+      needsReview: false,
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'provider_rate_limited',
+        retryAfterMs: 60_000,
+      },
+    });
+    mocks.recordRetry.mockResolvedValue({ outcome: 'stale' });
+    mocks.loadRun
+      .mockResolvedValueOnce(runningRun)
+      .mockResolvedValueOnce(runningRun);
+
+    await expect(
+      processEmailNotificationDeliveryPageStep(input),
+    ).rejects.toThrow('Email delivery page retry scheduled');
+  });
 });

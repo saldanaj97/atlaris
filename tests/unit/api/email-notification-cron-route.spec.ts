@@ -163,4 +163,27 @@ describe('email notification delivery cron route', () => {
       action: 'start',
     });
   });
+
+  it('rejects a weekly cron trigger on a non-Monday UTC date', async () => {
+    resolveDeliveryEnabled.mockResolvedValue(true);
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+      now: () => new Date('2026-07-14T14:31:00.000Z'),
+    });
+
+    const response = await GET(
+      request({
+        authorization: 'Bearer cron-secret',
+        'x-vercel-cron-schedule': '30 14 * * 1',
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Weekly email notification delivery requires a Monday UTC date.',
+    });
+    expect(startWorkflow).not.toHaveBeenCalled();
+  });
 });

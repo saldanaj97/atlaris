@@ -42,6 +42,17 @@ import {
 const EMAIL_NOTIFICATION_DELIVERY_MAX_RETRIES = 3;
 const DEFAULT_RETRY_DELAY_MS = 60 * 1000;
 
+async function loadOwnedRunningEmailNotificationDeliveryRun(
+  runId: string,
+  workflowRunId: string,
+) {
+  const run = await loadEmailNotificationDeliveryRun(runId, serviceRoleDb);
+  if (!run || run.status !== 'running' || run.workflowRunId !== workflowRunId) {
+    return null;
+  }
+  return run;
+}
+
 function logRunEvent(
   level: 'info' | 'warn' | 'error',
   event: string,
@@ -147,7 +158,15 @@ async function retryOrFail(
     serviceRoleDb,
   );
   if (retry.outcome === 'stale') {
-    return { kind: 'in_flight' };
+    // Lost ownership → exit. Still owned → keep retrying so the run cannot
+    // stay `running` after this workflow returns successfully.
+    const owned = await loadOwnedRunningEmailNotificationDeliveryRun(
+      input.runId,
+      workflowRunId,
+    );
+    if (!owned) {
+      return { kind: 'in_flight' };
+    }
   }
 
   countMetric('atlaris.email.notification.run.retry_scheduled', 1, {
@@ -341,7 +360,20 @@ export async function processEmailNotificationDeliveryPageStep(
       serviceRoleDb,
     );
     if (advanced.outcome === 'stale') {
-      return { kind: 'in_flight' };
+      // Cursor CAS lost (often a step replay after a prior advance). If this
+      // workflow still owns the run, continue from the persisted cursor instead
+      // of exiting and leaving the row `running` with no further steps.
+      const owned = await loadOwnedRunningEmailNotificationDeliveryRun(
+        run.id,
+        workflowRunId,
+      );
+      if (!owned) {
+        return { kind: 'in_flight' };
+      }
+      if (owned.scanCompletedAt) {
+        return { kind: 'page_processed', nextCursor: null };
+      }
+      return { kind: 'page_processed', nextCursor: owned.cursorUserId };
     }
 
     countMetric('atlaris.email.notification.run.page_completed', 1, {
@@ -432,7 +464,24 @@ async function finalizeEmailNotificationDeliveryRun(
     serviceRoleDb,
   );
   if (completed.outcome === 'stale') {
-    return { kind: 'in_flight' };
+    // Lost ownership → exit. Still owned → retry finalization so the run cannot
+    // stay `running` after this workflow returns successfully.
+    const owned = await loadOwnedRunningEmailNotificationDeliveryRun(
+      run.id,
+      workflowRunId,
+    );
+    if (!owned) {
+      return { kind: 'in_flight' };
+    }
+    throw new RetryableError(
+      'Email delivery run finalization retry scheduled',
+      {
+        retryAfter: Math.max(
+          DEFAULT_RETRY_DELAY_MS,
+          getStepMetadata().attempt ** 2 * 1000,
+        ),
+      },
+    );
   }
 
   finishMonitor(run, 'ok');
