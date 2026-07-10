@@ -19,8 +19,7 @@ type MaintenanceMonitor = {
 };
 
 type CreateMaintenancePostRouteArgs = {
-  /** Defaults to true so auth can run before async flag evaluation. */
-  enabled?: () => boolean;
+  enabled: () => boolean;
   unavailableMessage: string;
   unauthorizedLogMessage: string;
   monitor?: MaintenanceMonitor;
@@ -45,7 +44,7 @@ export function createMaintenancePostRoute(
       request,
       pathname,
       logger,
-      enabled: args.enabled?.() ?? true,
+      enabled: args.enabled(),
       unavailableMessage: args.unavailableMessage,
       unauthorizedLogMessage: args.unauthorizedLogMessage,
     });

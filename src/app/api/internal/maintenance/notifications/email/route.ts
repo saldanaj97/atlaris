@@ -16,9 +16,7 @@ const emailDeliveryBodySchema = z.strictObject({
     .array(z.enum(emailNotificationCategory.enumValues))
     .min(1)
     .max(3),
-  schedulerDateUtc: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'schedulerDateUtc must be YYYY-MM-DD'),
+  schedulerDateUtc: z.iso.date(),
   batchSize: z.number().int().positive().max(200).optional(),
   cursorUserId: z.string().uuid().nullable().optional(),
 });
@@ -72,6 +70,8 @@ export function createEmailNotificationDeliveryPostRoute(
   const runDelivery = deps.runDelivery ?? runEmailNotificationDelivery;
 
   return createMaintenancePostRoute({
+    // Authentication must run before this route's asynchronous flag evaluation.
+    enabled: () => true,
     unavailableMessage: 'Email notification delivery is currently unavailable.',
     unauthorizedLogMessage:
       'Unauthorized email notification delivery trigger attempt',

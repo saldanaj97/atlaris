@@ -1,9 +1,13 @@
 import {
   assertEmailDeliveryConfig,
   createEmailEnvForTests,
+  getRequiredEmailUnsubscribeTokenSecret,
 } from '@/lib/config/env/email';
 import { EnvValidationError } from '@/lib/config/env/shared';
 import { describe, expect, it } from 'vitest';
+
+const VALID_UNSUBSCRIBE_TOKEN_SECRET =
+  'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 describe('emailEnv', () => {
   it('exposes unsubscribe secret independently of send enablement', () => {
@@ -77,9 +81,35 @@ describe('emailEnv', () => {
       NODE_ENV: 'test',
       RESEND_API_KEY: 're_test',
       RESEND_FROM: 'Atlaris <notifications@mail.atlaris.app>',
-      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: 'secret',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: VALID_UNSUBSCRIBE_TOKEN_SECRET,
     });
     expect(() => assertEmailDeliveryConfig(env)).not.toThrow();
+  });
+
+  it('requires at least 32 bytes encoded as canonical base64url', () => {
+    const valid = createEmailEnvForTests({
+      NODE_ENV: 'test',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: VALID_UNSUBSCRIBE_TOKEN_SECRET,
+    });
+    expect(getRequiredEmailUnsubscribeTokenSecret(valid)).toBe(
+      VALID_UNSUBSCRIBE_TOKEN_SECRET,
+    );
+
+    const short = createEmailEnvForTests({
+      NODE_ENV: 'test',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: 'c2hvcnQ',
+    });
+    expect(() => getRequiredEmailUnsubscribeTokenSecret(short)).toThrow(
+      EnvValidationError,
+    );
+
+    const padded = createEmailEnvForTests({
+      NODE_ENV: 'test',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: `${VALID_UNSUBSCRIBE_TOKEN_SECRET}=`,
+    });
+    expect(() => getRequiredEmailUnsubscribeTokenSecret(padded)).toThrow(
+      EnvValidationError,
+    );
   });
 
   it('assertEmailDeliveryConfig refuses to start without the unsubscribe secret', () => {

@@ -23,7 +23,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual retention cleanup, plan cleanup, Clerk Billing reconciliation toggles, and shared `MAINTENANCE_WORKER_TOKEN`
-- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` configured for the unsubscribe token lifetime even while delivery is disabled.
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled.
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging, Sentry, and telemetry configuration

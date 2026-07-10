@@ -89,6 +89,28 @@ describe('email notification delivery route', () => {
     expect(createSender).not.toHaveBeenCalled();
   });
 
+  it('rejects impossible scheduler dates before evaluating the delivery flag', async () => {
+    const resolveDeliveryEnabled = vi.fn();
+    const POST = createEmailNotificationDeliveryPostRoute({
+      resolveDeliveryEnabled,
+      createSender: vi.fn(),
+      runDelivery: vi.fn(),
+    });
+
+    const response = await POST(
+      createMaintenancePostRequest(URL, {
+        body: JSON.stringify({
+          categories: ['daily_reminder'],
+          schedulerDateUtc: '2026-02-31',
+        }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
+  });
+
   it('rejects unauthorized requests before flag evaluation', async () => {
     process.env.MAINTENANCE_WORKER_TOKEN = 'secret';
     const resolveDeliveryEnabled = vi.fn();

@@ -104,7 +104,7 @@ describe('email notification deliveries ledger', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('reclaims failed rows with a rotated claim token and preserves sent terminal state', async () => {
+  it('reclaims failed rows without resetting a previously rotated idempotency key', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-failed');
     const userId = await ensureUser({
       authUserId,
@@ -152,6 +152,33 @@ describe('email notification deliveries ledger', () => {
     expect(second.providerRequest.idempotencyKey).not.toBe(
       providerRequest().idempotencyKey,
     );
+    const rotatedIdempotencyKey = second.providerRequest.idempotencyKey;
+
+    await markEmailNotificationDeliveryFailed(
+      {
+        deliveryId: second.deliveryId,
+        claimToken: second.claimToken,
+        failureClass: 'provider_configuration',
+      },
+      db,
+    );
+
+    const third = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: providerRequest({
+          subject: 'Corrected subject',
+        }),
+      },
+      db,
+    );
+
+    expect(third.outcome).toBe('claimed');
+    if (third.outcome !== 'claimed') return;
+    expect(third.providerRequest.idempotencyKey).toBe(rotatedIdempotencyKey);
+    expect(third.reusedProviderRequest).toBe(true);
 
     await expect(
       markEmailNotificationDeliverySent(
@@ -166,8 +193,8 @@ describe('email notification deliveries ledger', () => {
 
     await markEmailNotificationDeliverySent(
       {
-        deliveryId: second.deliveryId,
-        claimToken: second.claimToken,
+        deliveryId: third.deliveryId,
+        claimToken: third.claimToken,
         providerMessageId: 're_ok',
       },
       db,
@@ -186,6 +213,66 @@ describe('email notification deliveries ledger', () => {
       outcome: 'already_terminal',
       status: 'sent',
     });
+  });
+
+  it('reuses failed requests when optional fields and headers reorder', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-request-order');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const firstRequest = providerRequest({
+      idempotencyKey: 'order:daily:2026-07-10',
+      replyTo: 'support@atlaris.app',
+      headers: {
+        'List-Unsubscribe': '<https://example.com/unsub>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+    });
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: firstRequest,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    await markEmailNotificationDeliveryFailed(
+      {
+        deliveryId: first.deliveryId,
+        claimToken: first.claimToken,
+        failureClass: 'provider_configuration',
+      },
+      db,
+    );
+
+    const second = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: providerRequest({
+          idempotencyKey: firstRequest.idempotencyKey,
+          replyTo: 'support@atlaris.app',
+          headers: {
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            'List-Unsubscribe': '<https://example.com/unsub>',
+          },
+        }),
+      },
+      db,
+    );
+
+    expect(second.outcome).toBe('claimed');
+    if (second.outcome !== 'claimed') return;
+    expect(second.providerRequest.idempotencyKey).toBe(
+      firstRequest.idempotencyKey,
+    );
+    expect(second.reusedProviderRequest).toBe(true);
   });
 
   it('does not steal a fresh pending lease and reclaims an expired one with the original request', async () => {

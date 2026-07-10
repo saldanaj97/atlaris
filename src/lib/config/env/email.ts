@@ -19,6 +19,8 @@ interface EmailEnv {
 }
 
 const defaultEmailAccess = createServerEnvAccess(getProcessEnvSource);
+const EMAIL_UNSUBSCRIBE_TOKEN_SECRET_ENV_KEY = 'EMAIL_UNSUBSCRIBE_TOKEN_SECRET';
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 function createEmailEnv(access: ServerEnvAccess): EmailEnv {
   return {
@@ -54,12 +56,33 @@ export function assertEmailDeliveryConfig(env: EmailEnv = emailEnv): void {
       'RESEND_FROM',
     );
   }
-  if (!env.unsubscribeTokenSecret) {
+  getRequiredEmailUnsubscribeTokenSecret(env);
+}
+
+/**
+ * Requires an unpadded base64url secret encoding at least 32 random bytes.
+ * The format is shared by email delivery and public unsubscribe verification.
+ */
+export function getRequiredEmailUnsubscribeTokenSecret(
+  env: EmailEnv = emailEnv,
+): string {
+  const secret = env.unsubscribeTokenSecret;
+  if (!secret || !BASE64URL_PATTERN.test(secret)) {
     throw new EnvValidationError(
-      'Missing required environment variable: EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
-      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
+      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET must be unpadded base64url encoding at least 32 random bytes',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET_ENV_KEY,
     );
   }
+
+  const decoded = Buffer.from(secret, 'base64url');
+  if (decoded.length < 32 || decoded.toString('base64url') !== secret) {
+    throw new EnvValidationError(
+      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET must be unpadded base64url encoding at least 32 random bytes',
+      EMAIL_UNSUBSCRIBE_TOKEN_SECRET_ENV_KEY,
+    );
+  }
+
+  return secret;
 }
 
 export function createEmailEnvForTests(env: EnvSource): EmailEnv {

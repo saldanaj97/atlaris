@@ -1,7 +1,10 @@
 import type { DbClient } from '@/lib/db/types';
 
 import { verifyUnsubscribeToken } from './unsubscribe-token';
-import { emailEnv } from '@/lib/config/env/email';
+import {
+  emailEnv,
+  getRequiredEmailUnsubscribeTokenSecret,
+} from '@/lib/config/env/email';
 import { users, userEmailNotificationSettings } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { eq, sql } from 'drizzle-orm';
@@ -20,10 +23,8 @@ export async function applySignedEmailUnsubscribe(args: {
   db?: Pick<DbClient, 'select' | 'insert'>;
   nowMs?: number;
 }): Promise<UnsubscribeResult> {
-  const secret = args.secret ?? emailEnv.unsubscribeTokenSecret;
-  if (!secret) {
-    return { ok: false, reason: 'invalid_token' };
-  }
+  const secret =
+    args.secret ?? getRequiredEmailUnsubscribeTokenSecret(emailEnv);
 
   const payload = verifyUnsubscribeToken({
     token: args.token,

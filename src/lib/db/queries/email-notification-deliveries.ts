@@ -4,7 +4,7 @@ import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { EmailNotificationDeliveryStatus } from '@supabase/schema';
 
 import { emailNotificationDeliveries } from '@supabase/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 export const EMAIL_DELIVERY_LEASE_MS = 15 * 60 * 1000;
@@ -71,16 +71,39 @@ function providerRequestsEqual(
   left: PersistedProviderRequest,
   right: PersistedProviderRequest,
 ): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return (
+    left.idempotencyKey === right.idempotencyKey &&
+    providerPayloadEqual(left, right)
+  );
 }
 
 function providerPayloadEqual(
   left: PersistedProviderRequest,
   right: PersistedProviderRequest,
 ): boolean {
-  const { idempotencyKey: _leftKey, ...leftPayload } = left;
-  const { idempotencyKey: _rightKey, ...rightPayload } = right;
-  return JSON.stringify(leftPayload) === JSON.stringify(rightPayload);
+  return (
+    left.from === right.from &&
+    left.to === right.to &&
+    left.subject === right.subject &&
+    left.html === right.html &&
+    left.text === right.text &&
+    left.replyTo === right.replyTo &&
+    providerHeadersEqual(left.headers, right.headers)
+  );
+}
+
+function providerHeadersEqual(
+  left: Record<string, string> | undefined,
+  right: Record<string, string> | undefined,
+): boolean {
+  const leftHeaders = left ?? {};
+  const rightHeaders = right ?? {};
+  const leftKeys = Object.keys(leftHeaders);
+
+  return (
+    leftKeys.length === Object.keys(rightHeaders).length &&
+    leftKeys.every((key) => leftHeaders[key] === rightHeaders[key])
+  );
 }
 
 function withRotatedIdempotencyKey(
@@ -91,6 +114,32 @@ function withRotatedIdempotencyKey(
     ...request,
     idempotencyKey: `${request.idempotencyKey}:retry:${attemptCount}`,
   };
+}
+
+async function readCurrentClaimResult(
+  deliveryId: string,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<EmailDeliveryClaimResult> {
+  const [current] = await dbClient
+    .select({ status: emailNotificationDeliveries.status })
+    .from(emailNotificationDeliveries)
+    .where(eq(emailNotificationDeliveries.id, deliveryId));
+
+  if (!current) {
+    throw new Error('Delivery ledger row missing after lost claim race');
+  }
+
+  if (
+    current.status === 'sent' ||
+    current.status === 'skipped' ||
+    current.status === 'manual_review'
+  ) {
+    return { outcome: 'already_terminal', status: current.status };
+  }
+
+  // A concurrent worker owns or may immediately reclaim any non-terminal row.
+  // Do not send from a stale claim snapshot.
+  return { outcome: 'in_flight', status: 'pending' };
 }
 
 /**
@@ -160,6 +209,7 @@ export async function claimEmailNotificationDelivery(
     .select({
       id: emailNotificationDeliveries.id,
       status: emailNotificationDeliveries.status,
+      claimToken: emailNotificationDeliveries.claimToken,
       claimExpiresAt: emailNotificationDeliveries.claimExpiresAt,
       providerRequest: emailNotificationDeliveries.providerRequest,
       updatedAt: emailNotificationDeliveries.updatedAt,
@@ -188,14 +238,15 @@ export async function claimEmailNotificationDelivery(
 
   if (existing.status === 'failed') {
     const previousRequest = asProviderRequest(existing.providerRequest);
+    const reusePrevious =
+      previousRequest !== null &&
+      providerPayloadEqual(previousRequest, args.providerRequest);
     const nextAttempt =
       // attemptCount is incremented in SQL; use a stable retry suffix from now.
       Date.now();
-    const nextRequest =
-      previousRequest &&
-      providerPayloadEqual(previousRequest, args.providerRequest)
-        ? args.providerRequest
-        : withRotatedIdempotencyKey(args.providerRequest, nextAttempt);
+    const nextRequest = reusePrevious
+      ? previousRequest
+      : withRotatedIdempotencyKey(args.providerRequest, nextAttempt);
 
     const reclaimed = await dbClient
       .update(emailNotificationDeliveries)
@@ -213,6 +264,15 @@ export async function claimEmailNotificationDelivery(
         and(
           eq(emailNotificationDeliveries.id, existing.id),
           eq(emailNotificationDeliveries.status, 'failed'),
+          existing.claimToken === null
+            ? isNull(emailNotificationDeliveries.claimToken)
+            : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
+          existing.claimExpiresAt === null
+            ? isNull(emailNotificationDeliveries.claimExpiresAt)
+            : eq(
+                emailNotificationDeliveries.claimExpiresAt,
+                existing.claimExpiresAt,
+              ),
         ),
       )
       .returning({
@@ -231,12 +291,12 @@ export async function claimEmailNotificationDelivery(
         deliveryId: reclaimed[0].id,
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
-        reusedProviderRequest: providerRequestsEqual(
-          stored,
-          args.providerRequest,
-        ),
+        reusedProviderRequest:
+          reusePrevious && providerRequestsEqual(stored, nextRequest),
       };
     }
+
+    return readCurrentClaimResult(existing.id, dbClient);
   }
 
   if (existing.status === 'pending') {
@@ -245,7 +305,7 @@ export async function claimEmailNotificationDelivery(
       return { outcome: 'in_flight', status: 'pending' };
     }
 
-  // Measure ambiguity from first claim time; reclaim must not reset the window.
+    // Measure ambiguity from first claim time; reclaim must not reset the window.
     const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
     if (ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
@@ -262,6 +322,15 @@ export async function claimEmailNotificationDelivery(
           and(
             eq(emailNotificationDeliveries.id, existing.id),
             eq(emailNotificationDeliveries.status, 'pending'),
+            existing.claimToken === null
+              ? isNull(emailNotificationDeliveries.claimToken)
+              : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
+            existing.claimExpiresAt === null
+              ? isNull(emailNotificationDeliveries.claimExpiresAt)
+              : eq(
+                  emailNotificationDeliveries.claimExpiresAt,
+                  existing.claimExpiresAt,
+                ),
           ),
         )
         .returning({ id: emailNotificationDeliveries.id });
@@ -269,7 +338,7 @@ export async function claimEmailNotificationDelivery(
       if (reviewed[0]) {
         return { outcome: 'manual_review', deliveryId: reviewed[0].id };
       }
-      return { outcome: 'already_terminal', status: 'manual_review' };
+      return readCurrentClaimResult(existing.id, dbClient);
     }
 
     const storedRequest = asProviderRequest(existing.providerRequest);
@@ -289,6 +358,15 @@ export async function claimEmailNotificationDelivery(
         and(
           eq(emailNotificationDeliveries.id, existing.id),
           eq(emailNotificationDeliveries.status, 'pending'),
+          existing.claimToken === null
+            ? isNull(emailNotificationDeliveries.claimToken)
+            : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
+          existing.claimExpiresAt === null
+            ? isNull(emailNotificationDeliveries.claimExpiresAt)
+            : eq(
+                emailNotificationDeliveries.claimExpiresAt,
+                existing.claimExpiresAt,
+              ),
           sql`(
             ${emailNotificationDeliveries.claimExpiresAt} IS NULL
             OR ${emailNotificationDeliveries.claimExpiresAt} <= ${now.toISOString()}
@@ -313,7 +391,7 @@ export async function claimEmailNotificationDelivery(
       };
     }
 
-    return { outcome: 'in_flight', status: 'pending' };
+    return readCurrentClaimResult(existing.id, dbClient);
   }
 
   return { outcome: 'in_flight', status: 'pending' };

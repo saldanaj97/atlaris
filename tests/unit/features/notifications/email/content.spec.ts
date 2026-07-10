@@ -153,6 +153,36 @@ describe('email content eligibility', () => {
     expect(contents[0]?.message.text).toContain('<script>alert(1)</script>');
   });
 
+  it('attribute-escapes unsubscribe URLs in HTML footers', () => {
+    const today = '2026-07-09';
+    const unsubscribeUrl = 'https://atlaris.app/unsub?next="><img>&a=1';
+    const contents = buildEmailContents(
+      {
+        userId: 'u1',
+        email: 'u@example.com',
+        analyticsTimezone: 'UTC',
+        schedulerDateUtc: today,
+        referenceDate: day(today),
+        activityDayKeys: [],
+        incompletePlan: {
+          id: 'p1',
+          topic: 'TypeScript',
+          completedTasks: 1,
+          totalTasks: 4,
+        },
+        appUrl: 'https://atlaris.app',
+        unsubscribeUrl,
+      },
+      new Set(['daily_reminder']),
+    );
+
+    const html = contents[0]?.message.html ?? '';
+    expect(html).toContain(
+      'href="https://atlaris.app/unsub?next=&quot;&gt;&lt;img&gt;&amp;a=1"',
+    );
+    expect(html).not.toContain('href="https://atlaris.app/unsub?next="><img>');
+  });
+
   it('sends daily only when streak is preference-disabled even if streak would qualify', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(

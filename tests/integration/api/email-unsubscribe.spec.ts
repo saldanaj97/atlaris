@@ -8,23 +8,10 @@ import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const BASE_URL = 'http://localhost/api/v1/notifications/email/unsubscribe';
-const SECRET = 'unsubscribe-integration-secret';
-
-const ORIGINAL_ENV = {
-  EMAIL_UNSUBSCRIBE_TOKEN_SECRET: process.env.EMAIL_UNSUBSCRIBE_TOKEN_SECRET,
-};
-
-function restoreEnv(): void {
-  if (ORIGINAL_ENV.EMAIL_UNSUBSCRIBE_TOKEN_SECRET === undefined) {
-    delete process.env.EMAIL_UNSUBSCRIBE_TOKEN_SECRET;
-    return;
-  }
-  process.env.EMAIL_UNSUBSCRIBE_TOKEN_SECRET =
-    ORIGINAL_ENV.EMAIL_UNSUBSCRIBE_TOKEN_SECRET;
-}
+const SECRET = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 async function seedUser() {
   const authUserId = buildTestAuthUserId('email-unsub');
@@ -46,11 +33,11 @@ async function settingsFor(userId: string) {
 
 describe('email unsubscribe route', () => {
   beforeEach(() => {
-    process.env.EMAIL_UNSUBSCRIBE_TOKEN_SECRET = SECRET;
+    vi.stubEnv('EMAIL_UNSUBSCRIBE_TOKEN_SECRET', SECRET);
   });
 
   afterEach(() => {
-    restoreEnv();
+    vi.unstubAllEnvs();
   });
 
   it('GET confirmation page never mutates preferences', async () => {
@@ -134,6 +121,24 @@ describe('email unsubscribe route', () => {
     );
     expect(bodyOnly.status).toBe(400);
     expect(await settingsFor(userId)).toBeNull();
+  });
+
+  it('reports missing unsubscribe configuration as a generic server failure', async () => {
+    const { token } = await seedUser();
+    vi.stubEnv('EMAIL_UNSUBSCRIBE_TOKEN_SECRET', undefined);
+
+    const response = await POST_UNSUBSCRIBE(
+      new Request(`${BASE_URL}?token=${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'List-Unsubscribe=One-Click',
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.text()).resolves.not.toContain(
+      'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
+    );
   });
 
   it('keeps valid POST idempotent while unsubscribe secret remains configured', async () => {

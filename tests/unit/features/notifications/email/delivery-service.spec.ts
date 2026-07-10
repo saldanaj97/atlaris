@@ -141,6 +141,52 @@ describe('runEmailNotificationDelivery', () => {
     expect(result.nextCursor).toBe('u1');
   });
 
+  it('continues after a recipient-specific prefetch error', async () => {
+    const error = new Error('preferences unavailable');
+    const logger = { error: vi.fn(), info: vi.fn() };
+    listRecipients.mockResolvedValue({
+      recipients: [
+        { userId: 'u1', email: 'u1@example.com' },
+        { userId: 'u2', email: 'u2@example.com' },
+      ],
+      nextCursor: 'u2',
+    });
+    getPrefs.mockRejectedValueOnce(error);
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        logger: logger as never,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(result).toMatchObject({
+      examined: 2,
+      sent: 1,
+      failed: 0,
+      nextCursor: 'u2',
+    });
+    expect(sender.sendResolved).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'email_notifications',
+        event: 'recipient_processing_error',
+        userId: 'u1',
+        err: error,
+      }),
+      'Email notification recipient processing failed; skipping user',
+    );
+  });
+
   it('skips daily when streak was already sent in a prior pass', async () => {
     claim
       .mockResolvedValueOnce({

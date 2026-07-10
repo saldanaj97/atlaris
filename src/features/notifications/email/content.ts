@@ -49,6 +49,7 @@ function asDayKeySet(
   return dayKeys instanceof Set ? dayKeys : new Set(dayKeys);
 }
 
+/** Escapes text content only. Use escapeHtmlAttribute for HTML attributes. */
 function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
@@ -56,6 +57,15 @@ function escapeHtml(text: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 }
 
 function withFooter(
@@ -67,7 +77,7 @@ function withFooter(
 } {
   const footer = `You're receiving this because you opted in to Atlaris email notifications.\nUnsubscribe: ${unsubscribeUrl}`;
   const text = `${bodyText}\n\n${footer}`;
-  const html = `<p>${escapeHtml(bodyText).replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${unsubscribeUrl}">Unsubscribe</a></p>`;
+  const html = `<p>${escapeHtml(bodyText).replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${escapeHtmlAttribute(unsubscribeUrl)}">Unsubscribe</a></p>`;
   return { text, html };
 }
 
@@ -214,6 +224,8 @@ export function buildEmailContents(
   const results: BuiltEmailContent[] = [];
   const headers = listUnsubscribeHeaders(ctx.unsubscribeUrl);
 
+  // Delivery is sequential: a sent streak reminder must precede daily reminder
+  // processing so the latter can be suppressed in the same pass.
   if (streakQualifies) {
     const body = `Your learning streak of at least ${STREAK_REMINDER_THRESHOLD} days is at risk. Jump back into Atlaris today to keep it going.\n\nOpen your plans: ${ctx.appUrl}/plans`;
     const { text, html } = withFooter(body, ctx.unsubscribeUrl);
