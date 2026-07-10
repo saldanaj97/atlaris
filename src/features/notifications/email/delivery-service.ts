@@ -286,6 +286,10 @@ export async function runEmailNotificationDelivery(
         continue;
       }
 
+      if (content.category === 'streak_reminder') {
+        streakSentThisPass = true;
+      }
+
       try {
         await markEmailNotificationDeliverySent(
           {
@@ -296,9 +300,6 @@ export async function runEmailNotificationDelivery(
           db,
         );
         counts.sent += 1;
-        if (content.category === 'streak_reminder') {
-          streakSentThisPass = true;
-        }
         countMetric('atlaris.email.notification.sent', 1, {
           attributes: { category: content.category },
         });
