@@ -71,6 +71,9 @@ jobs:
 
           cursor=""
           page=0
+          # Stay under the shared internal IP limiter (60 req/min) and retry 429s.
+          page_delay_seconds="${EMAIL_DELIVERY_PAGE_DELAY_SECONDS:-1}"
+          max_rate_limit_retries=5
 
           while true; do
             page=$((page + 1))
@@ -89,20 +92,38 @@ jobs:
             fi
 
             response_file="$(mktemp)"
-            status_code="$(
-              curl \
-                --silent \
-                --show-error \
-                --output "${response_file}" \
-                --write-out '%{http_code}' \
-                --request POST \
-                --max-time 300 \
-                --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
-                --header 'Content-Type: application/json' \
-                --header 'User-Agent: atlaris-email-notification-delivery-scheduler' \
-                --data "${payload}" \
-                "${EMAIL_DELIVERY_URL}"
-            )"
+            attempt=0
+            status_code=""
+            while true; do
+              attempt=$((attempt + 1))
+              status_code="$(
+                curl \
+                  --silent \
+                  --show-error \
+                  --output "${response_file}" \
+                  --write-out '%{http_code}' \
+                  --request POST \
+                  --max-time 300 \
+                  --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
+                  --header 'Content-Type: application/json' \
+                  --header 'User-Agent: atlaris-email-notification-delivery-scheduler' \
+                  --data "${payload}" \
+                  "${EMAIL_DELIVERY_URL}"
+              )"
+
+              if [[ "${status_code}" != "429" ]]; then
+                break
+              fi
+
+              if [[ "${attempt}" -ge "${max_rate_limit_retries}" ]]; then
+                echo "::error title=Email delivery rate limited (429)::Exceeded ${max_rate_limit_retries} retries for page ${page}."
+                exit 1
+              fi
+
+              backoff_seconds=$((attempt * 2))
+              echo "Rate limited on page ${page} (attempt ${attempt}/${max_rate_limit_retries}); sleeping ${backoff_seconds}s before retry."
+              sleep "${backoff_seconds}"
+            done
 
             case "${status_code}" in
               200)
@@ -178,6 +199,7 @@ jobs:
 
             cursor="${next_cursor}"
             rm -f "${response_file}"
+            sleep "${page_delay_seconds}"
           done
 
           echo "Aggregate totals across ${page} page(s):"

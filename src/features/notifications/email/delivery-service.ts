@@ -22,6 +22,7 @@ import {
   markEmailNotificationDeliveryFailed,
   markEmailNotificationDeliveryManualReview,
   markEmailNotificationDeliverySent,
+  markEmailNotificationDeliverySkipped,
 } from '@/lib/db/queries/email-notification-deliveries';
 import {
   getEmailNotificationPreferences,
@@ -157,10 +158,6 @@ export async function runEmailNotificationDelivery(
     let streakSentThisPass = false;
 
     for (const content of contents) {
-      if (content.category === 'daily_reminder' && streakSentThisPass) {
-        continue;
-      }
-
       const candidateIdempotencyKey = `${recipient.userId}:${content.category}:${content.deliveryKey}`;
       const candidateRequest = deps.sender.resolveRequest({
         to: recipient.email,
@@ -184,6 +181,9 @@ export async function runEmailNotificationDelivery(
 
       if (claim.outcome === 'already_terminal') {
         counts.alreadyTerminal += 1;
+        if (content.category === 'streak_reminder' && claim.status === 'sent') {
+          streakSentThisPass = true;
+        }
         continue;
       }
       if (claim.outcome === 'in_flight') {
@@ -211,6 +211,25 @@ export async function runEmailNotificationDelivery(
       }
 
       counts.claimed += 1;
+
+      if (content.category === 'daily_reminder' && streakSentThisPass) {
+        await markEmailNotificationDeliverySkipped(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: 'suppressed_by_streak_reminder',
+          },
+          db,
+        );
+        counts.skipped += 1;
+        countMetric('atlaris.email.notification.skipped', 1, {
+          attributes: {
+            category: content.category,
+            reason: 'suppressed_by_streak_reminder',
+          },
+        });
+        continue;
+      }
 
       let sendResult;
       try {

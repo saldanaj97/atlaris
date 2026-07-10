@@ -2,6 +2,7 @@ import type { ErrorResponse } from 'resend';
 
 import {
   classifyResendError,
+  classifyResendOutcome,
   createResendEmailSender,
   EmailProviderError,
   type ResendEmailsClient,
@@ -34,6 +35,30 @@ describe('classifyResendError', () => {
     ['application_error', 'provider_error'],
   ] as const)('maps %s to %s', (name, expected) => {
     expect(classifyResendError(error(name))).toBe(expected);
+  });
+});
+
+describe('classifyResendOutcome', () => {
+  it.each([
+    ['invalid_api_key', 401, 'rejected'],
+    ['validation_error', 400, 'rejected'],
+    ['rate_limit_exceeded', 429, 'rejected'],
+    ['invalid_idempotent_request', 409, 'rejected'],
+    ['application_error', 500, 'unknown'],
+    ['internal_server_error', 500, 'unknown'],
+    ['concurrent_idempotent_requests', 409, 'unknown'],
+    ['security_error', 403, 'unknown'],
+  ] as const)('maps %s/%s to %s', (name, statusCode, expected) => {
+    expect(classifyResendOutcome(error(name, statusCode))).toBe(expected);
+  });
+
+  it('treats null statusCode as unknown even for named client errors', () => {
+    expect(classifyResendOutcome(error('application_error', null))).toBe(
+      'unknown',
+    );
+    expect(classifyResendOutcome(error('validation_error', null))).toBe(
+      'unknown',
+    );
   });
 });
 
@@ -102,6 +127,36 @@ describe('createResendEmailSender', () => {
       failureClass: 'provider_configuration',
       outcome: 'rejected',
     } satisfies Partial<EmailProviderError>);
+  });
+
+  it('throws outcome-unknown for application_error with null statusCode', async () => {
+    const client: ResendEmailsClient = {
+      send: vi.fn().mockResolvedValue({
+        data: null,
+        error: error('application_error', null),
+      }),
+    };
+    const sender = createResendEmailSender(
+      {
+        apiKey: 're_test',
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+      },
+      client,
+    );
+
+    await expect(
+      sender.sendResolved({
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+        to: 'u@example.com',
+        subject: 'Hello',
+        html: '<p>Hi</p>',
+        text: 'Hi',
+        idempotencyKey: 'key-1',
+      }),
+    ).rejects.toMatchObject({
+      failureClass: 'provider_error',
+      outcome: 'unknown',
+    });
   });
 
   it('throws outcome-unknown EmailProviderError for thrown network errors', async () => {

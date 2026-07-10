@@ -99,10 +99,13 @@ export function createResendEmailSender(
         );
 
         if (error) {
+          const outcome = classifyResendOutcome(error);
           throw new EmailProviderError(
-            'Email provider rejected the send request.',
+            outcome === 'rejected'
+              ? 'Email provider rejected the send request.'
+              : 'Email provider request failed with an unknown outcome.',
             classifyResendError(error),
-            'rejected',
+            outcome,
           );
         }
 
@@ -120,6 +123,48 @@ export function createResendEmailSender(
       }
     },
   };
+}
+
+/**
+ * Definite client/config/validation failures are `rejected` (safe to mark failed).
+ * Transport/server ambiguity — including SDK `application_error` with null
+ * statusCode — must stay `unknown` so the leased pending row is retained.
+ */
+export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
+  if (error.statusCode === null) {
+    return 'unknown';
+  }
+
+  switch (error.name) {
+    case 'rate_limit_exceeded':
+    case 'monthly_quota_exceeded':
+    case 'daily_quota_exceeded':
+    case 'invalid_api_key':
+    case 'missing_api_key':
+    case 'restricted_api_key':
+    case 'invalid_from_address':
+    case 'invalid_access':
+    case 'invalid_region':
+    case 'validation_error':
+    case 'invalid_parameter':
+    case 'missing_required_field':
+    case 'invalid_attachment':
+    case 'invalid_idempotency_key':
+    case 'invalid_idempotent_request':
+    case 'not_found':
+    case 'method_not_allowed':
+      return 'rejected';
+    case 'concurrent_idempotent_requests':
+    case 'application_error':
+    case 'internal_server_error':
+    case 'security_error':
+      return 'unknown';
+    default: {
+      const _exhaustive: never = error.name;
+      void _exhaustive;
+      return 'unknown';
+    }
+  }
 }
 
 export function classifyResendError(error: ErrorResponse): string {
