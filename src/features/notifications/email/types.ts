@@ -9,12 +9,30 @@ export type EmailMessage = {
   idempotencyKey: string;
 };
 
+/**
+ * Fully resolved Resend request snapshot persisted on the delivery ledger.
+ * Never includes the API key.
+ */
+export type PersistedProviderRequest = {
+  from: string;
+  to: string;
+  replyTo?: string;
+  subject: string;
+  html: string;
+  text: string;
+  headers?: Record<string, string>;
+  idempotencyKey: string;
+};
+
 export type EmailSendResult = {
   providerMessageId: string | null;
 };
 
+export type ProviderOutcome = 'rejected' | 'unknown';
+
 export interface EmailSender {
-  send(message: EmailMessage): Promise<EmailSendResult>;
+  resolveRequest(message: EmailMessage): PersistedProviderRequest;
+  sendResolved(request: PersistedProviderRequest): Promise<EmailSendResult>;
 }
 
 export type EmailDeliveryCategory = EmailNotificationCategory;
@@ -35,6 +53,7 @@ export type EmailDeliveryRunCounts = {
   failed: number;
   alreadyTerminal: number;
   inFlight: number;
+  manualReview: number;
 };
 
 export type EmailDeliveryRunResult = EmailDeliveryRunCounts & {

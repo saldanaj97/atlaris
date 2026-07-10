@@ -649,59 +649,36 @@ describe('Environment Configuration', () => {
   });
 
   describe('maintenanceEnv', () => {
-    it('does not require a worker token when manual retention cleanup is disabled in production', () => {
+    it('requires a worker token in production independently of route toggles', () => {
       vi.stubGlobal('window', undefined);
       const maintenance = createMaintenanceEnvForTests({
         NODE_ENV: 'production',
         RETENTION_CLEANUP_ENABLED: 'false',
+        PLAN_CLEANUP_ENABLED: 'false',
+        CLERK_BILLING_RECONCILIATION_ENABLED: 'false',
       });
 
       expect(maintenance.retentionCleanupEnabled).toBe(false);
+      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
+    });
+
+    it('exposes a configured worker token in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        MAINTENANCE_WORKER_TOKEN: 'maintenance-secret',
+      });
+
+      expect(maintenance.workerToken).toBe('maintenance-secret');
+    });
+
+    it('allows an optional worker token outside production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'test',
+      });
+
       expect(maintenance.workerToken).toBeUndefined();
-    });
-
-    it('requires a worker token when manual retention cleanup is enabled in production', () => {
-      vi.stubGlobal('window', undefined);
-      const maintenance = createMaintenanceEnvForTests({
-        NODE_ENV: 'production',
-        RETENTION_CLEANUP_ENABLED: 'true',
-      });
-
-      expect(maintenance.retentionCleanupEnabled).toBe(true);
-      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
-    });
-
-    it('does not require a worker token when plan cleanup is disabled in production', () => {
-      vi.stubGlobal('window', undefined);
-      const maintenance = createMaintenanceEnvForTests({
-        NODE_ENV: 'production',
-        PLAN_CLEANUP_ENABLED: 'false',
-      });
-
-      expect(maintenance.planCleanupEnabled).toBe(false);
-      expect(maintenance.workerToken).toBeUndefined();
-    });
-
-    it('requires a worker token when manual plan cleanup is enabled in production', () => {
-      vi.stubGlobal('window', undefined);
-      const maintenance = createMaintenanceEnvForTests({
-        NODE_ENV: 'production',
-        PLAN_CLEANUP_ENABLED: 'true',
-      });
-
-      expect(maintenance.planCleanupEnabled).toBe(true);
-      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
-    });
-
-    it('requires a worker token when Clerk Billing reconciliation is enabled in production', () => {
-      vi.stubGlobal('window', undefined);
-      const maintenance = createMaintenanceEnvForTests({
-        NODE_ENV: 'production',
-        CLERK_BILLING_RECONCILIATION_ENABLED: 'true',
-      });
-
-      expect(maintenance.clerkBillingReconciliationEnabled).toBe(true);
-      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
 
     it('requires a worker health token in production', () => {

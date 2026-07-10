@@ -1,41 +1,115 @@
-import { ROUTES } from '@/features/navigation/routes';
 import { applySignedEmailUnsubscribe } from '@/features/notifications/email/unsubscribe';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
-import { appEnv } from '@/lib/config/env/app';
 
-function settingsRedirect(status: 'unsubscribed' | 'invalid'): Response {
-  const base = appEnv.url.replace(/\/$/, '');
-  const url = new URL(`${base}${ROUTES.SETTINGS.ROOT}`);
-  url.searchParams.set('notifications', status);
-  return Response.redirect(url.toString(), 303);
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Type': 'text/html; charset=utf-8',
+} as const;
+
+function confirmationHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Unsubscribe from Atlaris emails</title>
+</head>
+<body>
+  <main>
+    <h1>Unsubscribe from optional Atlaris emails?</h1>
+    <p>Confirm below to stop optional email notifications. You can re-enable them later in settings.</p>
+    <form method="post">
+      <input type="hidden" name="List-Unsubscribe" value="One-Click"/>
+      <button type="submit">Unsubscribe</button>
+    </form>
+  </main>
+</body>
+</html>`;
 }
 
-async function handleUnsubscribe(request: Request): Promise<Response> {
+function successHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Unsubscribed</title>
+</head>
+<body>
+  <main>
+    <h1>You're unsubscribed</h1>
+    <p>Optional Atlaris email notifications are turned off for this address.</p>
+  </main>
+</body>
+</html>`;
+}
+
+function failureHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Unsubscribe unavailable</title>
+</head>
+<body>
+  <main>
+    <h1>Unsubscribe link unavailable</h1>
+    <p>This unsubscribe link is invalid or expired. You can manage email preferences from your Atlaris settings.</p>
+  </main>
+</body>
+</html>`;
+}
+
+function htmlResponse(body: string, status = 200): Response {
+  return new Response(body, {
+    status,
+    headers: NO_STORE_HEADERS,
+  });
+}
+
+async function handleGet(request: Request): Promise<Response> {
+  checkIpRateLimit(request, 'publicApi');
+  // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
+  return htmlResponse(confirmationHtml());
+}
+
+async function handlePost(request: Request): Promise<Response> {
   checkIpRateLimit(request, 'publicApi');
 
-  let token: string | null = null;
-  if (request.method === 'POST') {
-    const contentType = request.headers.get('content-type') ?? '';
-    if (contentType.includes('application/x-www-form-urlencoded')) {
-      const form = await request.formData();
-      const formToken = form.get('token');
-      token = typeof formToken === 'string' ? formToken : null;
-    } else {
-      const url = new URL(request.url);
-      token = url.searchParams.get('token');
-    }
-  } else {
-    token = new URL(request.url).searchParams.get('token');
+  const token = new URL(request.url).searchParams.get('token');
+  if (!token) {
+    return htmlResponse(failureHtml(), 400);
   }
 
-  if (!token) {
-    return settingsRedirect('invalid');
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return htmlResponse(failureHtml(), 400);
+  }
+
+  const listUnsubscribeValues = form
+    .getAll('List-Unsubscribe')
+    .filter((value): value is string => typeof value === 'string');
+
+  if (
+    listUnsubscribeValues.length !== 1 ||
+    listUnsubscribeValues[0] !== 'One-Click'
+  ) {
+    return htmlResponse(failureHtml(), 400);
   }
 
   const result = await applySignedEmailUnsubscribe({ token });
-  return settingsRedirect(result.ok ? 'unsubscribed' : 'invalid');
+  if (!result.ok) {
+    return htmlResponse(failureHtml(), 400);
+  }
+
+  // RFC 8058: one-click POST must not redirect.
+  return htmlResponse(successHtml(), 200);
 }
 
-export const GET = withErrorBoundary(handleUnsubscribe);
-export const POST = withErrorBoundary(handleUnsubscribe);
+export const GET = withErrorBoundary(handleGet);
+export const POST = withErrorBoundary(handlePost);

@@ -27,7 +27,7 @@ jobs:
   deliver:
     name: Trigger production email notification delivery
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
       - name: Trigger email notification delivery
@@ -66,58 +66,131 @@ jobs:
               | jq -s .
           )"
 
-          payload="$(jq -nc \
-            --argjson categories "${categories_json}" \
-            --arg schedulerDateUtc "${scheduler_date}" \
-            '{categories: $categories, schedulerDateUtc: $schedulerDateUtc}')"
+          totals_file="$(mktemp)"
+          trap 'rm -f "${totals_file}" "${response_file:-}"' EXIT
 
-          response_file="$(mktemp)"
-          trap 'rm -f "${response_file}"' EXIT
+          cursor=""
+          page=0
 
-          status_code="$(
-            curl \
-              --silent \
-              --show-error \
-              --output "${response_file}" \
-              --write-out '%{http_code}' \
-              --request POST \
-              --max-time 300 \
-              --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
-              --header 'Content-Type: application/json' \
-              --header 'User-Agent: atlaris-email-notification-delivery-scheduler' \
-              --data "${payload}" \
-              "${EMAIL_DELIVERY_URL}"
-          )"
+          while true; do
+            page=$((page + 1))
 
-          case "${status_code}" in
-            200)
-              if ! jq -e '.ok == true' "${response_file}" >/dev/null; then
-                echo "::error title=Email delivery invalid response::Endpoint returned 200 without ok=true."
+            if [[ -z "${cursor}" ]]; then
+              payload="$(jq -nc \
+                --argjson categories "${categories_json}" \
+                --arg schedulerDateUtc "${scheduler_date}" \
+                '{categories: $categories, schedulerDateUtc: $schedulerDateUtc}')"
+            else
+              payload="$(jq -nc \
+                --argjson categories "${categories_json}" \
+                --arg schedulerDateUtc "${scheduler_date}" \
+                --arg cursorUserId "${cursor}" \
+                '{categories: $categories, schedulerDateUtc: $schedulerDateUtc, cursorUserId: $cursorUserId}')"
+            fi
+
+            response_file="$(mktemp)"
+            status_code="$(
+              curl \
+                --silent \
+                --show-error \
+                --output "${response_file}" \
+                --write-out '%{http_code}' \
+                --request POST \
+                --max-time 300 \
+                --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
+                --header 'Content-Type: application/json' \
+                --header 'User-Agent: atlaris-email-notification-delivery-scheduler' \
+                --data "${payload}" \
+                "${EMAIL_DELIVERY_URL}"
+            )"
+
+            case "${status_code}" in
+              200)
+                if ! jq -e '.ok == true' "${response_file}" >/dev/null; then
+                  echo "::error title=Email delivery invalid response::Endpoint returned 200 without ok=true."
+                  exit 1
+                fi
+                ;;
+              401)
+                echo "::error title=Email delivery unauthorized (401)::Production and GitHub worker tokens do not match."
                 exit 1
-              fi
-              ;;
-            401)
-              echo "::error title=Email delivery unauthorized (401)::Production and GitHub worker tokens do not match."
-              exit 1
-              ;;
-            400)
-              echo "::error title=Email delivery bad request (400)::Inspect request body/categories/schedulerDateUtc."
-              exit 1
-              ;;
-            500)
-              echo "::error title=Email delivery failed (500)::Delivery logic failed. Inspect Vercel and Sentry logs."
-              exit 1
-              ;;
-            503)
-              echo "::error title=Email delivery unavailable (503)::EMAIL_NOTIFICATIONS_ENABLED is false or the production worker token is missing."
-              exit 1
-              ;;
-            *)
-              echo "::error title=Email delivery unexpected response::Endpoint returned HTTP ${status_code}."
-              exit 1
-              ;;
-          esac
+                ;;
+              400)
+                echo "::error title=Email delivery bad request (400)::Inspect request body/categories/schedulerDateUtc."
+                exit 1
+                ;;
+              500)
+                echo "::error title=Email delivery failed (500)::Delivery logic failed. Inspect Vercel and Sentry logs."
+                exit 1
+                ;;
+              503)
+                echo "::error title=Email delivery unavailable (503)::Unresolved provider failures, missing worker token, or temporary unavailability. Inspect Vercel and Sentry logs."
+                exit 1
+                ;;
+              *)
+                echo "::error title=Email delivery unexpected response::Endpoint returned HTTP ${status_code}."
+                exit 1
+                ;;
+            esac
 
-          jq -c \
-            '{ok, examined, claimed, sent, skipped, failed, alreadyTerminal, inFlight, nextCursor}' \
-            "${response_file}"
+            if ! jq -e '
+              (.examined | type == "number") and
+              (.claimed | type == "number") and
+              (.sent | type == "number") and
+              (.skipped | type == "number") and
+              (.failed | type == "number") and
+              (.alreadyTerminal | type == "number") and
+              (.inFlight | type == "number") and
+              (.manualReview | type == "number") and
+              ((.nextCursor | type == "string") or (.nextCursor == null))
+            ' "${response_file}" >/dev/null; then
+              echo "::error title=Email delivery invalid response::Missing or malformed count/cursor fields."
+              exit 1
+            fi
+
+            outcome="$(jq -r '.outcome // empty' "${response_file}")"
+            if [[ "${outcome}" == "disabled" ]]; then
+              echo "Email notification delivery flag is disabled; stopping pagination."
+              jq -c \
+                '{ok, outcome, examined, claimed, sent, skipped, failed, alreadyTerminal, inFlight, manualReview, nextCursor}' \
+                "${response_file}"
+              exit 0
+            fi
+
+            next_cursor="$(jq -r '.nextCursor | if . == null then "" else . end' "${response_file}")"
+            if [[ -n "${cursor}" && "${next_cursor}" == "${cursor}" ]]; then
+              echo "::error title=Email delivery pagination stuck::Response repeated the cursor that was just sent."
+              exit 1
+            fi
+
+            jq -c \
+              '{examined, claimed, sent, skipped, failed, alreadyTerminal, inFlight, manualReview}' \
+              "${response_file}" >> "${totals_file}"
+
+            echo "Page ${page}:"
+            jq -c \
+              '{ok, outcome, examined, claimed, sent, skipped, failed, alreadyTerminal, inFlight, manualReview, nextCursor}' \
+              "${response_file}"
+
+            if [[ -z "${next_cursor}" ]]; then
+              break
+            fi
+
+            cursor="${next_cursor}"
+            rm -f "${response_file}"
+          done
+
+          echo "Aggregate totals across ${page} page(s):"
+          jq -s '
+            {
+              pages: length,
+              examined: (map(.examined) | add),
+              claimed: (map(.claimed) | add),
+              sent: (map(.sent) | add),
+              skipped: (map(.skipped) | add),
+              failed: (map(.failed) | add),
+              alreadyTerminal: (map(.alreadyTerminal) | add),
+              inFlight: (map(.inFlight) | add),
+              manualReview: (map(.manualReview) | add)
+            }
+          ' "${totals_file}"

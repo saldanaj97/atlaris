@@ -13,7 +13,6 @@ interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
   readonly clerkBillingReconciliationEnabled: boolean;
-  readonly emailNotificationDeliveryEnabled: boolean;
   readonly workerToken: string | undefined;
   readonly workerHealthToken: string | undefined;
 }
@@ -48,27 +47,11 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
       );
     },
     /**
-     * Master switch for opted-in email notification delivery maintenance route.
-     * Mirrors EMAIL_NOTIFICATIONS_ENABLED (emailEnv remains the send-config authority).
-     */
-    get emailNotificationDeliveryEnabled(): boolean {
-      return toBoolean(
-        access.getServerOptional('EMAIL_NOTIFICATIONS_ENABLED'),
-        false,
-      );
-    },
-    /**
-     * Bearer token for manual maintenance cleanup via internal HTTP routes.
+     * Bearer token for authenticated maintenance HTTP routes.
+     * Availability is independent of the email-notification-delivery Vercel Flag.
+     * In production, missing token makes the authenticated worker boundary unavailable.
      */
     get workerToken(): string | undefined {
-      if (
-        !this.retentionCleanupEnabled &&
-        !this.planCleanupEnabled &&
-        !this.clerkBillingReconciliationEnabled &&
-        !this.emailNotificationDeliveryEnabled
-      ) {
-        return undefined;
-      }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');
     },
     /**

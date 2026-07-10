@@ -4,6 +4,7 @@ import {
   qualifyDailyReminder,
   qualifyStreakReminder,
   qualifyWeeklySummary,
+  requiredActivityDateWindow,
   STREAK_REMINDER_THRESHOLD,
 } from '@/features/notifications/email/content';
 import { addDays } from '@/shared/analytics/learning-activity-time';
@@ -23,7 +24,6 @@ describe('email content eligibility', () => {
     ]);
     expect(qualifyStreakReminder({ dayKeys, todayLocalKey: today })).toEqual({
       qualifies: true,
-      streakDays: 3,
     });
   });
 
@@ -35,26 +35,32 @@ describe('email content eligibility', () => {
     ).toBe(false);
   });
 
-  it('suppresses daily reminder when streak also qualifies', () => {
+  it('suppresses daily reminder only when streak will actually send', () => {
     const result = qualifyDailyReminder({
-      incompletePlans: [
-        { id: 'p1', topic: 'TS', completedTasks: 1, totalTasks: 4 },
-      ],
+      incompletePlan: {
+        id: 'p1',
+        topic: 'TS',
+        completedTasks: 1,
+        totalTasks: 4,
+      },
       dayKeys: new Set(),
       todayLocalKey: '2026-07-09',
-      streakQualifies: true,
+      streakWillSend: true,
     });
     expect(result.qualifies).toBe(false);
   });
 
   it('qualifies daily reminder for incomplete plans with no activity today', () => {
     const result = qualifyDailyReminder({
-      incompletePlans: [
-        { id: 'p1', topic: 'TS', completedTasks: 1, totalTasks: 4 },
-      ],
+      incompletePlan: {
+        id: 'p1',
+        topic: 'TS',
+        completedTasks: 1,
+        totalTasks: 4,
+      },
       dayKeys: new Set(['2026-07-08']),
       todayLocalKey: '2026-07-09',
-      streakQualifies: false,
+      streakWillSend: false,
     });
     expect(result.qualifies).toBe(true);
     expect(result.plan?.id).toBe('p1');
@@ -82,7 +88,7 @@ describe('email content eligibility', () => {
     ).toBe(false);
   });
 
-  it('buildEmailContents prefers streak over daily and includes unsubscribe headers', () => {
+  it('buildEmailContents prefers streak over daily when both enabled and includes unsubscribe headers', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(
       {
@@ -91,14 +97,17 @@ describe('email content eligibility', () => {
         analyticsTimezone: 'UTC',
         schedulerDateUtc: today,
         referenceDate: day(today),
-        activityEvents: [
-          { occurredAt: day(addDays(today, -3)) },
-          { occurredAt: day(addDays(today, -2)) },
-          { occurredAt: day(addDays(today, -1)) },
+        activityDayKeys: [
+          addDays(today, -3),
+          addDays(today, -2),
+          addDays(today, -1),
         ],
-        incompletePlans: [
-          { id: 'p1', topic: 'TS', completedTasks: 1, totalTasks: 4 },
-        ],
+        incompletePlan: {
+          id: 'p1',
+          topic: 'TS',
+          completedTasks: 1,
+          totalTasks: 4,
+        },
         appUrl: 'https://atlaris.app',
         unsubscribeUrl: 'https://atlaris.app/unsub',
       },
@@ -106,8 +115,63 @@ describe('email content eligibility', () => {
     );
 
     expect(contents.map((c) => c.category)).toEqual(['streak_reminder']);
+    expect(contents[0]?.message.subject).toBe(
+      'Keep your learning streak alive',
+    );
     expect(contents[0]?.message.headers?.['List-Unsubscribe']).toContain(
       'https://atlaris.app/unsub',
     );
+  });
+
+  it('sends daily only when streak is preference-disabled even if streak would qualify', () => {
+    const today = '2026-07-09';
+    const contents = buildEmailContents(
+      {
+        userId: 'u1',
+        email: 'u@example.com',
+        analyticsTimezone: 'UTC',
+        schedulerDateUtc: today,
+        referenceDate: day(today),
+        activityDayKeys: [
+          addDays(today, -3),
+          addDays(today, -2),
+          addDays(today, -1),
+        ],
+        incompletePlan: {
+          id: 'p1',
+          topic: 'TS',
+          completedTasks: 1,
+          totalTasks: 4,
+        },
+        appUrl: 'https://atlaris.app',
+        unsubscribeUrl: 'https://atlaris.app/unsub',
+      },
+      new Set(['daily_reminder']),
+    );
+
+    expect(contents.map((c) => c.category)).toEqual(['daily_reminder']);
+  });
+
+  it('builds a bounded activity window for weekly-only and streak-only categories', () => {
+    const today = '2026-07-13';
+    expect(
+      requiredActivityDateWindow({
+        todayLocalKey: today,
+        enabledCategories: new Set(['weekly_summary']),
+      }),
+    ).toEqual({
+      startDateKeyInclusive: '2026-07-06',
+      endDateKeyExclusive: '2026-07-13',
+    });
+
+    expect(
+      requiredActivityDateWindow({
+        todayLocalKey: today,
+        enabledCategories: new Set(['streak_reminder']),
+      }),
+    ).toEqual({
+      startDateKeyInclusive: addDays(today, -STREAK_REMINDER_THRESHOLD),
+      endDateKeyExclusive: addDays(today, 1),
+    });
   });
 });

@@ -6,28 +6,34 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
-import { buildEmailContents } from './content';
+import { buildEmailContents, requiredActivityDateWindow } from './content';
 import { EmailProviderError } from './resend-adapter';
 import { createUnsubscribeToken } from './unsubscribe-token';
 import { appEnv } from '@/lib/config/env/app';
 import { emailEnv } from '@/lib/config/env/email';
+import {
+  findEmailDailyReminderPlanForUser,
+  listEmailActivityDayKeysForUser,
+} from '@/lib/db/queries/email-delivery-content';
 import { listEmailDeliveryRecipients } from '@/lib/db/queries/email-delivery-recipients';
 import {
   claimEmailNotificationDelivery,
+  EmailDeliveryLostLeaseError,
   markEmailNotificationDeliveryFailed,
+  markEmailNotificationDeliveryManualReview,
   markEmailNotificationDeliverySent,
-  markEmailNotificationDeliverySkipped,
 } from '@/lib/db/queries/email-notification-deliveries';
-import { getLearningActivityEventsForUser } from '@/lib/db/queries/tasks';
 import {
   getEmailNotificationPreferences,
   getUserPreferences,
 } from '@/lib/db/queries/user-preferences';
 import { countMetric } from '@/lib/observability/metrics';
+import {
+  dateKeyInTimeZone,
+  normalizeTimeZone,
+} from '@/shared/analytics/learning-activity-time';
 import { resolveEffectiveEmailPreferences } from '@/shared/notifications/email-preferences';
-import { learningPlans, modules, tasks, taskProgress } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { and, count, eq, sql } from 'drizzle-orm';
 
 const DEFAULT_BATCH_SIZE = 50;
 
@@ -42,52 +48,6 @@ export type RunEmailNotificationDeliveryDeps = {
   now?: Date;
 };
 
-async function listIncompletePlansForUser(
-  userId: string,
-  dbClient: DeliveryDb,
-): Promise<
-  Array<{
-    id: string;
-    topic: string;
-    completedTasks: number;
-    totalTasks: number;
-  }>
-> {
-  const rows = await dbClient
-    .select({
-      id: learningPlans.id,
-      topic: learningPlans.topic,
-      totalTasks: count(tasks.id),
-      completedTasks: sql<number>`coalesce(sum(case when ${taskProgress.status} = 'completed' then 1 else 0 end), 0)`,
-    })
-    .from(learningPlans)
-    .leftJoin(modules, eq(modules.planId, learningPlans.id))
-    .leftJoin(tasks, eq(tasks.moduleId, modules.id))
-    .leftJoin(
-      taskProgress,
-      and(
-        eq(taskProgress.taskId, tasks.id),
-        eq(taskProgress.userId, learningPlans.userId),
-      ),
-    )
-    .where(
-      and(
-        eq(learningPlans.userId, userId),
-        eq(learningPlans.generationStatus, 'ready'),
-      ),
-    )
-    .groupBy(learningPlans.id, learningPlans.topic);
-
-  return rows
-    .map((row) => ({
-      id: row.id,
-      topic: row.topic,
-      totalTasks: Number(row.totalTasks),
-      completedTasks: Number(row.completedTasks),
-    }))
-    .filter((row) => row.totalTasks > 0 && row.completedTasks < row.totalTasks);
-}
-
 function emptyCounts(): EmailDeliveryRunResult {
   return {
     examined: 0,
@@ -97,6 +57,7 @@ function emptyCounts(): EmailDeliveryRunResult {
     failed: 0,
     alreadyTerminal: 0,
     inFlight: 0,
+    manualReview: 0,
     nextCursor: null,
   };
 }
@@ -151,14 +112,26 @@ export async function runEmailNotificationDelivery(
     }
 
     const userPrefs = await getUserPreferences(recipient.userId, db);
-    const activityEvents = await getLearningActivityEventsForUser(
-      recipient.userId,
-      db,
-    );
-    const incompletePlans = await listIncompletePlansForUser(
-      recipient.userId,
-      db,
-    );
+    const timeZone = normalizeTimeZone(userPrefs.analyticsTimezone);
+    const todayLocalKey = dateKeyInTimeZone(now, timeZone);
+    const dateWindow = requiredActivityDateWindow({
+      todayLocalKey,
+      enabledCategories,
+    });
+
+    const activityDayKeys = dateWindow
+      ? await listEmailActivityDayKeysForUser({
+          userId: recipient.userId,
+          timeZone,
+          startDateKeyInclusive: dateWindow.startDateKeyInclusive,
+          endDateKeyExclusive: dateWindow.endDateKeyExclusive,
+          dbClient: db,
+        })
+      : [];
+
+    const incompletePlan = enabledCategories.has('daily_reminder')
+      ? await findEmailDailyReminderPlanForUser(recipient.userId, db)
+      : null;
 
     const unsubscribeToken = createUnsubscribeToken({
       userId: recipient.userId,
@@ -173,8 +146,8 @@ export async function runEmailNotificationDelivery(
         analyticsTimezone: userPrefs.analyticsTimezone,
         schedulerDateUtc: request.schedulerDateUtc,
         referenceDate: now,
-        activityEvents,
-        incompletePlans,
+        activityDayKeys,
+        incompletePlan,
         appUrl,
         unsubscribeUrl,
       },
@@ -182,11 +155,23 @@ export async function runEmailNotificationDelivery(
     );
 
     for (const content of contents) {
+      const candidateIdempotencyKey = `${recipient.userId}:${content.category}:${content.deliveryKey}`;
+      const candidateRequest = deps.sender.resolveRequest({
+        to: recipient.email,
+        subject: content.message.subject,
+        html: content.message.html,
+        text: content.message.text,
+        headers: content.message.headers,
+        idempotencyKey: candidateIdempotencyKey,
+      });
+
       const claim = await claimEmailNotificationDelivery(
         {
           userId: recipient.userId,
           category: content.category,
           deliveryKey: content.deliveryKey,
+          providerRequest: candidateRequest,
+          now,
         },
         db,
       );
@@ -199,23 +184,109 @@ export async function runEmailNotificationDelivery(
         counts.inFlight += 1;
         continue;
       }
+      if (claim.outcome === 'manual_review') {
+        counts.manualReview += 1;
+        countMetric('atlaris.email.notification.manual_review', 1, {
+          attributes: {
+            category: content.category,
+            reason: 'provider_acceptance_ambiguous',
+          },
+        });
+        deps.logger?.warn(
+          {
+            source: 'email_notifications',
+            event: 'manual_review',
+            category: content.category,
+            failureClass: 'provider_acceptance_ambiguous',
+          },
+          'Email notification delivery requires manual review',
+        );
+        continue;
+      }
 
       counts.claimed += 1;
-      const idempotencyKey = `${recipient.userId}:${content.category}:${content.deliveryKey}`;
+
+      let sendResult;
+      try {
+        sendResult = await deps.sender.sendResolved(claim.providerRequest);
+      } catch (err) {
+        if (
+          err instanceof EmailProviderError &&
+          err.failureClass === 'provider_idempotency_conflict'
+        ) {
+          await markEmailNotificationDeliveryManualReview(
+            {
+              deliveryId: claim.deliveryId,
+              claimToken: claim.claimToken,
+              failureClass: err.failureClass,
+            },
+            db,
+          );
+          counts.manualReview += 1;
+          countMetric('atlaris.email.notification.manual_review', 1, {
+            attributes: {
+              category: content.category,
+              reason: err.failureClass,
+            },
+          });
+          continue;
+        }
+
+        if (err instanceof EmailProviderError && err.outcome === 'rejected') {
+          await markEmailNotificationDeliveryFailed(
+            {
+              deliveryId: claim.deliveryId,
+              claimToken: claim.claimToken,
+              failureClass: err.failureClass,
+            },
+            db,
+          );
+          counts.failed += 1;
+          countMetric('atlaris.email.notification.failed', 1, {
+            attributes: {
+              category: content.category,
+              reason: err.failureClass,
+            },
+          });
+          deps.logger?.warn(
+            {
+              source: 'email_notifications',
+              event: 'send_failed',
+              category: content.category,
+              failureClass: err.failureClass,
+            },
+            'Email notification send failed',
+          );
+          continue;
+        }
+
+        // Outcome-unknown transport failures keep the leased pending row for
+        // safe recovery within the provider idempotency window.
+        const failureClass =
+          err instanceof EmailProviderError ? err.failureClass : 'send_failed';
+        counts.failed += 1;
+        countMetric('atlaris.email.notification.failed', 1, {
+          attributes: { category: content.category, reason: failureClass },
+        });
+        deps.logger?.warn(
+          {
+            source: 'email_notifications',
+            event: 'send_outcome_unknown',
+            category: content.category,
+            failureClass,
+          },
+          'Email notification send outcome unknown; lease retained',
+        );
+        continue;
+      }
 
       try {
-        const sendResult = await deps.sender.send({
-          to: recipient.email,
-          subject: content.message.subject,
-          html: content.message.html,
-          text: content.message.text,
-          headers: content.message.headers,
-          idempotencyKey,
-        });
-
         await markEmailNotificationDeliverySent(
-          claim.deliveryId,
-          sendResult.providerMessageId,
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            providerMessageId: sendResult.providerMessageId,
+          },
           db,
         );
         counts.sent += 1;
@@ -223,41 +294,24 @@ export async function runEmailNotificationDelivery(
           attributes: { category: content.category },
         });
       } catch (err) {
-        const failureClass =
-          err instanceof EmailProviderError ? err.failureClass : 'send_failed';
-
-        // Validation / permanent-looking issues become skipped (terminal);
-        // transient provider errors stay failed (retryable same key).
-        if (failureClass === 'provider_validation') {
-          await markEmailNotificationDeliverySkipped(
-            claim.deliveryId,
-            failureClass,
-            db,
-          );
-          counts.skipped += 1;
-          countMetric('atlaris.email.notification.skipped', 1, {
-            attributes: { category: content.category, reason: failureClass },
-          });
-        } else {
-          await markEmailNotificationDeliveryFailed(
-            claim.deliveryId,
-            failureClass,
-            db,
-          );
-          counts.failed += 1;
-          countMetric('atlaris.email.notification.failed', 1, {
-            attributes: { category: content.category, reason: failureClass },
-          });
-          deps.logger?.warn(
-            {
-              source: 'email_notifications',
-              event: 'send_failed',
-              category: content.category,
-              failureClass,
-            },
-            'Email notification send failed',
-          );
-        }
+        // Provider accepted the message; never mark failed. Leave the lease
+        // intact so a later reclaim can reuse the exact stored request.
+        counts.failed += 1;
+        countMetric('atlaris.email.notification.failed', 1, {
+          attributes: {
+            category: content.category,
+            reason: 'ledger_finalization_failed',
+          },
+        });
+        deps.logger?.error(
+          {
+            source: 'email_notifications',
+            event: 'ledger_finalization_failed',
+            category: content.category,
+            lostLease: err instanceof EmailDeliveryLostLeaseError,
+          },
+          'Email accepted by provider but ledger finalization failed',
+        );
       }
     }
   }

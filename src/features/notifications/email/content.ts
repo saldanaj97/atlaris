@@ -3,19 +3,12 @@ import type { EmailNotificationCategory } from '@/shared/types/db.types';
 
 import {
   addDays,
-  currentStreakDays,
   dateKeyInTimeZone,
   normalizeTimeZone,
   weekStartKey,
 } from '@/shared/analytics/learning-activity-time';
 
 export const STREAK_REMINDER_THRESHOLD = 3;
-
-export type ActivityEventLike = {
-  occurredAt: Date;
-  status?: string;
-  taskEstimatedMinutes?: number;
-};
 
 export type IncompletePlanLike = {
   id: string;
@@ -32,8 +25,9 @@ export type EmailContentContext = {
   schedulerDateUtc: string;
   /** Absolute now used for local-day bucketing */
   referenceDate: Date;
-  activityEvents: ActivityEventLike[];
-  incompletePlans: IncompletePlanLike[];
+  /** Distinct local YYYY-MM-DD activity day keys in the required window */
+  activityDayKeys: ReadonlySet<string> | readonly string[];
+  incompletePlan: IncompletePlanLike | null;
   appUrl: string;
   unsubscribeUrl: string;
 };
@@ -44,15 +38,15 @@ export type BuiltEmailContent = {
   message: Omit<EmailMessage, 'to' | 'idempotencyKey'>;
 };
 
-function dayKeysFromEvents(
-  events: ActivityEventLike[],
-  timeZone: string,
+export type EmailContentDateWindow = {
+  startDateKeyInclusive: string;
+  endDateKeyExclusive: string;
+};
+
+function asDayKeySet(
+  dayKeys: ReadonlySet<string> | readonly string[],
 ): Set<string> {
-  const keys = new Set<string>();
-  for (const event of events) {
-    keys.add(dateKeyInTimeZone(event.occurredAt, timeZone));
-  }
-  return keys;
+  return dayKeys instanceof Set ? dayKeys : new Set(dayKeys);
 }
 
 function withFooter(
@@ -86,41 +80,86 @@ export function priorClosedWeekStartKey(todayLocalKey: string): string {
   return addDays(currentWeekStart, -7);
 }
 
-export function qualifyStreakReminder(args: {
-  dayKeys: Set<string>;
+/**
+ * Smallest local date window needed for the enabled categories.
+ * End key is exclusive.
+ */
+export function requiredActivityDateWindow(args: {
   todayLocalKey: string;
-}): { qualifies: boolean; streakDays: number } {
-  if (args.dayKeys.has(args.todayLocalKey)) {
-    return { qualifies: false, streakDays: 0 };
+  enabledCategories: ReadonlySet<EmailNotificationCategory>;
+}): EmailContentDateWindow | null {
+  const starts: string[] = [];
+  const ends: string[] = [];
+
+  if (args.enabledCategories.has('daily_reminder')) {
+    starts.push(args.todayLocalKey);
+    ends.push(addDays(args.todayLocalKey, 1));
   }
-  const yesterday = addDays(args.todayLocalKey, -1);
-  if (!args.dayKeys.has(yesterday)) {
-    return { qualifies: false, streakDays: 0 };
+
+  if (args.enabledCategories.has('streak_reminder')) {
+    // Need threshold consecutive days ending yesterday (today idle).
+    starts.push(addDays(args.todayLocalKey, -STREAK_REMINDER_THRESHOLD));
+    ends.push(addDays(args.todayLocalKey, 1));
   }
-  const streakDays = currentStreakDays(args.dayKeys, args.todayLocalKey);
+
+  if (args.enabledCategories.has('weekly_summary')) {
+    const priorWeekStart = priorClosedWeekStartKey(args.todayLocalKey);
+    starts.push(priorWeekStart);
+    ends.push(addDays(priorWeekStart, 7));
+  }
+
+  if (starts.length === 0) {
+    return null;
+  }
+
   return {
-    qualifies: streakDays >= STREAK_REMINDER_THRESHOLD,
-    streakDays,
+    startDateKeyInclusive: starts.reduce((min, key) => (key < min ? key : min)),
+    endDateKeyExclusive: ends.reduce((max, key) => (key > max ? key : max)),
   };
 }
 
-export function qualifyDailyReminder(args: {
-  incompletePlans: IncompletePlanLike[];
+export function qualifyStreakReminder(args: {
   dayKeys: Set<string>;
   todayLocalKey: string;
-  streakQualifies: boolean;
+}): { qualifies: boolean } {
+  if (args.dayKeys.has(args.todayLocalKey)) {
+    return { qualifies: false };
+  }
+  const yesterday = addDays(args.todayLocalKey, -1);
+  if (!args.dayKeys.has(yesterday)) {
+    return { qualifies: false };
+  }
+
+  // Bounded window only proves "at least threshold days", not lifetime streak.
+  for (let i = 1; i <= STREAK_REMINDER_THRESHOLD; i += 1) {
+    if (!args.dayKeys.has(addDays(args.todayLocalKey, -i))) {
+      return { qualifies: false };
+    }
+  }
+  return { qualifies: true };
+}
+
+export function qualifyDailyReminder(args: {
+  incompletePlan: IncompletePlanLike | null;
+  dayKeys: Set<string>;
+  todayLocalKey: string;
+  /** True only when a streak reminder will actually be emitted this pass. */
+  streakWillSend: boolean;
 }): { qualifies: boolean; plan: IncompletePlanLike | null } {
-  if (args.streakQualifies) {
+  if (args.streakWillSend) {
     return { qualifies: false, plan: null };
   }
   if (args.dayKeys.has(args.todayLocalKey)) {
     return { qualifies: false, plan: null };
   }
-  const plan =
-    args.incompletePlans.find(
-      (p) => p.totalTasks > 0 && p.completedTasks < p.totalTasks,
-    ) ?? null;
-  return { qualifies: Boolean(plan), plan };
+  const plan = args.incompletePlan;
+  if (
+    !plan ||
+    !(plan.totalTasks > 0 && plan.completedTasks < plan.totalTasks)
+  ) {
+    return { qualifies: false, plan: null };
+  }
+  return { qualifies: true, plan };
 }
 
 export function qualifyWeeklySummary(args: {
@@ -149,17 +188,19 @@ export function buildEmailContents(
 ): BuiltEmailContent[] {
   const timeZone = normalizeTimeZone(ctx.analyticsTimezone);
   const todayLocalKey = dateKeyInTimeZone(ctx.referenceDate, timeZone);
-  const dayKeys = dayKeysFromEvents(ctx.activityEvents, timeZone);
+  const dayKeys = asDayKeySet(ctx.activityDayKeys);
   const priorWeekStart = priorClosedWeekStartKey(todayLocalKey);
   const streak = qualifyStreakReminder({
     dayKeys,
     todayLocalKey,
   });
+  const streakWillSend =
+    enabledCategories.has('streak_reminder') && streak.qualifies;
   const daily = qualifyDailyReminder({
-    incompletePlans: ctx.incompletePlans,
+    incompletePlan: ctx.incompletePlan,
     dayKeys,
     todayLocalKey,
-    streakQualifies: streak.qualifies,
+    streakWillSend,
   });
   const weekly = qualifyWeeklySummary({
     dayKeys,
@@ -170,14 +211,14 @@ export function buildEmailContents(
   const results: BuiltEmailContent[] = [];
   const headers = listUnsubscribeHeaders(ctx.unsubscribeUrl);
 
-  if (enabledCategories.has('streak_reminder') && streak.qualifies) {
-    const body = `Your ${streak.streakDays}-day learning streak is at risk. Jump back into Atlaris today to keep it going.\n\nOpen your plans: ${ctx.appUrl}/plans`;
+  if (streakWillSend) {
+    const body = `Your learning streak of at least ${STREAK_REMINDER_THRESHOLD} days is at risk. Jump back into Atlaris today to keep it going.\n\nOpen your plans: ${ctx.appUrl}/plans`;
     const { text, html } = withFooter(body, ctx.unsubscribeUrl);
     results.push({
       category: 'streak_reminder',
       deliveryKey: `${ctx.schedulerDateUtc}`,
       message: {
-        subject: `Keep your ${streak.streakDays}-day streak alive`,
+        subject: 'Keep your learning streak alive',
         text,
         html,
         headers,
