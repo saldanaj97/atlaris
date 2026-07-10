@@ -1,18 +1,11 @@
 'use client';
 
+import {
+  SETTINGS_SECTION_IDS,
+  type SettingsSectionId,
+} from '@/app/(app)/settings/settings-section-ids';
 import { usePathname } from 'next/navigation';
 import { useEffect, type ReactElement } from 'react';
-
-const SETTINGS_SECTION_IDS = [
-  'profile',
-  'billing',
-  'usage',
-  'ai',
-  'integrations',
-  'notifications',
-] as const;
-
-type SettingsSectionId = (typeof SETTINGS_SECTION_IDS)[number];
 
 function parseSectionHash(hash: string): SettingsSectionId | undefined {
   const sectionId = hash.replace(/^#/, '');

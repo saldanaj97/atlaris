@@ -16,6 +16,7 @@ import { SettingsScrollTarget } from '@/app/(app)/settings/components/SettingsSc
 import { IntegrationRows } from '@/app/(app)/settings/integrations/components/IntegrationRows';
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
+import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
 import { UserProfile } from '@clerk/nextjs';
@@ -39,7 +40,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
 
       <SettingsLedgerPanel>
         <LedgerSectionBlock
-          id='profile'
+          id={SETTINGS_SECTIONS.profile}
           label='Profile'
           description='How you appear across Atlaris.'
         >
@@ -47,7 +48,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
-          id='billing'
+          id={SETTINGS_SECTIONS.billing}
           label='Plan & billing'
           description='Subscription, renewal, and payment details.'
         >
@@ -69,7 +70,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
-          id='usage'
+          id={SETTINGS_SECTIONS.usage}
           label='Usage'
           description='Monthly quota across your workspace.'
         >
@@ -79,7 +80,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
-          id='ai'
+          id={SETTINGS_SECTIONS.ai}
           label='AI model'
           description='The model that drafts your plans and lessons.'
         >
@@ -89,7 +90,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
-          id='integrations'
+          id={SETTINGS_SECTIONS.integrations}
           label='Integrations'
           description='Connect Atlaris to the rest of your stack.'
         >
@@ -97,7 +98,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
-          id='notifications'
+          id={SETTINGS_SECTIONS.notifications}
           label='Notifications'
           description='What Atlaris is allowed to email you about.'
         >
