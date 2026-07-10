@@ -154,7 +154,13 @@ export async function runEmailNotificationDelivery(
       enabledCategories,
     );
 
+    let streakSentThisPass = false;
+
     for (const content of contents) {
+      if (content.category === 'daily_reminder' && streakSentThisPass) {
+        continue;
+      }
+
       const candidateIdempotencyKey = `${recipient.userId}:${content.category}:${content.deliveryKey}`;
       const candidateRequest = deps.sender.resolveRequest({
         to: recipient.email,
@@ -290,6 +296,9 @@ export async function runEmailNotificationDelivery(
           db,
         );
         counts.sent += 1;
+        if (content.category === 'streak_reminder') {
+          streakSentThisPass = true;
+        }
         countMetric('atlaris.email.notification.sent', 1, {
           attributes: { category: content.category },
         });

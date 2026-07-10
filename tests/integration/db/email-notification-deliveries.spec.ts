@@ -307,4 +307,63 @@ describe('email notification deliveries ledger', () => {
       .where(eq(emailNotificationDeliveries.id, first.deliveryId));
     expect(row?.status).toBe('manual_review');
   });
+
+  it('does not reset the ambiguity window when an expired pending lease is reclaimed', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-reclaim-window');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const claimedAt = new Date('2026-07-01T12:00:00.000Z');
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-02',
+        providerRequest: providerRequest({
+          idempotencyKey: 'reclaim:daily:2026-07-02',
+        }),
+        now: claimedAt,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    const expiredAt = new Date(
+      claimedAt.getTime() + EMAIL_DELIVERY_LEASE_MS + 1,
+    );
+    const reclaimed = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-02',
+        providerRequest: providerRequest({
+          idempotencyKey: 'reclaim:daily:2026-07-02',
+        }),
+        now: expiredAt,
+      },
+      db,
+    );
+    expect(reclaimed.outcome).toBe('claimed');
+    if (reclaimed.outcome !== 'claimed') return;
+
+    const pastWindow = new Date(
+      claimedAt.getTime() + EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS + 1,
+    );
+    const result = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-02',
+        providerRequest: providerRequest({
+          idempotencyKey: 'reclaim:daily:2026-07-02',
+        }),
+        now: pastWindow,
+      },
+      db,
+    );
+
+    expect(result.outcome).toBe('manual_review');
+  });
 });

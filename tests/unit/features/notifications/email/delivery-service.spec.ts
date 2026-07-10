@@ -139,6 +139,51 @@ describe('runEmailNotificationDelivery', () => {
     expect(result.nextCursor).toBe('u1');
   });
 
+  it('sends daily when streak claim is already terminal', async () => {
+    claim
+      .mockResolvedValueOnce({
+        outcome: 'already_terminal',
+        status: 'sent',
+      })
+      .mockResolvedValueOnce({
+        outcome: 'claimed',
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        providerRequest: {
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: "A quick nudge for today's learning",
+          html: '<p>daily</p>',
+          text: 'daily',
+          idempotencyKey: 'u1:daily_reminder:2026-07-09',
+        },
+        reusedProviderRequest: false,
+      });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder', 'streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).toHaveBeenCalledTimes(1);
+    expect(result.sent).toBe(1);
+    expect(result.alreadyTerminal).toBe(1);
+    expect(claim).toHaveBeenCalledWith(
+      expect.objectContaining({ category: 'daily_reminder' }),
+      expect.anything(),
+    );
+  });
+
   it('sends streak reminder and skips daily when streak wins', async () => {
     const sender = createSender();
 

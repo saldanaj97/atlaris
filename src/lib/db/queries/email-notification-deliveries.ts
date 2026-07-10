@@ -245,7 +245,8 @@ export async function claimEmailNotificationDelivery(
       return { outcome: 'in_flight', status: 'pending' };
     }
 
-    const ambiguityStartedAt = existing.updatedAt ?? existing.createdAt;
+  // Measure ambiguity from first claim time; reclaim must not reset the window.
+    const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
     if (ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
       const reviewed = await dbClient

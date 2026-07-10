@@ -35,7 +35,7 @@ describe('email content eligibility', () => {
     ).toBe(false);
   });
 
-  it('suppresses daily reminder only when streak will actually send', () => {
+  it('qualifies daily reminder even when streak would also qualify', () => {
     const result = qualifyDailyReminder({
       incompletePlan: {
         id: 'p1',
@@ -45,9 +45,9 @@ describe('email content eligibility', () => {
       },
       dayKeys: new Set(),
       todayLocalKey: '2026-07-09',
-      streakWillSend: true,
     });
-    expect(result.qualifies).toBe(false);
+    expect(result.qualifies).toBe(true);
+    expect(result.plan?.id).toBe('p1');
   });
 
   it('qualifies daily reminder for incomplete plans with no activity today', () => {
@@ -60,7 +60,6 @@ describe('email content eligibility', () => {
       },
       dayKeys: new Set(['2026-07-08']),
       todayLocalKey: '2026-07-09',
-      streakWillSend: false,
     });
     expect(result.qualifies).toBe(true);
     expect(result.plan?.id).toBe('p1');
@@ -88,7 +87,7 @@ describe('email content eligibility', () => {
     ).toBe(false);
   });
 
-  it('buildEmailContents prefers streak over daily when both enabled and includes unsubscribe headers', () => {
+  it('buildEmailContents includes streak and daily when both qualify', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(
       {
@@ -114,13 +113,44 @@ describe('email content eligibility', () => {
       new Set(['daily_reminder', 'streak_reminder', 'weekly_summary']),
     );
 
-    expect(contents.map((c) => c.category)).toEqual(['streak_reminder']);
+    expect(contents.map((c) => c.category)).toEqual([
+      'streak_reminder',
+      'daily_reminder',
+    ]);
     expect(contents[0]?.message.subject).toBe(
       'Keep your learning streak alive',
     );
     expect(contents[0]?.message.headers?.['List-Unsubscribe']).toContain(
       'https://atlaris.app/unsub',
     );
+  });
+
+  it('escapes HTML in daily reminder plan topics', () => {
+    const today = '2026-07-09';
+    const contents = buildEmailContents(
+      {
+        userId: 'u1',
+        email: 'u@example.com',
+        analyticsTimezone: 'UTC',
+        schedulerDateUtc: today,
+        referenceDate: day(today),
+        activityDayKeys: [],
+        incompletePlan: {
+          id: 'p1',
+          topic: '<script>alert(1)</script>',
+          completedTasks: 1,
+          totalTasks: 4,
+        },
+        appUrl: 'https://atlaris.app',
+        unsubscribeUrl: 'https://atlaris.app/unsub',
+      },
+      new Set(['daily_reminder']),
+    );
+
+    expect(contents[0]?.message.html).toContain(
+      '&lt;script&gt;alert(1)&lt;/script&gt;',
+    );
+    expect(contents[0]?.message.text).toContain('<script>alert(1)</script>');
   });
 
   it('sends daily only when streak is preference-disabled even if streak would qualify', () => {

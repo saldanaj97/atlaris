@@ -49,6 +49,15 @@ function asDayKeySet(
   return dayKeys instanceof Set ? dayKeys : new Set(dayKeys);
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function withFooter(
   bodyText: string,
   unsubscribeUrl: string,
@@ -58,7 +67,7 @@ function withFooter(
 } {
   const footer = `You're receiving this because you opted in to Atlaris email notifications.\nUnsubscribe: ${unsubscribeUrl}`;
   const text = `${bodyText}\n\n${footer}`;
-  const html = `<p>${bodyText.replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${unsubscribeUrl}">Unsubscribe</a></p>`;
+  const html = `<p>${escapeHtml(bodyText).replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${unsubscribeUrl}">Unsubscribe</a></p>`;
   return { text, html };
 }
 
@@ -143,12 +152,7 @@ export function qualifyDailyReminder(args: {
   incompletePlan: IncompletePlanLike | null;
   dayKeys: Set<string>;
   todayLocalKey: string;
-  /** True only when a streak reminder will actually be emitted this pass. */
-  streakWillSend: boolean;
 }): { qualifies: boolean; plan: IncompletePlanLike | null } {
-  if (args.streakWillSend) {
-    return { qualifies: false, plan: null };
-  }
   if (args.dayKeys.has(args.todayLocalKey)) {
     return { qualifies: false, plan: null };
   }
@@ -194,13 +198,12 @@ export function buildEmailContents(
     dayKeys,
     todayLocalKey,
   });
-  const streakWillSend =
+  const streakQualifies =
     enabledCategories.has('streak_reminder') && streak.qualifies;
   const daily = qualifyDailyReminder({
     incompletePlan: ctx.incompletePlan,
     dayKeys,
     todayLocalKey,
-    streakWillSend,
   });
   const weekly = qualifyWeeklySummary({
     dayKeys,
@@ -211,7 +214,7 @@ export function buildEmailContents(
   const results: BuiltEmailContent[] = [];
   const headers = listUnsubscribeHeaders(ctx.unsubscribeUrl);
 
-  if (streakWillSend) {
+  if (streakQualifies) {
     const body = `Your learning streak of at least ${STREAK_REMINDER_THRESHOLD} days is at risk. Jump back into Atlaris today to keep it going.\n\nOpen your plans: ${ctx.appUrl}/plans`;
     const { text, html } = withFooter(body, ctx.unsubscribeUrl);
     results.push({
