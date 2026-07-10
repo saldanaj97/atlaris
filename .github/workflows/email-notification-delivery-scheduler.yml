@@ -1,0 +1,123 @@
+name: Email Notification Delivery Scheduler
+
+on:
+  schedule:
+    # Daily/streak pass — 14:00 UTC
+    - cron: '0 14 * * *'
+    # Monday weekly-summary pass — 14:30 UTC
+    - cron: '30 14 * * 1'
+  workflow_dispatch:
+    inputs:
+      categories:
+        description: 'Comma-separated categories: daily_reminder,streak_reminder,weekly_summary'
+        required: false
+        type: string
+      schedulerDateUtc:
+        description: 'UTC date YYYY-MM-DD (defaults to today)'
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: email-notification-delivery-scheduler
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    name: Trigger production email notification delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger email notification delivery
+        env:
+          MAINTENANCE_WORKER_TOKEN: ${{ secrets.MAINTENANCE_WORKER_TOKEN }}
+          EMAIL_DELIVERY_URL: https://atlaris.app/api/internal/maintenance/notifications/email
+          INPUT_CATEGORIES: ${{ inputs.categories }}
+          INPUT_SCHEDULER_DATE: ${{ inputs.schedulerDateUtc }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${MAINTENANCE_WORKER_TOKEN}" ]]; then
+            echo "::error title=Email delivery scheduler misconfigured::MAINTENANCE_WORKER_TOKEN is not configured."
+            exit 1
+          fi
+
+          scheduler_date="${INPUT_SCHEDULER_DATE:-$(date -u +%F)}"
+
+          if [[ -n "${INPUT_CATEGORIES}" ]]; then
+            categories_csv="${INPUT_CATEGORIES}"
+          elif [[ "${EVENT_NAME}" == "schedule" && "${EVENT_SCHEDULE}" == "30 14 * * 1" ]]; then
+            categories_csv="weekly_summary"
+          else
+            categories_csv="daily_reminder,streak_reminder"
+          fi
+
+          categories_json="$(
+            printf '%s' "${categories_csv}" \
+              | tr ',' '\n' \
+              | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' \
+              | grep -v '^$' \
+              | jq -R . \
+              | jq -s .
+          )"
+
+          payload="$(jq -nc \
+            --argjson categories "${categories_json}" \
+            --arg schedulerDateUtc "${scheduler_date}" \
+            '{categories: $categories, schedulerDateUtc: $schedulerDateUtc}')"
+
+          response_file="$(mktemp)"
+          trap 'rm -f "${response_file}"' EXIT
+
+          status_code="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --max-time 300 \
+              --header "Authorization: Bearer ${MAINTENANCE_WORKER_TOKEN}" \
+              --header 'Content-Type: application/json' \
+              --header 'User-Agent: atlaris-email-notification-delivery-scheduler' \
+              --data "${payload}" \
+              "${EMAIL_DELIVERY_URL}"
+          )"
+
+          case "${status_code}" in
+            200)
+              if ! jq -e '.ok == true' "${response_file}" >/dev/null; then
+                echo "::error title=Email delivery invalid response::Endpoint returned 200 without ok=true."
+                exit 1
+              fi
+              ;;
+            401)
+              echo "::error title=Email delivery unauthorized (401)::Production and GitHub worker tokens do not match."
+              exit 1
+              ;;
+            400)
+              echo "::error title=Email delivery bad request (400)::Inspect request body/categories/schedulerDateUtc."
+              exit 1
+              ;;
+            500)
+              echo "::error title=Email delivery failed (500)::Delivery logic failed. Inspect Vercel and Sentry logs."
+              exit 1
+              ;;
+            503)
+              echo "::error title=Email delivery unavailable (503)::EMAIL_NOTIFICATIONS_ENABLED is false or the production worker token is missing."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Email delivery unexpected response::Endpoint returned HTTP ${status_code}."
+              exit 1
+              ;;
+          esac
+
+          jq -c \
+            '{ok, examined, claimed, sent, skipped, failed, alreadyTerminal, inFlight, nextCursor}' \
+            "${response_file}"

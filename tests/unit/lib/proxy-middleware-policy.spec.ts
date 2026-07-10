@@ -26,6 +26,12 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/api/health/worker')).toBe(false);
   });
 
+  it('isProtectedRoute skips signed email unsubscribe endpoint', () => {
+    expect(isProtectedRoute('/api/v1/notifications/email/unsubscribe')).toBe(
+      false,
+    );
+  });
+
   it('isProtectedRoute protects non-internal api routes', () => {
     expect(isProtectedRoute('/api/plans')).toBe(true);
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
@@ -43,6 +49,12 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(true, '/api/health/worker')).toBe(
       null,
     );
+    expect(
+      resolveMaintenanceRedirectPath(
+        true,
+        '/api/v1/notifications/email/unsubscribe',
+      ),
+    ).toBe(null);
     expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
       '/maintenance',
     );
