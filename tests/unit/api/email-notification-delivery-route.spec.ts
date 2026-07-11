@@ -167,6 +167,35 @@ describe('email notification delivery recovery route', () => {
     });
   });
 
+  it('reports a failed workflow start as unavailable to the operator', async () => {
+    const POST = createEmailNotificationDeliveryPostRoute({
+      resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
+      startWorkflow: vi.fn().mockResolvedValue({
+        outcome: 'failed_requires_resume',
+        runId: 'run-1',
+        workflowRunId: null,
+      }),
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
+    });
+
+    const response = await POST(
+      createMaintenancePostRequest(URL, {
+        body: JSON.stringify({
+          runKind: 'daily',
+          schedulerDateUtc: '2026-07-10',
+          action: 'start',
+        }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Email notification workflow could not be started.',
+      code: 'SERVICE_UNAVAILABLE',
+    });
+  });
+
   it('passes explicit resume and replay actions to the same starter', async () => {
     const startWorkflow = vi
       .fn()

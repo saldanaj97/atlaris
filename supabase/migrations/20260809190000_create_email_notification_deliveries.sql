@@ -23,6 +23,7 @@ CREATE TABLE "email_notification_deliveries" (
 --> statement-breakpoint
 ALTER TABLE "email_notification_deliveries" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "email_notification_deliveries" ADD CONSTRAINT "email_notification_deliveries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_email_notification_deliveries_run_summary" ON "email_notification_deliveries" USING btree ("category","delivery_key","status");--> statement-breakpoint
 CREATE INDEX "idx_email_notification_deliveries_status_updated_at" ON "email_notification_deliveries" USING btree ("status","updated_at");--> statement-breakpoint
 CREATE INDEX "idx_email_notification_deliveries_pending_claim_expires_at" ON "email_notification_deliveries" USING btree ("claim_expires_at") WHERE "status" = 'pending';--> statement-breakpoint
 CREATE POLICY "email_notification_deliveries_deny_all" ON "email_notification_deliveries" AS RESTRICTIVE FOR ALL TO public USING (false) WITH CHECK (false);--> statement-breakpoint

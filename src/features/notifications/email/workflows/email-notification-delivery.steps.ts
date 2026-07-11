@@ -433,7 +433,9 @@ async function finalizeEmailNotificationDeliveryRun(
   );
   if (
     run.recipientErrors > 0 ||
+    run.failed > 0 ||
     run.manualReview > 0 ||
+    ledgerSummary.failed > 0 ||
     ledgerSummary.manualReview > 0
   ) {
     const reviewed = await markEmailNotificationDeliveryRunNeedsReview(

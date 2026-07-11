@@ -5,7 +5,11 @@ import {
   type StartEmailNotificationDeliveryWorkflowResult,
 } from '@/features/notifications/email/start-email-notification-delivery-workflow';
 import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/workflows/email-notification-delivery.types';
-import { ConflictError, ValidationError } from '@/lib/api/errors';
+import {
+  ConflictError,
+  ServiceUnavailableError,
+  ValidationError,
+} from '@/lib/api/errors';
 import { createMaintenancePostRoute } from '@/lib/api/internal/maintenance-route';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { json } from '@/lib/api/response';
@@ -90,6 +94,11 @@ export function createEmailNotificationDeliveryPostRoute(
           );
         }
         throw error;
+      }
+      if (result.outcome === 'failed_requires_resume') {
+        throw new ServiceUnavailableError(
+          'Email notification workflow could not be started.',
+        );
       }
       logger.info(
         {

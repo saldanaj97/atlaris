@@ -51,6 +51,7 @@ function claimSnapshotPredicates(existing: {
 export type EmailNotificationDeliveryLedgerSummary = {
   readonly sent: number;
   readonly skipped: number;
+  readonly failed: number;
   readonly manualReview: number;
 };
 
@@ -69,6 +70,7 @@ export async function summarizeEmailNotificationDeliveriesForRun(
     .select({
       sent: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'sent')::int`,
       skipped: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'skipped')::int`,
+      failed: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'failed')::int`,
       manualReview: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'manual_review')::int`,
     })
     .from(emailNotificationDeliveries)
@@ -84,6 +86,7 @@ export async function summarizeEmailNotificationDeliveriesForRun(
   return {
     sent: Number(result?.sent ?? 0),
     skipped: Number(result?.skipped ?? 0),
+    failed: Number(result?.failed ?? 0),
     manualReview: Number(result?.manualReview ?? 0),
   };
 }

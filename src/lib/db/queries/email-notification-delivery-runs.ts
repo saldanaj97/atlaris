@@ -341,6 +341,7 @@ async function transitionOwnedEmailNotificationDeliveryRun(
         ? {
             sent: args.ledgerSummary.sent,
             skipped: args.ledgerSummary.skipped,
+            failed: args.ledgerSummary.failed,
             manualReview: args.ledgerSummary.manualReview,
           }
         : {}),

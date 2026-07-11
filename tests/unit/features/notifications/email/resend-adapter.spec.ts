@@ -27,7 +27,8 @@ describe('classifyResendError', () => {
     ['rate_limit_exceeded', 'provider_rate_limited'],
     ['monthly_quota_exceeded', 'provider_rate_limited'],
     ['daily_quota_exceeded', 'provider_rate_limited'],
-    ['validation_error', 'provider_recipient_invalid'],
+    ['validation_error', 'provider_request_invalid'],
+    ['invalid_parameter', 'provider_request_invalid'],
     ['missing_required_field', 'provider_request_invalid'],
     ['invalid_attachment', 'provider_request_invalid'],
     ['invalid_idempotent_request', 'provider_idempotency_conflict'],
@@ -35,6 +36,12 @@ describe('classifyResendError', () => {
     ['application_error', 'provider_error'],
   ] as const)('maps %s to %s', (name, expected) => {
     expect(classifyResendError(error(name))).toBe(expected);
+  });
+
+  it('treats a forbidden validation error as provider configuration', () => {
+    expect(classifyResendError(error('validation_error', 403))).toBe(
+      'provider_configuration',
+    );
   });
 });
 

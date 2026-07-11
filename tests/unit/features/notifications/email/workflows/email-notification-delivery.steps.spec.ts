@@ -73,6 +73,7 @@ const runningRun = {
   cursorUserId: null,
   monitorCheckInId: null,
   recipientErrors: 0,
+  failed: 0,
   manualReview: 0,
 };
 
@@ -89,6 +90,7 @@ describe('email notification delivery workflow steps', () => {
     mocks.summarizeLedger.mockResolvedValue({
       sent: 0,
       skipped: 0,
+      failed: 0,
       manualReview: 0,
     });
   });
@@ -232,6 +234,7 @@ describe('email notification delivery workflow steps', () => {
     mocks.summarizeLedger.mockResolvedValue({
       sent: 1,
       skipped: 0,
+      failed: 0,
       manualReview: 1,
     });
     mocks.markNeedsReview.mockResolvedValue({ outcome: 'transitioned' });
@@ -242,7 +245,35 @@ describe('email notification delivery workflow steps', () => {
 
     expect(mocks.markNeedsReview).toHaveBeenCalledWith(
       expect.objectContaining({
-        ledgerSummary: { sent: 1, skipped: 0, manualReview: 1 },
+        ledgerSummary: { sent: 1, skipped: 0, failed: 0, manualReview: 1 },
+      }),
+      expect.anything(),
+    );
+    expect(mocks.complete).not.toHaveBeenCalled();
+  });
+
+  it('turns failed ledger work into a terminal needs-review run', async () => {
+    mocks.summarizeLedger.mockResolvedValue({
+      sent: 0,
+      skipped: 0,
+      failed: 1,
+      manualReview: 0,
+    });
+    mocks.markNeedsReview.mockResolvedValue({ outcome: 'transitioned' });
+    mocks.complete.mockResolvedValue({ outcome: 'transitioned' });
+
+    await expect(
+      finalizeEmailNotificationDeliveryRunStep(input),
+    ).rejects.toThrow('Email delivery requires manual review');
+
+    expect(mocks.markNeedsReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ledgerSummary: {
+          sent: 0,
+          skipped: 0,
+          failed: 1,
+          manualReview: 0,
+        },
       }),
       expect.anything(),
     );
@@ -253,6 +284,7 @@ describe('email notification delivery workflow steps', () => {
     mocks.summarizeLedger.mockResolvedValue({
       sent: 2,
       skipped: 1,
+      failed: 0,
       manualReview: 0,
     });
     mocks.complete.mockResolvedValue({ outcome: 'transitioned' });
@@ -265,7 +297,7 @@ describe('email notification delivery workflow steps', () => {
       {
         runId: 'run-1',
         workflowRunId: 'workflow-1',
-        ledgerSummary: { sent: 2, skipped: 1, manualReview: 0 },
+        ledgerSummary: { sent: 2, skipped: 1, failed: 0, manualReview: 0 },
       },
       expect.anything(),
     );
@@ -300,6 +332,7 @@ describe('email notification delivery workflow steps', () => {
     mocks.summarizeLedger.mockResolvedValue({
       sent: 1,
       skipped: 0,
+      failed: 0,
       manualReview: 0,
     });
     mocks.complete.mockResolvedValue({ outcome: 'stale' });

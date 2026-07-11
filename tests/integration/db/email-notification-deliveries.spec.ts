@@ -13,7 +13,7 @@ import { emailNotificationDeliveries } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 function providerRequest(
@@ -32,6 +32,19 @@ function providerRequest(
 }
 
 describe('email notification deliveries ledger', () => {
+  it('indexes logical run summaries by category, delivery key, and status', async () => {
+    const indexes = (await db.execute(sql`
+      select indexdef
+      from pg_indexes
+      where schemaname = 'public'
+        and tablename = 'email_notification_deliveries'
+        and indexname = 'idx_email_notification_deliveries_run_summary'
+    `)) as Array<{ indexdef: string }>;
+
+    expect(indexes).toHaveLength(1);
+    expect(indexes[0]?.indexdef).toContain('(category, delivery_key, status)');
+  });
+
   it('reconciles terminal counts for a logical run from the ledger', async () => {
     const firstAuthUserId = buildTestAuthUserId('email-ledger-summary-first');
     const secondAuthUserId = buildTestAuthUserId('email-ledger-summary-second');
@@ -65,6 +78,12 @@ describe('email notification deliveries ledger', () => {
         deliveryKey: '2026-07-10',
         status: 'manual_review',
       },
+      {
+        userId: secondUserId,
+        category: 'streak_reminder',
+        deliveryKey: '2026-07-10',
+        status: 'failed',
+      },
     ]);
 
     await expect(
@@ -75,7 +94,7 @@ describe('email notification deliveries ledger', () => {
         },
         db,
       ),
-    ).resolves.toEqual({ sent: 1, skipped: 1, manualReview: 1 });
+    ).resolves.toEqual({ sent: 1, skipped: 1, failed: 1, manualReview: 1 });
   });
 
   it('claims a new key and persists the provider request', async () => {

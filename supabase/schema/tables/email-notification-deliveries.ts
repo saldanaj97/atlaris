@@ -57,6 +57,11 @@ export const emailNotificationDeliveries = pgTable(
       table.category,
       table.deliveryKey,
     ),
+    index('idx_email_notification_deliveries_run_summary').on(
+      table.category,
+      table.deliveryKey,
+      table.status,
+    ),
     index('idx_email_notification_deliveries_status_updated_at').on(
       table.status,
       table.updatedAt,
