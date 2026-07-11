@@ -12,8 +12,9 @@ import { describe, expect, it, vi } from 'vitest';
 function error(
   name: ErrorResponse['name'],
   statusCode: number | null = 400,
+  message: string = name,
 ): ErrorResponse {
-  return { name, message: name, statusCode };
+  return { name, message, statusCode };
 }
 
 describe('classifyResendError', () => {
@@ -27,8 +28,8 @@ describe('classifyResendError', () => {
     ['rate_limit_exceeded', 'provider_rate_limited'],
     ['monthly_quota_exceeded', 'provider_rate_limited'],
     ['daily_quota_exceeded', 'provider_rate_limited'],
-    ['validation_error', 'provider_recipient_invalid'],
-    ['invalid_parameter', 'provider_recipient_invalid'],
+    ['validation_error', 'provider_request_invalid'],
+    ['invalid_parameter', 'provider_request_invalid'],
     ['missing_required_field', 'provider_request_invalid'],
     ['invalid_attachment', 'provider_request_invalid'],
     ['invalid_idempotent_request', 'provider_idempotency_conflict'],
@@ -42,6 +43,27 @@ describe('classifyResendError', () => {
     expect(classifyResendError(error('validation_error', 403))).toBe(
       'provider_configuration',
     );
+  });
+
+  it('distinguishes recipient validation from shared request validation', () => {
+    expect(
+      classifyResendError(
+        error(
+          'validation_error',
+          422,
+          'Invalid `to` field. The email address must be valid.',
+        ),
+      ),
+    ).toBe('provider_recipient_invalid');
+    expect(
+      classifyResendError(
+        error(
+          'invalid_parameter',
+          422,
+          'Invalid `from` field. The email address must be valid.',
+        ),
+      ),
+    ).toBe('provider_request_invalid');
   });
 });
 

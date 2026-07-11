@@ -136,6 +136,9 @@ function classifyResend(error: ErrorResponse): {
   failureClass: string;
   outcome: ProviderOutcome;
 } {
+  // Resend uses validation names for both shared request fields and recipients.
+  // Continue the page only when the provider explicitly identifies `to`.
+  const isRecipientFieldError = /(?:`to`|"to"|'to') field/i.test(error.message);
   const classification = (() => {
     switch (error.name) {
       case 'rate_limit_exceeded':
@@ -164,12 +167,16 @@ function classifyResend(error: ErrorResponse): {
           failureClass:
             error.statusCode === 403
               ? 'provider_configuration'
-              : 'provider_recipient_invalid',
+              : isRecipientFieldError
+                ? 'provider_recipient_invalid'
+                : 'provider_request_invalid',
           outcome: 'rejected',
         } as const;
       case 'invalid_parameter':
         return {
-          failureClass: 'provider_recipient_invalid',
+          failureClass: isRecipientFieldError
+            ? 'provider_recipient_invalid'
+            : 'provider_request_invalid',
           outcome: 'rejected',
         } as const;
       case 'missing_required_field':
