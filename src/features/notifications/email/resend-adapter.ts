@@ -164,12 +164,12 @@ function classifyResend(error: ErrorResponse): {
           failureClass:
             error.statusCode === 403
               ? 'provider_configuration'
-              : 'provider_request_invalid',
+              : 'provider_recipient_invalid',
           outcome: 'rejected',
         } as const;
       case 'invalid_parameter':
         return {
-          failureClass: 'provider_request_invalid',
+          failureClass: 'provider_recipient_invalid',
           outcome: 'rejected',
         } as const;
       case 'missing_required_field':
