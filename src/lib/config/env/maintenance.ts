@@ -13,6 +13,7 @@ interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
   readonly clerkBillingReconciliationEnabled: boolean;
+  readonly cronSecret: string | undefined;
   readonly workerToken: string | undefined;
   readonly workerHealthToken: string | undefined;
 }
@@ -46,17 +47,16 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
         false,
       );
     },
+    /** Bearer secret used only by Vercel Cron GET routes. */
+    get cronSecret(): string | undefined {
+      return access.getServerRequiredProdOnly('CRON_SECRET');
+    },
     /**
-     * Bearer token for manual maintenance cleanup via internal HTTP routes.
+     * Bearer token for authenticated maintenance HTTP routes.
+     * Availability is independent of the email-notification-delivery Vercel Flag.
+     * In production, missing token makes the authenticated worker boundary unavailable.
      */
     get workerToken(): string | undefined {
-      if (
-        !this.retentionCleanupEnabled &&
-        !this.planCleanupEnabled &&
-        !this.clerkBillingReconciliationEnabled
-      ) {
-        return undefined;
-      }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');
     },
     /**

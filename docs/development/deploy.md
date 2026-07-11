@@ -55,6 +55,11 @@ If the migration applied but no cron job exists, enable `pg_cron` in Supabase an
 6. Enable module lesson generation when the hosted environment should serve it:
    - Set `LESSON_GENERATION_ENABLED=true` in production/staging. When unset outside development, the flag defaults to **off** and `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled`.
    - After deploy, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md` (`LESSON_GENERATION_ENABLED`).
+7. Enable opted-in email notification delivery only after the env and ledger are ready:
+   - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
+   - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
+   - Apply the email notification deliveries ledger migration, then enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
+   - Confirm Vercel Cron and `CRON_SECRET` are configured for production; keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
 See also:
 
@@ -62,3 +67,15 @@ See also:
 - `docs/architecture/regeneration-worker-runbook.md`
 - `docs/architecture/retention-cleanup-runbook.md`
 - `docs/architecture/plan-cleanup-runbook.md`
+
+## Email notification Vercel Cron cutover
+
+The email scheduler must have exactly one active owner. This release removes the GitHub email scheduler and adds the two Vercel Cron entries together.
+
+1. Apply `20260710151930_create_email_notification_delivery_runs` before deploying code that starts email workflows. Its Supabase CLI-generated version precedes the existing future-dated delivery-ledger migration, so the staging and production migration workflows use `supabase db push --include-all` to apply it when the ledger migration is already recorded remotely.
+2. Set a new `CRON_SECRET` in the target Vercel environment. Keep it distinct from `MAINTENANCE_WORKER_TOKEN`.
+3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` and `30 14 * * 1` for `/api/cron/notifications/email`.
+4. Leave the `email-notification-delivery` Vercel Flag disabled and verify both authenticated cron paths return the intentional `disabled` outcome without creating a run.
+5. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Workflow SDK run, Sentry monitor, and delivery ledger before enabling broader delivery.
+
+See [`docs/architecture/email-notification-delivery-runbook.md`](../architecture/email-notification-delivery-runbook.md) for duplicate, failure, and `needs_review` recovery.

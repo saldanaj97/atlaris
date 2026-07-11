@@ -12,6 +12,11 @@ export {
   devAuthEnv,
 } from '@/lib/config/env/auth';
 export { databaseEnv } from '@/lib/config/env/database';
+export {
+  assertEmailDeliveryConfig,
+  createEmailEnvForTests,
+  emailEnv,
+} from '@/lib/config/env/email';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv, sentryEnv } from '@/lib/config/env/observability';
 export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';

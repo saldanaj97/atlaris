@@ -22,7 +22,8 @@ Prefer the exported grouped configs instead of raw keys:
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `attemptsEnv` - Attempt cap overrides
 - `regenerationQueueEnv` - Worker queue toggles and shared token
-- `maintenanceEnv` - Manual retention cleanup, plan cleanup, Clerk Billing reconciliation toggles, and token
+- `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
@@ -99,11 +100,14 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | `PLAN_CLEANUP_ENABLED`      | Master switch for the plan cleanup HTTP route                        | Set `true` when scheduled cleanup is enabled |
 | `CLERK_BILLING_RECONCILIATION_ENABLED` | Master switch for the manual Clerk Billing reconciliation route | Set `true` only when enabling manual reconciliation |
 | `MAINTENANCE_WORKER_TOKEN`  | Auth for maintenance cleanup routes and the plan cleanup scheduler   | Yes when any maintenance route is enabled |
+| `CRON_SECRET`               | Bearer auth for Vercel `GET /api/cron/notifications/email`; keep distinct from the maintenance token | Yes when email Vercel Cron is enabled |
 | `WORKER_HEALTH_TOKEN`       | Auth for `GET /api/health/worker` operator metrics                   | Yes                                            |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 
 Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions repository secret.
+
+Email notification delivery uses Vercel Cron and a durable Workflow SDK run. Set a separate `CRON_SECRET` in the Vercel environment; Vercel supplies it as the Bearer token for the cron GET route. Do not reuse `MAINTENANCE_WORKER_TOKEN`. The manual recovery route remains protected by `MAINTENANCE_WORKER_TOKEN`; see [the email delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
 Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using `CLERK_WEBHOOK_SIGNING_SECRET`. Manual drift repair runs through `POST /api/internal/maintenance/billing/reconcile-clerk` when `CLERK_BILLING_RECONCILIATION_ENABLED=true`; the route processes up to 100 users and returns `nextCursor` for the next batch.
 
