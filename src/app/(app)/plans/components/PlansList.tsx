@@ -18,6 +18,7 @@ import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import {
   ATLAS_CONTROL_CLASS,
   ATLAS_TAB_CLASS,
+  PLANS_GLASS_SURFACE,
 } from '@/app/(app)/plans/components/plans-atlas-classes';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
@@ -203,7 +204,7 @@ function PlansControls({
             name='search'
             placeholder='Search plans...'
             aria-label='Search learning plans'
-            className='h-9 border-border bg-background pl-9 dark:bg-input/30'
+            className={cn(PLANS_GLASS_SURFACE, 'h-9 pl-9')}
             defaultValue={query.search}
           />
         </form>

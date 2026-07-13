@@ -205,7 +205,7 @@ export function PlanRow({
         ) : null}
 
         <div className='relative min-w-0 flex-1'>
-          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted/35 hover:shadow-md'>
+          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted hover:shadow-md'>
             {selectionMode ? (
               <div className='block min-w-0'>{rowContent}</div>
             ) : (
