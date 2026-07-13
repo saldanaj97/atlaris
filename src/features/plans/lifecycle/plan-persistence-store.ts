@@ -22,12 +22,12 @@ const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
 type PlanWriteClient = Pick<DbClient, 'update'>;
 type PlanUpdateTx = Pick<DbTransaction, 'update'>;
 
-export async function markPlanGenerationSuccessInTx(
-  tx: PlanUpdateTx,
+async function updatePlanGenerationSuccess(
+  dbClient: PlanWriteClient | PlanUpdateTx,
   planId: string,
   timestamp: Date,
-): Promise<void> {
-  const updated = await tx
+): Promise<number> {
+  const updated = await dbClient
     .update(learningPlans)
     .set({
       generationStatus: 'ready',
@@ -38,9 +38,19 @@ export async function markPlanGenerationSuccessInTx(
     .where(eq(learningPlans.id, planId))
     .returning({ id: learningPlans.id });
 
-  if (updated.length === 0) {
+  return updated.length;
+}
+
+export async function markPlanGenerationSuccessInTx(
+  tx: PlanUpdateTx,
+  planId: string,
+  timestamp: Date,
+): Promise<void> {
+  const updatedCount = await updatePlanGenerationSuccess(tx, planId, timestamp);
+
+  if (updatedCount === 0) {
     logger.error(
-      { planId, timestamp, updatedCount: updated.length },
+      { planId, timestamp, updatedCount },
       'markPlanGenerationSuccessInTx: no learningPlans rows updated in PlanUpdateTx',
     );
     throw new Error(
@@ -162,19 +172,13 @@ export async function markPlanGenerationSuccess(
   now: () => Date = () => new Date(),
 ): Promise<void> {
   const timestamp = now();
+  const updatedCount = await updatePlanGenerationSuccess(
+    dbClient,
+    planId,
+    timestamp,
+  );
 
-  const updated = await dbClient
-    .update(learningPlans)
-    .set({
-      generationStatus: 'ready',
-      isQuotaEligible: true,
-      finalizedAt: timestamp,
-      updatedAt: timestamp,
-    })
-    .where(eq(learningPlans.id, planId))
-    .returning({ id: learningPlans.id });
-
-  if (updated.length === 0) {
+  if (updatedCount === 0) {
     logger.warn(
       { planId },
       'markPlanGenerationSuccess: no rows updated — plan may have been deleted',

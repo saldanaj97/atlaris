@@ -1,3 +1,4 @@
+import type { WorkflowSdkMetadata } from '@/shared/schemas/workflow-metadata.schemas';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 import { JOB_TYPE_MAP, type JobTypeValue } from '@/shared/constants/jobs';
@@ -14,16 +15,9 @@ export interface JobErrorHistoryEntry {
   timestamp: string;
 }
 
-export interface PlanRegenerationWorkflowMetadata {
-  provider: 'workflow-sdk';
-  runId: string;
-  startedAt?: string;
-  completedAt?: string;
-}
-
 export interface PlanRegenerationJobData {
   planId: string;
-  workflow?: PlanRegenerationWorkflowMetadata;
+  workflow?: WorkflowSdkMetadata;
   overrides?: Partial<{
     topic: string;
     notes: string | null;

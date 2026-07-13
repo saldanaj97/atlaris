@@ -256,6 +256,28 @@ async function readScopedModuleState(
   return row ?? null;
 }
 
+function classifyModuleLessonGenerationClaimState(
+  state: Awaited<ReturnType<typeof readScopedModuleState>>,
+  workflow: ModuleLessonWorkflowClaimMetadata | undefined,
+): LessonGenerationClaimResult | null {
+  if (state == null) {
+    return { kind: 'not_found' };
+  }
+  if (state.status === 'ready') {
+    return { kind: 'already_ready' };
+  }
+  if (state.status !== 'generating') {
+    return null;
+  }
+  if (workflow && state.metadata?.workflow?.runId === workflow.runId) {
+    return {
+      kind: 'claimed',
+      workflowStartedAt: state.metadata.workflow.startedAt ?? null,
+    };
+  }
+  return { kind: 'in_flight' };
+}
+
 /**
  * CAS: `not_generated` | `failed` → `generating` for an owned module row.
  * Surfaces `already_ready`, `in_flight`, and `not_found` without mutating.
@@ -325,48 +347,26 @@ export async function claimModuleLessonGenerationOrDescribe(
       userId,
     );
 
-    if (state == null) {
-      return { kind: 'not_found' };
-    }
-    if (state.status === 'ready') {
-      return { kind: 'already_ready' };
-    }
-    if (state.status === 'generating') {
-      if (
-        options?.workflow &&
-        state.metadata?.workflow?.runId === options.workflow.runId
-      ) {
-        return {
-          kind: 'claimed',
-          workflowStartedAt: state.metadata.workflow.startedAt ?? null,
-        };
-      }
-      return { kind: 'in_flight' };
+    const result = classifyModuleLessonGenerationClaimState(
+      state,
+      options?.workflow,
+    );
+    if (result) {
+      return result;
     }
   }
 
   const state = await readScopedModuleState(dbClient, planId, moduleId, userId);
-  if (state == null) {
-    return { kind: 'not_found' };
-  }
-  if (state.status === 'ready') {
-    return { kind: 'already_ready' };
-  }
-  if (state.status === 'generating') {
-    if (
-      options?.workflow &&
-      state.metadata?.workflow?.runId === options.workflow.runId
-    ) {
-      return {
-        kind: 'claimed',
-        workflowStartedAt: state.metadata.workflow.startedAt ?? null,
-      };
-    }
-    return { kind: 'in_flight' };
+  const result = classifyModuleLessonGenerationClaimState(
+    state,
+    options?.workflow,
+  );
+  if (result) {
+    return result;
   }
 
   throw new Error(
-    `Unexpected module lesson_generation_status after claim retries: ${String(state.status)}`,
+    `Unexpected module lesson_generation_status after claim retries: ${String(state?.status)}`,
   );
 }
 
