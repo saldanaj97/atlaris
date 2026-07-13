@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
 import { PricingFinalCta } from '@/app/(marketing)/pricing/components/PricingFinalCta';
+import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { PricingTable } from '@clerk/nextjs';
@@ -35,7 +36,9 @@ export default async function PricingPage(): Promise<ReactElement> {
           <div className='w-full'>
             {showClerkBilling ? (
               <PricingTable
-                newSubscriptionRedirectUrl={`${ROUTES.SETTINGS.ROOT}#billing`}
+                newSubscriptionRedirectUrl={buildCheckoutReturnRedirectUrl(
+                  ROUTES.SETTINGS.ROOT,
+                )}
               />
             ) : (
               <LocalClerkBillingNotice />

@@ -82,6 +82,26 @@ const loadBillingSnapshot = cache(async () => {
   return result.snapshot;
 });
 
+/** Baseline billing signature fields for post-checkout sync polling. */
+export async function getCheckoutBillingBaseline(): Promise<{
+  tier: string;
+  status: string | null;
+  periodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+} | null> {
+  const snapshot = await loadBillingSnapshot();
+  if (!snapshot) {
+    return null;
+  }
+
+  return {
+    tier: snapshot.tier,
+    status: snapshot.subscriptionStatus,
+    periodEnd: snapshot.subscriptionPeriodEnd?.toISOString() ?? null,
+    cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
+  };
+}
+
 function formatNextBilling(
   subscriptionPeriodEnd: Date | string | null | undefined,
   locale?: string,

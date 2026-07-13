@@ -47,8 +47,8 @@ Key auth-related server variables include:
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
 | `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
 | `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                    | Yes when Clerk Billing webhooks are enabled |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys)                                                            | No       |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB                                            | No       |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout. | No       |
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation) |
@@ -120,7 +120,52 @@ Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using 
 
 Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
 
+**Fixture mode does not exercise checkout or webhooks.** It only updates the Postgres entitlement projection for local product testing.
+
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
+
+### Clerk development checkout (fixture vs real payment flow)
+
+Atlaris keeps a single entitlement source: the Postgres `users` projection updated from Clerk Billing webhooks/reconciliation. Do not add Clerk `auth().has({ plan })` checks alongside DB tiers.
+
+Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER_ID` is also set (`LOCAL_PRODUCT_TESTING=false` + non-empty `DEV_AUTH_USER_ID`). Choose exactly one mode:
+
+| Mode | Env contract | What it proves |
+| ---- | ------------ | -------------- |
+| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id` | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
+| **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota. |
+
+#### Clerk Dashboard contract (same Development instance)
+
+- Plans for Users must use exact slugs mapped in `src/features/billing/clerk-billing/plan-mapping.ts`:
+  - `free_user` → `free`
+  - `starter_plan` → `starter`
+  - `pro_plan` → `pro`
+- Do not use a generic `pro` Clerk plan slug.
+- Dashboard plan features/limits should match `src/shared/constants/tier-limits.ts` (link the source; do not copy values into docs where drift is likely).
+- Webhook endpoint: `{APP_URL}/api/v1/clerk/billing/webhook`, subscribed to `subscription.*`, `subscriptionItem.*`, and `paymentAttempt.*`.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `CLERK_WEBHOOK_SIGNING_SECRET` must all belong to that same Development instance. Presence of an encrypted Vercel variable is not proof the value matches the endpoint.
+- Prefer hosted Preview/staging for real checkout. Localhost needs a public tunnel to the webhook path ([Clerk webhook debugging](https://clerk.com/docs/guides/development/webhooks/debugging)).
+- Clerk’s shared development payment gateway uses Stripe test cards ([Stripe testing](https://docs.stripe.com/testing)). **No app-owned Stripe account, Stripe API keys, Stripe products, or Stripe prices are required.**
+- Never commit Clerk keys or webhook secrets.
+
+After a successful `PricingTable` checkout, Clerk redirects to `/settings?checkout=1#billing`. Settings shows a bounded “Updating your subscription…” state while the webhook projection catches up, then refreshes the DB-backed rows. Clerk `UserProfile` remains the subscription-management UI.
+
+#### Manual real-checkout verification (opt-in; not default CI)
+
+Reuse this checklist for Preview/staging or a tunneled local run. Do not put real payment tests in the default CI suite. Complements the Clerk Billing deployment smoke intent (JCS-37); do not maintain a second competing checklist elsewhere.
+
+1. `/pricing` renders the publicly available Clerk user plans (`free_user`, `starter_plan`, `pro_plan`).
+2. Checkout succeeds with `4242 4242 4242 4242`, a future expiry, any valid CVC, and any valid postal code.
+3. A decline path (for example `4000 0000 0000 0002`) shows a recoverable error.
+4. Abandoning checkout leaves the current entitlement unchanged.
+5. Clerk Dashboard shows the subscription/payment attempt and webhook delivery.
+6. `POST /api/v1/clerk/billing/webhook` acknowledges the event and does not retry endlessly.
+7. The correct `users.auth_user_id` receives updated `subscription_tier`, `subscription_status`, `subscription_period_end`, and `cancel_at_period_end`.
+8. Settings (`?checkout=1` sync UI, then settled rows) and at least one quota/feature boundary reflect the upgraded tier.
+9. Cancellation or cancel-at-period-end behavior is verified in Clerk and in the Postgres projection.
+
+Record evidence without secrets: environment name, Clerk Development instance name/ID, test user email/id, selected plan slug, webhook event ID + delivery outcome, resulting DB tier/status, settings/quota observation, and any sync timeout/retry behavior.
 
 ### Local Supabase database
 

@@ -72,6 +72,11 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 product launch blockers against local auth, Clerk Billing fixture state, mock AI,
 and disposable Postgres.
 
+Never combine `LOCAL_PRODUCT_TESTING=false` with a non-empty `DEV_AUTH_USER_ID` in
+development — the app fails fast on that mixed identity. Real Clerk development
+checkout verification is opt-in/manual; see
+[Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
+
 Clerk auth parity is isolated in `smoke-clerk`. It runs against the anonymous
 server and skips unless a real Clerk test user is configured. Prefer a
 `+clerk_test` email address, then run:

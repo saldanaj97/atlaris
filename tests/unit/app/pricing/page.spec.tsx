@@ -45,7 +45,7 @@ describe('PricingPage', () => {
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}#billing`,
+        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1#billing`,
       }),
     );
   });
