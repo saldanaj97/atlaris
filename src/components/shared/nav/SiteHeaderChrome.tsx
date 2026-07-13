@@ -13,6 +13,8 @@ interface SiteHeaderChromeProps {
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
+  userName?: string;
+  userImageUrl?: string | null;
 }
 
 /**
@@ -24,6 +26,8 @@ export default function SiteHeaderChrome({
   tier,
   isAuthenticated,
   showClerkUserButton,
+  userName,
+  userImageUrl,
 }: SiteHeaderChromeProps) {
   const pathname = usePathname();
   const headerVariant = getHeaderShellVariant(pathname);
@@ -37,6 +41,8 @@ export default function SiteHeaderChrome({
         tier={tier}
         isAuthenticated={isAuthenticated}
         showClerkUserButton={showClerkUserButton}
+        userName={userName}
+        userImageUrl={userImageUrl}
       />
       <DesktopHeader
         headerVariant={headerVariant}
@@ -45,6 +51,8 @@ export default function SiteHeaderChrome({
         tier={tier}
         isAuthenticated={isAuthenticated}
         showClerkUserButton={showClerkUserButton}
+        userName={userName}
+        userImageUrl={userImageUrl}
       />
     </>
   );

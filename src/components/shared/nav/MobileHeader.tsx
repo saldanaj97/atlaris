@@ -25,6 +25,8 @@ interface MobileHeaderProps {
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
+  userName?: string;
+  userImageUrl?: string | null;
 }
 
 /**
@@ -38,6 +40,8 @@ export default function MobileHeader({
   tier,
   isAuthenticated,
   showClerkUserButton,
+  userName,
+  userImageUrl,
 }: MobileHeaderProps) {
   const headerContent = (
     <>
@@ -86,6 +90,8 @@ export default function MobileHeader({
             isAuthenticated={isAuthenticated}
             tier={isAuthenticated ? tier : undefined}
             showClerkUserButton={showClerkUserButton}
+            userName={userName}
+            userImageUrl={userImageUrl}
           />
         </div>
       </div>

@@ -20,6 +20,8 @@ interface DesktopHeaderProps {
   tier?: SubscriptionTier;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
+  userName?: string;
+  userImageUrl?: string | null;
 }
 
 /**
@@ -34,6 +36,8 @@ export default function DesktopHeader({
   tier,
   isAuthenticated,
   showClerkUserButton,
+  userName,
+  userImageUrl,
 }: DesktopHeaderProps) {
   const headerContent = (
     <>
@@ -70,6 +74,8 @@ export default function DesktopHeader({
           isAuthenticated={isAuthenticated}
           tier={isAuthenticated ? tier : undefined}
           showClerkUserButton={showClerkUserButton}
+          userName={userName}
+          userImageUrl={userImageUrl}
         />
       </div>
     </>

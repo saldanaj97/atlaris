@@ -18,6 +18,8 @@ interface AuthControlsProps {
   isAuthenticated: boolean;
   tier?: SubscriptionTier;
   showClerkUserButton?: boolean;
+  userName?: string;
+  userImageUrl?: string | null;
 }
 
 const tierVariants: Record<
@@ -29,10 +31,19 @@ const tierVariants: Record<
   pro: 'default',
 };
 
+function getInitials(name?: string): string {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0]!}${parts[parts.length - 1]![0]!}`.toUpperCase();
+}
+
 export default function AuthControls({
   isAuthenticated,
   tier,
   showClerkUserButton = true,
+  userName,
+  userImageUrl,
 }: AuthControlsProps): ReactElement {
   const tierBadge =
     tier && tier !== 'free' ? (
@@ -63,12 +74,32 @@ export default function AuthControls({
           <TooltipContent side='bottom'>Account</TooltipContent>
         </Tooltip>
       ) : isAuthenticated ? (
-        <div className='relative inline-flex'>
-          <Button variant='ghost' size='sm' className='text-xs' asChild>
-            <Link href={`${ROUTES.SETTINGS.ROOT}#profile`}>Account</Link>
-          </Button>
-          {tierBadge}
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className='relative inline-flex'>
+              <Link
+                href={`${ROUTES.SETTINGS.ROOT}#profile`}
+                aria-label='Account'
+                className='inline-flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+              >
+                {userImageUrl ? (
+                  // ponytail: plain img — Clerk CDN; next/image needs remotePatterns
+                  // oxlint-disable-next-line eslint-plugin-next(no-img-element)
+                  <img
+                    src={userImageUrl}
+                    alt=''
+                    aria-hidden='true'
+                    className='size-full object-cover'
+                  />
+                ) : (
+                  <span aria-hidden='true'>{getInitials(userName)}</span>
+                )}
+              </Link>
+              {tierBadge}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side='bottom'>Account</TooltipContent>
+        </Tooltip>
       ) : (
         <>
           <Button
