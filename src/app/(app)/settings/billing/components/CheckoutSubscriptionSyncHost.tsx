@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 
-import { getCheckoutBillingBaseline } from '@/app/(app)/settings/billing/components/BillingCards';
 import { CheckoutSubscriptionSync } from '@/app/(app)/settings/billing/components/CheckoutSubscriptionSync';
+import { getCheckoutBillingBaseline } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
 import { Suspense } from 'react';
 
 /**
