@@ -1,5 +1,4 @@
 import type {
-  FilterStatus,
   PlanListQuery,
   PlanListSort,
   PlanReadStatus,
@@ -11,7 +10,6 @@ import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
 export type PlanListRowStatus = PlanReadStatus;
-export type PlanListFilterStatus = FilterStatus;
 export type PlanListPageQuery = PlanListQuery;
 export type PlanListQueryItemRow = {
   id: string;

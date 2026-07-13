@@ -10,9 +10,7 @@ export function markPlanRegenerationRunIntentionallyCancelled(
   intentionallyCancelledRunIds.add(runId);
 }
 
-export function unmarkPlanRegenerationRunIntentionallyCancelled(
-  runId: string,
-): void {
+function unmarkPlanRegenerationRunIntentionallyCancelled(runId: string): void {
   intentionallyCancelledRunIds.delete(runId);
 }
 

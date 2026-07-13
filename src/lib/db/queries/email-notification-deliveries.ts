@@ -451,7 +451,6 @@ export async function markEmailNotificationDeliverySent(
     dbClient,
   );
 }
-
 export async function markEmailNotificationDeliverySkipped(
   args: {
     deliveryId: string;
@@ -473,7 +472,6 @@ export async function markEmailNotificationDeliverySkipped(
     dbClient,
   );
 }
-
 export async function markEmailNotificationDeliveryFailed(
   args: {
     deliveryId: string;
@@ -517,5 +515,3 @@ export async function markEmailNotificationDeliveryManualReview(
     dbClient,
   );
 }
-
-export type { EmailNotificationDeliveryStatus };

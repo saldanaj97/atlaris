@@ -6,15 +6,6 @@ import { getCorrelationId } from '@/lib/api/context';
 import { jsonError } from '@/lib/api/response';
 import { createLogger, logger } from '@/lib/logging/logger';
 
-function hasStringCode(value: unknown): value is { code: string } {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-
-  const maybeRecord = value as Record<string, unknown>;
-  return typeof maybeRecord.code === 'string';
-}
-
 export class AppError extends Error {
   constructor(
     message: string,
@@ -172,17 +163,6 @@ export class AttemptCapExceededError extends AppError {
       classification: 'capped',
     });
   }
-}
-
-/**
- * Extracts a string `code` property from an unknown thrown value.
- * Returns `undefined` when the value has no string `code` field.
- */
-export function extractErrorCode(error: unknown): string | undefined {
-  if (hasStringCode(error)) {
-    return error.code;
-  }
-  return undefined;
 }
 
 /**
