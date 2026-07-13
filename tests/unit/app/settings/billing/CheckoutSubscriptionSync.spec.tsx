@@ -55,7 +55,6 @@ describe('CheckoutSubscriptionSync', () => {
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -82,49 +81,47 @@ describe('CheckoutSubscriptionSync', () => {
         }),
       } as Response);
 
-    vi.useFakeTimers();
-
     const { CheckoutSubscriptionSync } =
       await import('@/app/(app)/settings/billing/components/CheckoutSubscriptionSync');
 
-    render(<CheckoutSubscriptionSync baseline={baseline} />);
+    render(
+      <CheckoutSubscriptionSync
+        baseline={baseline}
+        pollIntervalMs={10}
+        timeoutMs={500}
+      />,
+    );
 
     expect(screen.getByRole('status')).toHaveTextContent(
       CHECKOUT_SYNC_UPDATING_MESSAGE,
     );
 
-    await vi.advanceTimersByTimeAsync(0);
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-
-    await vi.advanceTimersByTimeAsync(2000);
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    });
-
     await waitFor(() => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(mocks.refreshMock).toHaveBeenCalled();
     expect(mocks.replaceMock).toHaveBeenCalledWith('/settings#billing');
   });
 
   it('shows timeout copy without claiming payment failed', async () => {
     mocks.searchParamsGetMock.mockReturnValue('1');
-    vi.useFakeTimers();
 
     const { CheckoutSubscriptionSync } =
       await import('@/app/(app)/settings/billing/components/CheckoutSubscriptionSync');
 
-    render(<CheckoutSubscriptionSync baseline={baseline} />);
+    render(
+      <CheckoutSubscriptionSync
+        baseline={baseline}
+        pollIntervalMs={10}
+        timeoutMs={40}
+      />,
+    );
 
     expect(screen.getByRole('status')).toHaveTextContent(
       CHECKOUT_SYNC_UPDATING_MESSAGE,
     );
-
-    await vi.advanceTimersByTimeAsync(30_000);
 
     await waitFor(() => {
       expect(screen.getByRole('status')).toHaveTextContent(

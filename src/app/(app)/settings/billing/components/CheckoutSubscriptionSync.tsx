@@ -17,6 +17,8 @@ import { useEffect, useState } from 'react';
 
 type CheckoutSubscriptionSyncProps = {
   baseline: CheckoutBillingSignatureInput;
+  pollIntervalMs?: number;
+  timeoutMs?: number;
 };
 
 type SyncPhase = 'idle' | 'updating' | 'timeout';
@@ -68,6 +70,8 @@ function clearCheckoutReturnQuery(router: ReturnType<typeof useRouter>): void {
  */
 export function CheckoutSubscriptionSync({
   baseline,
+  pollIntervalMs = CHECKOUT_SYNC_POLL_INTERVAL_MS,
+  timeoutMs = CHECKOUT_SYNC_TIMEOUT_MS,
 }: CheckoutSubscriptionSyncProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -108,7 +112,7 @@ export function CheckoutSubscriptionSync({
       if (
         !shouldContinueCheckoutSync({
           elapsedMs,
-          timeoutMs: CHECKOUT_SYNC_TIMEOUT_MS,
+          timeoutMs,
           caughtUp: false,
         })
       ) {
@@ -140,7 +144,7 @@ export function CheckoutSubscriptionSync({
       if (
         !shouldContinueCheckoutSync({
           elapsedMs: nextElapsedMs,
-          timeoutMs: CHECKOUT_SYNC_TIMEOUT_MS,
+          timeoutMs,
           caughtUp: false,
         })
       ) {
@@ -150,7 +154,7 @@ export function CheckoutSubscriptionSync({
 
       timeoutId = setTimeout(() => {
         void poll();
-      }, CHECKOUT_SYNC_POLL_INTERVAL_MS);
+      }, pollIntervalMs);
     };
 
     void poll();
@@ -161,7 +165,7 @@ export function CheckoutSubscriptionSync({
         clearTimeout(timeoutId);
       }
     };
-  }, [baseline, checkoutReturn, router]);
+  }, [baseline, checkoutReturn, pollIntervalMs, router, timeoutMs]);
 
   if (phase === 'idle') {
     return null;
