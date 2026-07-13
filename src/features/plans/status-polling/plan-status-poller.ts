@@ -97,6 +97,7 @@ export class PlanStatusPoller {
     this.snapshot = this.buildSnapshot(this.state);
   }
 
+  // fallow-ignore-next-line unused-class-member
   revalidate = async (): Promise<void> => {
     if (this.cancelled) {
       return;

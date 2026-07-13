@@ -36,7 +36,7 @@ type EmailNotificationDeliveryRunDefinition = {
   readonly referenceTimeUtc: string;
 };
 
-export const EMAIL_NOTIFICATION_DELIVERY_RUN_DEFINITIONS = {
+const EMAIL_NOTIFICATION_DELIVERY_RUN_DEFINITIONS = {
   daily: {
     categories: ['daily_reminder', 'streak_reminder'],
     schedule: '0 14 * * *',

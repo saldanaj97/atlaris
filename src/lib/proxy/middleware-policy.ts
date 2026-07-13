@@ -35,7 +35,7 @@ export function isProviderWebhookRoute(pathname: string): boolean {
   );
 }
 
-export function isSignedEmailUnsubscribeRoute(pathname: string): boolean {
+function isSignedEmailUnsubscribeRoute(pathname: string): boolean {
   return pathname === PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH;
 }
 

@@ -20,7 +20,7 @@ export type ReserveEmailNotificationDeliveryRunResult =
   | { outcome: 'reserved'; run: EmailNotificationDeliveryRun }
   | { outcome: 'existing'; run: EmailNotificationDeliveryRun };
 
-export type ClaimEmailNotificationDeliveryRunResult =
+type ClaimEmailNotificationDeliveryRunResult =
   | { outcome: 'claimed'; run: EmailNotificationDeliveryRun }
   | { outcome: 'in_flight'; run: EmailNotificationDeliveryRun }
   | { outcome: 'terminal'; run: EmailNotificationDeliveryRun };
@@ -34,6 +34,14 @@ function cursorMatches(cursorUserId: string | null) {
   return cursorUserId === null
     ? isNull(emailNotificationDeliveryRuns.cursorUserId)
     : eq(emailNotificationDeliveryRuns.cursorUserId, cursorUserId);
+}
+
+function ownedRunningRun(runId: string, workflowRunId: string) {
+  return and(
+    eq(emailNotificationDeliveryRuns.id, runId),
+    eq(emailNotificationDeliveryRuns.status, 'running'),
+    eq(emailNotificationDeliveryRuns.workflowRunId, workflowRunId),
+  );
 }
 
 function zeroCounts() {
@@ -140,7 +148,7 @@ export async function loadEmailNotificationDeliveryRunByKey(
  * Claims a queued run for one Workflow SDK run. Replays by the same workflow
  * are accepted; all other owners are rejected without modifying state.
  */
-export async function attachEmailNotificationWorkflowRun(
+async function attachEmailNotificationWorkflowRun(
   args: { runId: string; workflowRunId: string; now?: Date },
   dbClient: DeliveryRunDb,
 ): Promise<ClaimEmailNotificationDeliveryRunResult> {
@@ -258,13 +266,7 @@ export async function recordEmailNotificationDeliveryRunRetry(
       lastErrorMessage: args.errorMessage,
       updatedAt: args.now ?? new Date(),
     })
-    .where(
-      and(
-        eq(emailNotificationDeliveryRuns.id, args.runId),
-        eq(emailNotificationDeliveryRuns.status, 'running'),
-        eq(emailNotificationDeliveryRuns.workflowRunId, args.workflowRunId),
-      ),
-    )
+    .where(ownedRunningRun(args.runId, args.workflowRunId))
     .returning({ id: emailNotificationDeliveryRuns.id });
 
   return updated[0] ? { outcome: 'recorded' } : { outcome: 'stale' };
@@ -307,9 +309,7 @@ export async function advanceEmailNotificationDeliveryRun(
     })
     .where(
       and(
-        eq(emailNotificationDeliveryRuns.id, args.runId),
-        eq(emailNotificationDeliveryRuns.status, 'running'),
-        eq(emailNotificationDeliveryRuns.workflowRunId, args.workflowRunId),
+        ownedRunningRun(args.runId, args.workflowRunId),
         cursorMatches(args.expectedCursorUserId),
       ),
     )
@@ -348,13 +348,7 @@ async function transitionOwnedEmailNotificationDeliveryRun(
       ...(args.status === 'paused' ? {} : { completedAt: now }),
       updatedAt: now,
     })
-    .where(
-      and(
-        eq(emailNotificationDeliveryRuns.id, args.runId),
-        eq(emailNotificationDeliveryRuns.status, 'running'),
-        eq(emailNotificationDeliveryRuns.workflowRunId, args.workflowRunId),
-      ),
-    )
+    .where(ownedRunningRun(args.runId, args.workflowRunId))
     .returning({ id: emailNotificationDeliveryRuns.id });
 
   return updated[0] ? { outcome: 'transitioned' } : { outcome: 'stale' };

@@ -78,14 +78,6 @@ export async function listDashboardPlanSummaries(params: {
   });
 }
 
-export async function listPlansPageSummaries(params: {
-  userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions;
-}): Promise<PlanSummary[]> {
-  return listPlanSummaries(params);
-}
-
 export async function getPlansPageForRead(params: {
   userId: string;
   dbClient?: PlanDbClient;

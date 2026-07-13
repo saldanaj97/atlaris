@@ -6,23 +6,20 @@
     "@sentry/__mocks__",
     "@better-auth/passkey",
     "@radix-ui/react-accordion",
+    "@radix-ui/react-alert-dialog",
     "@radix-ui/react-dialog",
     "@radix-ui/react-dropdown-menu",
     "@radix-ui/react-hover-card",
     "@radix-ui/react-label",
     "@radix-ui/react-progress",
     "@radix-ui/react-slot",
+    "@radix-ui/react-switch",
     "@radix-ui/react-tabs",
     "@radix-ui/react-tooltip",
     "babel-plugin-react-compiler",
     "class-variance-authority",
-    "radix-ui"
-  ],
-  "ignoreDependencyOverrides": [
-    {
-      "package": "serialize-javascript",
-      "source": "package.json"
-    }
+    "radix-ui",
+    "tailwindcss"
   ],
   "ignoreExports": [
     {
@@ -32,6 +29,10 @@
     {
       "file": "src/lib/config/env/auth.ts",
       "exports": ["clerkAuthEnv"]
+    },
+    {
+      "file": "src/components/layout/app-shell-width.ts",
+      "exports": ["APP_SHELL_CONTENT_INSET"]
     }
   ],
   "usedClassMembers": [

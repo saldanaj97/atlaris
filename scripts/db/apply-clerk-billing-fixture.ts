@@ -5,6 +5,10 @@ import type {
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
+  getPostgresHostname,
+  isLocalPostgresHostname,
+} from './local-postgres-host';
+import {
   CLERK_BILLING_PLAN_IDS,
   CLERK_BILLING_PLAN_SLUGS,
 } from '@/features/billing/clerk-billing/plan-mapping';
@@ -24,8 +28,6 @@ const STATUS_VALUES = new Set<FixtureStatus>([
   'canceled',
   'ended',
 ]);
-const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
-
 function usage(): never {
   console.error(
     [
@@ -104,18 +106,16 @@ function resolveDatabaseUrl(): string {
 }
 
 function assertLocalhostOnly(connectionUrl: string): void {
-  let url: URL;
-  try {
-    url = new URL(connectionUrl);
-  } catch {
+  const hostname = getPostgresHostname(connectionUrl);
+  if (hostname === null) {
     throw new Error(
       'Invalid POSTGRES_URL: could not parse hostname (expected a postgresql:// URL).',
     );
   }
 
-  if (!LOCAL_HOSTNAMES.has(url.hostname)) {
+  if (!isLocalPostgresHostname(hostname)) {
     throw new Error(
-      `Refusing to apply Clerk Billing fixture to non-local database (host: ${url.hostname}). Pass "--allow-non-local true" only when you intend to write there.`,
+      `Refusing to apply Clerk Billing fixture to non-local database (host: ${hostname}). Pass "--allow-non-local true" only when you intend to write there.`,
     );
   }
 }

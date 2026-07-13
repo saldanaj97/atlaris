@@ -42,7 +42,7 @@ async function readUtf8BodyCapped(req: Request): Promise<string | null> {
   }
 }
 
-export function createClerkBillingWebhookHandler(): PlainHandler {
+function createClerkBillingWebhookHandler(): PlainHandler {
   return withErrorBoundary(async (req: Request) => {
     const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'clerk_billing_webhook',

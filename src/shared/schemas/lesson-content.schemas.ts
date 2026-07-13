@@ -1,3 +1,4 @@
+import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
 import {
   MAX_LESSON_BLOCK_TEXT_LENGTH,
   MAX_LESSON_BLOCK_TITLE_LENGTH,
@@ -75,17 +76,10 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
     .max(MAX_MODULE_LESSON_BATCH_TASKS),
 });
 
-const ModuleLessonWorkflowMetadataSchema = z.strictObject({
-  provider: z.literal('workflow-sdk'),
-  runId: z.string().min(1).max(256),
-  startedAt: z.iso.datetime().optional(),
-  completedAt: z.iso.datetime().optional(),
-});
-
 export const ModuleLessonGenerationMetadataSchema = z.strictObject({
   version: z.literal(1),
   batchRequestId: z.string().max(128).optional(),
-  workflow: ModuleLessonWorkflowMetadataSchema.optional(),
+  workflow: WorkflowSdkMetadataSchema.optional(),
 });
 
 const ModuleLessonGenerationApiBaseSchema = z.strictObject({

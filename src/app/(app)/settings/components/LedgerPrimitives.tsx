@@ -3,12 +3,12 @@ import type { ReactElement, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /** Frosted surface over the app background — Ledger glass panel tokens. */
-export const ledgerGlassSurface =
+const ledgerGlassSurface =
   'rounded-2xl border border-white/50 bg-white/45 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/50';
 
-export const ledgerGlassDivider = 'divide-white/40 dark:divide-white/10';
+const ledgerGlassDivider = 'divide-white/40 dark:divide-white/10';
 
-export function SettingsLedgerAmbient(): ReactElement {
+function SettingsLedgerAmbient(): ReactElement {
   return (
     <div
       aria-hidden='true'

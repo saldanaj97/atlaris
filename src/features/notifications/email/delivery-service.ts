@@ -1,3 +1,4 @@
+import type { BuiltEmailContent } from './content';
 import type {
   EmailDeliveryRunRequest,
   EmailDeliveryRunResult,
@@ -17,10 +18,14 @@ import {
   findEmailDailyReminderPlanForUser,
   listEmailActivityDayKeysForUser,
 } from '@/lib/db/queries/email-delivery-content';
-import { listEmailDeliveryRecipients } from '@/lib/db/queries/email-delivery-recipients';
+import {
+  listEmailDeliveryRecipients,
+  type EmailDeliveryRecipient,
+} from '@/lib/db/queries/email-delivery-recipients';
 import {
   claimEmailNotificationDelivery,
   EMAIL_DELIVERY_LEASE_MS,
+  type EmailDeliveryClaimResult,
   EmailDeliveryLostLeaseError,
   markEmailNotificationDeliveryFailed,
   markEmailNotificationDeliveryManualReview,
@@ -132,6 +137,403 @@ function recordDeliveryFailure(
   });
 }
 
+async function buildRecipientEmailContents(args: {
+  recipient: EmailDeliveryRecipient;
+  requested: ReadonlySet<EmailNotificationCategory>;
+  request: EmailDeliveryRunRequest;
+  db: DeliveryDb;
+  appUrl: string;
+  secret: string;
+  now: Date;
+  deliveryNow: Date;
+}): Promise<BuiltEmailContent[]> {
+  const preferences = await getEmailNotificationPreferences(
+    args.recipient.userId,
+    args.db,
+  );
+  const effective = resolveEffectiveEmailPreferences(preferences);
+  const enabledCategories = new Set(
+    (Object.keys(effective) as Array<keyof typeof effective>).filter(
+      (category) => effective[category] && args.requested.has(category),
+    ),
+  );
+
+  if (enabledCategories.size === 0) {
+    return [];
+  }
+
+  const userPrefs = await getUserPreferences(args.recipient.userId, args.db);
+  const timeZone = normalizeTimeZone(userPrefs.analyticsTimezone);
+  const todayLocalKey = dateKeyInTimeZone(args.now, timeZone);
+  const dateWindow = requiredActivityDateWindow({
+    todayLocalKey,
+    enabledCategories,
+  });
+  const activityDayKeys = dateWindow
+    ? await listEmailActivityDayKeysForUser({
+        userId: args.recipient.userId,
+        timeZone,
+        startDateKeyInclusive: dateWindow.startDateKeyInclusive,
+        endDateKeyExclusive: dateWindow.endDateKeyExclusive,
+        dbClient: args.db,
+      })
+    : [];
+  const incompletePlan = enabledCategories.has('daily_reminder')
+    ? await findEmailDailyReminderPlanForUser(args.recipient.userId, args.db)
+    : null;
+  const unsubscribeToken = createUnsubscribeToken({
+    userId: args.recipient.userId,
+    secret: args.secret,
+    nowMs: args.deliveryNow.getTime(),
+  });
+
+  return buildEmailContents(
+    {
+      userId: args.recipient.userId,
+      email: args.recipient.email,
+      analyticsTimezone: userPrefs.analyticsTimezone,
+      schedulerDateUtc: args.request.schedulerDateUtc,
+      referenceDate: args.now,
+      activityDayKeys,
+      incompletePlan,
+      appUrl: args.appUrl,
+      unsubscribeUrl: `${args.appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`,
+    },
+    enabledCategories,
+  );
+}
+
+function handleUnclaimedDelivery(
+  claim: Exclude<EmailDeliveryClaimResult, { outcome: 'claimed' }>,
+  content: BuiltEmailContent,
+  counts: EmailDeliveryRunResult,
+  logger: Logger | undefined,
+  streakSentThisPass: boolean,
+): { action: 'continue' | 'stop'; streakSentThisPass: boolean } {
+  if (claim.outcome === 'already_terminal') {
+    counts.alreadyTerminal += 1;
+    return {
+      action: 'continue',
+      streakSentThisPass:
+        streakSentThisPass ||
+        (content.category === 'streak_reminder' && claim.status === 'sent'),
+    };
+  }
+
+  if (claim.outcome === 'in_flight') {
+    counts.inFlight += 1;
+    counts.pageFailure = {
+      kind: 'retryable',
+      failureClass: 'delivery_in_flight',
+      retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+    };
+    return { action: 'stop', streakSentThisPass };
+  }
+
+  counts.manualReview += 1;
+  counts.needsReview = true;
+  countMetric('atlaris.email.notification.manual_review', 1, {
+    attributes: {
+      category: content.category,
+      reason: 'provider_acceptance_ambiguous',
+    },
+  });
+  logger?.warn(
+    {
+      source: 'email_notifications',
+      event: 'manual_review',
+      category: content.category,
+      failureClass: 'provider_acceptance_ambiguous',
+    },
+    'Email notification delivery requires manual review',
+  );
+  return { action: 'continue', streakSentThisPass };
+}
+
+type ProviderFailure =
+  | { kind: 'manual_review'; failureClass: string }
+  | { kind: 'retryable'; failureClass: string }
+  | { kind: 'rejected'; failureClass: string; terminal: boolean }
+  | { kind: 'unknown'; failureClass: string };
+
+function classifyProviderFailure(error: unknown): ProviderFailure {
+  if (!(error instanceof EmailProviderError)) {
+    return { kind: 'unknown', failureClass: 'send_failed' };
+  }
+  if (error.failureClass === 'provider_idempotency_conflict') {
+    return { kind: 'manual_review', failureClass: error.failureClass };
+  }
+  if (error.outcome === 'retryable') {
+    return { kind: 'retryable', failureClass: error.failureClass };
+  }
+  if (error.outcome === 'rejected') {
+    return {
+      kind: 'rejected',
+      failureClass: error.failureClass,
+      terminal: error.failureClass !== 'provider_recipient_invalid',
+    };
+  }
+  return { kind: 'unknown', failureClass: error.failureClass };
+}
+
+async function handleProviderFailure(args: {
+  failure: ProviderFailure;
+  claim: Extract<EmailDeliveryClaimResult, { outcome: 'claimed' }>;
+  category: EmailNotificationCategory;
+  db: DeliveryDb;
+  counts: EmailDeliveryRunResult;
+  logger: Logger | undefined;
+}): Promise<'continue' | 'stop'> {
+  const { failure, claim, category, db, counts, logger } = args;
+
+  switch (failure.kind) {
+    case 'manual_review': {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryManualReview(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: failure.failureClass,
+          },
+          db,
+        ),
+      );
+      counts.manualReview += 1;
+      counts.needsReview = true;
+      countMetric('atlaris.email.notification.manual_review', 1, {
+        attributes: { category, reason: failure.failureClass },
+      });
+      return 'continue';
+    }
+    case 'retryable': {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryFailed(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: failure.failureClass,
+          },
+          db,
+        ),
+      );
+      recordDeliveryFailure(counts, failure.failureClass, category);
+      counts.pageFailure = {
+        kind: 'retryable',
+        failureClass: failure.failureClass,
+        retryAfterMs: RETRYABLE_PROVIDER_BACKOFF_MS,
+      };
+      logger?.warn(
+        {
+          source: 'email_notifications',
+          event: 'send_retryable_failure',
+          category,
+          failureClass: failure.failureClass,
+        },
+        'Email notification send failed; retry scheduled',
+      );
+      return 'stop';
+    }
+    case 'rejected': {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryFailed(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: failure.failureClass,
+          },
+          db,
+        ),
+      );
+      recordDeliveryFailure(counts, failure.failureClass, category);
+      logger?.warn(
+        {
+          source: 'email_notifications',
+          event: failure.terminal
+            ? 'send_terminal_failure'
+            : 'send_recipient_failure',
+          category,
+          failureClass: failure.failureClass,
+        },
+        failure.terminal
+          ? 'Email notification send failed permanently'
+          : 'Email notification send failed for recipient',
+      );
+      if (failure.terminal) {
+        counts.pageFailure = {
+          kind: 'terminal',
+          failureClass: failure.failureClass,
+        };
+        return 'stop';
+      }
+      return 'continue';
+    }
+    case 'unknown': {
+      recordDeliveryFailure(counts, failure.failureClass, category);
+      counts.pageFailure = {
+        kind: 'retryable',
+        failureClass: failure.failureClass,
+        retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+      };
+      logger?.warn(
+        {
+          source: 'email_notifications',
+          event: 'send_outcome_unknown',
+          category,
+          failureClass: failure.failureClass,
+        },
+        'Email notification send outcome unknown; lease retained',
+      );
+      return 'stop';
+    }
+    default: {
+      const _exhaustive: never = failure;
+      throw new Error(
+        `Unhandled provider failure: ${JSON.stringify(_exhaustive)}`,
+      );
+    }
+  }
+}
+
+type EmailDeliveryPassContext = {
+  db: DeliveryDb;
+  sender: EmailSender;
+  logger: Logger | undefined;
+  request: EmailDeliveryRunRequest;
+  requested: ReadonlySet<EmailNotificationCategory>;
+  appUrl: string;
+  secret: string;
+  now: Date;
+  deliveryNow: Date;
+  counts: EmailDeliveryRunResult;
+};
+
+type DeliveryContentResult = {
+  action: 'continue' | 'stop';
+  streakSentThisPass: boolean;
+};
+
+async function processEmailContent(args: {
+  recipient: EmailDeliveryRecipient;
+  content: BuiltEmailContent;
+  streakSentThisPass: boolean;
+  context: EmailDeliveryPassContext;
+}): Promise<DeliveryContentResult> {
+  const { recipient, content, context } = args;
+  const candidateRequest = context.sender.resolveRequest({
+    to: recipient.email,
+    subject: content.message.subject,
+    html: content.message.html,
+    text: content.message.text,
+    headers: content.message.headers,
+    idempotencyKey: `${recipient.userId}:${content.category}:${content.deliveryKey}`,
+  });
+  const claim = await persistDeliveryState(() =>
+    claimEmailNotificationDelivery(
+      {
+        userId: recipient.userId,
+        category: content.category,
+        deliveryKey: content.deliveryKey,
+        providerRequest: candidateRequest,
+        now: context.deliveryNow,
+      },
+      context.db,
+    ),
+  );
+
+  if (claim.outcome !== 'claimed') {
+    return handleUnclaimedDelivery(
+      claim,
+      content,
+      context.counts,
+      context.logger,
+      args.streakSentThisPass,
+    );
+  }
+
+  context.counts.claimed += 1;
+  if (content.category === 'daily_reminder' && args.streakSentThisPass) {
+    await persistDeliveryState(() =>
+      markEmailNotificationDeliverySkipped(
+        {
+          deliveryId: claim.deliveryId,
+          claimToken: claim.claimToken,
+          failureClass: 'suppressed_by_streak_reminder',
+        },
+        context.db,
+      ),
+    );
+    context.counts.skipped += 1;
+    countMetric('atlaris.email.notification.skipped', 1, {
+      attributes: {
+        category: content.category,
+        reason: 'suppressed_by_streak_reminder',
+      },
+    });
+    return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
+  }
+
+  let sendResult: Awaited<ReturnType<EmailSender['sendResolved']>>;
+  try {
+    sendResult = await context.sender.sendResolved(claim.providerRequest);
+  } catch (error) {
+    return {
+      action: await handleProviderFailure({
+        failure: classifyProviderFailure(error),
+        claim,
+        category: content.category,
+        db: context.db,
+        counts: context.counts,
+        logger: context.logger,
+      }),
+      streakSentThisPass: args.streakSentThisPass,
+    };
+  }
+
+  const streakSentThisPass =
+    args.streakSentThisPass || content.category === 'streak_reminder';
+  try {
+    await persistDeliveryState(() =>
+      markEmailNotificationDeliverySent(
+        {
+          deliveryId: claim.deliveryId,
+          claimToken: claim.claimToken,
+          providerMessageId: sendResult.providerMessageId,
+        },
+        context.db,
+      ),
+    );
+    context.counts.sent += 1;
+    countMetric('atlaris.email.notification.sent', 1, {
+      attributes: { category: content.category },
+    });
+  } catch (error) {
+    // Provider accepted the message; never mark failed. Leave the lease
+    // intact so a later reclaim can reuse the exact stored request.
+    recordDeliveryFailure(
+      context.counts,
+      'ledger_finalization_failed',
+      content.category,
+    );
+    context.logger?.error(
+      {
+        source: 'email_notifications',
+        event: 'ledger_finalization_failed',
+        category: content.category,
+        lostLease: error instanceof EmailDeliveryLostLeaseError,
+      },
+      'Email accepted by provider but ledger finalization failed',
+    );
+    context.counts.pageFailure = {
+      kind: 'retryable',
+      failureClass: 'ledger_finalization_failed',
+      retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
+    };
+    return { action: 'stop', streakSentThisPass };
+  }
+
+  return { action: 'continue', streakSentThisPass };
+}
+
 /**
  * Preference-gated, ledger-idempotent email delivery pass.
  * Service-role only; call from the maintenance worker route.
@@ -164,321 +566,43 @@ export async function runEmailNotificationDelivery(
   counts.nextCursor = nextCursor;
 
   const requested = new Set(request.categories);
+  const context: EmailDeliveryPassContext = {
+    db,
+    sender: deps.sender,
+    logger: deps.logger,
+    request,
+    requested,
+    appUrl,
+    secret,
+    now,
+    deliveryNow,
+    counts,
+  };
 
   recipients: for (const recipient of recipients) {
     counts.examined += 1;
-
     try {
-      const preferences = await getEmailNotificationPreferences(
-        recipient.userId,
-        db,
-      );
-      const effective = resolveEffectiveEmailPreferences(preferences);
-      const enabledCategories = new Set(
-        (Object.keys(effective) as Array<keyof typeof effective>).filter(
-          (category) => effective[category] && requested.has(category),
-        ),
-      );
-
-      if (enabledCategories.size === 0) {
-        continue;
-      }
-
-      const userPrefs = await getUserPreferences(recipient.userId, db);
-      const timeZone = normalizeTimeZone(userPrefs.analyticsTimezone);
-      const todayLocalKey = dateKeyInTimeZone(now, timeZone);
-      const dateWindow = requiredActivityDateWindow({
-        todayLocalKey,
-        enabledCategories,
+      const contents = await buildRecipientEmailContents({
+        recipient,
+        requested: context.requested,
+        request: context.request,
+        db: context.db,
+        appUrl: context.appUrl,
+        secret: context.secret,
+        now: context.now,
+        deliveryNow: context.deliveryNow,
       });
-
-      const activityDayKeys = dateWindow
-        ? await listEmailActivityDayKeysForUser({
-            userId: recipient.userId,
-            timeZone,
-            startDateKeyInclusive: dateWindow.startDateKeyInclusive,
-            endDateKeyExclusive: dateWindow.endDateKeyExclusive,
-            dbClient: db,
-          })
-        : [];
-
-      const incompletePlan = enabledCategories.has('daily_reminder')
-        ? await findEmailDailyReminderPlanForUser(recipient.userId, db)
-        : null;
-
-      const unsubscribeToken = createUnsubscribeToken({
-        userId: recipient.userId,
-        secret,
-        nowMs: deliveryNow.getTime(),
-      });
-      const unsubscribeUrl = `${appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
-
-      const contents = buildEmailContents(
-        {
-          userId: recipient.userId,
-          email: recipient.email,
-          analyticsTimezone: userPrefs.analyticsTimezone,
-          schedulerDateUtc: request.schedulerDateUtc,
-          referenceDate: now,
-          activityDayKeys,
-          incompletePlan,
-          appUrl,
-          unsubscribeUrl,
-        },
-        enabledCategories,
-      );
-
       let streakSentThisPass = false;
 
       for (const content of contents) {
-        const candidateIdempotencyKey = `${recipient.userId}:${content.category}:${content.deliveryKey}`;
-        const candidateRequest = deps.sender.resolveRequest({
-          to: recipient.email,
-          subject: content.message.subject,
-          html: content.message.html,
-          text: content.message.text,
-          headers: content.message.headers,
-          idempotencyKey: candidateIdempotencyKey,
+        const result = await processEmailContent({
+          recipient,
+          content,
+          streakSentThisPass,
+          context,
         });
-
-        const claim = await persistDeliveryState(() =>
-          claimEmailNotificationDelivery(
-            {
-              userId: recipient.userId,
-              category: content.category,
-              deliveryKey: content.deliveryKey,
-              providerRequest: candidateRequest,
-              now: deliveryNow,
-            },
-            db,
-          ),
-        );
-
-        if (claim.outcome === 'already_terminal') {
-          counts.alreadyTerminal += 1;
-          if (
-            content.category === 'streak_reminder' &&
-            claim.status === 'sent'
-          ) {
-            streakSentThisPass = true;
-          }
-          continue;
-        }
-        if (claim.outcome === 'in_flight') {
-          counts.inFlight += 1;
-          counts.pageFailure = {
-            kind: 'retryable',
-            failureClass: 'delivery_in_flight',
-            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
-          };
-          break recipients;
-        }
-        if (claim.outcome === 'manual_review') {
-          counts.manualReview += 1;
-          counts.needsReview = true;
-          countMetric('atlaris.email.notification.manual_review', 1, {
-            attributes: {
-              category: content.category,
-              reason: 'provider_acceptance_ambiguous',
-            },
-          });
-          deps.logger?.warn(
-            {
-              source: 'email_notifications',
-              event: 'manual_review',
-              category: content.category,
-              failureClass: 'provider_acceptance_ambiguous',
-            },
-            'Email notification delivery requires manual review',
-          );
-          continue;
-        }
-
-        counts.claimed += 1;
-
-        if (content.category === 'daily_reminder' && streakSentThisPass) {
-          await persistDeliveryState(() =>
-            markEmailNotificationDeliverySkipped(
-              {
-                deliveryId: claim.deliveryId,
-                claimToken: claim.claimToken,
-                failureClass: 'suppressed_by_streak_reminder',
-              },
-              db,
-            ),
-          );
-          counts.skipped += 1;
-          countMetric('atlaris.email.notification.skipped', 1, {
-            attributes: {
-              category: content.category,
-              reason: 'suppressed_by_streak_reminder',
-            },
-          });
-          continue;
-        }
-
-        let sendResult;
-        try {
-          sendResult = await deps.sender.sendResolved(claim.providerRequest);
-        } catch (err) {
-          if (
-            err instanceof EmailProviderError &&
-            err.failureClass === 'provider_idempotency_conflict'
-          ) {
-            await persistDeliveryState(() =>
-              markEmailNotificationDeliveryManualReview(
-                {
-                  deliveryId: claim.deliveryId,
-                  claimToken: claim.claimToken,
-                  failureClass: err.failureClass,
-                },
-                db,
-              ),
-            );
-            counts.manualReview += 1;
-            counts.needsReview = true;
-            countMetric('atlaris.email.notification.manual_review', 1, {
-              attributes: {
-                category: content.category,
-                reason: err.failureClass,
-              },
-            });
-            continue;
-          }
-
-          if (
-            err instanceof EmailProviderError &&
-            err.outcome === 'retryable'
-          ) {
-            await persistDeliveryState(() =>
-              markEmailNotificationDeliveryFailed(
-                {
-                  deliveryId: claim.deliveryId,
-                  claimToken: claim.claimToken,
-                  failureClass: err.failureClass,
-                },
-                db,
-              ),
-            );
-            recordDeliveryFailure(counts, err.failureClass, content.category);
-            counts.pageFailure = {
-              kind: 'retryable',
-              failureClass: err.failureClass,
-              retryAfterMs: RETRYABLE_PROVIDER_BACKOFF_MS,
-            };
-            deps.logger?.warn(
-              {
-                source: 'email_notifications',
-                event: 'send_retryable_failure',
-                category: content.category,
-                failureClass: err.failureClass,
-              },
-              'Email notification send failed; retry scheduled',
-            );
-            break recipients;
-          }
-
-          if (err instanceof EmailProviderError && err.outcome === 'rejected') {
-            const terminal = err.failureClass !== 'provider_recipient_invalid';
-            await persistDeliveryState(() =>
-              markEmailNotificationDeliveryFailed(
-                {
-                  deliveryId: claim.deliveryId,
-                  claimToken: claim.claimToken,
-                  failureClass: err.failureClass,
-                },
-                db,
-              ),
-            );
-            recordDeliveryFailure(counts, err.failureClass, content.category);
-            deps.logger?.warn(
-              {
-                source: 'email_notifications',
-                event: terminal
-                  ? 'send_terminal_failure'
-                  : 'send_recipient_failure',
-                category: content.category,
-                failureClass: err.failureClass,
-              },
-              terminal
-                ? 'Email notification send failed permanently'
-                : 'Email notification send failed for recipient',
-            );
-            if (terminal) {
-              counts.pageFailure = {
-                kind: 'terminal',
-                failureClass: err.failureClass,
-              };
-              break recipients;
-            }
-            continue;
-          }
-
-          // Outcome-unknown transport failures keep the leased pending row for
-          // safe recovery within the provider idempotency window.
-          const failureClass =
-            err instanceof EmailProviderError
-              ? err.failureClass
-              : 'send_failed';
-          recordDeliveryFailure(counts, failureClass, content.category);
-          counts.pageFailure = {
-            kind: 'retryable',
-            failureClass,
-            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
-          };
-          deps.logger?.warn(
-            {
-              source: 'email_notifications',
-              event: 'send_outcome_unknown',
-              category: content.category,
-              failureClass,
-            },
-            'Email notification send outcome unknown; lease retained',
-          );
-          break recipients;
-        }
-
-        if (content.category === 'streak_reminder') {
-          streakSentThisPass = true;
-        }
-
-        try {
-          await persistDeliveryState(() =>
-            markEmailNotificationDeliverySent(
-              {
-                deliveryId: claim.deliveryId,
-                claimToken: claim.claimToken,
-                providerMessageId: sendResult.providerMessageId,
-              },
-              db,
-            ),
-          );
-          counts.sent += 1;
-          countMetric('atlaris.email.notification.sent', 1, {
-            attributes: { category: content.category },
-          });
-        } catch (err) {
-          // Provider accepted the message; never mark failed. Leave the lease
-          // intact so a later reclaim can reuse the exact stored request.
-          recordDeliveryFailure(
-            counts,
-            'ledger_finalization_failed',
-            content.category,
-          );
-          deps.logger?.error(
-            {
-              source: 'email_notifications',
-              event: 'ledger_finalization_failed',
-              category: content.category,
-              lostLease: err instanceof EmailDeliveryLostLeaseError,
-            },
-            'Email accepted by provider but ledger finalization failed',
-          );
-          counts.pageFailure = {
-            kind: 'retryable',
-            failureClass: 'ledger_finalization_failed',
-            retryAfterMs: EMAIL_DELIVERY_LEASE_MS,
-          };
+        streakSentThisPass = result.streakSentThisPass;
+        if (result.action === 'stop') {
           break recipients;
         }
       }
@@ -500,7 +624,6 @@ export async function runEmailNotificationDelivery(
         },
         'Email notification recipient processing failed; skipping user',
       );
-      continue;
     }
   }
 
