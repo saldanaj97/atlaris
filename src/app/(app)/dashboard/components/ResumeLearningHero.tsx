@@ -125,9 +125,10 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         <HeroCircularProgress progressPercent={progressPercent} />
       </div>
 
-      <div className='flex flex-wrap items-start justify-between gap-4 sm:items-end'>
-        <div className='min-w-0 flex-1 space-y-2'>
-          <h2 className='truncate text-2xl font-semibold text-foreground md:text-3xl'>
+      {/* ponytail: stack until lg — side-by-side truncates the title around tablet widths */}
+      <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+        <div className='min-w-0 space-y-2 lg:flex-1'>
+          <h2 className='text-2xl font-semibold wrap-break-word text-foreground md:text-3xl lg:truncate'>
             {plan.plan.topic}
           </h2>
           <p className='text-sm text-muted-foreground'>
@@ -135,12 +136,12 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           </p>
         </div>
 
-        <div className='flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4'>
-          <p className='min-w-0 text-sm wrap-break-word text-muted-foreground'>
+        <div className='flex w-full min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:justify-end lg:gap-4'>
+          <p className='min-w-0 text-sm wrap-break-word text-muted-foreground sm:flex-1 lg:max-w-xs lg:flex-none'>
             <span className='font-medium text-foreground'>Up Next:</span>{' '}
             {upNextLabel}
           </p>
-          <Button asChild className='px-5 py-2.5'>
+          <Button asChild className='w-full shrink-0 px-5 py-2.5 sm:w-auto'>
             <Link href={`/plans/${plan.plan.id}`}>
               <Play />
               Continue Learning

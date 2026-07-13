@@ -76,15 +76,15 @@ export function DashboardContentSkeleton() {
             <Skeleton className='size-16 rounded-full' />
           </div>
 
-          <div className='flex flex-wrap items-end justify-between gap-4'>
-            <div className='min-w-0 flex-1 space-y-2'>
-              <Skeleton className='h-9 w-64 md:w-80' />
+          <div className='flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+            <div className='min-w-0 space-y-2 lg:flex-1'>
+              <Skeleton className='h-9 w-full max-w-md' />
               <Skeleton className='h-5 w-full max-w-md' />
             </div>
 
-            <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
-              <Skeleton className='h-5 w-40' />
-              <Skeleton className='h-10 w-40 rounded-lg' />
+            <div className='flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:justify-end lg:gap-4'>
+              <Skeleton className='h-5 w-full max-w-xs sm:flex-1 lg:w-40 lg:flex-none' />
+              <Skeleton className='h-10 w-full rounded-lg sm:w-40' />
             </div>
           </div>
         </Surface>
@@ -131,7 +131,7 @@ export function DashboardContentSkeleton() {
               <Skeleton className='h-10 w-32 rounded-lg' />
             </div>
           </Surface>
-          <Surface className='border-primary/20'>
+          <Surface className='hidden border-primary/20 lg:block'>
             <Skeleton className='mb-4 h-5 w-28' />
             <Skeleton className='h-48 w-full rounded-xl' />
           </Surface>

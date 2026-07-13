@@ -80,7 +80,8 @@ export function ActivityFeedScoreboard({
   ];
 
   return (
-    <section aria-label='Activity pulse' className='space-y-6'>
+    <section aria-label='Activity pulse' className='hidden space-y-6 lg:block'>
+      {/* ponytail: hide when grid collapses; sidebar-only on lg+ */}
       <div className='flex items-center gap-2 border-b border-border pb-4'>
         <p className='px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground'>
           Activity pulse
