@@ -55,7 +55,7 @@ Key auth-related server variables include:
 
 ### Workflow SDK
 
-**Source of truth for workflow env vars.** Local runtime setup (`PORT`, `WORKFLOW_LOCAL_BASE_URL`, `pnpm dev:workflow`, health checks) is in [`docs/architecture/workflow-sdk.md`](../architecture/workflow-sdk.md#local-development).
+**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
 
 #### App-parsed product flags (`workflowEnv`)
 
@@ -75,17 +75,6 @@ Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off*
 | Variable             | Purpose                                                                                                                                                              | Required |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
-
-#### Local-only runtime variables
-
-Not parsed in `workflowEnv`. Set in `.env.local` only when testing workflow flags locally (see `.env.local.example`):
-
-| Variable                  | Purpose                                                                                        |
-| ------------------------- | ---------------------------------------------------------------------------------------------- |
-| `PORT`                    | Port the dev server listens on (commonly `3000`)                                               |
-| `WORKFLOW_LOCAL_BASE_URL` | Base URL for the local workflow self-fetch loop; must be `http://127.0.0.1:<PORT>` (same port) |
-
-When any workflow flag is `true`, run **`pnpm dev:workflow`** (webpack dev) instead of `pnpm dev` (Turbopack).
 
 Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 
