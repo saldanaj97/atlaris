@@ -166,13 +166,6 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
       return;
     }
 
-    const useMock = aiEnv.useMock && !appEnv.isProduction;
-
-    if (useMock) {
-      this.providers = [() => new MockGenerationProvider()];
-      return;
-    }
-
     const model = cfg.model ?? aiEnv.defaultModel;
     this.providers = [
       () =>
