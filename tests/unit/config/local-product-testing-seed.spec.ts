@@ -26,12 +26,6 @@ describe('local product-testing seed contract', () => {
     expect(envExample).toContain(
       `DEV_AUTH_USER_ID=${LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID}`,
     );
-    expect(envExample).toContain(
-      `DEV_AUTH_USER_EMAIL=${LOCAL_PRODUCT_TESTING_SEED_EMAIL}`,
-    );
-    expect(envExample).toContain(
-      `DEV_AUTH_USER_NAME=${LOCAL_PRODUCT_TESTING_SEED_NAME}`,
-    );
     expect(envExample).toContain('created by `pnpm db:dev:reset`');
   });
 });

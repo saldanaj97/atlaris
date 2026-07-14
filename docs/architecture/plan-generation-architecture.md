@@ -229,7 +229,7 @@ If someone imports the service-role DB into a request handler, they are not bein
 
 ## Related documents
 
-- [Workflow SDK](./workflow-sdk.md) — feature flags, local dev (`pnpm dev:workflow`), correlation metadata, and tests
+- [Workflow SDK](./workflow-sdk.md) — feature flags, Preview testing (`pnpm deploy:preview`), correlation metadata, and tests
 - [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration (`POST .../regenerate`) and workflow-backed drain
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/api/rate-limiting.md`

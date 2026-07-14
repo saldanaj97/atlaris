@@ -30,7 +30,7 @@ When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 - Rejected workflow runs are terminalized via `failJob(..., { retryable: false })` when `run.returnValue` rejects, even if finalization never runs.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
 
-Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and local dev). Env flags: [environment variables](../development/environment.md#workflow-sdk). Local workflow testing: [development commands](../development/commands.md) (`pnpm dev:workflow`).
+Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Env flags: [environment variables](../development/environment.md#workflow-sdk). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
 
 ## Triggering the Worker
 
@@ -90,7 +90,7 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 
 ## Related docs
 
-- [Workflow SDK](./workflow-sdk.md) — `PLAN_REGENERATION_WORKFLOW_ENABLED`, run correlation, and local runtime setup
+- [Workflow SDK](./workflow-sdk.md) — `PLAN_REGENERATION_WORKFLOW_ENABLED`, run correlation, and Preview testing
 - [Plan generation architecture](./plan-generation-architecture.md) — create/retry and module lesson pipelines (separate from queued regeneration)
 - [Environment variables](../development/environment.md#workflow-sdk) — workflow and regeneration queue env vars
-- [Development commands](../development/commands.md) — `pnpm dev:workflow` and workflow test commands
+- [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands
