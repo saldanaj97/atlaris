@@ -115,7 +115,7 @@ NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration te
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.
 
-Workflow SDK runtime, local dev (`pnpm dev:workflow`), feature flags, and correlation: [docs/architecture/workflow-sdk.md](docs/architecture/workflow-sdk.md).
+Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and correlation: [docs/architecture/workflow-sdk.md](docs/architecture/workflow-sdk.md).
 
 ## Environment and logging
 
