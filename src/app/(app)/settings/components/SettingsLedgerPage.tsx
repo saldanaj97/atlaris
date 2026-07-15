@@ -17,15 +17,12 @@ import { IntegrationRows } from '@/app/(app)/settings/integrations/components/In
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
-import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
-import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
 
 export async function SettingsLedgerPage(): Promise<ReactElement> {
   const locale = getSupportedLocale((await headers()).get('accept-language'));
-  const showClerkBilling = shouldUseClerkUi();
 
   return (
     <>
@@ -55,18 +52,6 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
           <Suspense fallback={<BillingPlanSkeleton />}>
             <BillingPlanRows locale={locale} />
           </Suspense>
-          {showClerkBilling ? (
-            <div className='py-3.5 last:pb-0'>
-              <UserProfile
-                appearance={{
-                  elements: {
-                    rootBox: 'w-full',
-                    cardBox: 'w-full shadow-none',
-                  },
-                }}
-              />
-            </div>
-          ) : null}
         </LedgerSectionBlock>
 
         <LedgerSectionBlock
