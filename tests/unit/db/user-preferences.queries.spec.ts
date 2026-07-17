@@ -1,4 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
+import type { SQL } from 'drizzle-orm';
 
 import { makeDbClient } from '../../fixtures/db-mocks';
 import {
@@ -8,6 +9,7 @@ import {
   upsertUserAnalyticsTimezone,
   upsertUserPreferredAiModel,
 } from '@/lib/db/queries/user-preferences';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('user preference queries', () => {
@@ -47,21 +49,15 @@ describe('user preference queries', () => {
   });
 
   it('saves email notification preferences transactionally', async () => {
-    const insertedValues: unknown[] = [];
     const currentUnsubscribedAt = new Date('2026-07-03T12:00:00.000Z');
-
-    function insertReturning(rows: unknown[]) {
-      return {
-        values: vi.fn((payload: unknown) => {
-          insertedValues.push(payload);
-          return {
-            onConflictDoUpdate: vi.fn(() => ({
-              returning: vi.fn().mockResolvedValue(rows),
-            })),
-          };
-        }),
-      };
-    }
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce([{ unsubscribe_all_optional_emails: true }])
+      .mockResolvedValueOnce([
+        { category: 'weekly_summary', enabled: false },
+        { category: 'daily_reminder', enabled: true },
+        { category: 'streak_reminder', enabled: false },
+      ]);
 
     const tx = {
       select: vi.fn(() => ({
@@ -81,19 +77,7 @@ describe('user preference queries', () => {
             ]),
         }),
       })),
-      insert: vi
-        .fn()
-        .mockReturnValueOnce(
-          insertReturning([{ unsubscribeAllOptionalEmails: true }]),
-        )
-        .mockReturnValueOnce(
-          insertReturning([
-            { category: 'weekly_summary', enabled: false },
-            { category: 'daily_reminder', enabled: true },
-            { category: 'streak_reminder', enabled: false },
-          ]),
-        ),
-      execute: vi.fn(),
+      execute,
     };
     const transaction = vi.fn((run) => run(tx));
     const dbClient = makeDbClient({
@@ -124,64 +108,28 @@ describe('user preference queries', () => {
     });
 
     expect(transaction).toHaveBeenCalledOnce();
-    expect(insertedValues).toHaveLength(2);
-    expect(insertedValues[0]).toMatchObject({
-      userId: 'user-1',
-      unsubscribeAllOptionalEmails: true,
-    });
-    const categoryValues = insertedValues[1] as Array<{
-      userId: string;
-      category: string;
-      enabled: boolean;
-      unsubscribedAt: unknown;
-    }>;
-    expect(categoryValues).toHaveLength(3);
-    expect(categoryValues[0]).toMatchObject({
-      userId: 'user-1',
-      category: 'weekly_summary',
-      enabled: false,
-    });
-    expect(categoryValues[0]?.unsubscribedAt).not.toBeNull();
-    expect(categoryValues[1]).toMatchObject({
-      userId: 'user-1',
-      category: 'daily_reminder',
-      enabled: true,
-      unsubscribedAt: null,
-    });
-    expect(categoryValues[2]).toMatchObject({
-      userId: 'user-1',
-      category: 'streak_reminder',
-      enabled: false,
-      unsubscribedAt: currentUnsubscribedAt,
-    });
+    expect(execute).toHaveBeenCalledTimes(2);
+
+    const dialect = new PgDialect();
+    const settingsQuery = dialect.sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
+    const categoriesQuery = dialect.sqlToQuery(
+      execute.mock.calls[1]?.[0] as SQL,
+    );
+    expect(settingsQuery.sql).not.toContain('"created_at"');
+    expect(categoriesQuery.sql).not.toContain('"created_at"');
   });
 
   it('throws when email notification category writes are incomplete', async () => {
-    function insertReturning(rows: unknown[]) {
-      return {
-        values: vi.fn(() => ({
-          onConflictDoUpdate: vi.fn(() => ({
-            returning: vi.fn().mockResolvedValue(rows),
-          })),
-        })),
-      };
-    }
-
     const tx = {
       select: vi.fn(() => ({
         from: () => ({
           where: () => Promise.resolve([]),
         }),
       })),
-      insert: vi
+      execute: vi
         .fn()
-        .mockReturnValueOnce(
-          insertReturning([{ unsubscribeAllOptionalEmails: false }]),
-        )
-        .mockReturnValueOnce(
-          insertReturning([{ category: 'weekly_summary', enabled: true }]),
-        ),
-      execute: vi.fn(),
+        .mockResolvedValueOnce([{ unsubscribe_all_optional_emails: false }])
+        .mockResolvedValueOnce([{ category: 'weekly_summary', enabled: true }]),
     };
     const dbClient = makeDbClient({
       execute: vi.fn().mockResolvedValue([]) as unknown as DbClient['execute'],

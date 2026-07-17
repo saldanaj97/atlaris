@@ -5,6 +5,7 @@ import {
   createRlsDbForUser,
 } from '../helpers/rls';
 import { expectRlsViolation } from './rls-test-helpers';
+import { saveEmailNotificationPreferences } from '@/lib/db/queries/user-preferences';
 import {
   userEmailNotificationPreferences,
   userEmailNotificationSettings,
@@ -120,6 +121,48 @@ describe('user preference RLS policies', () => {
       anonDb
         .insert(userPreferences)
         .values({ userId: owner.id, analyticsTimezone: 'UTC' }),
+    );
+  });
+
+  it('saves notification preferences without granting created_at writes', async () => {
+    const [owner] = await db
+      .insert(users)
+      .values({
+        authUserId: 'notification_preferences_owner',
+        email: 'notification-preferences-owner@test.com',
+      })
+      .returning();
+    const ownerDb = await createRlsDbForUser('notification_preferences_owner');
+
+    await expect(
+      saveEmailNotificationPreferences(
+        owner.id,
+        {
+          unsubscribeAllOptionalEmails: false,
+          categories: {
+            weekly_summary: true,
+            daily_reminder: true,
+            streak_reminder: false,
+          },
+        },
+        ownerDb,
+      ),
+    ).resolves.toEqual({
+      unsubscribeAllOptionalEmails: false,
+      categories: {
+        weekly_summary: true,
+        daily_reminder: true,
+        streak_reminder: false,
+      },
+    });
+
+    await expectRlsViolation(() =>
+      ownerDb.insert(userEmailNotificationPreferences).values({
+        userId: owner.id,
+        category: 'streak_reminder',
+        enabled: true,
+        createdAt: new Date(),
+      }),
     );
   });
 });
