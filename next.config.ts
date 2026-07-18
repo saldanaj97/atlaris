@@ -58,7 +58,7 @@ export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 
-  org: 'atlaris-9x',
+  org: 'jcs-software',
 
   project: 'atlaris',
 
