@@ -110,8 +110,12 @@ write_env_file() {
   final_file=''
 
   cleanup() {
-    [[ -n "${raw_file:-}" && -f "$raw_file" ]] && rm -f "$raw_file"
-    [[ -n "${final_file:-}" && -f "$final_file" ]] && rm -f "$final_file"
+    if [[ -n "${raw_file:-}" && -f "$raw_file" ]]; then
+      rm -f "$raw_file"
+    fi
+    if [[ -n "${final_file:-}" && -f "$final_file" ]]; then
+      rm -f "$final_file"
+    fi
   }
   trap cleanup EXIT
 
@@ -147,6 +151,8 @@ write_env_file() {
   chmod 600 "$env_file"
 
   log "Wrote 1Password Environment to $env_file"
+  cleanup
+  trap - EXIT
 }
 
 main() {
