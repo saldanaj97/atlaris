@@ -1,616 +1,507 @@
-import type { ReactNode } from 'react';
-
 import { LiquidGlassButton } from '@/app/(marketing)/_shared/LiquidGlassButton';
-import { marketingGlassCardSurface } from '@/app/(marketing)/_shared/marketing-glass-surface';
+import { marketingSecondaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
+import { StarField } from '@/app/(marketing)/_shared/StarField';
+import { Reveal } from '@/app/(marketing)/landing/components/Reveal';
 import { cn } from '@/lib/utils';
-import {
-  ArrowRight,
-  BarChart3,
-  BookOpen,
-  Clock3,
-  Compass,
-  FileText,
-  TrendingUp,
-} from 'lucide-react';
-import Image from 'next/image';
+import { ArrowRight, BarChart3, ImageIcon, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
-const landingCardClassName = cn(
-  'rounded-3xl shadow-sm backdrop-blur-xl',
-  marketingGlassCardSurface,
-);
+import styles from './landing.module.css';
 
-const appShots = {
-  plans: '/marketing/app-screenshots/plans.png',
-  dashboard: '/marketing/app-screenshots/dashboard.png',
-  analytics: '/marketing/app-screenshots/analytics.png',
-};
+const landingEnterClassName =
+  'animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-700 motion-reduce:animate-none';
 
-const landing = {
-  heroKicker: 'Plans, tasks, and analytics in one workspace',
-  headline: 'Where goals and progress',
-  highlight: 'jam together',
-  subheadline:
-    'Atlaris gives each learning goal a visible plan, then turns completion into progress signals you can read at a glance.',
-  primaryCta: 'Create a plan free',
-  secondaryCta: 'Open pricing',
-  image: appShots.analytics,
-  imageAlt: 'Atlaris usage analytics with weekly progress chart',
-  proof: [
-    'Tasks and modules',
-    'Estimated completed time',
-    'Weekly progress changes',
-  ],
-  problemTitle: 'The hard part is not finding content. It is keeping context.',
-  problemCopy:
-    'Atlaris keeps the plan, current task, and progress history close enough that you do not restart from memory every session.',
-  howTitle: 'Connect the learning pieces',
-  benefitTitle: 'Know what changed',
-  audienceTitle: 'Works across learning styles',
-  finalTitle: 'Stop restarting the plan from scratch.',
-  finalCopy:
-    'Create the roadmap once, then let your workspace show what to do next.',
-  sections: {
-    pain: [
-      'You lose the reason behind each saved resource.',
-      'Completed work disappears into memory.',
-      'The next task is unclear after a few days away.',
-    ],
-    steps: [
-      {
-        icon: 'file',
-        title: 'Capture the context',
-        copy: 'Goal, level, schedule, and focus area become the plan input.',
-      },
-      {
-        icon: 'book',
-        title: 'Study from the plan',
-        copy: 'Resources stay attached to the work they support.',
-      },
-      {
-        icon: 'chart',
-        title: 'Read the pulse',
-        copy: 'Usage analytics show current completion and recent progress changes.',
-      },
-    ],
-    benefits: [
-      {
-        icon: 'clock',
-        title: 'Estimated time is explicit',
-        copy: 'Atlaris labels completed learning time as estimated, not invented history.',
-      },
-      {
-        icon: 'trend',
-        title: 'Signals over noise',
-        copy: 'The dashboard shows recent learning activity without burying the plan.',
-      },
-      {
-        icon: 'compass',
-        title: 'Easy re-entry',
-        copy: 'Come back to the active plan instead of rebuilding your own context.',
-      },
-    ],
-    audiences: [
-      {
-        title: 'College support',
-        copy: 'Add structure around a course without replacing the syllabus.',
-      },
-      {
-        title: 'Professional growth',
-        copy: 'Turn a development goal into something visible each week.',
-      },
-      {
-        title: 'Weekend learning',
-        copy: 'Make a plan small enough to survive a busy calendar.',
-      },
-    ],
-  },
+const copy = {
+  overline: 'The After-Hours Edition',
+  headlineLead: 'Make space for',
+  headlineEmphasis: 'the work that changes you.',
+  subheadline: 'Plans, tasks, and analytics for the quiet hours.',
+  primaryCta: 'Begin tonight',
+  secondaryCta: 'See pricing',
 } as const;
 
-const comparisonRows = [
-  {
-    label: 'Saved links',
-    copy: 'Resources exist, but the route is yours to invent.',
-    highlight: false,
-  },
-  {
-    label: 'Generic courses',
-    copy: 'The sequence is fixed, even when your time is not.',
-    highlight: false,
-  },
-  {
-    label: 'Atlaris',
-    copy: 'The plan starts from your goal, level, and weekly capacity.',
-    highlight: true,
-  },
-];
-
-type LandingIconName =
-  | (typeof landing.sections.steps)[number]['icon']
-  | (typeof landing.sections.benefits)[number]['icon'];
-
-function LandingIcon({
-  name,
-  className,
-}: {
-  name: LandingIconName;
-  className: string;
-}) {
-  switch (name) {
-    case 'file':
-      return <FileText className={className} aria-hidden='true' />;
-    case 'book':
-      return <BookOpen className={className} aria-hidden='true' />;
-    case 'chart':
-      return <BarChart3 className={className} aria-hidden='true' />;
-    case 'clock':
-      return <Clock3 className={className} aria-hidden='true' />;
-    case 'trend':
-      return <TrendingUp className={className} aria-hidden='true' />;
-    case 'compass':
-      return <Compass className={className} aria-hidden='true' />;
-  }
-}
-
-const faq = [
-  {
-    question: 'Does Atlaris replace courses?',
-    answer:
-      'No. It turns a goal into a plan and can point each lesson toward resources. Courses can still be part of the plan.',
-  },
-  {
-    question: 'Is calendar sync live?',
-    answer:
-      'Not yet. Atlaris is designed around time-blocked sessions now, with calendar sync still marked as coming soon.',
-  },
-  {
-    question: 'Are the analytics historical?',
-    answer:
-      'Current completion and progress changes are available. Atlaris avoids pretending it has historical study time that was never recorded.',
-  },
-];
-
+/**
+ * After Hours landing — celestial atlas narrative.
+ * Hero (unchanged) → drift problem → constellation route → instrument
+ * screenshots → quiet questions → Polaris night banner.
+ */
 export function LandingDesignExplorer() {
   return (
-    <MarketingPageShell withHeaderOffset className='[letter-spacing:0]'>
-      <main className='overflow-hidden'>
+    <MarketingPageShell withHeaderOffset className='bg-background'>
+      <CelestialBackdrop />
+      <div className='relative z-10'>
+        <Hairline />
         <Hero />
-        <ProofBar />
-        <ProblemSection />
-        <HowItWorks />
-        <Benefits />
-        <ProductTour />
-        <AudienceSection />
-        <Comparison />
-        <Faq />
-        <FinalCta />
-      </main>
+        <Hairline />
+        <DriftSection />
+        <RouteSection />
+        <InstrumentsSection />
+        <QuestionsSection />
+        <PolarisBanner />
+      </div>
     </MarketingPageShell>
   );
 }
 
-function Hero() {
-  return (
-    <section className='mx-auto grid min-h-[calc(100svh-10rem)] max-w-7xl items-center gap-10 px-6 pt-10 pb-12 md:px-8 lg:block lg:pt-16'>
-      <div className='relative z-10 lg:text-center'>
-        <p className='mb-5 text-sm font-semibold text-primary uppercase'>
-          {landing.heroKicker}
-        </p>
-        <h1 className='mx-auto max-w-4xl text-5xl leading-[1.02] font-black [letter-spacing:0] text-balance text-foreground sm:text-6xl lg:text-7xl'>
-          {landing.headline}{' '}
-          <span className='inline-flex rounded-[1.2rem] bg-muted px-4 text-primary dark:bg-primary/15'>
-            {landing.highlight}
-          </span>
-        </h1>
-        <p className='mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground'>
-          {landing.subheadline}
-        </p>
-        <div className='mt-8 flex flex-col justify-center gap-3 sm:flex-row'>
-          <PrimaryLink href='/plans/new'>{landing.primaryCta}</PrimaryLink>
-          <SecondaryLink href='/pricing'>{landing.secondaryCta}</SecondaryLink>
-        </div>
-      </div>
+/* ------------------------------------------------------------------ */
+/* Backdrop                                                            */
+/* ------------------------------------------------------------------ */
 
-      <div className='relative mt-10 lg:mt-12'>
-        <ScreenshotFrame className='mx-auto max-w-6xl'>
-          <AppScreenshot src={landing.image} alt={landing.imageAlt} priority />
-        </ScreenshotFrame>
-      </div>
-    </section>
-  );
-}
-
-function ScreenshotFrame({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+function CelestialBackdrop() {
   return (
     <div
-      className={cn(
-        'overflow-hidden rounded-4xl border border-white/40 bg-card shadow-2xl dark:border-white/10',
-        className,
-      )}
+      className='pointer-events-none absolute inset-0 overflow-hidden text-foreground'
+      aria-hidden='true'
     >
-      <div
-        className='flex h-9 items-center justify-between border-b border-border/60 px-4'
-        aria-hidden='true'
-      >
-        <div className='flex gap-2'>
-          <span className='size-2.5 rounded-full bg-destructive' />
-          <span className='size-2.5 rounded-full bg-warning' />
-          <span className='size-2.5 rounded-full bg-success' />
-        </div>
-        <span className='text-xs font-semibold text-muted-foreground'>
-          atlaris.app
-        </span>
-        <span className='h-2 w-10 rounded-full bg-muted' />
-      </div>
-      <div className='aspect-16/10 overflow-hidden'>{children}</div>
+      {/* Warm dusk glow — top right, where the hero sits */}
+      <div className='absolute -top-24 -right-16 size-136 rounded-full bg-primary/20 blur-3xl md:size-168' />
+      {/* Plum horizon wash — mid left */}
+      <div className='absolute top-[30%] -left-28 size-112 rounded-full bg-panel-muted/70 blur-3xl md:size-144' />
+      {/* Faint parchment nebula — lower right */}
+      <div className='absolute right-[-6%] bottom-[12%] size-96 rounded-full bg-card/80 blur-3xl' />
+      <StarField />
     </div>
   );
 }
 
-function ProofBar() {
-  return (
-    <section className='border-y border-border/60 bg-white/60 backdrop-blur dark:bg-card/40'>
-      <div className='mx-auto grid max-w-7xl gap-3 px-6 py-5 sm:grid-cols-3 md:px-8'>
-        {landing.proof.map((item) => (
-          <div
-            key={item}
-            className='flex items-center gap-3 text-sm font-semibold text-muted-foreground'
-          >
-            <span className='size-2 rounded-full bg-primary' />
-            {item}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+function Hairline() {
+  return <div className='h-px w-full bg-border/35' aria-hidden='true' />;
 }
 
-function ProblemSection() {
+function SectionOverline({ children }: { children: string }) {
   return (
-    <Section
-      eyebrow='The problem'
-      title={landing.problemTitle}
-      copy={landing.problemCopy}
-    >
-      <div className='grid gap-4 md:grid-cols-3'>
-        {landing.sections.pain.map((pain) => (
-          <div key={pain} className={cn(landingCardClassName, 'p-6')}>
-            <span className='mb-5 flex size-10 items-center justify-center rounded-2xl bg-muted text-primary dark:bg-primary/15'>
-              <Clock3 className='size-5' aria-hidden='true' />
-            </span>
-            <p className='text-base leading-7 text-muted-foreground'>{pain}</p>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function HowItWorks() {
-  return (
-    <Section eyebrow='How it works' title={landing.howTitle}>
-      <div className='grid gap-5 lg:grid-cols-3'>
-        {landing.sections.steps.map((step, index) => (
-          <StepCard key={step.title} step={step} index={index} />
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function StepCard({
-  step,
-  index,
-}: {
-  step: (typeof landing.sections.steps)[number];
-  index: number;
-}) {
-  return (
-    <article className={cn(landingCardClassName, 'p-6')}>
-      <div className='mb-6 flex items-center justify-between'>
-        <span className='flex size-12 items-center justify-center rounded-2xl bg-primary-dark text-lg font-black text-primary-foreground'>
-          {index + 1}
-        </span>
-        <LandingIcon name={step.icon} className='size-6 text-primary' />
-      </div>
-      <h3 className='text-2xl font-black [letter-spacing:0] text-foreground'>
-        {step.title}
-      </h3>
-      <p className='mt-3 leading-7 text-muted-foreground'>{step.copy}</p>
-    </article>
-  );
-}
-
-function Benefits() {
-  return (
-    <Section eyebrow='Benefits' title={landing.benefitTitle}>
-      <div className='grid gap-5 md:grid-cols-3'>
-        {landing.sections.benefits.map((benefit) => {
-          return (
-            <article
-              key={benefit.title}
-              className='rounded-3xl bg-muted p-6 dark:bg-primary/10'
-            >
-              <LandingIcon
-                name={benefit.icon}
-                className='mb-6 size-7 text-primary'
-              />
-              <h3 className='text-xl font-black [letter-spacing:0] text-foreground'>
-                {benefit.title}
-              </h3>
-              <p className='mt-3 leading-7 text-muted-foreground'>
-                {benefit.copy}
-              </p>
-            </article>
-          );
-        })}
-      </div>
-    </Section>
-  );
-}
-
-function ProductTour() {
-  return (
-    <Section
-      eyebrow='Product tour'
-      title='The app surfaces match the promise'
-      copy='Plans, activity, and analytics are separate views of the same learning workflow.'
-    >
-      <div className='grid gap-5 lg:grid-cols-3'>
-        <MiniShot
-          src={appShots.plans}
-          title='Plans'
-          copy='Search, filter, and continue learning plans.'
-        />
-        <MiniShot
-          src={appShots.dashboard}
-          title='Activity feed'
-          copy='Resume the most recent plan and review recent progress.'
-        />
-        <MiniShot
-          src={appShots.analytics}
-          title='Usage'
-          copy='See current completion and weekly progress changes.'
-        />
-      </div>
-      <div
-        className={cn(
-          landingCardClassName,
-          'mt-6 p-5 text-sm leading-7 text-muted-foreground',
-        )}
-      >
-        Calendar sync is intentionally described as coming soon. This page does
-        not promise shipped calendar integration.
-      </div>
-    </Section>
-  );
-}
-
-function MiniShot({
-  src,
-  title,
-  copy,
-}: {
-  src: string;
-  title: string;
-  copy: string;
-}) {
-  return (
-    <article
-      className={cn(
-        landingCardClassName,
-        'overflow-hidden bg-white/70 shadow-sm dark:bg-card/50',
-      )}
-    >
-      <AppScreenshot
-        src={src}
-        alt={`Atlaris ${title} screenshot`}
-        className='aspect-16/10'
-      />
-      <div className='p-5'>
-        <h3 className='text-xl font-black [letter-spacing:0] text-foreground'>
-          {title}
-        </h3>
-        <p className='mt-2 leading-7 text-muted-foreground'>{copy}</p>
-      </div>
-    </article>
-  );
-}
-
-function AppScreenshot({
-  src,
-  alt,
-  className,
-  priority = false,
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-  priority?: boolean;
-}) {
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      width={1440}
-      height={1000}
-      className={cn('h-full w-full object-cover', className)}
-      priority={priority}
-    />
-  );
-}
-
-function AudienceSection() {
-  return (
-    <Section
-      eyebrow='Use cases'
-      title={landing.audienceTitle}
-      copy='Illustrative scenarios only, not customer testimonials.'
-    >
-      <div className='grid gap-5 md:grid-cols-3'>
-        {landing.sections.audiences.map((audience) => (
-          <article
-            key={audience.title}
-            className={cn(landingCardClassName, 'p-6')}
-          >
-            <h3 className='text-2xl font-black [letter-spacing:0] text-foreground'>
-              {audience.title}
-            </h3>
-            <p className='mt-3 leading-7 text-muted-foreground'>
-              {audience.copy}
-            </p>
-          </article>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function Comparison() {
-  return (
-    <Section
-      eyebrow='Compare'
-      title='Compared with the usual workaround'
-      copy='The difference is not more content. It is a plan that stays connected to action.'
-    >
-      <div
-        className={cn(
-          landingCardClassName,
-          'overflow-hidden bg-white/80 dark:bg-card/50',
-        )}
-      >
-        {comparisonRows.map(({ label, copy, highlight }) => (
-          <div
-            key={label}
-            className='grid gap-4 border-b border-border/60 p-5 last:border-b-0 md:grid-cols-[220px_1fr]'
-          >
-            <div
-              className={cn(
-                'font-black [letter-spacing:0]',
-                highlight ? 'text-primary' : 'text-foreground',
-              )}
-            >
-              {label}
-            </div>
-            <p className='leading-7 text-muted-foreground'>{copy}</p>
-          </div>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function Faq() {
-  return (
-    <Section eyebrow='FAQ' title='Questions worth answering before signup'>
-      <div className='grid gap-4 md:grid-cols-3'>
-        {faq.map((item) => (
-          <article
-            key={item.question}
-            className={cn(landingCardClassName, 'p-6')}
-          >
-            <h3 className='text-lg font-black [letter-spacing:0] text-foreground'>
-              {item.question}
-            </h3>
-            <p className='mt-3 leading-7 text-muted-foreground'>
-              {item.answer}
-            </p>
-          </article>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
-function FinalCta() {
-  return (
-    <section className='px-6 py-20 md:px-8'>
-      <div className='mx-auto max-w-5xl rounded-4xl border border-transparent bg-foreground p-8 text-center text-background shadow-2xl md:p-12 dark:border-white/10 dark:bg-card dark:text-foreground'>
-        <p className='text-sm font-bold text-primary uppercase dark:text-accent-foreground'>
-          Start with one plan
-        </p>
-        <h2 className='mt-4 text-4xl font-black [letter-spacing:0] text-balance md:text-6xl'>
-          {landing.finalTitle}
-        </h2>
-        <p className='mx-auto mt-5 max-w-2xl text-lg leading-8 text-background/75 dark:text-muted-foreground'>
-          {landing.finalCopy}
-        </p>
-        <div className='mt-8 flex justify-center'>
-          <PrimaryLink href='/plans/new'>{landing.primaryCta}</PrimaryLink>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Section({
-  eyebrow,
-  title,
-  copy,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  copy?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className='px-6 py-16 md:px-8'>
-      <div className='mx-auto max-w-7xl'>
-        <div className='mb-10 max-w-3xl'>
-          <p className='text-sm font-bold text-primary uppercase'>{eyebrow}</p>
-          <h2 className='mt-3 text-4xl leading-tight font-black [letter-spacing:0] text-balance text-foreground md:text-5xl'>
-            {title}
-          </h2>
-          {copy ? (
-            <p className='mt-4 text-lg leading-8 text-muted-foreground'>
-              {copy}
-            </p>
-          ) : null}
-        </div>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function PrimaryLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
-  return (
-    <LiquidGlassButton asChild>
-      <Link href={href}>
-        {children}
-        <ArrowRight className='ml-2 size-4' aria-hidden='true' />
-      </Link>
-    </LiquidGlassButton>
-  );
-}
-
-function SecondaryLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className='inline-flex items-center justify-center rounded-full border border-white/40 bg-white/70 px-6 py-3 text-sm font-bold text-foreground shadow-sm transition hover:-translate-y-0.5 dark:border-white/10 dark:bg-card/40'
-    >
+    <p className='font-serif text-[0.6875rem] font-medium tracking-[0.22em] text-primary uppercase sm:text-xs'>
       {children}
-    </Link>
+    </p>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hero (unchanged)                                                    */
+/* ------------------------------------------------------------------ */
+
+function Hero() {
+  return (
+    <section
+      className='mx-auto flex max-w-4xl flex-col items-center px-6 pt-16 pb-12 text-center sm:pt-20 sm:pb-14 md:px-8'
+      aria-labelledby='landing-hero-heading'
+    >
+      <p
+        className={cn(
+          landingEnterClassName,
+          'font-serif text-[0.6875rem] font-medium tracking-[0.22em] text-muted-foreground uppercase sm:text-xs',
+        )}
+      >
+        {copy.overline}
+      </p>
+
+      <h1
+        id='landing-hero-heading'
+        className={cn(
+          landingEnterClassName,
+          'mt-6 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground text-balance delay-150 sm:text-5xl md:text-[3.25rem]',
+        )}
+      >
+        <span className='block'>{copy.headlineLead}</span>
+        <span className='mt-1 block font-medium text-primary italic'>
+          {copy.headlineEmphasis}
+        </span>
+      </h1>
+
+      <p
+        className={cn(
+          landingEnterClassName,
+          'mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground delay-300 sm:text-lg',
+        )}
+      >
+        {copy.subheadline}
+      </p>
+
+      <div
+        className={cn(
+          landingEnterClassName,
+          'mt-9 flex w-full max-w-md flex-col justify-center gap-3 delay-500 sm:max-w-none sm:flex-row sm:items-center',
+        )}
+      >
+        <LiquidGlassButton asChild>
+          <Link href='/plans/new'>
+            {copy.primaryCta}
+            <ArrowRight
+              className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+              aria-hidden='true'
+            />
+          </Link>
+        </LiquidGlassButton>
+        <Link
+          href='/pricing'
+          className={cn(
+            marketingSecondaryCtaClassName,
+            'h-auto px-8 py-4 text-base',
+          )}
+        >
+          {copy.secondaryCta}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Drift — the problem                                                 */
+/* ------------------------------------------------------------------ */
+
+function DriftSection() {
+  return (
+    <section
+      className='mx-auto max-w-3xl px-6 py-16 text-center md:px-8 md:py-24'
+      aria-labelledby='landing-drift-heading'
+    >
+      <Reveal>
+        <SectionOverline>The drift</SectionOverline>
+        <h2
+          id='landing-drift-heading'
+          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
+        >
+          Ambition isn&apos;t your problem.
+          <span className='block font-medium text-muted-foreground italic'>
+            Drift is.
+          </span>
+        </h2>
+      </Reveal>
+      <Reveal delay={150}>
+        <p className='mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg'>
+          You&apos;ve started before. The course, the book, the certification.
+          Two good weeks — then one busy Thursday, and the map goes dark. Not
+          because you stopped caring. Because nothing was holding the route.
+        </p>
+      </Reveal>
+      <Reveal delay={300}>
+        <p className='mx-auto mt-4 max-w-xl font-serif text-base font-medium text-foreground sm:text-lg'>
+          Atlaris holds the route.
+        </p>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Route — how it works, drawn as a constellation                      */
+/* ------------------------------------------------------------------ */
+
+const ROUTE_STOPS = [
+  {
+    numeral: 'I',
+    title: 'Set your star',
+    copy: 'Name the goal, your level, and the hours you actually have. That is the whole setup — about two minutes.',
+  },
+  {
+    numeral: 'II',
+    title: 'Follow the route',
+    copy: 'Atlaris charts a week-by-week plan: modules, tasks, and every resource attached to the work it supports.',
+  },
+  {
+    numeral: 'III',
+    title: 'Check your bearings',
+    copy: 'Progress tracking shows what moved this week, so you return to a course — not a memory of one.',
+  },
+] as const;
+
+function ConstellationRoute() {
+  return (
+    <svg
+      viewBox='0 0 1000 120'
+      fill='none'
+      preserveAspectRatio='none'
+      className='pointer-events-none absolute inset-x-0 top-10 hidden h-24 w-full md:block'
+      aria-hidden='true'
+    >
+      <path
+        d='M 60 90 C 250 20, 420 100, 500 60 C 580 20, 760 100, 940 40'
+        stroke='var(--primary)'
+        strokeOpacity='0.45'
+        strokeWidth='1.5'
+        strokeDasharray='1'
+        pathLength={1}
+        className={styles.routePath}
+      />
+      <circle
+        cx='60'
+        cy='90'
+        r='5'
+        fill='var(--primary)'
+        className={cn(styles.routeNode, styles.routeNodeDelay1)}
+      />
+      <circle
+        cx='500'
+        cy='60'
+        r='5'
+        fill='var(--primary)'
+        className={cn(styles.routeNode, styles.routeNodeDelay2)}
+      />
+      <circle
+        cx='940'
+        cy='40'
+        r='5'
+        fill='var(--primary)'
+        className={cn(styles.routeNode, styles.routeNodeDelay3)}
+      />
+    </svg>
+  );
+}
+
+function RouteSection() {
+  return (
+    <section
+      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      aria-labelledby='landing-route-heading'
+    >
+      <Reveal className='text-center'>
+        <SectionOverline>The route</SectionOverline>
+        <h2
+          id='landing-route-heading'
+          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
+        >
+          Three moves. One steady course.
+        </h2>
+      </Reveal>
+
+      <Reveal className='relative mt-14'>
+        <ConstellationRoute />
+        <div className='relative grid gap-10 md:grid-cols-3 md:gap-6 md:pt-28'>
+          {ROUTE_STOPS.map((stop, index) => (
+            <article key={stop.title} className='text-center md:text-left'>
+              <p className='font-serif text-sm font-semibold tracking-[0.2em] text-primary'>
+                {stop.numeral}
+              </p>
+              <h3 className='mt-3 font-serif text-xl font-semibold tracking-[-0.015em] text-foreground'>
+                {stop.title}
+              </h3>
+              <p className='mx-auto mt-3 max-w-[18rem] font-sans text-sm leading-relaxed text-muted-foreground md:mx-0'>
+                {stop.copy}
+              </p>
+              {index === 0 ? (
+                <p className='mt-3 font-sans text-xs tracking-[0.08em] text-primary/80 uppercase'>
+                  ~2 minutes
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Instruments — product proof with screenshot placeholders            */
+/* ------------------------------------------------------------------ */
+
+function ScreenshotPlaceholder({
+  label,
+  description,
+  icon: Icon,
+}: {
+  label: string;
+  description: string;
+  icon: typeof ImageIcon;
+}) {
+  return (
+    <figure className='flex aspect-[16/10] w-full flex-col items-center justify-center gap-3 rounded-4xl border border-dashed border-panel-border/80 bg-card/60 px-8 text-center shadow-sm backdrop-blur-sm'>
+      <Icon className='size-6 text-primary/70' aria-hidden='true' />
+      <figcaption className='font-serif text-sm font-semibold text-foreground'>
+        {label}
+      </figcaption>
+      <p className='max-w-sm font-sans text-xs leading-relaxed text-muted-foreground'>
+        {description}
+      </p>
+    </figure>
+  );
+}
+
+function InstrumentsSection() {
+  return (
+    <section
+      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      aria-labelledby='landing-instruments-heading'
+    >
+      <Reveal className='text-center'>
+        <SectionOverline>The instruments</SectionOverline>
+        <h2
+          id='landing-instruments-heading'
+          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
+        >
+          Built for the nights you show up.
+        </h2>
+      </Reveal>
+
+      {/* Plan detail — text left, screenshot right */}
+      <Reveal delay={100}>
+        <div className='mt-16 grid items-center gap-10 md:grid-cols-2 md:gap-14'>
+          <div>
+            <h3 className='font-serif text-2xl font-semibold tracking-[-0.02em] text-foreground'>
+              A plan that remembers where you left off
+            </h3>
+            <p className='mt-4 font-sans text-base leading-relaxed text-muted-foreground'>
+              Modules hold the tasks. Tasks hold the resources. Open Atlaris at
+              9pm and tonight&apos;s work is already laid out — no re-deciding,
+              no re-searching, no twenty open tabs.
+            </p>
+            <p className='mt-4 font-serif text-sm font-medium text-primary'>
+              Sit down. Start where you stopped.
+            </p>
+          </div>
+          <ScreenshotPlaceholder
+            icon={ImageIcon}
+            label='Screenshot: plan detail'
+            description='The plan detail page showing a learning plan expanded into modules, with tasks and attached resources visible under the active module.'
+          />
+        </div>
+      </Reveal>
+
+      {/* Analytics — screenshot left, text right */}
+      <Reveal delay={100}>
+        <div className='mt-16 grid items-center gap-10 md:grid-cols-2 md:gap-14'>
+          <ScreenshotPlaceholder
+            icon={BarChart3}
+            label='Screenshot: progress analytics'
+            description='The analytics dashboard with weekly activity, completed modules, and usage trends charted over the past month.'
+          />
+          <div>
+            <h3 className='font-serif text-2xl font-semibold tracking-[-0.02em] text-foreground'>
+              Watch your sky fill in
+            </h3>
+            <p className='mt-4 font-sans text-base leading-relaxed text-muted-foreground'>
+              Every finished task becomes a fixed point. Analytics turn
+              scattered evenings into a visible trail — what you covered, when
+              you covered it, and how far the route still runs.
+            </p>
+            <p className='mt-4 font-serif text-sm font-medium text-primary'>
+              Momentum you can look at.
+            </p>
+          </div>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Quiet questions — FAQ                                               */
+/* ------------------------------------------------------------------ */
+
+const QUESTIONS = [
+  {
+    question: 'How long does setup take?',
+    answer:
+      'About two minutes. You give Atlaris a goal, your current level, and your weekly hours — it drafts the full plan from there. You can regenerate or adjust it any time.',
+  },
+  {
+    question: 'What if my week falls apart?',
+    answer:
+      'The plan waits. Nothing expires, nothing punishes you. When you come back, the route is exactly where you left it — pick up the next task and keep moving.',
+  },
+  {
+    question: 'Do I need to know what to study?',
+    answer:
+      'No. Bring the destination — “learn TypeScript,” “pass the exam,” “ship the app.” Atlaris charts the modules, the order, and the resources for each step.',
+  },
+  {
+    question: 'Can I try it before paying?',
+    answer:
+      'Yes. Create your first plan free, and see the pricing page for where each tier picks up.',
+  },
+] as const;
+
+function QuestionsSection() {
+  return (
+    <section
+      className='mx-auto max-w-3xl px-6 py-16 md:px-8 md:py-24'
+      aria-labelledby='landing-questions-heading'
+    >
+      <Reveal className='text-center'>
+        <SectionOverline>Quiet questions</SectionOverline>
+        <h2
+          id='landing-questions-heading'
+          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
+        >
+          Asked at 11pm, answered here.
+        </h2>
+      </Reveal>
+
+      <Reveal delay={150}>
+        <div className='mt-10 divide-y divide-border/50 border-y border-border/50'>
+          {QUESTIONS.map((item) => (
+            <details key={item.question} className='group py-5'>
+              <summary className='flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-base font-semibold text-foreground transition-colors hover:text-primary [&::-webkit-details-marker]:hidden'>
+                {item.question}
+                <span
+                  aria-hidden='true'
+                  className='text-primary transition-transform duration-300 group-open:rotate-45 motion-reduce:transition-none'
+                >
+                  +
+                </span>
+              </summary>
+              <p className='mt-3 max-w-prose font-sans text-sm leading-relaxed text-muted-foreground'>
+                {item.answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Polaris — final CTA night panel                                     */
+/* ------------------------------------------------------------------ */
+
+function PolarisBanner() {
+  return (
+    <section className='px-6 pb-20 md:px-8 md:pb-28'>
+      <Reveal>
+        <div className='relative mx-auto max-w-5xl overflow-hidden rounded-4xl bg-foreground px-8 py-16 text-center text-background shadow-xl md:py-20'>
+          <StarField />
+
+          {/* Polaris — fixed point above the headline */}
+          <div className='relative mx-auto flex justify-center'>
+            <Sparkles
+              className={cn('size-6 text-primary', styles.pulse)}
+              aria-hidden='true'
+            />
+          </div>
+
+          <h2 className='relative mt-6 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl'>
+            Polaris doesn&apos;t move.
+            <span className='block font-medium italic opacity-80'>
+              For one hour tonight, neither do you.
+            </span>
+          </h2>
+
+          <p className='relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed opacity-70'>
+            Set the goal once. Let the quiet hours do the rest.
+          </p>
+
+          <div className='relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row'>
+            <LiquidGlassButton asChild className={styles.drift}>
+              <Link href='/plans/new'>
+                Begin tonight
+                <ArrowRight
+                  className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+                  aria-hidden='true'
+                />
+              </Link>
+            </LiquidGlassButton>
+            <Link
+              href='/pricing'
+              className='font-serif text-sm font-medium underline-offset-4 opacity-80 transition-opacity hover:underline hover:opacity-100'
+            >
+              See pricing first
+            </Link>
+          </div>
+        </div>
+      </Reveal>
+    </section>
   );
 }
