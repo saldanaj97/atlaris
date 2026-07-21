@@ -2,7 +2,9 @@
 
 Single reference for **colors, tokens, typography, spacing, layout patterns, glassmorphism, components, and shell layout** so new UI stays aligned with the product.
 
-**Source of truth:** [`src/app/globals.css`](../../src/app/globals.css) (`:root`, `.dark`, `@theme inline`, utilities), plus [`src/app/layout.tsx`](../../src/app/layout.tsx) for root fonts and structure.
+**Source of truth (live):** [`src/app/globals.css`](../../src/app/globals.css) (`:root`, `.dark`, `@theme inline`, utilities), plus [`src/app/layout.tsx`](../../src/app/layout.tsx) for root fonts and structure.
+
+**Live brand direction:** [After Hours](./after-hours-direction.md) — Sora (brand/marketing) + Work Sans (product), plum/peach light & dark palettes. Semantic token names are unchanged; values and display font are After Hours.
 
 ---
 
@@ -53,9 +55,9 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | `warning` / `warning-foreground`                              | Caution (non-destructive)                               |
 | `disabled` / `disabled-foreground`                            | Unavailable or disabled copy/surfaces                   |
 
-**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
+**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-card/*` + peach border alpha, high blur) for marketing/hero, not default dashboard content.
 
-**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies liquid glass to marketing paths (`/`, `/landing`, `/about`, `/pricing`) and protected app paths (`/dashboard`, `/plans`, `/settings`, `/analytics`, `/account`), while auth and other non-product shell routes stay opaque. [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+**Site header variants:** [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts) applies liquid glass to marketing paths (`/`, `/landing`, `/pricing`) and protected app paths (`/dashboard`, `/plans`, `/settings`, `/analytics`, `/account`), while auth and other non-product shell routes stay opaque. [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
 
 **Marketing composition:** use [`MarketingPageShell`](../../src/app/(marketing)/_shared/MarketingPageShell.tsx), [`MarketingHero`](../../src/app/(marketing)/_shared/MarketingHero.tsx), [`MarketingSection`](../../src/app/(marketing)/_shared/MarketingSection.tsx), [`MarketingCard`](../../src/app/(marketing)/_shared/MarketingCard.tsx), and shared glass surfaces from [`marketing-glass-surface.ts`](../../src/app/(marketing)/_shared/marketing-glass-surface.ts). Default section width is `max-w-screen-xl`; narrower grids (e.g. pricing) may use `max-w-5xl` when layout requires it.
 
@@ -66,17 +68,17 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | `--background`                   | Page background                                            |
 | `--foreground`                   | Primary text                                               |
 | `--card` / `--card-foreground`   | Card fill and card text                                    |
-| `--primary`                      | Brand purple/blue (hue ~260° OKLCH); use `--primary-dark` for solid white-text fills |
-| `--primary-foreground`           | Text on primary                                            |
-| `--secondary`                    | Subtle secondary surfaces                                  |
-| `--accent`                       | Complementary to primary (blue/purple range for gradients) |
-| `--accent-foreground`            | Text on accent                                             |
-| `--muted` / `--muted-foreground` | Disabled or subtle UI; secondary copy                      |
-| `--destructive`                  | Error / danger (warm hue)                                  |
-| `--border`                       | Dividers and borders                                       |
-| `--ring`                         | Focus rings                                                |
+| `--primary`                      | Peach/copper brand action; use `--primary-dark` for solid CTA fills |
+| `--primary-foreground`           | CTA accent ink on solid primary fills                          |
+| `--secondary`                    | Soft parchment / plum wash surfaces                            |
+| `--accent`                       | Soft wash complementary to primary (gradients, tinted fills)   |
+| `--accent-foreground`            | Peach/copper text on accent washes                             |
+| `--muted` / `--muted-foreground` | Note panels; secondary copy                                    |
+| `--destructive`                  | Error / danger (warm hue)                                      |
+| `--border`                       | Dividers and borders (line tokens)                             |
+| `--ring`                         | Focus rings (accent)                                           |
 
-**Brand note:** Primary sits in a blue-violet family; accent stays in the blue/purple range so `from-primary to-accent` gradients read on-brand.
+**Brand note:** Primary is peach/copper; soft washes stay in the parchment/plum family so `from-primary to-accent` gradients read After Hours, not Progress Jam violet.
 
 ---
 
@@ -88,16 +90,17 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | -------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | **Body (default)**               | **Work Sans** via `--font-family-base`                                 | Loaded with `next/font` on `<html>`; applied on `<body>` in `layout.tsx`.                     |
 | **App headings (`h1`–`h6`)**     | **Work Sans** via `--font-family-heading` (weight **600**)             | Product UI titles, settings cards, dashboard headings.                                        |
-| **Marketing display headings**   | **Young Serif** via `--font-family-display`                            | `.marketing-h1`–`.marketing-h4`; deliberate serif display role on marketing pages only.       |
+| **Marketing display headings**   | **Sora** via `--font-family-display` (weight **600**)                  | `.marketing-h1`–`.marketing-h4`; brand voice on marketing pages only.                         |
 | **Marketing card titles**        | **Work Sans** via `--font-family-heading`                              | `.marketing-card-title` stays in the product sans for readable card copy.                     |
 | **Theme / Tailwind `font-sans`** | `--font-family-base` (Work Sans stack)                                 | `font-sans` utilities inherit the same UI stack.                                              |
-| **Theme / Tailwind `font-serif`**| `--font-family-display` (Young Serif stack)                            | Use sparingly for intentional display moments.                                                |
-| **Mono**                         | `--font-mono` → JetBrains Mono                                         | Code, IDs, technical strings.                                                                 |
+| **Theme / Tailwind `font-serif`**| `--font-family-display` (Sora stack)                                   | Legacy utility name for display; use for intentional brand moments, not product body.         |
+| **Theme / Tailwind `font-display`**| `--font-family-display` (Sora stack)                                 | Preferred alias for Sora brand moments (`font-display`).                                      |
+| **Mono**                         | `--font-mono` → JetBrains Mono                                         | Optional for code/IDs only — not brand voice.                                                 |
 | **Clerk Auth UI**                | Clerk components inherit the root app fonts                            | Keep auth pages under the shared auth layout; avoid provider-specific global CSS imports.      |
 
-**Consistency:** Use **Work Sans** for all product/app UI. Reserve **Young Serif** for marketing display headings (`.marketing-h*`). Do not add another sans unless `layout.tsx` and `globals.css` are updated together.
+**Consistency (live):** Use **Work Sans** for all product/app UI. Use **Sora** for marketing display headings (`.marketing-h*`). Do not add a third brand face unless `layout.tsx` and `globals.css` are updated together. Young Serif is retired.
 
-**CSS variables (defined in `globals.css`):** `--font-family-base`, `--font-family-heading`, `--font-family-display`, `--font-weight-base` (400), `--font-weight-heading` (600). Next/font exposes `--font-work-sans` and `--font-young-serif` on `<html>`.
+**CSS variables (defined in `globals.css`):** `--font-family-base`, `--font-family-heading`, `--font-family-display`, `--font-weight-base` (400), `--font-weight-heading` (600). Next/font exposes `--font-work-sans` and `--font-sora` on `<html>`.
 
 ### App / dashboard base headings (`@layer base`)
 
@@ -143,7 +146,7 @@ Product and marketing use **split radius tokens** (see `:root` in `globals.css`)
 | Token                 | Value    | Scope                                                                 |
 | --------------------- | -------- | --------------------------------------------------------------------- |
 | `--radius`            | `0.75rem`| Product/app: buttons, inputs, and token-derived `rounded-sm`–`xl`     |
-| `--radius-marketing`  | `2rem`   | Reference for marketing glass cards; sections use explicit `rounded-2xl` / `rounded-3xl` |
+| `--radius-marketing`  | `2rem`   | Wired as `--radius-4xl` → `rounded-4xl` on marketing arched cards                         |
 
 **Decision (L-08):** Lowered product `--radius` from `2rem` because controls felt overly pill-shaped at ~28px `rounded-md`. Marketing keeps generous corners via explicit utilities, not the product token.
 
@@ -206,25 +209,27 @@ from-primary via-accent to-primary bg-linear-to-r bg-clip-text text-transparent
 
 ## Glassmorphism
 
-Glassmorphism is a core visual language: depth through transparency, blur, and light borders. **Do not** mix opaque panels with glass in the same component group without intent.
+Glassmorphism is a core visual language: depth through transparency, blur, and peach/plum borders. **Do not** mix opaque panels with glass in the same component group without intent.
+
+**Recipe (no `--glass-*` tokens):** After Hours glass is `bg-card/*` (or `bg-panel/*`) + `border-panel-border/*` or `border-primary/*` alpha + `backdrop-blur-*`. Prefer shared helpers ([`marketing-glass-surface.ts`](../../src/app/(marketing)/_shared/marketing-glass-surface.ts), [`header-shell.ts`](../../src/components/shared/nav/header-shell.ts)) over inventing new frosted whites. Cold `bg-white/30` / `stone-*` washes are Progress Jam leftovers — do not reintroduce them.
 
 ### Intensity layers
 
-| Intensity | Background (light) | Border            | Blur                | Typical use       |
-| --------- | ------------------ | ----------------- | ------------------- | ----------------- |
-| Light     | `bg-white/30`      | `border-white/40` | `backdrop-blur-sm`  | Subtle overlays   |
-| Medium    | `bg-white/40-50`   | `border-white/50` | `backdrop-blur-md`  | Cards, containers |
-| Heavy     | `bg-white/60-80`   | `border-white/60` | `backdrop-blur-xl`  | Primary panels    |
-| Intense   | `bg-white/80-90`   | `border-white/70` | `backdrop-blur-2xl` | Modals, dropdowns |
+| Intensity | Background (light) | Border                       | Blur                | Typical use       |
+| --------- | ------------------ | ---------------------------- | ------------------- | ----------------- |
+| Light     | `bg-card/40`       | `border-panel-border/40`     | `backdrop-blur-sm`  | Subtle overlays   |
+| Medium    | `bg-card/50`–`/60` | `border-panel-border/50`     | `backdrop-blur-md`  | Cards, containers |
+| Heavy     | `bg-card/70`–`/80` | `border-panel-border/60`     | `backdrop-blur-xl`  | Primary panels    |
+| Intense   | `bg-card/85`–`/90` | `border-primary/30`          | `backdrop-blur-2xl` | Modals, dropdowns |
 
-**Dark mode:** Use `dark:border-white/10`, `dark:bg-stone-900/30` or `dark:bg-card/40`–`/60` as appropriate; always verify contrast.
+**Dark mode:** Prefer `dark:bg-card/40`–`/60` and `dark:border-panel-border/50`–`/60` (or soft `dark:border-primary/20`); always verify contrast on nocturne.
 
 ### Reference patterns
 
 **Standard glass card**
 
 ```tsx
-<div className='rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30'>
+<div className='rounded-2xl border border-panel-border/50 bg-card/50 shadow-lg backdrop-blur-xl dark:border-panel-border/60 dark:bg-panel/50'>
   {/* Content */}
 </div>
 ```
@@ -233,37 +238,37 @@ Glassmorphism is a core visual language: depth through transparency, blur, and l
 
 ```tsx
 className =
-  'rounded-2xl border border-white/40 bg-white/30 p-6 shadow-lg backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl hover:border-primary/30 dark:border-white/10 dark:bg-stone-900/30';
+  'rounded-2xl border border-panel-border/50 bg-card/50 p-6 shadow-lg backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl hover:border-primary/30 dark:border-panel-border/60 dark:bg-panel/50';
 ```
 
 **Marketing / feature card (interactive)**
 
 ```tsx
 className =
-  'dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10';
+  'relative overflow-hidden rounded-4xl border border-panel-border/50 bg-card/50 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-panel-border/60 dark:bg-panel/50';
 ```
 
-Used for rich marketing sections (e.g. Team, Values, Mission, integrations). For pricing and conditional layouts, prefer `Card` from `@/components/ui/card` with `className` overrides.
+Used for rich marketing sections (e.g. Team, Values, Mission, integrations). For pricing and conditional layouts, prefer `Card` from `@/components/ui/card` with `className` overrides. Shared surfaces live in `marketing-glass-surface.ts`.
 
 **Navigation bar**
 
 ```tsx
 className =
-  'rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/50';
+  'rounded-2xl border border-primary/20 bg-card/70 px-6 py-3 shadow-lg backdrop-blur-md dark:border-primary/25 dark:bg-card/55';
 ```
 
 **Input containers**
 
 ```tsx
 className =
-  'rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl';
+  'rounded-3xl border border-panel-border/50 bg-card/70 px-6 py-5 shadow-2xl backdrop-blur-xl';
 ```
 
 **Completed / success tint**
 
 ```tsx
 className =
-  'border-green-200/50 bg-green-50/30 backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/20';
+  'border-success/40 bg-success/10 backdrop-blur-sm dark:border-success/30 dark:bg-success/15';
 ```
 
 **Badge on dark or gradient background**
@@ -519,7 +524,7 @@ Sizes include `default` (h-9), `sm`, `lg`, `icon*`. Keep focus visible: `ring-ri
 | Element    | Pattern                                                                            |
 | ---------- | ---------------------------------------------------------------------------------- |
 | **Root**   | `next-themes` with `class` on `<html>` (`light` / `dark`)                          |
-| **Body**   | Work Sans + Young Serif CSS variables, `antialiased`, `flex min-h-screen flex-col` |
+| **Body**   | Work Sans + Sora CSS variables, `antialiased`, `flex min-h-screen flex-col` |
 | **Header** | Site header; main content offset with `pt-16` in layout                            |
 | **Footer** | Brand, footer navigation (e.g. About, Pricing), copyright                          |
 

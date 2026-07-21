@@ -20,12 +20,12 @@ export function MarketingPageShell({
   return (
     <div
       className={cn(
-        'relative min-h-screen w-full overflow-hidden bg-linear-to-br from-card via-background to-accent/20 font-sans text-foreground',
+        'relative min-h-screen w-full overflow-hidden bg-background font-sans text-foreground',
         withHeaderOffset && '-mt-16 pt-16',
         className,
       )}
     >
-      <div className='relative'>{children}</div>
+      <div className='relative z-0'>{children}</div>
     </div>
   );
 }

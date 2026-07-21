@@ -53,3 +53,5 @@ allowBuilds:
   sharp: true
   ssh2: true
   supabase: true
+  bufferutil: true
+  utf-8-validate: true

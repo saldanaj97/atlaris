@@ -1,0 +1,28 @@
+/* Twinkling star field — shared After Hours marketing backdrop. */
+
+.star {
+  position: absolute;
+  border-radius: 999px;
+  /* currentColor so the field reads on both parchment page and inverted panels */
+  background: color-mix(in oklab, currentColor 55%, transparent);
+  animation: twinkle var(--star-duration, 5s) ease-in-out var(--star-delay, 0s)
+    infinite;
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star {
+    animation: none;
+  }
+}

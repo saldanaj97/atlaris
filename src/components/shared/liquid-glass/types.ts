@@ -85,7 +85,8 @@ export const MARKETING_CTA_PHYSICS: LiquidGlassPhysics = {
   depth: 0.6,
   curvature: 1.8,
   splay: 1.5,
-  chroma: 0.2,
+  /* Keep fringe subtle; warm matrices in the filter do the peach/plum sheen. */
+  chroma: 0.12,
   blur: 0,
   glow: 0.3,
   edgeHighlight: 0.5,
