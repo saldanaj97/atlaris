@@ -3,7 +3,7 @@
 import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/_shared/pricing-plan-features';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
-import { PricingTable, useAuth, useClerk } from '@clerk/nextjs';
+import { PricingTable, SignInButton, useAuth, useClerk } from '@clerk/nextjs';
 import { CheckoutButton } from '@clerk/nextjs/experimental';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { createPortal } from 'react-dom';
@@ -48,6 +48,19 @@ const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
 const PRICING_CARD_SELECTOR = '.cl-pricingTableCard';
 const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
+const CHECKOUT_PERIOD_PARAM = 'checkoutPeriod';
+
+function buildCheckoutSignInRedirect(
+  planId: string,
+  period: BillingPeriod,
+): string {
+  const params = new URLSearchParams({
+    [CHECKOUT_PLAN_PARAM]: planId,
+    [CHECKOUT_PERIOD_PARAM]: period,
+  });
+  return `/pricing?${params.toString()}`;
+}
 
 function resetCardParallax(card: HTMLElement): void {
   card.style.setProperty('--card-tilt-x', '0deg');
@@ -164,6 +177,8 @@ function syncCardFees(
   period: BillingPeriod,
 ): void {
   for (const plan of plans) {
+    if (!plan.hasBaseFee) continue;
+
     const card = root.querySelector(`.cl-pricingTableCard__${plan.slug}`);
     if (!(card instanceof HTMLElement)) continue;
 
@@ -171,14 +186,16 @@ function syncCardFees(
     const periodEl = card.querySelector('.cl-pricingTableCardFeePeriod');
     if (!(feeEl instanceof HTMLElement)) continue;
 
-    if (!feeEl.dataset.atlarisFeeMonth) {
-      feeEl.dataset.atlarisFeeMonth = feeEl.textContent?.trim() ?? '';
+    const currentFee = feeEl.textContent?.trim();
+    if (!feeEl.dataset.atlarisFeeMonth && currentFee) {
+      feeEl.dataset.atlarisFeeMonth = currentFee;
     }
     if (
       periodEl instanceof HTMLElement &&
-      !periodEl.dataset.atlarisPeriodMonth
+      !periodEl.dataset.atlarisPeriodMonth &&
+      periodEl.textContent?.trim()
     ) {
-      periodEl.dataset.atlarisPeriodMonth = periodEl.textContent?.trim() ?? '';
+      periodEl.dataset.atlarisPeriodMonth = periodEl.textContent.trim();
     }
 
     const useAnnual = period === 'annual' && planHasAnnual(plan);
@@ -192,9 +209,14 @@ function syncCardFees(
         setText(periodEl, plan.annualMonthlyFee?.amount ? 'Month' : 'Year');
       }
     } else {
-      setText(feeEl, feeEl.dataset.atlarisFeeMonth);
+      const monthlyDisplay =
+        formatClerkMoney(plan.fee) ?? feeEl.dataset.atlarisFeeMonth;
+      if (monthlyDisplay) setText(feeEl, monthlyDisplay);
       if (periodEl instanceof HTMLElement) {
-        setText(periodEl, periodEl.dataset.atlarisPeriodMonth ?? '');
+        const monthlyPeriod = plan.fee?.amount
+          ? 'Month'
+          : periodEl.dataset.atlarisPeriodMonth;
+        if (monthlyPeriod) setText(periodEl, monthlyPeriod);
       }
     }
   }
@@ -299,6 +321,33 @@ export function AfterHoursClerkPricing({
   }, [billing, loaded]);
 
   useEffect(() => {
+    if (!userId || plans.length === 0) return;
+
+    const url = new URL(window.location.href);
+    const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
+    const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
+    if (!requestedPlanId && !requestedPeriod) return;
+
+    const requestedPlan = plans.find(
+      (plan) => plan.hasBaseFee && plan.id === requestedPlanId,
+    );
+    if (
+      requestedPlan &&
+      (requestedPeriod === 'month' || requestedPeriod === 'annual')
+    ) {
+      setPeriod(
+        requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
+          ? 'annual'
+          : 'month',
+      );
+    }
+
+    url.searchParams.delete(CHECKOUT_PLAN_PARAM);
+    url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
+    window.history.replaceState(window.history.state, '', url);
+  }, [plans, userId]);
+
+  useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
@@ -307,7 +356,7 @@ export function AfterHoursClerkPricing({
       syncCardFees(root, plans, period);
       syncCardCtaLabels(root, plans);
 
-      if (!isLoaded || !userId) {
+      if (!isLoaded) {
         root
           .querySelectorAll<HTMLElement>('[data-atlaris-checkout]')
           .forEach((node) => node.remove());
@@ -446,28 +495,45 @@ export function AfterHoursClerkPricing({
           appearance={appearance}
           newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
         />
-        {userId
-          ? checkoutMounts.map(({ label, plan, target }) =>
-              createPortal(
-                <CheckoutButton
-                  checkoutProps={{ appearance }}
-                  newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
-                  planId={plan.id}
-                  planPeriod={
-                    period === 'annual' && planHasAnnual(plan)
-                      ? 'annual'
-                      : 'month'
-                  }
-                  key={plan.id}
-                >
-                  <button className={styles.checkoutButton} type='button'>
-                    {label}
-                  </button>
-                </CheckoutButton>,
-                target,
-              ),
-            )
-          : null}
+        {checkoutMounts.map(({ label, plan, target }) => {
+          const planPeriod =
+            period === 'annual' && planHasAnnual(plan) ? 'annual' : 'month';
+
+          return createPortal(
+            userId ? (
+              <CheckoutButton
+                checkoutProps={{ appearance }}
+                newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+                planId={plan.id}
+                planPeriod={planPeriod}
+                key={plan.id}
+              >
+                <button className={styles.checkoutButton} type='button'>
+                  {label}
+                </button>
+              </CheckoutButton>
+            ) : (
+              <SignInButton
+                forceRedirectUrl={buildCheckoutSignInRedirect(
+                  plan.id,
+                  planPeriod,
+                )}
+                mode='modal'
+                signUpForceRedirectUrl={buildCheckoutSignInRedirect(
+                  plan.id,
+                  planPeriod,
+                )}
+                withSignUp
+                key={plan.id}
+              >
+                <button className={styles.checkoutButton} type='button'>
+                  {label}
+                </button>
+              </SignInButton>
+            ),
+            target,
+          );
+        })}
       </div>
     </div>
   );
