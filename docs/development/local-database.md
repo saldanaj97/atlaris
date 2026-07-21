@@ -25,7 +25,7 @@ That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env
 6. Billing fixtures: run `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to update local subscription state through the Clerk Billing projection path.
    Run it after a local DB reset/reseed or when changing the test plan/status; the fixture persists in the local `users` row and does not need to run before every `pnpm dev`.
 7. AI: use the mock provider for local-safe plan-generation flows.
-8. Real Clerk sessions, real third-party OAuth, and hosted payment processing remain staging/production concerns; see [environment.md](./environment.md).
+8. Real Clerk sessions, real third-party OAuth, and hosted payment processing remain staging/production concerns. For fixture vs real Clerk development checkout env contracts and the opt-in payment verification checklist, see [Clerk development checkout](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
 
 ## Ports and local services
 

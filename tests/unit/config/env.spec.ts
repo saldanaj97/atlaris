@@ -12,6 +12,7 @@ import {
   createSupabasePublicEnv,
   EnvValidationError,
   assertHostedDeployForbiddenFlags,
+  assertMixedDevAuthIdentity,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
@@ -120,6 +121,84 @@ describe('Environment Configuration', () => {
           LOCAL_PRODUCT_TESTING: 'true',
         }),
       ).toThrow(/LOCAL_PRODUCT_TESTING cannot be enabled in production/);
+    });
+  });
+
+  describe('mixed development auth identity', () => {
+    const seedAuthUserId = '00000000-0000-4000-8000-000000000001';
+
+    it.each([
+      {
+        label: 'fixture mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'true',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'real Clerk checkout mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: '',
+        },
+      },
+      {
+        label: 'real Clerk checkout with unset override',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+        },
+      },
+      {
+        label: 'production ignores mixed combo',
+        env: {
+          NODE_ENV: 'production',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'test ignores mixed combo',
+        env: {
+          NODE_ENV: 'test',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+    ])('allows $label', ({ env }) => {
+      expect(() => assertMixedDevAuthIdentity(env)).not.toThrow();
+    });
+
+    it('rejects Clerk UI enabled with DEV_AUTH_USER_ID override in development', () => {
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(/Mixed development identity is not allowed/);
+
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(
+        /Fixture mode: LOCAL_PRODUCT_TESTING=true with DEV_AUTH_USER_ID set/,
+      );
+
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(
+        /Real Clerk checkout mode: LOCAL_PRODUCT_TESTING=false with DEV_AUTH_USER_ID unset\/empty/,
+      );
     });
   });
 

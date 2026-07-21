@@ -292,7 +292,42 @@ export function assertHostedDeployForbiddenFlags(env: EnvSource): void {
   }
 }
 
+/**
+ * Blocks the mixed development identity where Clerk browser UI is enabled while
+ * Atlaris server/API identity still uses `DEV_AUTH_USER_ID`.
+ *
+ * Valid development modes:
+ * - Fixture: `LOCAL_PRODUCT_TESTING=true` with `DEV_AUTH_USER_ID` set
+ * - Real Clerk checkout: `LOCAL_PRODUCT_TESTING=false` with `DEV_AUTH_USER_ID` unset/empty
+ */
+export function assertMixedDevAuthIdentity(env: EnvSource): void {
+  if (parseNodeEnv(env) !== 'development') {
+    return;
+  }
+
+  const localProductTestingEnabled = toBoolean(
+    optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
+    false,
+  );
+  const devAuthUserId = optionalEnvFrom(env, 'DEV_AUTH_USER_ID');
+
+  if (localProductTestingEnabled || !devAuthUserId) {
+    return;
+  }
+
+  throw new EnvValidationError(
+    [
+      'Mixed development identity is not allowed: Clerk UI is enabled while DEV_AUTH_USER_ID overrides Atlaris API/DB identity.',
+      'Choose one mode:',
+      '- Fixture mode: LOCAL_PRODUCT_TESTING=true with DEV_AUTH_USER_ID set',
+      '- Real Clerk checkout mode: LOCAL_PRODUCT_TESTING=false with DEV_AUTH_USER_ID unset/empty',
+    ].join(' '),
+    'DEV_AUTH_USER_ID',
+  );
+}
+
 assertHostedDeployForbiddenFlags(getProcessEnvSource());
+assertMixedDevAuthIdentity(getProcessEnvSource());
 
 export function getSmokeStateFileEnv(): string | undefined {
   return getServerOptional('SMOKE_STATE_FILE');

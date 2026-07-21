@@ -8,6 +8,7 @@ import {
 } from '@/app/(app)/settings/billing/components/BillingCards';
 import { BillingPlanSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
 import { UsageSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
+import { CheckoutSubscriptionSyncHost } from '@/app/(app)/settings/billing/components/CheckoutSubscriptionSyncHost';
 import {
   LedgerSectionBlock,
   SettingsLedgerPanel,
@@ -49,6 +50,9 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
           label='Plan & billing'
           description='Subscription, renewal, and payment details.'
         >
+          <Suspense fallback={null}>
+            <CheckoutSubscriptionSyncHost />
+          </Suspense>
           <Suspense fallback={<BillingPlanSkeleton />}>
             <BillingPlanRows locale={locale} />
           </Suspense>
