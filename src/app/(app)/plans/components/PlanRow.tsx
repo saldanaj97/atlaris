@@ -132,8 +132,8 @@ function ProgressTrack({ progressPercent }: { progressPercent: number }) {
       </progress>
       <div className='h-1 overflow-hidden rounded-full bg-panel-border/40'>
         <div
-          className='h-full rounded-full bg-primary transition-[width] duration-300'
-          style={{ width: `${progressPercent}%` }}
+          className='h-full w-full origin-left rounded-full bg-primary transition-transform duration-300'
+          style={{ transform: `scaleX(${progressPercent / 100})` }}
         />
       </div>
     </>
