@@ -10,7 +10,7 @@
   "scripts": {
     "build": "next build --turbopack",
     "dev": "next dev --turbopack",
-    "dev:workflow": "next dev --webpack",
+    "deploy:preview": "vercel deploy --yes",
     "dev:full": "pnpm db:dev:start && pnpm dev",
     "dev:local:starter": "pnpm db:dev:start && pnpm db:dev:seed && pnpm billing:clerk:fixture -- --user-id 00000000-0000-4000-8000-000000000001 --plan starter && pnpm dev",
     "dev:local:pro": "pnpm db:dev:start && pnpm db:dev:seed && pnpm billing:clerk:fixture -- --user-id 00000000-0000-4000-8000-000000000001 --plan pro && pnpm dev",

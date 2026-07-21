@@ -83,7 +83,7 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 
 ## Workflow SDK Tests
 
-See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for feature flags, local dev (`pnpm dev:workflow`), run correlation, and the full test command matrix.
+See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for feature flags, Preview validation (`pnpm deploy:preview`), run correlation, and the full test command matrix.
 
 - Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary against an isolated Testcontainers database.
 - Keep `vitest.workflow.config.ts` separate from DB/API integration tests; its harness owns production workflow discovery and its own Testcontainers lifecycle.

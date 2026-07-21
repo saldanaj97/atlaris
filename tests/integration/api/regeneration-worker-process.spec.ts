@@ -11,7 +11,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const ORIGINAL_ENV = {
   AI_PROVIDER: process.env.AI_PROVIDER,
-  AI_USE_MOCK: process.env.AI_USE_MOCK,
   MOCK_GENERATION_FAILURE_RATE: process.env.MOCK_GENERATION_FAILURE_RATE,
   MOCK_GENERATION_DELAY_MS: process.env.MOCK_GENERATION_DELAY_MS,
   REGENERATION_INLINE_PROCESSING: process.env.REGENERATION_INLINE_PROCESSING,
@@ -42,7 +41,6 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
   afterEach(() => {
     const envKeys: Array<keyof typeof ORIGINAL_ENV> = [
       'AI_PROVIDER',
-      'AI_USE_MOCK',
       'MOCK_GENERATION_FAILURE_RATE',
       'MOCK_GENERATION_DELAY_MS',
       'REGENERATION_INLINE_PROCESSING',
@@ -53,7 +51,6 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
 
   it('drains queued regeneration jobs and finalizes plan state', async () => {
     process.env.AI_PROVIDER = 'mock';
-    process.env.AI_USE_MOCK = 'true';
     process.env.MOCK_GENERATION_FAILURE_RATE = '0';
     process.env.MOCK_GENERATION_DELAY_MS = '10';
     process.env.REGENERATION_INLINE_PROCESSING = 'false';

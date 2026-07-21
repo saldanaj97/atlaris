@@ -25,7 +25,6 @@ async function loadProviderFactory() {
 describe('AI Provider Factory', () => {
   beforeEach(() => {
     delete process.env.AI_PROVIDER;
-    delete process.env.AI_USE_MOCK;
     delete process.env.MOCK_GENERATION_SEED;
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VITEST_WORKER_ID', '1');
@@ -33,7 +32,6 @@ describe('AI Provider Factory', () => {
 
   afterEach(() => {
     delete process.env.AI_PROVIDER;
-    delete process.env.AI_USE_MOCK;
     delete process.env.MOCK_GENERATION_SEED;
     vi.unstubAllEnvs();
   });
@@ -68,40 +66,6 @@ describe('AI Provider Factory', () => {
     it('handles invalid MOCK_GENERATION_SEED gracefully', async () => {
       process.env.AI_PROVIDER = 'mock';
       process.env.MOCK_GENERATION_SEED = 'not-a-number';
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
-
-    it('returns RouterGenerationProvider when AI_USE_MOCK is "false"', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('RouterGenerationProvider');
-    });
-
-    it('throws for malformed AI_USE_MOCK values instead of treating them as false', async () => {
-      process.env.AI_USE_MOCK = 'sometimes';
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      try {
-        getGenerationProvider();
-        expect.fail('Expected malformed AI_USE_MOCK to throw');
-      } catch (error) {
-        expect(error).toMatchObject({
-          name: 'EnvValidationError',
-          message: 'AI_USE_MOCK must be one of: true, false, 1, 0',
-        });
-      }
-    });
-
-    it('prioritizes AI_PROVIDER over AI_USE_MOCK', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.AI_USE_MOCK = 'false';
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -239,8 +203,8 @@ describe('AI Provider Factory', () => {
       expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('returns RouterGenerationProvider when AI_USE_MOCK is "false"', async () => {
-      process.env.AI_USE_MOCK = 'false';
+    it('returns RouterGenerationProvider when AI_PROVIDER is "router"', async () => {
+      process.env.AI_PROVIDER = 'router';
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
@@ -251,7 +215,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('accepts any model ID string', async () => {
-      process.env.AI_USE_MOCK = 'false';
+      process.env.AI_PROVIDER = 'router';
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider1 = getGenerationProviderWithModel(
@@ -280,7 +244,6 @@ describe('AI Provider Factory', () => {
     });
 
     it('throws when modelId is empty', async () => {
-      process.env.AI_USE_MOCK = 'false';
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       expect(() => getGenerationProviderWithModel('')).toThrow(

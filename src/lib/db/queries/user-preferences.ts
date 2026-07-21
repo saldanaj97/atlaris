@@ -110,24 +110,22 @@ export async function saveEmailNotificationPreferences(
       currentByCategory.set(row.category, row);
     }
 
-    const [settingsRow] = await tx
-      .insert(userEmailNotificationSettings)
-      .values({
-        userId,
-        unsubscribeAllOptionalEmails: values.unsubscribeAllOptionalEmails,
-        updatedAt: sql<Date>`now()`,
-      })
-      .onConflictDoUpdate({
-        target: userEmailNotificationSettings.userId,
-        set: {
-          unsubscribeAllOptionalEmails: sql`excluded.unsubscribe_all_optional_emails`,
-          updatedAt: sql<Date>`now()`,
-        },
-      })
-      .returning({
-        unsubscribeAllOptionalEmails:
-          userEmailNotificationSettings.unsubscribeAllOptionalEmails,
-      });
+    const [settingsRow] = (await tx.execute(sql`
+      INSERT INTO ${userEmailNotificationSettings} (
+        "user_id",
+        "unsubscribe_all_optional_emails",
+        "updated_at"
+      )
+      VALUES (
+        ${userId},
+        ${values.unsubscribeAllOptionalEmails},
+        now()
+      )
+      ON CONFLICT ("user_id") DO UPDATE SET
+        "unsubscribe_all_optional_emails" = EXCLUDED."unsubscribe_all_optional_emails",
+        "updated_at" = now()
+      RETURNING "unsubscribe_all_optional_emails"
+    `)) as Array<{ unsubscribe_all_optional_emails: boolean }>;
 
     if (!settingsRow) {
       throw new Error('Failed to persist email notification settings row.');
@@ -146,33 +144,33 @@ export async function saveEmailNotificationPreferences(
           ? sql<Date>`now()`
           : (current?.unsubscribedAt ?? null);
 
-      return {
-        userId,
-        category,
-        enabled,
-        unsubscribedAt,
-        updatedAt: sql<Date>`now()`,
-      };
+      return sql`(
+        ${userId},
+        ${category}::email_notification_category,
+        ${enabled},
+        ${unsubscribedAt},
+        now()
+      )`;
     });
 
-    const categoryRows = await tx
-      .insert(userEmailNotificationPreferences)
-      .values(categoryValues)
-      .onConflictDoUpdate({
-        target: [
-          userEmailNotificationPreferences.userId,
-          userEmailNotificationPreferences.category,
-        ],
-        set: {
-          enabled: sql`excluded.enabled`,
-          unsubscribedAt: sql`excluded.unsubscribed_at`,
-          updatedAt: sql<Date>`now()`,
-        },
-      })
-      .returning({
-        category: userEmailNotificationPreferences.category,
-        enabled: userEmailNotificationPreferences.enabled,
-      });
+    const categoryRows = (await tx.execute(sql`
+      INSERT INTO ${userEmailNotificationPreferences} (
+        "user_id",
+        "category",
+        "enabled",
+        "unsubscribed_at",
+        "updated_at"
+      )
+      VALUES ${sql.join(categoryValues, sql`, `)}
+      ON CONFLICT ("user_id", "category") DO UPDATE SET
+        "enabled" = EXCLUDED."enabled",
+        "unsubscribed_at" = EXCLUDED."unsubscribed_at",
+        "updated_at" = now()
+      RETURNING "category", "enabled"
+    `)) as Array<{
+      category: EmailNotificationCategory;
+      enabled: boolean;
+    }>;
 
     if (categoryRows.length !== EMAIL_NOTIFICATION_CATEGORIES.length) {
       throw new Error('Failed to persist email notification category rows.');
@@ -183,7 +181,7 @@ export async function saveEmailNotificationPreferences(
     }
 
     return {
-      unsubscribeAllOptionalEmails: settingsRow.unsubscribeAllOptionalEmails,
+      unsubscribeAllOptionalEmails: settingsRow.unsubscribe_all_optional_emails,
       categories,
     };
   });

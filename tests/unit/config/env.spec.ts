@@ -234,37 +234,6 @@ describe('Environment Configuration', () => {
       expect(attemptsEnv.cap).toBe(5);
     });
 
-    it('coerces AI_USE_MOCK to booleans', () => {
-      const env = { AI_USE_MOCK: '0' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(false);
-    });
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['false', false],
-      ['0', false],
-    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
-      const env = { AI_USE_MOCK: value } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(expected);
-    });
-
-    it('rejects malformed AI_USE_MOCK values', () => {
-      const env = { AI_USE_MOCK: 'maybe' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(() => aiEnv.useMock).toThrow(
-        /AI_USE_MOCK must be one of: true, false, 1, 0/,
-      );
-    });
-
     it('derives the timeout threshold from the same base logic', () => {
       const env = { AI_TIMEOUT_BASE_MS: '7000' } as const;
       const access = createServerEnvAccess(() => env);
@@ -683,32 +652,6 @@ describe('Environment Configuration', () => {
 
         expect(() => aiEnv.provider).toThrow(EnvValidationError);
         expect(() => aiEnv.provider).toThrow(/AI_PROVIDER must be one of/);
-      });
-    });
-
-    describe('useMock', () => {
-      it('should return true when AI_USE_MOCK is truthy', () => {
-        vi.stubEnv('AI_USE_MOCK', 'true');
-
-        expect(aiEnv.useMock).toBe(true);
-      });
-
-      it('should return false when AI_USE_MOCK is falsey', () => {
-        vi.stubEnv('AI_USE_MOCK', '0');
-
-        expect(aiEnv.useMock).toBe(false);
-      });
-
-      it('should return undefined when not set', () => {
-        expect(aiEnv.useMock).toBeUndefined();
-      });
-
-      it('should throw when AI_USE_MOCK is malformed', () => {
-        vi.stubEnv('AI_USE_MOCK', 'sometimes');
-
-        expect(() => aiEnv.useMock).toThrow(
-          /AI_USE_MOCK must be one of: true, false, 1, 0/,
-        );
       });
     });
   });
