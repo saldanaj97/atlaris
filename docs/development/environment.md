@@ -138,7 +138,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 - Clerk’s shared development payment gateway uses Stripe test cards ([Stripe testing](https://docs.stripe.com/testing)). **No app-owned Stripe account, Stripe API keys, Stripe products, or Stripe prices are required.**
 - Never commit Clerk keys or webhook secrets.
 
-After a successful `PricingTable` checkout, Clerk redirects to `/settings?checkout=1#billing`. Settings shows a bounded “Updating your subscription…” state while the webhook projection catches up, then refreshes the DB-backed rows. Settings remains the DB-backed account and entitlement surface.
+Before checkout, `/pricing` adds the signed-in user's current billing signature to Clerk's `/settings?checkout=1&checkoutBaseline=...#billing` return URL. Settings compares that short-lived UI-only baseline with the DB-backed subscription API, shows a bounded “Updating your subscription…” state while the webhook projection catches up, then removes both query markers and refreshes the rows. Settings remains the DB-backed account and entitlement surface.
 
 #### Manual real-checkout verification (opt-in; not default CI)
 

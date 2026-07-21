@@ -1,4 +1,5 @@
 import {
+  CHECKOUT_BASELINE_QUERY_PARAM,
   CHECKOUT_SYNC_TIMEOUT_MS,
   buildCheckoutBillingSignature,
   buildCheckoutReturnRedirectUrl,
@@ -10,8 +11,10 @@ import { describe, expect, it } from 'vitest';
 
 describe('checkout-return helpers', () => {
   it('builds the settings redirect with an explicit checkout marker', () => {
-    expect(buildCheckoutReturnRedirectUrl('/settings')).toBe(
-      '/settings?checkout=1#billing',
+    const baselineSignature = 'free|active||0';
+
+    expect(buildCheckoutReturnRedirectUrl('/settings', baselineSignature)).toBe(
+      `/settings?checkout=1&${CHECKOUT_BASELINE_QUERY_PARAM}=free%7Cactive%7C%7C0#billing`,
     );
   });
 

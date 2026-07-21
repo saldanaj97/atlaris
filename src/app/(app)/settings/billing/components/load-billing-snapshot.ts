@@ -1,5 +1,3 @@
-import type { CheckoutBillingSignatureInput } from '@/features/billing/checkout-return';
-
 import {
   BillingSnapshotNotFoundError,
   getBillingAccountSnapshot,
@@ -49,18 +47,3 @@ export const loadBillingSnapshot = cache(async () => {
 
   return result.snapshot;
 });
-
-/** Baseline billing signature fields for post-checkout sync polling. */
-export async function getCheckoutBillingBaseline(): Promise<CheckoutBillingSignatureInput | null> {
-  const snapshot = await loadBillingSnapshot();
-  if (!snapshot) {
-    return null;
-  }
-
-  return {
-    tier: snapshot.tier,
-    status: snapshot.subscriptionStatus,
-    periodEnd: snapshot.subscriptionPeriodEnd?.toISOString() ?? null,
-    cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
-  };
-}

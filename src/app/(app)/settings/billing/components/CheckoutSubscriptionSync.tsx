@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  CHECKOUT_BASELINE_QUERY_PARAM,
   CHECKOUT_RETURN_QUERY_PARAM,
   CHECKOUT_SYNC_POLL_INTERVAL_MS,
   CHECKOUT_SYNC_TIMEOUT_MESSAGE,
@@ -10,24 +11,25 @@ import {
   hasCheckoutBillingCaughtUp,
   isCheckoutReturnQueryValue,
   shouldContinueCheckoutSync,
-  type CheckoutBillingSignatureInput,
 } from '@/features/billing/checkout-return';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type CheckoutSubscriptionSyncProps = {
-  baseline: CheckoutBillingSignatureInput;
   pollIntervalMs?: number;
   timeoutMs?: number;
 };
 
 type SyncPhase = 'idle' | 'updating' | 'timeout';
 
-async function fetchCheckoutBillingSignature(): Promise<string | null> {
+async function fetchCheckoutBillingSignature(
+  signal: AbortSignal,
+): Promise<string | null> {
   const response = await fetch('/api/v1/user/subscription', {
     method: 'GET',
     headers: { Accept: 'application/json' },
     cache: 'no-store',
+    signal,
   });
 
   if (!response.ok) {
@@ -60,6 +62,7 @@ function clearCheckoutReturnQuery(router: ReturnType<typeof useRouter>): void {
   }
 
   url.searchParams.delete(CHECKOUT_RETURN_QUERY_PARAM);
+  url.searchParams.delete(CHECKOUT_BASELINE_QUERY_PARAM);
   const next = `${url.pathname}${url.search}${url.hash}`;
   router.replace(next);
 }
@@ -69,7 +72,6 @@ function clearCheckoutReturnQuery(router: ReturnType<typeof useRouter>): void {
  * to settings. Only activates for the explicit `?checkout=1` return marker.
  */
 export function CheckoutSubscriptionSync({
-  baseline,
   pollIntervalMs = CHECKOUT_SYNC_POLL_INTERVAL_MS,
   timeoutMs = CHECKOUT_SYNC_TIMEOUT_MS,
 }: CheckoutSubscriptionSyncProps) {
@@ -78,35 +80,48 @@ export function CheckoutSubscriptionSync({
   const checkoutReturn = isCheckoutReturnQueryValue(
     searchParams.get(CHECKOUT_RETURN_QUERY_PARAM),
   );
+  const baselineSignature = searchParams.get(CHECKOUT_BASELINE_QUERY_PARAM);
+  const shouldSync = checkoutReturn && Boolean(baselineSignature);
   const [phase, setPhase] = useState<SyncPhase>(
-    checkoutReturn ? 'updating' : 'idle',
+    shouldSync ? 'updating' : 'idle',
   );
 
   useEffect(() => {
-    if (!checkoutReturn) {
+    if (!shouldSync || !baselineSignature) {
       return;
     }
 
-    const baselineSignature = buildCheckoutBillingSignature(baseline);
     const startedAt = Date.now();
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+    let activeController: AbortController | undefined;
+    let deadlineTimeoutId: ReturnType<typeof setTimeout>;
+    let pollIntervalId: ReturnType<typeof setInterval>;
+
+    const stopTimers = () => {
+      clearTimeout(deadlineTimeoutId);
+      clearInterval(pollIntervalId);
+    };
 
     const finishCaughtUp = () => {
-      if (cancelled) return;
+      if (settled) return;
+      settled = true;
+      stopTimers();
       setPhase('idle');
       clearCheckoutReturnQuery(router);
       router.refresh();
     };
 
     const finishTimeout = () => {
-      if (cancelled) return;
+      if (settled) return;
+      settled = true;
+      stopTimers();
+      activeController?.abort();
       setPhase('timeout');
       clearCheckoutReturnQuery(router);
     };
 
     const poll = async () => {
-      if (cancelled) return;
+      if (settled || activeController) return;
 
       const elapsedMs = Date.now() - startedAt;
       if (
@@ -120,25 +135,32 @@ export function CheckoutSubscriptionSync({
         return;
       }
 
+      const controller = new AbortController();
+      activeController = controller;
+      let currentSignature: string | null = null;
       try {
-        const currentSignature = await fetchCheckoutBillingSignature();
-        if (cancelled) return;
-
-        if (
-          currentSignature &&
-          hasCheckoutBillingCaughtUp({
-            baselineSignature,
-            currentSignature,
-          })
-        ) {
-          finishCaughtUp();
-          return;
-        }
+        currentSignature = await fetchCheckoutBillingSignature(
+          controller.signal,
+        );
       } catch {
         // Keep polling until the bounded timeout; webhook lag can coincide with transient errors.
       }
+      if (activeController === controller) {
+        activeController = undefined;
+      }
 
-      if (cancelled) return;
+      if (settled) return;
+
+      if (
+        currentSignature &&
+        hasCheckoutBillingCaughtUp({
+          baselineSignature,
+          currentSignature,
+        })
+      ) {
+        finishCaughtUp();
+        return;
+      }
 
       const nextElapsedMs = Date.now() - startedAt;
       if (
@@ -151,21 +173,18 @@ export function CheckoutSubscriptionSync({
         finishTimeout();
         return;
       }
-
-      timeoutId = setTimeout(() => {
-        void poll();
-      }, pollIntervalMs);
     };
 
+    deadlineTimeoutId = setTimeout(finishTimeout, timeoutMs);
+    pollIntervalId = setInterval(() => void poll(), pollIntervalMs);
     void poll();
 
     return () => {
-      cancelled = true;
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
+      settled = true;
+      stopTimers();
+      activeController?.abort();
     };
-  }, [baseline, checkoutReturn, pollIntervalMs, router, timeoutMs]);
+  }, [baselineSignature, pollIntervalMs, router, shouldSync, timeoutMs]);
 
   if (phase === 'idle') {
     return null;

@@ -1,5 +1,6 @@
 export const CHECKOUT_RETURN_QUERY_PARAM = 'checkout';
 export const CHECKOUT_RETURN_QUERY_VALUE = '1';
+export const CHECKOUT_BASELINE_QUERY_PARAM = 'checkoutBaseline';
 
 export const CHECKOUT_SYNC_POLL_INTERVAL_MS = 2000;
 export const CHECKOUT_SYNC_TIMEOUT_MS = 30_000;
@@ -15,8 +16,18 @@ export type CheckoutBillingSignatureInput = {
   cancelAtPeriodEnd: boolean;
 };
 
-export function buildCheckoutReturnRedirectUrl(settingsRoot: string): string {
-  return `${settingsRoot}?${CHECKOUT_RETURN_QUERY_PARAM}=${CHECKOUT_RETURN_QUERY_VALUE}#billing`;
+export function buildCheckoutReturnRedirectUrl(
+  settingsRoot: string,
+  baselineSignature?: string | null,
+): string {
+  const query = new URLSearchParams({
+    [CHECKOUT_RETURN_QUERY_PARAM]: CHECKOUT_RETURN_QUERY_VALUE,
+  });
+  if (baselineSignature) {
+    query.set(CHECKOUT_BASELINE_QUERY_PARAM, baselineSignature);
+  }
+
+  return `${settingsRoot}?${query.toString()}#billing`;
 }
 
 export function isCheckoutReturnQueryValue(

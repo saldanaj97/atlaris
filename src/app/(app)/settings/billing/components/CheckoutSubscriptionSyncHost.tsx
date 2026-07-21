@@ -1,22 +1,15 @@
 import type { ReactElement } from 'react';
 
 import { CheckoutSubscriptionSync } from '@/app/(app)/settings/billing/components/CheckoutSubscriptionSync';
-import { getCheckoutBillingBaseline } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
 import { Suspense } from 'react';
 
 /**
- * Server host that supplies the current DB billing baseline to the bounded
- * post-checkout sync client. Only meaningful when `?checkout=1` is present.
+ * Suspense host for the search-param-driven post-checkout sync client.
  */
-export async function CheckoutSubscriptionSyncHost(): Promise<ReactElement | null> {
-  const baseline = await getCheckoutBillingBaseline();
-  if (!baseline) {
-    return null;
-  }
-
+export function CheckoutSubscriptionSyncHost(): ReactElement {
   return (
     <Suspense fallback={null}>
-      <CheckoutSubscriptionSync baseline={baseline} />
+      <CheckoutSubscriptionSync />
     </Suspense>
   );
 }

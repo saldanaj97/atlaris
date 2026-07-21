@@ -3,8 +3,14 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  getOptionalCheckoutBillingSignatureMock: vi.fn(),
   pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
+}));
+
+vi.mock('@/features/billing/checkout-return-server', () => ({
+  getOptionalCheckoutBillingSignature:
+    mocks.getOptionalCheckoutBillingSignatureMock,
 }));
 
 vi.mock('@/lib/auth/local-identity', () => ({
@@ -28,6 +34,9 @@ async function renderPricingPage(): Promise<void> {
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.getOptionalCheckoutBillingSignatureMock.mockResolvedValue(
+      'free|active||0',
+    );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
   });
 
@@ -45,7 +54,7 @@ describe('PricingPage', () => {
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1#billing`,
+        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,
       }),
     );
   });

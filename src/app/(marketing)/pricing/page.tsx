@@ -5,6 +5,7 @@ import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
 import { PricingFinalCta } from '@/app/(marketing)/pricing/components/PricingFinalCta';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
+import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { PricingTable } from '@clerk/nextjs';
@@ -17,6 +18,9 @@ export const metadata: Metadata = {
 
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
+  const checkoutBaseline = showClerkBilling
+    ? await getOptionalCheckoutBillingSignature()
+    : null;
 
   return (
     <MarketingPageShell withHeaderOffset>
@@ -38,6 +42,7 @@ export default async function PricingPage(): Promise<ReactElement> {
               <PricingTable
                 newSubscriptionRedirectUrl={buildCheckoutReturnRedirectUrl(
                   ROUTES.SETTINGS.ROOT,
+                  checkoutBaseline,
                 )}
               />
             ) : (
