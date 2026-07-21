@@ -86,7 +86,7 @@ describe('AfterHoursClerkPricing', () => {
       />,
     );
 
-    expect(screen.getByRole('tab', { name: 'Monthly' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Monthly' })).toBeVisible();
   });
 
   it('fills empty Clerk feature lists and sends the selected period to Clerk checkout', async () => {
@@ -122,7 +122,7 @@ describe('AfterHoursClerkPricing', () => {
       within(checkout).getByRole('button', { name: 'Choose Starter' }),
     ).toBeVisible();
 
-    await user.click(screen.getByRole('tab', { name: 'Yearly' }));
+    await user.click(screen.getByRole('button', { name: 'Yearly' }));
 
     expect(screen.getByTestId('checkout-plan_starter')).toHaveAttribute(
       'data-period',
@@ -163,7 +163,7 @@ describe('AfterHoursClerkPricing', () => {
       '/pricing?checkoutPlan=plan_starter&checkoutPeriod=month',
     );
 
-    await user.click(screen.getByRole('tab', { name: 'Yearly' }));
+    await user.click(screen.getByRole('button', { name: 'Yearly' }));
 
     expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
       'data-redirect',

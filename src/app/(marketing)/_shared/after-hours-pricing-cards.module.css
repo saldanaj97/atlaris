@@ -17,6 +17,9 @@
 }
 
 .periodList {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 2.75rem;
   padding: 0.3rem;
   border-radius: 999px;
@@ -37,7 +40,14 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--muted-foreground);
+  background: transparent;
   box-shadow: none;
+  cursor: pointer;
+}
+
+.periodTrigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .periodTrigger:global([data-state='active']) {

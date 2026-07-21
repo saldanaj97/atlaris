@@ -1,8 +1,8 @@
 'use client';
 
 import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/_shared/pricing-plan-features';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+import { clientLogger } from '@/lib/logging/client';
 import { PricingTable, SignInButton, useAuth, useClerk } from '@clerk/nextjs';
 import { CheckoutButton } from '@clerk/nextjs/experimental';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
@@ -313,7 +313,13 @@ export function AfterHoursClerkPricing({
       .then((result) => {
         if (!cancelled) setPlans(result.data);
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        clientLogger.error('Failed to load Clerk billing plans', {
+          context: 'after-hours-pricing',
+          message: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return () => {
       cancelled = true;
@@ -335,6 +341,7 @@ export function AfterHoursClerkPricing({
       requestedPlan &&
       (requestedPeriod === 'month' || requestedPeriod === 'annual')
     ) {
+      // react-doctor-disable-next-line react-hooks-js/set-state-in-effect -- synchronizes Clerk's post-auth return URL with the controlled period selector.
       setPeriod(
         requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
           ? 'annual'
@@ -473,22 +480,32 @@ export function AfterHoursClerkPricing({
 
   return (
     <div className={styles.stack}>
-      <Tabs
-        value={period}
-        onValueChange={(value) => {
-          if (value === 'month' || value === 'annual') setPeriod(value);
-        }}
-        className={styles.periodDock}
-      >
-        <TabsList aria-label='Billing period' className={styles.periodList}>
-          <TabsTrigger value='month' className={styles.periodTrigger}>
+      <div className={styles.periodDock}>
+        <div
+          aria-label='Billing period'
+          className={styles.periodList}
+          role='group'
+        >
+          <button
+            aria-pressed={period === 'month'}
+            className={styles.periodTrigger}
+            data-state={period === 'month' ? 'active' : 'inactive'}
+            onClick={() => setPeriod('month')}
+            type='button'
+          >
             Monthly
-          </TabsTrigger>
-          <TabsTrigger value='annual' className={styles.periodTrigger}>
+          </button>
+          <button
+            aria-pressed={period === 'annual'}
+            className={styles.periodTrigger}
+            data-state={period === 'annual' ? 'active' : 'inactive'}
+            onClick={() => setPeriod('annual')}
+            type='button'
+          >
             Yearly
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+          </button>
+        </div>
+      </div>
 
       <div ref={rootRef} className={styles.cards} data-plan-period={period}>
         <PricingTable
@@ -506,7 +523,6 @@ export function AfterHoursClerkPricing({
                 newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
                 planId={plan.id}
                 planPeriod={planPeriod}
-                key={plan.id}
               >
                 <button className={styles.checkoutButton} type='button'>
                   {label}
@@ -524,7 +540,6 @@ export function AfterHoursClerkPricing({
                   planPeriod,
                 )}
                 withSignUp
-                key={plan.id}
               >
                 <button className={styles.checkoutButton} type='button'>
                   {label}
@@ -532,6 +547,7 @@ export function AfterHoursClerkPricing({
               </SignInButton>
             ),
             target,
+            plan.id,
           );
         })}
       </div>

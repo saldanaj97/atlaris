@@ -84,10 +84,10 @@ describe('PricingPage', () => {
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(
-      screen.getByRole('tablist', { name: /billing period/i }),
+      screen.getByRole('group', { name: /billing period/i }),
     ).toBeVisible();
-    expect(screen.getByRole('tab', { name: /^monthly$/i })).toBeVisible();
-    expect(screen.getByRole('tab', { name: /^yearly$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^monthly$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^yearly$/i })).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({

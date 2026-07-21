@@ -199,7 +199,7 @@ export function UsageAnalyticsContent({
       <Surface
         aria-label='Eight-week pulse analytics design'
         padding='none'
-        className={cn('w-full px-5 pt-5 shadow-none', ledgerGlassSurface)}
+        className={cn(ledgerGlassSurface, 'w-full px-5 pt-5 shadow-none')}
       >
         <div className='min-w-0'>
           <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>

@@ -97,7 +97,7 @@ export default function DesktopHeader({
               asChild
             >
               <Link
-                href={isAuthenticated ? '/plans/new' : '/auth/sign-in'}
+                href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
                 aria-label='New Plan'
               >
                 <Plus className='size-3.5' aria-hidden='true' />
