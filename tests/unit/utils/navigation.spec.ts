@@ -106,16 +106,8 @@ describe('Navigation', () => {
       expect(pricingItem?.href).toBe('/pricing');
     });
 
-    it('should contain About nav item', () => {
-      const aboutItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'About',
-      );
-      expect(aboutItem).toBeDefined();
-      expect(aboutItem?.href).toBe('/about');
-    });
-
     it('should have correct number of nav items', () => {
-      expect(unauthenticatedNavItems.length).toBe(3);
+      expect(unauthenticatedNavItems.length).toBe(2);
     });
 
     it('should not have Activity Feed, Analytics, or Settings nav items', () => {
@@ -177,11 +169,10 @@ describe('Navigation', () => {
       expect(authLabels).toContain('Analytics');
       expect(authLabels).toContain('Settings');
 
-      // Unauthenticated users have Home, Pricing, About
+      // Unauthenticated users have Home and Pricing
       const unauthLabels = unauthenticatedNavItems.map((item) => item.label);
       expect(unauthLabels).toContain('Home');
       expect(unauthLabels).toContain('Pricing');
-      expect(unauthLabels).toContain('About');
     });
 
     it('should have authenticated-only navigation items', () => {
@@ -222,7 +213,7 @@ describe('Navigation', () => {
       expect(unauthPlans).toBeUndefined();
     });
 
-    it('should have Pricing and About only for unauthenticated users', () => {
+    it('should have Pricing only for unauthenticated users', () => {
       const authPricing = authenticatedNavItems.find(
         (item) => item.label === 'Pricing',
       );
@@ -231,15 +222,6 @@ describe('Navigation', () => {
       );
       expect(authPricing).toBeUndefined();
       expect(unauthPricing).toBeDefined();
-
-      const authAbout = authenticatedNavItems.find(
-        (item) => item.label === 'About',
-      );
-      const unauthAbout = unauthenticatedNavItems.find(
-        (item) => item.label === 'About',
-      );
-      expect(authAbout).toBeUndefined();
-      expect(unauthAbout).toBeDefined();
     });
   });
 });

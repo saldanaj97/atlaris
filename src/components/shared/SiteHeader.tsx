@@ -2,10 +2,6 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import SiteHeaderChrome from './nav/SiteHeaderChrome';
 import {
-  APP_SHELL_COLUMN,
-  APP_SHELL_GUTTER,
-} from '@/components/layout/app-shell-width';
-import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
@@ -18,7 +14,6 @@ import {
 import { getSessionSafe } from '@/lib/auth/server';
 import { devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { cn } from '@/lib/utils';
 import { currentUser } from '@clerk/nextjs/server';
 
 /**
@@ -115,22 +110,15 @@ export default async function SiteHeader() {
   }
 
   return (
-    <header
-      className={cn(
-        'fixed top-0 left-0 z-50 w-full pt-3 lg:pt-4',
-        APP_SHELL_GUTTER,
-      )}
-    >
-      <div className={APP_SHELL_COLUMN}>
-        <SiteHeaderChrome
-          navItems={navItems}
-          tier={tier}
-          isAuthenticated={Boolean(authUserId)}
-          showClerkUserButton={showClerkUserButton}
-          userName={userName}
-          userImageUrl={userImageUrl}
-        />
-      </div>
+    <header className='fixed top-0 left-0 z-50 w-full'>
+      <SiteHeaderChrome
+        navItems={navItems}
+        tier={tier}
+        isAuthenticated={Boolean(authUserId)}
+        showClerkUserButton={showClerkUserButton}
+        userName={userName}
+        userImageUrl={userImageUrl}
+      />
     </header>
   );
 }

@@ -43,6 +43,8 @@ describe('DesktopHeader layout', () => {
       'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
     );
     expect(desktopHeaderShellClass('protected')).not.toContain('grid-cols-3');
+    expect(desktopHeaderShellClass('protected')).toContain('h-16');
+    expect(desktopHeaderShellClass('protected')).not.toContain('rounded-2xl');
   });
 
   it('keeps authenticated nav items accessible at md width', () => {
@@ -97,5 +99,33 @@ describe('DesktopHeader layout', () => {
     expect(within(nav!).getAllByRole('link')).toHaveLength(
       unauthenticatedNavItems.length,
     );
+  });
+
+  it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {
+    renderDesktopHeader({
+      headerVariant: 'marketing',
+      pathname: '/landing',
+      navItems: unauthenticatedNavItems,
+      isAuthenticated: true,
+      showClerkUserButton: true,
+    });
+
+    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pricing' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'About' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Activity Feed' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'New Plan' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
 });
