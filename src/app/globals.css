@@ -5,58 +5,64 @@
 
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #0f0f12;
-  --card: #ffffff;
-  --card-foreground: #0f0f12;
-  --popover: #ffffff;
-  --popover-foreground: #0f0f12;
-  --primary: #6d3df5;
-  --primary-dark: #5528c9;
-  --primary-foreground: #ffffff;
-  --secondary: #efe7ff;
-  --secondary-foreground: #5f6472;
-  --muted: #efe7ff;
-  --muted-foreground: #5f6472;
-  --accent: #efe7ff;
-  --accent-foreground: #6d3df5;
+  /* After Hours — celestial parchment */
+  --background: #f4ebe1;
+  --foreground: #26102a;
+  --card: #faf4ec;
+  --card-foreground: #26102a;
+  --popover: #faf4ec;
+  --popover-foreground: #26102a;
+  --primary: #c96d42;
+  --primary-dark: #984c2c;
+  --primary-foreground: #f4ebe1;
+  --secondary: #e6d5c9;
+  --secondary-foreground: #6e5268;
+  --muted: #efe5db;
+  --muted-foreground: #6e5268;
+  --accent: #e6d5c9;
+  --accent-foreground: #c96d42;
   --destructive: oklch(0.64 0.21 25.39);
   /* Success (Phase 4): completion / positive UI; use bg-success, text-success, border-success/* */
   --success: oklch(0.52 0.14 155);
   --success-foreground: oklch(0.99 0 0);
   /* Product surfaces: panels, inset areas, subtle emphasis (not marketing glass) */
-  --panel: #ffffff;
-  --panel-foreground: #0f0f12;
-  --panel-muted: #efe7ff;
-  --panel-border: #e8e4ef;
+  --panel: #faf4ec;
+  --panel-foreground: #26102a;
+  --panel-muted: #efe5db;
+  --panel-border: #c9a898;
   --warning: oklch(0.75 0.15 85);
   --warning-foreground: oklch(0.22 0.04 85);
   --disabled: oklch(0.96 0.01 261.82);
-  --disabled-foreground: #5f6472;
-  --border: #e8e4ef;
-  --input: #e8e4ef;
-  --ring: #6d3df5;
-  --chart-1: #6d3df5;
-  --chart-2: #8559f7;
-  --chart-3: #5528c9;
-  --chart-4: oklch(0.42 0.18 265.55);
-  --chart-5: oklch(0.38 0.14 265.59);
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.14 0 0);
-  --sidebar-primary: #6d3df5;
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.2 0 0);
-  --sidebar-border: oklch(0.92 0 0);
-  --sidebar-ring: #6d3df5;
+  --disabled-foreground: #6e5268;
+  --border: #c9a898;
+  --input: #c9a898;
+  --ring: #c96d42;
+  --chart-1: #c96d42;
+  --chart-2: #984c2c;
+  --chart-3: #8b4560;
+  --chart-4: #6e5268;
+  --chart-5: #26102a;
+  --sidebar: #faf4ec;
+  --sidebar-foreground: #26102a;
+  --sidebar-primary: #c96d42;
+  --sidebar-primary-foreground: #f4ebe1;
+  --sidebar-accent: #efe5db;
+  --sidebar-accent-foreground: #26102a;
+  --sidebar-border: #c9a898;
+  --sidebar-ring: #c96d42;
   --app-background-image:
     radial-gradient(
-      color-mix(in srgb, #6d3df5 22%, #e8e4ef) 1px,
-      transparent 1px
+      circle at 78% 0%,
+      color-mix(in srgb, #c96d42 14%, #f4ebe1) 0,
+      transparent 32%
     ),
-    radial-gradient(circle at 80% 0%, #f4efff 0, transparent 28%),
-    linear-gradient(160deg, #efe7ff 0%, #ffffff 45%, #f3f5f9 100%);
-  --app-background-size: 28px 28px, auto, auto;
+    radial-gradient(
+      circle at 12% 88%,
+      color-mix(in srgb, #c9a898 40%, #f4ebe1) 0,
+      transparent 42%
+    ),
+    linear-gradient(160deg, #f4ebe1 0%, #faf4ec 48%, #e6d5c9 100%);
+  --app-background-size: auto, auto, auto;
 
   --font-family-base:
     var(--font-work-sans), ui-sans-serif, system-ui, -apple-system,
@@ -67,7 +73,9 @@
     BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif;
   --font-family-display:
-    var(--font-young-serif), ui-serif, Georgia, 'Times New Roman', serif;
+    var(--font-sora), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
   --font-weight-base: 400;
   --font-weight-heading: 600;
 
@@ -98,65 +106,64 @@
 
 .dark {
   color-scheme: dark;
-  --background: #0f0f12;
-  --foreground: #e8e6ee;
-  --card: #17171d;
-  --card-foreground: #e8e6ee;
-  --popover: #17171d;
-  --popover-foreground: #e8e6ee;
-  --primary: #6d3df5;
-  --primary-dark: #8559f7;
-  --primary-foreground: #ffffff;
-  --secondary: color-mix(in srgb, #6d3df5 18%, #0f0f12);
-  --secondary-foreground: #c4b8ff;
-  --muted: color-mix(in srgb, #6d3df5 12%, #0f0f12);
-  --muted-foreground: #9a9fae;
-  --accent: color-mix(in srgb, #6d3df5 14%, #0f0f12);
-  --accent-foreground: #8559f7;
+  /* After Hours — velvet nocturne */
+  --background: #180d18;
+  --foreground: #f8ead7;
+  --card: #2b1728;
+  --card-foreground: #f8ead7;
+  --popover: #2b1728;
+  --popover-foreground: #f8ead7;
+  --primary: #f0a06e;
+  --primary-dark: #f0a06e;
+  --primary-foreground: #1b0e19;
+  --secondary: #3b2135;
+  --secondary-foreground: #c7aeb7;
+  --muted: #351b30;
+  --muted-foreground: #c7aeb7;
+  --accent: #3b2135;
+  --accent-foreground: #f0a06e;
   --destructive: oklch(0.64 0.21 25.39);
   --success: oklch(0.62 0.14 155);
   --success-foreground: oklch(0.12 0.02 155);
-  --panel: #141419;
-  --panel-foreground: #e8e6ee;
-  --panel-muted: color-mix(in srgb, #6d3df5 10%, #0f0f12);
-  --panel-border: color-mix(in srgb, #6d3df5 14%, #0f0f12);
+  --panel: #2b1728;
+  --panel-foreground: #f8ead7;
+  --panel-muted: #351b30;
+  --panel-border: #7a4b62;
   --warning: oklch(0.72 0.14 85);
   --warning-foreground: oklch(0.15 0.02 85);
   --disabled: oklch(0.3 0 0);
-  --disabled-foreground: #9a9fae;
-  --border: color-mix(in srgb, #6d3df5 16%, #0f0f12);
-  --input: color-mix(in srgb, #6d3df5 16%, #0f0f12);
-  --ring: #6d3df5;
-  --chart-1: #6d3df5;
-  --chart-2: #8559f7;
-  --chart-3: #5528c9;
-  --chart-4: oklch(0.49 0.22 264.43);
-  --chart-5: oklch(0.42 0.18 265.55);
-  --sidebar: oklch(0.21 0.01 285.56);
-  --sidebar-foreground: oklch(0.99 0 0);
-  --sidebar-primary: #6d3df5;
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.27 0.01 285.81);
-  --sidebar-accent-foreground: oklch(0.99 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #6d3df5;
+  --disabled-foreground: #c7aeb7;
+  --border: #7a4b62;
+  --input: #7a4b62;
+  --ring: #f0a06e;
+  --chart-1: #f0a06e;
+  --chart-2: #e8b896;
+  /* Mid series / completed status: warm peach-rose — stronger than muted ink on nocturne. */
+  --chart-3: #d9a08c;
+  --chart-4: #7a4b62;
+  /* Soft series: muted parchment-rose — readable on card (#2b1728); old soft fill was invisible. */
+  --chart-5: #c7aeb7;
+  --sidebar: #2b1728;
+  --sidebar-foreground: #f8ead7;
+  --sidebar-primary: #f0a06e;
+  --sidebar-primary-foreground: #1b0e19;
+  --sidebar-accent: #351b30;
+  --sidebar-accent-foreground: #f8ead7;
+  --sidebar-border: #7a4b62;
+  --sidebar-ring: #f0a06e;
   --app-background-image:
     radial-gradient(
-      color-mix(in srgb, #6d3df5 30%, #605c6f) 1px,
-      transparent 1px
+      circle at 78% 0%,
+      color-mix(in srgb, #f0a06e 12%, #180d18) 0,
+      transparent 32%
     ),
     radial-gradient(
-      circle at 80% 0%,
-      color-mix(in srgb, #6d3df5 14%, #0f0f12) 0,
-      transparent 28%
+      circle at 14% 86%,
+      color-mix(in srgb, #7a4b62 28%, #180d18) 0,
+      transparent 42%
     ),
-    linear-gradient(
-      140deg,
-      #0f0f12 0%,
-      color-mix(in srgb, #6d3df5 3%, #0f0f12) 50%,
-      color-mix(in srgb, #6d3df5 12%, #211f2a) 100%
-    );
-  --app-background-size: 28px 28px, auto, auto;
+    linear-gradient(140deg, #180d18 0%, #2b1728 52%, #351b30 100%);
+  --app-background-size: auto, auto, auto;
 
 }
 
@@ -207,11 +214,15 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
+  /* Alias for Sora display stack; `font-serif` remains the legacy utility name. */
+  --font-display: var(--font-family-display);
 
   --radius-sm: calc(var(--radius) * 0.75);
   --radius-md: calc(var(--radius) * 0.875);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.25);
+  /* Marketing arched cards (`rounded-4xl`) read `--radius-marketing`. */
+  --radius-4xl: var(--radius-marketing);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
@@ -299,7 +310,7 @@
    */
   .marketing-h1 {
     font-family: var(--font-family-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: 3.0625rem; /* 49px */
     line-height: 1.1;
     letter-spacing: -0.03em;
@@ -308,7 +319,7 @@
 
   .marketing-h2 {
     font-family: var(--font-family-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: 2.4375rem; /* 39px */
     line-height: 1.15;
     letter-spacing: -0.025em;
@@ -317,7 +328,7 @@
 
   .marketing-h3 {
     font-family: var(--font-family-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: 1.9375rem; /* 31px */
     line-height: 1.2;
     letter-spacing: -0.02em;
@@ -326,7 +337,7 @@
 
   .marketing-h4 {
     font-family: var(--font-family-display);
-    font-weight: 400;
+    font-weight: 600;
     font-size: 1.5625rem; /* 25px */
     line-height: 1.25;
     letter-spacing: -0.015em;

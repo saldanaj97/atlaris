@@ -4,7 +4,8 @@ import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Work_Sans, Young_Serif } from 'next/font/google';
+import { ui } from '@clerk/ui';
+import { Sora, Work_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
 
 import './globals.css';
@@ -14,10 +15,9 @@ const workSans = Work_Sans({
   variable: '--font-work-sans',
 });
 
-const youngSerif = Young_Serif({
+const sora = Sora({
   subsets: ['latin'],
-  weight: '400',
-  variable: '--font-young-serif',
+  variable: '--font-sora',
 });
 
 const metadataDescription =
@@ -93,8 +93,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0f0f12' },
+    { media: '(prefers-color-scheme: light)', color: '#f4ebe1' },
+    { media: '(prefers-color-scheme: dark)', color: '#180d18' },
   ],
 };
 
@@ -114,7 +114,7 @@ export default function RootLayout({
     <html
       lang='en'
       suppressHydrationWarning
-      className={`${workSans.variable} ${youngSerif.variable}`}
+      className={`${workSans.variable} ${sora.variable}`}
     >
       <body
         className={`${workSans.className} flex min-h-screen w-full flex-col antialiased`}
@@ -127,6 +127,7 @@ export default function RootLayout({
             localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
+            ui={ui}
           >
             {appContent}
           </ClerkProvider>

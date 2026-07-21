@@ -1,5 +1,4 @@
 import { ROUTES } from '@/features/navigation';
-import { cn } from '@/lib/utils';
 
 export type HeaderShellVariant =
   | 'marketing'
@@ -9,27 +8,12 @@ export type HeaderShellVariant =
 
 export type HeaderShellLayout = 'desktop' | 'mobile';
 
-const PRICING_SHELL_BORDER = 'border-primary/20 dark:border-primary/10';
-
-const PRICING_SHELL_SURFACE = 'bg-primary/5 dark:bg-primary/10';
-
-const GLASS_DESKTOP_STRUCTURE_BASE =
-  'relative hidden w-full isolate grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-2xl border px-5 py-2.5 shadow-lg md:grid';
-
-const GLASS_DESKTOP_SURFACE =
-  'rounded-2xl bg-primary/10 backdrop-blur-sm dark:bg-primary/15';
-
-const GLASS_MOBILE_STRUCTURE_BASE =
-  'relative grid w-full isolate grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border px-3 py-2 shadow-lg sm:px-4 sm:py-2.5 md:hidden';
-
-const GLASS_MOBILE_SURFACE =
-  'rounded-2xl bg-primary/10 backdrop-blur-sm dark:bg-primary/15';
-
+/** Full-bleed bar grid — content tracks stay equal so the nav centers on the shell. */
 const APP_DESKTOP_SHELL =
-  'hidden w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center rounded-2xl border border-border bg-card px-5 py-2.5 shadow-sm md:grid';
+  'relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid';
 
 const APP_MOBILE_SHELL =
-  'relative grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-sm sm:px-4 sm:py-2.5 md:hidden';
+  'relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden';
 
 const PROTECTED_HEADER_PREFIXES = [
   ROUTES.DASHBOARD,
@@ -43,29 +27,28 @@ function matchesPathOrDescendant(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
-/** True for marketing surfaces that use the glass header shell (home, landing, about, pricing). */
+/** True for marketing surfaces that use the After Hours header (home, landing, pricing). */
 function isMarketingHeaderPath(pathname: string): boolean {
   return (
     pathname === ROUTES.HOME ||
     pathname === ROUTES.LANDING ||
-    pathname === ROUTES.ABOUT ||
     pathname === ROUTES.PRICING
   );
 }
 
-/** True when the pathname is the pricing route (subtle glass intensity). */
+/** True when the pathname is the pricing route. */
 function isPricingPath(pathname: string): boolean {
   return pathname === ROUTES.PRICING;
 }
 
-/** True for authenticated app areas that use the protected glass header variant. */
+/** True for authenticated app areas that use the protected header variant. */
 function isProtectedHeaderPath(pathname: string): boolean {
   return PROTECTED_HEADER_PREFIXES.some((prefix) =>
     matchesPathOrDescendant(pathname, prefix),
   );
 }
 
-/** Maps the current pathname to a header shell variant for layout and glass presets. */
+/** Maps the current pathname to a header shell variant. */
 export function getHeaderShellVariant(pathname: string): HeaderShellVariant {
   if (isPricingPath(pathname)) {
     return 'pricing';
@@ -82,50 +65,20 @@ export function getHeaderShellVariant(pathname: string): HeaderShellVariant {
   return 'opaque';
 }
 
-/** Whether the variant renders a liquid-glass layer instead of an opaque card shell. */
-export function usesLiquidGlassHeader(variant: HeaderShellVariant): boolean {
-  return variant !== 'opaque';
-}
-
-/** Liquid-glass physics intensity preset for the header variant. */
-export function headerGlassIntensity(
-  variant: HeaderShellVariant,
-): 'default' | 'subtle' {
-  return variant === 'pricing' ? 'subtle' : 'default';
-}
-
-function glassShellBorderClass(variant: HeaderShellVariant): string {
-  return cn(
-    'border-primary/25 dark:border-primary/15',
-    variant === 'pricing' && PRICING_SHELL_BORDER,
-  );
-}
-
-/** Tailwind surface classes for the glass scrim behind header content. */
-export function headerGlassSurfaceClass(
-  variant: HeaderShellVariant,
-  layout: HeaderShellLayout,
-): string {
-  const surface =
-    layout === 'desktop' ? GLASS_DESKTOP_SURFACE : GLASS_MOBILE_SURFACE;
-
-  return cn(surface, variant === 'pricing' && PRICING_SHELL_SURFACE);
+/**
+ * Marketing surfaces (home, landing, pricing) use the minimal After Hours
+ * nav — not authenticated app chrome — even when the user is signed in.
+ */
+export function isMarketingHeaderChrome(variant: HeaderShellVariant): boolean {
+  return variant === 'marketing' || variant === 'pricing';
 }
 
 /** Desktop header grid shell classes for the resolved variant. */
-export function desktopHeaderShellClass(variant: HeaderShellVariant): string {
-  if (usesLiquidGlassHeader(variant)) {
-    return cn(GLASS_DESKTOP_STRUCTURE_BASE, glassShellBorderClass(variant));
-  }
-
+export function desktopHeaderShellClass(_variant: HeaderShellVariant): string {
   return APP_DESKTOP_SHELL;
 }
 
 /** Mobile header grid shell classes for the resolved variant. */
-export function mobileHeaderShellClass(variant: HeaderShellVariant): string {
-  if (usesLiquidGlassHeader(variant)) {
-    return cn(GLASS_MOBILE_STRUCTURE_BASE, glassShellBorderClass(variant));
-  }
-
+export function mobileHeaderShellClass(_variant: HeaderShellVariant): string {
   return APP_MOBILE_SHELL;
 }

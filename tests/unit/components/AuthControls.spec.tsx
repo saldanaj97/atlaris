@@ -46,14 +46,33 @@ describe('AuthControls', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders account link instead of Clerk user button when disabled', () => {
-    renderAuthControls({ isAuthenticated: true, showClerkUserButton: false });
+  it('renders initials avatar link when Clerk user button is disabled', () => {
+    renderAuthControls({
+      isAuthenticated: true,
+      showClerkUserButton: false,
+      userName: 'Jane Doe',
+    });
 
-    expect(screen.getByRole('link', { name: /account/i })).toHaveAttribute(
-      'href',
-      '/settings#profile',
-    );
+    const accountLink = screen.getByRole('link', { name: /account/i });
+    expect(accountLink).toHaveAttribute('href', '/settings#profile');
+    expect(accountLink).toHaveTextContent('JD');
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
+  });
+
+  it('renders profile image avatar when provided', () => {
+    renderAuthControls({
+      isAuthenticated: true,
+      showClerkUserButton: false,
+      userName: 'Jane Doe',
+      userImageUrl: 'https://img.clerk.com/avatar.png',
+    });
+
+    const accountLink = screen.getByRole('link', { name: /account/i });
+    expect(accountLink.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://img.clerk.com/avatar.png',
+    );
+    expect(accountLink).not.toHaveTextContent('JD');
   });
 
   describe('tier badge', () => {
@@ -78,6 +97,7 @@ describe('AuthControls', () => {
           isAuthenticated: true,
           tier,
           showClerkUserButton: false,
+          userName: 'Dev User',
         });
 
         expect(screen.getByText(tier)).toBeInTheDocument();

@@ -1,8 +1,8 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
-import { Play } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
 interface ResumeLearningHeroProps {
@@ -40,114 +40,66 @@ function getResumeHeroDescription(plan: PlanSummary): string {
   if (completedModules === moduleCount) {
     return `Congratulations! You've completed all ${moduleCount} modules.`;
   }
-  return `${completedModules} of ${moduleCount} modules complete. Keep going!`;
+  return `${completedModules} of ${moduleCount} modules complete · Up next: ${getUpNextLabel(plan)}`;
 }
 
-interface HeroCircularProgressProps {
-  progressPercent: number;
-  size?: number;
-  strokeWidth?: number;
-}
-
-function HeroCircularProgress({
-  progressPercent,
-  size = 64,
-  strokeWidth = 6,
-}: HeroCircularProgressProps) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progressPercent / 100);
-  return (
-    <div
-      className='relative flex-shrink-0'
-      style={{ width: size, height: size }}
-    >
-      <progress
-        aria-label={`Plan progress: ${progressPercent}% complete`}
-        className='sr-only'
-        value={progressPercent}
-        max={100}
-      >{`Plan progress: ${progressPercent}% complete`}</progress>
-      <svg
-        className='-rotate-90'
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden='true'
-      >
-        <title>Progress indicator</title>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill='none'
-          className='stroke-muted'
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill='none'
-          className='stroke-primary'
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap='round'
-        />
-      </svg>
-      <span
-        className='absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground tabular-nums'
-        aria-hidden='true'
-      >
-        {progressPercent}%
-      </span>
-    </div>
-  );
-}
-
+/**
+ * After Hours resume card — arched panel, soft progress track, peach pill CTA.
+ */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
-  const upNextLabel = getUpNextLabel(plan);
-
   return (
-    <Surface
-      variant='interactive'
-      padding='comfortable'
-      className='flex flex-col gap-4 border-primary/20'
-    >
-      <div className='flex items-start justify-between gap-4'>
-        <p className='text-xs font-medium tracking-wider text-muted-foreground uppercase'>
-          Most Recent Plan
-        </p>
-        <HeroCircularProgress progressPercent={progressPercent} />
-      </div>
+    <article className='rounded-[1.75rem] border border-panel-border bg-panel p-6 text-panel-foreground sm:p-7'>
+      <p className='mb-3 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
+        Most recent plan
+      </p>
 
-      <div className='flex flex-wrap items-start justify-between gap-4 sm:items-end'>
-        <div className='min-w-0 flex-1 space-y-2'>
-          <h2 className='truncate text-2xl font-semibold text-foreground md:text-3xl'>
-            {plan.plan.topic}
-          </h2>
-          <p className='text-sm text-muted-foreground'>
-            {getResumeHeroDescription(plan)}
-          </p>
+      <h2 className='text-xl font-semibold text-balance text-foreground sm:text-2xl'>
+        {plan.plan.topic}
+      </h2>
+
+      <p className='mt-2 max-w-xl text-sm font-normal text-muted-foreground'>
+        {getResumeHeroDescription(plan)}
+      </p>
+
+      <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5'>
+        <div className='min-w-0 flex-1'>
+          <div className='mb-2 flex items-baseline justify-between gap-3'>
+            <span className='text-xs font-medium text-muted-foreground'>
+              Progress
+            </span>
+            <span className='text-xs font-medium text-foreground tabular-nums'>
+              {progressPercent}%
+            </span>
+          </div>
+          {/* soft track (#3b2135 → secondary) + accent fill (#f0a06e → primary) */}
+          <Progress
+            value={progressPercent}
+            aria-label={`Plan progress: ${progressPercent}% complete`}
+            className='h-2 bg-secondary'
+          />
         </div>
 
-        <div className='flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4'>
-          <p className='min-w-0 text-sm wrap-break-word text-muted-foreground'>
-            <span className='font-medium text-foreground'>Up Next:</span>{' '}
-            {upNextLabel}
-          </p>
-          <Button asChild className='px-5 py-2.5'>
-            <Link href={`/plans/${plan.plan.id}`}>
-              <Play />
-              Continue Learning
-            </Link>
+        <div className='flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center'>
+          {/* accent CTA */}
+          <Button
+            asChild
+            className='h-10 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90'
+          >
+            <Link href={`/plans/${plan.plan.id}`}>Continue</Link>
+          </Button>
+          {/* ctaBg plate — card/panel surface with line border */}
+          <Button
+            asChild
+            variant='outline'
+            className='h-10 rounded-full border-panel-border bg-panel px-5 text-panel-foreground hover:bg-secondary hover:text-foreground'
+          >
+            <Link href={ROUTES.PLANS.ROOT}>All plans</Link>
           </Button>
         </div>
       </div>
-    </Surface>
+    </article>
   );
 }

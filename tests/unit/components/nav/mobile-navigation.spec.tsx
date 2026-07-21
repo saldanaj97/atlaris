@@ -42,7 +42,16 @@ describe('MobileNavigation', () => {
   it('opens the navigation sheet and lists primary links', async () => {
     const user = userEvent.setup();
 
-    renderMobileNavigation('marketing');
+    render(
+      <TooltipProvider>
+        <MobileNavigation
+          headerVariant='protected'
+          pathname='/dashboard'
+          navItems={navItems}
+          isAuthenticated
+        />
+      </TooltipProvider>,
+    );
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
@@ -58,11 +67,30 @@ describe('MobileNavigation', () => {
     ).toHaveAttribute('href', '/plans/new');
   });
 
-  it('uses glass styling for the menu trigger on liquid glass routes', () => {
+  it('uses Get started CTA on marketing sheets when signed out', async () => {
+    const user = userEvent.setup();
+
+    renderMobileNavigation('marketing');
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute(
+      'href',
+      '/auth/sign-in',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('uses the opaque menu trigger styling on marketing routes', () => {
     renderMobileNavigation('marketing');
 
     expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass(
-      'backdrop-blur-sm',
+      'bg-muted',
+    );
+    expect(screen.getByRole('button', { name: 'Open menu' })).not.toHaveClass(
+      'backdrop-blur-md',
     );
   });
 
@@ -73,7 +101,7 @@ describe('MobileNavigation', () => {
       'bg-muted',
     );
     expect(screen.getByRole('button', { name: 'Open menu' })).not.toHaveClass(
-      'backdrop-blur-sm',
+      'backdrop-blur-md',
     );
   });
 });

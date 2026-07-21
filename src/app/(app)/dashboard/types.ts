@@ -11,5 +11,3 @@ export interface ActivityItem {
     duration?: string;
   };
 }
-
-export type ActivityFilter = 'all' | 'milestone' | 'progress';

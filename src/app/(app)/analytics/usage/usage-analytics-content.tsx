@@ -1,6 +1,7 @@
 'use client';
 
 import type { UsageAnalyticsModel } from './usage-analytics-model';
+import type { ReactNode } from 'react';
 
 import {
   ActiveProgressBarChart,
@@ -10,13 +11,13 @@ import {
   StreakStepLineChart,
   WeeklyLineChart,
 } from './usage-analytics-charts';
+import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import type { ReactNode } from 'react';
 
 const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
 const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
@@ -198,7 +199,7 @@ export function UsageAnalyticsContent({
       <Surface
         aria-label='Eight-week pulse analytics design'
         padding='none'
-        className='w-full rounded-lg px-5 pt-5'
+        className={cn(ledgerGlassSurface, 'w-full px-5 pt-5 shadow-none')}
       >
         <div className='min-w-0'>
           <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -264,7 +265,8 @@ function MetricTile({
   return (
     <div
       className={cn(
-        'flex min-h-72 flex-col rounded-lg border border-panel-border bg-panel p-4',
+        'flex min-h-72 flex-col p-4',
+        ledgerGlassSurface,
         className,
       )}
     >
@@ -327,13 +329,13 @@ const STATUS_TONE_CLASSNAME: Record<MetricStatus['tone'], string> = {
     'bg-destructive/15 text-destructive dark:bg-destructive/25 dark:text-destructive-foreground',
 };
 
-const TREND_ICON_COLOR: Record<
+const TREND_ICON_CLASSNAME: Record<
   NonNullable<MetricStatus['trendIcon']>,
   string
 > = {
-  up: '#22c55e',
-  down: '#fb7185',
-  flat: '#2f81f7',
+  up: 'size-5 text-success',
+  down: 'size-5 text-destructive',
+  flat: 'size-5 text-primary',
 };
 
 /** Renders the up, down, or flat trend icon for a metric status. */
@@ -342,19 +344,15 @@ function TrendStatusIcon({
 }: {
   kind: NonNullable<MetricStatus['trendIcon']>;
 }) {
-  const iconStyle = { color: TREND_ICON_COLOR[kind] };
+  const className = TREND_ICON_CLASSNAME[kind];
 
   switch (kind) {
     case 'up':
-      return (
-        <TrendingUp aria-hidden='true' className='size-5' style={iconStyle} />
-      );
+      return <TrendingUp aria-hidden='true' className={className} />;
     case 'down':
-      return (
-        <TrendingDown aria-hidden='true' className='size-5' style={iconStyle} />
-      );
+      return <TrendingDown aria-hidden='true' className={className} />;
     case 'flat':
-      return <Minus aria-hidden='true' className='size-5' style={iconStyle} />;
+      return <Minus aria-hidden='true' className={className} />;
     default: {
       const unhandled: never = kind;
       throw new Error(`Unhandled trend icon: ${unhandled}`);

@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
+import { AfterHoursClerkPricing } from '@/app/(marketing)/_shared/AfterHoursClerkPricing';
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
-import { PricingFinalCta } from '@/app/(marketing)/pricing/components/PricingFinalCta';
+import { PricingAfterHoursShell } from '@/app/(marketing)/pricing/components/PricingAfterHoursShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
-import { PricingTable } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -16,43 +16,45 @@ export const metadata: Metadata = {
     'Compare Atlaris plans and choose the subscription that fits your learning goals.',
 };
 
+/** Clerk Billing appearance aligned to After Hours semantic tokens. */
+const pricingAppearance = {
+  variables: {
+    borderRadius: '2rem',
+    colorBackground: 'transparent',
+    colorPrimary: 'var(--primary)',
+    colorText: 'var(--foreground)',
+    colorTextSecondary: 'var(--muted-foreground)',
+    fontFamily: 'var(--font-family-display)',
+  },
+  elements: {
+    rootBox: 'w-full',
+    pricingTable: 'w-full',
+    pricingTableCard: 'shadow-none',
+  },
+} as const;
+
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
   const checkoutBaseline = showClerkBilling
     ? await getOptionalCheckoutBillingSignature()
     : null;
+  const checkoutReturnUrl = buildCheckoutReturnRedirectUrl(
+    ROUTES.SETTINGS.ROOT,
+    checkoutBaseline,
+  );
 
   return (
-    <MarketingPageShell withHeaderOffset>
-      <div className='px-6 py-10 sm:py-12'>
-        <div className='mx-auto flex max-w-screen-xl flex-col items-center gap-y-8'>
-          <div className='text-center'>
-            <h1 className='marketing-h1 mb-2 text-foreground'>
-              Invest in your{' '}
-              <span className='gradient-text-symmetric'>growth</span>
-            </h1>
-            <p className='marketing-subtitle mx-auto max-w-md sm:max-w-xl'>
-              Choose the plan that matches your learning ambitions. Start free,
-              upgrade when you&apos;re ready.
-            </p>
-          </div>
-
-          <div className='w-full'>
-            {showClerkBilling ? (
-              <PricingTable
-                newSubscriptionRedirectUrl={buildCheckoutReturnRedirectUrl(
-                  ROUTES.SETTINGS.ROOT,
-                  checkoutBaseline,
-                )}
-              />
-            ) : (
-              <LocalClerkBillingNotice />
-            )}
-          </div>
-
-          <PricingFinalCta />
-        </div>
-      </div>
+    <MarketingPageShell withHeaderOffset className='bg-background'>
+      <PricingAfterHoursShell>
+        {showClerkBilling ? (
+          <AfterHoursClerkPricing
+            appearance={pricingAppearance}
+            newSubscriptionRedirectUrl={checkoutReturnUrl}
+          />
+        ) : (
+          <LocalClerkBillingNotice />
+        )}
+      </PricingAfterHoursShell>
     </MarketingPageShell>
   );
 }

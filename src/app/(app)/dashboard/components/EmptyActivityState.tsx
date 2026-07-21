@@ -1,56 +1,26 @@
-import type { ActivityFilter } from '../types';
-
 import { Button } from '@/components/ui/button';
-import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { ROUTES } from '@/features/navigation/routes';
-import { Activity, Plus } from 'lucide-react';
 import Link from 'next/link';
 
-interface EmptyActivityStateProps {
-  filter: ActivityFilter;
-}
-
-function getFilterLabel(filter: ActivityFilter): string {
-  switch (filter) {
-    case 'milestone':
-      return 'milestones';
-    case 'progress':
-      return 'progress updates';
-    case 'all':
-      return 'activity';
-  }
-}
-
-function getFilterDescription(filter: ActivityFilter): string {
-  switch (filter) {
-    case 'milestone':
-      return 'Milestones appear when you complete key goals or reach checkpoints in your plans.';
-    case 'progress':
-      return 'Progress updates appear as you work through tasks and mark items complete.';
-    case 'all':
-      return "You don't have any activity yet. Create a plan to get started.";
-  }
-}
-
-export function EmptyActivityState({ filter }: EmptyActivityStateProps) {
-  const filterLabel = getFilterLabel(filter);
-  const description = getFilterDescription(filter);
-
+/**
+ * Quiet empty feed — soft fill plate instead of ops-style empty chrome.
+ */
+export function EmptyActivityState() {
   return (
-    <RouteEmptyState
-      icon={Activity}
-      title={filter === 'all' ? 'No activity yet' : `No ${filterLabel} found`}
-      description={description}
-      action={
-        filter === 'all' ? (
-          <Button asChild>
-            <Link href={ROUTES.PLANS.NEW}>
-              <Plus />
-              Create your first plan
-            </Link>
-          </Button>
-        ) : undefined
-      }
-    />
+    <div className='rounded-2xl border border-panel-border bg-secondary/50 px-5 py-10 text-center'>
+      <div className='mx-auto mb-4 flex size-10 items-center justify-center rounded-full border border-panel-border bg-muted'>
+        <span className='size-2 rounded-full bg-primary' aria-hidden='true' />
+      </div>
+      <p className='text-sm font-semibold text-foreground'>No activity yet</p>
+      <p className='mx-auto mt-1.5 max-w-sm text-sm font-normal text-muted-foreground'>
+        Signals appear as you start plans and mark work complete.
+      </p>
+      <Button
+        asChild
+        className='mt-5 h-9 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90'
+      >
+        <Link href={ROUTES.PLANS.NEW}>Create a plan</Link>
+      </Button>
+    </div>
   );
 }

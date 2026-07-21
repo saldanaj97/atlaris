@@ -30,7 +30,7 @@ export function EmptyPlansList({
       icon={Icon}
       title={title}
       description={description}
-      className='flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-br from-primary/10 to-panel px-6 py-12 text-center'
+      className='flex min-h-72 flex-col items-center justify-center overflow-hidden rounded-2xl border border-primary/25 bg-linear-to-br from-primary/10 via-panel to-panel-muted/50 px-6 py-12 text-center'
       action={
         <Button asChild>
           <Link href='/plans/new'>

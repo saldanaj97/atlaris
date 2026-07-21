@@ -5,8 +5,9 @@ import type { NavItem } from '@/features/navigation';
 import BrandLogo from '../BrandLogo';
 import {
   type HeaderShellVariant,
-  usesLiquidGlassHeader,
+  isMarketingHeaderChrome,
 } from '@/components/shared/nav/header-shell';
+import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +21,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
 import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -28,6 +31,7 @@ interface MobileNavigationProps {
   headerVariant: HeaderShellVariant;
   pathname: string;
   navItems: NavItem[];
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -37,9 +41,14 @@ export default function MobileNavigation({
   headerVariant,
   pathname,
   navItems,
+  isAuthenticated = false,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
-  const usesGlassHeader = usesLiquidGlassHeader(headerVariant);
+  const isMarketing = isMarketingHeaderChrome(headerVariant);
+  const primaryCtaHref = isAuthenticated
+    ? ROUTES.PLANS.NEW
+    : ROUTES.AUTH.SIGN_IN;
+  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -49,11 +58,7 @@ export default function MobileNavigation({
             variant='ghost'
             size='icon-sm'
             onClick={() => setOpen(true)}
-            className={
-              usesGlassHeader
-                ? 'rounded-xl bg-primary/15 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-primary/25 dark:bg-primary/10 dark:hover:bg-primary/20'
-                : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
-            }
+            className='rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             aria-label='Open menu'
           >
             <Menu className='size-5' />
@@ -65,11 +70,7 @@ export default function MobileNavigation({
       {/* Sheet content sliding from left */}
       <SheetContent
         side='left'
-        className={
-          usesGlassHeader
-            ? 'w-72 border-r border-primary/25 bg-primary/15 p-0 shadow-lg backdrop-blur-xl dark:border-primary/15 dark:bg-primary/20'
-            : 'w-72 border-r border-border bg-card p-0 shadow-lg'
-        }
+        className='w-72 border-r border-border bg-card p-0 shadow-lg'
       >
         <SheetHeader className='p-6'>
           <BrandLogo size='sm' onClick={() => setOpen(false)} />
@@ -81,20 +82,27 @@ export default function MobileNavigation({
           className='flex flex-1 flex-col gap-2 px-4'
           aria-label='Mobile navigation'
         >
-          {/* Create New Plan - Primary Action */}
+          {/* Primary action — marketing peach CTA or app create-plan */}
           <Button
             asChild
             variant='default'
-            className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+            className={
+              isMarketing
+                ? cn(
+                    marketingHeaderPrimaryCtaClassName,
+                    'mb-2 h-auto w-full justify-center py-3',
+                  )
+                : 'mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+            }
           >
             <Link
-              href='/plans/new'
+              href={isMarketing ? primaryCtaHref : ROUTES.PLANS.NEW}
               onClick={() => {
                 setOpen(false);
               }}
             >
-              <Plus className='size-4' />
-              Create New Plan
+              {isMarketing ? null : <Plus className='size-4' />}
+              {isMarketing ? primaryCtaLabel : 'Create New Plan'}
             </Link>
           </Button>
 
@@ -108,10 +116,8 @@ export default function MobileNavigation({
                   aria-current={isActive ? 'page' : undefined}
                   className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary text-white shadow-md'
-                      : usesGlassHeader
-                        ? 'text-muted-foreground hover:bg-primary/15 hover:text-primary dark:hover:bg-primary/10 dark:hover:text-primary'
-                        : 'text-muted-foreground hover:bg-muted hover:text-primary'
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
                 >
                   {item.label}

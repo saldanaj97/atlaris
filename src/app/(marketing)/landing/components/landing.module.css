@@ -1,0 +1,117 @@
+/* After Hours landing — celestial atlas motion. Scoped here, not in globals. */
+
+/* Scroll reveal (driven by Reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(1.5rem);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.revealVisible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Slow drift for the sparkle marks */
+.drift {
+  animation: drift 9s ease-in-out infinite;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+/* Constellation route: draws in once its Reveal wrapper becomes visible */
+.routePath {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.revealVisible .routePath {
+  animation: drawRoute 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
+
+@keyframes drawRoute {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Star nodes pop after the route draws under them */
+.routeNode {
+  opacity: 0;
+  transform-origin: center;
+  transform: scale(0);
+}
+
+.revealVisible .routeNode {
+  animation: popNode 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.revealVisible .routeNodeDelay1 {
+  animation-delay: 0.5s;
+}
+
+.revealVisible .routeNodeDelay2 {
+  animation-delay: 1.1s;
+}
+
+.revealVisible .routeNodeDelay3 {
+  animation-delay: 1.7s;
+}
+
+@keyframes popNode {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Polaris pulse on the final banner */
+.pulse {
+  animation: polarisPulse 4s ease-in-out infinite;
+}
+
+@keyframes polarisPulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .drift,
+  .pulse {
+    animation: none;
+  }
+
+  .routePath {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+
+  .routeNode {
+    opacity: 1;
+    transform: scale(1);
+    animation: none;
+  }
+}

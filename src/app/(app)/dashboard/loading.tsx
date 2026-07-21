@@ -5,8 +5,8 @@ export default function DashboardLoading() {
   return (
     <>
       <PageHeader
-        title='Activity Feed'
-        subtitle='Your learning journey, moment by moment'
+        title='Dashboard'
+        subtitle='Pick up where the night left off'
       />
       <DashboardContentSkeleton />
     </>

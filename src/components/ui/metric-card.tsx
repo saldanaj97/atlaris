@@ -21,18 +21,20 @@ function MetricCard({
     <div
       data-slot='metric-card'
       className={cn(
-        'rounded-2xl border border-panel-border bg-panel p-4 shadow-sm transition-[box-shadow] hover:shadow-md',
+        'rounded-2xl border border-panel-border bg-panel p-4 shadow-sm transition-[box-shadow,border-color] hover:border-primary/25 hover:shadow-md',
         className,
       )}
       {...props}
     >
       <div className='mb-3 flex items-center gap-2 text-muted-foreground'>
         {icon ? (
-          <span className='text-foreground [&>svg]:size-5'>{icon}</span>
+          <span className='text-primary [&>svg]:size-5'>{icon}</span>
         ) : null}
-        <span className='text-xs font-medium uppercase'>{label}</span>
+        <span className='text-xs font-medium tracking-wide uppercase'>
+          {label}
+        </span>
       </div>
-      <div className='text-2xl font-bold text-foreground tabular-nums'>
+      <div className='text-2xl font-semibold text-foreground tabular-nums'>
         {value}
       </div>
       {sublabel ? (

@@ -57,45 +57,49 @@ export function LiquidGlassDisplacementFilter({
 
           {chromaOffset > 0 ? (
             <>
+              {/*
+                Warm peach/plum fringe (After Hours): red vs amber (R+G),
+                not red vs blue — classic R/B chroma reads Progress Jam violet.
+              */}
               <feOffset
                 in='displaced'
                 dx={chromaOffset}
                 dy={0}
-                result='shiftedRed'
+                result='shiftedWarm'
               />
               <feOffset
                 in='displaced'
                 dx={-chromaOffset}
                 dy={0}
-                result='shiftedBlue'
+                result='shiftedPeach'
               />
               <feColorMatrix
-                in='shiftedRed'
+                in='shiftedWarm'
                 type='matrix'
-                values='1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'
-                result='redChannel'
+                values='1 0 0 0 0  0 0.35 0 0 0  0 0 0 0 0  0 0 0 1 0'
+                result='warmChannel'
               />
               <feColorMatrix
                 in='displaced'
                 type='matrix'
-                values='0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0'
-                result='greenChannel'
+                values='0.15 0 0 0 0  0 0.55 0 0 0  0 0 0.2 0 0  0 0 0 1 0'
+                result='midChannel'
               />
               <feColorMatrix
-                in='shiftedBlue'
+                in='shiftedPeach'
                 type='matrix'
-                values='0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0'
-                result='blueChannel'
+                values='1 0 0 0 0  0 0.65 0 0 0  0 0 0.15 0 0  0 0 0 1 0'
+                result='peachChannel'
               />
               <feBlend
-                in='redChannel'
-                in2='greenChannel'
+                in='warmChannel'
+                in2='midChannel'
                 mode='screen'
-                result='rg'
+                result='wm'
               />
               <feBlend
-                in='rg'
-                in2='blueChannel'
+                in='wm'
+                in2='peachChannel'
                 mode='screen'
                 result='chroma'
               />
@@ -141,7 +145,7 @@ export function LiquidGlassDisplacementFilter({
               surfaceScale={edgeHighlight * 4}
               specularConstant={0.75}
               specularExponent={20}
-              lightingColor='white'
+              lightingColor='var(--primary)'
               result='specular'
             >
               <fePointLight x={light.x} y={light.y} z={light.z} />
