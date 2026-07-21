@@ -267,6 +267,16 @@ function sameCheckoutMounts(
 }
 
 /**
+ * Resolves Clerk checkout period from the visible billing tab.
+ */
+function checkoutPlanPeriod(
+  period: BillingPeriod,
+  plan: ClerkPlanSnapshot,
+): BillingPeriod {
+  return period === 'annual' && planHasAnnual(plan) ? 'annual' : 'month';
+}
+
+/**
  * Clerk PricingTable with After Hours card chrome, monthly/yearly tabs,
  * and feature-list fallback when Clerk plans have empty features.
  */
@@ -274,7 +284,8 @@ export function AfterHoursClerkPricing({
   appearance,
   newSubscriptionRedirectUrl,
 }: AfterHoursClerkPricingProps) {
-  const { billing, loaded } = useClerk();
+  const clerk = useClerk();
+  const { billing, loaded } = clerk;
   const { isLoaded, userId } = useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
   const [plans, setPlans] = useState<ClerkPlanSnapshot[]>([]);
@@ -307,13 +318,9 @@ export function AfterHoursClerkPricing({
       syncCardFees(root, plans, period);
       syncCardCtaLabels(root, plans);
 
-      if (!isLoaded || !userId) {
-        root
-          .querySelectorAll<HTMLElement>('[data-atlaris-checkout]')
-          .forEach((node) => node.remove());
-        setCheckoutMounts([]);
-        return;
-      }
+      // Wait for auth to settle so signed-out visitors still get period-aware CTAs
+      // (CheckoutButton requires a userId; unsigned uses __internal_openCheckout).
+      if (!isLoaded) return;
 
       const nextMounts = reconcileCheckoutMounts(root, plans);
       setCheckoutMounts((current) =>
@@ -327,7 +334,7 @@ export function AfterHoursClerkPricing({
     observer.observe(root, { childList: true, subtree: true });
 
     return () => observer.disconnect();
-  }, [isLoaded, period, plans, userId]);
+  }, [isLoaded, period, plans]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -446,28 +453,42 @@ export function AfterHoursClerkPricing({
           appearance={appearance}
           newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
         />
-        {userId
-          ? checkoutMounts.map(({ label, plan, target }) =>
-              createPortal(
-                <CheckoutButton
-                  checkoutProps={{ appearance }}
-                  newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
-                  planId={plan.id}
-                  planPeriod={
-                    period === 'annual' && planHasAnnual(plan)
-                      ? 'annual'
-                      : 'month'
-                  }
-                  key={plan.id}
-                >
-                  <button className={styles.checkoutButton} type='button'>
-                    {label}
-                  </button>
-                </CheckoutButton>,
-                target,
-              ),
-            )
-          : null}
+        {checkoutMounts.map(({ label, plan, target }) => {
+          const planPeriod = checkoutPlanPeriod(period, plan);
+
+          return createPortal(
+            userId ? (
+              <CheckoutButton
+                checkoutProps={{ appearance }}
+                newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+                planId={plan.id}
+                planPeriod={planPeriod}
+                key={plan.id}
+              >
+                <button className={styles.checkoutButton} type='button'>
+                  {label}
+                </button>
+              </CheckoutButton>
+            ) : (
+              <button
+                className={styles.checkoutButton}
+                type='button'
+                key={plan.id}
+                onClick={() => {
+                  clerk.__internal_openCheckout({
+                    appearance,
+                    newSubscriptionRedirectUrl,
+                    planId: plan.id,
+                    planPeriod,
+                  });
+                }}
+              >
+                {label}
+              </button>
+            ),
+            target,
+          );
+        })}
       </div>
     </div>
   );
