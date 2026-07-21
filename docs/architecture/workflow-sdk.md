@@ -16,7 +16,7 @@ Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK 
 | Deployment | Protection |
 | ---------- | ---------- |
 | **Vercel (production/preview)** | Workflow SDK registers handlers with `experimentalTriggers` so only [Vercel Queue](https://vercel.com/docs/queues) can invoke them. Proxy allows these routes through without an app token. |
-| **Local dev (`pnpm dev:workflow`)** | Proxy allows health checks (`HEAD`/`GET`/`OPTIONS` with `?__health`) and local-world queue callbacks that include `x-vqs-*` headers. Bare forged POSTs without those headers are rejected with `401`. |
+| **Local dev** | Workflow feature flags stay off. Local UI work does not expose workflow callback routes. |
 | **Self-hosted / non-Vercel production** | Proxy requires `WORKFLOW_CALLBACK_TOKEN` via `Authorization: Bearer` or `x-workflow-callback-token`. Missing token configuration returns `503`. |
 
 Webhook resume routes (`/.well-known/workflow/v1/webhook/:token`) keep the SDK's URL-token auth and bypass the callback token gate.
@@ -65,35 +65,15 @@ To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow 
 
 Set the relevant env flag to `false` (or unset). The app falls back to the pre-workflow code paths (inline generation, queue drain without workflow, or synchronous SSE generation).
 
-## Local development
+## Preview testing
 
-The local world dispatches work by `POST`ing to `/.well-known/workflow/v1/flow` and `/step` on the same Next.js process. In practice, **`pnpm dev` (Turbopack) is unreliable** for this self-fetch loop: runs stay `pending`, the flow health route may hang, and logs may show `[local world] Queue operation failed` / `other side closed`.
+Workflow behavior is tested in Vercel Preview rather than through a local workflow runtime. Set the relevant feature flag in Vercel's Preview environment, then run:
 
-**Recommended local setup:**
+```bash
+pnpm deploy:preview
+```
 
-1. In `.env.local` (see `.env.local.example`):
-
-   ```bash
-   PORT=3000
-   WORKFLOW_LOCAL_BASE_URL=http://127.0.0.1:3000
-   ```
-
-   `WORKFLOW_LOCAL_BASE_URL` must match the port the dev server actually listens on.
-
-2. Run **`pnpm dev:workflow`** (webpack dev) instead of `pnpm dev` when testing workflow flags.
-
-3. Ensure only **one** dev server is bound to that port.
-
-4. Verify before triggering generation:
-
-   ```bash
-   curl -I "http://127.0.0.1:3000/.well-known/workflow/v1/flow?__health"   # expect 200
-   npx workflow inspect runs
-   ```
-
-   After a successful run you should see `POST /.well-known/workflow/v1/flow` and `/step` in the dev console, and `npx workflow inspect run <runId>` should move from `pending` to `completed`.
-
-Workflow data for dev lives under `.next/workflow-data/` (not `.workflow-data/`, which is used by Vitest).
+The command deploys the current worktree to the linked Vercel project and prints the Preview URL. Preview uses Vercel Queue callbacks rather than the local same-process self-fetch loop. After triggering a workflow, verify its terminal state in Vercel runtime logs and workflow observability.
 
 ## Testing
 
@@ -117,7 +97,7 @@ Orchestration for product workflows is covered in `tests/unit/features/**/workfl
 
 - [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows-optional)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
 - [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and workflow-backed drain
-- [Environment variables](../development/environment.md#workflow-sdk) — feature flags, `WORKFLOW_LOCAL_BASE_URL`, and `workflowEnv`
-- [Development commands](../development/commands.md) — `pnpm dev:workflow` and workflow test commands
+- [Environment variables](../development/environment.md#workflow-sdk) — feature flags and `workflowEnv`
+- [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands
 - [Test guidance](../../tests/AGENTS.md#workflow-sdk-tests) — Workflow SDK Vitest harness and changed-test workflow phase
 - [README testing](../../README.md#testing) — default changed bundle includes the workflow test phase

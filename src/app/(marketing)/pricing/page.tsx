@@ -5,6 +5,8 @@ import { AfterHoursClerkPricing } from '@/app/(marketing)/_shared/AfterHoursCler
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
 import { PricingAfterHoursShell } from '@/app/(marketing)/pricing/components/PricingAfterHoursShell';
+import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
+import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 
@@ -33,6 +35,13 @@ const pricingAppearance = {
 
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
+  const checkoutBaseline = showClerkBilling
+    ? await getOptionalCheckoutBillingSignature()
+    : null;
+  const checkoutReturnUrl = buildCheckoutReturnRedirectUrl(
+    ROUTES.SETTINGS.ROOT,
+    checkoutBaseline,
+  );
 
   return (
     <MarketingPageShell withHeaderOffset className='bg-background'>
@@ -40,7 +49,7 @@ export default async function PricingPage(): Promise<ReactElement> {
         {showClerkBilling ? (
           <AfterHoursClerkPricing
             appearance={pricingAppearance}
-            newSubscriptionRedirectUrl={`${ROUTES.SETTINGS.ROOT}#billing`}
+            newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
         ) : (
           <LocalClerkBillingNotice />

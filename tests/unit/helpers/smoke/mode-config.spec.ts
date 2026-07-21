@@ -42,8 +42,7 @@ describe('smoke mode-config', () => {
     expect(layer.LOCAL_PRODUCT_TESTING).toBe('true');
     expect(layer.ENABLE_SENTRY).toBe('false');
     expect(layer.NEXT_PUBLIC_ENABLE_SENTRY).toBe('false');
-    expect(layer.AI_PROVIDER).toBe('');
-    expect(layer.AI_USE_MOCK).toBe('true');
+    expect(layer.AI_PROVIDER).toBe('mock');
     expect(layer.MOCK_AI_SCENARIO).toBe('success');
     expect(layer.MOCK_GENERATION_DELAY_MS).toBe('0');
     expect(layer.MOCK_GENERATION_FAILURE_RATE).toBe('0');
@@ -78,7 +77,6 @@ describe('smoke mode-config', () => {
   it('mergeSmokeProcessEnv overwrites parent smoke flags with anon-mode defaults', () => {
     const base: NodeJS.ProcessEnv = {
       AI_PROVIDER: 'openrouter',
-      AI_USE_MOCK: 'true',
       DEV_AUTH_USER_ID: 'should-not-survive',
       ENABLE_SENTRY: 'true',
       MOCK_AI_SCENARIO: 'timeout',
@@ -94,7 +92,6 @@ describe('smoke mode-config', () => {
     expect(merged.ENABLE_SENTRY).toBe('false');
     expect(merged.NEXT_PUBLIC_ENABLE_SENTRY).toBe('false');
     expect(merged.AI_PROVIDER).toBe('');
-    expect(merged.AI_USE_MOCK).toBe('false');
     expect(merged.MOCK_AI_SCENARIO).toBe('success');
     expect(merged.MOCK_GENERATION_DELAY_MS).toBe('0');
     expect(merged.MOCK_GENERATION_FAILURE_RATE).toBe('0');

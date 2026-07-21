@@ -13,9 +13,8 @@
  * - **`DEV_AUTH_USER_ID` / `DEV_AUTH_USER_*`** — Select which seeded `users.auth_user_id`
  *   row the server treats as the effective user in development/test (when set). Must match
  *   an existing user row; use {@link LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID} with bootstrap.
- * - **`AI_USE_MOCK` / `AI_PROVIDER`** — AI runtime behavior. `AI_PROVIDER` only
- *   accepts `mock` or `router` (or unset); use `AI_USE_MOCK` for finer control
- *   in test/dev environments.
+ * - **`AI_PROVIDER`** — AI runtime behavior. It accepts `mock` or `router`
+ *   (or unset for the environment default).
  * - **Billing fixtures** — use `pnpm billing:clerk:fixture` to seed local subscription state.
  *
  * Prefer reading feature behavior from the grouped configs in `@/lib/config/env` rather than

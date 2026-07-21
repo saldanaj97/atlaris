@@ -8,6 +8,7 @@ import {
 } from '@/app/(app)/settings/billing/components/BillingCards';
 import { BillingPlanSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
 import { UsageSkeleton } from '@/app/(app)/settings/billing/components/BillingCardsSkeleton';
+import { CheckoutSubscriptionSyncHost } from '@/app/(app)/settings/billing/components/CheckoutSubscriptionSyncHost';
 import {
   LedgerSectionBlock,
   SettingsLedgerPanel,
@@ -18,15 +19,12 @@ import { NotificationsSection } from '@/app/(app)/settings/notifications/compone
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
 import { PageHeader } from '@/components/ui/page-header';
-import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
-import { UserProfile } from '@clerk/nextjs';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
 
 export async function SettingsLedgerPage(): Promise<ReactElement> {
   const locale = getSupportedLocale((await headers()).get('accept-language'));
-  const showClerkBilling = shouldUseClerkUi();
 
   return (
     <>
@@ -51,21 +49,12 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
           label='Plan & billing'
           description='Subscription, renewal, and payment details.'
         >
+          <Suspense fallback={null}>
+            <CheckoutSubscriptionSyncHost />
+          </Suspense>
           <Suspense fallback={<BillingPlanSkeleton />}>
             <BillingPlanRows locale={locale} />
           </Suspense>
-          {showClerkBilling ? (
-            <div className='py-3.5 last:pb-0'>
-              <UserProfile
-                appearance={{
-                  elements: {
-                    rootBox: 'w-full',
-                    cardBox: 'w-full shadow-none',
-                  },
-                }}
-              />
-            </div>
-          ) : null}
         </LedgerSectionBlock>
 
         <LedgerSectionBlock

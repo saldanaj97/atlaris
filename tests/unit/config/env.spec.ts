@@ -12,6 +12,7 @@ import {
   createSupabasePublicEnv,
   EnvValidationError,
   assertHostedDeployForbiddenFlags,
+  assertMixedDevAuthIdentity,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
@@ -123,6 +124,84 @@ describe('Environment Configuration', () => {
     });
   });
 
+  describe('mixed development auth identity', () => {
+    const seedAuthUserId = '00000000-0000-4000-8000-000000000001';
+
+    it.each([
+      {
+        label: 'fixture mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'true',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'real Clerk checkout mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: '',
+        },
+      },
+      {
+        label: 'real Clerk checkout with unset override',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+        },
+      },
+      {
+        label: 'production ignores mixed combo',
+        env: {
+          NODE_ENV: 'production',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'test ignores mixed combo',
+        env: {
+          NODE_ENV: 'test',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+    ])('allows $label', ({ env }) => {
+      expect(() => assertMixedDevAuthIdentity(env)).not.toThrow();
+    });
+
+    it('rejects Clerk UI enabled with DEV_AUTH_USER_ID override in development', () => {
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(/Mixed development identity is not allowed/);
+
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(
+        /Fixture mode: LOCAL_PRODUCT_TESTING=true with DEV_AUTH_USER_ID set/,
+      );
+
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(
+        /Real Clerk checkout mode: LOCAL_PRODUCT_TESTING=false with DEV_AUTH_USER_ID unset\/empty/,
+      );
+    });
+  });
+
   describe('createSupabasePublicEnv (pure)', () => {
     it('parses valid Supabase public config', () => {
       const parsed = createSupabasePublicEnv({
@@ -153,37 +232,6 @@ describe('Environment Configuration', () => {
       const { attemptsEnv } = createAiEnvFacets(access);
 
       expect(attemptsEnv.cap).toBe(5);
-    });
-
-    it('coerces AI_USE_MOCK to booleans', () => {
-      const env = { AI_USE_MOCK: '0' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(false);
-    });
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['false', false],
-      ['0', false],
-    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
-      const env = { AI_USE_MOCK: value } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(expected);
-    });
-
-    it('rejects malformed AI_USE_MOCK values', () => {
-      const env = { AI_USE_MOCK: 'maybe' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(() => aiEnv.useMock).toThrow(
-        /AI_USE_MOCK must be one of: true, false, 1, 0/,
-      );
     });
 
     it('derives the timeout threshold from the same base logic', () => {
@@ -604,32 +652,6 @@ describe('Environment Configuration', () => {
 
         expect(() => aiEnv.provider).toThrow(EnvValidationError);
         expect(() => aiEnv.provider).toThrow(/AI_PROVIDER must be one of/);
-      });
-    });
-
-    describe('useMock', () => {
-      it('should return true when AI_USE_MOCK is truthy', () => {
-        vi.stubEnv('AI_USE_MOCK', 'true');
-
-        expect(aiEnv.useMock).toBe(true);
-      });
-
-      it('should return false when AI_USE_MOCK is falsey', () => {
-        vi.stubEnv('AI_USE_MOCK', '0');
-
-        expect(aiEnv.useMock).toBe(false);
-      });
-
-      it('should return undefined when not set', () => {
-        expect(aiEnv.useMock).toBeUndefined();
-      });
-
-      it('should throw when AI_USE_MOCK is malformed', () => {
-        vi.stubEnv('AI_USE_MOCK', 'sometimes');
-
-        expect(() => aiEnv.useMock).toThrow(
-          /AI_USE_MOCK must be one of: true, false, 1, 0/,
-        );
       });
     });
   });

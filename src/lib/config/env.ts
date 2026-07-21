@@ -28,6 +28,7 @@ export {
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,
+  assertMixedDevAuthIdentity,
   createServerEnvAccess,
   EnvValidationError,
   getSmokeStateFileEnv,

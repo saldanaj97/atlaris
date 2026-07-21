@@ -4,8 +4,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   clerkPlansMock: vi.fn(),
+  getOptionalCheckoutBillingSignatureMock: vi.fn(),
   pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
+}));
+
+vi.mock(
+  '@/app/(marketing)/_shared/after-hours-pricing-cards.module.css',
+  () => ({ default: { checkoutMount: 'checkoutMount' } }),
+);
+
+vi.mock(
+  '@/app/(marketing)/pricing/components/PricingAfterHours.module.css',
+  () => ({
+    default: {
+      heroOverline: 'heroOverline',
+      heroSubline: 'heroSubline',
+      heroWord: 'heroWord',
+      shell: 'shell',
+    },
+  }),
+);
+
+vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+  default: {
+    stars: 'stars',
+    starsFar: 'starsFar',
+    starsNear: 'starsNear',
+  },
+}));
+
+vi.mock('@/features/billing/checkout-return-server', () => ({
+  getOptionalCheckoutBillingSignature:
+    mocks.getOptionalCheckoutBillingSignatureMock,
 }));
 
 vi.mock('@/lib/auth/local-identity', () => ({
@@ -32,6 +63,9 @@ describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.clerkPlansMock.mockResolvedValue({ data: [] });
+    mocks.getOptionalCheckoutBillingSignatureMock.mockResolvedValue(
+      'free|active||0',
+    );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
   });
 
@@ -44,12 +78,11 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(
-      screen.getByRole('heading', { name: /structured learning that fits/i }),
+      screen.getByRole('heading', {
+        name: /one sky\. three ways to cross it\./i,
+      }),
     ).toBeVisible();
-    expect(screen.getByText(/choose your plan/i)).toBeVisible();
-    expect(
-      screen.getByText(/plans, modules, tasks, and analytics/i),
-    ).toBeVisible();
+    expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(
       screen.getByRole('tablist', { name: /billing period/i }),
     ).toBeVisible();
@@ -58,7 +91,7 @@ describe('PricingPage', () => {
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}#billing`,
+        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,
       }),
     );
   });

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +6,11 @@ const mocks = vi.hoisted(() => ({
   getPlans: vi.fn(),
   useClerk: vi.fn(),
 }));
+
+vi.mock(
+  '@/app/(marketing)/_shared/after-hours-pricing-cards.module.css',
+  () => ({ default: { checkoutMount: 'checkoutMount' } }),
+);
 
 vi.mock('@clerk/nextjs', () => ({
   PricingTable: () => (
@@ -94,12 +99,10 @@ describe('AfterHoursClerkPricing', () => {
     );
 
     expect(await screen.findByText('Priority queue access')).toBeVisible();
-    expect(await screen.findByTestId('checkout-plan_starter')).toHaveAttribute(
-      'data-period',
-      'month',
-    );
+    const checkout = await screen.findByTestId('checkout-plan_starter');
+    expect(checkout).toHaveAttribute('data-period', 'month');
     expect(
-      screen.getByRole('button', { name: 'Choose Starter' }),
+      within(checkout).getByRole('button', { name: 'Choose Starter' }),
     ).toBeVisible();
 
     await user.click(screen.getByRole('tab', { name: 'Yearly' }));
