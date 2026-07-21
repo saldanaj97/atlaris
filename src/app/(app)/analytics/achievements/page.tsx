@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
 };
 
-const iconClass = 'text-muted-foreground size-5 shrink-0';
+const iconClass = 'size-5 shrink-0 text-primary';
 
 const ACHIEVEMENTS = [
   {
@@ -73,7 +73,7 @@ export default function AchievementsPage() {
           {ACHIEVEMENTS.map((achievement) => (
             <li key={achievement.name} className='flex items-start gap-3'>
               <span
-                className='flex size-8 shrink-0 items-center justify-center rounded-md bg-muted'
+                className='flex size-8 shrink-0 items-center justify-center rounded-md bg-panel-muted'
                 aria-hidden='true'
               >
                 {achievement.icon}

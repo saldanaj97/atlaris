@@ -238,7 +238,7 @@ function PlansControls({
                 }),
               )
             }
-            className='h-9 max-w-[11rem] truncate rounded-md border border-input bg-background px-2.5 text-sm shadow-xs dark:bg-input/30'
+            className='h-9 max-w-[11rem] truncate rounded-md border border-panel-border bg-panel px-2.5 text-sm shadow-xs dark:bg-panel'
             aria-label='Sort learning plans'
           >
             {SORT_OPTIONS.map((option) => (
@@ -281,7 +281,7 @@ function PlansControls({
                     />
                   ) : null}
                   <span>{tab.label}</span>
-                  <span className='rounded-md bg-muted/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums group-data-[state=active]:bg-primary/15 group-data-[state=active]:text-primary-dark dark:group-data-[state=active]:text-primary'>
+                  <span className='rounded-md bg-muted/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums group-data-[state=active]:bg-primary/15 group-data-[state=active]:text-primary'>
                     {count}
                   </span>
                 </Link>

@@ -3,13 +3,14 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const surfaceVariants = cva(
-  'rounded-2xl border text-panel-foreground transition-[box-shadow,background-color]',
+  'rounded-2xl border text-panel-foreground transition-[box-shadow,background-color,border-color]',
   {
     variants: {
       variant: {
         default: 'border-panel-border bg-panel shadow-sm',
         muted: 'border-panel-border bg-panel-muted shadow-sm',
-        interactive: 'border-panel-border bg-panel shadow-sm hover:shadow-md',
+        interactive:
+          'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md',
         inset: 'border-border/80 bg-muted/40 shadow-none dark:bg-muted/25',
       },
       padding: {
@@ -26,7 +27,7 @@ const surfaceVariants = cva(
 );
 
 /**
- * Token-backed product panel; avoid marketing glass (`backdrop-blur`, `bg-white/30`) here.
+ * Token-backed product panel; avoid marketing glass (`backdrop-blur`, `bg-card/*` frosts) here.
  */
 function Surface({
   className,

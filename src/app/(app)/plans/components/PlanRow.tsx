@@ -130,9 +130,9 @@ function ProgressTrack({ progressPercent }: { progressPercent: number }) {
       <progress className='sr-only' value={progressPercent} max={100}>
         {progressPercent}% of tasks complete
       </progress>
-      <div className='h-1 overflow-hidden rounded-full bg-muted-foreground/10'>
+      <div className='h-1 overflow-hidden rounded-full bg-panel-border/40'>
         <div
-          className='h-full rounded-full bg-primary'
+          className='h-full rounded-full bg-primary transition-[width] duration-300'
           style={{ width: `${progressPercent}%` }}
         />
       </div>
@@ -205,7 +205,7 @@ export function PlanRow({
         ) : null}
 
         <div className='relative min-w-0 flex-1'>
-          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/25 hover:bg-panel-muted hover:shadow-md'>
+          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/30 hover:bg-panel-muted hover:shadow-md'>
             {selectionMode ? (
               <div className='block min-w-0'>{rowContent}</div>
             ) : (

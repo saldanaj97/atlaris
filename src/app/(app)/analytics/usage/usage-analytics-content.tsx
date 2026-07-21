@@ -329,13 +329,13 @@ const STATUS_TONE_CLASSNAME: Record<MetricStatus['tone'], string> = {
     'bg-destructive/15 text-destructive dark:bg-destructive/25 dark:text-destructive-foreground',
 };
 
-const TREND_ICON_COLOR: Record<
+const TREND_ICON_CLASSNAME: Record<
   NonNullable<MetricStatus['trendIcon']>,
   string
 > = {
-  up: '#22c55e',
-  down: '#fb7185',
-  flat: '#2f81f7',
+  up: 'size-5 text-success',
+  down: 'size-5 text-destructive',
+  flat: 'size-5 text-primary',
 };
 
 /** Renders the up, down, or flat trend icon for a metric status. */
@@ -344,19 +344,15 @@ function TrendStatusIcon({
 }: {
   kind: NonNullable<MetricStatus['trendIcon']>;
 }) {
-  const iconStyle = { color: TREND_ICON_COLOR[kind] };
+  const className = TREND_ICON_CLASSNAME[kind];
 
   switch (kind) {
     case 'up':
-      return (
-        <TrendingUp aria-hidden='true' className='size-5' style={iconStyle} />
-      );
+      return <TrendingUp aria-hidden='true' className={className} />;
     case 'down':
-      return (
-        <TrendingDown aria-hidden='true' className='size-5' style={iconStyle} />
-      );
+      return <TrendingDown aria-hidden='true' className={className} />;
     case 'flat':
-      return <Minus aria-hidden='true' className='size-5' style={iconStyle} />;
+      return <Minus aria-hidden='true' className={className} />;
     default: {
       const unhandled: never = kind;
       throw new Error(`Unhandled trend icon: ${unhandled}`);
