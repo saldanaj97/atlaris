@@ -8,16 +8,15 @@ import { Suspense } from 'react';
 /**
  * Dashboard page with Suspense boundary for data-dependent content.
  *
- * Static elements (header with title and subtitle) render immediately.
- * ResumeLearningHero, ActivityFeedClient, ActivityFeedScoreboard, and
- * ActivityStreamSidebar wait for user plan data.
+ * Static header renders immediately; resume hero + recent activity wait for
+ * plan summaries behind the request boundary.
  */
 export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title='Activity Feed'
-        subtitle='Your learning journey with activity metrics beside the stream.'
+        title='Dashboard'
+        subtitle='Pick up where the night left off'
       />
 
       <Suspense fallback={<DashboardContentSkeleton />}>

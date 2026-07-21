@@ -26,6 +26,16 @@ export function formatUsageLimitLabel(
   return isUnlimitedNumber(value) ? 'unlimited' : String(value);
 }
 
+export function formatMarketingLimit(value: number | null | undefined): string {
+  return isUnlimitedNumber(value) ? 'Unlimited' : String(value);
+}
+
+export function formatMarketingSchedulingHorizon(
+  value: number | null | undefined,
+): string {
+  return isUnlimitedNumber(value) ? 'Unlimited' : `${value}-week`;
+}
+
 /** Returns 0 for unlimited limits since there's no cap to show progress against. */
 export function getUsagePercent(
   used: number,
