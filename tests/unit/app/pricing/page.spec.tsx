@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  clerkPlansMock: vi.fn(),
   pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
@@ -16,6 +17,8 @@ vi.mock('@clerk/nextjs', () => ({
     mocks.pricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
   },
+  useAuth: () => ({ isLoaded: true, userId: null }),
+  useClerk: () => ({ billing: { getPlans: mocks.clerkPlansMock } }),
 }));
 
 async function renderPricingPage(): Promise<void> {
@@ -28,6 +31,7 @@ async function renderPricingPage(): Promise<void> {
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.clerkPlansMock.mockResolvedValue({ data: [] });
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
   });
 
@@ -40,8 +44,17 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(
-      screen.getByRole('heading', { name: /invest in your growth/i }),
+      screen.getByRole('heading', { name: /structured learning that fits/i }),
     ).toBeVisible();
+    expect(screen.getByText(/choose your plan/i)).toBeVisible();
+    expect(
+      screen.getByText(/plans, modules, tasks, and analytics/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('tablist', { name: /billing period/i }),
+    ).toBeVisible();
+    expect(screen.getByRole('tab', { name: /^monthly$/i })).toBeVisible();
+    expect(screen.getByRole('tab', { name: /^yearly$/i })).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -56,6 +69,9 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('tablist', { name: /billing period/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeVisible();
     expect(screen.getByText(/local product testing mode/i)).toBeVisible();
     expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();
