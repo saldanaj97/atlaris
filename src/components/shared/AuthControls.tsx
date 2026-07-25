@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/tooltip';
 import { ROUTES } from '@/features/navigation';
 import { UserButton } from '@clerk/nextjs';
+import Image from 'next/image';
 import Link from 'next/link';
 
 interface AuthControlsProps {
@@ -83,12 +84,13 @@ export default function AuthControls({
                 className='inline-flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
               >
                 {userImageUrl ? (
-                  // ponytail: plain img — Clerk CDN; next/image needs remotePatterns
-                  // oxlint-disable-next-line eslint-plugin-next(no-img-element)
-                  <img
+                  <Image
                     src={userImageUrl}
                     alt=''
                     aria-hidden='true'
+                    width={36}
+                    height={36}
+                    unoptimized
                     className='size-full object-cover'
                   />
                 ) : (
