@@ -1,7 +1,28 @@
-import { MetricCard } from '@/components/ui/metric-card';
 import { formatMinutes } from '@/features/plans/formatters';
-import { BookOpen, Clock, ListTodo } from 'lucide-react';
 
+function StatCell({
+  label,
+  value,
+  sublabel,
+}: {
+  label: string;
+  value: string;
+  sublabel: string;
+}) {
+  return (
+    <div className='min-w-0 px-4 first:pl-0 sm:px-6'>
+      <p className='text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
+        {label}
+      </p>
+      <p className='mt-1 truncate text-lg font-semibold text-foreground tabular-nums'>
+        {value}
+      </p>
+      <p className='truncate text-xs text-muted-foreground'>{sublabel}</p>
+    </div>
+  );
+}
+
+/** Ruled stat strip under the module hero — hairlines instead of card tiles. */
 export function ModuleStatsGrid({
   completedTasks,
   totalTasks,
@@ -16,29 +37,26 @@ export function ModuleStatsGrid({
   completion: number;
 }) {
   return (
-    <div className='mt-4 grid gap-3 sm:grid-cols-3'>
-      <MetricCard
-        icon={<ListTodo />}
+    <dl className='mt-6 grid grid-cols-2 gap-y-4 border-y border-border/60 py-4 sm:flex sm:divide-x sm:divide-border/60'>
+      <StatCell
         label='Lessons'
         value={`${completedTasks}/${totalTasks}`}
-        sublabel='Completed'
+        sublabel='completed'
       />
-      <MetricCard
-        icon={<Clock />}
+      <StatCell
         label='Duration'
         value={formatMinutes(totalMinutes)}
-        sublabel={formatMinutes(estimatedMinutes)}
+        sublabel={`est. ${formatMinutes(estimatedMinutes)}`}
       />
-      <MetricCard
-        icon={<BookOpen />}
+      <StatCell
         label='Progress'
         value={`${completion}%`}
         sublabel={
           completion === 100
-            ? 'Module complete!'
+            ? 'Module complete'
             : `${totalTasks - completedTasks} remaining`
         }
       />
-    </div>
+    </dl>
   );
 }

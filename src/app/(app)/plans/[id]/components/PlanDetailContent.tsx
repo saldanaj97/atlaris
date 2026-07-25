@@ -4,7 +4,6 @@ import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
@@ -73,25 +72,33 @@ export function PlanDetailContentSkeleton() {
         </div>
       </header>
 
-      <section className='mb-10 space-y-4'>
-        <Skeleton className='h-6 w-36' />
-        <div className='flex flex-wrap gap-2'>
-          <Skeleton className='h-6 w-24 rounded-full' />
-          <Skeleton className='h-6 w-20 rounded-full' />
-          <Skeleton className='h-6 w-28 rounded-full' />
-        </div>
-        <Skeleton className='h-4 w-48' />
-        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-          {[1, 2, 3, 4].map((statSkeletonId) => (
-            <StatCardSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
-          ))}
+      <section className='mb-10'>
+        <div className='rounded-2xl border border-panel-border bg-panel p-5 sm:p-6'>
+          <div className='grid gap-6 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-8'>
+            <div className='min-w-0'>
+              <Skeleton className='mb-3 h-3 w-44 bg-secondary' />
+              <Skeleton className='h-8 w-full max-w-lg' />
+            </div>
+            <div className='flex items-end justify-between gap-6 border-t border-border/50 pt-4 sm:block sm:border-t-0 sm:border-l sm:pl-7 sm:text-right'>
+              <div className='space-y-2 sm:ml-auto sm:w-fit'>
+                <Skeleton className='h-3 w-16 bg-secondary' />
+                <Skeleton className='h-10 w-20' />
+              </div>
+              <Skeleton className='h-3 w-28 bg-muted sm:mt-2 sm:ml-auto' />
+            </div>
+          </div>
+          <div className='mt-6 grid divide-y divide-border/40 border-t border-border/50 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:pt-5'>
+            {[1, 2, 3].map((statSkeletonId) => (
+              <StatCellSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
+            ))}
+          </div>
         </div>
       </section>
 
       <section>
-        <div className='mb-6 flex items-center justify-between'>
-          <Skeleton className='h-8 w-40' />
-          <Skeleton className='h-5 w-24' />
+        <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
+          <Skeleton className='h-3 w-44 bg-secondary' />
+          <Skeleton className='h-3 w-20' />
         </div>
 
         <div className='space-y-4'>
@@ -106,16 +113,13 @@ export function PlanDetailContentSkeleton() {
   );
 }
 
-function StatCardSkeleton() {
+function StatCellSkeleton() {
   return (
-    <Surface padding='compact'>
-      <div className='mb-3 flex items-center gap-2'>
-        <Skeleton className='size-5' />
-        <Skeleton className='h-3 w-16' />
-      </div>
-      <Skeleton className='mb-1 h-8 w-20' />
-      <Skeleton className='h-3 w-24' />
-    </Surface>
+    <div className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'>
+      <Skeleton className='mb-2 h-3 w-16 bg-secondary' />
+      <Skeleton className='h-6 w-24' />
+      <Skeleton className='mt-1 h-3 w-28 bg-muted' />
+    </div>
   );
 }
 

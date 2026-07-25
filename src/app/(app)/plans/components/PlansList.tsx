@@ -15,18 +15,12 @@ import {
 } from '@/app/(app)/plans/components/BulkDeletePlansDialog';
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
-import {
-  ATLAS_CONTROL_CLASS,
-  ATLAS_TAB_CLASS,
-  PLANS_GLASS_SURFACE,
-} from '@/app/(app)/plans/components/plans-atlas-classes';
 import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Surface } from '@/components/ui/surface';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ListChecks, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -99,29 +93,30 @@ function BulkPlanActionsToolbar({
   selectedCount,
   deletableCount,
   toolbarMessage,
-  onSelectAll,
   onClear,
   onDelete,
-  onCancelSelection,
 }: {
   selectedCount: number;
   deletableCount: number;
   toolbarMessage: string | null;
-  onSelectAll: () => void;
   onClear: () => void;
   onDelete: () => void;
-  onCancelSelection: () => void;
 }) {
   return (
-    <Surface
-      padding='compact'
-      className={cn('space-y-3', ATLAS_CONTROL_CLASS)}
+    <div
+      className='space-y-3 rounded-xl border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
           <p className='text-sm font-medium text-foreground'>
-            {selectedCount} selected
+            <span
+              key={selectedCount}
+              className='inline-block animate-in tabular-nums duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
+            >
+              {selectedCount}
+            </span>{' '}
+            selected
           </p>
           {toolbarMessage ? (
             <p className='text-sm text-destructive'>{toolbarMessage}</p>
@@ -136,15 +131,6 @@ function BulkPlanActionsToolbar({
             type='button'
             variant='outline'
             size='sm'
-            onClick={onSelectAll}
-            disabled={deletableCount === 0}
-          >
-            Select all on page
-          </Button>
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
             onClick={onClear}
             disabled={selectedCount === 0}
           >
@@ -154,41 +140,44 @@ function BulkPlanActionsToolbar({
             type='button'
             variant='destructive'
             size='sm'
+            className='ml-1'
             onClick={onDelete}
             disabled={selectedCount === 0}
           >
             Delete selected
           </Button>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            onClick={onCancelSelection}
-          >
-            Cancel
-          </Button>
         </div>
       </div>
-    </Surface>
+    </div>
   );
 }
 
 function PlansControls({
   page,
   query,
+  selectableCount,
+  selectedSelectableCount,
+  onSelectAll,
+  onDeselectAll,
 }: {
   page: PlanListPage;
   query: PlanListQuery;
+  selectableCount: number;
+  selectedSelectableCount: number;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
 }) {
   const router = useRouter();
+  const allSelected =
+    selectableCount > 0 && selectedSelectableCount === selectableCount;
+  const someSelected =
+    selectedSelectableCount > 0 && selectedSelectableCount < selectableCount;
 
   return (
-    <div className='space-y-4 border-b border-border/60 pb-5'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <form
-          action='/plans'
-          className='relative min-w-0 sm:max-w-sm sm:flex-1'
-        >
+    <div className='space-y-4'>
+      {/* Search row: Search primary; Sort trails on the right (sm+). */}
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2'>
+        <form action='/plans' className='relative w-full min-w-0 flex-1'>
           <Search
             className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
             aria-hidden='true'
@@ -204,92 +193,119 @@ function PlansControls({
             name='search'
             placeholder='Search plans...'
             aria-label='Search learning plans'
-            className={cn(PLANS_GLASS_SURFACE, 'h-9 pl-9')}
+            className='h-9 w-full border-panel-border bg-panel pl-9'
             defaultValue={query.search}
           />
         </form>
 
-        <form
-          action='/plans'
-          className='flex shrink-0 items-center gap-2 self-end sm:self-auto'
-        >
-          <label
-            htmlFor='plans-sort'
-            className='text-xs font-medium tracking-wide text-muted-foreground uppercase'
+        <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
+          <form
+            action='/plans'
+            className='flex h-8 shrink-0 items-center gap-1.5'
           >
-            Sort
-          </label>
-          {query.search ? (
-            <input type='hidden' name='search' value={query.search} />
-          ) : null}
-          {query.status !== 'all' ? (
-            <input type='hidden' name='status' value={query.status} />
-          ) : null}
-          <select
-            id='plans-sort'
-            name='sort'
-            defaultValue={query.sort}
-            onChange={(event) =>
-              router.push(
-                plansHref({
-                  search: query.search,
-                  status: query.status,
-                  sort: event.currentTarget.value as PlanListSort,
-                }),
-              )
-            }
-            className='h-9 max-w-[11rem] truncate rounded-md border border-panel-border bg-panel px-2.5 text-sm shadow-xs dark:bg-panel'
-            aria-label='Sort learning plans'
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </form>
+            <label
+              htmlFor='plans-sort'
+              className='inline-flex h-8 items-center text-xs leading-none font-medium tracking-wide text-muted-foreground uppercase'
+            >
+              Sort
+            </label>
+            {query.search ? (
+              <input type='hidden' name='search' value={query.search} />
+            ) : null}
+            {query.status !== 'all' ? (
+              <input type='hidden' name='status' value={query.status} />
+            ) : null}
+            <select
+              id='plans-sort'
+              name='sort'
+              defaultValue={query.sort}
+              onChange={(event) =>
+                router.push(
+                  plansHref({
+                    search: query.search,
+                    status: query.status,
+                    sort: event.currentTarget.value as PlanListSort,
+                  }),
+                )
+              }
+              className='h-8 max-w-[10.5rem] truncate rounded-md border border-panel-border bg-panel px-2 text-sm leading-none shadow-xs dark:bg-panel'
+              aria-label='Sort learning plans'
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </form>
+        </div>
       </div>
 
-      <Tabs value={query.status} aria-label='Filter plans by status'>
-        <TabsList className='h-auto w-full justify-start gap-1.5 overflow-x-auto bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden'>
-          {FILTER_TABS.map((tab) => {
-            const count = getFilterCount(tab, page);
-            return (
-              <TabsTrigger
-                asChild
-                key={tab.id}
-                value={tab.id}
-                className={cn(
-                  'group inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm',
-                  ATLAS_TAB_CLASS,
-                )}
-              >
-                <Link
-                  href={plansHref({
-                    search: query.search,
-                    status: tab.id,
-                    sort: query.sort,
-                  })}
+      {/* Filter rail: select-all + status tabs share one hairline underline. */}
+      <div className='flex w-full items-center gap-2 border-b border-border'>
+        <div className='flex shrink-0 items-center self-stretch px-2'>
+          <input
+            type='checkbox'
+            checked={allSelected}
+            disabled={selectableCount === 0}
+            aria-label='Select all plans on page'
+            ref={(element) => {
+              if (element) {
+                element.indeterminate = someSelected;
+              }
+            }}
+            onChange={(event) => {
+              if (event.currentTarget.checked) {
+                onSelectAll();
+                return;
+              }
+              onDeselectAll();
+            }}
+            className='size-4 shrink-0 rounded border border-border accent-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+          />
+        </div>
+        <Tabs
+          value={query.status}
+          aria-label='Filter plans by status'
+          className='min-w-0 flex-1'
+        >
+          <TabsList className='h-auto w-full justify-start gap-4 overflow-x-auto rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden'>
+            {FILTER_TABS.map((tab) => {
+              const count = getFilterCount(tab, page);
+              return (
+                <TabsTrigger
+                  asChild
+                  key={tab.id}
+                  value={tab.id}
+                  className='group -mb-px inline-flex shrink-0 items-center gap-1.5 rounded-none border-0 border-b-2 border-transparent px-0.5 pt-1 pb-2 text-sm text-muted-foreground shadow-none transition-colors hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent'
                 >
-                  {tab.status ? (
-                    <span
-                      className={cn(
-                        'size-2 shrink-0 rounded-full',
-                        getPlanStatusDotClassName(tab.status),
-                      )}
-                      aria-hidden='true'
-                    />
-                  ) : null}
-                  <span>{tab.label}</span>
-                  <span className='rounded-md bg-muted/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums group-data-[state=active]:bg-primary/15 group-data-[state=active]:text-primary'>
-                    {count}
-                  </span>
-                </Link>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+                  <Link
+                    href={plansHref({
+                      search: query.search,
+                      status: tab.id,
+                      sort: query.sort,
+                    })}
+                  >
+                    {tab.status ? (
+                      <span
+                        className={cn(
+                          'size-1.5 shrink-0 rounded-full',
+                          getPlanStatusDotClassName(tab.status),
+                        )}
+                        aria-hidden='true'
+                      />
+                    ) : null}
+                    <span>{tab.label}</span>
+                    <span className='text-xs text-muted-foreground tabular-nums'>
+                      {count}
+                    </span>
+                  </Link>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+      </div>
     </div>
   );
 }
@@ -316,33 +332,38 @@ export function PlansList({ page, query }: PlansListProps) {
   }
 
   const handleSelectionChange = (planId: string, selected: boolean): void => {
-    setSelectedPlanIds((current) => {
-      const next = new Set(current);
-      if (selected) {
+    // Hover-checkbox on a row can enter selection mode without the toolbar.
+    if (selected) {
+      setSelectionMode(true);
+      setSelectedPlanIds((current) => {
+        const next = new Set(current);
         next.add(planId);
-      } else {
-        next.delete(planId);
-      }
-      return next;
-    });
+        return next;
+      });
+      setToolbarMessage(null);
+      return;
+    }
+
+    const next = new Set(selectedPlanIds);
+    next.delete(planId);
+    // Last unchecked plan: exit selection mode (same cleanup as Clear).
+    if (next.size === 0) {
+      setSelectionMode(false);
+      setSelectedPlanIds(() => new Set());
+      setToolbarMessage(null);
+      return;
+    }
+    setSelectedPlanIds(next);
     setToolbarMessage(null);
   };
 
   const handleSelectAllOnPage = (): void => {
+    setSelectionMode(true);
     setSelectedPlanIds(() => new Set(deletablePlans.map((plan) => plan.id)));
     setToolbarMessage(null);
   };
 
-  const handleClearSelection = (): void => {
-    setSelectedPlanIds(() => new Set());
-    setToolbarMessage(null);
-  };
-
-  const handleEnterSelectionMode = (): void => {
-    setSelectionMode(true);
-    setToolbarMessage(null);
-  };
-
+  // Clear / last unchecked / select-all uncheck: same exit.
   const handleCancelSelectionMode = (): void => {
     setSelectionMode(false);
     setSelectedPlanIds(() => new Set());
@@ -402,40 +423,45 @@ export function PlansList({ page, query }: PlansListProps) {
     setToolbarMessage(failedResults[0]?.message ?? null);
   };
 
+  const showBulkToolbar = selectionMode && selectedPlanIds.size > 0;
+
   return (
     <div className='space-y-5'>
-      <PlansControls page={page} query={query} />
+      <div>
+        <PlansControls
+          page={page}
+          query={query}
+          selectableCount={deletablePlans.length}
+          selectedSelectableCount={selectedDeletablePlans.length}
+          onSelectAll={handleSelectAllOnPage}
+          onDeselectAll={handleCancelSelectionMode}
+        />
 
-      <div className='space-y-3'>
-        <div className='flex items-center justify-between'>
-          <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-            {page.totalItems} plan{page.totalItems === 1 ? '' : 's'}
-          </p>
-          {!selectionMode ? (
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={handleEnterSelectionMode}
-              disabled={deletablePlans.length === 0}
-            >
-              <ListChecks />
-              Select
-            </Button>
-          ) : null}
+        {/* Height-collapse so the plan list eases down/up with the toolbar. */}
+        <div
+          className={cn(
+            'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+            showBulkToolbar ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          )}
+          aria-hidden={!showBulkToolbar}
+        >
+          <div
+            className={cn(
+              'min-h-0 overflow-hidden',
+              showBulkToolbar ? null : 'pointer-events-none',
+            )}
+          >
+            <div className='mt-3 mb-3'>
+              <BulkPlanActionsToolbar
+                selectedCount={selectedDeletablePlans.length}
+                deletableCount={deletablePlans.length}
+                toolbarMessage={toolbarMessage}
+                onClear={handleCancelSelectionMode}
+                onDelete={() => setBulkDeleteOpen(true)}
+              />
+            </div>
+          </div>
         </div>
-
-        {selectionMode ? (
-          <BulkPlanActionsToolbar
-            selectedCount={selectedDeletablePlans.length}
-            deletableCount={deletablePlans.length}
-            toolbarMessage={toolbarMessage}
-            onSelectAll={handleSelectAllOnPage}
-            onClear={handleClearSelection}
-            onDelete={() => setBulkDeleteOpen(true)}
-            onCancelSelection={handleCancelSelectionMode}
-          />
-        ) : null}
 
         <BulkDeletePlansDialog
           open={bulkDeleteOpen}
@@ -450,11 +476,15 @@ export function PlansList({ page, query }: PlansListProps) {
             filterStatus={query.status}
           />
         ) : (
-          <section aria-label='Learning plans' className='space-y-3'>
-            {page.items.map((plan) => (
+          <section
+            aria-label='Learning plans'
+            className='divide-y divide-border/60 border-b border-border/60'
+          >
+            {page.items.map((plan, index) => (
               <PlanRow
                 key={plan.id}
                 plan={plan}
+                index={index}
                 referenceTimestamp={page.referenceTimestamp}
                 selectionMode={selectionMode}
                 selected={selectedPlanIds.has(plan.id)}
@@ -469,7 +499,7 @@ export function PlansList({ page, query }: PlansListProps) {
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className='flex flex-col gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
+          className='flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
         >
           <span className='tabular-nums'>
             Page {page.page} of {page.totalPages}

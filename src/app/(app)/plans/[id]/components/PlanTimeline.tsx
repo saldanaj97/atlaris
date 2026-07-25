@@ -91,16 +91,18 @@ export function PlanTimeline({
 
   return (
     <section className='mt-12 scroll-mt-8'>
-      <div className='mb-6 flex flex-wrap items-center justify-between gap-2'>
-        <h2 className='text-2xl font-bold text-foreground'>Learning Modules</h2>
-        <span className='text-sm text-muted-foreground'>
+      <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
+        <h2 className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+          Route · Learning modules
+        </h2>
+        <span className='text-xs text-muted-foreground tabular-nums'>
           {modules.length} module{modules.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       <div className='relative pb-4'>
         <div
-          className='pointer-events-none absolute top-3 bottom-10 left-8 w-0.5 -translate-x-1/2 bg-linear-to-b from-primary/50 via-primary/90 to-transparent dark:from-primary/70 dark:via-primary dark:to-transparent'
+          className='pointer-events-none absolute top-3 bottom-10 left-8 w-px -translate-x-1/2 bg-border'
           aria-hidden
         />
         <Accordion

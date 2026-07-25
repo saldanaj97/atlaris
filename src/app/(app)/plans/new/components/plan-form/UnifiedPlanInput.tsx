@@ -125,7 +125,7 @@ export function UnifiedPlanInput({
     <div className='w-full max-w-5xl'>
       <Surface
         padding='none'
-        className='overflow-hidden px-5 py-5 shadow-lg transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40 sm:px-6 sm:py-6 lg:px-8 lg:py-7 dark:bg-input/90'
+        className='overflow-hidden px-5 py-5 shadow-sm transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40 sm:px-6 sm:py-6 lg:px-8 lg:py-7'
       >
         <div className='pb-6'>
           <label htmlFor={topicInputId} className='sr-only'>
@@ -139,7 +139,7 @@ export function UnifiedPlanInput({
             }
             onKeyDown={handleKeyDown}
             placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
-            className='min-h-36 w-full min-w-0 resize-none rounded-xs border-0 p-0 text-base leading-7 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 sm:text-lg md:min-h-40'
+            className='min-h-36 w-full min-w-0 resize-none rounded-md border-0 text-base leading-7 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 sm:text-lg md:min-h-40'
             rows={5}
             disabled={isSubmitting || disabled}
           />

@@ -1,63 +1,33 @@
-import {
-  PLAN_FOOTER_THEME,
-  type PlanFooterStatus,
-} from '@/app/(app)/plans/plans-progress-theme';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Flag } from 'lucide-react';
 
 interface TimelinePlanFooterProps {
   isPlanComplete: boolean;
   moduleCount: number;
 }
 
+/** Quiet end-of-route marker: a dot on the rail and one line of text. */
 export function TimelinePlanFooter({
   isPlanComplete,
   moduleCount,
 }: TimelinePlanFooterProps) {
-  const status: PlanFooterStatus = isPlanComplete ? 'complete' : 'incomplete';
-  const theme = PLAN_FOOTER_THEME[status];
   const moduleLabel = `${moduleCount} module${moduleCount !== 1 ? 's' : ''}`;
 
   return (
-    <div className='mt-5 flex items-stretch'>
+    <div className='mt-5 flex items-center'>
       <div className='relative flex w-16 shrink-0 items-center justify-center'>
-        <div
+        <span
           className={cn(
-            'z-10 flex size-8 items-center justify-center rounded-full border-[3px] bg-panel shadow-sm',
-            theme.marker,
+            'z-10 size-2.5 rounded-full border-2 bg-panel',
+            isPlanComplete ? 'border-success bg-success' : 'border-border',
           )}
-        >
-          {isPlanComplete ? (
-            <CheckCircle2 size={18} className='fill-success/15' />
-          ) : (
-            <Flag size={16} />
-          )}
-        </div>
+          aria-hidden='true'
+        />
       </div>
-      <div
-        className={cn('flex-1 rounded-2xl border p-5 shadow-sm', theme.card)}
-      >
-        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-          <div>
-            <p className={cn('text-sm font-semibold', theme.label)}>
-              {isPlanComplete ? 'Congratulations!' : 'End of plan'}
-            </p>
-            <h3 className={cn('mt-1 text-lg font-semibold', theme.title)}>
-              {isPlanComplete
-                ? 'You have completed all modules in this plan.'
-                : 'This is the end of the plan.'}
-            </h3>
-          </div>
-          <span
-            className={cn(
-              'rounded-md px-2.5 py-1 text-xs font-semibold',
-              theme.badge,
-            )}
-          >
-            {moduleLabel} {isPlanComplete ? 'finished' : 'total'}
-          </span>
-        </div>
-      </div>
+      <p className='flex-1 py-3 text-xs text-muted-foreground'>
+        {isPlanComplete
+          ? `Route complete · ${moduleLabel} finished`
+          : `End of route · ${moduleLabel} charted`}
+      </p>
     </div>
   );
 }

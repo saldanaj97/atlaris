@@ -5,7 +5,7 @@ import type { PlanListItem } from '@/features/plans/read-projection/types';
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
-  getPlanStatusPillClassName,
+  getPlanStatusDotClassName,
   PLAN_STATUS_LABELS,
 } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
@@ -16,133 +16,104 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  MoreVertical,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
+import { MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 interface PlanRowProps {
   plan: PlanListItem;
   referenceTimestamp: string;
+  /** List paint index for staggered load-in (capped like dashboard ActivityCard). */
+  index?: number;
   selectionMode?: boolean;
   selected?: boolean;
   selectable?: boolean;
   onSelectionChange?: (planId: string, selected: boolean) => void;
 }
 
-function StatusPill({ plan }: { plan: PlanListItem }) {
-  return (
-    <span
-      className={cn(
-        'ml-auto inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground',
-        getPlanStatusPillClassName(plan.status),
-      )}
-    >
-      {PLAN_STATUS_LABELS[plan.status]}
-    </span>
-  );
+function getNextStepLabel(plan: PlanListItem): string {
+  if (plan.status === 'completed') return 'All tasks complete';
+  if (plan.status === 'generating' || plan.status === 'failed') {
+    return PLAN_STATUS_LABELS[plan.status];
+  }
+  if (plan.completedTasks === 0) return 'Not started';
+  return 'Continue learning';
 }
 
-function PlanTitle({
+function PlanStatusControl({
   plan,
-  progressPercent,
-  lastActivity,
+  selectionMode,
+  selected,
+  selectable,
+  onSelectionChange,
 }: {
   plan: PlanListItem;
-  progressPercent: number;
-  lastActivity: string;
+  selectionMode: boolean;
+  selected: boolean;
+  selectable: boolean;
+  onSelectionChange?: (planId: string, selected: boolean) => void;
 }) {
-  return (
-    <div className='flex min-w-0 flex-1 items-center gap-2'>
-      <span className='truncate font-semibold text-foreground'>
-        {plan.topic}
+  const forceCheckbox = selectionMode || selected;
+  const showInteractiveCheckbox = selectable || selectionMode;
+
+  if (!showInteractiveCheckbox) {
+    return (
+      <span className='flex size-4 shrink-0 items-center justify-center'>
+        <span
+          className={cn(
+            'size-1.5 rounded-full',
+            getPlanStatusDotClassName(plan.status),
+          )}
+          aria-hidden='true'
+        />
       </span>
-      {progressPercent >= 80 ? (
-        <Sparkles className='size-3.5 shrink-0 text-warning' />
-      ) : null}
-      <LastActivity value={lastActivity} />
-    </div>
-  );
-}
-
-function NextTask({ plan }: { plan: PlanListItem }) {
-  let label: string;
-  let showArrow = false;
-
-  if (plan.status === 'completed') {
-    label = 'All tasks completed';
-  } else if (plan.status === 'generating' || plan.status === 'failed') {
-    label = PLAN_STATUS_LABELS[plan.status];
-  } else if (plan.completedTasks === 0) {
-    label = 'Not started';
-  } else {
-    label = 'Continue learning';
-    showArrow = true;
+    );
   }
 
   return (
-    <div className='flex min-w-0 items-center gap-2 text-xs text-muted-foreground'>
-      {showArrow ? <ArrowRight className='size-3 shrink-0' /> : null}
-      <span className='truncate'>{label}</span>
+    <div className='group/status pointer-events-auto relative z-10 flex size-4 shrink-0 items-center justify-center'>
+      <span
+        className={cn(
+          'size-1.5 rounded-full transition-opacity duration-150 motion-reduce:transition-none',
+          getPlanStatusDotClassName(plan.status),
+          forceCheckbox
+            ? 'opacity-0'
+            : 'group-hover:opacity-0 group-focus-within/status:opacity-0',
+        )}
+        aria-hidden='true'
+      />
+      <input
+        type='checkbox'
+        checked={selected}
+        disabled={!selectable}
+        aria-label={
+          selectable
+            ? `Select ${plan.topic}`
+            : `Cannot select ${plan.topic} while it is generating`
+        }
+        onClick={(event) => event.stopPropagation()}
+        onChange={(event) =>
+          onSelectionChange?.(plan.id, event.currentTarget.checked)
+        }
+        className={cn(
+          'absolute size-4 shrink-0 rounded border border-border accent-primary transition-opacity duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50',
+          forceCheckbox
+            ? 'opacity-100'
+            : 'opacity-0 group-hover:opacity-100 group-focus-within/status:opacity-100',
+        )}
+      />
     </div>
   );
 }
 
-function TaskProgress({
-  plan,
-  progressPercent,
-}: {
-  plan: PlanListItem;
-  progressPercent: number;
-}) {
-  return (
-    <div className='space-y-1.5'>
-      <div className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
-        <NextTask plan={plan} />
-        <span className='flex shrink-0 items-center gap-1.5 tabular-nums'>
-          <CheckCircle2 className='size-3.5 shrink-0' aria-hidden='true' />
-          {plan.completedTasks}/{plan.totalTasks} tasks
-        </span>
-      </div>
-      <ProgressTrack progressPercent={progressPercent} />
-    </div>
-  );
-}
-
-function LastActivity({ value }: { value: string }) {
-  return (
-    <div className='flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground'>
-      <Clock className='size-3.5 shrink-0' />
-      <span className='whitespace-nowrap'>{value}</span>
-    </div>
-  );
-}
-
-function ProgressTrack({ progressPercent }: { progressPercent: number }) {
-  return (
-    <>
-      <progress className='sr-only' value={progressPercent} max={100}>
-        {progressPercent}% of tasks complete
-      </progress>
-      <div className='h-1 overflow-hidden rounded-full bg-panel-border/40'>
-        <div
-          className='h-full w-full origin-left rounded-full bg-primary transition-transform duration-300'
-          style={{ transform: `scaleX(${progressPercent / 100})` }}
-        />
-      </div>
-    </>
-  );
-}
-
+/**
+ * Ledger-style plan row: status control, topic + meta on the left, progress
+ * figures on the right. Hairline rules come from the parent list.
+ */
 export function PlanRow({
   plan,
   referenceTimestamp,
+  index = 0,
   selectionMode = false,
   selected = false,
   selectable = true,
@@ -157,25 +128,59 @@ export function PlanRow({
     referenceTimestamp,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const rowContent = (
+
+  const statusControl = (
+    <PlanStatusControl
+      plan={plan}
+      selectionMode={selectionMode}
+      selected={selected}
+      selectable={selectable}
+      onSelectionChange={onSelectionChange}
+    />
+  );
+
+  const rowBody = (
     <>
-      <div className='flex min-w-0 items-center gap-2'>
-        <PlanTitle
-          plan={plan}
-          progressPercent={progressPercent}
-          lastActivity={lastActivity}
-        />
-        <StatusPill plan={plan} />
+      <div className='min-w-0 flex-1'>
+        <p className='truncate text-sm font-medium text-foreground'>
+          {plan.topic}
+        </p>
+        <p className='mt-0.5 truncate text-xs text-muted-foreground'>
+          {getNextStepLabel(plan)} · {lastActivity}
+        </p>
       </div>
 
-      <div className='mt-3'>
-        <TaskProgress plan={plan} progressPercent={progressPercent} />
+      <span className='hidden shrink-0 text-xs text-muted-foreground tabular-nums md:inline'>
+        {plan.completedTasks}/{plan.totalTasks} tasks
+      </span>
+
+      {/* Compact bearing: hairline track + numeral, right-aligned. */}
+      <div className='hidden shrink-0 items-center gap-2.5 sm:flex'>
+        <progress className='sr-only' value={progressPercent} max={100}>
+          {progressPercent}% of tasks complete
+        </progress>
+        <div className='h-px w-20 bg-border' aria-hidden='true'>
+          <div
+            className='h-[3px] -translate-y-px bg-primary transition-[width] duration-500 motion-reduce:transition-none'
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <span className='w-9 text-right text-xs text-foreground tabular-nums'>
+          {progressPercent}%
+        </span>
       </div>
+
+      <span className='hidden w-24 shrink-0 text-right text-[11px] font-medium tracking-[0.08em] whitespace-nowrap text-muted-foreground uppercase lg:inline'>
+        {PLAN_STATUS_LABELS[plan.status]}
+      </span>
     </>
   );
 
   return (
-    <div className='relative'>
+    <div
+      className='group relative flex animate-in items-center gap-3 px-2 py-4 transition-colors duration-500 fill-mode-both fade-in slide-in-from-bottom-1 hover:bg-secondary/40 motion-reduce:animate-none'
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+    >
       <DeletePlanDialog
         planId={plan.id}
         planTopic={plan.topic}
@@ -184,65 +189,47 @@ export function PlanRow({
         onOpenChange={setDeleteDialogOpen}
       />
 
-      <div className='relative flex items-start gap-3'>
-        {selectionMode ? (
-          <div className='flex shrink-0 pt-4'>
-            <input
-              type='checkbox'
-              checked={selected}
-              disabled={!selectable}
-              aria-label={
-                selectable
-                  ? `Select ${plan.topic}`
-                  : `Cannot select ${plan.topic} while it is generating`
-              }
-              onChange={(event) =>
-                onSelectionChange?.(plan.id, event.currentTarget.checked)
-              }
-              className='size-4 rounded border-border text-primary focus-visible:ring-ring/50'
-            />
+      {selectionMode ? (
+        <>
+          {statusControl}
+          {rowBody}
+        </>
+      ) : (
+        <>
+          <Link
+            href={`/plans/${plan.id}`}
+            className='absolute inset-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
+          >
+            <span className='sr-only'>Open plan: {plan.topic}</span>
+          </Link>
+          {statusControl}
+          {rowBody}
+          <div className='relative z-10 shrink-0'>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  title='Plan actions'
+                  aria-label='Plan actions'
+                >
+                  <MoreVertical className='size-4' />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align='end'>
+                <DropdownMenuItem
+                  variant='destructive'
+                  disabled={plan.status === 'generating'}
+                  onSelect={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className='mr-2 size-4' />
+                  Delete plan
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        ) : null}
-
-        <div className='relative min-w-0 flex-1'>
-          <div className='group rounded-2xl border border-panel-border bg-panel px-4 py-3.5 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-primary/30 hover:bg-panel-muted hover:shadow-md'>
-            {selectionMode ? (
-              <div className='block min-w-0'>{rowContent}</div>
-            ) : (
-              <Link href={`/plans/${plan.id}`} className='block min-w-0 pr-12'>
-                {rowContent}
-              </Link>
-            )}
-          </div>
-
-          {!selectionMode ? (
-            <div className='absolute inset-y-0 right-2 flex items-center'>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    title='Plan actions'
-                    aria-label='Plan actions'
-                  >
-                    <MoreVertical className='size-4' />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align='end'>
-                  <DropdownMenuItem
-                    variant='destructive'
-                    disabled={plan.status === 'generating'}
-                    onSelect={() => setDeleteDialogOpen(true)}
-                  >
-                    <Trash2 className='mr-2 size-4' />
-                    Delete plan
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : null}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
