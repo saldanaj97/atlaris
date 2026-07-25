@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('Navigation', () => {
   describe('authenticatedNavItems', () => {
-    it('should contain Activity Feed nav item', () => {
+    it('should contain Dashboard nav item', () => {
       const dashboardItem = authenticatedNavItems.find(
-        (item) => item.label === 'Activity Feed',
+        (item) => item.label === 'Dashboard',
       );
       expect(dashboardItem).toBeDefined();
       expect(dashboardItem?.href).toBe('/dashboard');

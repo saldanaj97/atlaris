@@ -40,9 +40,7 @@ describe('DesktopHeader layout', () => {
   it('keeps authenticated nav items accessible at md width', () => {
     renderDesktopHeader();
 
-    expect(
-      screen.getByRole('link', { name: 'Activity Feed' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Plans' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Analytics' }),

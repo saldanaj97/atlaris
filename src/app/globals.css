@@ -231,6 +231,48 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
+@keyframes dashboard-unfold {
+  from {
+    opacity: 0;
+    clip-path: inset(48% 0 48% 0 round 1rem);
+    transform: translateX(var(--dashboard-entry-x, 0)) scaleX(0.985);
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 1rem);
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes dashboard-trace {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes dashboard-ledger-row {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground;
@@ -303,6 +345,27 @@
 }
 
 @layer utilities {
+  .animate-dashboard-unfold {
+    animation-name: dashboard-unfold;
+    animation-duration: 700ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
+  .animate-dashboard-trace {
+    animation-name: dashboard-trace;
+    animation-duration: 720ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
+  .animate-dashboard-ledger-row {
+    animation-name: dashboard-ledger-row;
+    animation-duration: 500ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+  }
+
   .font-heading {
     font-family: var(--font-family-heading);
     font-weight: var(--font-weight-heading);
@@ -347,5 +410,13 @@
   }
   .dark .gradient-text-symmetric {
     @apply from-primary via-accent to-primary;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dashboard-unfold,
+  .animate-dashboard-trace,
+  .animate-dashboard-ledger-row {
+    animation: none;
   }
 }

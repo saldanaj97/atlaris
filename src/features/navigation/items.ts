@@ -7,7 +7,7 @@ import { ROUTES } from './routes';
  */
 export const authenticatedNavItems: NavItem[] = [
   {
-    label: 'Activity Feed',
+    label: 'Dashboard',
     href: ROUTES.DASHBOARD,
   },
   {

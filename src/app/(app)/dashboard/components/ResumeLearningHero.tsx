@@ -1,8 +1,6 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
 interface ResumeLearningHeroProps {
@@ -21,82 +19,81 @@ function getUpNextLabel(plan: PlanSummary): string {
     return 'Plan complete';
   }
 
-  if (plan.completedModules === 0) {
-    return plan.modules[0]?.title ?? 'Getting Started';
-  }
-
-  return 'Continue your plan';
-}
-
-function getResumeHeroDescription(plan: PlanSummary): string {
-  const moduleCount = plan.modules.length;
-  const completedModules = plan.completedModules;
-  const topic = plan.plan.topic;
-  const topicLower = (topic ?? 'your topic').toLowerCase();
-
-  if (completedModules === 0) {
-    return `Start your journey with ${moduleCount} modules covering ${topicLower}.`;
-  }
-  if (completedModules === moduleCount) {
-    return `Congratulations! You've completed all ${moduleCount} modules.`;
-  }
-  return `${completedModules} of ${moduleCount} modules complete · Up next: ${getUpNextLabel(plan)}`;
+  return (
+    plan.modules[plan.completedModules]?.title ??
+    plan.modules.at(-1)?.title ??
+    'Continue your current route'
+  );
 }
 
 /**
- * After Hours resume card — arched panel, soft progress track, peach pill CTA.
+ * The one chart panel on the dashboard: current plan, bearing, and a
+ * hairline progress track along the bottom edge.
  */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
   return (
-    <article className='rounded-[1.75rem] border border-panel-border bg-panel p-6 text-panel-foreground sm:p-7'>
-      <p className='mb-3 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
-        Most recent plan
-      </p>
-
-      <h2 className='text-xl font-semibold text-balance text-foreground sm:text-2xl'>
-        {plan.plan.topic}
-      </h2>
-
-      <p className='mt-2 max-w-xl text-sm font-normal text-muted-foreground'>
-        {getResumeHeroDescription(plan)}
-      </p>
-
-      <div className='mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5'>
-        <div className='min-w-0 flex-1'>
-          <div className='mb-2 flex items-baseline justify-between gap-3'>
-            <span className='text-xs font-medium text-muted-foreground'>
-              Progress
+    <article className='animate-dashboard-unfold relative h-full overflow-hidden rounded-2xl border border-panel-border bg-panel text-panel-foreground shadow-sm [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none'>
+      <div className='flex h-full flex-col p-6 sm:p-7'>
+        <div className='flex items-start justify-between gap-4'>
+          <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+            Current focus
+          </p>
+          <p className='text-sm font-semibold text-foreground tabular-nums'>
+            {progressPercent}%
+            <span className='ml-1 font-normal text-muted-foreground'>
+              complete
             </span>
-            <span className='text-xs font-medium text-foreground tabular-nums'>
-              {progressPercent}%
-            </span>
-          </div>
-          {/* soft track (#3b2135 → secondary) + accent fill (#f0a06e → primary) */}
-          <Progress
-            value={progressPercent}
-            aria-label={`Plan progress: ${progressPercent}% complete`}
-            className='h-2 bg-secondary'
-          />
+          </p>
         </div>
 
-        <div className='flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center'>
-          {/* accent CTA */}
-          <Button
-            asChild
-            className='h-10 rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90'
+        <div className='mt-8'>
+          <h2 className='text-2xl font-semibold text-balance text-foreground'>
+            {plan.plan.topic}
+          </h2>
+          <p className='mt-2 text-sm text-muted-foreground'>
+            <span className='font-medium text-foreground'>Next module</span>
+            {' · '}
+            {getUpNextLabel(plan)}
+          </p>
+        </div>
+
+        <div className='mt-8'>
+          <div
+            className='h-1.5 overflow-hidden rounded-full bg-muted'
+            role='progressbar'
+            aria-label={`${plan.plan.topic} progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
           >
-            <Link href={`/plans/${plan.plan.id}`}>Continue</Link>
-          </Button>
-          {/* ctaBg plate — card/panel surface with line border */}
-          <Button
-            asChild
-            variant='outline'
-            className='h-10 rounded-full border-panel-border bg-panel px-5 text-panel-foreground hover:bg-secondary hover:text-foreground'
-          >
-            <Link href={ROUTES.PLANS.ROOT}>All plans</Link>
+            <div
+              className='animate-dashboard-trace h-full origin-left rounded-full bg-primary [animation-delay:260ms] motion-reduce:animate-none'
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className='mt-auto pt-8'>
+          <div className='flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/50 pt-4 text-xs text-muted-foreground tabular-nums'>
+            <p>
+              <span className='font-medium text-foreground'>
+                {plan.completedTasks}/{plan.totalTasks}
+              </span>{' '}
+              tasks
+            </p>
+            <p>
+              <span className='font-medium text-foreground'>
+                {plan.completedModules}/{plan.modules.length}
+              </span>{' '}
+              modules
+            </p>
+          </div>
+
+          <Button asChild className='mt-5 h-11 px-5'>
+            <Link href={`/plans/${plan.plan.id}`}>Resume plan</Link>
           </Button>
         </div>
       </div>

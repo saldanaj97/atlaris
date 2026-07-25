@@ -29,7 +29,7 @@ function getPlanProgressTimestamp(plan: LearningPlan, fallback: Date): Date {
 
 /**
  * Generates activity items from plan summaries.
- * Creates milestone events for new plans, progress updates, and completion events.
+ * Creates generated, progress, and completion events.
  */
 export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
   const datedActivities: DatedActivity[] = [];
@@ -51,10 +51,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           activityDate: createdAt,
           activity: {
             id: `plan-${plan.id}`,
-            type: 'milestone',
+            kind: 'generated',
             planId: plan.id,
-            title: `Started: ${plan.topic}`,
+            title: plan.topic,
             timestamp: formatTimeAgo(createdAt, now),
+            occurredAt: createdAt.toISOString(),
             progress: completionPercent,
           },
         });
@@ -67,10 +68,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
         activityDate: progressAt,
         activity: {
           id: `progress-${plan.id}`,
-          type: 'progress',
+          kind: 'progress',
           planId: plan.id,
-          title: 'Progress Update',
+          title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
+          occurredAt: progressAt.toISOString(),
           progress: completionPercent,
         },
       });
@@ -82,10 +84,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
         activityDate: progressAt,
         activity: {
           id: `complete-${plan.id}`,
-          type: 'milestone',
+          kind: 'completed',
           planId: plan.id,
-          title: `Completed: ${plan.topic}`,
+          title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
+          occurredAt: progressAt.toISOString(),
           progress: 100,
         },
       });
@@ -132,4 +135,26 @@ export function findActivePlan(
     });
 
   return rankedSummaries[0]?.summary;
+}
+
+export function getDashboardGreeting(
+  name: string | null | undefined,
+  activePlan?: PlanSummary,
+): string {
+  const firstName = name?.trim().split(/\s+/)[0];
+  const welcome = firstName ? `Welcome back, ${firstName}.` : 'Welcome back.';
+
+  if (!activePlan) {
+    return `${welcome} Ready for your next challenge?`;
+  }
+
+  const progressPercent = Math.round(
+    Math.max(0, Math.min(1, activePlan.completion)) * 100,
+  );
+
+  if (progressPercent === 0) {
+    return `${welcome} ${activePlan.plan.topic} is ready when you are.`;
+  }
+
+  return `${welcome} You’re ${progressPercent}% through ${activePlan.plan.topic}. Keep the momentum going.`;
 }

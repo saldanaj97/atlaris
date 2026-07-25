@@ -1,8 +1,9 @@
 export interface ActivityItem {
   id: string;
-  type: 'progress' | 'milestone';
+  kind: 'generated' | 'progress' | 'completed';
   planId: string;
   title: string;
   timestamp: string;
+  occurredAt: string;
   progress: number;
 }
