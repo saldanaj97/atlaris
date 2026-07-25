@@ -1,5 +1,4 @@
 import DesktopHeader from '@/components/shared/nav/DesktopHeader';
-import { desktopHeaderShellClass } from '@/components/shared/nav/header-shell';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   authenticatedNavItems,
@@ -24,7 +23,7 @@ function renderDesktopHeader(
     <TooltipProvider>
       <div className='w-[768px]'>
         <DesktopHeader
-          headerVariant='protected'
+          isMarketing={false}
           pathname='/dashboard'
           navItems={authenticatedNavItems}
           tier='starter'
@@ -38,15 +37,6 @@ function renderDesktopHeader(
 }
 
 describe('DesktopHeader layout', () => {
-  it('uses equal side tracks so the nav center matches the shell center', () => {
-    expect(desktopHeaderShellClass('protected')).toContain(
-      'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
-    );
-    expect(desktopHeaderShellClass('protected')).not.toContain('grid-cols-3');
-    expect(desktopHeaderShellClass('protected')).toContain('h-16');
-    expect(desktopHeaderShellClass('protected')).not.toContain('rounded-2xl');
-  });
-
   it('keeps authenticated nav items accessible at md width', () => {
     renderDesktopHeader();
 
@@ -61,24 +51,12 @@ describe('DesktopHeader layout', () => {
     expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
   });
 
-  it('centers navigation in the shell instead of the leftover space', () => {
-    const { container } = renderDesktopHeader();
-
-    const shell = container.firstElementChild?.firstElementChild;
-    const navColumn = screen.getByRole('navigation').parentElement;
-
-    expect(shell?.className).toContain(
-      'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
-    );
-    expect(navColumn).toHaveClass('justify-self-center');
-  });
-
   it('renders unauthenticated nav links without clipping at md width', () => {
     const { container } = render(
       <TooltipProvider>
         <div className='w-[768px]'>
           <DesktopHeader
-            headerVariant='marketing'
+            isMarketing
             pathname='/landing'
             navItems={unauthenticatedNavItems}
             isAuthenticated={false}
@@ -103,7 +81,7 @@ describe('DesktopHeader layout', () => {
 
   it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {
     renderDesktopHeader({
-      headerVariant: 'marketing',
+      isMarketing: true,
       pathname: '/landing',
       navItems: unauthenticatedNavItems,
       isAuthenticated: true,

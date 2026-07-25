@@ -3,10 +3,6 @@
 import type { NavItem } from '@/features/navigation';
 
 import BrandLogo from '../BrandLogo';
-import {
-  type HeaderShellVariant,
-  isMarketingHeaderChrome,
-} from '@/components/shared/nav/header-shell';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
@@ -28,7 +24,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 interface MobileNavigationProps {
-  headerVariant: HeaderShellVariant;
+  isMarketing: boolean;
   pathname: string;
   navItems: NavItem[];
   isAuthenticated?: boolean;
@@ -38,13 +34,12 @@ interface MobileNavigationProps {
  * Mobile navigation component with left-sliding sheet.
  */
 export default function MobileNavigation({
-  headerVariant,
+  isMarketing,
   pathname,
   navItems,
   isAuthenticated = false,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
-  const isMarketing = isMarketingHeaderChrome(headerVariant);
   const primaryCtaHref = isAuthenticated
     ? ROUTES.PLANS.NEW
     : ROUTES.AUTH.SIGN_IN;

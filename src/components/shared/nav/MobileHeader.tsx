@@ -1,12 +1,9 @@
 'use client';
 
-import type { HeaderShellVariant } from '@/components/shared/nav/header-shell';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
-import { isMarketingHeaderChrome } from '@/components/shared/nav/header-shell';
-import HeaderLiquidGlassShell from '@/components/shared/nav/HeaderLiquidGlassShell';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
@@ -22,7 +19,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileHeaderProps {
-  headerVariant: HeaderShellVariant;
+  isMarketing: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -39,7 +36,7 @@ interface MobileHeaderProps {
  * Marketing routes: brand + menu + theme toggle + peach CTA (no app avatar chrome).
  */
 export default function MobileHeader({
-  headerVariant,
+  isMarketing,
   pathname,
   navItems,
   tier,
@@ -48,17 +45,16 @@ export default function MobileHeader({
   userName,
   userImageUrl,
 }: MobileHeaderProps) {
-  const isMarketing = isMarketingHeaderChrome(headerVariant);
   const primaryCtaHref = isAuthenticated
     ? ROUTES.PLANS.NEW
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
 
-  const headerContent = (
-    <>
+  return (
+    <div className='relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden'>
       <div className='relative z-10 flex shrink-0'>
         <MobileNavigation
-          headerVariant={headerVariant}
+          isMarketing={isMarketing}
           pathname={pathname}
           navItems={navItems}
           isAuthenticated={isAuthenticated}
@@ -129,12 +125,6 @@ export default function MobileHeader({
           </>
         )}
       </div>
-    </>
-  );
-
-  return (
-    <HeaderLiquidGlassShell layout='mobile' variant={headerVariant}>
-      {headerContent}
-    </HeaderLiquidGlassShell>
+    </div>
   );
 }

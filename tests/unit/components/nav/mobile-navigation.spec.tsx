@@ -24,13 +24,11 @@ const navItems = [
   { href: '/plans', label: 'Plans' },
 ];
 
-function renderMobileNavigation(
-  headerVariant: 'marketing' | 'opaque' = 'marketing',
-) {
+function renderMobileNavigation(isMarketing = true) {
   return render(
     <TooltipProvider>
       <MobileNavigation
-        headerVariant={headerVariant}
+        isMarketing={isMarketing}
         pathname='/dashboard'
         navItems={navItems}
       />
@@ -45,7 +43,7 @@ describe('MobileNavigation', () => {
     render(
       <TooltipProvider>
         <MobileNavigation
-          headerVariant='protected'
+          isMarketing={false}
           pathname='/dashboard'
           navItems={navItems}
           isAuthenticated
@@ -70,7 +68,7 @@ describe('MobileNavigation', () => {
   it('uses Get started CTA on marketing sheets when signed out', async () => {
     const user = userEvent.setup();
 
-    renderMobileNavigation('marketing');
+    renderMobileNavigation();
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
@@ -81,27 +79,5 @@ describe('MobileNavigation', () => {
     expect(
       screen.queryByRole('link', { name: 'Create New Plan' }),
     ).not.toBeInTheDocument();
-  });
-
-  it('uses the opaque menu trigger styling on marketing routes', () => {
-    renderMobileNavigation('marketing');
-
-    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass(
-      'bg-muted',
-    );
-    expect(screen.getByRole('button', { name: 'Open menu' })).not.toHaveClass(
-      'backdrop-blur-md',
-    );
-  });
-
-  it('uses opaque styling for the menu trigger on non-glass routes', () => {
-    renderMobileNavigation('opaque');
-
-    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass(
-      'bg-muted',
-    );
-    expect(screen.getByRole('button', { name: 'Open menu' })).not.toHaveClass(
-      'backdrop-blur-md',
-    );
   });
 });

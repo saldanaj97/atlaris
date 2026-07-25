@@ -1,24 +1,20 @@
 'use client';
 
-import type { HeaderShellVariant } from '@/components/shared/nav/header-shell';
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
-import { isMarketingHeaderChrome } from '@/components/shared/nav/header-shell';
-import HeaderLiquidGlassShell from '@/components/shared/nav/HeaderLiquidGlassShell';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation';
-import { cn } from '@/lib/utils';
 import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
-  headerVariant: HeaderShellVariant;
+  isMarketing: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -35,7 +31,7 @@ interface DesktopHeaderProps {
  * Marketing routes use After Hours chrome: outline nav pills + one peach CTA.
  */
 export default function DesktopHeader({
-  headerVariant,
+  isMarketing,
   pathname,
   navItems,
   tier,
@@ -44,14 +40,13 @@ export default function DesktopHeader({
   userName,
   userImageUrl,
 }: DesktopHeaderProps) {
-  const isMarketing = isMarketingHeaderChrome(headerVariant);
   const primaryCtaHref = isAuthenticated
     ? ROUTES.PLANS.NEW
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
 
-  const headerContent = (
-    <>
+  return (
+    <div className='relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid'>
       {/* Brand (left) */}
       <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
         <BrandLogo />
@@ -77,7 +72,7 @@ export default function DesktopHeader({
             <Button
               asChild
               size='sm'
-              className={cn(marketingHeaderPrimaryCtaClassName)}
+              className={marketingHeaderPrimaryCtaClassName}
             >
               <Link href={primaryCtaHref}>
                 {primaryCtaLabel}
@@ -117,12 +112,6 @@ export default function DesktopHeader({
           </>
         )}
       </div>
-    </>
-  );
-
-  return (
-    <HeaderLiquidGlassShell layout='desktop' variant={headerVariant}>
-      {headerContent}
-    </HeaderLiquidGlassShell>
+    </div>
   );
 }

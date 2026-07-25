@@ -88,7 +88,7 @@ if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = () => {};
 }
 
-// LiquidGlass measures container size via ResizeObserver (not provided by jsdom).
+// Charts measure container size via ResizeObserver (not provided by jsdom).
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class {
     observe() {}

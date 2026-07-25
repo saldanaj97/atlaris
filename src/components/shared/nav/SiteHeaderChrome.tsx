@@ -3,13 +3,16 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import DesktopHeader from './DesktopHeader';
-import { getHeaderShellVariant, isMarketingHeaderChrome } from './header-shell';
 import MobileHeader from './MobileHeader';
 import {
   APP_SHELL_COLUMN,
   APP_SHELL_GUTTER,
 } from '@/components/layout/app-shell-width';
-import { type NavItem, unauthenticatedNavItems } from '@/features/navigation';
+import {
+  type NavItem,
+  ROUTES,
+  unauthenticatedNavItems,
+} from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 
@@ -37,10 +40,11 @@ export default function SiteHeaderChrome({
   userImageUrl,
 }: SiteHeaderChromeProps) {
   const pathname = usePathname();
-  const headerVariant = getHeaderShellVariant(pathname);
-  const resolvedNavItems = isMarketingHeaderChrome(headerVariant)
-    ? unauthenticatedNavItems
-    : navItems;
+  const isMarketing =
+    pathname === ROUTES.HOME ||
+    pathname === ROUTES.LANDING ||
+    pathname === ROUTES.PRICING;
+  const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
   return (
     <>
       <div aria-hidden='true' className='absolute inset-0 z-0 bg-background' />
@@ -48,7 +52,7 @@ export default function SiteHeaderChrome({
       <div className={cn('relative z-10', APP_SHELL_GUTTER)}>
         <div className={cn(APP_SHELL_COLUMN, 'relative')}>
           <MobileHeader
-            headerVariant={headerVariant}
+            isMarketing={isMarketing}
             pathname={pathname}
             navItems={resolvedNavItems}
             tier={tier}
@@ -58,7 +62,7 @@ export default function SiteHeaderChrome({
             userImageUrl={userImageUrl}
           />
           <DesktopHeader
-            headerVariant={headerVariant}
+            isMarketing={isMarketing}
             pathname={pathname}
             navItems={resolvedNavItems}
             tier={tier}

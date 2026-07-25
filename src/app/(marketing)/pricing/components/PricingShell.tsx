@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { StarField } from '@/app/(marketing)/_shared/StarField';
 
-import styles from '@/app/(marketing)/pricing/components/PricingAfterHours.module.css';
+import styles from './Pricing.module.css';
 
 const copy = {
   overline: 'Chart your course',
@@ -12,9 +12,8 @@ const copy = {
 
 /**
  * After Hours pricing page chrome — celestial backdrop + hero.
- * Period tabs / Clerk card styles come from `_shared/AfterHoursClerkPricing`.
  */
-export function PricingAfterHoursShell({ children }: { children: ReactNode }) {
+export function PricingShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
       <CelestialBackdrop />
@@ -47,8 +46,6 @@ function CelestialBackdrop() {
 }
 
 function Hero() {
-  const words = copy.headline.split(' ');
-
   return (
     <header
       className='mx-auto flex max-w-3xl flex-col items-center px-6 pt-10 pb-6 text-center sm:pt-12 sm:pb-8 md:px-8'
@@ -57,19 +54,9 @@ function Hero() {
       <p className={styles.heroOverline}>{copy.overline}</p>
       <h1
         id='pricing-hero-heading'
-        aria-label={copy.headline}
-        className='mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'
+        className={`${styles.heroHeading} mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]`}
       >
-        {words.map((word, index) => (
-          <span
-            key={`${word}-${index}`}
-            className={styles.heroWord}
-            style={{ ['--word-index' as string]: index }}
-          >
-            {word}
-            {index < words.length - 1 ? '\u00A0' : null}
-          </span>
-        ))}
+        {copy.headline}
       </h1>
       <p className={styles.heroSubline}>{copy.subheadline}</p>
     </header>

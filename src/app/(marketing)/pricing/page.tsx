@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
-import { AfterHoursClerkPricing } from '@/app/(marketing)/_shared/AfterHoursClerkPricing';
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
-import { PricingAfterHoursShell } from '@/app/(marketing)/pricing/components/PricingAfterHoursShell';
+import { PricingShell } from '@/app/(marketing)/pricing/components/PricingShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
+import { PricingTable } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -44,17 +44,17 @@ export default async function PricingPage(): Promise<ReactElement> {
   );
 
   return (
-    <MarketingPageShell withHeaderOffset className='bg-background'>
-      <PricingAfterHoursShell>
+    <MarketingPageShell>
+      <PricingShell>
         {showClerkBilling ? (
-          <AfterHoursClerkPricing
+          <PricingTable
             appearance={pricingAppearance}
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
         ) : (
           <LocalClerkBillingNotice />
         )}
-      </PricingAfterHoursShell>
+      </PricingShell>
     </MarketingPageShell>
   );
 }

@@ -3,11 +3,11 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import styles from './landing.module.css';
 
-interface RevealProps {
+interface RevealAnimationProps {
   children: ReactNode;
   className?: string;
   /** Transition delay in milliseconds, staggers siblings. */
@@ -15,27 +15,31 @@ interface RevealProps {
 }
 
 /**
- * Reveals children with a rise-and-fade when scrolled into view.
- * Falls back to always-visible under reduced motion (handled in CSS).
+ * Progressively enhances visible content with a rise-and-fade on scroll.
+ * Missing observer support and reduced motion both stay visible.
  */
-export function Reveal({ children, className, delay = 0 }: RevealProps) {
+export function RevealAnimation({
+  children,
+  className,
+  delay = 0,
+}: RevealAnimationProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
-    if (!node) return;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true);
+          node.dataset.revealState = 'visible';
           observer.disconnect();
         }
       },
       { rootMargin: '0px 0px -10% 0px', threshold: 0.15 },
     );
 
+    node.dataset.revealState = 'observing';
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
@@ -48,7 +52,8 @@ export function Reveal({ children, className, delay = 0 }: RevealProps) {
     <div
       ref={ref}
       style={style}
-      className={cn(styles.reveal, visible && styles.revealVisible, className)}
+      className={cn(styles.reveal, className)}
+      data-reveal-state='idle'
     >
       {children}
     </div>

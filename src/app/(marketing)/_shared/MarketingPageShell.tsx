@@ -1,12 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { cn } from '@/lib/utils';
-
 interface MarketingPageShellProps {
   children: ReactNode;
-  /** Offset fixed marketing header (`SiteHeader`); use on landing. */
-  withHeaderOffset?: boolean;
-  className?: string;
 }
 
 /**
@@ -14,17 +9,9 @@ interface MarketingPageShellProps {
  */
 export function MarketingPageShell({
   children,
-  withHeaderOffset = false,
-  className,
 }: MarketingPageShellProps): ReactNode {
   return (
-    <div
-      className={cn(
-        'relative min-h-screen w-full overflow-hidden bg-background font-sans text-foreground',
-        withHeaderOffset && '-mt-16 pt-16',
-        className,
-      )}
-    >
+    <div className='relative -mt-16 min-h-screen w-full overflow-hidden bg-background pt-16 font-sans text-foreground'>
       <div className='relative z-0'>{children}</div>
     </div>
   );
