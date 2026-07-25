@@ -338,26 +338,20 @@ const TREND_ICON_CLASSNAME: Record<
   flat: 'size-5 text-primary',
 };
 
+const TREND_ICON = {
+  up: TrendingUp,
+  down: TrendingDown,
+  flat: Minus,
+} as const;
+
 /** Renders the up, down, or flat trend icon for a metric status. */
 function TrendStatusIcon({
   kind,
 }: {
   kind: NonNullable<MetricStatus['trendIcon']>;
 }) {
-  const className = TREND_ICON_CLASSNAME[kind];
-
-  switch (kind) {
-    case 'up':
-      return <TrendingUp aria-hidden='true' className={className} />;
-    case 'down':
-      return <TrendingDown aria-hidden='true' className={className} />;
-    case 'flat':
-      return <Minus aria-hidden='true' className={className} />;
-    default: {
-      const unhandled: never = kind;
-      throw new Error(`Unhandled trend icon: ${unhandled}`);
-    }
-  }
+  const Icon = TREND_ICON[kind];
+  return <Icon aria-hidden='true' className={TREND_ICON_CLASSNAME[kind]} />;
 }
 
 /** Formats a day count with correct singular or plural labeling. */

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 
 import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
 import { PageHeader } from '@/components/ui/page-header';
-import { cn } from '@/lib/utils';
 import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -61,7 +60,7 @@ export default function AchievementsPage() {
 
       <section
         aria-labelledby='upcoming-milestones-heading'
-        className={cn('max-w-3xl px-5 py-7 sm:px-7', ledgerGlassSurface)}
+        className={`max-w-3xl px-5 py-7 sm:px-7 ${ledgerGlassSurface}`}
       >
         <h2
           id='upcoming-milestones-heading'

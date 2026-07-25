@@ -713,6 +713,7 @@ function planCapacityForWidth(width: number, planCount: number): number {
 
   return Math.min(
     planCount,
+    PLAN_CHART_COLORS.length,
     Math.max(
       MIN_VISIBLE_PLAN_COUNT,
       Math.floor(
