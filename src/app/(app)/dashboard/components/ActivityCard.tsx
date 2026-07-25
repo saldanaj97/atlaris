@@ -1,6 +1,5 @@
 import type { ActivityItem } from '../types';
 
-import { cn } from '@/lib/utils';
 import { Trophy, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
@@ -23,11 +22,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
   return (
     <Link
       href={`/plans/${activity.planId}`}
-      className={cn(
-        'flex items-center gap-3 rounded-xl border border-panel-border bg-panel px-4 py-3.5',
-        'text-panel-foreground transition-colors hover:border-primary/35 hover:bg-secondary/40',
-        'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-      )}
+      className='flex items-center gap-3 rounded-xl border border-panel-border bg-panel px-4 py-3.5 text-panel-foreground transition-colors hover:border-primary/35 hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
     >
       {/* noteBg (#351b30 → muted / panel-muted) icon well */}
       <span
@@ -42,10 +37,7 @@ export function ActivityCard({ activity }: { activity: ActivityItem }) {
           {activity.title}
         </p>
         <p className='mt-0.5 truncate text-[11px] font-normal text-muted-foreground tabular-nums'>
-          {truncateId(activity.planId)}
-          {activity.metadata?.progress !== undefined
-            ? ` · ${activity.metadata.progress}%`
-            : null}
+          {truncateId(activity.planId)} · {activity.progress}%
         </p>
       </div>
 

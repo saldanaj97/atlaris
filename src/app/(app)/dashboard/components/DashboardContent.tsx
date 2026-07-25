@@ -2,7 +2,7 @@ import {
   findActivePlan,
   generateActivities,
 } from '@/app/(app)/dashboard/components/activity-utils';
-import { ActivityFeedClient } from '@/app/(app)/dashboard/components/ActivityFeedClient';
+import { ActivityFeed } from '@/app/(app)/dashboard/components/ActivityFeed';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,7 +58,7 @@ export async function DashboardContent() {
       </div>
 
       <div className='relative'>
-        <ActivityFeedClient activities={activities} />
+        <ActivityFeed activities={activities} />
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import type { ActivityItem } from '../types';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
 
-import { formatMinutes } from '@/features/plans/formatters';
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
@@ -54,11 +53,9 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
             id: `plan-${plan.id}`,
             type: 'milestone',
             planId: plan.id,
-            planTitle: plan.topic,
             title: `Started: ${plan.topic}`,
-            description: `Created a new learning plan with ${summary.totalTasks} tasks.`,
             timestamp: formatTimeAgo(createdAt, now),
-            metadata: { progress: completionPercent },
+            progress: completionPercent,
           },
         });
       }
@@ -72,14 +69,9 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           id: `progress-${plan.id}`,
           type: 'progress',
           planId: plan.id,
-          planTitle: plan.topic,
           title: 'Progress Update',
-          description: `You completed ${summary.completedTasks} of ${summary.totalTasks} tasks (${completionPercent}% complete).`,
           timestamp: formatTimeAgo(progressAt, now),
-          metadata: {
-            progress: completionPercent,
-            duration: formatMinutes(summary.completedMinutes),
-          },
+          progress: completionPercent,
         },
       });
     }
@@ -92,11 +84,9 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           id: `complete-${plan.id}`,
           type: 'milestone',
           planId: plan.id,
-          planTitle: plan.topic,
           title: `Completed: ${plan.topic}`,
-          description: `Congratulations! You've completed all ${summary.totalTasks} tasks.`,
           timestamp: formatTimeAgo(progressAt, now),
-          metadata: { progress: 100 },
+          progress: 100,
         },
       });
     }

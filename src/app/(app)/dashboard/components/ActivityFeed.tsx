@@ -1,18 +1,14 @@
-'use client';
-
 import type { ActivityItem } from '../types';
 
 import { ActivityCard } from './ActivityCard';
 import { EmptyActivityState } from './EmptyActivityState';
 
-interface ActivityFeedClientProps {
+interface ActivityFeedProps {
   activities: ActivityItem[];
 }
 
-/**
- * Quiet recent-activity list — After Hours canvas composition (no filter chrome).
- */
-export function ActivityFeedClient({ activities }: ActivityFeedClientProps) {
+/** Quiet recent-activity list — After Hours canvas composition. */
+export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
     <section aria-label='Recent activity'>
       <h2 className='mb-4 text-base font-semibold text-foreground'>
