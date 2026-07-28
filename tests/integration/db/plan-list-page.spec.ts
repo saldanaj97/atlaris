@@ -1,4 +1,7 @@
-import type { PlanListQuery } from '@/features/plans/read-projection/types';
+import type {
+  PlanListQuery,
+  PlanListSort,
+} from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
@@ -416,6 +419,98 @@ describe('aggregate plans page query', () => {
     });
 
     expect(page.items.map((item) => item.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('orders plans by each sortable table column in both directions', async () => {
+    const userId = await createUser('sort-table-columns');
+    const complete = await createTestPlan({
+      userId,
+      topic: 'Alpha Complete',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-06-19T12:00:00.000Z'),
+    });
+    const completeModule = await createTestModule({ planId: complete.id });
+    const completeTasks = await Promise.all([
+      createTestTask({ moduleId: completeModule.id }),
+      createTestTask({ moduleId: completeModule.id, order: 2 }),
+    ]);
+    await db.insert(taskProgress).values(
+      completeTasks.map((task) => ({
+        taskId: task.id,
+        userId,
+        status: 'completed' as const,
+      })),
+    );
+
+    const notStarted = await createTestPlan({
+      userId,
+      topic: 'Beta Not Started',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-06-20T12:00:00.000Z'),
+    });
+    const notStartedModule = await createTestModule({ planId: notStarted.id });
+    await createTestTask({ moduleId: notStartedModule.id });
+
+    const active = await createTestPlan({
+      userId,
+      topic: 'Zulu Active',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-06-18T12:00:00.000Z'),
+    });
+    const activeModule = await createTestModule({ planId: active.id });
+    const activeTask = await createTestTask({ moduleId: activeModule.id });
+    await createTestTask({ moduleId: activeModule.id, order: 2 });
+    await db.insert(taskProgress).values({
+      taskId: activeTask.id,
+      userId,
+      status: 'completed',
+    });
+
+    const topicsFor = async (sort: PlanListSort): Promise<string[]> => {
+      const page = await getPlansPageForRead({
+        userId,
+        dbClient: db,
+        query: query({ sort }),
+        referenceTimestamp: REFERENCE_TIMESTAMP,
+      });
+      return page.items.map((item) => item.topic);
+    };
+
+    expect(await topicsFor('topic_asc')).toEqual([
+      'Alpha Complete',
+      'Beta Not Started',
+      'Zulu Active',
+    ]);
+    expect(await topicsFor('topic_desc')).toEqual([
+      'Zulu Active',
+      'Beta Not Started',
+      'Alpha Complete',
+    ]);
+    expect(await topicsFor('progress_asc')).toEqual([
+      'Beta Not Started',
+      'Zulu Active',
+      'Alpha Complete',
+    ]);
+    expect(await topicsFor('progress_desc')).toEqual([
+      'Alpha Complete',
+      'Zulu Active',
+      'Beta Not Started',
+    ]);
+    expect(await topicsFor('status_asc')).toEqual([
+      'Beta Not Started',
+      'Zulu Active',
+      'Alpha Complete',
+    ]);
+    expect(await topicsFor('status_desc')).toEqual([
+      'Alpha Complete',
+      'Zulu Active',
+      'Beta Not Started',
+    ]);
+    expect(await topicsFor('updated_asc')).toEqual([
+      'Zulu Active',
+      'Alpha Complete',
+      'Beta Not Started',
+    ]);
   });
 
   it('orders plans by created date when sort is newest', async () => {

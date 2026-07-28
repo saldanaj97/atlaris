@@ -28,6 +28,13 @@ export const PLAN_LIST_SORTS = [
   'recommended',
   'recently_updated',
   'newest',
+  'topic_asc',
+  'topic_desc',
+  'progress_asc',
+  'progress_desc',
+  'status_asc',
+  'status_desc',
+  'updated_asc',
 ] as const;
 
 export type PlanListSort = (typeof PLAN_LIST_SORTS)[number];

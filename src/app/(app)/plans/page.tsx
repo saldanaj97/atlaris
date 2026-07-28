@@ -86,7 +86,7 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
       {/* Static header - renders immediately; usage summary streams in independently. */}
       <PageHeader
         title='Your Plans'
-        subtitle='Search, filter, and track your learning plan library.'
+        subtitle='Search, sort, and track your learning plan library.'
         actions={
           <>
             <Suspense
@@ -109,7 +109,7 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
         }
       />
 
-      {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
+      {/* Data-dependent content (search and table) - wrapped in Suspense */}
       <Suspense fallback={<PlansContentSkeleton />}>
         <PlansContent dataPromise={plansPageData} query={query} />
       </Suspense>
