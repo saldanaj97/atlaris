@@ -1,3 +1,5 @@
+import type { GenerationStatus } from '@/shared/types/db.types';
+
 import {
   findActivePlan,
   generateActivities,
@@ -16,7 +18,7 @@ function planSummary(overrides: {
   completedTasks?: number;
   completion?: number;
   createdAt?: string;
-  generationStatus?: 'ready' | 'generating';
+  generationStatus?: GenerationStatus;
   moduleCount?: number;
   updatedAt: string;
 }) {
@@ -94,6 +96,28 @@ describe('generateActivities', () => {
       ]),
     );
   });
+
+  it.each(['generating', 'pending_retry', 'failed'] as const)(
+    'does not label a %s plan as generated',
+    (generationStatus) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-06-22T12:00:00.000Z'));
+
+      const plan = planSummary({
+        id: `plan-${generationStatus}`,
+        topic: `${generationStatus} plan`,
+        createdAt: '2026-06-22T10:00:00.000Z',
+        generationStatus,
+        updatedAt: '2026-06-22T10:00:00.000Z',
+      });
+
+      expect(generateActivities([plan])).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: 'generated' }),
+        ]),
+      );
+    },
+  );
 });
 
 describe('findActivePlan', () => {

@@ -4,7 +4,7 @@ const QUESTIONS = [
   {
     question: 'How long does setup take?',
     answer:
-      'About two minutes. You give Atlaris a goal, your current level, and your weekly hours — it drafts the full plan from there. You can regenerate or adjust it any time.',
+      'About two minutes. You give Atlaris a goal, your current level, and your weekly hours — it drafts the full plan from there.',
   },
   {
     question: 'What if my week falls apart?',

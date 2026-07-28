@@ -40,7 +40,7 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     const createdAt = plan.createdAt ? new Date(plan.createdAt) : now;
     const progressAt = getPlanProgressTimestamp(plan, createdAt);
     // Add plan creation as a milestone if recently created
-    if (plan.createdAt) {
+    if (plan.createdAt && plan.generationStatus === 'ready') {
       const daysSinceCreation = Math.floor(
         (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
       );

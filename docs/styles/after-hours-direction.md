@@ -142,7 +142,7 @@ Semantic Tailwind names stay (`background`, `foreground`, `primary`, `panel`, â€
 | Background         | `#f4ebe1` | Parchment blush            |
 | Ink / foreground   | `#26102a` | Deep plum                  |
 | Muted text         | `#6e5268` | Secondary copy             |
-| Accent             | `#c96d42` | Copper / peach             |
+| Accent             | `#984c2c` | Copper / peach             |
 | Card               | `#faf4ec` | Raised surfaces            |
 | Soft               | `#e6d5c9` | Soft fills                 |
 | Line / border      | `#c9a898` | Dividers                   |

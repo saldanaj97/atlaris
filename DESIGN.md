@@ -7,7 +7,7 @@ colors:
   foreground: '#26102a'
   card: '#faf4ec'
   card-foreground: '#26102a'
-  primary: '#c96d42'
+  primary: '#984c2c'
   primary-dark: '#984c2c'
   primary-foreground: '#f4ebe1'
   secondary: '#e6d5c9'
@@ -197,7 +197,7 @@ values:
 | Background                            | `#f4ebe1` | `#180d18` |
 | Ink / foreground                      | `#26102a` | `#f8ead7` |
 | Muted text                            | `#6e5268` | `#c7aeb7` |
-| Accent / primary                      | `#c96d42` | `#f0a06e` |
+| Accent / primary                      | `#984c2c` | `#f0a06e` |
 | Primary fill (`primary-dark`)         | `#984c2c` | `#f0a06e` |
 | Soft / secondary wash                 | `#e6d5c9` | `#3b2135` |
 | Note / muted panel                    | `#efe5db` | `#351b30` |
