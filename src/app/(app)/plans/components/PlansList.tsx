@@ -198,26 +198,41 @@ function BulkPlanActionsToolbar({
 
 function PlansSearch({ query }: { query: PlanListQuery }) {
   return (
-    <form action='/plans' className='relative w-full'>
-      <Search
-        className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
-        aria-hidden='true'
-      />
+    <div className='flex flex-wrap items-center gap-2'>
+      <form action='/plans' className='relative min-w-64 flex-1'>
+        <Search
+          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
+          aria-hidden='true'
+        />
+        {query.status !== 'all' ? (
+          <input type='hidden' name='status' value={query.status} />
+        ) : null}
+        {query.sort !== 'recommended' ? (
+          <input type='hidden' name='sort' value={query.sort} />
+        ) : null}
+        <Input
+          type='search'
+          name='search'
+          placeholder='Search plans...'
+          aria-label='Search learning plans'
+          className='h-9 w-full border-panel-border bg-panel pl-9'
+          defaultValue={query.search}
+        />
+      </form>
       {query.status !== 'all' ? (
-        <input type='hidden' name='status' value={query.status} />
+        <Button asChild variant='ghost' size='sm'>
+          <Link
+            href={plansHref({
+              search: query.search,
+              status: 'all',
+              sort: query.sort,
+            })}
+          >
+            Clear {query.status.replaceAll('_', ' ')} filter
+          </Link>
+        </Button>
       ) : null}
-      {query.sort !== 'recommended' ? (
-        <input type='hidden' name='sort' value={query.sort} />
-      ) : null}
-      <Input
-        type='search'
-        name='search'
-        placeholder='Search plans...'
-        aria-label='Search learning plans'
-        className='h-9 w-full border-panel-border bg-panel pl-9'
-        defaultValue={query.search}
-      />
-    </form>
+    </div>
   );
 }
 

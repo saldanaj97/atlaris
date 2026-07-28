@@ -195,7 +195,7 @@ describe('PlansList', () => {
     );
   });
 
-  it('includes hidden status in the search form without preserving page', () => {
+  it('retains status in searches and exposes a clear-filter link', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3 },
       query: {
@@ -217,6 +217,9 @@ describe('PlansList', () => {
       'sort',
     );
     expect(within(searchForm!).queryByDisplayValue('2')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Clear completed filter' }),
+    ).toHaveAttribute('href', '/plans?search=typescript&sort=newest');
   });
 
   it('selects a row without hiding plan links', async () => {
