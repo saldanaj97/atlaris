@@ -58,9 +58,8 @@ function PlanRowSkeleton() {
       <TableCell className='w-10 px-3'>
         <Skeleton className='size-4 rounded' />
       </TableCell>
-      <TableCell className='min-w-72 space-y-1.5 py-4'>
+      <TableCell className='min-w-72 py-4'>
         <Skeleton className='h-4 w-64' />
-        <Skeleton className='h-3 w-32' />
       </TableCell>
       <TableCell>
         <Skeleton className='h-1 w-32' />

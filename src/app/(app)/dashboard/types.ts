@@ -5,5 +5,4 @@ export interface ActivityItem {
   title: string;
   timestamp: string;
   occurredAt: string;
-  progress: number;
 }

@@ -105,14 +105,21 @@ export function ModuleHeader({
               />
             </div>
             <div className='text-right'>
-              <p
-                className='text-4xl font-semibold text-foreground tabular-nums'
-                aria-label={`Module progress: ${completion}% complete`}
-              >
-                {completion}
-                <span className='text-xl text-muted-foreground'>%</span>
+              <p className='text-4xl font-semibold text-foreground tabular-nums'>
+                <span className='sr-only'>
+                  Module progress: {completion}% complete
+                </span>
+                <span aria-hidden='true'>
+                  {completion}
+                  <span className='text-xl text-muted-foreground'>%</span>
+                </span>
               </p>
-              <p className='mt-1 text-xs text-muted-foreground'>complete</p>
+              <p
+                aria-hidden='true'
+                className='mt-1 text-xs text-muted-foreground'
+              >
+                complete
+              </p>
             </div>
           </div>
         </div>

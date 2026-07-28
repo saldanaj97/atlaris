@@ -39,8 +39,6 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     const plan = summary.plan;
     const createdAt = plan.createdAt ? new Date(plan.createdAt) : now;
     const progressAt = getPlanProgressTimestamp(plan, createdAt);
-    const completionPercent = Math.round(summary.completion * 100);
-
     // Add plan creation as a milestone if recently created
     if (plan.createdAt) {
       const daysSinceCreation = Math.floor(
@@ -56,7 +54,6 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
             title: plan.topic,
             timestamp: formatTimeAgo(createdAt, now),
             occurredAt: createdAt.toISOString(),
-            progress: completionPercent,
           },
         });
       }
@@ -73,7 +70,6 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
           occurredAt: progressAt.toISOString(),
-          progress: completionPercent,
         },
       });
     }
@@ -89,7 +85,6 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
           occurredAt: progressAt.toISOString(),
-          progress: 100,
         },
       });
     }

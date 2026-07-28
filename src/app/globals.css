@@ -232,7 +232,7 @@
 }
 
 @keyframes dashboard-unfold {
-  from {
+  0% {
     opacity: 0;
     clip-path: inset(48% 0 48% 0 round 1rem);
     transform: translateX(var(--dashboard-entry-x, 0)) scaleX(0.985);
@@ -242,7 +242,7 @@
     opacity: 1;
   }
 
-  to {
+  100% {
     opacity: 1;
     clip-path: inset(0 0 0 0 round 1rem);
     transform: translateX(0) scaleX(1);
@@ -344,28 +344,28 @@
   }
 }
 
+@utility animate-dashboard-unfold {
+  animation-name: dashboard-unfold;
+  animation-duration: 700ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+@utility animate-dashboard-trace {
+  animation-name: dashboard-trace;
+  animation-duration: 720ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+@utility animate-dashboard-ledger-row {
+  animation-name: dashboard-ledger-row;
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
 @layer utilities {
-  .animate-dashboard-unfold {
-    animation-name: dashboard-unfold;
-    animation-duration: 700ms;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    animation-fill-mode: both;
-  }
-
-  .animate-dashboard-trace {
-    animation-name: dashboard-trace;
-    animation-duration: 720ms;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    animation-fill-mode: both;
-  }
-
-  .animate-dashboard-ledger-row {
-    animation-name: dashboard-ledger-row;
-    animation-duration: 500ms;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    animation-fill-mode: both;
-  }
-
   .font-heading {
     font-family: var(--font-family-heading);
     font-weight: var(--font-weight-heading);

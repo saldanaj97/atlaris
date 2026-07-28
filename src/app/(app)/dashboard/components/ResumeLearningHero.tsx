@@ -1,6 +1,7 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
+import { planDetailPath } from '@/features/navigation/routes';
 import Link from 'next/link';
 
 interface ResumeLearningHeroProps {
@@ -35,7 +36,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const progressPercent = Math.round(clampedCompletion * 100);
 
   return (
-    <article className='animate-dashboard-unfold relative h-full overflow-hidden rounded-2xl border border-panel-border bg-panel text-panel-foreground shadow-sm [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none'>
+    <article className='relative h-full overflow-hidden rounded-2xl border border-panel-border bg-panel text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none'>
       <div className='flex h-full flex-col p-6 sm:p-7'>
         <div className='flex items-start justify-between gap-4'>
           <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
@@ -70,7 +71,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
             aria-valuenow={progressPercent}
           >
             <div
-              className='animate-dashboard-trace h-full origin-left rounded-full bg-primary [animation-delay:260ms] motion-reduce:animate-none'
+              className='h-full origin-left rounded-full bg-primary animate-dashboard-trace [animation-delay:260ms] motion-reduce:animate-none'
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -93,7 +94,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           </div>
 
           <Button asChild className='mt-5 h-11 px-5'>
-            <Link href={`/plans/${plan.plan.id}`}>Resume plan</Link>
+            <Link href={planDetailPath(plan.plan.id)}>Resume plan</Link>
           </Button>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 import styles from './landing.module.css';
 
@@ -25,7 +25,7 @@ export function RevealAnimation({
 }: RevealAnimationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = ref.current;
     if (!node || typeof IntersectionObserver === 'undefined') return;
 

@@ -9,17 +9,14 @@ import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightC
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
-import { formatMinutes } from '@/features/plans/formatters';
 import { listDashboardPlanSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
 
-const PLACEHOLDER_WEEKLY_MINUTES = 150;
-
 function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
   if (!weeklyHours) {
     return (
-      <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+      <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
         <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
           This week
         </p>
@@ -33,54 +30,27 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
     );
   }
 
-  const targetMinutes = weeklyHours * 60;
-  // TODO: Replace this placeholder when weekly activity totals are projected.
-  const completedMinutes = Math.min(PLACEHOLDER_WEEKLY_MINUTES, targetMinutes);
-  const remainingMinutes = Math.max(targetMinutes - completedMinutes, 0);
-  const percent = Math.round((completedMinutes / targetMinutes) * 100);
-
   return (
-    <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+    <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
         This week
       </p>
 
       <div className='mt-8'>
         <p className='text-3xl font-semibold text-foreground tabular-nums'>
-          {formatMinutes(completedMinutes)}
+          {weeklyHours} hr{weeklyHours === 1 ? '' : 's'} planned
         </p>
+        <p className='mt-1 text-sm text-muted-foreground'>Weekly target</p>
+      </div>
+
+      <div className='mt-6 border-t border-border/50 pt-4'>
+        <h2 className='text-base font-medium text-foreground'>
+          Progress tracking coming soon
+        </h2>
         <p className='mt-1 text-sm text-muted-foreground'>
-          of {formatMinutes(targetMinutes)} planned
+          Completed learning time will appear here once it can be measured.
         </p>
       </div>
-
-      <div className='mt-6'>
-        <div
-          className='h-1.5 overflow-hidden rounded-full bg-muted'
-          role='progressbar'
-          aria-label='Weekly learning pace'
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percent}
-        >
-          <div
-            className='animate-dashboard-trace h-full origin-left rounded-full bg-primary [animation-delay:340ms] motion-reduce:animate-none'
-            style={{ width: `${percent}%` }}
-          />
-        </div>
-        <div className='mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground'>
-          <span>{percent}% of plan</span>
-          <span className='tabular-nums'>
-            {remainingMinutes > 0
-              ? `${formatMinutes(remainingMinutes)} remaining`
-              : 'Weekly pace met'}
-          </span>
-        </div>
-      </div>
-
-      <p className='mt-8 border-t border-border/50 pt-4 text-xs leading-relaxed text-muted-foreground'>
-        A steady pace leaves room for the rest of the week.
-      </p>
     </aside>
   );
 }

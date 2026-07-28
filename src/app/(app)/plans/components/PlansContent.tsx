@@ -85,5 +85,11 @@ export async function PlansContent({
     );
   }
 
-  return <PlansList page={plansPage} query={query} />;
+  return (
+    <PlansList
+      key={`${query.search}|${query.status}|${query.sort}|${plansPage.page}`}
+      page={plansPage}
+      query={query}
+    />
+  );
 }

@@ -157,6 +157,7 @@ function BulkPlanActionsToolbar({
 }) {
   return (
     <div
+      role='group'
       className='space-y-3 rounded-xl border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
@@ -172,7 +173,9 @@ function BulkPlanActionsToolbar({
             selected
           </p>
           {toolbarMessage ? (
-            <p className='text-sm text-destructive'>{toolbarMessage}</p>
+            <p aria-live='polite' className='text-sm text-destructive'>
+              {toolbarMessage}
+            </p>
           ) : null}
         </div>
         <div className='flex flex-wrap items-center gap-2'>

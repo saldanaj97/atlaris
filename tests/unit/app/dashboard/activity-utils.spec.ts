@@ -85,13 +85,11 @@ describe('generateActivities', () => {
           kind: 'progress',
           title: 'Progressing plan',
           occurredAt: '2026-06-22T11:00:00.000Z',
-          progress: 50,
         }),
         expect.objectContaining({
           kind: 'completed',
           title: 'Completed plan',
           occurredAt: '2026-06-22T09:00:00.000Z',
-          progress: 100,
         }),
       ]),
     );

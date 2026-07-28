@@ -233,7 +233,9 @@ describe('PlansList', () => {
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
     );
 
-    expect(screen.getByLabelText('Bulk plan actions')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Bulk plan actions' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
     ).toBeChecked();
@@ -411,8 +413,10 @@ describe('PlansList', () => {
       screen.getByText(
         'Some plans started generating and could not be deleted.',
       ),
+    ).toHaveAttribute('aria-live', 'polite');
+    expect(
+      screen.getByRole('group', { name: 'Bulk plan actions' }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('Bulk plan actions')).toBeInTheDocument();
     expect(mockRefresh).toHaveBeenCalled();
   });
 

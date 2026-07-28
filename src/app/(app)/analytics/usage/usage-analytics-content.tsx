@@ -296,7 +296,7 @@ function MetricStatusBadge({ status }: { status: MetricStatus }) {
   }
 
   return (
-    <span aria-label={status.label} className='inline-flex'>
+    <span role='img' aria-label={status.label} className='inline-flex'>
       <TrendStatusIcon kind={status.trendIcon} />
     </span>
   );

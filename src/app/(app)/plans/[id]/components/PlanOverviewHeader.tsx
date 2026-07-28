@@ -2,37 +2,12 @@ import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
+import { StatCell } from '@/app/(app)/plans/[id]/components/StatCell';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 
 interface PlanOverviewProps {
   plan: ClientPlanDetail;
   stats: PlanOverviewStats;
-}
-
-function StatCell({
-  label,
-  value,
-  sublabel,
-}: {
-  label: string;
-  value: string;
-  sublabel: string;
-}) {
-  return (
-    <div className='min-w-0 py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'>
-      <dt className='text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
-        {label}
-      </dt>
-      <dd className='mt-1'>
-        <span className='block text-lg font-semibold text-foreground tabular-nums'>
-          {value}
-        </span>
-        <span className='mt-0.5 block text-xs text-muted-foreground'>
-          {sublabel}
-        </span>
-      </dd>
-    </div>
-  );
 }
 
 /** Plan detail hero: topic, bearing, and supporting plan metrics. */
@@ -71,12 +46,14 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
               <p className='text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
                 Progress
               </p>
-              <p
-                className='mt-1 text-4xl font-semibold text-foreground tabular-nums'
-                aria-label={`Plan progress: ${completion}% complete`}
-              >
-                {completion}
-                <span className='text-xl text-muted-foreground'>%</span>
+              <p className='mt-1 text-4xl font-semibold text-foreground tabular-nums'>
+                <span className='sr-only'>
+                  Plan progress: {completion}% complete
+                </span>
+                <span aria-hidden='true'>
+                  {completion}
+                  <span className='text-xl text-muted-foreground'>%</span>
+                </span>
               </p>
             </div>
             <p className='text-xs text-muted-foreground tabular-nums sm:mt-2'>
@@ -87,11 +64,13 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
 
         <dl className='mt-6 grid divide-y divide-border/40 border-t border-border/50 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:pt-5'>
           <StatCell
+            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
             label='Modules'
             value={`${completedModules} of ${totalModules}`}
             sublabel='modules complete'
           />
           <StatCell
+            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
             label='Total effort'
             value={formatMinutes(totalMinutes)}
             sublabel={
@@ -101,6 +80,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
             }
           />
           <StatCell
+            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
             label='Est. finish'
             value={estimatedCompletionDate ?? '—'}
             sublabel={
