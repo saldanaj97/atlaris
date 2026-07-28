@@ -42,11 +42,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-const workflowNextConfig = withWorkflow(nextConfig, {
-  workflows: {
-    lazyDiscovery: true,
-  },
-});
+const workflowNextConfig = withWorkflow(nextConfig);
 
 export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:
