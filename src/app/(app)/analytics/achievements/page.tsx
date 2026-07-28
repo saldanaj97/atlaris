@@ -60,17 +60,14 @@ export default function AchievementsPage() {
       />
 
       <section
-        aria-labelledby='upcoming-milestones-heading'
+        aria-labelledby='achievements-coming-soon-heading'
         className={cn(
           'relative mx-auto max-w-3xl overflow-hidden px-5 py-7 sm:px-7',
           ledgerGlassSurface,
         )}
       >
-        <div className='pointer-events-none opacity-40'>
-          <h2
-            id='upcoming-milestones-heading'
-            className='text-base font-medium text-foreground'
-          >
+        <div className='pointer-events-none opacity-40' aria-hidden='true'>
+          <h2 className='text-base font-medium text-foreground'>
             Upcoming milestones
           </h2>
           <ul className='mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2'>
@@ -102,7 +99,12 @@ export default function AchievementsPage() {
             'border-transparent shadow-none',
           )}
         >
-          <p className='text-base font-medium text-foreground'>Coming soon</p>
+          <p
+            id='achievements-coming-soon-heading'
+            className='text-base font-medium text-foreground'
+          >
+            Coming soon
+          </p>
           <p className='mt-1 max-w-xs text-sm text-muted-foreground'>
             Achievement tracking isn&apos;t available yet. These milestones are
             a preview of what&apos;s ahead.
