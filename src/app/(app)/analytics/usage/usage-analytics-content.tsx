@@ -38,11 +38,6 @@ export function UsageAnalyticsContent({
         model.totalTasks > 0
           ? `${model.completedTasks} / ${model.totalTasks} complete`
           : 'No tasks tracked yet',
-      status: completionStatus(
-        model.taskCompletionPercent,
-        model.totalTasks,
-        currentWeek.progressChangeCount,
-      ),
       comparison:
         model.totalTasks > 0
           ? remainingLabel(model.totalTasks - model.completedTasks, 'task')
@@ -63,11 +58,6 @@ export function UsageAnalyticsContent({
         model.totalModules > 0
           ? `${model.completedModules} / ${model.totalModules} complete`
           : 'No modules tracked yet',
-      status: completionStatus(
-        model.moduleCompletionPercent,
-        model.totalModules,
-        currentWeek.progressChangeCount,
-      ),
       comparison:
         model.totalModules > 0
           ? remainingLabel(
@@ -93,7 +83,6 @@ export function UsageAnalyticsContent({
       status: activityStatus(
         currentWeek.estimatedCompletionAddedMinutes,
         previousWeek?.estimatedCompletionAddedMinutes ?? 0,
-        { idleLabel: 'No gain' },
       ),
       comparison:
         model.totalMinutes > 0
@@ -118,7 +107,6 @@ export function UsageAnalyticsContent({
       status: activityStatus(
         currentWeek.progressChangeCount,
         previousWeek?.progressChangeCount ?? 0,
-        { idleLabel: 'Quiet' },
       ),
       comparison: formatCountDelta(
         currentWeek.progressChangeCount,
@@ -134,7 +122,6 @@ export function UsageAnalyticsContent({
       status: activityStatus(
         currentWeek.completedEvents,
         previousWeek?.completedEvents ?? 0,
-        { idleLabel: 'Quiet' },
       ),
       comparison: formatCountDelta(
         currentWeek.completedEvents,
@@ -150,9 +137,6 @@ export function UsageAnalyticsContent({
       status: activityStatus(
         currentWeek.activeDays,
         previousWeek?.activeDays ?? 0,
-        {
-          idleLabel: 'Idle',
-        },
       ),
       comparison: formatCountDelta(
         currentWeek.activeDays,
@@ -171,10 +155,6 @@ export function UsageAnalyticsContent({
       label: 'Streak',
       value: formatDayCount(model.history.currentStreakDays),
       detail: `Best ${formatDayCount(model.history.longestStreakDays)}`,
-      status: streakStatus(
-        model.history.currentStreakDays,
-        model.history.longestStreakDays,
-      ),
       comparison: streakComparison(
         model.history.currentStreakDays,
         model.history.longestStreakDays,
@@ -243,7 +223,7 @@ export function UsageAnalyticsContent({
   );
 }
 
-/** Renders one summary metric with value, detail, status badge, and week-over-week comparison. */
+/** Renders one summary metric with value, detail, trend, and week-over-week comparison. */
 function MetricTile({
   label,
   value,
@@ -256,7 +236,7 @@ function MetricTile({
   label: string;
   value: string;
   detail: string;
-  status: MetricStatus;
+  status?: MetricTrend | null;
   comparison: string;
   chart: ReactNode;
   className?: string;
@@ -273,7 +253,7 @@ function MetricTile({
         <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
           {label}
         </p>
-        <MetricStatusBadge status={status} />
+        {status ? <MetricTrendIcon trend={status} /> : null}
       </div>
 
       <div className='mt-3 min-w-0'>
@@ -289,29 +269,20 @@ function MetricTile({
   );
 }
 
-function MetricStatusBadge({ status }: { status: MetricStatus }) {
-  // Only trend states get a badge slot; Idle/Reset/etc. render nothing.
-  if (!status.trendIcon) {
-    return null;
-  }
-
+function MetricTrendIcon({ trend }: { trend: MetricTrend }) {
   return (
-    <span role='img' aria-label={status.label} className='inline-flex'>
-      <TrendStatusIcon kind={status.trendIcon} />
+    <span role='img' aria-label={trend.label} className='inline-flex'>
+      <TrendStatusIcon kind={trend.icon} />
     </span>
   );
 }
 
-type MetricStatus = {
-  label: string;
-  tone: 'success' | 'neutral' | 'muted' | 'warning' | 'destructive';
-  trendIcon?: 'up' | 'down' | 'flat';
+type MetricTrend = {
+  label: 'Up' | 'Down' | 'Flat';
+  icon: 'up' | 'down' | 'flat';
 };
 
-const TREND_ICON_CLASSNAME: Record<
-  NonNullable<MetricStatus['trendIcon']>,
-  string
-> = {
+const TREND_ICON_CLASSNAME: Record<MetricTrend['icon'], string> = {
   up: 'size-5 text-success',
   down: 'size-5 text-destructive',
   flat: 'size-5 text-primary',
@@ -324,11 +295,7 @@ const TREND_ICON = {
 } as const;
 
 /** Renders the up, down, or flat trend icon for a metric status. */
-function TrendStatusIcon({
-  kind,
-}: {
-  kind: NonNullable<MetricStatus['trendIcon']>;
-}) {
+function TrendStatusIcon({ kind }: { kind: MetricTrend['icon'] }) {
   const Icon = TREND_ICON[kind];
   return <Icon aria-hidden='true' className={TREND_ICON_CLASSNAME[kind]} />;
 }
@@ -349,65 +316,21 @@ function remainingLabel(remaining: number, noun: string): string {
   return `${safeRemaining} ${safeRemaining === 1 ? noun : `${noun}s`} left`;
 }
 
-/** Derives a status badge for completion percent and weekly activity. */
-function completionStatus(
-  percent: number,
-  total: number,
-  progressChangesThisWeek: number,
-): MetricStatus {
-  if (total === 0) {
-    return { label: 'No plans', tone: 'muted' };
-  }
-
-  if (percent >= 100) {
-    return { label: 'Done', tone: 'success' };
-  }
-
-  if (progressChangesThisWeek === 0) {
-    return { label: 'Idle', tone: 'warning' };
-  }
-
-  return { label: 'Active', tone: 'neutral' };
-}
-
-/** Compares current and previous values to produce a trend status. */
-function activityStatus(
-  current: number,
-  previous: number,
-  options: {
-    idleLabel: string;
-  },
-): MetricStatus {
+/** Compares current and previous values to produce a visible trend. */
+function activityStatus(current: number, previous: number): MetricTrend | null {
   if (current === 0 && previous === 0) {
-    return { label: options.idleLabel, tone: 'muted' };
+    return null;
   }
 
   if (current > previous) {
-    return { label: 'Up', tone: 'success', trendIcon: 'up' };
+    return { label: 'Up', icon: 'up' };
   }
 
   if (current < previous) {
-    return { label: 'Down', tone: 'destructive', trendIcon: 'down' };
+    return { label: 'Down', icon: 'down' };
   }
 
-  return { label: 'Flat', tone: 'neutral', trendIcon: 'flat' };
-}
-
-/** Derives a streak status from current and longest streak lengths. */
-function streakStatus(current: number, longest: number): MetricStatus {
-  if (current === 0 && longest === 0) {
-    return { label: 'No streak', tone: 'muted' };
-  }
-
-  if (current === 0) {
-    return { label: 'Reset', tone: 'warning' };
-  }
-
-  if (current >= longest) {
-    return { label: 'Best', tone: 'success' };
-  }
-
-  return { label: 'Live', tone: 'neutral' };
+  return { label: 'Flat', icon: 'flat' };
 }
 
 /** Formats a week-over-week delta for counts such as changes, events, or days. */
