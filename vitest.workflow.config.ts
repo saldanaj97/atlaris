@@ -1,3 +1,5 @@
+import type { PluginOption } from 'vite';
+
 import { workflowTransformPlugin } from '@workflow/rollup';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +10,7 @@ const testsRoot = fileURLToPath(new URL('./tests', import.meta.url));
 const supabaseRoot = fileURLToPath(new URL('./supabase', import.meta.url));
 
 export default defineConfig({
-  plugins: [workflowTransformPlugin()],
+  plugins: [workflowTransformPlugin() as PluginOption],
   test: {
     name: 'workflow',
     globals: true,
