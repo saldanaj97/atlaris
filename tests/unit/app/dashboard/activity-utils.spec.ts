@@ -140,6 +140,20 @@ describe('findActivePlan', () => {
 });
 
 describe('getDashboardGreeting', () => {
+  it('does not describe a generating plan as ready', () => {
+    const generatingPlan = planSummary({
+      id: 'plan-generating',
+      topic: 'Distributed systems',
+      generationStatus: 'generating',
+      moduleCount: 0,
+      updatedAt: '2026-06-22T00:00:00.000Z',
+    });
+
+    expect(getDashboardGreeting('Juan Saldana', generatingPlan)).toBe(
+      'Welcome back, Juan. Your plan for Distributed systems is still being created.',
+    );
+  });
+
   it('grounds the greeting in the user and active plan progress', () => {
     const activePlan = planSummary({
       id: 'plan-active',

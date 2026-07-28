@@ -143,6 +143,10 @@ export function getDashboardGreeting(
     return `${welcome} Ready for your next challenge?`;
   }
 
+  if (activePlan.plan.generationStatus !== 'ready') {
+    return `${welcome} Your plan for ${activePlan.plan.topic} is still being created.`;
+  }
+
   const progressPercent = Math.round(
     Math.max(0, Math.min(1, activePlan.completion)) * 100,
   );
