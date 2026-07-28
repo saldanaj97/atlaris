@@ -125,7 +125,7 @@
       "js-cookie": ">=3.0.7",
       "minimatch": "^10.2.3",
       "tar": "^7.5.8",
-      "rollup": ">=4.59.0",
+      "rollup": "4.60.3",
       "serialize-javascript": "^7.0.3",
       "fast-uri": "^3.1.2",
       "kysely": "^0.28.17",
