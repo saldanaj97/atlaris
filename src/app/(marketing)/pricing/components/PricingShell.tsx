@@ -46,6 +46,8 @@ function CelestialBackdrop() {
 }
 
 function Hero() {
+  const words = copy.headline.split(' ');
+
   return (
     <header
       className='mx-auto flex max-w-3xl flex-col items-center px-6 pt-10 pb-6 text-center sm:pt-12 sm:pb-8 md:px-8'
@@ -54,9 +56,19 @@ function Hero() {
       <p className={styles.heroOverline}>{copy.overline}</p>
       <h1
         id='pricing-hero-heading'
-        className={`${styles.heroHeading} mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]`}
+        aria-label={copy.headline}
+        className='mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'
       >
-        {copy.headline}
+        {words.map((word, index) => (
+          <span
+            key={`${word}-${index}`}
+            className={styles.heroWord}
+            style={{ ['--word-index' as string]: index }}
+          >
+            {word}
+            {index < words.length - 1 ? '\u00A0' : null}
+          </span>
+        ))}
       </h1>
       <p className={styles.heroSubline}>{copy.subheadline}</p>
     </header>

@@ -3,10 +3,16 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  clerkPlansMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
   pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
+
+vi.mock(
+  '@/app/(marketing)/pricing/components/ClerkPricingTable.module.css',
+  () => ({ default: { checkoutMount: 'checkoutMount' } }),
+);
 
 vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
@@ -14,9 +20,9 @@ vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
 
 vi.mock('@/app/(marketing)/pricing/components/Pricing.module.css', () => ({
   default: {
-    heroHeading: 'heroHeading',
     heroOverline: 'heroOverline',
     heroSubline: 'heroSubline',
+    heroWord: 'heroWord',
     shell: 'shell',
   },
 }));
@@ -35,6 +41,8 @@ vi.mock('@clerk/nextjs', () => ({
     mocks.pricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
   },
+  useAuth: () => ({ isLoaded: true, userId: null }),
+  useClerk: () => ({ billing: { getPlans: mocks.clerkPlansMock } }),
 }));
 
 async function renderPricingPage(): Promise<void> {
@@ -47,6 +55,7 @@ async function renderPricingPage(): Promise<void> {
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.clerkPlansMock.mockResolvedValue({ data: [] });
     mocks.getOptionalCheckoutBillingSignatureMock.mockResolvedValue(
       'free|active||0',
     );
@@ -67,6 +76,11 @@ describe('PricingPage', () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: /billing period/i }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: /^monthly$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^yearly$/i })).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -81,6 +95,9 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: /billing period/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeVisible();
     expect(screen.getByText(/local product testing mode/i)).toBeVisible();
     expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();

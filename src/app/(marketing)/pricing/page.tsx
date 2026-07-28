@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
+import { ClerkPricingTable } from '@/app/(marketing)/pricing/components/ClerkPricingTable';
 import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
 import { PricingShell } from '@/app/(marketing)/pricing/components/PricingShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
-import { PricingTable } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -47,7 +47,7 @@ export default async function PricingPage(): Promise<ReactElement> {
     <MarketingPageShell>
       <PricingShell>
         {showClerkBilling ? (
-          <PricingTable
+          <ClerkPricingTable
             appearance={pricingAppearance}
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
