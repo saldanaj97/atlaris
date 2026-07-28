@@ -242,9 +242,9 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('4 days')).toBeInTheDocument();
     expect(screen.getByText('Best 6 days')).toBeInTheDocument();
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(screen.getAllByText('Active')).toHaveLength(2);
     expect(screen.getAllByLabelText('Down')).toHaveLength(4);
-    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.queryByText('Live')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
