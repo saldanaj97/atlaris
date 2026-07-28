@@ -12,7 +12,6 @@ import {
   WeeklyLineChart,
 } from './usage-analytics-charts';
 import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
-import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/page-header';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
@@ -291,24 +290,15 @@ function MetricTile({
 }
 
 function MetricStatusBadge({ status }: { status: MetricStatus }) {
-  if (status.trendIcon) {
-    return (
-      <span aria-label={status.label} className='inline-flex'>
-        <TrendStatusIcon kind={status.trendIcon} />
-      </span>
-    );
+  // Only trend states get a badge slot; Idle/Reset/etc. render nothing.
+  if (!status.trendIcon) {
+    return null;
   }
 
   return (
-    <Badge
-      variant='product'
-      className={cn(
-        'border-transparent px-2 py-1 text-[10px] font-semibold uppercase',
-        STATUS_TONE_CLASSNAME[status.tone],
-      )}
-    >
-      {status.label}
-    </Badge>
+    <span aria-label={status.label} className='inline-flex'>
+      <TrendStatusIcon kind={status.trendIcon} />
+    </span>
   );
 }
 
@@ -316,17 +306,6 @@ type MetricStatus = {
   label: string;
   tone: 'success' | 'neutral' | 'muted' | 'warning' | 'destructive';
   trendIcon?: 'up' | 'down' | 'flat';
-};
-
-const STATUS_TONE_CLASSNAME: Record<MetricStatus['tone'], string> = {
-  success:
-    'bg-success/15 text-success dark:bg-success/25 dark:text-success-foreground',
-  neutral: 'bg-primary/10 text-primary dark:bg-primary/20',
-  muted: 'bg-panel-muted text-muted-foreground',
-  warning:
-    'bg-warning/15 text-warning dark:bg-warning/25 dark:text-warning-foreground',
-  destructive:
-    'bg-destructive/15 text-destructive dark:bg-destructive/25 dark:text-destructive-foreground',
 };
 
 const TREND_ICON_CLASSNAME: Record<

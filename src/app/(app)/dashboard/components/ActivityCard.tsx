@@ -61,11 +61,6 @@ export function ActivityCard({
       </div>
 
       <div className='text-right'>
-        {activity.kind === 'progress' ? (
-          <p className='text-sm font-semibold text-foreground tabular-nums'>
-            {activity.progress}%
-          </p>
-        ) : null}
         <time
           dateTime={activity.occurredAt}
           className='text-xs text-muted-foreground tabular-nums'

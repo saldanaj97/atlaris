@@ -19,7 +19,7 @@ const PLACEHOLDER_WEEKLY_MINUTES = 150;
 function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
   if (!weeklyHours) {
     return (
-      <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-secondary/35 p-6 [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+      <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
         <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
           This week
         </p>
@@ -40,7 +40,7 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
   const percent = Math.round((completedMinutes / targetMinutes) * 100);
 
   return (
-    <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-secondary/35 p-6 [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+    <aside className='animate-dashboard-unfold h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
         This week
       </p>
@@ -168,7 +168,7 @@ export function DashboardContentSkeleton() {
             </div>
           </section>
 
-          <aside className='rounded-2xl border border-panel-border bg-secondary/35 p-6 sm:p-7'>
+          <aside className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground sm:p-7'>
             <Skeleton className='h-3 w-20 bg-secondary' />
             <Skeleton className='mt-8 h-9 w-28' />
             <Skeleton className='mt-2 h-4 w-32 bg-muted' />

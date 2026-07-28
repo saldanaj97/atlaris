@@ -2,9 +2,9 @@ import type { ReactElement, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
-/** Frosted surface over the app background — Ledger glass on After Hours card/border tokens. */
+/** Frosted surface over the app background — glass fill, signed-in panel border token. */
 export const ledgerGlassSurface =
-  'rounded-2xl border border-border/55 bg-card/65 shadow-lg backdrop-blur-xl dark:border-border/35 dark:bg-card/55';
+  'rounded-2xl border border-panel-border bg-card/65 shadow-lg backdrop-blur-xl dark:bg-card/55';
 
 const ledgerGlassDivider = 'divide-border/40 dark:divide-border/30';
 

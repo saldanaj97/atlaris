@@ -12,15 +12,8 @@ import { Surface } from '@/components/ui/surface';
 import { Textarea } from '@/components/ui/textarea';
 import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
-import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useEffect, useId, useReducer, useRef } from 'react';
-
-const IS_MAC =
-  typeof navigator !== 'undefined' &&
-  ((navigator as Navigator & { userAgentData?: { platform?: string } })
-    .userAgentData?.platform === 'macOS' ||
-    /Mac|iPod|iPhone|iPad/.test(navigator.userAgent));
 
 interface UnifiedPlanInputProps {
   onSubmit: (data: PlanFormData) => void;
@@ -77,7 +70,6 @@ export function UnifiedPlanInput({
   const topic = state.topic;
 
   const topicInputId = `${baseId}-topic`;
-  const submitHintId = `${baseId}-submit-hint`;
 
   const hasSelectedPreferences =
     state.skillLevel !== null &&
@@ -86,7 +78,6 @@ export function UnifiedPlanInput({
     state.deadlineWeeks !== null;
   const isFormValid = topic.trim().length > 0 && hasSelectedPreferences;
   const isDisabled = isSubmitting || disabled || !isFormValid;
-  const showIncompleteFormHint = !isSubmitting && !disabled && !isFormValid;
 
   const handleSubmit = () => {
     if (!isFormValid || isSubmitting || disabled) {
@@ -145,22 +136,7 @@ export function UnifiedPlanInput({
           />
         </div>
 
-        <div
-          className={cn(
-            'border-border/60 flex flex-col gap-5 border-t pt-5',
-            'xl:flex-row xl:items-end xl:justify-between',
-          )}
-        >
-          <p
-            id={submitHintId}
-            className={cn(
-              'text-muted-foreground text-sm xl:sr-only',
-              !showIncompleteFormHint && 'sr-only',
-            )}
-          >
-            Describe what you want to learn and choose each preference to
-            continue.
-          </p>
+        <div className='flex flex-row flex-wrap items-end justify-between gap-6'>
           <PreferenceControls
             baseId={baseId}
             state={state}
@@ -170,10 +146,9 @@ export function UnifiedPlanInput({
             type='button'
             variant='cta'
             size='lg'
-            className='w-full shrink-0 xl:w-auto xl:self-end'
+            className='ml-auto shrink-0'
             onClick={handleSubmit}
             disabled={isDisabled}
-            aria-describedby={showIncompleteFormHint ? submitHintId : undefined}
           >
             {isSubmitting ? (
               <>
@@ -189,17 +164,6 @@ export function UnifiedPlanInput({
           </Button>
         </div>
       </Surface>
-
-      <p className='mt-3 text-center text-xs text-muted-foreground sm:mt-4 sm:text-sm'>
-        Usually ready in about a minute. Press{' '}
-        <kbd
-          className='rounded bg-muted px-1.5 py-0.5 text-xs font-medium'
-          suppressHydrationWarning
-        >
-          {IS_MAC ? '⌘' : 'Ctrl'}+Enter
-        </kbd>{' '}
-        to submit.
-      </p>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
 import { PageHeader } from '@/components/ui/page-header';
+import { cn } from '@/lib/utils';
 import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -60,34 +61,53 @@ export default function AchievementsPage() {
 
       <section
         aria-labelledby='upcoming-milestones-heading'
-        className={`max-w-3xl px-5 py-7 sm:px-7 ${ledgerGlassSurface}`}
+        className={cn(
+          'relative mx-auto max-w-3xl overflow-hidden px-5 py-7 sm:px-7',
+          ledgerGlassSurface,
+        )}
       >
-        <h2
-          id='upcoming-milestones-heading'
-          className='text-base font-medium text-foreground'
+        <div className='pointer-events-none opacity-40'>
+          <h2
+            id='upcoming-milestones-heading'
+            className='text-base font-medium text-foreground'
+          >
+            Upcoming milestones
+          </h2>
+          <ul className='mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2'>
+            {ACHIEVEMENTS.map((achievement) => (
+              <li key={achievement.name} className='flex items-start gap-3'>
+                <span
+                  className='flex size-8 shrink-0 items-center justify-center rounded-md bg-panel-muted'
+                  aria-hidden='true'
+                >
+                  {achievement.icon}
+                </span>
+                <div className='min-w-0'>
+                  <h3 className='text-sm font-medium text-foreground'>
+                    {achievement.name}
+                  </h3>
+                  <p className='mt-0.5 text-sm text-muted-foreground'>
+                    {achievement.description}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div
+          className={cn(
+            'absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center',
+            ledgerGlassSurface,
+            'border-transparent shadow-none',
+          )}
         >
-          Upcoming milestones
-        </h2>
-        <ul className='mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2'>
-          {ACHIEVEMENTS.map((achievement) => (
-            <li key={achievement.name} className='flex items-start gap-3'>
-              <span
-                className='flex size-8 shrink-0 items-center justify-center rounded-md bg-panel-muted'
-                aria-hidden='true'
-              >
-                {achievement.icon}
-              </span>
-              <div className='min-w-0'>
-                <h3 className='text-sm font-medium text-foreground'>
-                  {achievement.name}
-                </h3>
-                <p className='mt-0.5 text-sm text-muted-foreground'>
-                  {achievement.description}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+          <p className='text-base font-medium text-foreground'>Coming soon</p>
+          <p className='mt-1 max-w-xs text-sm text-muted-foreground'>
+            Achievement tracking isn&apos;t available yet. These milestones are
+            a preview of what&apos;s ahead.
+          </p>
+        </div>
       </section>
     </>
   );
