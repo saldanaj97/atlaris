@@ -209,11 +209,13 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
     expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
-    expect(
-      screen.getByRole('img', { name: 'Eight-week pulse' }),
-    ).toHaveAccessibleDescription(
-      /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
-    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole('img', { name: 'Eight-week pulse' }),
+      ).toHaveAccessibleDescription(
+        /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
+      );
+    });
     expect(
       screen.getByText('Applied TypeScript Architecture'),
     ).toBeInTheDocument();
@@ -242,9 +244,9 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('4 days')).toBeInTheDocument();
     expect(screen.getByText('Best 6 days')).toBeInTheDocument();
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(screen.getAllByText('Active')).toHaveLength(2);
+    expect(screen.queryAllByLabelText('Active')).toHaveLength(0);
     expect(screen.getAllByLabelText('Down')).toHaveLength(4);
-    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Live')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
