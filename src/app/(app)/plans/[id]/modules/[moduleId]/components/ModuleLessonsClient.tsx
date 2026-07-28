@@ -59,9 +59,11 @@ export function ModuleLessonsClient({
   return (
     <>
       <section>
-        <div className='mb-6 flex items-center justify-between'>
-          <h2 className='text-2xl font-semibold text-foreground'>Lessons</h2>
-          <span className='text-sm text-muted-foreground'>
+        <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
+          <h2 className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+            Lessons
+          </h2>
+          <span className='text-xs text-muted-foreground tabular-nums'>
             {completedLessons}/{totalLessons} completed
           </span>
         </div>

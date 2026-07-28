@@ -1,8 +1,7 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
-import { Play } from 'lucide-react';
+import { planDetailPath } from '@/features/navigation/routes';
 import Link from 'next/link';
 
 interface ResumeLearningHeroProps {
@@ -21,133 +20,84 @@ function getUpNextLabel(plan: PlanSummary): string {
     return 'Plan complete';
   }
 
-  if (plan.completedModules === 0) {
-    return plan.modules[0]?.title ?? 'Getting Started';
-  }
-
-  return 'Continue your plan';
-}
-
-function getResumeHeroDescription(plan: PlanSummary): string {
-  const moduleCount = plan.modules.length;
-  const completedModules = plan.completedModules;
-  const topic = plan.plan.topic;
-  const topicLower = (topic ?? 'your topic').toLowerCase();
-
-  if (completedModules === 0) {
-    return `Start your journey with ${moduleCount} modules covering ${topicLower}.`;
-  }
-  if (completedModules === moduleCount) {
-    return `Congratulations! You've completed all ${moduleCount} modules.`;
-  }
-  return `${completedModules} of ${moduleCount} modules complete. Keep going!`;
-}
-
-interface HeroCircularProgressProps {
-  progressPercent: number;
-  size?: number;
-  strokeWidth?: number;
-}
-
-function HeroCircularProgress({
-  progressPercent,
-  size = 64,
-  strokeWidth = 6,
-}: HeroCircularProgressProps) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progressPercent / 100);
   return (
-    <div
-      className='relative flex-shrink-0'
-      style={{ width: size, height: size }}
-    >
-      <progress
-        aria-label={`Plan progress: ${progressPercent}% complete`}
-        className='sr-only'
-        value={progressPercent}
-        max={100}
-      >{`Plan progress: ${progressPercent}% complete`}</progress>
-      <svg
-        className='-rotate-90'
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden='true'
-      >
-        <title>Progress indicator</title>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill='none'
-          className='stroke-muted'
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill='none'
-          className='stroke-primary'
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap='round'
-        />
-      </svg>
-      <span
-        className='absolute inset-0 flex items-center justify-center text-sm font-semibold text-foreground tabular-nums'
-        aria-hidden='true'
-      >
-        {progressPercent}%
-      </span>
-    </div>
+    plan.modules[plan.completedModules]?.title ??
+    plan.modules.at(-1)?.title ??
+    'Continue your current route'
   );
 }
 
+/**
+ * The one chart panel on the dashboard: current plan, bearing, and a
+ * hairline progress track along the bottom edge.
+ */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);
 
-  const upNextLabel = getUpNextLabel(plan);
-
   return (
-    <Surface
-      variant='interactive'
-      padding='comfortable'
-      className='flex flex-col gap-4 border-primary/20'
-    >
-      <div className='flex items-start justify-between gap-4'>
-        <p className='text-xs font-medium tracking-wider text-muted-foreground uppercase'>
-          Most Recent Plan
-        </p>
-        <HeroCircularProgress progressPercent={progressPercent} />
-      </div>
-
-      <div className='flex flex-wrap items-start justify-between gap-4 sm:items-end'>
-        <div className='min-w-0 flex-1 space-y-2'>
-          <h2 className='truncate text-2xl font-semibold text-foreground md:text-3xl'>
-            {plan.plan.topic}
-          </h2>
-          <p className='text-sm text-muted-foreground'>
-            {getResumeHeroDescription(plan)}
+    <article className='relative h-full overflow-hidden rounded-2xl border border-panel-border bg-panel text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none'>
+      <div className='flex h-full flex-col p-6 sm:p-7'>
+        <div className='flex items-start justify-between gap-4'>
+          <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+            Current focus
+          </p>
+          <p className='text-sm font-semibold text-foreground tabular-nums'>
+            {progressPercent}%
+            <span className='ml-1 font-normal text-muted-foreground'>
+              complete
+            </span>
           </p>
         </div>
 
-        <div className='flex w-full min-w-0 flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4'>
-          <p className='min-w-0 text-sm wrap-break-word text-muted-foreground'>
-            <span className='font-medium text-foreground'>Up Next:</span>{' '}
-            {upNextLabel}
+        <div className='mt-8'>
+          <h2 className='text-2xl font-semibold text-balance text-foreground'>
+            {plan.plan.topic}
+          </h2>
+          <p className='mt-2 text-sm text-muted-foreground'>
+            <span className='font-medium text-foreground'>Next module</span>
+            {' · '}
+            {getUpNextLabel(plan)}
           </p>
-          <Button asChild className='px-5 py-2.5'>
-            <Link href={`/plans/${plan.plan.id}`}>
-              <Play />
-              Continue Learning
-            </Link>
+        </div>
+
+        <div className='mt-8'>
+          <div
+            className='h-1.5 overflow-hidden rounded-full bg-muted'
+            role='progressbar'
+            aria-label={`${plan.plan.topic} progress`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+          >
+            <div
+              className='h-full origin-left rounded-full bg-primary animate-dashboard-trace [animation-delay:260ms] motion-reduce:animate-none'
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className='mt-auto pt-8'>
+          <div className='flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/50 pt-4 text-xs text-muted-foreground tabular-nums'>
+            <p>
+              <span className='font-medium text-foreground'>
+                {plan.completedTasks}/{plan.totalTasks}
+              </span>{' '}
+              tasks
+            </p>
+            <p>
+              <span className='font-medium text-foreground'>
+                {plan.completedModules}/{plan.modules.length}
+              </span>{' '}
+              modules
+            </p>
+          </div>
+
+          <Button asChild className='mt-5 h-11 px-5'>
+            <Link href={planDetailPath(plan.plan.id)}>Resume plan</Link>
           </Button>
         </div>
       </div>
-    </Surface>
+    </article>
   );
 }

@@ -7,7 +7,7 @@ import { ROUTES } from './routes';
  */
 export const authenticatedNavItems: NavItem[] = [
   {
-    label: 'Activity Feed',
+    label: 'Dashboard',
     href: ROUTES.DASHBOARD,
   },
   {
@@ -34,5 +34,4 @@ export const authenticatedNavItems: NavItem[] = [
 export const unauthenticatedNavItems: NavItem[] = [
   { label: 'Home', href: ROUTES.HOME },
   { label: 'Pricing', href: ROUTES.PRICING },
-  { label: 'About', href: ROUTES.ABOUT },
 ];

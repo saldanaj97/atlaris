@@ -35,6 +35,6 @@ Under the chosen directory (default `screenshots/frontend-baseline-<YYYY-MM-DD>/
 
 Viewports: **desktop** 1440×1000, **tablet** 834×1112, **mobile** 390×844.
 
-Routes: anon — `/landing`, `/about`, `/pricing`, `/auth/sign-in`, `/auth/sign-up`; auth — `/dashboard`, `/plans`, `/plans/new`, `/analytics/usage`, `/settings`.
+Routes: anon — `/landing`, `/pricing`, `/auth/sign-in`, `/auth/sign-up`; auth — `/dashboard`, `/plans`, `/plans/new`, `/analytics/usage`, `/settings`.
 
 Script: [`scripts/ui/capture-baseline.ts`](../../scripts/ui/capture-baseline.ts).

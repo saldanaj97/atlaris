@@ -1,5 +1,4 @@
 import type {
-  FilterStatus,
   PlanListItem,
   PlanListPage,
   PlanListQuery,
@@ -20,10 +19,12 @@ vi.mock('next/link', () => ({
   default: ({
     children,
     href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => <a href={href}>{children}</a>,
+    ...props
+  }: React.ComponentProps<'a'> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -149,70 +150,52 @@ describe('PlansList', () => {
     expect(planLinks[1]).toHaveAttribute('href', '/plans/plan-2');
   });
 
-  it('preserves search when building server-side filter links', () => {
-    renderPlansList({
-      query: { search: 'react hooks' },
-    });
+  it('renders plans in a table without the status tab rail', () => {
+    renderPlansList();
 
     expect(
-      within(screen.getByRole('tablist')).getByRole('link', {
-        name: /Active/,
-      }),
-    ).toHaveAttribute('href', '/plans?search=react+hooks&status=active');
+      screen.getByRole('table', { name: 'Learning plans' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    for (const heading of ['Plan', 'Progress', 'Status', 'Updated']) {
+      expect(
+        screen.getByRole('columnheader', { name: new RegExp(heading) }),
+      ).toBeInTheDocument();
+    }
   });
 
-  it('renders sort control with the current selected value', () => {
+  it('builds server-backed heading sort links and exposes sort direction', () => {
     renderPlansList({
-      query: { sort: 'recently_updated' },
+      query: {
+        search: 'react hooks',
+        status: 'active',
+        sort: 'topic_asc',
+      },
     });
 
-    expect(screen.getByLabelText('Sort learning plans')).toHaveValue(
-      'recently_updated',
+    expect(screen.getByRole('columnheader', { name: /Plan/ })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
     );
-  });
-
-  it('uses client navigation when changing sort', async () => {
-    const user = userEvent.setup();
-    renderPlansList({
-      page: { page: 2, totalPages: 3 },
-      query: { page: 2, search: 'react', status: 'active' },
-    });
-
-    await user.selectOptions(screen.getByLabelText('Sort learning plans'), [
-      'newest',
-    ]);
-
-    expect(mockPush).toHaveBeenCalledWith(
-      '/plans?search=react&status=active&sort=newest',
+    expect(screen.getByRole('link', { name: /Sort by plan/i })).toHaveAttribute(
+      'href',
+      '/plans?search=react+hooks&status=active&sort=topic_desc',
     );
-    expect(mockRefresh).not.toHaveBeenCalled();
-  });
-
-  it('preserves sort in filter tab links and pagination links', () => {
-    renderPlansList({
-      page: { page: 2, totalPages: 3, totalItems: 45 },
-      query: { page: 2, search: 'react', status: 'active', sort: 'newest' },
-    });
-
     expect(
-      within(screen.getByRole('tablist')).getByRole('link', {
-        name: /Completed/,
-      }),
+      screen.getByRole('link', { name: /Sort by progress/i }),
     ).toHaveAttribute(
       'href',
-      '/plans?search=react&status=completed&sort=newest',
+      '/plans?search=react+hooks&status=active&sort=progress_desc',
     );
-    expect(screen.getByRole('link', { name: /Previous/ })).toHaveAttribute(
+    expect(
+      screen.getByRole('link', { name: /Sort by updated/i }),
+    ).toHaveAttribute(
       'href',
-      '/plans?search=react&status=active&sort=newest',
-    );
-    expect(screen.getByRole('link', { name: /^Next$/ })).toHaveAttribute(
-      'href',
-      '/plans?search=react&status=active&sort=newest&page=3',
+      '/plans?search=react+hooks&status=active&sort=recently_updated',
     );
   });
 
-  it('includes hidden status in the search form without preserving page', () => {
+  it('retains status in searches and exposes a clear-filter link', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3 },
       query: {
@@ -234,9 +217,12 @@ describe('PlansList', () => {
       'sort',
     );
     expect(within(searchForm!).queryByDisplayValue('2')).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Clear completed filter' }),
+    ).toHaveAttribute('href', '/plans?search=typescript&sort=newest');
   });
 
-  it('enters selection mode and toggles row checkboxes', async () => {
+  it('selects a row without hiding plan links', async () => {
     const user = userEvent.setup();
     renderPlansList();
 
@@ -246,12 +232,16 @@ describe('PlansList', () => {
         .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
     ).toHaveLength(2);
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
+    );
 
-    expect(screen.getByLabelText('Bulk plan actions')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: 'Bulk plan actions' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
-    ).toBeInTheDocument();
+    ).toBeChecked();
     expect(
       screen.getByRole('checkbox', { name: 'Select Learn TypeScript' }),
     ).toBeInTheDocument();
@@ -259,11 +249,10 @@ describe('PlansList', () => {
       screen
         .getAllByRole('link')
         .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
-    ).toHaveLength(0);
+    ).toHaveLength(2);
   });
 
-  it('disables selection for generating plans', async () => {
-    const user = userEvent.setup();
+  it('disables selection for generating plans', () => {
     renderPlansList({
       page: {
         items: [
@@ -278,8 +267,6 @@ describe('PlansList', () => {
       },
     });
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
-
     expect(
       screen.getByRole('checkbox', {
         name: 'Cannot select Generating Plan while it is generating',
@@ -291,12 +278,13 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
-      screen.getByRole('button', { name: 'Select all on page' }),
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
     );
 
-    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    expect(screen.getByLabelText('Bulk plan actions')).toHaveTextContent(
+      '2 selected',
+    );
     expect(
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
     ).toBeChecked();
@@ -309,13 +297,14 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
-      screen.getByRole('button', { name: 'Select all on page' }),
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
     );
     await user.click(screen.getByRole('button', { name: 'Clear' }));
 
-    expect(screen.getByText('0 selected')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Clear' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
     ).not.toBeChecked();
@@ -325,9 +314,8 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
-      screen.getByRole('button', { name: 'Select all on page' }),
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
     );
     await user.click(screen.getByRole('button', { name: 'Delete selected' }));
 
@@ -344,7 +332,6 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
       screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
     );
@@ -355,7 +342,7 @@ describe('PlansList', () => {
     ).toBeInTheDocument();
   });
 
-  it('refreshes and exits selection mode after a successful bulk delete', async () => {
+  it('refreshes and clears selection after a successful bulk delete', async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -373,9 +360,8 @@ describe('PlansList', () => {
     );
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
-      screen.getByRole('button', { name: 'Select all on page' }),
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
     );
     await user.click(screen.getByRole('button', { name: 'Delete selected' }));
     await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
@@ -390,11 +376,11 @@ describe('PlansList', () => {
     expect(toast.success).toHaveBeenCalledWith('Deleted 2 plans');
     expect(mockRefresh).toHaveBeenCalled();
     expect(
-      screen.queryByLabelText('Bulk plan actions'),
+      screen.queryByRole('button', { name: 'Clear' }),
     ).not.toBeInTheDocument();
   });
 
-  it('shows a partial failure toast and keeps selection mode open', async () => {
+  it('shows a partial failure toast and keeps remaining selection', async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -417,9 +403,8 @@ describe('PlansList', () => {
     );
     renderPlansList();
 
-    await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(
-      screen.getByRole('button', { name: 'Select all on page' }),
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
     );
     await user.click(screen.getByRole('button', { name: 'Delete selected' }));
     await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
@@ -431,87 +416,32 @@ describe('PlansList', () => {
       screen.getByText(
         'Some plans started generating and could not be deleted.',
       ),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText('Bulk plan actions')).toBeInTheDocument();
-    expect(mockRefresh).toHaveBeenCalled();
-  });
-
-  it('resets page when submitting search or changing filters', () => {
-    renderPlansList({
-      page: { page: 2, totalPages: 3 },
-      query: { page: 2, search: 'typescript', status: 'completed' },
-    });
-
-    const searchForm = screen.getByRole('searchbox').closest('form');
-    expect(searchForm).not.toBeNull();
-    expect(screen.getByRole('searchbox')).toHaveValue('typescript');
-    expect(within(searchForm!).getByDisplayValue('completed')).toHaveAttribute(
-      'name',
-      'status',
-    );
+    ).toHaveAttribute('aria-live', 'polite');
     expect(
-      screen
-        .getAllByRole('link')
-        .find(
-          (link) => link.getAttribute('href') === '/plans?search=typescript',
-        ),
-    ).toBeDefined();
+      screen.getByRole('group', { name: 'Bulk plan actions' }),
+    ).toBeInTheDocument();
+    expect(mockRefresh).toHaveBeenCalled();
   });
 
   it('renders stable server pagination links', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3, totalItems: 45 },
-      query: { page: 2, search: 'react', status: 'active' },
+      query: {
+        page: 2,
+        search: 'react',
+        status: 'active',
+        sort: 'progress_desc',
+      },
     });
 
     expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Previous/ })).toHaveAttribute(
       'href',
-      '/plans?search=react&status=active',
+      '/plans?search=react&status=active&sort=progress_desc',
     );
     expect(screen.getByRole('link', { name: /^Next$/ })).toHaveAttribute(
       'href',
-      '/plans?search=react&status=active&page=3',
+      '/plans?search=react&status=active&sort=progress_desc&page=3',
     );
   });
-
-  it('shows the filtered result count in the list toolbar', () => {
-    renderPlansList({
-      page: {
-        totalItems: 2,
-        totalSearchResults: 9,
-        statusCounts: {
-          not_started: 3,
-          active: 2,
-          paused: 1,
-          completed: 2,
-          generating: 1,
-          failed: 0,
-        },
-      },
-      query: { status: 'active' },
-    });
-
-    expect(screen.getByText('2 plans')).toBeInTheDocument();
-    expect(screen.queryByText('9 plans')).not.toBeInTheDocument();
-  });
-
-  it.each([
-    ['not_started', 'Not started', '0'],
-    ['active', 'Active', '1'],
-    ['inactive', 'Inactive', '0'],
-    ['completed', 'Completed', '1'],
-  ] satisfies [FilterStatus, string, string][])(
-    'renders aggregate count for %s filter',
-    (_, label, count) => {
-      renderPlansList();
-
-      const filterLink = within(screen.getByRole('tablist')).getByRole('link', {
-        name: new RegExp(label),
-      });
-
-      expect(filterLink).toHaveTextContent(label);
-      expect(within(filterLink).getByText(count)).toBeInTheDocument();
-    },
-  );
 });

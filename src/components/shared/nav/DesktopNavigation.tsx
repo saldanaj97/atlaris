@@ -1,6 +1,10 @@
 'use client';
 import type { NavItem } from '@/features/navigation';
 
+import {
+  marketingHeaderNavLinkActiveClassName,
+  marketingHeaderNavLinkClassName,
+} from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,18 +21,31 @@ import { useState } from 'react';
 interface DesktopNavigationProps {
   pathname: string;
   navItems: NavItem[];
+  /** Marketing routes use quiet outline pills; app uses text links. */
+  appearance?: 'default' | 'marketing';
 }
 
 interface DropdownNavItemProps {
   item: NavItem;
   isActive: boolean;
   pathname: string;
+  appearance: 'default' | 'marketing';
 }
 
 /**
  * Computes the className for a nav item based on active state.
  */
-function getNavItemClass(isActive: boolean): string {
+function getNavItemClass(
+  isActive: boolean,
+  appearance: 'default' | 'marketing',
+): string {
+  if (appearance === 'marketing') {
+    return cn(
+      marketingHeaderNavLinkClassName,
+      isActive && marketingHeaderNavLinkActiveClassName,
+    );
+  }
+
   return cn(
     'inline-flex h-auto shrink-0 items-center gap-1 whitespace-nowrap px-1 py-0 text-sm font-medium transition',
     'hover:text-primary dark:hover:text-primary',
@@ -40,7 +57,12 @@ function getNavItemClass(isActive: boolean): string {
 /**
  * Dropdown navigation item component with accessible button.
  */
-function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
+function DropdownNavItem({
+  item,
+  isActive,
+  pathname,
+  appearance,
+}: DropdownNavItemProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -52,8 +74,9 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
           aria-haspopup='menu'
           aria-expanded={isOpen}
           className={cn(
-            getNavItemClass(isActive),
-            'hover:bg-transparent dark:hover:bg-transparent',
+            getNavItemClass(isActive, appearance),
+            appearance === 'default' &&
+              'hover:bg-transparent dark:hover:bg-transparent',
           )}
         >
           <span>{item.label}</span>
@@ -92,6 +115,7 @@ function DropdownNavItem({ item, isActive, pathname }: DropdownNavItemProps) {
 export default function DesktopNavigation({
   pathname,
   navItems,
+  appearance = 'default',
 }: DesktopNavigationProps) {
   const renderNavItem = (item: NavItem) => {
     const isActive = isNavItemActive(pathname, item);
@@ -103,6 +127,7 @@ export default function DesktopNavigation({
           item={item}
           isActive={isActive}
           pathname={pathname}
+          appearance={appearance}
         />
       );
     }
@@ -110,7 +135,7 @@ export default function DesktopNavigation({
     return (
       <Link
         href={item.href}
-        className={getNavItemClass(isActive)}
+        className={getNavItemClass(isActive, appearance)}
         key={item.href}
         aria-current={isActive ? 'page' : undefined}
       >
@@ -120,7 +145,12 @@ export default function DesktopNavigation({
   };
 
   return (
-    <nav className='hidden flex-nowrap items-center gap-4 md:flex lg:gap-6'>
+    <nav
+      className={cn(
+        'hidden flex-nowrap items-center md:flex',
+        appearance === 'marketing' ? 'gap-6 lg:gap-8' : 'gap-4 lg:gap-6',
+      )}
+    >
       {navItems.map((item) => renderNavItem(item))}
     </nav>
   );

@@ -1,0 +1,65 @@
+/* After Hours landing motion. */
+
+/* Scroll reveal (driven by RevealAnimation.tsx) */
+.reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal[data-reveal-state='observing'] {
+  opacity: 0;
+  transform: translateY(1.5rem);
+}
+
+.reveal[data-reveal-state='visible'] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Slow drift for the sparkle marks */
+.drift {
+  animation: drift 9s ease-in-out infinite;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.5rem);
+  }
+}
+
+/* Polaris pulse on the final banner */
+.pulse {
+  animation: polarisPulse 4s ease-in-out infinite;
+}
+
+@keyframes polarisPulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .drift,
+  .pulse {
+    animation: none;
+  }
+}

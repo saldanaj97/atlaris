@@ -24,13 +24,11 @@ const navItems = [
   { href: '/plans', label: 'Plans' },
 ];
 
-function renderMobileNavigation(
-  headerVariant: 'marketing' | 'opaque' = 'marketing',
-) {
+function renderMobileNavigation(isMarketing = true) {
   return render(
     <TooltipProvider>
       <MobileNavigation
-        headerVariant={headerVariant}
+        isMarketing={isMarketing}
         pathname='/dashboard'
         navItems={navItems}
       />
@@ -42,7 +40,16 @@ describe('MobileNavigation', () => {
   it('opens the navigation sheet and lists primary links', async () => {
     const user = userEvent.setup();
 
-    renderMobileNavigation('marketing');
+    render(
+      <TooltipProvider>
+        <MobileNavigation
+          isMarketing={false}
+          pathname='/dashboard'
+          navItems={navItems}
+          isAuthenticated
+        />
+      </TooltipProvider>,
+    );
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
@@ -58,22 +65,19 @@ describe('MobileNavigation', () => {
     ).toHaveAttribute('href', '/plans/new');
   });
 
-  it('uses glass styling for the menu trigger on liquid glass routes', () => {
-    renderMobileNavigation('marketing');
+  it('uses Get started CTA on marketing sheets when signed out', async () => {
+    const user = userEvent.setup();
 
-    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass(
-      'backdrop-blur-sm',
-    );
-  });
+    renderMobileNavigation();
 
-  it('uses opaque styling for the menu trigger on non-glass routes', () => {
-    renderMobileNavigation('opaque');
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('button', { name: 'Open menu' })).toHaveClass(
-      'bg-muted',
+    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute(
+      'href',
+      '/auth/sign-in',
     );
-    expect(screen.getByRole('button', { name: 'Open menu' })).not.toHaveClass(
-      'backdrop-blur-sm',
-    );
+    expect(
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
   });
 });

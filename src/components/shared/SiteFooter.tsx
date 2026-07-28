@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 export default function SiteFooter() {
   return (
     <footer className='border-t border-border px-4 py-8 sm:px-6 lg:px-8'>
@@ -9,28 +7,6 @@ export default function SiteFooter() {
           <AtlarisLogoSmall />
           <span className='text-sm font-semibold text-foreground'>Atlaris</span>
         </div>
-
-        {/* Links */}
-        <nav aria-label='Footer navigation'>
-          <ul className='flex items-center gap-6'>
-            <li>
-              <Link
-                href='/about'
-                className='rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
-              >
-                About
-              </Link>
-            </li>
-            <li>
-              <Link
-                href='/pricing'
-                className='rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
-              >
-                Pricing
-              </Link>
-            </li>
-          </ul>
-        </nav>
 
         {/* Copyright */}
         <p className='text-xs text-muted-foreground' suppressHydrationWarning>

@@ -2,11 +2,11 @@ import type { ReactElement, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
-/** Frosted surface over the app background — Ledger glass panel tokens. */
-const ledgerGlassSurface =
-  'rounded-2xl border border-white/50 bg-white/45 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/50';
+/** Frosted surface over the app background — glass fill, signed-in panel border token. */
+export const ledgerGlassSurface =
+  'rounded-2xl border border-panel-border bg-card/65 shadow-lg backdrop-blur-xl dark:bg-card/55';
 
-const ledgerGlassDivider = 'divide-white/40 dark:divide-white/10';
+const ledgerGlassDivider = 'divide-border/40 dark:divide-border/30';
 
 function SettingsLedgerAmbient(): ReactElement {
   return (

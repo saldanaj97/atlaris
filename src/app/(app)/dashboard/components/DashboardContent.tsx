@@ -1,17 +1,59 @@
 import {
   findActivePlan,
   generateActivities,
+  getDashboardGreeting,
 } from '@/app/(app)/dashboard/components/activity-utils';
-import { ActivityFeedClient } from '@/app/(app)/dashboard/components/ActivityFeedClient';
-import { ActivityFeedScoreboard } from '@/app/(app)/dashboard/components/ActivityFeedScoreboard';
-import { ActivityStreamSidebar } from '@/app/(app)/dashboard/components/ActivityStreamSidebar';
+import { ActivityFeed } from '@/app/(app)/dashboard/components/ActivityFeed';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
+import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
+import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Surface } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { listDashboardPlanSummaries } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
+
+function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
+  if (!weeklyHours) {
+    return (
+      <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+        <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+          This week
+        </p>
+        <h2 className='mt-6 text-xl font-semibold text-foreground'>
+          No pace set yet
+        </h2>
+        <p className='mt-2 text-sm text-muted-foreground'>
+          Your weekly learning pace will appear with an active plan.
+        </p>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+      <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+        This week
+      </p>
+
+      <div className='mt-8'>
+        <p className='text-3xl font-semibold text-foreground tabular-nums'>
+          {weeklyHours} hr{weeklyHours === 1 ? '' : 's'} planned
+        </p>
+        <p className='mt-1 text-sm text-muted-foreground'>Weekly target</p>
+      </div>
+
+      <div className='mt-6 border-t border-border/50 pt-4'>
+        <h2 className='text-base font-medium text-foreground'>
+          Progress tracking coming soon
+        </h2>
+        <p className='mt-1 text-sm text-muted-foreground'>
+          Completed learning time will appear here once it can be measured.
+        </p>
+      </div>
+    </aside>
+  );
+}
 
 /**
  * Async component that fetches user plan data and renders dashboard content.
@@ -23,7 +65,7 @@ export async function DashboardContent() {
       userId: actor.id,
       dbClient: db,
     });
-    return { summaries };
+    return { name: actor.name, summaries };
   });
 
   if (!result) {
@@ -32,30 +74,34 @@ export async function DashboardContent() {
     );
   }
 
-  const { summaries } = result;
-  const activities = generateActivities(summaries);
+  const { name, summaries } = result;
+  const activities = generateActivities(summaries).slice(0, 8);
   const activePlan = findActivePlan(summaries);
 
   return (
     <>
-      {activePlan ? (
-        <section aria-label='Resume learning' className='mb-5'>
-          <ResumeLearningHero plan={activePlan} />
-        </section>
-      ) : null}
+      <PageHeader
+        title='Dashboard'
+        subtitle={getDashboardGreeting(name, activePlan)}
+      />
 
-      <div className='grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]'>
-        <div className='min-w-0'>
-          <ActivityFeedClient activities={activities} />
+      <div className='space-y-8'>
+        <div className='grid gap-6 md:grid-cols-[minmax(0,1.55fr)_minmax(16rem,0.65fr)]'>
+          {activePlan ? (
+            <section aria-label='Resume learning'>
+              <ResumeLearningHero plan={activePlan} />
+            </section>
+          ) : (
+            <section aria-label='Start learning'>
+              <StartTonightCard />
+            </section>
+          )}
+
+          <WeeklyPace weeklyHours={activePlan?.plan.weeklyHours} />
         </div>
 
-        <div className='min-w-0 space-y-5 lg:self-start'>
-          {activePlan ? null : <ActivityStreamSidebar />}
-          <ActivityFeedScoreboard
-            summaries={summaries}
-            activities={activities}
-            activePlan={activePlan}
-          />
+        <div className='animate-dashboard-unfold [animation-delay:170ms] motion-reduce:animate-none'>
+          <ActivityFeed activities={activities} />
         </div>
       </div>
     </>
@@ -69,73 +115,61 @@ export async function DashboardContent() {
 export function DashboardContentSkeleton() {
   return (
     <>
-      <section aria-label='Resume learning loading' className='mb-6'>
-        <Surface padding='comfortable' className='flex flex-col gap-4'>
-          <div className='flex items-start justify-between gap-4'>
-            <Skeleton className='h-4 w-28' />
-            <Skeleton className='size-16 rounded-full' />
-          </div>
+      <PageHeader
+        title='Dashboard'
+        subtitle={<Skeleton className='h-4 w-72 max-w-full bg-muted' />}
+      />
 
-          <div className='flex flex-wrap items-end justify-between gap-4'>
-            <div className='min-w-0 flex-1 space-y-2'>
-              <Skeleton className='h-9 w-64 md:w-80' />
-              <Skeleton className='h-5 w-full max-w-md' />
+      <div className='space-y-8'>
+        <div className='grid gap-6 md:grid-cols-[minmax(0,1.55fr)_minmax(16rem,0.65fr)]'>
+          <section aria-label='Resume learning loading'>
+            <div className='h-full rounded-2xl border border-panel-border bg-panel p-6 sm:p-7'>
+              <div className='flex justify-between gap-4'>
+                <Skeleton className='h-3 w-28 bg-secondary' />
+                <Skeleton className='h-4 w-24 bg-muted' />
+              </div>
+              <Skeleton className='mt-8 h-8 w-full max-w-md' />
+              <Skeleton className='mt-3 h-4 w-full max-w-xs bg-muted' />
+              <Skeleton className='mt-8 h-1.5 w-full rounded-full bg-secondary' />
+              <div className='mt-8 border-t border-border/50 pt-4'>
+                <Skeleton className='h-3 w-40 bg-muted' />
+                <Skeleton className='mt-5 h-11 w-28 bg-primary/40' />
+              </div>
             </div>
+          </section>
 
-            <div className='flex flex-shrink-0 flex-wrap items-center justify-end gap-3 sm:gap-4'>
-              <Skeleton className='h-5 w-40' />
-              <Skeleton className='h-10 w-40 rounded-lg' />
-            </div>
-          </div>
-        </Surface>
-      </section>
-
-      <div className='grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]'>
-        <div>
-          {/* Filter tabs skeleton */}
-          <div className='mb-6 flex items-center gap-3'>
-            <Skeleton className='h-9 w-16 rounded-lg' />
-            <Skeleton className='h-9 w-24 rounded-lg' />
-            <Skeleton className='h-9 w-20 rounded-lg' />
-          </div>
-
-          {/* Activity cards skeleton */}
-          <div className='space-y-4'>
-            {[1, 2, 3, 4].map((activitySkeletonId) => (
-              <Surface
-                key={`dashboard-activity-skeleton-${activitySkeletonId}`}
-              >
-                <div className='flex gap-4'>
-                  {/* Icon skeleton */}
-                  <Skeleton className='size-10 flex-shrink-0 rounded-lg' />
-                  <div className='min-w-0 flex-1 space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <Skeleton className='h-5 w-48' />
-                      <Skeleton className='h-4 w-20' />
-                    </div>
-                    <Skeleton className='h-4 w-full max-w-sm' />
-                    <Skeleton className='h-4 w-32' />
-                  </div>
-                </div>
-              </Surface>
-            ))}
-          </div>
+          <aside className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground sm:p-7'>
+            <Skeleton className='h-3 w-20 bg-secondary' />
+            <Skeleton className='mt-8 h-9 w-28' />
+            <Skeleton className='mt-2 h-4 w-32 bg-muted' />
+            <Skeleton className='mt-6 h-1.5 w-full rounded-full bg-muted' />
+            <Skeleton className='mt-3 h-3 w-full bg-muted' />
+          </aside>
         </div>
 
-        <aside className='flex w-full flex-col gap-4 lg:self-start'>
-          <Surface className='border-sidebar-border'>
-            <div className='flex flex-col items-center py-6'>
-              <Skeleton className='mb-4 size-12 rounded-full' />
-              <Skeleton className='mb-2 h-5 w-36' />
-              <Skeleton className='mb-4 h-4 w-52' />
-              <Skeleton className='h-10 w-32 rounded-lg' />
+        <section aria-label='Recent activity loading'>
+          <div className='overflow-hidden rounded-2xl border border-panel-border bg-panel'>
+            <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
+              <Skeleton className='h-6 w-32' />
+              <Skeleton className='mt-2 h-4 w-64 bg-muted' />
             </div>
-          </Surface>
-          <Surface className='border-primary/20'>
-            <Skeleton className='mb-4 h-5 w-28' />
-            <Skeleton className='h-48 w-full rounded-xl' />
-          </Surface>
-        </aside>
+            <div className='divide-y divide-border/50'>
+              {[1, 2, 3, 4].map((id) => (
+                <div
+                  key={`dashboard-activity-skeleton-${id}`}
+                  className='grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 sm:px-6'
+                >
+                  <Skeleton className='size-9 rounded-full bg-secondary' />
+                  <div>
+                    <Skeleton className='h-3 w-24 bg-muted' />
+                    <Skeleton className='mt-2 h-4 w-52' />
+                  </div>
+                  <Skeleton className='h-3 w-20 bg-secondary' />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </div>
     </>
   );

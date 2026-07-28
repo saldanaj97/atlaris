@@ -8,6 +8,19 @@ const mocks = vi.hoisted(() => ({
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
+vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+  default: { star: 'star' },
+}));
+
+vi.mock('@/app/(marketing)/pricing/components/Pricing.module.css', () => ({
+  default: {
+    heroHeading: 'heroHeading',
+    heroOverline: 'heroOverline',
+    heroSubline: 'heroSubline',
+    shell: 'shell',
+  },
+}));
+
 vi.mock('@/features/billing/checkout-return-server', () => ({
   getOptionalCheckoutBillingSignature:
     mocks.getOptionalCheckoutBillingSignatureMock,
@@ -49,8 +62,11 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(
-      screen.getByRole('heading', { name: /invest in your growth/i }),
+      screen.getByRole('heading', {
+        name: /one sky\. three ways to cross it\./i,
+      }),
     ).toBeVisible();
+    expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(mocks.pricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -11,7 +11,7 @@ interface BrandLogoProps {
 
 /**
  * Shared brand logo component used across desktop and mobile headers.
- * Typography-only branding for consistent display.
+ * Wordmark uses display face (Sora via `font-serif`); chrome stays on product tokens.
  */
 export default function BrandLogo({
   size = 'md',
@@ -28,13 +28,14 @@ export default function BrandLogo({
       aria-label='Atlaris - Go to homepage'
     >
       <span
-        className={`font-semibold ${
-          variant === 'gradient'
-            ? 'gradient-text'
-            : 'text-primary dark:text-primary'
+        className={`font-serif font-bold tracking-tight ${
+          variant === 'gradient' ? 'gradient-text' : 'text-foreground'
         } ${isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'}`}
       >
         Atlaris
+        <span aria-hidden='true' className='text-primary'>
+          .
+        </span>
       </span>
     </Link>
   );

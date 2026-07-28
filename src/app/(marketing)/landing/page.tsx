@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 import { LANDING_CANONICAL_TITLE, LANDING_DESCRIPTION } from './layout';
-import { LandingDesignExplorer } from '@/app/(marketing)/landing/components/LandingDesignExplorer';
+import { Landing } from '@/app/(marketing)/landing/components/Landing';
 
 export const metadata: Metadata = {
   title: LANDING_CANONICAL_TITLE,
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return <LandingDesignExplorer />;
+  return <Landing />;
 }

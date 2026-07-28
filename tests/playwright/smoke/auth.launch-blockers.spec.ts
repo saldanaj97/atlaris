@@ -37,7 +37,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('dashboard and plans routes load', async () => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expectHeading(page, 'Activity Feed');
+    await expectHeading(page, 'Dashboard');
 
     await page.goto('/plans');
     await expect(page).toHaveURL(/\/plans$/);

@@ -56,7 +56,6 @@ type BaseMode = 'anon' | 'auth';
 /** Public routes: capture against anon app (unauthenticated). */
 const ANON_ROUTES = [
   '/landing',
-  '/about',
   '/pricing',
   '/auth/sign-in',
   '/auth/sign-up',

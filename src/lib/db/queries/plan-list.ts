@@ -63,7 +63,56 @@ function normalizedStatus(
   return status === 'inactive' ? 'paused' : status;
 }
 
+// Intentional lifecycle order: not_started, active, completed, paused, generating, failed.
+const STATUS_SORT_RANK = sql`
+  case status
+    when 'not_started' then 0
+    when 'active' then 1
+    when 'completed' then 2
+    when 'paused' then 3
+    when 'generating' then 4
+    when 'failed' then 5
+    else 6
+  end
+`;
+
 function planListOrderBy(sort: PlanListSort): SQL {
+  if (sort === 'topic_asc') {
+    return sql`order by lower(topic) asc, id asc`;
+  }
+
+  if (sort === 'topic_desc') {
+    return sql`order by lower(topic) desc, id desc`;
+  }
+
+  if (sort === 'progress_asc') {
+    return sql`
+      order by
+        coalesce(completed_tasks::numeric / nullif(total_tasks, 0), 0) asc,
+        id asc
+    `;
+  }
+
+  if (sort === 'progress_desc') {
+    return sql`
+      order by
+        coalesce(completed_tasks::numeric / nullif(total_tasks, 0), 0) desc,
+        id desc
+    `;
+  }
+
+  if (sort === 'status_asc') {
+    return sql`order by ${STATUS_SORT_RANK} asc, id asc`;
+  }
+
+  if (sort === 'status_desc') {
+    return sql`order by ${STATUS_SORT_RANK} desc, id desc`;
+  }
+
+  if (sort === 'updated_asc') {
+    return sql`order by coalesce(updated_at, created_at) asc, id asc`;
+  }
+
   if (sort === 'recently_updated') {
     return sql`order by coalesce(updated_at, created_at) desc, id desc`;
   }

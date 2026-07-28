@@ -6,7 +6,6 @@ import type {
   PlanListPage,
   PlanListQuery,
   PlanListSort,
-  PlanReadStatus,
 } from '@/features/plans/read-projection/types';
 
 import {
@@ -15,17 +14,23 @@ import {
 } from '@/app/(app)/plans/components/BulkDeletePlansDialog';
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
-import {
-  ATLAS_CONTROL_CLASS,
-  ATLAS_TAB_CLASS,
-} from '@/app/(app)/plans/components/plans-atlas-classes';
-import { getPlanStatusDotClassName } from '@/app/(app)/plans/plan-status-theme';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Surface } from '@/components/ui/surface';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight, ListChecks, Search } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -36,25 +41,18 @@ interface PlansListProps {
   query: PlanListQuery;
 }
 
-const FILTER_TABS: {
-  id: FilterStatus;
-  label: string;
-  status?: PlanReadStatus;
-}[] = [
-  { id: 'all', label: 'All' },
-  { id: 'not_started', label: 'Not started', status: 'not_started' },
-  { id: 'active', label: 'Active', status: 'active' },
-  { id: 'completed', label: 'Completed', status: 'completed' },
-  { id: 'inactive', label: 'Inactive', status: 'paused' },
-  { id: 'generating', label: 'Generating', status: 'generating' },
-  { id: 'failed', label: 'Failed', status: 'failed' },
-];
+type SortableColumn = 'topic' | 'progress' | 'status' | 'updated';
+type SortDirection = 'ascending' | 'descending';
 
-const SORT_OPTIONS: { value: PlanListSort; label: string }[] = [
-  { value: 'recommended', label: 'Recommended' },
-  { value: 'recently_updated', label: 'Recently updated' },
-  { value: 'newest', label: 'Newest' },
-];
+const COLUMN_SORTS = {
+  topic: ['topic_asc', 'topic_desc'],
+  progress: ['progress_asc', 'progress_desc'],
+  status: ['status_asc', 'status_desc'],
+  updated: ['updated_asc', 'recently_updated'],
+} as const satisfies Record<
+  SortableColumn,
+  readonly [PlanListSort, PlanListSort]
+>;
 
 function isPlanBulkDeletable(plan: PlanListItem): boolean {
   return plan.status !== 'generating';
@@ -85,68 +83,103 @@ function plansHref(params: {
   return queryString ? `/plans?${queryString}` : '/plans';
 }
 
-function getFilterCount(
-  tab: (typeof FILTER_TABS)[number],
-  page: PlanListPage,
-): number {
-  if (tab.id === 'all') return page.totalSearchResults;
-  if (tab.id === 'inactive') return page.statusCounts.paused;
-  return tab.status ? page.statusCounts[tab.status] : 0;
+function getSortDirection(
+  sort: PlanListSort,
+  column: SortableColumn,
+): SortDirection | null {
+  const [ascending, descending] = COLUMN_SORTS[column];
+  if (sort === ascending) return 'ascending';
+  if (sort === descending) return 'descending';
+  return null;
+}
+
+function getNextSort(sort: PlanListSort, column: SortableColumn): PlanListSort {
+  const [ascending, descending] = COLUMN_SORTS[column];
+  if (sort === ascending) return descending;
+  if (sort === descending) return ascending;
+  return column === 'progress' || column === 'updated' ? descending : ascending;
+}
+
+function SortableTableHead({
+  column,
+  label,
+  query,
+}: {
+  column: SortableColumn;
+  label: string;
+  query: PlanListQuery;
+}) {
+  const direction = getSortDirection(query.sort, column);
+  const nextSort = getNextSort(query.sort, column);
+  const nextDirection =
+    nextSort === COLUMN_SORTS[column][0] ? 'ascending' : 'descending';
+
+  return (
+    <TableHead aria-sort={direction ?? 'none'}>
+      <Button
+        asChild
+        variant='ghost'
+        size='sm'
+        className='-ml-3 h-8 px-2 text-xs font-medium uppercase'
+      >
+        <Link
+          href={plansHref({
+            search: query.search,
+            status: query.status,
+            sort: nextSort,
+          })}
+          aria-label={`Sort by ${label} ${nextDirection}`}
+        >
+          {label}
+          {direction === 'ascending' ? (
+            <ArrowUp aria-hidden='true' />
+          ) : direction === 'descending' ? (
+            <ArrowDown aria-hidden='true' />
+          ) : (
+            <ArrowUpDown aria-hidden='true' />
+          )}
+        </Link>
+      </Button>
+    </TableHead>
+  );
 }
 
 function BulkPlanActionsToolbar({
   selectedCount,
-  deletableCount,
   toolbarMessage,
-  onSelectAll,
   onClear,
   onDelete,
-  onCancelSelection,
 }: {
   selectedCount: number;
-  deletableCount: number;
   toolbarMessage: string | null;
-  onSelectAll: () => void;
   onClear: () => void;
   onDelete: () => void;
-  onCancelSelection: () => void;
 }) {
   return (
-    <Surface
-      padding='compact'
-      className={cn('space-y-3', ATLAS_CONTROL_CLASS)}
+    <div
+      role='group'
+      className='space-y-3 rounded-xl border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
           <p className='text-sm font-medium text-foreground'>
-            {selectedCount} selected
+            <span
+              key={selectedCount}
+              className='inline-block animate-in tabular-nums duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
+            >
+              {selectedCount}
+            </span>{' '}
+            selected
           </p>
           {toolbarMessage ? (
-            <p className='text-sm text-destructive'>{toolbarMessage}</p>
-          ) : deletableCount === 0 ? (
-            <p className='text-sm text-muted-foreground'>
-              No deletable plans on this page.
+            <p aria-live='polite' className='text-sm text-destructive'>
+              {toolbarMessage}
             </p>
           ) : null}
         </div>
         <div className='flex flex-wrap items-center gap-2'>
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            onClick={onSelectAll}
-            disabled={deletableCount === 0}
-          >
-            Select all on page
-          </Button>
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            onClick={onClear}
-            disabled={selectedCount === 0}
-          >
+          <Button type='button' variant='outline' size='sm' onClick={onClear}>
             Clear
           </Button>
           <Button
@@ -154,197 +187,158 @@ function BulkPlanActionsToolbar({
             variant='destructive'
             size='sm'
             onClick={onDelete}
-            disabled={selectedCount === 0}
           >
             Delete selected
           </Button>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            onClick={onCancelSelection}
-          >
-            Cancel
-          </Button>
         </div>
       </div>
-    </Surface>
+    </div>
   );
 }
 
-function PlansControls({
+function PlansSearch({ query }: { query: PlanListQuery }) {
+  return (
+    <div className='flex flex-wrap items-center gap-2'>
+      <form action='/plans' className='relative min-w-64 flex-1'>
+        <Search
+          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
+          aria-hidden='true'
+        />
+        {query.status !== 'all' ? (
+          <input type='hidden' name='status' value={query.status} />
+        ) : null}
+        {query.sort !== 'recommended' ? (
+          <input type='hidden' name='sort' value={query.sort} />
+        ) : null}
+        <Input
+          type='search'
+          name='search'
+          placeholder='Search plans...'
+          aria-label='Search learning plans'
+          className='h-9 w-full border-panel-border bg-panel pl-9'
+          defaultValue={query.search}
+        />
+      </form>
+      {query.status !== 'all' ? (
+        <Button asChild variant='ghost' size='sm'>
+          <Link
+            href={plansHref({
+              search: query.search,
+              status: 'all',
+              sort: query.sort,
+            })}
+          >
+            Clear {query.status.replaceAll('_', ' ')} filter
+          </Link>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function PlansTable({
   page,
   query,
+  deletablePlans,
+  selectedPlanIds,
+  onSelectionChange,
+  onSelectAll,
+  onDeselectAll,
 }: {
   page: PlanListPage;
   query: PlanListQuery;
+  deletablePlans: PlanListItem[];
+  selectedPlanIds: Set<string>;
+  onSelectionChange: (planId: string, selected: boolean) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
 }) {
-  const router = useRouter();
+  const selectedCount = deletablePlans.filter((plan) =>
+    selectedPlanIds.has(plan.id),
+  ).length;
+  const allSelected =
+    deletablePlans.length > 0 && selectedCount === deletablePlans.length;
+  const someSelected = selectedCount > 0 && !allSelected;
 
   return (
-    <div className='space-y-4 border-b border-border/60 pb-5'>
-      <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-        <form
-          action='/plans'
-          className='relative min-w-0 sm:max-w-sm sm:flex-1'
-        >
-          <Search
-            className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
-            aria-hidden='true'
+    <Table aria-label='Learning plans' className='min-w-[840px]'>
+      <TableHeader className='bg-transparent [&_tr]:border-border/60'>
+        <TableRow className='hover:bg-transparent'>
+          <TableHead className='w-10 px-3'>
+            <input
+              type='checkbox'
+              checked={allSelected}
+              disabled={deletablePlans.length === 0}
+              aria-label='Select all plans on page'
+              ref={(element) => {
+                if (element) element.indeterminate = someSelected;
+              }}
+              onChange={(event) => {
+                if (event.currentTarget.checked) {
+                  onSelectAll();
+                  return;
+                }
+                onDeselectAll();
+              }}
+              className='size-4 shrink-0 rounded border border-border accent-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+            />
+          </TableHead>
+          <SortableTableHead column='topic' label='Plan' query={query} />
+          <SortableTableHead column='progress' label='Progress' query={query} />
+          <TableHead className='text-xs uppercase'>Tasks</TableHead>
+          <SortableTableHead column='status' label='Status' query={query} />
+          <SortableTableHead column='updated' label='Updated' query={query} />
+          <TableHead className='w-12'>
+            <span className='sr-only'>Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody className='[&_tr:last-child]:border-b [&_tr:last-child]:border-border/60'>
+        {page.items.map((plan, index) => (
+          <PlanRow
+            key={plan.id}
+            plan={plan}
+            index={index}
+            referenceTimestamp={page.referenceTimestamp}
+            selected={selectedPlanIds.has(plan.id)}
+            selectable={isPlanBulkDeletable(plan)}
+            onSelectionChange={onSelectionChange}
           />
-          {query.status !== 'all' ? (
-            <input type='hidden' name='status' value={query.status} />
-          ) : null}
-          {query.sort !== 'recommended' ? (
-            <input type='hidden' name='sort' value={query.sort} />
-          ) : null}
-          <Input
-            type='search'
-            name='search'
-            placeholder='Search plans...'
-            aria-label='Search learning plans'
-            className='h-9 border-border bg-background pl-9 dark:bg-input/30'
-            defaultValue={query.search}
-          />
-        </form>
-
-        <form
-          action='/plans'
-          className='flex shrink-0 items-center gap-2 self-end sm:self-auto'
-        >
-          <label
-            htmlFor='plans-sort'
-            className='text-xs font-medium tracking-wide text-muted-foreground uppercase'
-          >
-            Sort
-          </label>
-          {query.search ? (
-            <input type='hidden' name='search' value={query.search} />
-          ) : null}
-          {query.status !== 'all' ? (
-            <input type='hidden' name='status' value={query.status} />
-          ) : null}
-          <select
-            id='plans-sort'
-            name='sort'
-            defaultValue={query.sort}
-            onChange={(event) =>
-              router.push(
-                plansHref({
-                  search: query.search,
-                  status: query.status,
-                  sort: event.currentTarget.value as PlanListSort,
-                }),
-              )
-            }
-            className='h-9 max-w-[11rem] truncate rounded-md border border-input bg-background px-2.5 text-sm shadow-xs dark:bg-input/30'
-            aria-label='Sort learning plans'
-          >
-            {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </form>
-      </div>
-
-      <Tabs value={query.status} aria-label='Filter plans by status'>
-        <TabsList className='h-auto w-full justify-start gap-1.5 overflow-x-auto bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden'>
-          {FILTER_TABS.map((tab) => {
-            const count = getFilterCount(tab, page);
-            return (
-              <TabsTrigger
-                asChild
-                key={tab.id}
-                value={tab.id}
-                className={cn(
-                  'group inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-sm',
-                  ATLAS_TAB_CLASS,
-                )}
-              >
-                <Link
-                  href={plansHref({
-                    search: query.search,
-                    status: tab.id,
-                    sort: query.sort,
-                  })}
-                >
-                  {tab.status ? (
-                    <span
-                      className={cn(
-                        'size-2 shrink-0 rounded-full',
-                        getPlanStatusDotClassName(tab.status),
-                      )}
-                      aria-hidden='true'
-                    />
-                  ) : null}
-                  <span>{tab.label}</span>
-                  <span className='rounded-md bg-muted/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground tabular-nums group-data-[state=active]:bg-primary/15 group-data-[state=active]:text-primary-dark dark:group-data-[state=active]:text-primary'>
-                    {count}
-                  </span>
-                </Link>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
-    </div>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 export function PlansList({ page, query }: PlansListProps) {
   const router = useRouter();
-  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
-  const deletablePlans: PlanListItem[] = [];
-  const selectedDeletablePlans: PlanListItem[] = [];
-
-  for (const plan of page.items) {
-    if (!isPlanBulkDeletable(plan)) {
-      continue;
-    }
-    deletablePlans.push(plan);
-    if (selectedPlanIds.has(plan.id)) {
-      selectedDeletablePlans.push(plan);
-    }
-  }
+  const deletablePlans = page.items.filter(isPlanBulkDeletable);
+  const selectedDeletablePlans = deletablePlans.filter((plan) =>
+    selectedPlanIds.has(plan.id),
+  );
 
   const handleSelectionChange = (planId: string, selected: boolean): void => {
     setSelectedPlanIds((current) => {
       const next = new Set(current);
-      if (selected) {
-        next.add(planId);
-      } else {
-        next.delete(planId);
-      }
+      if (selected) next.add(planId);
+      else next.delete(planId);
       return next;
     });
     setToolbarMessage(null);
   };
 
   const handleSelectAllOnPage = (): void => {
-    setSelectedPlanIds(() => new Set(deletablePlans.map((plan) => plan.id)));
+    setSelectedPlanIds(new Set(deletablePlans.map((plan) => plan.id)));
     setToolbarMessage(null);
   };
 
   const handleClearSelection = (): void => {
-    setSelectedPlanIds(() => new Set());
-    setToolbarMessage(null);
-  };
-
-  const handleEnterSelectionMode = (): void => {
-    setSelectionMode(true);
-    setToolbarMessage(null);
-  };
-
-  const handleCancelSelectionMode = (): void => {
-    setSelectionMode(false);
-    setSelectedPlanIds(() => new Set());
+    setSelectedPlanIds(new Set());
     setToolbarMessage(null);
   };
 
@@ -356,27 +350,20 @@ export function PlansList({ page, query }: PlansListProps) {
     >[] = [];
 
     for (const entry of result.results) {
-      if (entry.success) {
-        deletedIds.add(entry.planId);
-      } else {
-        failedResults.push(entry);
-      }
+      if (entry.success) deletedIds.add(entry.planId);
+      else failedResults.push(entry);
     }
 
-    setSelectedPlanIds((current) => {
-      const next = new Set(
-        [...current].filter((planId) => !deletedIds.has(planId)),
-      );
-      return next;
-    });
+    setSelectedPlanIds(
+      (current) =>
+        new Set([...current].filter((planId) => !deletedIds.has(planId))),
+    );
 
     if (result.deletedCount > 0 && result.failedCount === 0) {
       toast.success(
         `Deleted ${result.deletedCount} plan${result.deletedCount === 1 ? '' : 's'}`,
       );
-      setSelectionMode(false);
-      setSelectedPlanIds(() => new Set());
-      setToolbarMessage(null);
+      handleClearSelection();
       router.refresh();
       return;
     }
@@ -403,72 +390,45 @@ export function PlansList({ page, query }: PlansListProps) {
 
   return (
     <div className='space-y-5'>
-      <PlansControls page={page} query={query} />
+      <PlansSearch query={query} />
 
-      <div className='space-y-3'>
-        <div className='flex items-center justify-between'>
-          <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-            {page.totalItems} plan{page.totalItems === 1 ? '' : 's'}
-          </p>
-          {!selectionMode ? (
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={handleEnterSelectionMode}
-              disabled={deletablePlans.length === 0}
-            >
-              <ListChecks />
-              Select
-            </Button>
-          ) : null}
-        </div>
-
-        {selectionMode ? (
-          <BulkPlanActionsToolbar
-            selectedCount={selectedDeletablePlans.length}
-            deletableCount={deletablePlans.length}
-            toolbarMessage={toolbarMessage}
-            onSelectAll={handleSelectAllOnPage}
-            onClear={handleClearSelection}
-            onDelete={() => setBulkDeleteOpen(true)}
-            onCancelSelection={handleCancelSelectionMode}
-          />
-        ) : null}
-
-        <BulkDeletePlansDialog
-          open={bulkDeleteOpen}
-          onOpenChange={setBulkDeleteOpen}
-          plans={selectedDeletablePlans}
-          onDeleted={handleBulkDeleted}
+      {selectedDeletablePlans.length > 0 ? (
+        <BulkPlanActionsToolbar
+          selectedCount={selectedDeletablePlans.length}
+          toolbarMessage={toolbarMessage}
+          onClear={handleClearSelection}
+          onDelete={() => setBulkDeleteOpen(true)}
         />
+      ) : null}
 
-        {page.items.length === 0 ? (
-          <EmptyPlansList
-            searchQuery={query.search}
-            filterStatus={query.status}
-          />
-        ) : (
-          <section aria-label='Learning plans' className='space-y-3'>
-            {page.items.map((plan) => (
-              <PlanRow
-                key={plan.id}
-                plan={plan}
-                referenceTimestamp={page.referenceTimestamp}
-                selectionMode={selectionMode}
-                selected={selectedPlanIds.has(plan.id)}
-                selectable={isPlanBulkDeletable(plan)}
-                onSelectionChange={handleSelectionChange}
-              />
-            ))}
-          </section>
-        )}
-      </div>
+      <BulkDeletePlansDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        plans={selectedDeletablePlans}
+        onDeleted={handleBulkDeleted}
+      />
+
+      {page.items.length === 0 ? (
+        <EmptyPlansList
+          searchQuery={query.search}
+          filterStatus={query.status}
+        />
+      ) : (
+        <PlansTable
+          page={page}
+          query={query}
+          deletablePlans={deletablePlans}
+          selectedPlanIds={selectedPlanIds}
+          onSelectionChange={handleSelectionChange}
+          onSelectAll={handleSelectAllOnPage}
+          onDeselectAll={handleClearSelection}
+        />
+      )}
 
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className='flex flex-col gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
+          className='flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
         >
           <span className='tabular-nums'>
             Page {page.page} of {page.totalPages}

@@ -26,13 +26,13 @@ export default function DashboardError({ error, reset }: ErrorProps) {
   return (
     <>
       <PageHeader
-        title='Activity Feed'
+        title='Dashboard'
         subtitle='Your learning journey, moment by moment'
       />
 
       <RouteErrorState
         title='Error Loading Dashboard'
-        message="We couldn't load your activity feed. This could be a temporary issue."
+        message="We couldn't load your dashboard. This could be a temporary issue."
         onRetry={reset}
       />
     </>

@@ -2,7 +2,7 @@ export type ProgressSurfaceKind = 'locked' | 'active' | 'completed';
 
 export type ModuleStatus = ProgressSurfaceKind;
 
-export type PlanFooterStatus = 'complete' | 'incomplete';
+type PlanFooterStatus = 'complete' | 'incomplete';
 
 const TIMELINE_MODULE_THEME: Record<
   ModuleStatus,
@@ -16,9 +16,8 @@ const TIMELINE_MODULE_THEME: Record<
     title: 'text-foreground/90',
   },
   active: {
-    marker:
-      'scale-110 border-primary text-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]',
-    card: 'border-primary/30 bg-panel shadow-md dark:border-primary/50',
+    marker: 'scale-110 border-primary text-primary',
+    card: 'border-primary/30 bg-panel shadow-sm dark:border-primary/50',
     badge: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
     title: 'text-foreground',
   },
@@ -30,7 +29,7 @@ const TIMELINE_MODULE_THEME: Record<
   },
 };
 
-export const PLAN_FOOTER_THEME: Record<
+const PLAN_FOOTER_THEME: Record<
   PlanFooterStatus,
   {
     marker: string;
@@ -86,10 +85,6 @@ export function getTimelineMarkerClassName(status: ModuleStatus): string {
 
 export function getTimelineCardClassName(status: ModuleStatus): string {
   return TIMELINE_MODULE_THEME[status].card;
-}
-
-export function getTimelineWeekBadgeClassName(status: ModuleStatus): string {
-  return TIMELINE_MODULE_THEME[status].badge;
 }
 
 export function getTimelineTitleClassName(status: ModuleStatus): string {

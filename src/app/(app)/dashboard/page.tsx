@@ -2,27 +2,18 @@ import {
   DashboardContent,
   DashboardContentSkeleton,
 } from './components/DashboardContent';
-import { PageHeader } from '@/components/ui/page-header';
 import { Suspense } from 'react';
 
 /**
  * Dashboard page with Suspense boundary for data-dependent content.
  *
- * Static elements (header with title and subtitle) render immediately.
- * ResumeLearningHero, ActivityFeedClient, ActivityFeedScoreboard, and
- * ActivityStreamSidebar wait for user plan data.
+ * Personalized header, resume hero, and activity wait for plan summaries
+ * behind the request boundary.
  */
 export default function DashboardPage() {
   return (
-    <>
-      <PageHeader
-        title='Activity Feed'
-        subtitle='Your learning journey with activity metrics beside the stream.'
-      />
-
-      <Suspense fallback={<DashboardContentSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </>
+    <Suspense fallback={<DashboardContentSkeleton />}>
+      <DashboardContent />
+    </Suspense>
   );
 }

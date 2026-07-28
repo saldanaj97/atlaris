@@ -16,7 +16,7 @@ export function PlanCountBadge({ usage }: PlanCountBadgeProps) {
   return (
     <UsageHoverCard usage={usage}>
       <span
-        className='inline-flex cursor-default items-center gap-1 rounded-full border border-border/70 bg-panel px-3 py-1 text-xs font-medium text-muted-foreground'
+        className='inline-flex cursor-default items-center gap-1 rounded-full border border-panel-border/80 bg-panel px-3 py-1 text-xs font-medium text-muted-foreground tabular-nums'
         aria-label={`${usage.activePlans.current} of ${limitLabel} active plans used`}
       >
         <span className='text-foreground'>{usage.activePlans.current}</span>

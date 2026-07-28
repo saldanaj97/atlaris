@@ -1,96 +1,73 @@
 import type { ActivityItem } from '../types';
-import type React from 'react';
 
-import { Surface } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
-import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowUpRight, Check, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
-const typeConfig: Record<
-  ActivityItem['type'],
-  {
-    icon: React.ComponentType<{ className?: string }>;
-    label: string;
-    stampClassName: string;
-  }
-> = {
-  milestone: {
-    icon: Trophy,
-    label: 'Milestone',
-    stampClassName: 'border-warning/30 bg-warning/10 text-warning',
+const activityPresentation = {
+  generated: {
+    icon: Sparkles,
+    label: 'Plan generated',
+    className: 'border-primary/30 bg-primary/10 text-primary',
   },
   progress: {
-    icon: TrendingUp,
-    label: 'Progress',
-    stampClassName: 'border-primary/30 bg-primary/10 text-primary',
+    icon: ArrowUpRight,
+    label: 'Progress made',
+    className: 'border-chart-3/30 bg-chart-3/10 text-chart-3',
   },
-};
+  completed: {
+    icon: Check,
+    label: 'Plan completed',
+    className: 'border-success/30 bg-success/10 text-success',
+  },
+} as const;
 
-function ActivityCardMetadata({
-  metadata,
+/**
+ * Dashboard activity event with an explicit event label and timestamp.
+ */
+export function ActivityCard({
+  activity,
+  index = 0,
 }: {
-  metadata: NonNullable<ActivityItem['metadata']>;
+  activity: ActivityItem;
+  index?: number;
 }) {
-  return (
-    <div className='flex flex-wrap items-center gap-3'>
-      {metadata.duration && (
-        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Clock className='size-3' />
-          {metadata.duration}
-        </span>
-      )}
-      {metadata.progress !== undefined && (
-        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Target className='size-3' />
-          {metadata.progress}% complete
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function ActivityCard({ activity }: { activity: ActivityItem }) {
-  const config = typeConfig[activity.type];
-  const Icon = config.icon;
+  const presentation = activityPresentation[activity.kind];
+  const Icon = presentation.icon;
 
   return (
-    <Surface variant='interactive' padding='none' className='overflow-hidden'>
-      <div className='p-4 sm:p-5'>
-        <div className='mb-3 flex flex-wrap items-start justify-between gap-3'>
-          <div className='min-w-0'>
-            <div className='mb-2 flex flex-wrap items-center gap-2'>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium tracking-wide uppercase',
-                  config.stampClassName,
-                )}
-              >
-                <Icon className='size-3' aria-hidden='true' />
-                {config.label}
-              </span>
-              <span className='text-xs font-medium text-muted-foreground'>
-                {activity.planTitle}
-              </span>
-            </div>
-            <h4 className='font-semibold text-foreground'>{activity.title}</h4>
-          </div>
-
-          <span className='shrink-0 rounded-md border border-border bg-panel-muted px-2 py-1 text-[11px] font-medium text-muted-foreground'>
-            {activity.timestamp}
-          </span>
-        </div>
-
-        {activity.description && (
-          <p className='text-sm text-muted-foreground'>
-            {activity.description}
-          </p>
+    <Link
+      href={`/plans/${activity.planId}`}
+      className='group animate-dashboard-ledger-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 transition-colors duration-500 hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:animate-none sm:px-6'
+      style={{ animationDelay: `${360 + Math.min(index, 8) * 55}ms` }}
+    >
+      <span
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-full border',
+          presentation.className,
         )}
+        aria-hidden='true'
+      >
+        <Icon className='size-4' />
+      </span>
 
-        {activity.metadata && (
-          <div className='mt-4 border-t border-border/70 pt-3'>
-            <ActivityCardMetadata metadata={activity.metadata} />
-          </div>
-        )}
+      <div className='min-w-0'>
+        <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+          {presentation.label}
+        </p>
+        <p className='mt-0.5 truncate text-sm font-medium text-foreground'>
+          {activity.title}
+        </p>
       </div>
-    </Surface>
+
+      <div className='text-right'>
+        <time
+          dateTime={activity.occurredAt}
+          className='text-xs text-muted-foreground tabular-nums'
+        >
+          {activity.timestamp}
+        </time>
+      </div>
+    </Link>
   );
 }

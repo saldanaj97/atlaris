@@ -242,9 +242,7 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('4 days')).toBeInTheDocument();
     expect(screen.getByText('Best 6 days')).toBeInTheDocument();
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(screen.getAllByText('Active')).toHaveLength(2);
     expect(screen.getAllByLabelText('Down')).toHaveLength(4);
-    expect(screen.getByText('Live')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
@@ -302,6 +300,34 @@ describe('UsageAnalyticsContent', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
         4,
+      );
+    });
+  });
+
+  it('caps visible plan series at the five available chart colors', async () => {
+    const sixPlanModel: UsageAnalyticsModel = {
+      ...model,
+      planCount: 6,
+      plans: [
+        ...model.plans,
+        { ...model.plans[0]!, id: 'plan-5', topic: 'Fifth Plan' },
+        { ...model.plans[0]!, id: 'plan-6', topic: 'Sixth Plan' },
+      ],
+    };
+    const { container } = render(
+      <UsageAnalyticsContent model={sixPlanModel} />,
+    );
+
+    await resizeChart(1400);
+
+    expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
+    expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText('1 more plan not shown at this width'),
+    ).toHaveTextContent('+1 more');
+    await waitFor(() => {
+      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
+        5,
       );
     });
   });

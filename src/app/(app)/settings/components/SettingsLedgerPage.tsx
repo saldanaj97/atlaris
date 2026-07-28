@@ -18,6 +18,7 @@ import { IntegrationRows } from '@/app/(app)/settings/integrations/components/In
 import { NotificationsSection } from '@/app/(app)/settings/notifications/components/NotificationsSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
+import { PageHeader } from '@/components/ui/page-header';
 import { getSupportedLocale } from '@/lib/i18n/locale';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
@@ -29,12 +30,10 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
     <>
       <SettingsScrollTarget />
 
-      <header className='relative mb-6'>
-        <h1>Settings</h1>
-        <p className='mt-1 text-sm text-muted-foreground'>
-          Everything about your account, on one page.
-        </p>
-      </header>
+      <PageHeader
+        title='Settings'
+        subtitle='Everything about your account, on one page.'
+      />
 
       <SettingsLedgerPanel>
         <LedgerSectionBlock
