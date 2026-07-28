@@ -162,9 +162,9 @@ describe('Navigation', () => {
     });
 
     it('should have completely different navigation structure', () => {
-      // Authenticated users have Activity Feed, Plans, Analytics, Settings
+      // Authenticated users have Dashboard, Plans, Analytics, Settings
       const authLabels = authenticatedNavItems.map((item) => item.label);
-      expect(authLabels).toContain('Activity Feed');
+      expect(authLabels).toContain('Dashboard');
       expect(authLabels).toContain('Plans');
       expect(authLabels).toContain('Analytics');
       expect(authLabels).toContain('Settings');
@@ -177,10 +177,10 @@ describe('Navigation', () => {
 
     it('should have authenticated-only navigation items', () => {
       const authDashboard = authenticatedNavItems.find(
-        (item) => item.label === 'Activity Feed',
+        (item) => item.label === 'Dashboard',
       );
       const unauthDashboard = unauthenticatedNavItems.find(
-        (item) => item.label === 'Activity Feed',
+        (item) => item.label === 'Dashboard',
       );
       expect(authDashboard).toBeDefined();
       expect(unauthDashboard).toBeUndefined();
