@@ -92,10 +92,24 @@ function fillEmptyFeatureLists(
     PRICING_FEATURES_BY_CLERK_SLUG,
   )) {
     const plan = plans.find((candidate) => candidate.slug === slug);
-    if (plan?.features.length) continue;
-
     const card = root.querySelector(`.cl-pricingTableCard__${slug}`);
     if (!(card instanceof HTMLElement)) continue;
+
+    // Prefer Dashboard features once confirmed; keep fallbacks until Clerk paints.
+    if (plan?.features.length) {
+      const list = card.querySelector('.cl-pricingTableCardFeaturesList');
+      if (list instanceof HTMLElement) {
+        const clerkItems = list.querySelectorAll(
+          '.cl-pricingTableCardFeaturesListItem:not([data-atlaris-feature])',
+        );
+        if (clerkItems.length > 0) {
+          list
+            .querySelectorAll('[data-atlaris-feature="1"]')
+            .forEach((node) => node.remove());
+        }
+      }
+      continue;
+    }
 
     let list = card.querySelector('.cl-pricingTableCardFeaturesList');
     if (!(list instanceof HTMLElement)) {
