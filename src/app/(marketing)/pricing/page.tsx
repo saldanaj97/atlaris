@@ -5,8 +5,8 @@ import type { ReactElement } from 'react';
 
 import ManageSubscriptionButton from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import {
-  MONTHLY_TIER_CONFIGS,
-  YEARLY_TIER_CONFIGS,
+  getMonthlyTierConfigs,
+  getYearlyTierConfigs,
 } from '@/app/(marketing)/pricing/components/pricing-config';
 import { PricingGrid } from '@/app/(marketing)/pricing/components/PricingGrid';
 import { PricingMissingStripeNotice } from '@/app/(marketing)/pricing/components/PricingMissingStripeNotice';
@@ -50,27 +50,30 @@ interface ResolvedPricingInterval extends PricingInterval {
 
 type PaidTierKey = Exclude<SubscriptionTier, 'free'>;
 
-const PRICING_INTERVALS: readonly [PricingInterval, PricingInterval] = [
-  {
-    value: 'monthly',
-    tabLabel: 'Monthly',
-    configs: MONTHLY_TIER_CONFIGS,
-    intervalLabel: '/month',
-    subscribeLabel: 'Subscribe monthly',
-  },
-  {
-    value: 'yearly',
-    tabLabel: 'Yearly',
-    configs: YEARLY_TIER_CONFIGS,
-    intervalLabel: '/year',
-    subscribeLabel: 'Subscribe yearly',
-    badge: 'Save 20%',
-  },
-];
+function getPricingIntervals(): readonly [PricingInterval, PricingInterval] {
+  const monthlyTierConfigs = getMonthlyTierConfigs();
+  const yearlyTierConfigs = getYearlyTierConfigs();
 
-const PAID_TIER_KEYS: readonly PaidTierKey[] = MONTHLY_TIER_CONFIGS.map(
-  (c) => c.key,
-).filter((key): key is PaidTierKey => key !== 'free');
+  return [
+    {
+      value: 'monthly',
+      tabLabel: 'Monthly',
+      configs: monthlyTierConfigs,
+      intervalLabel: '/month',
+      subscribeLabel: 'Subscribe monthly',
+    },
+    {
+      value: 'yearly',
+      tabLabel: 'Yearly',
+      configs: yearlyTierConfigs,
+      intervalLabel: '/year',
+      subscribeLabel: 'Subscribe yearly',
+      badge: 'Save 20%',
+    },
+  ];
+}
+
+const PAID_TIER_KEYS: readonly PaidTierKey[] = ['starter', 'pro'];
 /** Empty map forced when any paid tier lacks catalog data — grid then uses static fallbacks. */
 const EMPTY_BILLING_CATALOG_GRID_DATA = new Map<
   SubscriptionTier,
@@ -184,7 +187,7 @@ export default async function PricingPage(): Promise<ReactElement> {
         deriveBillingSubscriptionSnapshot(actor).canOpenBillingPortal,
     )) ?? false;
   const intervals = await Promise.all(
-    PRICING_INTERVALS.map(resolvePricingInterval),
+    getPricingIntervals().map(resolvePricingInterval),
   );
   const showMissingStripeNotice = hasMissingStripeData(intervals);
 

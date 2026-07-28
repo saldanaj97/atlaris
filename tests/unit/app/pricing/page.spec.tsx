@@ -42,12 +42,12 @@ vi.mock('@/lib/logging/logger', () => ({
 }));
 
 vi.mock('@/app/(marketing)/pricing/components/pricing-config', () => ({
-  MONTHLY_TIER_CONFIGS: [
+  getMonthlyTierConfigs: () => [
     { key: 'free' },
     { key: 'starter', priceId: 'price_starter_monthly' },
     { key: 'pro', priceId: 'price_pro_monthly' },
   ],
-  YEARLY_TIER_CONFIGS: [
+  getYearlyTierConfigs: () => [
     { key: 'free' },
     { key: 'starter', priceId: 'price_starter_yearly' },
     { key: 'pro', priceId: 'price_pro_yearly' },

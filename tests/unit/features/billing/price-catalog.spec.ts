@@ -20,12 +20,12 @@ describe('checkout price catalog parity', () => {
 
     vi.resetModules();
 
-    const { MONTHLY_TIER_CONFIGS, YEARLY_TIER_CONFIGS } =
+    const { getMonthlyTierConfigs, getYearlyTierConfigs } =
       await import('@/app/(marketing)/pricing/components/pricing-config');
     const { getAllowedCheckoutPriceIds, isAllowedCheckoutPriceId } =
       await import('@/features/billing/price-catalog');
 
-    const paidIds = [...MONTHLY_TIER_CONFIGS, ...YEARLY_TIER_CONFIGS]
+    const paidIds = [...getMonthlyTierConfigs(), ...getYearlyTierConfigs()]
       .map((c) => c.priceId)
       .filter((id): id is string => typeof id === 'string' && id.length > 0);
 
