@@ -15,7 +15,7 @@ colors:
   muted: '#efe5db'
   muted-foreground: '#6e5268'
   accent: '#e6d5c9'
-  accent-foreground: '#c96d42'
+  accent-foreground: '#6e5268'
   destructive: 'oklch(0.64 0.21 25.39)'
   success: 'oklch(0.52 0.14 155)'
   success-foreground: 'oklch(0.99 0 0)'
