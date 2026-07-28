@@ -4,7 +4,6 @@ import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
-import { ui } from '@clerk/ui';
 import { Sora, Work_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
 
@@ -127,7 +126,6 @@ export default function RootLayout({
             localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
-            ui={ui}
           >
             {appContent}
           </ClerkProvider>
