@@ -1,0 +1,408 @@
+/* Pricing card chrome and period controls. */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  width: 100%;
+}
+
+.periodDock {
+  display: flex;
+  justify-content: center;
+  animation: card-arrive 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.04s both;
+}
+
+.periodList {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.75rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+
+.periodTrigger {
+  height: 100%;
+  min-width: 6.5rem;
+  border-radius: 999px;
+  border: none;
+  padding-inline: 1.35rem;
+  font-family: var(--font-family-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--muted-foreground);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.periodTrigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.periodTrigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.periodTrigger[data-state='active'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
+}
+
+/* Three-card composition. */
+
+.cards {
+  max-width: 77.5rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.table {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.875rem;
+  align-items: stretch;
+  width: 100%;
+  perspective: 80rem;
+  perspective-origin: center center;
+}
+
+.card {
+  --card-tilt-x: 0deg;
+  --card-tilt-y: 0deg;
+  --card-content-x: 0px;
+  --card-content-y: 0px;
+  --card-shine-x: 50%;
+  --card-shine-y: 50%;
+  --card-shine-opacity: 0;
+  --card-lift: 0rem;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 33rem;
+  padding: 2.75rem 1.125rem 1.125rem;
+  /* Glow bleeds under the card; face paint is on ::after. */
+  overflow: visible;
+  border: 1.5px solid color-mix(in oklab, var(--border) 82%, transparent);
+  border-radius: 1.5rem;
+  background: transparent;
+  box-shadow: none;
+  transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
+    rotateY(var(--card-tilt-y));
+  transform-style: preserve-3d;
+  transform-origin: center center;
+  /* Entrance: cards dock in one after another, center (featured) last. */
+  opacity: 1;
+  animation: card-arrive 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition:
+    transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+/* Cursor-tracked glow behind the opaque face. */
+.cardUnderGlow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--card-shine-x) var(--card-shine-y),
+    color-mix(in oklab, var(--primary) 42%, transparent) 0,
+    color-mix(in oklab, var(--primary) 14%, transparent) 28%,
+    transparent 58%
+  );
+  opacity: var(--card-shine-opacity);
+  filter: blur(22px);
+  transition: opacity 0.22s ease;
+}
+
+.card:nth-child(1) {
+  animation-delay: 0.06s;
+}
+
+.card:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.card:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.card:hover {
+  --card-lift: -0.375rem;
+
+  z-index: 2;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+@keyframes card-arrive {
+  from {
+    transform: translate3d(0, 1.75rem, 0) rotateX(0deg) rotateY(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
+      rotateY(var(--card-tilt-y));
+  }
+}
+
+/* Opaque card face — sits above the under-glow. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--card);
+}
+
+/* Thin arched flourish near the top — edge to edge inside the card. */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0.7rem;
+  left: 0;
+  right: 0;
+  height: 2.35rem;
+  pointer-events: none;
+  z-index: 2;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-bottom: none;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+
+/* Center featured plan (Starter) — peach accent border */
+.card[data-featured='true'] {
+  border-color: var(--primary);
+  border-width: 2px;
+}
+
+.cardHeader {
+  position: relative;
+  z-index: 1;
+  padding: 0.25rem 0.25rem 1rem;
+  gap: 0.5rem;
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cardTitle {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.cardTitleContainer {
+  min-height: 5.75rem;
+}
+
+.cardFee {
+  font-family: var(--font-family-display);
+  font-weight: 600;
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+}
+
+.cardFeePeriod {
+  font-family: var(--font-family-base);
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.cardDescription {
+  margin-top: 0.35rem;
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.cardBody {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  padding: 0.5rem 0.25rem 1.25rem;
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cardFeaturesList {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cardFeaturesListItem {
+  position: relative;
+  padding-left: 1.05rem;
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.cardFeaturesListItem::before {
+  content: '';
+  position: absolute;
+  top: 0.55em;
+  left: 0;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+
+.cardFooter {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding: 1rem 0 0;
+  border-top: 0;
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
+  transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Side cards — outline pill CTAs */
+.checkoutButton {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 3.25rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-family-display);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: none;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    letter-spacing 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.checkoutButton:not(:disabled):hover {
+  background: color-mix(in oklab, var(--panel-muted) 55%, transparent);
+  border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+  letter-spacing: 0.04em;
+}
+
+.checkoutButton:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+/* Featured CTA — solid peach pill */
+.card[data-featured='true'] .checkoutButton {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.card[data-featured='true'] .checkoutButton:not(:disabled):hover {
+  background: color-mix(in oklab, var(--primary) 90%, black);
+  box-shadow: 0 12px 28px -14px
+    color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+@media (max-width: 900px) {
+  .stack {
+    gap: 1.35rem;
+  }
+
+  .table {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .card {
+    min-height: 28rem;
+    padding-top: 2.5rem;
+    border-radius: 1.25rem;
+  }
+
+  .card::before {
+    top: 0.55rem;
+    height: 1.9rem;
+  }
+
+  .cardTitleContainer {
+    min-height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .periodDock,
+  .card {
+    animation: none;
+    transition: none;
+  }
+
+  .card:hover {
+    --card-lift: 0rem;
+
+    transform: none;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent);
+  }
+
+  .cardUnderGlow {
+    opacity: 0;
+    transition: none;
+  }
+
+  .cardHeader,
+  .cardBody,
+  .cardFooter {
+    transform: none;
+    transition: none;
+  }
+
+  .checkoutButton {
+    transition: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .card {
+    transform: none;
+    will-change: auto;
+  }
+
+  .card:hover {
+    --card-lift: 0rem;
+
+    box-shadow: none;
+  }
+
+  .cardUnderGlow {
+    display: none;
+  }
+
+  .cardHeader,
+  .cardBody,
+  .cardFooter {
+    transform: none;
+  }
+}

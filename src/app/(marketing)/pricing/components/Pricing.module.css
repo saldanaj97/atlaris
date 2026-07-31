@@ -9,7 +9,8 @@
   background: var(--background);
 }
 
-/* Hero entrance — overline rises first, then the headline and subline. */
+/* Hero entrance — overline rises first, then the headline word by word,
+   then the subline settles in. */
 
 .heroOverline {
   font-family: var(--font-family-display);
@@ -22,11 +23,13 @@
   animation: heroRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.heroHeading {
+.heroWord {
+  display: inline-block;
   opacity: 0;
   transform: translateY(0.5em);
   filter: blur(4px);
-  animation: heroRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+  animation: wordRise 0.7s cubic-bezier(0.22, 1, 0.36, 1)
+    calc(0.2s + var(--word-index, 0) * 90ms) forwards;
 }
 
 .heroSubline {
@@ -58,6 +61,13 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes wordRise {
+  to {
+    opacity: 1;
+    transform: none;
     filter: none;
   }
 }
@@ -75,7 +85,7 @@
     animation: none;
   }
 
-  .heroHeading {
+  .heroWord {
     opacity: 1;
     transform: none;
     filter: none;

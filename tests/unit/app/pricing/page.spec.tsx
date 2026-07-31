@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  clerkPricingTableMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
-  pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
+}));
+
+vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+  default: {},
 }));
 
 vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
@@ -14,9 +18,9 @@ vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
 
 vi.mock('@/app/(marketing)/pricing/components/Pricing.module.css', () => ({
   default: {
-    heroHeading: 'heroHeading',
     heroOverline: 'heroOverline',
     heroSubline: 'heroSubline',
+    heroWord: 'heroWord',
     shell: 'shell',
   },
 }));
@@ -30,9 +34,9 @@ vi.mock('@/lib/auth/local-identity', () => ({
   shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
-vi.mock('@clerk/nextjs', () => ({
-  PricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
-    mocks.pricingTableMock(props);
+vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
+  ClerkPricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
+    mocks.clerkPricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
   },
 }));
@@ -68,21 +72,32 @@ describe('PricingPage', () => {
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
-    expect(mocks.pricingTableMock).toHaveBeenCalledWith(
+    expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,
       }),
     );
   });
 
-  it('renders local billing notice instead of Clerk pricing when Clerk UI is disabled', async () => {
+  it('renders local pricing fixtures instead of Clerk when Clerk UI is disabled', async () => {
     mocks.shouldUseClerkUiMock.mockReturnValue(false);
 
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
-    expect(screen.getByRole('alert')).toBeVisible();
-    expect(screen.getByText(/local product testing mode/i)).toBeVisible();
-    expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: /billing period/i }),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Free' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Starter' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Pro' })).toBeVisible();
+    expect(screen.getByText(/local pricing preview/i)).toBeVisible();
+    expect(
+      screen.getAllByRole('button', { name: /preview only/i }),
+    ).toHaveLength(3);
+
+    expect(
+      screen.getByRole('button', { name: 'Yearly · Soon' }),
+    ).toBeDisabled();
   });
 });

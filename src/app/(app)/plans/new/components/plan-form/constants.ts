@@ -1,5 +1,7 @@
 import type { DropdownOption } from './types';
 
+import { MAX_SELECTABLE_PLAN_WEEKS } from '@/shared/constants/tier-limits';
+
 export const SKILL_LEVEL_OPTIONS = [
   { value: 'beginner', label: 'Beginner', description: "I'm new to this" },
   {
@@ -35,5 +37,5 @@ export const DEADLINE_OPTIONS = [
   { value: '4', label: '1 month' },
   { value: '8', label: '2 months' },
   { value: '12', label: '3 months' },
-  { value: '24', label: '6 months' },
+  { value: `${MAX_SELECTABLE_PLAN_WEEKS}`, label: '6 months' },
 ] as const satisfies readonly DropdownOption[];
