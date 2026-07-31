@@ -1,4 +1,4 @@
-/* Clerk PricingTable card chrome and period controls. */
+/* Pricing card chrome and period controls. */
 
 .stack {
   display: flex;
@@ -55,13 +55,7 @@
   box-shadow: none;
 }
 
-/* Theme Clerk PricingTable to After Hours three-card composition. */
-
-.cards :global(.cl-rootBox),
-.cards :global(.cl-pricingTable-root) {
-  width: 100%;
-  max-width: none;
-}
+/* Three-card composition. */
 
 .cards {
   max-width: 77.5rem;
@@ -93,16 +87,15 @@
   display: flex;
   flex-direction: column;
   min-height: 33rem;
-  padding: 2.75rem 1.125rem 0;
-  overflow: hidden;
+  padding: 2.75rem 1.125rem 1.125rem;
+  /* Glow bleeds under the card; face paint is on ::after. */
+  overflow: visible;
   border: 1.5px solid color-mix(in oklab, var(--border) 82%, transparent);
   border-radius: 1.5rem;
-  background: var(--card);
+  background: transparent;
   box-shadow: none;
-  backdrop-filter: blur(6px);
-  isolation: isolate;
-  transform: translate3d(0, var(--card-lift), 0)
-    rotateX(var(--card-tilt-x)) rotateY(var(--card-tilt-y));
+  transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
+    rotateY(var(--card-tilt-y));
   transform-style: preserve-3d;
   transform-origin: center center;
   /* Entrance: cards dock in one after another, center (featured) last. */
@@ -112,6 +105,24 @@
     transform 0.12s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
+}
+
+/* Cursor-tracked glow behind the opaque face. */
+.cardUnderGlow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at var(--card-shine-x) var(--card-shine-y),
+    color-mix(in oklab, var(--primary) 42%, transparent) 0,
+    color-mix(in oklab, var(--primary) 14%, transparent) 28%,
+    transparent 58%
+  );
+  opacity: var(--card-shine-opacity);
+  filter: blur(22px);
+  transition: opacity 0.22s ease;
 }
 
 .cards :global(.cl-pricingTableCard:nth-child(1)) {
@@ -130,9 +141,7 @@
   --card-lift: -0.375rem;
 
   z-index: 2;
-  box-shadow:
-    0 28px 58px -30px color-mix(in oklab, var(--foreground) 58%, transparent),
-    0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent);
 }
 
 @keyframes cardArrive {
@@ -142,9 +151,21 @@
   }
   to {
     opacity: 1;
-    transform: translate3d(0, var(--card-lift), 0)
-      rotateX(var(--card-tilt-x)) rotateY(var(--card-tilt-y));
+    transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
+      rotateY(var(--card-tilt-y));
   }
+}
+
+/* Opaque card face — sits above the under-glow. */
+.cards :global(.cl-pricingTableCard)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: var(--card);
+  backdrop-filter: blur(6px);
 }
 
 /* Thin arched flourish near the top — edge to edge inside the card. */
@@ -162,29 +183,10 @@
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
 }
 
-/* Pointer-tracked light makes the surface feel dimensional without changing chrome. */
-.cards :global(.cl-pricingTableCard)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(
-    circle at var(--card-shine-x) var(--card-shine-y),
-    color-mix(in oklab, var(--primary) 19%, transparent) 0,
-    color-mix(in oklab, var(--primary) 7%, transparent) 24%,
-    transparent 52%
-  );
-  opacity: var(--card-shine-opacity);
-  transition: opacity 0.22s ease;
-}
-
 /* Center featured plan (Starter) — peach accent border */
 .cards :global(.cl-pricingTableCard__starter_plan) {
   border-color: var(--primary);
   border-width: 2px;
-  background: var(--card);
 }
 
 .cards :global(.cl-pricingTableCardHeader) {
@@ -192,11 +194,7 @@
   z-index: 1;
   padding: 0.25rem 0.25rem 1rem;
   gap: 0.5rem;
-  transform: translate3d(
-    var(--card-content-x),
-    var(--card-content-y),
-    0
-  );
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -240,11 +238,7 @@
   z-index: 1;
   flex: 1 1 auto;
   padding: 0.5rem 0.25rem 1.25rem;
-  transform: translate3d(
-    var(--card-content-x),
-    var(--card-content-y),
-    0
-  );
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -286,19 +280,16 @@
   position: relative;
   z-index: 1;
   margin-top: auto;
-  padding: 1rem 0 0.15rem;
+  padding: 1rem 0 0;
   border-top: 0;
-  transform: translate3d(
-    var(--card-content-x),
-    var(--card-content-y),
-    0
-  );
+  transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Side cards — outline pill CTAs */
-.cards :global(.cl-pricingTableCardFooterButton),
 .checkoutButton {
+  display: grid;
+  place-items: center;
   width: 100%;
   min-height: 3.25rem;
   border-radius: 999px;
@@ -316,16 +307,18 @@
     box-shadow 0.25s ease;
 }
 
-.cards :global(.cl-pricingTableCardFooterButton:hover),
-.checkoutButton:hover {
+.checkoutButton:not(:disabled):hover {
   background: color-mix(in oklab, var(--panel-muted) 55%, transparent);
   border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
   letter-spacing: 0.04em;
 }
 
+.checkoutButton:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 /* Featured CTA — solid peach pill */
-.cards
-  :global(.cl-pricingTableCard__starter_plan .cl-pricingTableCardFooterButton),
 .cards :global(.cl-pricingTableCard__starter_plan) .checkoutButton {
   border-color: var(--primary);
   background: var(--primary);
@@ -333,24 +326,11 @@
 }
 
 .cards
-  :global(
-    .cl-pricingTableCard__starter_plan .cl-pricingTableCardFooterButton:hover
-  ),
-.cards :global(.cl-pricingTableCard__starter_plan) .checkoutButton:hover {
+  :global(.cl-pricingTableCard__starter_plan)
+  .checkoutButton:not(:disabled):hover {
   background: color-mix(in oklab, var(--primary) 90%, black);
   box-shadow: 0 12px 28px -14px
     color-mix(in oklab, var(--primary) 70%, transparent);
-}
-
-.checkoutMount {
-  display: block;
-  width: 100%;
-}
-
-.cards
-  :global(.cl-pricingTableCardFooter):has(.checkoutMount > .checkoutButton)
-  :global(.cl-pricingTableCardFooterButton) {
-  display: none;
 }
 
 @media (max-width: 900px) {
@@ -391,10 +371,12 @@
     --card-lift: 0rem;
 
     transform: none;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent);
   }
 
-  .cards :global(.cl-pricingTableCard)::after {
-    display: none;
+  .cardUnderGlow {
+    opacity: 0;
+    transition: none;
   }
 
   .cards :global(.cl-pricingTableCardHeader),
@@ -404,7 +386,6 @@
     transition: none;
   }
 
-  .cards :global(.cl-pricingTableCardFooterButton),
   .checkoutButton {
     transition: none;
   }
@@ -418,9 +399,10 @@
 
   .cards :global(.cl-pricingTableCard:hover) {
     --card-lift: 0rem;
+    box-shadow: none;
   }
 
-  .cards :global(.cl-pricingTableCard)::after {
+  .cardUnderGlow {
     display: none;
   }
 

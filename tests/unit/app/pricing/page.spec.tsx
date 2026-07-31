@@ -1,18 +1,17 @@
 import { ROUTES } from '@/features/navigation/routes';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  clerkPlansMock: vi.fn(),
+  clerkPricingTableMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
-  pricingTableMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
-vi.mock(
-  '@/app/(marketing)/pricing/components/ClerkPricingTable.module.css',
-  () => ({ default: { checkoutMount: 'checkoutMount' } }),
-);
+vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+  default: {},
+}));
 
 vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
@@ -36,13 +35,11 @@ vi.mock('@/lib/auth/local-identity', () => ({
   shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
-vi.mock('@clerk/nextjs', () => ({
-  PricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
-    mocks.pricingTableMock(props);
+vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
+  ClerkPricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
+    mocks.clerkPricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
   },
-  useAuth: () => ({ isLoaded: true, userId: null }),
-  useClerk: () => ({ billing: { getPlans: mocks.clerkPlansMock } }),
 }));
 
 async function renderPricingPage(): Promise<void> {
@@ -55,7 +52,6 @@ async function renderPricingPage(): Promise<void> {
 describe('PricingPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.clerkPlansMock.mockResolvedValue({ data: [] });
     mocks.getOptionalCheckoutBillingSignatureMock.mockResolvedValue(
       'free|active||0',
     );
@@ -76,30 +72,34 @@ describe('PricingPage', () => {
       }),
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
-    expect(
-      screen.getByRole('group', { name: /billing period/i }),
-    ).toBeVisible();
-    expect(screen.getByRole('button', { name: /^monthly$/i })).toBeVisible();
-    expect(screen.getByRole('button', { name: /^yearly$/i })).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
-    expect(mocks.pricingTableMock).toHaveBeenCalledWith(
+    expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,
       }),
     );
   });
 
-  it('renders local billing notice instead of Clerk pricing when Clerk UI is disabled', async () => {
+  it('renders local pricing fixtures instead of Clerk when Clerk UI is disabled', async () => {
     mocks.shouldUseClerkUiMock.mockReturnValue(false);
+    const user = userEvent.setup();
 
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('group', { name: /billing period/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole('alert')).toBeVisible();
-    expect(screen.getByText(/local product testing mode/i)).toBeVisible();
-    expect(screen.getByText(/billing:clerk:fixture/i)).toBeVisible();
+      screen.getByRole('group', { name: /billing period/i }),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Free' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Starter' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Pro' })).toBeVisible();
+    expect(screen.getByText(/local pricing preview/i)).toBeVisible();
+    expect(
+      screen.getAllByRole('button', { name: /preview only/i }),
+    ).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: 'Yearly' }));
+    expect(screen.getByText('$8')).toBeVisible();
+    expect(screen.getByText('$16')).toBeVisible();
   });
 });

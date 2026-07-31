@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { ClerkPricingTable } from '@/app/(marketing)/pricing/components/ClerkPricingTable';
-import { LocalClerkBillingNotice } from '@/app/(marketing)/pricing/components/LocalClerkBillingNotice';
+import { LocalPricingPreview } from '@/app/(marketing)/pricing/components/LocalPricingPreview';
 import { PricingShell } from '@/app/(marketing)/pricing/components/PricingShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
@@ -52,7 +52,7 @@ export default async function PricingPage(): Promise<ReactElement> {
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
         ) : (
-          <LocalClerkBillingNotice />
+          <LocalPricingPreview />
         )}
       </PricingShell>
     </MarketingPageShell>

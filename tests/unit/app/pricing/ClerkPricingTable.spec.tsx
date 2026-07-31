@@ -10,32 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getPlans: vi.fn(),
-  pricingFee: '$10',
   useAuth: vi.fn(),
   useClerk: vi.fn(),
 }));
 
-vi.mock(
-  '@/app/(marketing)/pricing/components/ClerkPricingTable.module.css',
-  () => ({ default: { checkoutMount: 'checkoutMount' } }),
-);
+vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+  default: { checkoutButton: 'checkoutButton' },
+}));
 
 vi.mock('@clerk/nextjs', () => ({
-  PricingTable: () => (
-    <div className='cl-pricingTable'>
-      <article className='cl-pricingTableCard cl-pricingTableCard__starter_plan'>
-        <div className='cl-pricingTableCardBody'>
-          <p className='cl-pricingTableCardFee'>{mocks.pricingFee}</p>
-          <p className='cl-pricingTableCardFeePeriod'>Month</p>
-        </div>
-        <footer className='cl-pricingTableCardFooter'>
-          <button className='cl-pricingTableCardFooterButton' type='button'>
-            Subscribe
-          </button>
-        </footer>
-      </article>
-    </div>
-  ),
   SignInButton: ({
     children,
     forceRedirectUrl,
@@ -70,7 +53,6 @@ vi.mock('@clerk/nextjs/experimental', () => ({
 describe('ClerkPricingTable', () => {
   beforeEach(() => {
     mocks.getPlans.mockReset();
-    mocks.pricingFee = '$10';
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: 'user_123' });
     mocks.useClerk.mockReturnValue({
       billing: { getPlans: mocks.getPlans },
@@ -98,7 +80,18 @@ describe('ClerkPricingTable', () => {
   });
 
   it('tracks pointer position and resets card parallax', async () => {
-    mocks.getPlans.mockResolvedValue({ data: [] });
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: null,
+          features: [],
+          id: 'plan_free',
+          slug: 'free_user',
+        },
+      ],
+    });
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
@@ -125,8 +118,13 @@ describe('ClerkPricingTable', () => {
         newSubscriptionRedirectUrl='/settings#billing'
       />,
     );
-    const card = container.querySelector<HTMLElement>('.cl-pricingTableCard');
-    if (!card) throw new Error('Expected Clerk pricing card');
+    const card = await waitFor(() => {
+      const element = container.querySelector<HTMLElement>(
+        '.cl-pricingTableCard',
+      );
+      if (!element) throw new Error('Expected Clerk pricing card');
+      return element;
+    });
     vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
       bottom: 200,
       height: 200,
@@ -140,11 +138,14 @@ describe('ClerkPricingTable', () => {
     });
 
     fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
+    expect(card.style.getPropertyValue('--card-tilt-y')).toBe('2.50deg');
+    expect(card.style.getPropertyValue('--card-shine-x')).toBe('75.0%');
     expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('1');
 
     const root = card.parentElement?.parentElement;
     if (!root) throw new Error('Expected pricing table root');
     fireEvent.pointerLeave(root);
+    expect(card.style.getPropertyValue('--card-tilt-y')).toBe('0deg');
     expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('0');
   });
 
@@ -269,38 +270,31 @@ describe('ClerkPricingTable', () => {
     expect(window.location.search).toBe('');
   });
 
-  it.each([
-    ['empty', ''],
-    ['Clerk annual', '$96'],
-  ])(
-    'uses Clerk plan data when the rendered fee starts %s',
-    async (_label, renderedFee) => {
-      mocks.pricingFee = renderedFee;
-      mocks.getPlans.mockResolvedValue({
-        data: [
-          {
-            annualFee: { amount: 9600, amountFormatted: '96.00' },
-            annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-            fee: { amount: 1000, amountFormatted: '10.00' },
-            features: [],
-            hasBaseFee: true,
-            id: 'plan_starter',
-            slug: 'starter_plan',
-          },
-        ],
-      });
+  it('renders the monthly fee from Clerk plan data', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: { amount: 9600, amountFormatted: '96.00' },
+          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
+          fee: { amount: 1000, amountFormatted: '10.00' },
+          features: [],
+          hasBaseFee: true,
+          id: 'plan_starter',
+          slug: 'starter_plan',
+        },
+      ],
+    });
 
-      const { ClerkPricingTable } =
-        await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
 
-      render(
-        <ClerkPricingTable
-          appearance={{}}
-          newSubscriptionRedirectUrl='/settings#billing'
-        />,
-      );
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
 
-      expect(await screen.findByText('$10')).toBeVisible();
-    },
-  );
+    expect(await screen.findByText('$10')).toBeVisible();
+  });
 });
