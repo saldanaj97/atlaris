@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 
-const PRICING_CARD_SELECTOR = '.cl-pricingTableCard';
+const PRICING_CARD_SELECTOR = '[data-pricing-card]';
 const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
@@ -113,25 +113,36 @@ export function usePricingCardParallax(
       resetActiveCard();
     };
 
-    const handleCapabilityChange = () => {
-      if (!finePointer.matches || reducedMotion.matches) resetActiveCard();
+    let pointerMoveBound = false;
+    const syncPointerMoveBinding = () => {
+      const enabled = finePointer.matches && !reducedMotion.matches;
+      if (enabled && !pointerMoveBound) {
+        window.addEventListener('pointermove', handlePointerMove);
+        pointerMoveBound = true;
+      } else if (!enabled && pointerMoveBound) {
+        window.removeEventListener('pointermove', handlePointerMove);
+        pointerMoveBound = false;
+      }
+      if (!enabled) resetActiveCard();
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
+    syncPointerMoveBinding();
     root.addEventListener('pointerout', handlePointerOut);
     root.addEventListener('pointerleave', resetActiveCard);
     root.addEventListener('pointercancel', resetActiveCard);
-    finePointer.addEventListener('change', handleCapabilityChange);
-    reducedMotion.addEventListener('change', handleCapabilityChange);
+    finePointer.addEventListener('change', syncPointerMoveBinding);
+    reducedMotion.addEventListener('change', syncPointerMoveBinding);
 
     return () => {
       resetActiveCard();
-      window.removeEventListener('pointermove', handlePointerMove);
+      if (pointerMoveBound) {
+        window.removeEventListener('pointermove', handlePointerMove);
+      }
       root.removeEventListener('pointerout', handlePointerOut);
       root.removeEventListener('pointerleave', resetActiveCard);
       root.removeEventListener('pointercancel', resetActiveCard);
-      finePointer.removeEventListener('change', handleCapabilityChange);
-      reducedMotion.removeEventListener('change', handleCapabilityChange);
+      finePointer.removeEventListener('change', syncPointerMoveBinding);
+      reducedMotion.removeEventListener('change', syncPointerMoveBinding);
     };
   }, [rootRef]);
 }

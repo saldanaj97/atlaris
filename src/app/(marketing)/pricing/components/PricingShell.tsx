@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import { StarField } from '@/app/(marketing)/_shared/StarField';
 
@@ -60,13 +60,14 @@ function Hero() {
         className='mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'
       >
         {words.map((word, index) => (
-          <span
-            key={`${word}-${index}`}
-            className={styles.heroWord}
-            style={{ ['--word-index' as string]: index }}
-          >
-            {word}
-            {index < words.length - 1 ? '\u00A0' : null}
+          <span key={`${word}-${index}`}>
+            <span
+              className={styles.heroWord}
+              style={{ '--word-index': index } as CSSProperties}
+            >
+              {word}
+            </span>
+            {index < words.length - 1 ? ' ' : null}
           </span>
         ))}
       </h1>

@@ -1,19 +1,22 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { formatUsageLimitLabel } from '@/app/_shared/usage-formatting';
+import { isUnlimitedNumber } from '@/app/_shared/usage-formatting';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import {
+  MAX_SELECTABLE_PLAN_WEEKS,
+  TIER_LIMITS,
+} from '@/shared/constants/tier-limits';
 
 function formatMarketingLimit(value: number | null | undefined): string {
-  const label = formatUsageLimitLabel(value);
-  return label === 'unlimited' ? 'Unlimited' : label;
+  return isUnlimitedNumber(value) ? 'Unlimited' : String(value);
 }
 
 function formatMarketingSchedulingHorizon(
   value: number | null | undefined,
 ): string {
-  const label = formatMarketingLimit(value);
-  return label === 'Unlimited' ? label : `${label}-week`;
+  return isUnlimitedNumber(value)
+    ? 'Unlimited'
+    : `${formatMarketingLimit(value)}-week`;
 }
 
 /**
@@ -39,10 +42,10 @@ export const PRICING_PLAN_FEATURES: Record<
     'Priority queue access',
   ],
   pro: [
-    `${formatMarketingLimit(TIER_LIMITS.pro.maxActivePlans)} active plans`,
+    `${formatMarketingLimit(TIER_LIMITS.pro.maxActivePlans)} active learning plans`,
     `${formatMarketingLimit(TIER_LIMITS.pro.monthlyRegenerations)} plan regenerations per month`,
-    `${formatMarketingLimit(TIER_LIMITS.pro.monthlyExports)} exports`,
-    `${formatMarketingSchedulingHorizon(TIER_LIMITS.pro.maxWeeks)} scheduling horizon`,
+    `${formatMarketingLimit(TIER_LIMITS.pro.monthlyExports)} exports per month`,
+    `${MAX_SELECTABLE_PLAN_WEEKS}-week scheduling horizon`,
     'Priority queue + analytics',
   ],
 };

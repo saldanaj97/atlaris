@@ -6,10 +6,14 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { cloneElement, isValidElement, type ReactElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getPlans: vi.fn(),
+  getSubscription: vi.fn(),
+  openCheckout: vi.fn(),
+  openSubscription: vi.fn(),
   useAuth: vi.fn(),
   useClerk: vi.fn(),
 }));
@@ -19,6 +23,7 @@ vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
 }));
 
 vi.mock('@clerk/nextjs', () => ({
+  PricingTable: () => <div data-testid='native-pricing-table' />,
   SignInButton: ({
     children,
     forceRedirectUrl,
@@ -45,7 +50,20 @@ vi.mock('@clerk/nextjs/experimental', () => ({
     planPeriod?: string;
   }) => (
     <span data-period={planPeriod} data-testid={`checkout-${planId}`}>
-      {children}
+      {isValidElement(children)
+        ? cloneElement(children as ReactElement<{ onClick?: () => void }>, {
+            onClick: () => mocks.openCheckout(planId, planPeriod),
+          })
+        : children}
+    </span>
+  ),
+  SubscriptionDetailsButton: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid='subscription-details'>
+      {isValidElement(children)
+        ? cloneElement(children as ReactElement<{ onClick?: () => void }>, {
+            onClick: () => mocks.openSubscription(),
+          })
+        : children}
     </span>
   ),
 }));
@@ -53,15 +71,25 @@ vi.mock('@clerk/nextjs/experimental', () => ({
 describe('ClerkPricingTable', () => {
   beforeEach(() => {
     mocks.getPlans.mockReset();
+    mocks.getSubscription.mockReset();
+    mocks.openCheckout.mockReset();
+    mocks.openSubscription.mockReset();
+    mocks.getSubscription.mockResolvedValue({ subscriptionItems: [] });
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: 'user_123' });
     mocks.useClerk.mockReturnValue({
-      billing: { getPlans: mocks.getPlans },
+      billing: {
+        getPlans: mocks.getPlans,
+        getSubscription: mocks.getSubscription,
+      },
       loaded: true,
     });
     window.history.replaceState({}, '', '/pricing');
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 
   it('still renders when Clerk Billing is unavailable', async () => {
     mocks.useClerk.mockReturnValue({ loaded: true });
@@ -112,19 +140,13 @@ describe('ClerkPricingTable', () => {
 
     const { ClerkPricingTable } =
       await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    const { container } = render(
+    render(
       <ClerkPricingTable
         appearance={{}}
         newSubscriptionRedirectUrl='/settings#billing'
       />,
     );
-    const card = await waitFor(() => {
-      const element = container.querySelector<HTMLElement>(
-        '.cl-pricingTableCard',
-      );
-      if (!element) throw new Error('Expected Clerk pricing card');
-      return element;
-    });
+    const card = await screen.findByRole('article', { name: 'Free' });
     vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
       bottom: 200,
       height: 200,
@@ -147,6 +169,46 @@ describe('ClerkPricingTable', () => {
     fireEvent.pointerLeave(root);
     expect(card.style.getPropertyValue('--card-tilt-y')).toBe('0deg');
     expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('0');
+  });
+
+  it('does not bind parallax pointer tracking for reduced motion', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: null,
+          features: [],
+          id: 'plan_free',
+          slug: 'free_user',
+        },
+      ],
+    });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        addEventListener: vi.fn(),
+        matches: query === '(prefers-reduced-motion: reduce)',
+        media: query,
+        removeEventListener: vi.fn(),
+      })),
+    );
+    const addWindowListener = vi.spyOn(window, 'addEventListener');
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(await screen.findByRole('article', { name: 'Free' })).toBeVisible();
+    expect(addWindowListener).not.toHaveBeenCalledWith(
+      'pointermove',
+      expect.any(Function),
+    );
   });
 
   it('fills empty Clerk feature lists and sends the selected period to Clerk checkout', async () => {
@@ -220,14 +282,14 @@ describe('ClerkPricingTable', () => {
 
     expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
       'data-redirect',
-      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=month',
+      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=month',
     );
 
     await user.click(screen.getByRole('button', { name: 'Yearly' }));
 
     expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
       'data-redirect',
-      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
     );
   });
 
@@ -262,11 +324,9 @@ describe('ClerkPricingTable', () => {
       />,
     );
 
-    await waitFor(() =>
-      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
-        'data-redirect',
-        '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
-      ),
+    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
+      'data-redirect',
+      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
     );
     expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
       'aria-pressed',
@@ -344,12 +404,142 @@ describe('ClerkPricingTable', () => {
     );
 
     await waitFor(() =>
-      expect(screen.getByTestId('checkout-plan_starter')).toHaveAttribute(
-        'data-period',
-        'annual',
-      ),
+      expect(mocks.openCheckout).toHaveBeenCalledWith('plan_starter', 'annual'),
     );
     expect(window.location.search).toBe('');
+  });
+
+  it('resumes the paid plan when free and paid tiers share a Clerk plan ID', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=shared_plan&checkoutPeriod=month',
+    );
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: null,
+          features: [],
+          id: 'shared_plan',
+          slug: 'free_user',
+        },
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: { amount: 1000, amountFormatted: '10.00' },
+          features: [],
+          id: 'shared_plan',
+          slug: 'starter_plan',
+        },
+      ],
+    });
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    await waitFor(() =>
+      expect(mocks.openCheckout).toHaveBeenCalledWith('shared_plan', 'month'),
+    );
+  });
+
+  it('uses Clerk subscription actions for the current plan and downgrades', async () => {
+    mocks.getSubscription.mockResolvedValue({
+      subscriptionItems: [
+        {
+          plan: { hasBaseFee: true, slug: 'starter_plan' },
+          status: 'active',
+        },
+      ],
+    });
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: null,
+          features: [],
+          id: 'plan_free',
+          slug: 'free_user',
+        },
+        {
+          annualFee: null,
+          annualMonthlyFee: null,
+          fee: { amount: 1000, amountFormatted: '10.00' },
+          features: [],
+          id: 'plan_starter',
+          slug: 'starter_plan',
+        },
+      ],
+    });
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Current plan' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Manage subscription' }),
+    ).toBeVisible();
+  });
+
+  it('uses an annual-only plan price and checkout period on the monthly view', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: { amount: 9600, amountFormatted: '96.00' },
+          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
+          fee: null,
+          features: [],
+          id: 'plan_starter',
+          slug: 'starter_plan',
+        },
+      ],
+    });
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(await screen.findByText('$8')).toBeVisible();
+    expect(screen.getByTestId('checkout-plan_starter')).toHaveAttribute(
+      'data-period',
+      'annual',
+    );
+  });
+
+  it('falls back to Clerk pricing when custom plan loading fails', async () => {
+    mocks.getPlans.mockRejectedValue(new Error('network unavailable'));
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {

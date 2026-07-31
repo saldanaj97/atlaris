@@ -1,21 +1,23 @@
 'use client';
 
 import {
-  PricingCards,
-  pricingCardStyles,
   planHasAnnual,
   type BillingPeriod,
   type PricingMoney,
   type PricingPlan,
-} from './PricingCards';
+} from './pricing-card-model';
+import { PricingCards } from './PricingCards';
 import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/pricing/pricing-plan-features';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { ROUTES } from '@/features/navigation/routes';
 import { clientLogger } from '@/lib/logging/client';
 import { PricingTable, SignInButton, useAuth, useClerk } from '@clerk/nextjs';
-import { CheckoutButton } from '@clerk/nextjs/experimental';
+import {
+  CheckoutButton,
+  SubscriptionDetailsButton,
+} from '@clerk/nextjs/experimental';
 import Link from 'next/link';
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 
 type ClerkFeature = { name?: string | null };
 
@@ -28,6 +30,13 @@ type ClerkPlanSnapshot = {
   fee?: PricingMoney | null;
   annualFee?: PricingMoney | null;
   annualMonthlyFee?: PricingMoney | null;
+};
+
+type ClerkSubscriptionSnapshot = {
+  subscriptionItems: Array<{
+    plan: { hasBaseFee: boolean; slug: string };
+    status: 'active' | 'ended' | 'upcoming' | 'past_due';
+  }>;
 };
 
 type ClerkPricingTableProps = {
@@ -48,16 +57,64 @@ const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
 };
 
 const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
+const CHECKOUT_PLAN_SLUG_PARAM = 'checkoutPlanSlug';
 const CHECKOUT_PERIOD_PARAM = 'checkoutPeriod';
+
+const PLAN_RANK: Record<string, number> = {
+  [CLERK_BILLING_PLAN_SLUGS.free]: 0,
+  [CLERK_BILLING_PLAN_SLUGS.starter]: 1,
+  [CLERK_BILLING_PLAN_SLUGS.pro]: 2,
+};
 
 function buildCheckoutSignInRedirect(
   planId: string,
+  planSlug: string,
   period: BillingPeriod,
 ): string {
   return `/pricing?${new URLSearchParams({
     [CHECKOUT_PLAN_PARAM]: planId,
+    [CHECKOUT_PLAN_SLUG_PARAM]: planSlug,
     [CHECKOUT_PERIOD_PARAM]: period,
   }).toString()}`;
+}
+
+function clearCheckoutParams(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete(CHECKOUT_PLAN_PARAM);
+  url.searchParams.delete(CHECKOUT_PLAN_SLUG_PARAM);
+  url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
+  window.history.replaceState(window.history.state, '', url);
+}
+
+function isPaidPlan(plan: PricingPlan, period: BillingPeriod): boolean {
+  return period === 'annual'
+    ? planHasAnnual(plan)
+    : (plan.fee?.amount ?? 0) > 0;
+}
+
+function shouldManageSubscription(
+  planSlug: string,
+  currentPaidPlanSlug: string | null,
+): boolean {
+  if (!currentPaidPlanSlug) return false;
+  if (planSlug === currentPaidPlanSlug) return true;
+  const currentRank = PLAN_RANK[currentPaidPlanSlug];
+  const planRank = PLAN_RANK[planSlug];
+  return currentRank !== undefined && planRank !== undefined
+    ? planRank < currentRank
+    : false;
+}
+
+function currentPaidPlanSlug(
+  subscription: ClerkSubscriptionSnapshot | null,
+): string | null {
+  return (
+    subscription?.subscriptionItems.find(
+      (item) =>
+        item.plan.hasBaseFee &&
+        (item.status === 'active' || item.status === 'past_due'),
+    )?.plan.slug ?? null
+  );
 }
 
 function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
@@ -88,19 +145,43 @@ export function ClerkPricingTable({
   const { isLoaded, userId } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [period, setPeriod] = useState<BillingPeriod>('month');
+  const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
+    null,
+  );
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [subscriptionUserId, setSubscriptionUserId] = useState<string | null>(
+    null,
+  );
+  const [pendingCheckout, setPendingCheckout] = useState<{
+    actionKey: string;
+  } | null>(null);
+  const actionButtons = useRef(new Map<string, HTMLButtonElement>());
+  const resumedCheckout = useRef<string | null>(null);
 
   useEffect(() => {
     if (!loaded || !billing) return;
 
     let cancelled = false;
-    void billing
-      .getPlans()
-      .then((result) => {
+    setLoadFailed(false);
+
+    const subscription =
+      isLoaded && userId
+        ? billing.getSubscription({})
+        : Promise.resolve<ClerkSubscriptionSnapshot | null>(null);
+
+    void Promise.all([
+      billing.getPlans({ for: 'user', pageSize: 100 }),
+      subscription,
+    ])
+      .then(([result, nextSubscription]) => {
         if (cancelled) return;
         setPlans(result.data.map(normalizePlan));
+        setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
+        setSubscriptionUserId(userId ?? null);
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        setLoadFailed(true);
         clientLogger.error('Failed to load Clerk billing plans', {
           context: 'pricing-plans',
           message: error instanceof Error ? error.message : String(error),
@@ -110,62 +191,106 @@ export function ClerkPricingTable({
     return () => {
       cancelled = true;
     };
-  }, [billing, loaded]);
+  }, [billing, isLoaded, loaded, userId]);
 
   useEffect(() => {
     if (plans.length === 0) return;
 
     const url = new URL(window.location.href);
     const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
+    const requestedPlanSlug = url.searchParams.get(CHECKOUT_PLAN_SLUG_PARAM);
     const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
-    if (!requestedPlanId && !requestedPeriod) return;
+    if (!requestedPlanId && !requestedPlanSlug && !requestedPeriod) return;
 
-    const requestedPlan = plans.find((plan) => plan.id === requestedPlanId);
-    if (
-      requestedPlan &&
-      (requestedPeriod === 'month' || requestedPeriod === 'annual')
-    ) {
-      setPeriod(
+    const requestedPlan = plans.find(
+      (plan) =>
+        plan.id === requestedPlanId &&
+        (!requestedPlanSlug || plan.slug === requestedPlanSlug) &&
+        (plan.fee?.amount || planHasAnnual(plan)),
+    );
+    const hasValidPeriod =
+      requestedPeriod === 'month' || requestedPeriod === 'annual';
+    if (requestedPlan && hasValidPeriod) {
+      const nextPeriod =
         requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
           ? 'annual'
-          : 'month',
-      );
+          : requestedPlan.fee?.amount
+            ? 'month'
+            : 'annual';
+      setPeriod(nextPeriod);
+      if (isLoaded && userId && subscriptionUserId === userId) {
+        setPendingCheckout({
+          actionKey: `${requestedPlan.slug}:${nextPeriod}`,
+        });
+      }
     }
 
     // Keep params while signed out so reload/sign-in can preserve intent.
-    if (!isLoaded || !userId) return;
+    if (!isLoaded || !userId || subscriptionUserId !== userId) return;
+    if (requestedPlan && hasValidPeriod) return;
 
-    url.searchParams.delete(CHECKOUT_PLAN_PARAM);
-    url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
-    window.history.replaceState(window.history.state, '', url);
-  }, [isLoaded, plans, userId]);
+    clearCheckoutParams();
+  }, [isLoaded, plans, subscriptionUserId, userId]);
+
+  useEffect(() => {
+    if (!pendingCheckout) return;
+    if (resumedCheckout.current === pendingCheckout.actionKey) return;
+    const button = actionButtons.current.get(pendingCheckout.actionKey);
+    if (!button) return;
+
+    resumedCheckout.current = pendingCheckout.actionKey;
+    clearCheckoutParams();
+    setPendingCheckout(null);
+    button.click();
+  }, [pendingCheckout]);
+
+  if (loadFailed) {
+    return (
+      <PricingTable
+        appearance={appearance}
+        newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+      />
+    );
+  }
 
   return (
     <PricingCards
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}
-      renderAction={(plan, planPeriod) => {
+      renderAction={(plan, planPeriod, actionClassName) => {
         const label = PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Choose plan';
+        const actionKey = `${plan.slug}:${planPeriod}`;
+        const actionRef = (button: HTMLButtonElement | null) => {
+          if (button) actionButtons.current.set(actionKey, button);
+          else actionButtons.current.delete(actionKey);
+        };
 
-        if (!isLoaded) {
+        if (!isLoaded || (userId && subscriptionUserId !== userId)) {
           return (
-            <button
-              className={pricingCardStyles.checkoutButton}
-              disabled
-              type='button'
-            >
+            <button className={actionClassName} disabled type='button'>
               {label}
             </button>
           );
         }
 
-        if (!plan.fee?.amount) {
-          return userId ? (
-            <Link
-              className={pricingCardStyles.checkoutButton}
-              href={ROUTES.PLANS.NEW}
+        if (userId && shouldManageSubscription(plan.slug, activePaidPlanSlug)) {
+          return (
+            <SubscriptionDetailsButton
+              subscriptionDetailsProps={{ appearance }}
             >
+              <button className={actionClassName} ref={actionRef} type='button'>
+                {plan.slug === activePaidPlanSlug
+                  ? 'Current plan'
+                  : 'Manage subscription'}
+              </button>
+            </SubscriptionDetailsButton>
+          );
+        }
+
+        if (!isPaidPlan(plan, planPeriod)) {
+          return userId ? (
+            <Link className={actionClassName} href={ROUTES.PLANS.NEW}>
               {label}
             </Link>
           ) : (
@@ -175,17 +300,18 @@ export function ClerkPricingTable({
               signUpForceRedirectUrl={ROUTES.PLANS.NEW}
               withSignUp
             >
-              <button
-                className={pricingCardStyles.checkoutButton}
-                type='button'
-              >
+              <button className={actionClassName} type='button'>
                 {label}
               </button>
             </SignInButton>
           );
         }
 
-        const redirect = buildCheckoutSignInRedirect(plan.id, planPeriod);
+        const redirect = buildCheckoutSignInRedirect(
+          plan.id,
+          plan.slug,
+          planPeriod,
+        );
         return userId ? (
           <CheckoutButton
             checkoutProps={{ appearance }}
@@ -193,7 +319,7 @@ export function ClerkPricingTable({
             planId={plan.id}
             planPeriod={planPeriod}
           >
-            <button className={pricingCardStyles.checkoutButton} type='button'>
+            <button className={actionClassName} ref={actionRef} type='button'>
               {label}
             </button>
           </CheckoutButton>
@@ -204,7 +330,7 @@ export function ClerkPricingTable({
             signUpForceRedirectUrl={redirect}
             withSignUp
           >
-            <button className={pricingCardStyles.checkoutButton} type='button'>
+            <button className={actionClassName} type='button'>
               {label}
             </button>
           </SignInButton>

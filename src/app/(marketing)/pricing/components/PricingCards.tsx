@@ -1,37 +1,29 @@
 'use client';
 
+import {
+  resolvePlanPeriod,
+  type BillingPeriod,
+  type PricingMoney,
+  type PricingPlan,
+} from './pricing-card-model';
 import { usePricingCardParallax } from './usePricingCardParallax';
+import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { useRef, type ReactNode } from 'react';
 
 import styles from './PricingCards.module.css';
-
-export type BillingPeriod = 'month' | 'annual';
-
-export type PricingMoney = {
-  amount: number;
-  amountFormatted?: string | null;
-  currencySymbol?: string | null;
-};
-
-export type PricingPlan = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  features: readonly string[];
-  fee: PricingMoney | null;
-  annualFee: PricingMoney | null;
-  annualMonthlyFee: PricingMoney | null;
-};
 
 type PricingCardsProps = {
   period: BillingPeriod;
   plans: readonly PricingPlan[];
   onPeriodChange: (period: BillingPeriod) => void;
-  renderAction: (plan: PricingPlan, period: BillingPeriod) => ReactNode;
+  renderAction: (
+    plan: PricingPlan,
+    period: BillingPeriod,
+    actionClassName: string,
+  ) => ReactNode;
 };
 
-export function formatPricingMoney(money: PricingMoney | null): string {
+function formatPricingMoney(money: PricingMoney | null): string {
   if (!money) return '$0';
   const symbol = money.currencySymbol?.trim() || '$';
   const formatted = money.amountFormatted?.trim();
@@ -39,13 +31,6 @@ export function formatPricingMoney(money: PricingMoney | null): string {
     return `${symbol}${formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted}`;
   }
   return `${symbol}${(money.amount / 100).toFixed(money.amount % 100 === 0 ? 0 : 2)}`;
-}
-
-export function planHasAnnual(plan: PricingPlan): boolean {
-  return (
-    (plan.annualFee?.amount ?? 0) > 0 ||
-    (plan.annualMonthlyFee?.amount ?? 0) > 0
-  );
 }
 
 export function PricingCards({
@@ -81,9 +66,10 @@ export function PricingCards({
       </div>
 
       <div ref={rootRef} className={styles.cards} data-plan-period={period}>
-        <div className='cl-pricingTable'>
+        <div className={styles.table}>
           {plans.map((plan) => {
-            const useAnnual = period === 'annual' && planHasAnnual(plan);
+            const planPeriod = resolvePlanPeriod(plan, period);
+            const useAnnual = planPeriod === 'annual';
             const fee = useAnnual
               ? (plan.annualMonthlyFee ?? plan.annualFee)
               : plan.fee;
@@ -97,38 +83,43 @@ export function PricingCards({
             return (
               <article
                 aria-labelledby={titleId}
-                className={`cl-pricingTableCard cl-pricingTableCard__${plan.slug}`}
-                key={plan.id}
+                className={styles.card}
+                data-featured={
+                  plan.slug === CLERK_BILLING_PLAN_SLUGS.starter
+                    ? 'true'
+                    : undefined
+                }
+                data-plan-slug={plan.slug}
+                data-pricing-card
+                key={`${plan.id}-${plan.slug}`}
               >
                 {/* ponytail: under-card cursor glow; face paint lives on ::after */}
                 <span aria-hidden className={styles.cardUnderGlow} />
-                <header className='cl-pricingTableCardHeader'>
-                  <div className='cl-pricingTableCardTitleContainer'>
-                    <h2 className='cl-pricingTableCardTitle' id={titleId}>
+                <header className={styles.cardHeader}>
+                  <div className={styles.cardTitleContainer}>
+                    <h2 className={styles.cardTitle} id={titleId}>
                       {plan.name}
                     </h2>
-                    <p className='cl-pricingTableCardDescription'>
-                      {plan.description}
-                    </p>
+                    <p className={styles.cardDescription}>{plan.description}</p>
                   </div>
                   <div>
-                    <span className='cl-pricingTableCardFee'>
+                    <span className={styles.cardFee}>
                       {formatPricingMoney(fee)}
                     </span>
                     {feePeriod ? (
-                      <span className='cl-pricingTableCardFeePeriod'>
+                      <span className={styles.cardFeePeriod}>
                         / {feePeriod}
                       </span>
                     ) : null}
                   </div>
                 </header>
-                <div className='cl-pricingTableCardBody'>
-                  <div className='cl-pricingTableCardFeatures'>
-                    <ul className='cl-pricingTableCardFeaturesList'>
-                      {plan.features.map((feature) => (
+                <div className={styles.cardBody}>
+                  <div className={styles.cardFeatures}>
+                    <ul className={styles.cardFeaturesList}>
+                      {plan.features.map((feature, index) => (
                         <li
-                          className='cl-pricingTableCardFeaturesListItem'
-                          key={feature}
+                          className={styles.cardFeaturesListItem}
+                          key={`${feature}-${index}`}
                         >
                           {feature}
                         </li>
@@ -136,8 +127,8 @@ export function PricingCards({
                     </ul>
                   </div>
                 </div>
-                <footer className='cl-pricingTableCardFooter'>
-                  {renderAction(plan, useAnnual ? 'annual' : 'month')}
+                <footer className={styles.cardFooter}>
+                  {renderAction(plan, planPeriod, styles.checkoutButton)}
                 </footer>
               </article>
             );
@@ -147,5 +138,3 @@ export function PricingCards({
     </div>
   );
 }
-
-export { styles as pricingCardStyles };

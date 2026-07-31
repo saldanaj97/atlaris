@@ -1,12 +1,9 @@
 'use client';
 
+import type { BillingPeriod, PricingPlan } from './pricing-card-model';
+
 import { PRICING_PLAN_FEATURES } from '../pricing-plan-features';
-import {
-  PricingCards,
-  pricingCardStyles,
-  type BillingPeriod,
-  type PricingPlan,
-} from './PricingCards';
+import { PricingCards } from './PricingCards';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { useState } from 'react';
 
@@ -55,12 +52,8 @@ export function LocalPricingPreview() {
         onPeriodChange={setPeriod}
         period={period}
         plans={LOCAL_PRICING_PLANS}
-        renderAction={() => (
-          <button
-            className={pricingCardStyles.checkoutButton}
-            disabled
-            type='button'
-          >
+        renderAction={(_plan, _period, actionClassName) => (
+          <button className={actionClassName} disabled type='button'>
             Preview only
           </button>
         )}
