@@ -70,7 +70,9 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
 
 `smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
 product launch blockers against local auth, Clerk Billing fixture state, mock AI,
-and disposable Postgres.
+and disposable Postgres. In that mode `/pricing` is the fixture
+`LocalPricingPreview` grid (checkout disabled), not live Clerk Billing — see
+[Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
 
 Never combine `LOCAL_PRODUCT_TESTING=false` with a non-empty `DEV_AUTH_USER_ID` in
 development — the app fails fast on that mixed identity. Real Clerk development

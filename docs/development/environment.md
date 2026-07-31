@@ -40,6 +40,8 @@ If you need a new variable:
 
 The application uses Clerk Auth for UI, route protection, and server session reads.
 
+**Clerk UI delivery:** Auth and billing UI load from Clerk’s CDN through the default `@clerk/nextjs` `ClerkProvider` path (`src/app/layout.tsx`). The app does **not** pin or bundle `@clerk/ui`. CSP allows Clerk Frontend API scripts via `https://*.clerk.accounts.dev` in `src/lib/proxy/security-headers.ts`. If sign-in, UserButton, or pricing UI fails to load, check that CSP allowlist and network access to Clerk accounts hosts before assuming an app bug. Appearance and localization still come from Atlaris props on `ClerkProvider`.
+
 Key auth-related server variables include:
 
 | Variable                            | Purpose                                                                                                                               | Required |
@@ -123,6 +125,8 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 | ---- | ------------ | -------------- |
 | **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id` | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
 | **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota. |
+
+**Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders After Hours plan cards through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
 
 #### Clerk Dashboard contract (same Development instance)
 
