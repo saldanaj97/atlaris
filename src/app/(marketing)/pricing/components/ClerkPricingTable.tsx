@@ -182,6 +182,7 @@ export function ClerkPricingTable({
       .catch((error: unknown) => {
         if (cancelled) return;
         setLoadFailed(true);
+        if (isLoaded && userId) clearCheckoutParams();
         clientLogger.error('Failed to load Clerk billing plans', {
           context: 'pricing-plans',
           message: error instanceof Error ? error.message : String(error),

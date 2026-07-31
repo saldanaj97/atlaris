@@ -287,9 +287,11 @@ describe('ClerkPricingTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Yearly' }));
 
-    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
-      'data-redirect',
-      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+    await waitFor(() =>
+      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
+        'data-redirect',
+        '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+      ),
     );
   });
 
@@ -528,6 +530,11 @@ describe('ClerkPricingTable', () => {
   });
 
   it('falls back to Clerk pricing when custom plan loading fails', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+    );
     mocks.getPlans.mockRejectedValue(new Error('network unavailable'));
 
     const { ClerkPricingTable } =
@@ -540,6 +547,7 @@ describe('ClerkPricingTable', () => {
     );
 
     expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
+    expect(window.location.search).toBe('');
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {
