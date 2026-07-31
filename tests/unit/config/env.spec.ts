@@ -68,6 +68,17 @@ describe('Environment Configuration', () => {
       expect(app.url).toBe('http://localhost:3000');
     });
 
+    it('uses PORTLESS_URL when APP_URL is unset outside production', () => {
+      const env = {
+        NODE_ENV: 'development',
+        PORTLESS_URL: 'https://atlaris.localhost/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('https://atlaris.localhost');
+    });
+
     it('requires https APP_URL in production', () => {
       const env = {
         NODE_ENV: 'production',
