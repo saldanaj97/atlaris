@@ -231,6 +231,78 @@ describe('ClerkPricingTable', () => {
     );
   });
 
+  it('keeps checkout return params in the URL while signed out', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+    );
+    mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: { amount: 9600, amountFormatted: '96.00' },
+          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
+          fee: { amount: 1000, amountFormatted: '10.00' },
+          features: [],
+          hasBaseFee: true,
+          id: 'plan_starter',
+          slug: 'starter_plan',
+        },
+      ],
+    });
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(await screen.findByTestId('sign-in-checkout')).toBeVisible();
+    expect(window.location.search).toBe(
+      '?checkoutPlan=plan_starter&checkoutPeriod=annual',
+    );
+  });
+
+  it('waits for auth to load before showing signed-out checkout actions', async () => {
+    mocks.useAuth.mockReturnValue({ isLoaded: false, userId: null });
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          annualFee: { amount: 9600, amountFormatted: '96.00' },
+          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
+          fee: { amount: 1000, amountFormatted: '10.00' },
+          features: [],
+          hasBaseFee: true,
+          id: 'plan_starter',
+          slug: 'starter_plan',
+        },
+      ],
+    });
+
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+
+    render(
+      <ClerkPricingTable
+        appearance={{}}
+        newSubscriptionRedirectUrl='/settings#billing'
+      />,
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Choose Starter' }),
+    ).toBeDisabled();
+    expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('checkout-plan_starter'),
+    ).not.toBeInTheDocument();
+  });
+
   it('restores a validated annual checkout selection after authentication', async () => {
     window.history.replaceState(
       {},

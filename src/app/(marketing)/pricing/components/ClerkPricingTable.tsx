@@ -85,7 +85,7 @@ export function ClerkPricingTable({
   newSubscriptionRedirectUrl,
 }: ClerkPricingTableProps) {
   const { billing, loaded } = useClerk();
-  const { userId } = useAuth();
+  const { isLoaded, userId } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [period, setPeriod] = useState<BillingPeriod>('month');
 
@@ -97,22 +97,7 @@ export function ClerkPricingTable({
       .getPlans()
       .then((result) => {
         if (cancelled) return;
-        const nextPlans = result.data.map(normalizePlan);
-        const url = new URL(window.location.href);
-        const requestedPlan = nextPlans.find(
-          (plan) => plan.id === url.searchParams.get(CHECKOUT_PLAN_PARAM),
-        );
-        const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
-
-        if (requestedPlan && requestedPeriod === 'annual') {
-          setPeriod(planHasAnnual(requestedPlan) ? 'annual' : 'month');
-        }
-        if (requestedPlan || requestedPeriod) {
-          url.searchParams.delete(CHECKOUT_PLAN_PARAM);
-          url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
-          window.history.replaceState(window.history.state, '', url);
-        }
-        setPlans(nextPlans);
+        setPlans(result.data.map(normalizePlan));
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -127,6 +112,31 @@ export function ClerkPricingTable({
     };
   }, [billing, loaded]);
 
+  useEffect(() => {
+    if (!isLoaded || !userId || plans.length === 0) return;
+
+    const url = new URL(window.location.href);
+    const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
+    const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
+    if (!requestedPlanId && !requestedPeriod) return;
+
+    const requestedPlan = plans.find((plan) => plan.id === requestedPlanId);
+    if (
+      requestedPlan &&
+      (requestedPeriod === 'month' || requestedPeriod === 'annual')
+    ) {
+      setPeriod(
+        requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
+          ? 'annual'
+          : 'month',
+      );
+    }
+
+    url.searchParams.delete(CHECKOUT_PLAN_PARAM);
+    url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
+    window.history.replaceState(window.history.state, '', url);
+  }, [isLoaded, plans, userId]);
+
   return (
     <PricingCards
       onPeriodChange={setPeriod}
@@ -134,6 +144,18 @@ export function ClerkPricingTable({
       plans={plans}
       renderAction={(plan, planPeriod) => {
         const label = PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Choose plan';
+
+        if (!isLoaded) {
+          return (
+            <button
+              className={pricingCardStyles.checkoutButton}
+              disabled
+              type='button'
+            >
+              {label}
+            </button>
+          );
+        }
 
         if (!plan.fee?.amount) {
           return userId ? (
