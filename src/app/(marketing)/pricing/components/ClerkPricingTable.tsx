@@ -162,7 +162,6 @@ export function ClerkPricingTable({
     if (!loaded || !billing) return;
 
     let cancelled = false;
-    setLoadFailed(false);
 
     const subscription =
       isLoaded && userId
@@ -175,6 +174,7 @@ export function ClerkPricingTable({
     ])
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
+        setLoadFailed(false);
         setPlans(result.data.map(normalizePlan));
         setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
         setSubscriptionUserId(userId ?? null);
