@@ -191,7 +191,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 | Surface | Composition                                                                                                         |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                 |
-| Pricing | `MarketingPageShell` + `PricingShell` + route-owned Clerk Billing plan cards with a native `<PricingTable />` fallback |
+| Pricing | `MarketingPageShell` + `PricingShell` + `ClerkPricingTable` → custom `PricingCards` (native `<PricingTable />` only when billing fails to load). Fixture / local product testing: `LocalPricingPreview` (same cards, checkout disabled). |
 | Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline` |
 
 
@@ -200,7 +200,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 **Visual anchors:**
 
 - `src/app/(marketing)/landing/components/Landing.tsx`
-- `src/app/(marketing)/pricing/page.tsx` + `PricingShell.tsx`
+- `src/app/(marketing)/pricing/page.tsx` + `PricingShell.tsx` + `ClerkPricingTable.tsx` / `PricingCards.tsx` / `LocalPricingPreview.tsx` + `pricing-plan-features.ts`
 - `src/components/shared/nav/SiteHeaderChrome.tsx`
 - `src/app/(app)/dashboard/page.tsx`
 - `DESIGN.md` Layout section

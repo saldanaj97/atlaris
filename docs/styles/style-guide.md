@@ -67,7 +67,7 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 - Stars: [`StarField`](<../../src/app/(marketing)/_shared/StarField.tsx>)
 - Pill CTAs: [`marketing-cta.ts`](<../../src/app/(marketing)/_shared/marketing-cta.ts>)
 - Landing: [`Landing.tsx`](<../../src/app/(marketing)/landing/components/Landing.tsx>) — Hero → Drift → Route → Instruments → Questions → Polaris
-- Pricing: [`PricingShell`](<../../src/app/(marketing)/pricing/components/PricingShell.tsx>) + Clerk `<PricingTable />`
+- Pricing: [`PricingShell`](<../../src/app/(marketing)/pricing/components/PricingShell.tsx>) + [`ClerkPricingTable`](<../../src/app/(marketing)/pricing/components/ClerkPricingTable.tsx>) (custom [`PricingCards`](<../../src/app/(marketing)/pricing/components/PricingCards.tsx>); native Clerk `<PricingTable />` only on billing load failure). When Clerk UI is off (`shouldUseClerkUi()` false), [`LocalPricingPreview`](<../../src/app/(marketing)/pricing/components/LocalPricingPreview.tsx>) renders the same card grid with checkout disabled. Feature bullets: [`pricing-plan-features.ts`](<../../src/app/(marketing)/pricing/pricing-plan-features.ts>).
 - Do not assume deleted wrappers: `MarketingHero`, `MarketingSection`, `MarketingCard`
 
 ### Light-mode mapping (reference)
