@@ -113,7 +113,7 @@ export function ClerkPricingTable({
   }, [billing, loaded]);
 
   useEffect(() => {
-    if (!isLoaded || !userId || plans.length === 0) return;
+    if (plans.length === 0) return;
 
     const url = new URL(window.location.href);
     const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
@@ -131,6 +131,9 @@ export function ClerkPricingTable({
           : 'month',
       );
     }
+
+    // Keep params while signed out so reload/sign-in can preserve intent.
+    if (!isLoaded || !userId) return;
 
     url.searchParams.delete(CHECKOUT_PLAN_PARAM);
     url.searchParams.delete(CHECKOUT_PERIOD_PARAM);

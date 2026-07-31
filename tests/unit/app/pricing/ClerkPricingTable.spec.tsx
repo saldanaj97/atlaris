@@ -262,7 +262,15 @@ describe('ClerkPricingTable', () => {
       />,
     );
 
-    expect(await screen.findByTestId('sign-in-checkout')).toBeVisible();
+    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
+      'data-redirect',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+    );
+    expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('$8')).toBeVisible();
     expect(window.location.search).toBe(
       '?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
