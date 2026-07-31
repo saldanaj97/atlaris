@@ -80,7 +80,7 @@ export function usePricingCardParallax(
           ? target.closest<HTMLElement>(PRICING_CARD_SELECTOR)
           : null;
 
-      if (!card || !root.contains(card)) {
+      if (!card) {
         resetActiveCard();
         return;
       }
@@ -106,43 +106,15 @@ export function usePricingCardParallax(
       });
     };
 
-    const handlePointerOut = (event: PointerEvent) => {
-      if (!activeCard) return;
-      const nextTarget = event.relatedTarget;
-      if (nextTarget instanceof Node && activeCard.contains(nextTarget)) return;
-      resetActiveCard();
-    };
-
-    let pointerMoveBound = false;
-    const syncPointerMoveBinding = () => {
-      const enabled = finePointer.matches && !reducedMotion.matches;
-      if (enabled && !pointerMoveBound) {
-        window.addEventListener('pointermove', handlePointerMove);
-        pointerMoveBound = true;
-      } else if (!enabled && pointerMoveBound) {
-        window.removeEventListener('pointermove', handlePointerMove);
-        pointerMoveBound = false;
-      }
-      if (!enabled) resetActiveCard();
-    };
-
-    syncPointerMoveBinding();
-    root.addEventListener('pointerout', handlePointerOut);
+    root.addEventListener('pointermove', handlePointerMove);
     root.addEventListener('pointerleave', resetActiveCard);
     root.addEventListener('pointercancel', resetActiveCard);
-    finePointer.addEventListener('change', syncPointerMoveBinding);
-    reducedMotion.addEventListener('change', syncPointerMoveBinding);
 
     return () => {
       resetActiveCard();
-      if (pointerMoveBound) {
-        window.removeEventListener('pointermove', handlePointerMove);
-      }
-      root.removeEventListener('pointerout', handlePointerOut);
+      root.removeEventListener('pointermove', handlePointerMove);
       root.removeEventListener('pointerleave', resetActiveCard);
       root.removeEventListener('pointercancel', resetActiveCard);
-      finePointer.removeEventListener('change', syncPointerMoveBinding);
-      reducedMotion.removeEventListener('change', syncPointerMoveBinding);
     };
   }, [rootRef]);
 }

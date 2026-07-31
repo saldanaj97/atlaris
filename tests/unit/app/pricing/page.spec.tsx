@@ -1,6 +1,5 @@
 import { ROUTES } from '@/features/navigation/routes';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -82,7 +81,6 @@ describe('PricingPage', () => {
 
   it('renders local pricing fixtures instead of Clerk when Clerk UI is disabled', async () => {
     mocks.shouldUseClerkUiMock.mockReturnValue(false);
-    const user = userEvent.setup();
 
     await renderPricingPage();
 
@@ -98,8 +96,8 @@ describe('PricingPage', () => {
       screen.getAllByRole('button', { name: /preview only/i }),
     ).toHaveLength(3);
 
-    await user.click(screen.getByRole('button', { name: 'Yearly' }));
-    expect(screen.getByText('$8')).toBeVisible();
-    expect(screen.getByText('$16')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Yearly · Soon' }),
+    ).toBeDisabled();
   });
 });

@@ -152,9 +152,7 @@ export function ClerkPricingTable({
   const [subscriptionUserId, setSubscriptionUserId] = useState<string | null>(
     null,
   );
-  const [pendingCheckout, setPendingCheckout] = useState<{
-    actionKey: string;
-  } | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<string | null>(null);
   const actionButtons = useRef(new Map<string, HTMLButtonElement>());
   const resumedCheckout = useRef<string | null>(null);
 
@@ -220,9 +218,7 @@ export function ClerkPricingTable({
             : 'annual';
       setPeriod(nextPeriod);
       if (isLoaded && userId && subscriptionUserId === userId) {
-        setPendingCheckout({
-          actionKey: `${requestedPlan.slug}:${nextPeriod}`,
-        });
+        setPendingCheckout(`${requestedPlan.slug}:${nextPeriod}`);
       }
     }
 
@@ -235,17 +231,17 @@ export function ClerkPricingTable({
 
   useEffect(() => {
     if (!pendingCheckout) return;
-    if (resumedCheckout.current === pendingCheckout.actionKey) return;
-    const button = actionButtons.current.get(pendingCheckout.actionKey);
+    if (resumedCheckout.current === pendingCheckout) return;
+    const button = actionButtons.current.get(pendingCheckout);
     if (!button) return;
 
-    resumedCheckout.current = pendingCheckout.actionKey;
+    resumedCheckout.current = pendingCheckout;
     clearCheckoutParams();
     setPendingCheckout(null);
     button.click();
   }, [pendingCheckout]);
 
-  if (loadFailed) {
+  if (loadFailed || (loaded && !billing)) {
     return (
       <PricingTable
         appearance={appearance}

@@ -48,6 +48,11 @@
   outline-offset: 2px;
 }
 
+.periodTrigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .periodTrigger[data-state='active'] {
   background: var(--primary);
   color: var(--primary-foreground);
@@ -237,12 +242,6 @@
   padding: 0.5rem 0.25rem 1.25rem;
   transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.cardFeatures {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
 }
 
 .cardFeaturesList {

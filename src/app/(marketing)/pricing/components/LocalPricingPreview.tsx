@@ -25,8 +25,8 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     description: 'For building a steady practice.',
     features: PRICING_PLAN_FEATURES.starter,
     fee: { amount: 1000 },
-    annualFee: { amount: 9600 },
-    annualMonthlyFee: { amount: 800 },
+    annualFee: null,
+    annualMonthlyFee: null,
   },
   {
     id: 'local-pro',
@@ -35,8 +35,8 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     description: 'For deeper, longer-running work.',
     features: PRICING_PLAN_FEATURES.pro,
     fee: { amount: 2000 },
-    annualFee: { amount: 19200 },
-    annualMonthlyFee: { amount: 1600 },
+    annualFee: null,
+    annualMonthlyFee: null,
   },
 ];
 

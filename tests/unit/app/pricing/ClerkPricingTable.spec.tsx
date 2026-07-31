@@ -68,6 +68,36 @@ vi.mock('@clerk/nextjs/experimental', () => ({
   ),
 }));
 
+const FREE_PLAN = {
+  annualFee: null,
+  annualMonthlyFee: null,
+  fee: null,
+  features: [],
+  id: 'plan_free',
+  slug: 'free_user',
+};
+
+const STARTER_PLAN = {
+  annualFee: { amount: 9600, amountFormatted: '96.00' },
+  annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
+  fee: { amount: 1000, amountFormatted: '10.00' },
+  features: [],
+  hasBaseFee: true,
+  id: 'plan_starter',
+  slug: 'starter_plan',
+};
+
+async function renderPricingTable(): Promise<void> {
+  const { ClerkPricingTable } =
+    await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+  render(
+    <ClerkPricingTable
+      appearance={{}}
+      newSubscriptionRedirectUrl='/settings#billing'
+    />,
+  );
+}
+
 describe('ClerkPricingTable', () => {
   beforeEach(() => {
     mocks.getPlans.mockReset();
@@ -91,35 +121,16 @@ describe('ClerkPricingTable', () => {
     vi.unstubAllGlobals();
   });
 
-  it('still renders when Clerk Billing is unavailable', async () => {
+  it('falls back to Clerk pricing when Clerk Billing is unavailable', async () => {
     mocks.useClerk.mockReturnValue({ loaded: true });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    await renderPricingTable();
 
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
-
-    expect(screen.getByRole('button', { name: 'Monthly' })).toBeVisible();
+    expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
   });
 
   it('tracks pointer position and resets card parallax', async () => {
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: null,
-          annualMonthlyFee: null,
-          fee: null,
-          features: [],
-          id: 'plan_free',
-          slug: 'free_user',
-        },
-      ],
-    });
+    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
@@ -138,14 +149,7 @@ describe('ClerkPricingTable', () => {
       }),
     );
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
     const card = await screen.findByRole('article', { name: 'Free' });
     vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
       bottom: 200,
@@ -171,19 +175,8 @@ describe('ClerkPricingTable', () => {
     expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('0');
   });
 
-  it('does not bind parallax pointer tracking for reduced motion', async () => {
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: null,
-          annualMonthlyFee: null,
-          fee: null,
-          features: [],
-          id: 'plan_free',
-          slug: 'free_user',
-        },
-      ],
-    });
+  it('disables parallax pointer tracking for reduced motion', async () => {
+    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
@@ -193,49 +186,21 @@ describe('ClerkPricingTable', () => {
         removeEventListener: vi.fn(),
       })),
     );
-    const addWindowListener = vi.spyOn(window, 'addEventListener');
+    const requestAnimationFrame = vi.fn();
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrame);
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
-    expect(await screen.findByRole('article', { name: 'Free' })).toBeVisible();
-    expect(addWindowListener).not.toHaveBeenCalledWith(
-      'pointermove',
-      expect.any(Function),
-    );
+    const card = await screen.findByRole('article', { name: 'Free' });
+    fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
 
   it('fills empty Clerk feature lists and sends the selected period to Clerk checkout', async () => {
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
-
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
     const user = userEvent.setup();
 
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByText('Priority queue access')).toBeVisible();
     const checkout = await screen.findByTestId('checkout-plan_starter');
@@ -255,30 +220,10 @@ describe('ClerkPricingTable', () => {
 
   it("preserves a signed-out visitor's selected plan and period through sign-in", async () => {
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
-
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
     const user = userEvent.setup();
 
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
       'data-redirect',
@@ -302,29 +247,9 @@ describe('ClerkPricingTable', () => {
       '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
       'data-redirect',
@@ -342,29 +267,9 @@ describe('ClerkPricingTable', () => {
 
   it('waits for auth to load before showing signed-out checkout actions', async () => {
     mocks.useAuth.mockReturnValue({ isLoaded: false, userId: null });
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(
       await screen.findByRole('button', { name: 'Choose Starter' }),
@@ -381,29 +286,9 @@ describe('ClerkPricingTable', () => {
       '',
       '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     await waitFor(() =>
       expect(mocks.openCheckout).toHaveBeenCalledWith('plan_starter', 'annual'),
@@ -419,33 +304,17 @@ describe('ClerkPricingTable', () => {
     );
     mocks.getPlans.mockResolvedValue({
       data: [
+        { ...FREE_PLAN, id: 'shared_plan' },
         {
+          ...STARTER_PLAN,
           annualFee: null,
           annualMonthlyFee: null,
-          fee: null,
-          features: [],
           id: 'shared_plan',
-          slug: 'free_user',
-        },
-        {
-          annualFee: null,
-          annualMonthlyFee: null,
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          id: 'shared_plan',
-          slug: 'starter_plan',
         },
       ],
     });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     await waitFor(() =>
       expect(mocks.openCheckout).toHaveBeenCalledWith('shared_plan', 'month'),
@@ -463,33 +332,16 @@ describe('ClerkPricingTable', () => {
     });
     mocks.getPlans.mockResolvedValue({
       data: [
+        FREE_PLAN,
         {
+          ...STARTER_PLAN,
           annualFee: null,
           annualMonthlyFee: null,
-          fee: null,
-          features: [],
-          id: 'plan_free',
-          slug: 'free_user',
-        },
-        {
-          annualFee: null,
-          annualMonthlyFee: null,
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          id: 'plan_starter',
-          slug: 'starter_plan',
         },
       ],
     });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(
       await screen.findByRole('button', { name: 'Current plan' }),
@@ -501,32 +353,34 @@ describe('ClerkPricingTable', () => {
 
   it('uses an annual-only plan price and checkout period on the monthly view', async () => {
     mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: null,
-          features: [],
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
+      data: [{ ...STARTER_PLAN, fee: null }],
     });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByText('$8')).toBeVisible();
     expect(screen.getByTestId('checkout-plan_starter')).toHaveAttribute(
       'data-period',
       'annual',
     );
+  });
+
+  it('marks yearly pricing as coming soon when no plan has an annual price', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...STARTER_PLAN,
+          annualFee: null,
+          annualMonthlyFee: null,
+        },
+      ],
+    });
+
+    await renderPricingTable();
+
+    expect(
+      await screen.findByRole('button', { name: 'Yearly · Soon' }),
+    ).toBeDisabled();
   });
 
   it('falls back to Clerk pricing when custom plan loading fails', async () => {
@@ -537,43 +391,16 @@ describe('ClerkPricingTable', () => {
     );
     mocks.getPlans.mockRejectedValue(new Error('network unavailable'));
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
     expect(window.location.search).toBe('');
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        {
-          annualFee: { amount: 9600, amountFormatted: '96.00' },
-          annualMonthlyFee: { amount: 800, amountFormatted: '8.00' },
-          fee: { amount: 1000, amountFormatted: '10.00' },
-          features: [],
-          hasBaseFee: true,
-          id: 'plan_starter',
-          slug: 'starter_plan',
-        },
-      ],
-    });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
-    const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
-
-    render(
-      <ClerkPricingTable
-        appearance={{}}
-        newSubscriptionRedirectUrl='/settings#billing'
-      />,
-    );
+    await renderPricingTable();
 
     expect(await screen.findByText('$10')).toBeVisible();
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  planHasAnnual,
   resolvePlanPeriod,
   type BillingPeriod,
   type PricingMoney,
@@ -40,6 +41,7 @@ export function PricingCards({
   renderAction,
 }: PricingCardsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const annualAvailable = plans.some(planHasAnnual);
   usePricingCardParallax(rootRef);
 
   return (
@@ -55,17 +57,22 @@ export function PricingCards({
               aria-pressed={period === value}
               className={styles.periodTrigger}
               data-state={period === value ? 'active' : 'inactive'}
+              disabled={value === 'annual' && !annualAvailable}
               key={value}
               onClick={() => onPeriodChange(value)}
               type='button'
             >
-              {value === 'month' ? 'Monthly' : 'Yearly'}
+              {value === 'month'
+                ? 'Monthly'
+                : annualAvailable
+                  ? 'Yearly'
+                  : 'Yearly · Soon'}
             </button>
           ))}
         </div>
       </div>
 
-      <div ref={rootRef} className={styles.cards} data-plan-period={period}>
+      <div ref={rootRef} className={styles.cards}>
         <div className={styles.table}>
           {plans.map((plan) => {
             const planPeriod = resolvePlanPeriod(plan, period);
@@ -89,7 +96,6 @@ export function PricingCards({
                     ? 'true'
                     : undefined
                 }
-                data-plan-slug={plan.slug}
                 data-pricing-card
                 key={`${plan.id}-${plan.slug}`}
               >
@@ -114,18 +120,16 @@ export function PricingCards({
                   </div>
                 </header>
                 <div className={styles.cardBody}>
-                  <div className={styles.cardFeatures}>
-                    <ul className={styles.cardFeaturesList}>
-                      {plan.features.map((feature, index) => (
-                        <li
-                          className={styles.cardFeaturesListItem}
-                          key={`${feature}-${index}`}
-                        >
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <ul className={styles.cardFeaturesList}>
+                    {plan.features.map((feature, index) => (
+                      <li
+                        className={styles.cardFeaturesListItem}
+                        key={`${feature}-${index}`}
+                      >
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <footer className={styles.cardFooter}>
                   {renderAction(plan, planPeriod, styles.checkoutButton)}

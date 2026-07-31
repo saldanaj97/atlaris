@@ -191,7 +191,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 | Surface | Composition                                                                                                         |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                 |
-| Pricing | `MarketingPageShell` + `PricingShell` + Clerk `<PricingTable />` with After Hours appearance                        |
+| Pricing | `MarketingPageShell` + `PricingShell` + route-owned Clerk Billing plan cards with a native `<PricingTable />` fallback |
 | Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline` |
 
 
