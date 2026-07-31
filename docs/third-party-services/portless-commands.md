@@ -1,0 +1,227 @@
+# Portless Commands
+
+Official Docs Link: [https://portless.sh/commands](https://portless.sh/commands)
+
+## Zero-arg mode
+
+```bash
+portless
+```
+
+Runs the `"dev"` script from `package.json` through the proxy. The app name is inferred from the package name, git root, or directory name. From a monorepo root (detected via `pnpm-workspace.yaml` or `package.json` `"workspaces"`), starts all workspace packages that have the target script.
+
+```bash
+portless                      # single app: run dev script
+portless                      # monorepo root: start all apps
+portless --script start       # run "start" instead of "dev"
+```
+
+Use a `portless.json` to override defaults. See [Configuration](https://portless.sh/configuration).
+
+## Run an app
+
+```bash
+portless run [--name <name>] [cmd] [args...]
+portless <name> <cmd> [args...]
+```
+
+`portless run` infers the project name from `portless.json`, `package.json`, git root, or directory name. When no command is given, runs the configured script (default: `"dev"`) from `package.json`. Use `--name` to override the inferred name while still applying worktree prefixes.
+
+`portless <name>` uses an explicit name with no inference or prefixing.
+
+```bash
+portless run                             # run dev script through proxy
+portless run next dev                    # infer name from project
+portless run --name myapp next dev       # override inferred name
+portless myapp next dev                  # explicit name
+portless api pnpm start
+portless docs.myapp next dev
+```
+
+| Flag | Description |
+| --- | --- |
+| `--name <name>` | Override the inferred base name (worktree prefix still applies). Only for `portless run`. |
+| `--script <name>` | Run a specific `package.json` script instead of the default (`"dev"`). Global flag. |
+| `--app-port <number>` | Use a fixed port for the app instead of auto-assignment. Also configurable via `PORTLESS_APP_PORT` or `portless.json`. |
+| `--force` | Override an existing route registered by another process |
+| `--tailscale` | Share the app on your Tailscale network. |
+| `--funnel` | Share the app publicly via Tailscale Funnel. |
+| `--ngrok` | Share the app publicly via ngrok. |
+
+```bash
+portless myapp --tailscale next dev
+portless myapp --funnel next dev
+portless myapp --ngrok next dev
+```
+
+## Get a service URL
+
+```bash
+portless get <name>
+```
+
+Print the URL for a service. Useful for wiring services together in scripts or env vars:
+
+```bash
+BACKEND_URL=$(portless get backend)
+```
+
+Applies worktree prefix detection by default. Use `--no-worktree` to skip it.
+
+## Alias (static routes)
+
+```bash
+portless alias <name> <port>
+portless alias <name> <port> --force
+portless alias --remove <name>
+```
+
+Register a route for a service not managed by portless (e.g. a Docker container). Aliases persist across stale-route cleanup.
+
+```bash
+portless alias my-postgres 5432     # -> https://my-postgres.localhost
+portless alias redis 6379           # -> https://redis.localhost
+portless alias --remove my-postgres # remove the alias
+```
+
+## List routes
+
+```bash
+portless list
+```
+
+Shows active routes and their assigned ports.
+
+## Doctor
+
+```bash
+portless doctor
+```
+
+Checks local portless health without changing state. It reports Node.js compatibility, state directory permissions, proxy liveness, route entries, HTTPS CA trust, hostname resolution, and LAN mode prerequisites, then prints suggested fixes.
+
+## Trust the CA
+
+```bash
+portless trust
+```
+
+Adds the portless certificate authority to your system trust store. Required once for HTTPS with auto-generated certs.
+
+## Clean up
+
+```bash
+portless clean
+```
+
+Stops the proxy if it is running, removes the portless CA from the OS trust store when portless installed it, deletes allowlisted files under `~/.portless`, the system state directory, and `PORTLESS_STATE_DIR` when set, and removes the portless block from `/etc/hosts`. May prompt for elevated privileges. Custom `--cert` / `--key` paths are not removed.
+
+## Prune orphans
+
+```bash
+portless prune
+portless prune --force
+```
+
+Finds and kills orphaned dev server processes left behind by crashed portless sessions. When the CLI is killed with `kill -9` or crashes, child dev servers may survive and continue holding their ports. This command checks routes whose owning process is dead but whose port is still in use, terminates the orphans, and removes the stale route entries. Use `--force` to send SIGKILL instead of SIGTERM.
+
+## Proxy control
+
+### Start
+
+```bash
+portless proxy start
+```
+
+| Flag | Description |
+| --- | --- |
+| `-p, --port <number>` | Proxy port (default: 443, or 80 with `--no-tls`). Auto-elevates with sudo. |
+| `--no-tls` | Disable HTTPS (use plain HTTP on port 80) |
+| `--https` | Enable HTTPS (default, accepted for compatibility) |
+| `--lan` | Enable LAN mode (mDNS `.local` domains for real device testing) |
+| `--ip <address>` | Override auto-detected LAN IP (use with `--lan`) |
+| `--tld <tld>` | Use a custom TLD instead of `.localhost` (e.g. `test`, `dev.example.com`). Repeat for more TLDs. Hostnames still sync to `/etc/hosts` by default. |
+| `--cert <path>` | Custom TLS certificate |
+| `--key <path>` | Custom TLS private key |
+| `--foreground` | Run in foreground instead of daemon mode |
+
+### Stop
+
+```bash
+portless proxy stop
+```
+
+## OS startup service
+
+```bash
+portless service install
+portless service install --lan
+portless service install --wildcard
+PORTLESS_STATE_DIR=~/.portless-lan PORTLESS_LAN=1 portless service install
+portless service status
+portless service uninstall
+```
+
+Installs the proxy as an OS startup service. The default is HTTPS on port 443 with `.localhost` names, but `service install` accepts proxy options including `--port`, `--no-tls`, `--lan`, `--ip`, `--tld`, `--wildcard`, `--cert`, and `--key`. Use `--state-dir <path>` or `PORTLESS_STATE_DIR=<path>` to choose where service state and logs are written.
+
+The chosen service configuration is written into launchd, systemd, or Task Scheduler and reused after reboot. `portless service status` reports the installed port, HTTPS mode, TLDs, LAN mode, wildcard mode, and state directory. macOS and Linux use a root-owned service so port 443 can bind at boot. Windows uses a Task Scheduler startup task that runs as SYSTEM. Installation and removal may require administrator privileges. `portless clean` automatically removes the service.
+
+### LAN mode
+
+Access services from phones and other devices on the same WiFi via mDNS (`.local` domains):
+
+```bash
+portless proxy start --lan
+portless proxy start --lan --https
+portless proxy start --lan --ip 192.168.1.42   # manual IP override
+```
+
+Without LAN mode, the proxy and HTTP redirect listener bind only to `127.0.0.1` and `::1`. LAN mode explicitly binds them to `0.0.0.0` and `::`.
+
+Make it permanent by adding `export PORTLESS_LAN=1` to your shell profile. Portless also remembers LAN mode via `proxy.lan`, so a stopped LAN proxy starts in LAN mode again unless you override it with `PORTLESS_LAN=0` for that start.
+
+Uses `dns-sd` on macOS (built-in) and `avahi-publish-address` on Linux (`avahi-utils`). Not supported on Windows.
+
+**Framework notes:**
+
+- **Next.js**: Add `allowedDevOrigins: ['myapp.local', '*.myapp.local']` to `next.config.js` so LAN mode requests still work when portless adds a git worktree prefix.
+- **Vite / React Router / SvelteKit / Astro**: Handled automatically via `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`.
+- **Expo / React Native**: Add `NSAllowsLocalNetworking` to your `app.json` for iOS ATS (see [Getting Started](https://portless.sh/) for the `.localhost` equivalent using `NSExceptionDomains`):
+
+```json
+{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    }
+  }
+}
+```
+
+## Hosts
+
+```bash
+portless hosts sync     # add current routes to /etc/hosts
+portless hosts clean    # remove portless entries from /etc/hosts
+```
+
+Auto-sync is on by default. Set `PORTLESS_SYNC_HOSTS=0` to disable.
+
+## Bypass portless
+
+```bash
+PORTLESS=0 pnpm dev
+```
+
+Runs the command directly without the proxy.
+
+## Info
+
+```bash
+portless --help
+portless --version
+```

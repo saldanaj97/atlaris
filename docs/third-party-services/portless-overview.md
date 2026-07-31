@@ -1,0 +1,154 @@
+# Portless
+
+Official Docs Link: [https://portless.sh/](https://portless.sh/)
+
+Portless replaces port numbers with stable, named `.localhost` URLs for local development. For humans and agents.
+
+```diff
+- "dev": "next dev"                  # http://localhost:3000
++ "dev": "portless myapp next dev"   # https://myapp.localhost
+```
+
+## Install
+
+**Global (recommended):**
+
+```bash
+npm install -g portless
+```
+
+**Or as a project dev dependency:**
+
+```bash
+npm install -D portless
+```
+
+> portless is pre-1.0. When installed per-project, different contributors may run different versions. The state directory format may change between releases, which can require re-running `portless trust`.
+
+## Run your app
+
+Just run `portless`. It reads the `"dev"` script from `package.json` and runs it through the proxy:
+
+```bash
+portless
+# -> runs "dev" script, https://<project>.localhost
+```
+
+The app name is inferred from `package.json`, git root, or directory name. Use a `portless.json` to override (e.g. `{ "name": "myapp" }` for `https://myapp.localhost`).
+
+You can also run with an explicit command:
+
+```bash
+portless myapp next dev
+# -> https://myapp.localhost
+```
+
+HTTPS with HTTP/2 is enabled by default. On first run, portless generates a local CA, trusts it, and binds port 443 (auto-elevates with sudo on macOS/Linux). Use `--no-tls` for plain HTTP.
+
+The proxy auto-starts when you run an app. A random port (4000–4999) is assigned via the `PORT` environment variable. Most frameworks (Next.js, Express, Nuxt, etc.) respect this automatically. For frameworks that ignore `PORT` (Vite, Astro, React Router, Angular, Expo, React Native), portless auto-injects the right `--port` flag and, when needed, a matching `--host` flag.
+
+## Use in package.json
+
+Your scripts stay clean:
+
+```json
+{
+  "scripts": {
+    "dev": "next dev"
+  }
+}
+```
+
+Then run `portless` or `portless run` to go through the proxy.
+
+You can also use portless directly in scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "portless myapp next dev"
+  }
+}
+```
+
+## Subdomains
+
+Organize services with subdomains:
+
+```bash
+portless api.myapp pnpm start
+# -> https://api.myapp.localhost
+
+portless docs.myapp next dev
+# -> https://docs.myapp.localhost
+```
+
+## Git Worktrees
+
+`portless run` automatically detects git worktrees. In a linked worktree, the branch name is prepended as a subdomain so each worktree gets its own URL without any config changes:
+
+```bash
+# Main worktree (no prefix)
+portless run next dev   # -> https://myapp.localhost
+
+# Linked worktree on branch "fix-ui"
+portless run next dev   # -> https://fix-ui.myapp.localhost
+```
+
+Put `portless run` in your `package.json` once and it works everywhere. The main checkout uses the plain name, each worktree gets a unique subdomain. No collisions, no `--force`.
+
+Use `--name` to override the inferred base name while keeping the worktree prefix:
+
+```bash
+portless run --name myapp next dev   # -> https://fix-ui.myapp.localhost
+```
+
+## Custom TLD
+
+By default, portless uses `.localhost` which auto-resolves to `127.0.0.1` in most browsers. If you prefer a different TLD (e.g. `.test`), use `--tld`:
+
+```bash
+portless proxy start --tld test
+portless myapp next dev
+# -> https://myapp.test
+```
+
+The proxy auto-syncs `/etc/hosts` for route hostnames, so `.test` and other dev hostnames resolve on your machine.
+
+Repeat `--tld` to serve the same app names under multiple TLDs from one proxy:
+
+```bash
+portless proxy start --tld localhost --tld test
+portless myapp next dev
+# -> https://myapp.localhost
+# -> https://myapp.test
+```
+
+When multiple TLDs are configured, `PORTLESS_URL` uses the first TLD. `PORTLESS_TLD` accepts the same comma separated list format, e.g. `PORTLESS_TLD=localhost,test`.
+
+The `--tld` value accepts a lowercase DNS name such as `dev.example.com`, so a domain you own can be used as the "TLD":
+
+```bash
+portless proxy start --tld dev.example.com
+portless myapp next dev
+# -> https://myapp.dev.example.com
+```
+
+This gives local URLs the same structure as production, which keeps OAuth redirect URIs, cross-subdomain cookies, and host-based routing working the same way in both environments. Each label must follow DNS rules: lowercase letters, digits, and interior hyphens, with at most 63 characters per label and 253 characters total.
+
+Recommended: `.test` (IANA-reserved, no collision risk). Avoid `.local` (conflicts with mDNS/Bonjour) and `.dev` (Google-owned, forces HTTPS via HSTS).
+
+## How it works
+
+Portless runs an HTTPS reverse proxy on port 443 by default. Each app registers a route mapping its hostname to an assigned port. Requests to `https://<name>.localhost` are proxied to the app.
+
+The proxy listens only on the IPv4 and IPv6 loopback addresses, `127.0.0.1` and `::1`, by default. Network interfaces are exposed only when LAN mode is explicitly enabled.
+
+```
+Browser (myapp.localhost) -> proxy (port 443) -> App (random port)
+```
+
+## Requirements
+
+- Node.js 24+
+- macOS, Linux, or Windows

@@ -21,6 +21,18 @@ Before writing a plan or handoff file:
 
 Keep the day's `plans/` folder updated with task progress and verification notes when the work calls for it. Durable cross-session lessons still belong in `.agents/lessons.md`, not in daily recap folders.
 
+## Project documentation (`docs/`)
+
+**Docs index:** [`docs/README.md`](docs/README.md) is the directory of every folder and file under `docs/`. Use it to find and open relevant project docs for the current request — architecture, API contracts, database, development, security, styles, testing, CI/CD, and third-party service notes under `docs/third-party-services/` (Clerk CLI, Portless, etc.).
+
+Before implementing or answering from guesswork when the topic is already documented:
+
+1. Skim [`docs/README.md`](docs/README.md) for matching sections/files.
+2. Read only the docs that apply to the request (do not load the whole tree by default).
+3. Prefer those docs over inventing setup, contracts, or runbook steps that already exist.
+
+**Keep the index current:** Whenever you add, remove, rename, or move a file or folder under `docs/` (including any subfolder), update [`docs/README.md`](docs/README.md) in the same change — section table entry, description, and the text tree at the bottom. Do not leave the index stale.
+
 ## Behavioral guidelines
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
