@@ -251,15 +251,19 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
-      'data-redirect',
-      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
-    );
-    expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(screen.getByText('$8')).toBeVisible();
+    // Period restoration from URL runs in an effect after plans load; wait for
+    // the annual redirect instead of asserting the first signed-out render.
+    await waitFor(() => {
+      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
+        'data-redirect',
+        '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+      );
+      expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByText('$8')).toBeVisible();
+    });
     expect(window.location.search).toBe(
       '?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
