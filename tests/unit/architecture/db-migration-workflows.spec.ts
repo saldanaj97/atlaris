@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const WORKFLOWS_DIR = join(REPO_ROOT, '.github', 'workflows');
+const MIGRATIONS_DIR = join(REPO_ROOT, 'supabase', 'migrations');
 
 const migrationWorkflows = [
   {
@@ -29,7 +30,8 @@ describe('Supabase migration workflows', () => {
       const workflow = readWorkflow(fileName);
 
       expect(workflow).toContain('workflow_dispatch:');
-      expect(workflow).toContain(`branches:\n      - ${protectedBranch}`);
+      expect(workflow).not.toContain('\n  push:');
+      expect(workflow).toContain('phase:');
       expect(workflow).toContain(
         `if: github.ref == 'refs/heads/${protectedBranch}'`,
       );
@@ -58,4 +60,37 @@ describe('Supabase migration workflows', () => {
       expect(workflow).toContain(`with:\n          ref: ${protectedBranch}`);
     },
   );
+
+  it.each(migrationWorkflows)(
+    '$fileName separates expand migrations from confirmed contract migrations',
+    ({ fileName }) => {
+      const workflow = readWorkflow(fileName);
+
+      expect(workflow).toContain('Apply expand migrations');
+      expect(workflow).toContain(
+        '20260706221000_archive_legacy_stripe_entitlements.sql',
+      );
+      expect(workflow).toContain('confirm_contract:');
+      expect(workflow).toContain('post-deploy-health-verified');
+      expect(workflow).toContain('supabase db push --include-all');
+    },
+  );
+
+  it('archives Stripe and Clerk join keys before the legacy drop', () => {
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260706221000_archive_legacy_stripe_entitlements.sql',
+      ),
+      'utf8',
+    );
+
+    expect(migration).toContain('"user_id" uuid PRIMARY KEY');
+    expect(migration).toContain('"auth_user_id" text NOT NULL');
+    expect(migration).toContain('"stripe_customer_id" text');
+    expect(migration).toContain('"stripe_subscription_id" text');
+    expect(migration).toContain(
+      'REVOKE ALL ON TABLE "legacy_stripe_entitlement_archive" FROM anon, authenticated',
+    );
+  });
 });

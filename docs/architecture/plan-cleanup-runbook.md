@@ -14,16 +14,16 @@ Cleanup operations:
 
 ## Required Environment
 
-| Variable                   | Purpose                                                                                      | Production expectation                 |
-| -------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------- |
-| `PLAN_CLEANUP_ENABLED`     | Master switch for the plan cleanup HTTP endpoint (defaults to `false` when unset)            | Set `true` in Vercel Production |
-| `MAINTENANCE_WORKER_TOKEN` | Bearer token for internal route auth                                                         | Set to the same secret in Vercel Production and GitHub Actions |
+| Variable                   | Purpose                                                                           | Production expectation                                                            |
+| -------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `PLAN_CLEANUP_ENABLED`     | Master switch for the plan cleanup HTTP endpoint (defaults to `false` when unset) | Set `true` in Vercel Production                                                   |
+| `MAINTENANCE_WORKER_TOKEN` | Bearer token for internal route auth                                              | Same value in Vercel Production and the GitHub `Production – atlaris` environment |
 
 ## Scheduled Cleanup
 
 Plan cleanup has **no** `pg_cron` schedule. Production is scheduled by `.github/workflows/plan-cleanup-scheduler.yml`, which POSTs to `https://atlaris.app/api/internal/maintenance/plans/cleanup` every 15 minutes.
 
-The workflow uses the `MAINTENANCE_WORKER_TOKEN` GitHub Actions secret as a Bearer token. The same value must be configured in Vercel Production. The workflow fails with a status-specific annotation for `401`, `500`, and `503`, and it rejects a `200` response unless the JSON body contains `"ok": true`.
+The workflow job targets the GitHub Actions environment `Production – atlaris` and sends that environment's `MAINTENANCE_WORKER_TOKEN` as a Bearer token. The same value must be configured in Vercel Production. The workflow fails with a status-specific annotation for `401`, `500`, and `503`, and it rejects a `200` response unless the JSON body contains `"ok": true`.
 
 Vercel Cron is intentionally not used: the project is on the Hobby plan, which only supports one cron invocation per day. The 15-minute recovery target therefore uses GitHub Actions.
 
@@ -63,16 +63,16 @@ Failure shape follows the canonical API error contract (`docs/api/error-contract
 
 ## Production Scheduler Verification
 
-| Check | Expected |
-| ----- | -------- |
-| Workflow | `.github/workflows/plan-cleanup-scheduler.yml` |
-| Target URL | `https://atlaris.app/api/internal/maintenance/plans/cleanup` |
-| HTTP method | `POST` |
-| Cadence | Every **15 minutes** |
-| Auth mechanism | `Authorization: Bearer <token>` |
-| Token source | GitHub Actions and Vercel Production use the same `MAINTENANCE_WORKER_TOKEN` value |
-| Scheduler history | At least one recent run shows **HTTP 200** |
-| Response body | `{ "ok": true, "stuckPlansCleaned": <number>, "orphanedAttemptsCleaned": <number> }` |
+| Check             | Expected                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| Workflow          | `.github/workflows/plan-cleanup-scheduler.yml`                                                                |
+| Target URL        | `https://atlaris.app/api/internal/maintenance/plans/cleanup`                                                  |
+| HTTP method       | `POST`                                                                                                        |
+| Cadence           | Every **15 minutes**                                                                                          |
+| Auth mechanism    | `Authorization: Bearer <token>`                                                                               |
+| Token source      | GitHub `Production – atlaris` environment and Vercel Production use the same `MAINTENANCE_WORKER_TOKEN` value |
+| Scheduler history | At least one recent run shows **HTTP 200**                                                                    |
+| Response body     | `{ "ok": true, "stuckPlansCleaned": <number>, "orphanedAttemptsCleaned": <number> }`                          |
 
 Manual spot-check (replace host; use the same header the scheduler uses):
 
@@ -88,12 +88,12 @@ Success evidence: exit prints `200` and `/tmp/plan-cleanup.json` contains `"ok":
 
 Authenticated cleanup executions are wrapped in the Sentry Cron monitor `plan-cleanup-maintenance`. The monitor runs on the same 15-minute schedule, creates an issue after one failed or missed check-in, and resolves after one successful recovery check-in.
 
-| Status | Meaning | Alert expectation | Log / signal hints |
-| ------ | ------- | ----------------- | ------------------ |
-| **401** | Worker token missing, wrong, or mismatched | GitHub workflow fails immediately; Sentry monitor becomes missed if authentication remains broken | `Unauthorized plan cleanup trigger attempt` with `hasToken: true/false` |
-| **503** | Route disabled or production missing `MAINTENANCE_WORKER_TOKEN` | GitHub workflow fails immediately; Sentry monitor becomes missed while cleanup is unavailable | `Plan cleanup is currently unavailable.`; `Maintenance worker token missing in production` |
-| **500** | Cleanup logic failed after auth | GitHub workflow fails immediately and Sentry records an error check-in | `stuck_plans_cleanup_partial_failure` |
-| **200 with a full batch** | At least 1,000 stuck plans were eligible in one run | Investigate recurring full batches before recovery falls behind | `stuck_plans_cleanup_batch_full` |
+| Status                    | Meaning                                                         | Alert expectation                                                                                 | Log / signal hints                                                                         |
+| ------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **401**                   | Worker token missing, wrong, or mismatched                      | GitHub workflow fails immediately; Sentry monitor becomes missed if authentication remains broken | `Unauthorized plan cleanup trigger attempt` with `hasToken: true/false`                    |
+| **503**                   | Route disabled or production missing `MAINTENANCE_WORKER_TOKEN` | GitHub workflow fails immediately; Sentry monitor becomes missed while cleanup is unavailable     | `Plan cleanup is currently unavailable.`; `Maintenance worker token missing in production` |
+| **500**                   | Cleanup logic failed after auth                                 | GitHub workflow fails immediately and Sentry records an error check-in                            | `stuck_plans_cleanup_partial_failure`                                                      |
+| **200 with a full batch** | At least 1,000 stuck plans were eligible in one run             | Investigate recurring full batches before recovery falls behind                                   | `stuck_plans_cleanup_batch_full`                                                           |
 
 Verification steps:
 

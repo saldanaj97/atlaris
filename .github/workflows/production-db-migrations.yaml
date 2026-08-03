@@ -1,10 +1,19 @@
 name: Deploy Migrations to Production
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      phase:
+        description: Migration phase to apply
+        required: true
+        type: choice
+        options:
+          - expand
+          - contract
+      confirm_contract:
+        description: Type post-deploy-health-verified for the contract phase
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -42,5 +51,46 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Push database migrations, including historical missing versions
-        run: supabase db push --include-all
+      - name: Apply expand migrations
+        if: inputs.phase == 'expand'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # ponytail: release-scoped allowlist; add future expands here until phased migration metadata exists.
+          migrations=(
+            supabase/migrations/0036_add_learning_activity_events.sql
+            supabase/migrations/0037_add_user_analytics_timezone.sql
+            supabase/migrations/20260703181947_create_user_preferences_foundation.sql
+            supabase/migrations/20260706201202_create_clerk_billing_webhook_events.sql
+            supabase/migrations/20260706221000_archive_legacy_stripe_entitlements.sql
+            supabase/migrations/20260710151930_create_email_notification_delivery_runs.sql
+            supabase/migrations/20260809190000_create_email_notification_deliveries.sql
+          )
+
+          for migration in "${migrations[@]}"; do
+            file_name="${migration##*/}"
+            version="${file_name%%_*}"
+            if supabase db query --linked --output csv \
+              "SELECT version FROM supabase_migrations.schema_migrations WHERE version = '${version}'" \
+              | grep -qx "$version"; then
+              echo "Skipping applied migration $version"
+              continue
+            fi
+
+            supabase db query --linked --file "$migration"
+            supabase migration repair "$version" --status applied \
+              --password "$SUPABASE_DB_PASSWORD" --yes
+          done
+
+      - name: Apply contract migrations after deploy health verification
+        if: inputs.phase == 'contract'
+        env:
+          CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$CONTRACT_CONFIRMATION" != "post-deploy-health-verified" ]]; then
+            echo "Contract migrations require post-deploy health verification."
+            exit 1
+          fi
+          supabase db push --include-all
