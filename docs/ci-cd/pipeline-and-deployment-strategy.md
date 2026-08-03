@@ -66,23 +66,25 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### 5) `.github/workflows/staging-db-migrations.yaml`
 
-- Trigger: push to `develop` (or manual dispatch from `develop`)
-- Purpose: apply committed Supabase migrations to the staging Supabase project
+- Trigger: manual dispatch from `develop`
+- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
 - Behavior:
   - Skips any run whose ref is not `refs/heads/develop`
   - Checks out `develop`
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
-  - Runs `supabase db push`
+  - `expand` applies and records only the workflow's safe migration list
+  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
 ### 6) `.github/workflows/production-db-migrations.yaml`
 
-- Trigger: push to `main` (or manual dispatch from `main`)
-- Purpose: apply committed Supabase migrations to the production Supabase project
+- Trigger: manual dispatch from `main`
+- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
 - Behavior:
   - Skips any run whose ref is not `refs/heads/main`
   - Checks out `main`
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
-  - Runs `supabase db push`
+  - `expand` applies and records only the workflow's safe migration list
+  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
 ---
 
@@ -100,15 +102,13 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### Merge to `develop`
 
 - Runs `ci-trunk.yml`
-- Runs `staging-db-migrations.yaml`
+- Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
 - Vercel deploys staging
 
 ### Merge to `main`
 
 - Runs `ci-trunk.yml`
-- Runs `production-db-migrations.yaml`
-  - links the production Supabase project
-  - applies committed migrations with `supabase db push`
+- Requires an operator to run `production-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
 
 ### Urgent production hotfix
 
@@ -157,7 +157,8 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 - Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
-- For manual runs, confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
+- Confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
+- For `contract`, confirm rollout health and the Stripe archive counts before entering `post-deploy-health-verified`.
 - Inspect the `supabase db push` logs for the failing migration file.
 
 ### Production deploy blocked
