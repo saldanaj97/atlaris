@@ -9,10 +9,32 @@ export function setModuleLessonGenerationEnabledForTests(
   testOverride = value;
 }
 
+function readLessonGenerationEnabledEnv(): boolean | undefined {
+  const raw = process.env.LESSON_GENERATION_ENABLED;
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') {
+    return true;
+  }
+  if (normalized === 'false' || normalized === '0') {
+    return false;
+  }
+
+  return undefined;
+}
+
 /** Fail closed when the Vercel Flag cannot be evaluated. */
 export async function resolveModuleLessonGenerationEnabled(): Promise<boolean> {
   if (testOverride !== undefined) {
     return testOverride;
+  }
+
+  const envOverride = readLessonGenerationEnabledEnv();
+  if (envOverride !== undefined) {
+    return envOverride;
   }
 
   try {

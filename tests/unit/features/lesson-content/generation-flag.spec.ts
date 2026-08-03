@@ -16,6 +16,7 @@ describe('resolveModuleLessonGenerationEnabled', () => {
   afterEach(() => {
     setModuleLessonGenerationEnabledForTests(undefined);
     mocks.moduleLessonGeneration.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it('returns true when the Vercel Flag evaluates to true', async () => {
@@ -39,6 +40,13 @@ describe('resolveModuleLessonGenerationEnabled', () => {
 
   it('honors the test override without evaluating the flag', async () => {
     setModuleLessonGenerationEnabledForTests(true);
+
+    await expect(resolveModuleLessonGenerationEnabled()).resolves.toBe(true);
+    expect(mocks.moduleLessonGeneration).not.toHaveBeenCalled();
+  });
+
+  it('honors LESSON_GENERATION_ENABLED before evaluating the flag', async () => {
+    vi.stubEnv('LESSON_GENERATION_ENABLED', 'true');
 
     await expect(resolveModuleLessonGenerationEnabled()).resolves.toBe(true);
     expect(mocks.moduleLessonGeneration).not.toHaveBeenCalled();
