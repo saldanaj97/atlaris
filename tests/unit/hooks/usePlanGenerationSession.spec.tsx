@@ -1,6 +1,6 @@
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
-import { useStreamingPlanGeneration } from '@/hooks/useStreamingPlanGeneration';
+import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,7 +28,7 @@ const basePayload: CreateLearningPlanInput = {
   deadlineDate: '2030-01-01',
 };
 
-describe('useStreamingPlanGeneration', () => {
+describe('usePlanGenerationSession', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -49,15 +49,18 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     const readyOrder: string[] = [];
     await act(async () => {
-      await result.current.startGeneration(basePayload, {
-        onPlanIdReady: (id) => {
-          readyOrder.push(`ready:${id}`);
+      await result.current.startSession(
+        { kind: 'create', input: basePayload },
+        {
+          onPlanIdReady: (id) => {
+            readyOrder.push(`ready:${id}`);
+          },
         },
-      });
+      );
       readyOrder.push('resolved');
     });
 
@@ -83,10 +86,10 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     await act(async () => {
-      await result.current.startGeneration(basePayload);
+      await result.current.startSession({ kind: 'create', input: basePayload });
     });
 
     expect(result.current.state.status).toBe('complete');
@@ -113,18 +116,21 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     let sessionResult:
-      | Awaited<ReturnType<typeof result.current.startGeneration>>
+      | Awaited<ReturnType<typeof result.current.startSession>>
       | undefined;
     let notifiedPlanId: string | undefined;
     await act(async () => {
-      sessionResult = await result.current.startGeneration(basePayload, {
-        onPlanIdReady: (id) => {
-          notifiedPlanId = id;
+      sessionResult = await result.current.startSession(
+        { kind: 'create', input: basePayload },
+        {
+          onPlanIdReady: (id) => {
+            notifiedPlanId = id;
+          },
         },
-      });
+      );
     });
 
     expect(sessionResult).toEqual({
@@ -155,16 +161,19 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     let notifiedPlanId: string | undefined;
     await act(async () => {
       await expect(
-        result.current.startGeneration(basePayload, {
-          onPlanIdReady: (id) => {
-            notifiedPlanId = id;
+        result.current.startSession(
+          { kind: 'create', input: basePayload },
+          {
+            onPlanIdReady: (id) => {
+              notifiedPlanId = id;
+            },
           },
-        }),
+        ),
       ).rejects.toThrow('boom');
     });
 
@@ -190,11 +199,11 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     await act(async () => {
       await expect(
-        result.current.startGeneration(basePayload),
+        result.current.startSession({ kind: 'create', input: basePayload }),
       ).rejects.toMatchObject({
         message: 'Rate limit exceeded. Please wait and retry.',
         code: 'RATE_LIMITED',
@@ -221,11 +230,11 @@ describe('useStreamingPlanGeneration', () => {
       ),
     );
 
-    const { result } = renderHook(() => useStreamingPlanGeneration());
+    const { result } = renderHook(() => usePlanGenerationSession());
 
     await act(async () => {
       await expect(
-        result.current.startGeneration(basePayload),
+        result.current.startSession({ kind: 'create', input: basePayload }),
       ).rejects.toMatchObject({
         message: 'Unexpected server response. Please try again.',
         code: 'INVALID_STREAM_RESPONSE',
