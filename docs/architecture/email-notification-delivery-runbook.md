@@ -2,6 +2,52 @@
 
 Use this runbook for the optional email notification scheduler only. It does not apply to push, SMS, in-app, campaigns, or user-local-time scheduling.
 
+## Preference model (developer)
+
+Delivery is **opt-in per category**. Defaults are all categories off (`DEFAULT_EMAIL_NOTIFICATION_PREFERENCES` in `src/shared/notifications/email-preferences.ts`).
+
+| Layer | Location |
+| --- | --- |
+| Master switch + categories | `user_email_notification_settings` / `user_email_notification_preferences` (`supabase/schema/tables/user-preferences.ts`) |
+| Settings UI | `/settings#notifications` → `NotificationsSection` / `NotificationPreferencesForm` |
+| Save API | `PATCH /api/v1/user/preferences/notifications` (`mutation` rate limit) |
+| Effective prefs | `resolveEffectiveEmailPreferences()` — when `unsubscribeAllOptionalEmails` is true, every category is treated as off |
+| Scheduler send path | `src/features/notifications/email/delivery-service.ts` reads prefs via `getEmailNotificationPreferences` |
+
+### PATCH body (strict)
+
+```json
+{
+  "unsubscribeAllOptionalEmails": false,
+  "weeklySummary": true,
+  "dailyReminder": false,
+  "streakReminder": true
+}
+```
+
+Schema: `emailNotificationPreferenceFormValuesSchema` (camelCase form fields map to DB categories `weekly_summary`, `daily_reminder`, `streak_reminder`).
+
+### Public unsubscribe
+
+Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email/unsubscribe?token=…`:
+
+- Tokens from `createUnsubscribeToken()` (`src/features/notifications/email/unsubscribe-token.ts`); default TTL **90 days**; secret `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
+- `GET` is confirmation-only (no mutation). `POST` applies unsubscribe.
+- Route bypasses Clerk auth; authenticates via HMAC token. Still reachable during maintenance (`middleware-policy.ts`).
+
+### Send nuances
+
+- Global kill switch: Vercel Flag `email-notification-delivery` (fail-closed). See [Vercel Flags](../development/environment.md#vercel-flags).
+- Live sends also need Resend env + production HTTPS `APP_URL` for deeplinks/unsubscribe URLs.
+- In a daily pass, a `streak_reminder` can suppress `daily_reminder` for the same user (`suppressed_by_streak_reminder` in `delivery-service.ts`).
+
+### “Why didn’t this user get email?” checklist
+
+1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
+2. Flag `email-notification-delivery` on; Resend configured; `APP_URL` is production HTTPS.
+3. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`).
+4. Not suppressed by streak reminder in the same daily pass.
+
 ## Schedule and ownership
 
 Vercel Cron owns email invocation through one path:
