@@ -53,20 +53,18 @@ function makeLogger() {
 }
 
 function makeDb(opts: {
-  deleteRejects?: unknown;
   insertReturns?: unknown[];
   selectReturns?: unknown[];
 }) {
   const insertReturns = opts.insertReturns ?? [{ eventId: 'evt_fixture' }];
   const selectReturns = opts.selectReturns ?? [];
-  const deleteWhere =
-    opts.deleteRejects === undefined
-      ? vi.fn().mockResolvedValue(undefined)
-      : vi.fn().mockRejectedValue(opts.deleteRejects);
+  const deleteWhere = vi.fn().mockResolvedValue(undefined);
   const updateWhere = vi.fn().mockResolvedValue(undefined);
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+  let transactionOpen = false;
   let db: ServiceRoleDb & {
     deleteWhere: typeof deleteWhere;
+    isTransactionOpen: () => boolean;
     updateSet: typeof updateSet;
     updateWhere: typeof updateWhere;
   };
@@ -91,12 +89,18 @@ function makeDb(opts: {
       update: vi.fn().mockReturnValue({
         set: updateSet,
       }),
-      transaction: vi.fn(<T>(callback: (tx: ServiceRoleDb) => T) =>
-        callback(db),
-      ),
+      transaction: vi.fn(async <T>(callback: (tx: ServiceRoleDb) => T) => {
+        transactionOpen = true;
+        try {
+          return await callback(db);
+        } finally {
+          transactionOpen = false;
+        }
+      }),
     } as unknown as ServiceRoleDb,
     {
       deleteWhere,
+      isTransactionOpen: () => transactionOpen,
       updateSet,
       updateWhere,
     },
@@ -161,23 +165,28 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.delete).not.toHaveBeenCalled();
   });
 
-  it('acks missing local users without retrying the webhook', async () => {
+  it('leaves missing local users retryable', async () => {
     const db = makeDb({});
+    const clerkClient = makeClerkClient();
 
     await expect(
       applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_missing_user', {
+        clerkClient,
         db,
         logger: makeLogger(),
       }),
-    ).resolves.toEqual({ status: 'inserted', result: 'skipped' });
+    ).rejects.toThrow('No local user found for Clerk Billing payer');
 
+    expect(
+      clerkClient.billing.getUserBillingSubscription,
+    ).not.toHaveBeenCalled();
+    expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(db.delete).not.toHaveBeenCalled();
   });
 
-  it('rolls back event idempotency when webhook processing fails', async () => {
+  it('releases event idempotency when webhook processing fails', async () => {
     const processingError = new Error('clerk unavailable');
     const db = makeDb({
-      deleteRejects: new Error('delete failed'),
       selectReturns: [makeLocalUser()],
     });
     const clerkClient = makeClerkClient();
@@ -194,12 +203,18 @@ describe('applyVerifiedClerkBillingEvent', () => {
     ).rejects.toBe(processingError);
 
     expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(db.delete).not.toHaveBeenCalled();
+    expect(db.deleteWhere).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes webhook writes from the current Clerk subscription', async () => {
     const db = makeDb({ selectReturns: [makeLocalUser()] });
     const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockImplementation(
+      async () => {
+        expect(db.isTransactionOpen()).toBe(false);
+        return makeSubscription();
+      },
+    );
 
     await expect(
       applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_current', {
@@ -212,6 +227,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(clerkClient.billing.getUserBillingSubscription).toHaveBeenCalledWith(
       'user_missing',
     );
+    expect(db.transaction).toHaveBeenCalledTimes(2);
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',
@@ -220,7 +236,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
     );
   });
 
-  it('preserves failed payment-attempt state across Clerk refresh', async () => {
+  it('trusts a recovered active subscription after a failed payment attempt', async () => {
     const db = makeDb({ selectReturns: [makeLocalUser()] });
     const clerkClient = makeClerkClient();
 
@@ -233,6 +249,36 @@ describe('applyVerifiedClerkBillingEvent', () => {
           db,
           logger: makeLogger(),
         },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionStatus: 'active',
+        subscriptionTier: 'pro',
+      }),
+    );
+  });
+
+  it('keeps a failed payment attempt when Clerk still reports past due', async () => {
+    const db = makeDb({ selectReturns: [makeLocalUser()] });
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        status: 'past_due',
+        subscriptionItems: [
+          {
+            ...makeSubscription().subscriptionItems[0]!,
+            status: 'past_due',
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeFailedPaymentAttemptEvent(),
+        'evt_failed_attempt_past_due',
+        { clerkClient, db, logger: makeLogger() },
       ),
     ).resolves.toEqual({ status: 'inserted', result: 'updated' });
 

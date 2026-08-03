@@ -124,4 +124,14 @@ describe('Clerk billing webhook POST', () => {
       { logger: mocks.logger },
     );
   });
+
+  it('returns 500 so Clerk retries transient processing failures', async () => {
+    mocks.applyVerifiedClerkBillingEvent.mockRejectedValue(
+      new Error('local user not provisioned'),
+    );
+
+    const response = await POST(request({ 'svix-id': 'evt_1' }));
+
+    expect(response.status).toBe(500);
+  });
 });
