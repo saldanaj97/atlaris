@@ -1,6 +1,7 @@
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - brace-expansion@5.0.9
+  - fast-uri@3.1.5
   - "@next/env@16.2.11"
   - "@next/swc-darwin-arm64@16.2.11"
   - "@next/swc-darwin-x64@16.2.11"
@@ -36,9 +37,9 @@ overrides:
   minimatch: ^10.2.3
   tar: ^7.5.19
   rollup: ^4.59.0
-  fast-uri: ^3.1.4
+  fast-uri: ^3.1.5
   kysely: ^0.28.17
-  undici: ^7.28.0
+  undici: ^7.29.0
   devalue: ^5.8.1
   shell-quote: ^1.8.5
   protobufjs: ^7.6.3
