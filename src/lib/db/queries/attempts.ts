@@ -9,7 +9,6 @@ import type {
 import type { DbTransaction } from '@/lib/db/types';
 
 import { getAttemptCap } from '@/lib/config/env';
-import { hashSha256 } from '@/lib/crypto/hash';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
@@ -39,6 +38,7 @@ import {
 } from '@/shared/constants/generation';
 import { generationAttempts } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 
 /**
  * Server-owned generation persistence: requires explicit dbClient (AttemptsDbClient)
@@ -76,9 +76,11 @@ export async function reserveAttemptSlot(
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
-  const promptHash = hashSha256(
-    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
-  );
+  const promptHash = createHash('sha256')
+    .update(
+      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
+    )
+    .digest('hex');
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 

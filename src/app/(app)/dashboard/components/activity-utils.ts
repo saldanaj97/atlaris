@@ -2,7 +2,7 @@ import type { ActivityItem } from '../types';
 import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
 
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/selectors';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
 type DatedActivity = {
