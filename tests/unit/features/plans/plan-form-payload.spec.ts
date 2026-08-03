@@ -1,19 +1,9 @@
-import type { PlanFormData } from '@/features/plans/plan-form.types';
-
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-const { mockMapOnboardingToCreateInput } = vi.hoisted(() => ({
-  mockMapOnboardingToCreateInput: vi.fn(),
-}));
-
-vi.mock('@/features/plans/create-mapper', () => ({
-  mapOnboardingToCreateInput: mockMapOnboardingToCreateInput,
-}));
-
 import {
   buildCreatePlanPayloadFromForm,
+  type PlanFormData,
   planFormPayloadErrorMessage,
 } from '@/features/plans/plan-form-payload';
+import { describe, expect, it } from 'vitest';
 
 const baseFormData: PlanFormData = {
   topic: 'TypeScript',
@@ -24,41 +14,30 @@ const baseFormData: PlanFormData = {
 };
 
 describe('buildCreatePlanPayloadFromForm', () => {
-  beforeEach(() => {
-    mockMapOnboardingToCreateInput.mockReset();
-  });
-
-  it('normalizes mapper errors into a structured payload error', () => {
-    mockMapOnboardingToCreateInput.mockImplementation(() => {
-      throw new Error('validation failed');
-    });
-
+  it('maps form values directly to the create payload', () => {
     const result = buildCreatePlanPayloadFromForm(baseFormData);
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toEqual(
-        expect.objectContaining({
-          message: 'validation failed',
-          name: 'Error',
-          stack: expect.any(String),
-        }),
-      );
-    }
-  });
-
-  it('normalizes non-Error failures into a structured payload error', () => {
-    mockMapOnboardingToCreateInput.mockImplementation(() => {
-      throw 'boom';
-    });
-
-    expect(buildCreatePlanPayloadFromForm(baseFormData)).toEqual({
-      ok: false,
-      error: {
-        message: 'boom',
-        name: 'Error',
+    expect(result).toMatchObject({
+      ok: true,
+      payload: {
+        topic: 'TypeScript',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        visibility: 'private',
+        origin: 'ai',
       },
     });
+  });
+
+  it('returns a structured error for invalid form values', () => {
+    const result = buildCreatePlanPayloadFromForm({
+      ...baseFormData,
+      weeklyHours: 'invalid',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).not.toBe('');
   });
 });
 
