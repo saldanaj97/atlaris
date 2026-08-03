@@ -1,6 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
 
-import { finalizePageBoundaryResult } from '@/lib/api/page-boundary-result';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 type PageActor = { readonly id: string };
@@ -23,13 +22,11 @@ export function loadAuthorizedPageEntity<TEntity, TSuccess, TUnauth>(options: {
       }
       return options.success(entity);
     })
-    .then((boundaryResult) =>
-      finalizePageBoundaryResult(boundaryResult, {
-        unauthenticatedMessage: options.unauthenticatedMessage,
-        unauthenticated: (message) => {
-          options.logUnauthenticated?.();
-          return options.unauthenticated(message);
-        },
-      }),
-    );
+    .then((boundaryResult) => {
+      if (boundaryResult !== null) {
+        return boundaryResult;
+      }
+      options.logUnauthenticated?.();
+      return options.unauthenticated(options.unauthenticatedMessage);
+    });
 }

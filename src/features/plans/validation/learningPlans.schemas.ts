@@ -1,14 +1,16 @@
 import {
-  LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
-  SKILL_LEVEL_ENUM,
   TOPIC_MAX_LENGTH,
-  weeklyHoursSchema,
-} from './shared';
+} from '@/shared/constants/learning-plans';
 import {
   createLearningPlanNotesSchema,
   topicSchema,
 } from '@/shared/schemas/learning-plans.schemas';
+import {
+  LEARNING_STYLE_ENUM,
+  SKILL_LEVEL_ENUM,
+  weeklyHoursSchema,
+} from '@/shared/schemas/plan-validation.schemas';
 import { z } from 'zod';
 
 const planNotesOverrideSchema = z

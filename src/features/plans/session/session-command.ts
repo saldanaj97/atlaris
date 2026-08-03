@@ -21,7 +21,6 @@ import {
   classifyUnhandledGenerationError,
 } from './stream-cleanup-policy';
 import { resolveUserTier } from '@/features/billing/tier';
-import { getRequestSearchParams } from '@/lib/api/request-url';
 import { logger } from '@/lib/logging/logger';
 
 /** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
@@ -218,7 +217,7 @@ function resolveCreateStreamModel({
 }): string | undefined {
   const { modelOverride, resolutionSource, suppliedModel } =
     resolveStreamModelResolution({
-      searchParams: getRequestSearchParams(req),
+      searchParams: new URL(req.url).searchParams,
       tier: createResult.tier,
       savedPreferredAiModel,
     });
