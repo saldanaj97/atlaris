@@ -17,7 +17,7 @@ import {
   type ClerkBillingApplyResult,
 } from '@/features/billing/clerk-billing/reconciliation';
 import { createLogger } from '@/lib/logging/logger';
-import dotenv from 'dotenv';
+import { existsSync } from 'node:fs';
 
 type FixtureStatus = 'active' | 'past_due' | 'canceled' | 'ended';
 
@@ -121,9 +121,8 @@ function assertLocalhostOnly(connectionUrl: string): void {
 }
 
 async function main(): Promise<void> {
-  if (!process.env.CI) {
-    dotenv.config({ path: '.env.local' });
-  }
+  if (!process.env.CI && existsSync('.env.local'))
+    process.loadEnvFile('.env.local');
 
   const args = parseArgs(process.argv.slice(2));
   if (args['allow-non-local'] !== 'true') {
