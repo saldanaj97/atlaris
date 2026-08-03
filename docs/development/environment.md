@@ -12,7 +12,7 @@ Guidelines for environment variables and logging in this project.
 
 Prefer the exported grouped configs instead of raw keys:
 
-- `appEnv` - Runtime mode, app URL, maintenance mode
+- `appEnv` - Runtime mode, app URL, maintenance mode (`MAINTENANCE_MODE` env hard-on; combines with the `maintenance-mode` Vercel Flag — see [Vercel Flags](#vercel-flags))
 - `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
@@ -27,6 +27,28 @@ Prefer the exported grouped configs instead of raw keys:
 - `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
+
+### Vercel Flags
+
+Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are **not** the Workflow SDK product toggles in `workflowEnv`.
+
+| Variable | Purpose | Required |
+| -------- | ------- | -------- |
+| `FLAGS` | Enables the Vercel Flags adapter (`vercelAdapter()`). When unset, flags resolve through a local fallback that returns each flag's `defaultValue` (or `false`). | Preview/Production when using Vercel Flags |
+| `FLAGS_SECRET` | Flags Explorer / encryption secret for the Vercel Flags integration | Preview/Production when using Vercel Flags |
+
+Declared flags:
+
+| Flag key | Code export | Default / failure mode | Combines with |
+| -------- | ----------- | ---------------------- | ------------- |
+| `maintenance-mode` | `maintenanceMode` | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
+| `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts` | Resend + production `APP_URL` (see `emailEnv`) |
+
+**Local without `FLAGS`:** both flags resolve to their fallback (`defaultValue ?? false`), so email delivery stays off and maintenance stays off unless `MAINTENANCE_MODE=true`.
+
+**Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
+
+Hosted templates list `FLAGS` / `FLAGS_SECRET` in `.env.preview.example` and `.env.production.example`. Production also documents `MAINTENANCE_MODE`.
 
 ### Adding New Variables
 
@@ -173,6 +195,10 @@ Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current
 
 Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
 
+### Cloud agents (1Password Environments)
+
+Codex / Cursor cloud agents can materialize `.env.local` from a 1Password Environment via `scripts/agents/codex-1password-env.sh`. Required cloud secrets: `OP_ENVIRONMENT_ID`, `OP_SERVICE_ACCOUNT_TOKEN`. This path is separate from Vercel hosted env templates. Full steps and overwrite rules: [1Password agents setup](../third-party-services/1password-agents-setup.md). Seeded shape reference: `.env.agents.example`.
+
 ## Logging
 
 ### Critical Rule: Server vs Client
@@ -262,6 +288,9 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 ## Related Files
 
 - `docs/development/logging.md` - Comprehensive logging architecture guide
+- `docs/third-party-services/1password-agents-setup.md` - Cloud agent env bootstrap from 1Password
+- `docs/architecture/email-notification-delivery-runbook.md` - Email delivery ops + preference model
+- `src/flags.ts` - Vercel Flags declarations
 - `src/lib/config/env.ts` - Environment variable definitions and validation
 - `src/lib/logging/logger.ts` - Server-side Pino structured logging
 - `src/lib/logging/client.ts` - Client-side console wrapper
