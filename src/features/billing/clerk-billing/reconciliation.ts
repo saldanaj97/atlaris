@@ -58,20 +58,24 @@ async function refreshClerkBillingSource(
   );
   const refreshedSource =
     clerkBillingSourceFromBackendSubscription(subscription);
+  const recoveredFromFailedAttempt =
+    source.paymentAttemptStatus === 'failed' &&
+    refreshedSource.subscriptionStatus !== 'past_due' &&
+    !refreshedSource.items.some((item) => item.status === 'past_due');
 
   return {
     ...refreshedSource,
     type: source.type,
     payerUserId: source.payerUserId,
-    paymentAttemptStatus:
-      source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
+    paymentAttemptStatus: recoveredFromFailedAttempt
+      ? refreshedSource.paymentAttemptStatus
+      : (source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus),
   };
 }
 
 export async function applyClerkBillingSource(
   source: ClerkBillingProjectionSource,
   deps: ReconciliationDeps,
-  options: { refreshFromClerk?: boolean } = {},
 ): Promise<ClerkBillingApplyResult> {
   const db: ReconciliationDb = deps.db ?? serviceRoleDb;
 
@@ -104,15 +108,11 @@ export async function applyClerkBillingSource(
     return 'skipped';
   }
 
-  const effectiveSource =
-    options.refreshFromClerk === true
-      ? await refreshClerkBillingSource(source, deps)
-      : source;
-  const projection = projectClerkBillingSource(effectiveSource, user);
+  const projection = projectClerkBillingSource(source, user);
 
   if (projection === null) {
     deps.logger.info(
-      { authUserId: user.authUserId, type: effectiveSource.type },
+      { authUserId: user.authUserId, type: source.type },
       'Clerk Billing event did not require a local projection update',
     );
     return 'ignored';
@@ -131,7 +131,7 @@ export async function applyClerkBillingSource(
       authUserId: user.authUserId,
       subscriptionStatus: projection.subscriptionStatus,
       subscriptionTier: projection.subscriptionTier,
-      type: effectiveSource.type,
+      type: source.type,
       userId: user.id,
     },
     'Clerk Billing projection applied',
@@ -140,30 +140,15 @@ export async function applyClerkBillingSource(
   return 'updated';
 }
 
-async function dispatchVerifiedClerkBillingEvent(
-  event: WebhookEvent,
-  deps: ReconciliationDeps,
-): Promise<ClerkBillingApplyResult> {
-  const source = clerkBillingSourceFromWebhook(event);
-  if (source === null) {
-    deps.logger.debug(
-      { type: event.type },
-      'Ignored non-billing Clerk webhook event',
-    );
-    return 'ignored';
-  }
-
-  return applyClerkBillingSource(source, deps, { refreshFromClerk: true });
-}
-
 export async function applyVerifiedClerkBillingEvent(
   event: WebhookEvent,
   eventId: string,
   deps: ApplyVerifiedClerkBillingEventDeps,
 ): Promise<ApplyVerifiedClerkBillingEventResult> {
   const db = deps.db ?? serviceRoleDb;
+  const source = clerkBillingSourceFromWebhook(event);
 
-  return db.transaction(async (tx) => {
+  const claim = await db.transaction(async (tx) => {
     const [insertedRow] = await tx
       .insert(clerkWebhookEvents)
       .values({
@@ -178,15 +163,67 @@ export async function applyVerifiedClerkBillingEvent(
         { eventId, type: event.type },
         'Duplicate Clerk webhook event skipped',
       );
-      return { status: 'duplicate' };
+      return 'duplicate' as const;
     }
 
-    const result = await dispatchVerifiedClerkBillingEvent(event, {
-      ...deps,
-      db: tx,
-    });
-    return { status: 'inserted', result };
+    if (source?.payerUserId) {
+      const [localUser] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.authUserId, source.payerUserId))
+        .limit(1);
+
+      if (!localUser) {
+        deps.logger.warn(
+          { eventId, payerUserId: source.payerUserId, type: event.type },
+          'No local user found for Clerk Billing payer; retrying webhook',
+        );
+        throw new Error('No local user found for Clerk Billing payer');
+      }
+    }
+
+    return 'inserted' as const;
   });
+
+  if (claim === 'duplicate') {
+    return { status: 'duplicate' };
+  }
+
+  if (source === null) {
+    deps.logger.debug(
+      { type: event.type },
+      'Ignored non-billing Clerk webhook event',
+    );
+    return { status: 'inserted', result: 'ignored' };
+  }
+
+  try {
+    const refreshedSource = await refreshClerkBillingSource(source, deps);
+    const result = await db.transaction((tx) =>
+      applyClerkBillingSource(refreshedSource, { ...deps, db: tx }),
+    );
+    if (result === 'skipped') {
+      throw new Error('No local user found for Clerk Billing payer');
+    }
+    return { status: 'inserted', result };
+  } catch (error) {
+    try {
+      await db
+        .delete(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId));
+    } catch (cleanupError) {
+      deps.logger.error(
+        { cleanupError, eventId, error, type: event.type },
+        'Failed to release Clerk webhook event for retry',
+      );
+    }
+
+    deps.logger.warn(
+      { error, eventId, type: event.type },
+      'Clerk Billing webhook processing failed; retry requested',
+    );
+    throw error;
+  }
 }
 
 export async function reconcileClerkBillingEntitlements({
