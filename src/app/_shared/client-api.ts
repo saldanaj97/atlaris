@@ -10,51 +10,6 @@ function getClientErrorMessage(
   return error instanceof Error ? error.message : fallbackMessage;
 }
 
-function createTimeoutSignal(timeoutMs: number): {
-  signal: AbortSignal;
-  cleanup: () => void;
-  didTimeout: () => boolean;
-} {
-  if (typeof AbortSignal.timeout === 'function') {
-    const signal = AbortSignal.timeout(timeoutMs);
-    let timedOut = false;
-
-    const onAbort = (): void => {
-      if (
-        signal.reason instanceof DOMException &&
-        signal.reason.name === 'TimeoutError'
-      ) {
-        timedOut = true;
-      }
-    };
-
-    signal.addEventListener('abort', onAbort);
-
-    return {
-      signal,
-      cleanup: () => {
-        signal.removeEventListener('abort', onAbort);
-      },
-      didTimeout: () => timedOut,
-    };
-  }
-
-  const controller = new AbortController();
-  let timedOut = false;
-  const timeoutId = globalThis.setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
-
-  return {
-    signal: controller.signal,
-    cleanup: () => {
-      globalThis.clearTimeout(timeoutId);
-    },
-    didTimeout: () => timedOut,
-  };
-}
-
 function isTimeoutAbortError(error: unknown): error is DOMException {
   return error instanceof DOMException && error.name === 'TimeoutError';
 }
@@ -74,11 +29,11 @@ export async function requestJson<T>(params: {
   const timeoutSignal =
     params.timeoutMs === undefined
       ? null
-      : createTimeoutSignal(params.timeoutMs);
+      : AbortSignal.timeout(params.timeoutMs);
 
   const init: RequestInit = {
     ...params.init,
-    signal: timeoutSignal === null ? params.init?.signal : timeoutSignal.signal,
+    signal: timeoutSignal ?? params.init?.signal,
   };
 
   let response: Response;
@@ -86,11 +41,11 @@ export async function requestJson<T>(params: {
   try {
     response = await fetch(params.url, init);
   } catch (error: unknown) {
-    timeoutSignal?.cleanup();
-
-    if (isAbortError(error)) {
+    if (isAbortError(error) || isTimeoutAbortError(error)) {
       const timedOut =
-        timeoutSignal?.didTimeout() === true || isTimeoutAbortError(error);
+        isTimeoutAbortError(error) ||
+        (timeoutSignal?.reason instanceof DOMException &&
+          timeoutSignal.reason.name === 'TimeoutError');
 
       if (timedOut) {
         return {
@@ -108,8 +63,6 @@ export async function requestJson<T>(params: {
       message: getClientErrorMessage(error, params.fallbackMessage),
       error,
     };
-  } finally {
-    timeoutSignal?.cleanup();
   }
 
   if (!response.ok) {
