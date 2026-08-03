@@ -17,6 +17,8 @@ type LongGenerationKey = {
   moduleId: string;
 };
 
+type PollOutcome = 'continue' | 'terminal' | 'error' | 'aborted';
+
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
@@ -99,11 +101,16 @@ export function useModuleLessonGeneration({
 
     let cancelled = false;
     let timeoutId: number | undefined;
+    let activeController: AbortController | undefined;
     const statusUrl = buildModuleLessonStatusUrl(planId, moduleId);
+    generationPollCountRef.current = 0;
 
-    const pollStatus = async (): Promise<'continue' | 'terminal' | 'error'> => {
+    const pollStatus = async (signal: AbortSignal): Promise<PollOutcome> => {
       try {
-        const response = await fetch(statusUrl, { cache: 'no-store' });
+        const response = await fetch(statusUrl, {
+          cache: 'no-store',
+          signal,
+        });
 
         if (!response.ok) {
           clientLogger.error('Module lesson generation status request failed', {
@@ -152,9 +159,12 @@ export function useModuleLessonGeneration({
           return 'continue';
         }
 
-        refresh();
         return 'terminal';
       } catch (error) {
+        if (signal.aborted) {
+          return 'aborted';
+        }
+
         clientLogger.error('Module lesson generation status request failed', {
           error,
           moduleId,
@@ -177,20 +187,35 @@ export function useModuleLessonGeneration({
             return;
           }
 
-          const outcome = await pollStatus();
+          const controller = new AbortController();
+          activeController = controller;
+          const outcome = await pollStatus(controller.signal);
+          if (activeController === controller) {
+            activeController = undefined;
+          }
+
           if (cancelled) {
             return;
           }
-          if (outcome === 'error') {
-            refresh();
-            schedule();
-            return;
-          }
-          if (outcome !== 'continue') {
-            return;
-          }
 
-          schedule();
+          switch (outcome) {
+            case 'aborted':
+              return;
+            case 'error':
+              refresh();
+              schedule();
+              return;
+            case 'terminal':
+              refresh();
+              return;
+            case 'continue':
+              schedule();
+              return;
+            default: {
+              const _exhaustive: never = outcome;
+              return _exhaustive;
+            }
+          }
         })();
       }, MODULE_LESSON_GENERATION_POLL_MS);
     };
@@ -202,6 +227,7 @@ export function useModuleLessonGeneration({
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);
       }
+      activeController?.abort();
     };
   }, [moduleId, planId, previousModulesComplete, refresh, status]);
 

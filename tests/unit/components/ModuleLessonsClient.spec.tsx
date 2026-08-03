@@ -4,17 +4,33 @@ import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/c
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { randomUUID } from 'node:crypto';
 import { toast } from 'sonner';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 const PLAN_ID = randomUUID();
 const MODULE_ID = randomUUID();
+const OTHER_MODULE_ID = randomUUID();
 const GENERATE_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/generate`;
 const STATUS_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/status`;
+const OTHER_STATUS_URL = `/api/v1/plans/${PLAN_ID}/modules/${OTHER_MODULE_ID}/lesson-content/status`;
 
 const refreshMock = vi.fn();
 const toastErrorMock = vi.mocked(toast.error);
+
+const generatingLessonGeneration = {
+  status: 'generating' as const,
+  startedAt: new Date('2025-06-01T00:00:00.000Z'),
+  completedAt: null,
+  failedAt: null,
+  error: null,
+};
+
+const statusPollFetchInit = {
+  cache: 'no-store' as const,
+  signal: expect.any(AbortSignal) as AbortSignal,
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
@@ -162,13 +178,7 @@ describe('ModuleLessonsClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderClient({
-      lessonGeneration: {
-        status: 'generating',
-        startedAt: new Date('2025-06-01T00:00:00.000Z'),
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
+      lessonGeneration: generatingLessonGeneration,
     });
 
     expect(screen.getByText('Generating')).toBeInTheDocument();
@@ -178,7 +188,7 @@ describe('ModuleLessonsClient', () => {
       vi.advanceTimersByTime(2500);
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, statusPollFetchInit);
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
@@ -194,20 +204,14 @@ describe('ModuleLessonsClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderClient({
-      lessonGeneration: {
-        status: 'generating',
-        startedAt: new Date('2025-06-01T00:00:00.000Z'),
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
+      lessonGeneration: generatingLessonGeneration,
     });
 
     await act(async () => {
       vi.advanceTimersByTime(2500);
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, { cache: 'no-store' });
+    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, statusPollFetchInit);
     expect(refreshMock).toHaveBeenCalledTimes(1);
 
     const callsAfterTerminal = refreshMock.mock.calls.length;
@@ -237,13 +241,7 @@ describe('ModuleLessonsClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderClient({
-      lessonGeneration: {
-        status: 'generating',
-        startedAt: new Date('2025-06-01T00:00:00.000Z'),
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
+      lessonGeneration: generatingLessonGeneration,
     });
 
     await act(async () => {
@@ -272,13 +270,7 @@ describe('ModuleLessonsClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     renderClient({
-      lessonGeneration: {
-        status: 'generating',
-        startedAt: new Date('2025-06-01T00:00:00.000Z'),
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
+      lessonGeneration: generatingLessonGeneration,
     });
 
     expect(
@@ -301,6 +293,177 @@ describe('ModuleLessonsClient', () => {
     });
     expect(fetchMock.mock.calls.length).toBe(callsAfterStop);
     expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh from a stale terminal status response after unmount', async () => {
+    vi.useFakeTimers();
+    const deferred =
+      createDeferredPromise<ReturnType<typeof mockJsonFetchResponse>>();
+    let fetchSignal: AbortSignal | null = null;
+    const fetchMock = vi.fn((_url: string, init?: { signal?: AbortSignal }) => {
+      fetchSignal = init?.signal ?? null;
+      return deferred.promise;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { unmount } = renderClient({
+      lessonGeneration: generatingLessonGeneration,
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(STATUS_URL, statusPollFetchInit);
+    expect(fetchSignal).not.toBeNull();
+
+    unmount();
+    expect((fetchSignal as AbortSignal | null)?.aborted).toBe(true);
+
+    await act(async () => {
+      deferred.resolve(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'ready',
+        }),
+      );
+      await deferred.promise;
+    });
+
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it('does not refresh from a stale terminal status response after module switch', async () => {
+    vi.useFakeTimers();
+    const deferred =
+      createDeferredPromise<ReturnType<typeof mockJsonFetchResponse>>();
+    let staleFetchSignal: AbortSignal | null = null;
+    const fetchMock = vi.fn((url: string, init?: { signal?: AbortSignal }) => {
+      if (url === STATUS_URL) {
+        staleFetchSignal = init?.signal ?? null;
+        return deferred.promise;
+      }
+
+      return Promise.resolve(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: OTHER_MODULE_ID,
+          status: 'generating',
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = renderClient({
+      lessonGeneration: generatingLessonGeneration,
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(staleFetchSignal).not.toBeNull();
+
+    rerender(
+      <ModuleLessonsClient
+        planId={PLAN_ID}
+        moduleId={OTHER_MODULE_ID}
+        lessons={[lesson]}
+        nextModuleId={null}
+        previousModulesComplete={true}
+        statuses={{}}
+        onStatusChange={vi.fn()}
+        lessonGeneration={generatingLessonGeneration}
+      />,
+    );
+
+    expect((staleFetchSignal as AbortSignal | null)?.aborted).toBe(true);
+
+    await act(async () => {
+      deferred.resolve(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'ready',
+        }),
+      );
+      await deferred.promise;
+    });
+
+    expect(refreshMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      OTHER_STATUS_URL,
+      statusPollFetchInit,
+    );
+  });
+
+  it('resets the poll budget when switching to another generating module', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((url: string) => {
+      const moduleId = url.includes(OTHER_MODULE_ID)
+        ? OTHER_MODULE_ID
+        : MODULE_ID;
+      return Promise.resolve(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId,
+          status: 'generating',
+        }),
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = renderClient({
+      lessonGeneration: generatingLessonGeneration,
+    });
+
+    for (let i = 0; i < 15; i += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(2500);
+      });
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(15);
+
+    rerender(
+      <ModuleLessonsClient
+        planId={PLAN_ID}
+        moduleId={OTHER_MODULE_ID}
+        lessons={[lesson]}
+        nextModuleId={null}
+        previousModulesComplete={true}
+        statuses={{}}
+        onStatusChange={vi.fn()}
+        lessonGeneration={generatingLessonGeneration}
+      />,
+    );
+
+    for (let i = 0; i < 20; i += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(2500);
+      });
+    }
+
+    expect(
+      screen.queryByText('Generation taking longer than expected'),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === OTHER_STATUS_URL),
+    ).toHaveLength(20);
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(
+      screen.getByText('Generation taking longer than expected'),
+    ).toBeInTheDocument();
   });
 
   it('shows failed generation copy from server and retry affordance', () => {
