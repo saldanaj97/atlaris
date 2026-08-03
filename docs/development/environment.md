@@ -27,8 +27,8 @@ Prefer the exported grouped configs instead of raw keys:
 - `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
-- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). Import from `@/lib/config/env/email`. `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
-- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; import from `@/lib/config/env/lesson-content`)
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
+- Module lesson generation kill-switch is the Vercel Flag `module-lesson-generation` (fail-closed; declared in `src/flags.ts`, resolved via `src/features/lesson-content/generation-flag.ts`).
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
 
@@ -47,8 +47,9 @@ Declared flags:
 | -------- | ----------- | ---------------------- | ------------- |
 | `maintenance-mode` | `maintenanceMode` | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
 | `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts` | Resend + production `APP_URL` (see `emailEnv`) |
+| `module-lesson-generation` | `moduleLessonGeneration` | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts` | Synchronous and Workflow SDK module lesson generation |
 
-**Local without `FLAGS`:** both flags resolve to their fallback (`defaultValue ?? false`), so email delivery stays off and maintenance stays off unless `MAINTENANCE_MODE=true`.
+**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery and lesson generation stay off; maintenance stays off unless `MAINTENANCE_MODE=true`.
 
 **Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
@@ -70,16 +71,17 @@ The application uses Clerk Auth for UI, route protection, and server session rea
 
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                                                                                                                                                                                         | Required                                    |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                                                                              | Yes                                         |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                                                                         | Yes                                         |
-| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook` (Billing and user lifecycle events)                                                                                                                                                        | Yes when Clerk webhooks are enabled |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow).                                                 | No                                          |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout and every hosted deployment.                                                       | No                                          |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                                                                 | No                                          |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                                                                  | No                                          |
-| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation)       |
+| Variable                            | Purpose                                                                                                                               | Required |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                    | Yes when Clerk Billing webhooks are enabled |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout. | No       |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
+
+Module lesson generation enablement is the Vercel Flag `module-lesson-generation` (fail-closed / default disabled). See `docs/development/deploy.md`.
 
 ### Workflow SDK
 
@@ -136,6 +138,7 @@ Flags use the Flags SDK with `vercelAdapter()` when `FLAGS` is set; otherwise a 
 | --- | ------ | ------------------ | ------ |
 | `email-notification-delivery` | `emailNotificationDelivery` | `false` (fail-closed) | Cron, manual recovery, and in-flight workflow pages must not send when off |
 | `maintenance-mode` | `maintenanceMode` | fallback `false` | Proxy routes app traffic to the maintenance page when on |
+| `module-lesson-generation` | `moduleLessonGeneration` | `false` (fail-closed) | Synchronous and workflow-backed module lesson generation must not start when off |
 
 Local product testing typically has no `FLAGS` env, so email delivery stays disabled until you enable the flag in a Vercel environment. Preference tables and Settings opt-ins are separate from this kill switch — see [user-preferences.md](../architecture/user-preferences.md).
 

@@ -4,9 +4,9 @@ import type {
   GenerateModuleLessonsResult,
 } from '@/features/lesson-content/generate-module-lessons.types';
 
+import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
-import { lessonContentEnv } from '@/lib/config/env/lesson-content';
 import {
   claimModuleLessonGenerationOrDescribe,
   loadModuleLessonGenerationContext,
@@ -28,7 +28,9 @@ export async function generateModuleLessons(
   params: GenerateModuleLessonsParams,
   deps: GenerateModuleLessonsDeps = {},
 ): Promise<GenerateModuleLessonsResult> {
-  if (!lessonContentEnv.generationEnabled) {
+  const resolveGenerationEnabled =
+    deps.resolveGenerationEnabled ?? resolveModuleLessonGenerationEnabled;
+  if (!(await resolveGenerationEnabled())) {
     return { kind: 'disabled' };
   }
 
