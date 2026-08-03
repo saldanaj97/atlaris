@@ -97,13 +97,22 @@ export function useModuleLessonGeneration({
       return;
     }
 
+    generationPollCountRef.current = 0;
+    setLongGenerationKey(null);
+
     let cancelled = false;
     let timeoutId: number | undefined;
+    const abortController = new AbortController();
     const statusUrl = buildModuleLessonStatusUrl(planId, moduleId);
 
-    const pollStatus = async (): Promise<'continue' | 'terminal' | 'error'> => {
+    const pollStatus = async (): Promise<
+      'continue' | 'terminal' | 'error' | 'aborted'
+    > => {
       try {
-        const response = await fetch(statusUrl, { cache: 'no-store' });
+        const response = await fetch(statusUrl, {
+          cache: 'no-store',
+          signal: abortController.signal,
+        });
 
         if (!response.ok) {
           clientLogger.error('Module lesson generation status request failed', {
@@ -152,9 +161,12 @@ export function useModuleLessonGeneration({
           return 'continue';
         }
 
-        refresh();
         return 'terminal';
       } catch (error) {
+        if (abortController.signal.aborted) {
+          return 'aborted';
+        }
+
         clientLogger.error('Module lesson generation status request failed', {
           error,
           moduleId,
@@ -186,6 +198,10 @@ export function useModuleLessonGeneration({
             schedule();
             return;
           }
+          if (outcome === 'terminal') {
+            refresh();
+            return;
+          }
           if (outcome !== 'continue') {
             return;
           }
@@ -199,6 +215,7 @@ export function useModuleLessonGeneration({
 
     return () => {
       cancelled = true;
+      abortController.abort();
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);
       }

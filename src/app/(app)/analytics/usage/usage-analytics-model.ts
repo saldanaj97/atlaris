@@ -90,6 +90,11 @@ type MutablePlanHistory = {
 };
 
 const WEEK_TREND_COUNT = 8;
+const WEEK_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: DEFAULT_ANALYTICS_TIMEZONE,
+});
 
 /** Returns floored completion percent, capped at 100 when fully complete. */
 function completionPercent(completed: number, total: number): number {
@@ -100,15 +105,10 @@ function completionPercent(completed: number, total: number): number {
 /** Formats a week range label such as "Jun 1-Jun 7". */
 function formatWeekLabel(weekStartDate: string): string {
   const weekEndDate = addDays(weekStartDate, 6);
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: DEFAULT_ANALYTICS_TIMEZONE,
-  });
 
-  return `${formatter.format(dateFromKey(weekStartDate))}-${formatter.format(
-    dateFromKey(weekEndDate),
-  )}`;
+  return `${WEEK_LABEL_FORMATTER.format(
+    dateFromKey(weekStartDate),
+  )}-${WEEK_LABEL_FORMATTER.format(dateFromKey(weekEndDate))}`;
 }
 
 /** Builds mutable weekly trend rows ending at the current week. */

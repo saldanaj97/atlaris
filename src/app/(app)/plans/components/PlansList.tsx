@@ -166,7 +166,7 @@ function BulkPlanActionsToolbar({
           <p className='text-sm font-medium text-foreground'>
             <span
               key={selectedCount}
-              className='inline-block animate-in tabular-nums duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
+              className='inline-block animate-in tabular-nums animation-duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
             >
               {selectedCount}
             </span>{' '}
