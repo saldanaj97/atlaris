@@ -1,5 +1,6 @@
 import { enqueueJob } from '@/features/jobs/queue';
 import { JOB_TYPES } from '@/features/jobs/types';
+import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
 import { emailNotificationDeliveryWorkflow } from '@/features/notifications/email/workflows/email-notification-delivery.workflow';
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
@@ -20,7 +21,7 @@ import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { start } from 'workflow/api';
 
 const GENERATION_INPUT = {
@@ -31,6 +32,14 @@ const GENERATION_INPUT = {
   startDate: null,
   deadlineDate: null,
 };
+
+beforeEach(() => {
+  setModuleLessonGenerationEnabledForTests(true);
+});
+
+afterEach(() => {
+  setModuleLessonGenerationEnabledForTests(undefined);
+});
 
 async function createWorkflowUser(scenario: string): Promise<string> {
   const authUserId = buildTestAuthUserId(`workflow-${scenario}`);

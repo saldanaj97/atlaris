@@ -1,6 +1,7 @@
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
@@ -18,12 +19,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 describe('module lesson generation boundary (integration)', () => {
   afterEach(async () => {
     await cleanupTrackedRlsClients();
-    vi.unstubAllEnvs();
+    setModuleLessonGenerationEnabledForTests(undefined);
   });
 
   beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv('LESSON_GENERATION_ENABLED', '1');
+    setModuleLessonGenerationEnabledForTests(true);
   });
 
   it('CAS + success persists task lessons, module ready, and usage row', async () => {
@@ -608,8 +608,8 @@ describe('module lesson generation boundary (integration)', () => {
     expect(metrics?.n).toBe(0);
   });
 
-  it('returns disabled when LESSON_GENERATION_ENABLED is false', async () => {
-    vi.stubEnv('LESSON_GENERATION_ENABLED', '0');
+  it('returns disabled when module-lesson-generation flag is false', async () => {
+    setModuleLessonGenerationEnabledForTests(false);
 
     const authUserId = buildTestAuthUserId('mod-lesson-disabled');
     const userId = await ensureUser({

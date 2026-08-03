@@ -3,9 +3,9 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
-import { lessonContentEnv } from '@/lib/config/env/lesson-content';
 import { workflowEnv } from '@/lib/config/env/workflow';
 import {
   loadModuleLessonGenerationContext,
@@ -31,7 +31,7 @@ export type StartModuleLessonGenerationResult =
 
 export type StartModuleLessonGenerationDeps = {
   readonly isWorkflowEnabled?: () => boolean;
-  readonly isGenerationEnabled?: () => boolean;
+  readonly isGenerationEnabled?: () => boolean | Promise<boolean>;
   readonly loadContext?: (
     dbClient: DbClient,
     planId: string,
@@ -45,8 +45,8 @@ export type StartModuleLessonGenerationDeps = {
 
 /**
  * Starts module lesson generation synchronously or via Workflow SDK based on
- * `MODULE_LESSON_WORKFLOW_ENABLED`. Lesson generation must be enabled before
- * a workflow run is created (defaults off outside development).
+ * `MODULE_LESSON_WORKFLOW_ENABLED`. The `module-lesson-generation` Vercel Flag
+ * must be enabled before a workflow run is created (fail-closed).
  */
 export async function startModuleLessonGeneration(
   params: StartModuleLessonGenerationParams,
@@ -55,7 +55,7 @@ export async function startModuleLessonGeneration(
   const isWorkflowEnabled =
     deps.isWorkflowEnabled ?? (() => workflowEnv.moduleLessonWorkflowEnabled);
   const isGenerationEnabled =
-    deps.isGenerationEnabled ?? (() => lessonContentEnv.generationEnabled);
+    deps.isGenerationEnabled ?? resolveModuleLessonGenerationEnabled;
   const loadContext = deps.loadContext ?? loadModuleLessonGenerationContext;
   const generateFn = deps.generateFn ?? generateModuleLessons;
   const workflowStart = deps.workflowStart ?? start;
@@ -73,7 +73,7 @@ export async function startModuleLessonGeneration(
     });
   }
 
-  if (!isGenerationEnabled()) {
+  if (!(await isGenerationEnabled())) {
     return { kind: 'disabled' };
   }
 

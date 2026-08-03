@@ -6,18 +6,9 @@ import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { eq } from 'drizzle-orm';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('module lesson workflow metadata (integration)', () => {
-  beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv('LESSON_GENERATION_ENABLED', '1');
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   it('persists workflow run metadata on a generating module row', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-workflow-meta');
     const userId = await ensureUser({

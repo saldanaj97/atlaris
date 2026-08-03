@@ -14,7 +14,6 @@ export {
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv, sentryEnv } from '@/lib/config/env/observability';
-export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
 export {
   createMaintenanceEnvForTests,
   maintenanceEnv,

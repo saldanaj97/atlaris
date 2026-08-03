@@ -26,6 +26,7 @@ export type GenerateModuleLessonsDeps = {
   >;
   readonly runLessonQuotaReserved?: typeof runLessonGenerationQuotaReserved;
   readonly serverDbClient?: DbClient;
+  readonly resolveGenerationEnabled?: () => Promise<boolean>;
 };
 
 export type GenerateModuleLessonsResult =
