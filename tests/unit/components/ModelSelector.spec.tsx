@@ -256,12 +256,16 @@ describe('ModelSelector', () => {
     );
 
     await selectFirstFreeModel(user);
-    await user.click(screen.getByRole('button', { name: /save preferences/i }));
+    const saveButton = screen.getByRole('button', {
+      name: /save preferences/i,
+    });
+    await user.click(saveButton);
 
     await waitFor(() => {
       expect(
         screen.getByText(/failed to save preferences/i),
       ).toBeInTheDocument();
+      expect(saveButton).not.toBeDisabled();
     });
   });
 });
