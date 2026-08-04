@@ -58,12 +58,10 @@ function makeDb(opts: {
 }) {
   const insertReturns = opts.insertReturns ?? [{ eventId: 'evt_fixture' }];
   const selectReturns = opts.selectReturns ?? [];
-  const deleteWhere = vi.fn().mockResolvedValue(undefined);
   const updateWhere = vi.fn().mockResolvedValue(undefined);
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
   let transactionOpen = false;
   let db: ServiceRoleDb & {
-    deleteWhere: typeof deleteWhere;
     isTransactionOpen: () => boolean;
     updateSet: typeof updateSet;
     updateWhere: typeof updateWhere;
@@ -71,9 +69,6 @@ function makeDb(opts: {
 
   db = Object.assign(
     {
-      delete: vi.fn().mockReturnValue({
-        where: deleteWhere,
-      }),
       insert: vi.fn().mockReturnValue({
         onConflictDoNothing: vi.fn().mockReturnThis(),
         returning: vi.fn().mockResolvedValue(insertReturns),
@@ -99,7 +94,6 @@ function makeDb(opts: {
       }),
     } as unknown as ServiceRoleDb,
     {
-      deleteWhere,
       isTransactionOpen: () => transactionOpen,
       updateSet,
       updateWhere,
@@ -151,18 +145,20 @@ function makeClerkClient(subscription = makeSubscription()) {
 }
 
 describe('applyVerifiedClerkBillingEvent', () => {
-  it('short-circuits duplicate webhook ids without dispatching', async () => {
+  it('does not project duplicate webhook ids', async () => {
     const db = makeDb({ insertReturns: [] });
+    const clerkClient = makeClerkClient();
 
     await expect(
       applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_duplicate', {
+        clerkClient,
         db,
         logger: makeLogger(),
       }),
     ).resolves.toEqual({ status: 'duplicate' });
 
     expect(db.select).not.toHaveBeenCalled();
-    expect(db.delete).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('leaves missing local users retryable', async () => {
@@ -177,14 +173,13 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toThrow('No local user found for Clerk Billing payer');
 
-    expect(
-      clerkClient.billing.getUserBillingSubscription,
-    ).not.toHaveBeenCalled();
+    expect(clerkClient.billing.getUserBillingSubscription).toHaveBeenCalledWith(
+      'user_missing',
+    );
     expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(db.delete).not.toHaveBeenCalled();
   });
 
-  it('releases event idempotency when webhook processing fails', async () => {
+  it('does not claim the event when the Clerk refresh fails', async () => {
     const processingError = new Error('clerk unavailable');
     const db = makeDb({
       selectReturns: [makeLocalUser()],
@@ -202,8 +197,26 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBe(processingError);
 
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('claims the event in the same transaction as the projection', async () => {
+    const projectionError = new Error('projection failed');
+    const db = makeDb({ selectReturns: [makeLocalUser()] });
+    db.updateWhere.mockRejectedValueOnce(projectionError);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_projection', {
+        clerkClient: makeClerkClient(),
+        db,
+        logger: makeLogger(),
+      }),
+    ).rejects.toBe(projectionError);
+
     expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(db.deleteWhere).toHaveBeenCalledTimes(1);
+    expect(db.insert).toHaveBeenCalledTimes(1);
+    expect(db.update).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes webhook writes from the current Clerk subscription', async () => {
@@ -227,7 +240,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(clerkClient.billing.getUserBillingSubscription).toHaveBeenCalledWith(
       'user_missing',
     );
-    expect(db.transaction).toHaveBeenCalledTimes(2);
+    expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',

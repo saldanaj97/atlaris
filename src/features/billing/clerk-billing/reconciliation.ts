@@ -148,76 +148,46 @@ export async function applyVerifiedClerkBillingEvent(
   const db = deps.db ?? serviceRoleDb;
   const source = clerkBillingSourceFromWebhook(event);
 
-  const claim = await db.transaction(async (tx) => {
-    const [insertedRow] = await tx
-      .insert(clerkWebhookEvents)
-      .values({
-        eventId,
-        type: event.type,
-      })
-      .onConflictDoNothing({ target: clerkWebhookEvents.eventId })
-      .returning({ eventId: clerkWebhookEvents.eventId });
+  try {
+    const refreshedSource =
+      source === null ? null : await refreshClerkBillingSource(source, deps);
 
-    if (!insertedRow) {
-      deps.logger.info(
-        { eventId, type: event.type },
-        'Duplicate Clerk webhook event skipped',
-      );
-      return 'duplicate' as const;
-    }
+    return await db.transaction(async (tx) => {
+      const [insertedRow] = await tx
+        .insert(clerkWebhookEvents)
+        .values({
+          eventId,
+          type: event.type,
+        })
+        .onConflictDoNothing({ target: clerkWebhookEvents.eventId })
+        .returning({ eventId: clerkWebhookEvents.eventId });
 
-    if (source?.payerUserId) {
-      const [localUser] = await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.authUserId, source.payerUserId))
-        .limit(1);
-
-      if (!localUser) {
-        deps.logger.warn(
-          { eventId, payerUserId: source.payerUserId, type: event.type },
-          'No local user found for Clerk Billing payer; retrying webhook',
+      if (!insertedRow) {
+        deps.logger.info(
+          { eventId, type: event.type },
+          'Duplicate Clerk webhook event skipped',
         );
+        return { status: 'duplicate' };
+      }
+
+      if (refreshedSource === null) {
+        deps.logger.debug(
+          { type: event.type },
+          'Ignored non-billing Clerk webhook event',
+        );
+        return { status: 'inserted', result: 'ignored' };
+      }
+
+      const result = await applyClerkBillingSource(refreshedSource, {
+        ...deps,
+        db: tx,
+      });
+      if (result === 'skipped') {
         throw new Error('No local user found for Clerk Billing payer');
       }
-    }
-
-    return 'inserted' as const;
-  });
-
-  if (claim === 'duplicate') {
-    return { status: 'duplicate' };
-  }
-
-  if (source === null) {
-    deps.logger.debug(
-      { type: event.type },
-      'Ignored non-billing Clerk webhook event',
-    );
-    return { status: 'inserted', result: 'ignored' };
-  }
-
-  try {
-    const refreshedSource = await refreshClerkBillingSource(source, deps);
-    const result = await db.transaction((tx) =>
-      applyClerkBillingSource(refreshedSource, { ...deps, db: tx }),
-    );
-    if (result === 'skipped') {
-      throw new Error('No local user found for Clerk Billing payer');
-    }
-    return { status: 'inserted', result };
+      return { status: 'inserted', result };
+    });
   } catch (error) {
-    try {
-      await db
-        .delete(clerkWebhookEvents)
-        .where(eq(clerkWebhookEvents.eventId, eventId));
-    } catch (cleanupError) {
-      deps.logger.error(
-        { cleanupError, eventId, error, type: event.type },
-        'Failed to release Clerk webhook event for retry',
-      );
-    }
-
     deps.logger.warn(
       { error, eventId, type: event.type },
       'Clerk Billing webhook processing failed; retry requested',
