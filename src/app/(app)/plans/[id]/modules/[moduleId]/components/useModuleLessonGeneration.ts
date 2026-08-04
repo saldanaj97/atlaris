@@ -183,10 +183,10 @@ export function useModuleLessonGeneration({
 
           generationPollCountRef.current += 1;
           if (
-            generationPollCountRef.current > MODULE_LESSON_GENERATION_MAX_POLLS
+            generationPollCountRef.current ===
+            MODULE_LESSON_GENERATION_MAX_POLLS + 1
           ) {
             setLongGenerationKey({ planId, moduleId });
-            return;
           }
 
           const outcome = await pollStatus();
