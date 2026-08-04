@@ -8,12 +8,12 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  listDashboardPlanSummariesMock: vi.fn(),
+  getDashboardPlanDataMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
 }));
 
 vi.mock('@/features/plans/read-projection/service', () => ({
-  listDashboardPlanSummaries: mocks.listDashboardPlanSummariesMock,
+  getDashboardPlanData: mocks.getDashboardPlanDataMock,
 }));
 
 vi.mock('@/lib/api/request-boundary', () => ({
@@ -39,12 +39,14 @@ describe('DashboardContent', () => {
       topic: 'TypeScript',
       weeklyHours: 2,
     });
-    mocks.listDashboardPlanSummariesMock.mockResolvedValue([
-      buildPlanSummary({
-        plan,
-        modules: buildModuleRows(plan.id, 1),
-      }),
-    ]);
+    const summary = buildPlanSummary({
+      plan,
+      modules: buildModuleRows(plan.id, 1),
+    });
+    mocks.getDashboardPlanDataMock.mockResolvedValue({
+      summaries: [summary],
+      resumePlan: summary,
+    });
 
     render(await DashboardContent());
 
