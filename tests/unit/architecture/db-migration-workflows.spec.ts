@@ -88,6 +88,9 @@ describe('Supabase migration workflows', () => {
       '20260706221000_archive_legacy_stripe_entitlements.sql',
     );
     expect(script).toContain(
+      '20260810120000_create_clerk_webhook_event_claims.sql',
+    );
+    expect(script).toContain(
       'supabase migration up --linked --include-all --yes',
     );
     expect(script).not.toContain('supabase migration repair');

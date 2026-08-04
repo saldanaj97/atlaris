@@ -1,4 +1,5 @@
 import {
+  clerkWebhookEventClaims,
   clerkWebhookEvents,
   jobQueue,
   learningPlans,
@@ -33,6 +34,8 @@ export type SeedRetentionCleanupRowsResult = {
   clerk: {
     oldEventId: string;
     recentEventId: string;
+    expiredClaimEventId: string;
+    recentClaimEventId: string;
   };
   jobRowIds: string[];
 };
@@ -59,6 +62,8 @@ export async function seedRetentionCleanupRows(
   const futureHash = `${key}-future-oauth-state`;
   const oldClerkEventId = `clerk_${key}_old`;
   const recentClerkEventId = `clerk_${key}_recent`;
+  const expiredClaimEventId = `clerk_${key}_claim_expired`;
+  const recentClaimEventId = `clerk_${key}_claim_recent`;
 
   await db.insert(oauthStateTokens).values([
     {
@@ -89,6 +94,19 @@ export async function seedRetentionCleanupRows(
         now,
         CLERK_WEBHOOK_EVENT_RETENTION_DAYS - 1,
       ),
+    },
+  ]);
+
+  await db.insert(clerkWebhookEventClaims).values([
+    {
+      eventId: expiredClaimEventId,
+      claimToken: '00000000-0000-4000-8000-000000000001',
+      claimExpiresAt: retentionDaysBefore(now, 2),
+    },
+    {
+      eventId: recentClaimEventId,
+      claimToken: '00000000-0000-4000-8000-000000000002',
+      claimExpiresAt: new Date(now.getTime() + 10 * 60 * 1000),
     },
   ]);
 
@@ -183,6 +201,8 @@ export async function seedRetentionCleanupRows(
     clerk: {
       oldEventId: oldClerkEventId,
       recentEventId: recentClerkEventId,
+      expiredClaimEventId,
+      recentClaimEventId,
     },
     jobRowIds: rows.map((row) => row.id),
   };
