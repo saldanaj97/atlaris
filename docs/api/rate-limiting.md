@@ -6,13 +6,16 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category       | Limit        | Window   | Use Case                                  |
-| -------------- | ------------ | -------- | ----------------------------------------- |
-| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
-| `integration`  | 30 requests  | 1 hour   | Reserved for future third-party endpoints |
-| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
-| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
-| `oauth`        | 20 requests  | 1 hour   | Reserved for future OAuth initiation      |
+| Category           | Limit        | Window   | Use Case                                         |
+| ------------------ | ------------ | -------- | ------------------------------------------------ |
+| `lessonGeneration` | 5 requests   | 1 hour   | Full module lesson batch generation              |
+| `aiGeneration`     | 10 requests  | 1 hour   | Plan AI generation, regeneration, retry          |
+| `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints        |
+| `mutation`         | 60 requests  | 1 minute | Plan CRUD, preference writes, DB writes          |
+| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences        |
+| `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation             |
+
+`lessonGeneration` is separate from `aiGeneration` so module lesson batches do not starve plan create/retry/regenerate flows. Source: `USER_RATE_LIMIT_CONFIGS` in `src/lib/api/user-rate-limit.ts`.
 
 ### Plan Generation Rate Limit
 
@@ -69,13 +72,14 @@ export const POST = requestBoundary.route(
 
 ### Category Selection Guide
 
-| Endpoint Type                            | Category       |
-| ---------------------------------------- | -------------- |
-| AI generation, regeneration, enhancement | `aiGeneration` |
-| Future third-party integration writes    | `integration`  |
-| Create/update/delete plans, tasks, etc.  | `mutation`     |
-| GET endpoints for data retrieval         | `read`         |
-| Future OAuth initiation (not callbacks)  | `oauth`        |
+| Endpoint Type                            | Category           |
+| ---------------------------------------- | ------------------ |
+| Module lesson batch generation           | `lessonGeneration` |
+| Plan AI generation, regeneration, retry  | `aiGeneration`     |
+| Future third-party integration writes    | `integration`      |
+| Create/update/delete plans, tasks, etc.  | `mutation`         |
+| GET endpoints for data retrieval         | `read`             |
+| Future OAuth initiation (not callbacks)  | `oauth`            |
 
 ### Plan Generation (Special Case)
 
@@ -134,6 +138,10 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 
 ## Current Endpoint Assignments
 
+### Lesson Generation (`lessonGeneration`)
+
+- `POST /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate`
+
 ### AI Generation (`aiGeneration`)
 
 - `POST /api/v1/plans/stream`
@@ -143,7 +151,9 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 ### Mutation (`mutation`)
 
 - `DELETE /api/v1/plans/[planId]`
+- `POST /api/v1/plans/bulk-delete`
 - `PATCH /api/v1/user/preferences`
+- `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`
 
 ### Read (`read`)
@@ -153,14 +163,25 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 - `GET /api/v1/plans/[planId]/status`
 - `GET /api/v1/plans/[planId]/attempts`
 - `GET /api/v1/plans/[planId]/tasks`
+- `GET /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status`
 - `GET /api/v1/user/preferences`
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`
 - `GET /api/v1/resources`
 
+### Not covered by user rate-limit categories
+
+These routes use other auth or limiters (not `requestBoundary.route({ rateLimit })`):
+
+- `POST /api/v1/clerk/billing/webhook` — Svix/Clerk signature verification
+- `GET` / `POST /api/v1/notifications/email/unsubscribe` — signed token HTML flow
+- Internal/cron/health routes — worker tokens or `CRON_SECRET` (see [internal worker routes](../architecture/internal-worker-routes.md))
+
 ### Integration / OAuth (`integration`, `oauth`)
 
 These categories remain available in the shared rate-limiter configuration for future provider work, but there are currently no active Google OAuth or integration API routes in the app.
+
+For the full public route catalog, see [API endpoints](./endpoints.md).
 
 ## Future Considerations
 

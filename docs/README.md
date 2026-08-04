@@ -24,6 +24,7 @@ HTTP API contracts shared across routes.
 
 | File | Description |
 |------|-------------|
+| [endpoints.md](./api/endpoints.md) | Public `/api/v1` and ops route catalog |
 | [error-contract.md](./api/error-contract.md) | Canonical API error response shape |
 | [rate-limiting.md](./api/rate-limiting.md) | User-based and job-based rate limiting |
 
@@ -131,6 +132,7 @@ docs/
 ├── ai/
 │   └── available-models.md
 ├── api/
+│   ├── endpoints.md
 │   ├── error-contract.md
 │   └── rate-limiting.md
 ├── architecture/
