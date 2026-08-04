@@ -45,7 +45,11 @@ const DEFAULT_RECONCILIATION_LIMIT = 100;
 const MAX_RECONCILIATION_LIMIT = 100;
 export const CLERK_BILLING_WEBHOOK_LEASE_MS = 2 * 60 * 1000;
 
-export type ClerkBillingApplyResult = 'updated' | 'skipped' | 'ignored';
+export type ClerkBillingApplyResult =
+  | 'updated'
+  | 'skipped_no_payer'
+  | 'skipped_no_user'
+  | 'ignored';
 
 export type ApplyVerifiedClerkBillingEventResult =
   | { status: 'duplicate' }
@@ -71,6 +75,7 @@ function leaseExpirySql() {
 async function claimClerkWebhookEvent(
   eventId: string,
   deps: ApplyVerifiedClerkBillingEventDeps,
+  retryAttempt = 0,
 ): Promise<ClerkWebhookClaimResult> {
   const db = deps.db ?? serviceRoleDb;
   const claimToken = deps.createClaimToken?.() ?? randomUUID();
@@ -140,9 +145,14 @@ async function claimClerkWebhookEvent(
     .limit(1);
 
   if (!activeClaim) {
-    throw new Error(
-      'Clerk webhook claim disappeared before ownership could be read',
+    if (retryAttempt === 0) {
+      return claimClerkWebhookEvent(eventId, deps, retryAttempt + 1);
+    }
+    deps.logger.info(
+      { eventId },
+      'Clerk webhook claim changed during contention; retry requested',
     );
+    return { outcome: 'in_flight', retryAfterSeconds: 1 };
   }
 
   const retryAfterSeconds = Math.max(1, Number(activeClaim.retryAfterSeconds));
@@ -229,7 +239,7 @@ async function finalizeClerkWebhookEvent(
       ...deps,
       db: tx,
     });
-    if (result === 'skipped') {
+    if (result === 'skipped_no_user') {
       throw new Error('No local user found for Clerk Billing payer');
     }
     return { status: 'inserted', result };
@@ -250,18 +260,13 @@ async function refreshClerkBillingSource(
   );
   const refreshedSource =
     clerkBillingSourceFromBackendSubscription(subscription);
-  const recoveredFromFailedAttempt =
-    source.paymentAttemptStatus === 'failed' &&
-    refreshedSource.subscriptionStatus !== 'past_due' &&
-    !refreshedSource.items.some((item) => item.status === 'past_due');
 
   return {
     ...refreshedSource,
     type: source.type,
     payerUserId: source.payerUserId,
-    paymentAttemptStatus: recoveredFromFailedAttempt
-      ? refreshedSource.paymentAttemptStatus
-      : (source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus),
+    paymentAttemptStatus:
+      source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
   };
 }
 
@@ -276,7 +281,7 @@ export async function applyClerkBillingSource(
       { type: source.type },
       'Clerk Billing event missing user payer; skipping projection',
     );
-    return 'skipped';
+    return 'skipped_no_payer';
   }
 
   const [user] = await db
@@ -297,7 +302,7 @@ export async function applyClerkBillingSource(
       { payerUserId: source.payerUserId, type: source.type },
       'No local user found for Clerk Billing payer; skipping projection',
     );
-    return 'skipped';
+    return 'skipped_no_user';
   }
 
   const projection = projectClerkBillingSource(source, user);
@@ -451,7 +456,11 @@ export async function reconcileClerkBillingEntitlements({
         { db, logger },
       );
 
-      totals[result] += 1;
+      if (result === 'skipped_no_payer' || result === 'skipped_no_user') {
+        totals.skipped += 1;
+      } else {
+        totals[result] += 1;
+      }
     } catch (error) {
       totals.failed += 1;
       logger.error(

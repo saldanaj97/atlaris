@@ -790,6 +790,17 @@ describe('requestPlanRegeneration', () => {
         { retryable: false },
       );
       expect(compensate).not.toHaveBeenCalled();
+      expect(
+        recordRegenerationWorkflowAttachUncertainMock,
+      ).toHaveBeenCalledWith(
+        {
+          jobId: 'job-1',
+          planId: ownedPlan.id,
+          userId: 'user-1',
+          correlationId: 'regen-job-1',
+        },
+        workflowError,
+      );
     });
   });
 

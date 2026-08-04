@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 const MODULE_LESSON_GENERATION_POLL_MS = 2500;
 const MODULE_LESSON_GENERATION_MAX_POLLS = 20;
+const MODULE_LESSON_GENERATION_MAX_POLL_MS = 60_000;
+const MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS = 10_000;
 
 type LongGenerationKey = {
   planId: string;
@@ -107,10 +109,16 @@ export function useModuleLessonGeneration({
     const pollStatus = async (): Promise<
       'continue' | 'terminal' | 'error' | 'aborted'
     > => {
+      const requestTimeoutSignal = AbortSignal.timeout(
+        MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS,
+      );
       try {
         const response = await fetch(statusUrl, {
           cache: 'no-store',
-          signal: abortController.signal,
+          signal: AbortSignal.any([
+            abortController.signal,
+            requestTimeoutSignal,
+          ]),
         });
 
         if (!response.ok) {
@@ -168,6 +176,7 @@ export function useModuleLessonGeneration({
 
         clientLogger.error('Module lesson generation status request failed', {
           error,
+          timedOut: requestTimeoutSignal.aborted,
           moduleId,
           planId,
         });
@@ -176,38 +185,50 @@ export function useModuleLessonGeneration({
     };
 
     const schedule = (): void => {
-      timeoutId = window.setTimeout(() => {
-        void (async () => {
-          if (cancelled) return;
+      timeoutId = window.setTimeout(
+        () => {
+          void (async () => {
+            if (cancelled) return;
 
-          generationPollCountRef.current += 1;
-          if (
-            generationPollCountRef.current ===
-            MODULE_LESSON_GENERATION_MAX_POLLS + 1
-          ) {
-            setLongGenerationKey({ planId, moduleId });
-          }
+            generationPollCountRef.current += 1;
+            if (
+              generationPollCountRef.current ===
+              MODULE_LESSON_GENERATION_MAX_POLLS + 1
+            ) {
+              setLongGenerationKey({ planId, moduleId });
+            }
 
-          const outcome = await pollStatus();
-          if (cancelled) {
-            return;
-          }
-          if (outcome === 'error') {
-            refresh();
+            const outcome = await pollStatus();
+            if (cancelled) {
+              return;
+            }
+            if (outcome === 'error') {
+              refresh();
+              schedule();
+              return;
+            }
+            if (outcome === 'terminal') {
+              refresh();
+              return;
+            }
+            if (outcome !== 'continue') {
+              return;
+            }
+
             schedule();
-            return;
-          }
-          if (outcome === 'terminal') {
-            refresh();
-            return;
-          }
-          if (outcome !== 'continue') {
-            return;
-          }
-
-          schedule();
-        })();
-      }, MODULE_LESSON_GENERATION_POLL_MS);
+          })();
+        },
+        Math.min(
+          MODULE_LESSON_GENERATION_POLL_MS *
+            2 **
+              Math.max(
+                0,
+                generationPollCountRef.current -
+                  MODULE_LESSON_GENERATION_MAX_POLLS,
+              ),
+          MODULE_LESSON_GENERATION_MAX_POLL_MS,
+        ),
+      );
     };
 
     schedule();

@@ -273,6 +273,24 @@ describe('AiPlanGenerationPanel', () => {
       expect(toast.success).not.toHaveBeenCalled();
       expect(toast.error).not.toHaveBeenCalled();
     });
+
+    it('shows the cancellation toast when generation resolves as cancelled', async () => {
+      mockStartGeneration.mockResolvedValue({ status: 'cancelled' });
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Cancelled result topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
+      });
+
+      expect(pushMock).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleSubmit - partial failure with planId recovery', () => {
@@ -387,8 +405,40 @@ describe('AiPlanGenerationPanel', () => {
       );
     });
 
+    it('shows a normalized object error message', async () => {
+      mockStartGeneration.mockRejectedValue({
+        message: 'Gateway unavailable',
+      });
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Object error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Gateway unavailable');
+      });
+    });
+
+    it('falls back when the normalized message exceeds the safe limit', async () => {
+      mockStartGeneration.mockRejectedValue(new Error('x'.repeat(201)));
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Long error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          'We could not create your learning plan. Please try again.',
+        );
+      });
+    });
+
     it('falls back to the generic error toast when the thrown value has no message', async () => {
-      mockStartGeneration.mockRejectedValue({ status: 500 });
+      mockStartGeneration.mockRejectedValue({ message: '' });
 
       render(<AiPlanGenerationPanel />);
 

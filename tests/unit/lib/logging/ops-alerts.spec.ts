@@ -50,4 +50,25 @@ describe('recordRegenerationWorkflowAttachUncertain', () => {
 
     expect(sentryMocks.setExtra).toHaveBeenCalledWith('userId', context.userId);
   });
+
+  it('records correlation without inventing an unknown workflow run id', () => {
+    recordRegenerationWorkflowAttachUncertain(
+      {
+        jobId: 'job-2',
+        planId: 'plan-2',
+        userId: 'user-2',
+        correlationId: 'regen-job-2',
+      },
+      new Error('attach'),
+    );
+
+    expect(sentryMocks.setExtra).toHaveBeenCalledWith(
+      'correlationId',
+      'regen-job-2',
+    );
+    expect(sentryMocks.setExtra).not.toHaveBeenCalledWith(
+      'workflowRunId',
+      expect.anything(),
+    );
+  });
 });

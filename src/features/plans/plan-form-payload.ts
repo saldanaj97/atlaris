@@ -60,7 +60,7 @@ export function buildCreatePlanPayloadFromForm(
       payload: createLearningPlanSchema.parse({
         topic: data.topic,
         skillLevel: data.skillLevel,
-        weeklyHours: WEEKLY_HOURS[data.weeklyHours] ?? Number(data.weeklyHours),
+        weeklyHours: WEEKLY_HOURS[data.weeklyHours],
         learningStyle: data.learningStyle,
         notes: '',
         startDate: formatDateToYmd(new Date()),

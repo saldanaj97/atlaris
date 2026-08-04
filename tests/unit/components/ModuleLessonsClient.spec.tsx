@@ -368,6 +368,55 @@ describe('ModuleLessonsClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('times out a stuck status request and resumes polling', async () => {
+    vi.useFakeTimers();
+    const requestTimeout = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(requestTimeout.signal);
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        (_url: string | URL | Request, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => {
+              reject(init.signal?.reason);
+            });
+          }),
+      )
+      .mockResolvedValue(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'generating',
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient({
+      lessonGeneration: {
+        status: 'generating',
+        startedAt: new Date('2025-06-01T00:00:00.000Z'),
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    requestTimeout.abort(new DOMException('Timed out', 'TimeoutError'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('shows long-running notice and keeps polling until status becomes terminal', async () => {
     vi.useFakeTimers();
     let pollCount = 0;
@@ -406,7 +455,12 @@ describe('ModuleLessonsClient', () => {
     ).toBeInTheDocument();
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2500);
+      await vi.advanceTimersByTimeAsync(2499);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(21);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2501);
     });
     expect(fetchMock).toHaveBeenCalledTimes(22);
     expect(refreshMock).toHaveBeenCalledTimes(1);
