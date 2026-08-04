@@ -16,10 +16,15 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
+pnpm dev:workflow     # Next.js dev server with webpack (needed for Workflow SDK local paths)
+pnpm dev:local:starter # Local DB + seed + Clerk Billing fixture (starter) + `pnpm dev`
+pnpm dev:local:pro    # Local DB + seed + Clerk Billing fixture (pro) + `pnpm dev`
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
 
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
+
+`dev:local:starter` / `dev:local:pro` require `LOCAL_PRODUCT_TESTING=true` and seed user setup; see [environment.md](./environment.md) and [local-database.md](./local-database.md).
 
 ## Build & Production
 
@@ -37,6 +42,7 @@ pnpm check:full         # Lint + TypeScript checks in parallel (check:lint + che
 pnpm check:lint         # Oxlint: lint source, script, Supabase, and test code
 pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
 pnpm check:type         # TypeScript type checking only
+pnpm design:lint        # Lint DESIGN.md against designmd rules
 ```
 
 Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus oxfmt on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run oxfmt explicitly, for example `pnpm exec oxfmt --no-error-on-unmatched-pattern .`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
@@ -62,6 +68,14 @@ pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
 pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
 ```
 
+### Local Clerk Billing fixture
+
+```bash
+pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
+```
+
+Applies a local entitlement projection through the same service path as Clerk webhooks. Does not exercise checkout. Details: [environment.md](./environment.md#local-product-testing-development--test).
+
 ## Testing
 
 See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehensive testing documentation.
@@ -78,8 +92,10 @@ pnpm test:integration         # Run the full DB/API integration suite (heavier; 
 pnpm test:workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test:security            # Run RLS policy tests
 pnpm test:smoke               # Run Playwright smoke coverage
+pnpm test:e2e                 # Vitest e2e project (`tests/e2e`)
 pnpm test:all                 # Run lint, typecheck, unit, integration, workflow, and security suites
 pnpm test:all:e2e             # Full suite plus E2E tests
+pnpm ui:capture-baseline      # Capture marketing/product UI baseline screenshots
 ```
 
 Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-sdk.md#testing) · [tests/AGENTS.md](../../tests/AGENTS.md#workflow-sdk-tests).

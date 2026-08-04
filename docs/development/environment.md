@@ -4,9 +4,30 @@ Guidelines for environment variables and logging in this project.
 
 ## Environment Variables
 
+### Env templates
+
+There is no single root `.env.example`. Copy the template that matches your workflow:
+
+| Template | Use |
+| -------- | --- |
+| `.env.local.example` | Local Next.js + Supabase CLI development |
+| `.env.agents.example` | Agent / automation sandboxes |
+| `.env.preview.example` | Hosted Vercel Preview |
+| `.env.production.example` | Hosted production |
+
+Keep secrets out of git. Prefer updating the matching template (and this doc) when adding variables.
+
 ### Core Rule
 
 **All env access must go through `@/lib/config/env`.** Do **not** read `process.env` directly outside that module.
+
+**Known exceptions** (read `process.env` at the edge of the process):
+
+| Variable(s) | Why |
+| ----------- | --- |
+| `ENABLE_SENTRY`, `NEXT_PUBLIC_ENABLE_SENTRY` | Bootstrapping in `instrumentation.ts` / client Sentry init before grouped env is always available |
+| `FLAGS`, `FLAGS_SECRET` | Vercel Flags SDK adapter selection in `src/flags.ts` and Flags discovery |
+| `WORKFLOW_SOURCEMAP` | Workflow SDK build/runtime; do not parse in app env modules |
 
 ### Grouped Configs
 
@@ -55,9 +76,27 @@ Key auth-related server variables include:
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation) |
 
+### Vercel Flags (product kill switches)
+
+Declared in `src/flags.ts` with the Flags SDK. Discovery is served from `src/app/.well-known/vercel/flags/route.ts`.
+
+| Flag key | Purpose | Default when unavailable |
+| -------- | ------- | ------------------------ |
+| `maintenance-mode` | Route app traffic to the maintenance page | `false` (fallback adapter) |
+| `email-notification-delivery` | Allow scheduled opted-in email sends | `false` (fail-closed) |
+
+| Variable | Purpose | Required |
+| -------- | ------- | -------- |
+| `FLAGS` | Enables `vercelAdapter()` when set; without it, flags use the local fallback adapter | Hosted Preview/Production when using Vercel Flags |
+| `FLAGS_SECRET` | Flags discovery / encryption secret for the well-known endpoint | Same as `FLAGS` when using Vercel Flags |
+
+Do not confuse the Vercel Flag `maintenance-mode` with `appEnv.maintenanceMode` (`MAINTENANCE_MODE` env). The env value is a process-level override; the flag is the dashboard-controlled switch used with the Flags adapter.
+
+Email delivery also requires `emailEnv` + production `APP_URL` before enabling `email-notification-delivery`. See [email delivery runbook](../architecture/email-notification-delivery-runbook.md).
+
 ### Workflow SDK
 
-**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
+**Source of truth for workflow env vars.** Configure product workflow flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
 
 #### App-parsed product flags (`workflowEnv`)
 

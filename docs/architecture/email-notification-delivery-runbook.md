@@ -70,6 +70,18 @@ This action resets the run cursor but retains the logical date and domain delive
 - If the cron invocation itself is unhealthy, disable the Vercel email Cron entries.
 - Do not re-enable the deleted GitHub scheduler as a parallel fallback. Resolve the durable run and resume it through the manual route after correction.
 
+## User preference and unsubscribe APIs
+
+Operator delivery is separate from how users change opt-ins:
+
+| Surface | Path / location | Notes |
+| ------- | --------------- | ----- |
+| Settings PATCH | `PATCH /api/v1/user/preferences/notifications` | Authenticated; updates category prefs in `user_email_notification_preferences` |
+| Signed unsubscribe | `GET`/`POST /api/v1/notifications/email/unsubscribe` | Tokenized HTML/one-click; sets global optional-email unsubscribe |
+| Preference tables | `user_email_notification_settings`, `user_email_notification_preferences` | See [schema overview](../database/schema-overview.md) |
+
+Delivery still requires the `email-notification-delivery` Vercel Flag, Resend secrets, and production `APP_URL`. Turning off a preference or unsubscribing does not delete historical ledger rows.
+
 ## Deployment checks
 
 Before enabling delivery, apply the run-table migration, deploy the application and `vercel.json`, configure a distinct `CRON_SECRET`, confirm exactly two Vercel email Cron entries, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.

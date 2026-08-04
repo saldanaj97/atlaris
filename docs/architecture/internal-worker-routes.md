@@ -15,8 +15,9 @@ Internal POST routes live under `/api/internal/`. They bypass Clerk middleware a
 | `POST /api/internal/maintenance/billing/reconcile-clerk` | Clerk Billing entitlement reconciliation | `maintenanceEnv`       | Manual drift repair |
 | `GET /api/cron/notifications/email` | Start/reuse the durable opted-in email delivery workflow | `maintenanceEnv.cronSecret` + `emailEnv` + `appEnv.url` (`APP_URL`) + Vercel Flag `email-notification-delivery` | Vercel Cron daily at 14:00 UTC and weekly Monday at 14:30 UTC |
 | `POST /api/internal/maintenance/notifications/email` | Manual start/resume/replay recovery for opted-in email delivery | `maintenanceEnv.workerToken` + `emailEnv` + `appEnv.url` (`APP_URL`) + Vercel Flag `email-notification-delivery` | Operator-triggered; no inline delivery |
+| `GET /api/health/worker` | Operator-facing worker/queue health metrics | `maintenanceEnv.workerHealthToken` (`WORKER_HEALTH_TOKEN`) | On-demand; not under `/api/internal/` |
 
-Maintenance cleanup routes share `assertMaintenanceWorkerAccess()` in `src/lib/api/internal/internal-worker-access.ts`. The regeneration drain uses `assertInternalWorkerAccess()` directly.
+Maintenance cleanup routes share `assertMaintenanceWorkerAccess()` in `src/lib/api/internal/internal-worker-access.ts`. The regeneration drain and worker health route use `assertInternalWorkerAccess()` (health header: `x-worker-health-token`).
 
 Clerk Billing reconciliation processes at most 100 users per request. Pass `?cursor=<auth_user_id>` to continue from the `nextCursor` returned by the prior response.
 
@@ -35,6 +36,7 @@ Each internal POST route accepts **one** of:
 | Clerk Billing reconciliation | `x-maintenance-worker-token`  | `MAINTENANCE_WORKER_TOKEN`  |
 | Email notification recovery | `x-maintenance-worker-token`  | `MAINTENANCE_WORKER_TOKEN`  |
 | Email notification Vercel Cron | None (Bearer only) | `CRON_SECRET` |
+| Worker health | `x-worker-health-token` | `WORKER_HEALTH_TOKEN` |
 
 Requests that supply both Bearer and the custom header are rejected.
 
