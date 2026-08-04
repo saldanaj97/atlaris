@@ -14,6 +14,7 @@ import { verifyWebhook } from '@clerk/nextjs/webhooks';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const WEBHOOK_MAX_BYTES = 256 * 1024;
 
@@ -117,6 +118,23 @@ function createClerkBillingWebhookHandler(): PlainHandler {
     const result = await applyVerifiedClerkBillingEvent(event, eventId, {
       logger,
     });
+
+    if (result.status === 'in_flight') {
+      return respond(
+        JSON.stringify({
+          error: 'Webhook event is already processing',
+          code: 'CLERK_WEBHOOK_IN_FLIGHT',
+          retryAfter: result.retryAfterSeconds,
+        }),
+        {
+          status: 503,
+          headers: {
+            'content-type': 'application/json',
+            'retry-after': String(result.retryAfterSeconds),
+          },
+        },
+      );
+    }
 
     return respond(JSON.stringify({ ok: true, ...result }), {
       status: 200,

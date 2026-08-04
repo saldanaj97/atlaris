@@ -23,6 +23,7 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 | Table                   | Policy                                                       |
 | ----------------------- | ------------------------------------------------------------ |
 | `oauth_state_tokens`    | Delete rows with `expires_at < now()`                        |
+| `clerk_webhook_event_claims` | Delete claims whose lease expired more than one day ago      |
 | `clerk_webhook_events`  | Delete rows older than 45 days                               |
 | `job_queue`             | Delete terminal `completed`/`failed` rows older than 30 days |
 | `ai_usage_events`       | Not deleted by this endpoint                                 |
@@ -63,6 +64,7 @@ Success shape:
 {
   "ok": true,
   "expiredOauthStateTokens": 0,
+  "expiredClerkWebhookEventClaims": 0,
   "oldClerkWebhookEvents": 0,
   "oldJobQueueRows": 0
 }
@@ -73,7 +75,7 @@ Failure shape follows the canonical API error contract (`docs/api/error-contract
 ## Operational Checks
 
 - In Supabase, inspect the `cron.job` and `cron.job_run_details` records for the `retention-cleanup` job.
-- Monitor table growth for `oauth_state_tokens`, `clerk_webhook_events`, and terminal `job_queue` rows if the scheduler stops running.
+- Monitor table growth for `oauth_state_tokens`, `clerk_webhook_event_claims`, `clerk_webhook_events`, and terminal `job_queue` rows if the scheduler stops running.
 - Alert on `401` responses from the internal cleanup endpoint (token mismatch/absence).
 - Alert on `503` responses from the manual cleanup endpoint (`RETENTION_CLEANUP_ENABLED=false` or missing worker token in production).
 
