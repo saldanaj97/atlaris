@@ -14,6 +14,15 @@ import { workflowEnv } from '@/lib/config/env/workflow';
 import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { getDb } from '@supabase/runtime';
 
+type ReservedRegenerationWorkValue =
+  | { kind: 'enqueued'; jobId: string }
+  | { kind: 'workflow-start-failed'; jobId: string; retryable: boolean }
+  | { kind: 'workflow-attach-error'; error: unknown };
+
+type RevertedRegenerationWorkValue =
+  | { kind: 'queue-dedupe-conflict'; existingJobId: string }
+  | { kind: 'workflow-start-failed'; jobId: string };
+
 export async function requestPlanRegeneration(
   args: RequestPlanRegenerationArgs,
   deps?: RegenerationOrchestrationDeps,
@@ -58,10 +67,11 @@ export async function requestPlanRegeneration(
   });
 
   const payload: PlanRegenerationJobData = { planId, overrides };
+  const workflowEnabled = workflowEnv.planRegenerationWorkflowEnabled;
 
   const boundaryResult = await d.quota.runReserved<
-    { jobId: string },
-    { existingJobId: string }
+    ReservedRegenerationWorkValue,
+    RevertedRegenerationWorkValue
   >({
     userId,
     planId,
@@ -78,17 +88,164 @@ export async function requestPlanRegeneration(
       if (enqueueResult.deduplicated) {
         return {
           disposition: 'revert' as const,
-          value: { existingJobId: enqueueResult.id },
+          value: {
+            kind: 'queue-dedupe-conflict' as const,
+            existingJobId: enqueueResult.id,
+          },
           reason: 'queue-dedupe',
           // Same id as existingJobId; boundary passes to compensation / reconciliation telemetry.
           jobId: enqueueResult.id,
         };
       }
 
-      return {
-        disposition: 'consumed' as const,
-        value: { jobId: enqueueResult.id },
-      };
+      const acceptedJobId = enqueueResult.id;
+      if (!workflowEnabled) {
+        return {
+          disposition: 'consumed' as const,
+          value: { kind: 'enqueued' as const, jobId: acceptedJobId },
+        };
+      }
+
+      const correlationId = `regen-${acceptedJobId}`;
+      try {
+        const attachResult = await attachPlanRegenerationWorkflow(
+          {
+            jobId: acceptedJobId,
+            planId,
+            userId,
+            payload,
+            correlationId,
+          },
+          d.queue,
+        );
+        if (attachResult.kind === 'start-failed') {
+          d.logger.error(
+            {
+              acceptedJobId,
+              planId,
+              userId,
+              correlationId,
+            },
+            'Failed to start plan regeneration workflow at enqueue time',
+          );
+          await d.queue.failJob(
+            acceptedJobId,
+            'Failed to start plan regeneration workflow.',
+            { retryable: true },
+          );
+          return {
+            disposition: 'consumed' as const,
+            value: {
+              kind: 'workflow-start-failed' as const,
+              jobId: acceptedJobId,
+              retryable: true,
+            },
+          };
+        }
+
+        if (attachResult.kind === 'persist-failed') {
+          d.logger.error(
+            {
+              acceptedJobId,
+              planId,
+              userId,
+              correlationId,
+              workflowRunId: attachResult.runId,
+              persistError: attachResult.persistError,
+              cancellationSucceeded: attachResult.cancellation.succeeded,
+            },
+            'Failed to persist plan regeneration workflow run id after start',
+          );
+          if (!attachResult.cancellation.succeeded) {
+            recordRegenerationWorkflowAttachUncertain(
+              {
+                jobId: acceptedJobId,
+                planId,
+                userId,
+                workflowRunId: attachResult.runId,
+                cancellationSucceeded: false,
+              },
+              attachResult.persistError,
+            );
+          }
+
+          let terminalized = false;
+          try {
+            await d.queue.failJob(
+              acceptedJobId,
+              'Failed to persist plan regeneration workflow run id.',
+              { retryable: false },
+            );
+            terminalized = true;
+          } catch (terminalizeError: unknown) {
+            d.logger.error(
+              {
+                acceptedJobId,
+                planId,
+                userId,
+                correlationId,
+                workflowRunId: attachResult.runId,
+                terminalizeError,
+              },
+              'Failed to terminalize plan regeneration job after workflow run id persistence failure',
+            );
+          }
+
+          if (attachResult.cancellation.succeeded && terminalized) {
+            return {
+              disposition: 'revert' as const,
+              value: {
+                kind: 'workflow-start-failed' as const,
+                jobId: acceptedJobId,
+              },
+              reason: 'workflow-attach-canceled',
+              jobId: acceptedJobId,
+            };
+          }
+
+          return {
+            disposition: 'consumed' as const,
+            value: {
+              kind: 'workflow-start-failed' as const,
+              jobId: acceptedJobId,
+              retryable: false,
+            },
+          };
+        }
+
+        return {
+          disposition: 'consumed' as const,
+          value: { kind: 'enqueued' as const, jobId: acceptedJobId },
+        };
+      } catch (error: unknown) {
+        // A workflow may have started, so preserve the reservation for reconciliation.
+        d.logger.error(
+          {
+            acceptedJobId,
+            planId,
+            userId,
+            correlationId,
+            error,
+          },
+          'Failed to attach plan regeneration workflow',
+        );
+        try {
+          await d.queue.failJob(
+            acceptedJobId,
+            'Failed to attach plan regeneration workflow.',
+            { retryable: false },
+          );
+        } catch (terminalizeError: unknown) {
+          d.logger.error(
+            { acceptedJobId, terminalizeError },
+            'Failed to terminalize plan regeneration job after workflow attachment failure',
+          );
+        }
+        return {
+          disposition: 'consumed' as const,
+          value: { kind: 'workflow-attach-error' as const, error },
+        };
+      }
     },
   });
 
@@ -102,6 +259,15 @@ export async function requestPlanRegeneration(
   }
 
   if (!boundaryResult.consumed) {
+    if (boundaryResult.value.kind === 'workflow-start-failed') {
+      return {
+        kind: 'workflow-start-failed',
+        jobId: boundaryResult.value.jobId,
+        planId,
+        retryable: false,
+      };
+    }
+
     return {
       kind: 'queue-dedupe-conflict',
       existingJobId: boundaryResult.value.existingJobId,
@@ -111,117 +277,23 @@ export async function requestPlanRegeneration(
     };
   }
 
+  if (boundaryResult.value.kind === 'workflow-attach-error') {
+    throw boundaryResult.value.error;
+  }
+
+  if (boundaryResult.value.kind === 'workflow-start-failed') {
+    return {
+      kind: 'workflow-start-failed',
+      jobId: boundaryResult.value.jobId,
+      planId,
+      retryable: boundaryResult.value.retryable,
+    };
+  }
+
   const acceptedJobId = boundaryResult.value.jobId;
   let inlineDrainScheduled = false;
 
-  if (workflowEnv.planRegenerationWorkflowEnabled) {
-    const correlationId = `regen-${acceptedJobId}`;
-    try {
-      const attachResult = await attachPlanRegenerationWorkflow(
-        {
-          jobId: acceptedJobId,
-          planId,
-          userId,
-          payload,
-          correlationId,
-        },
-        d.queue,
-      );
-      if (attachResult.kind === 'start-failed') {
-        d.logger.error(
-          {
-            acceptedJobId,
-            planId,
-            userId,
-            correlationId,
-          },
-          'Failed to start plan regeneration workflow at enqueue time',
-        );
-        await d.queue.failJob(
-          acceptedJobId,
-          'Failed to start plan regeneration workflow.',
-          { retryable: true },
-        );
-        return {
-          kind: 'workflow-start-failed',
-          jobId: acceptedJobId,
-          planId,
-          retryable: true,
-        };
-      }
-
-      if (attachResult.kind === 'persist-failed') {
-        d.logger.error(
-          {
-            acceptedJobId,
-            planId,
-            userId,
-            correlationId,
-            workflowRunId: attachResult.runId,
-            persistError: attachResult.persistError,
-            cancellationSucceeded: attachResult.cancellation.succeeded,
-          },
-          'Failed to persist plan regeneration workflow run id after start',
-        );
-        if (!attachResult.cancellation.succeeded) {
-          recordRegenerationWorkflowAttachUncertain(
-            {
-              jobId: acceptedJobId,
-              planId,
-              userId,
-              workflowRunId: attachResult.runId,
-              cancellationSucceeded: false,
-            },
-            attachResult.persistError,
-          );
-        }
-        try {
-          await d.queue.failJob(
-            acceptedJobId,
-            'Failed to persist plan regeneration workflow run id.',
-            { retryable: false },
-          );
-        } catch (terminalizeError: unknown) {
-          d.logger.error(
-            {
-              acceptedJobId,
-              planId,
-              userId,
-              correlationId,
-              workflowRunId: attachResult.runId,
-              terminalizeError,
-            },
-            'Failed to terminalize plan regeneration job after workflow run id persistence failure',
-          );
-        }
-        return {
-          kind: 'workflow-start-failed',
-          jobId: acceptedJobId,
-          planId,
-          retryable: false,
-        };
-      }
-    } catch (error: unknown) {
-      // Unexpected attach failure after workflow may have started; do not
-      // compensate or mark retryable — rely on reconciliation instead.
-      d.logger.error(
-        {
-          acceptedJobId,
-          planId,
-          userId,
-          correlationId,
-          error,
-        },
-        'Failed to attach plan regeneration workflow',
-      );
-      await d.queue.failJob(
-        acceptedJobId,
-        'Failed to attach plan regeneration workflow.',
-        { retryable: false },
-      );
-      throw error;
-    }
-  } else if (inlineProcessingEnabled) {
+  if (!workflowEnabled && inlineProcessingEnabled) {
     const registered = d.inlineDrain.tryRegister(() => {
       return (async () => {
         try {

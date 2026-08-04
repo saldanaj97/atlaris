@@ -669,6 +669,58 @@ describe('requestPlanRegeneration', () => {
       );
     });
 
+    it('compensates quota when a started workflow is canceled after run id persistence fails', async () => {
+      const persistError = new Error('runId persist failed');
+      const updateRegenerationJobPayload = vi.fn(async () => {
+        throw persistError;
+      });
+      const failJob = vi.fn(async () => null);
+      const reserve = vi.fn().mockResolvedValue({
+        ok: true,
+        token: baseToken,
+      });
+      const compensate = vi.fn(async () => undefined);
+      const deps = buildDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+        quota: {
+          runReserved: ((
+            args: Parameters<typeof runRegenerationQuotaReserved>[0],
+          ) =>
+            runRegenerationQuotaReserved(args, {
+              reserve,
+              compensate,
+              reportReconciliation: vi.fn(),
+            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
+        },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        retryable: false,
+      });
+      expect(failJob).toHaveBeenCalledWith(
+        'job-1',
+        'Failed to persist plan regeneration workflow run id.',
+        { retryable: false },
+      );
+      expect(compensate).toHaveBeenCalledTimes(1);
+      expect(compensate).toHaveBeenCalledWith(baseToken, fakeDb);
+      expect(
+        recordRegenerationWorkflowAttachUncertainMock,
+      ).not.toHaveBeenCalled();
+    });
+
     it('returns a structured persist failure when job terminalization fails', async () => {
       const persistError = new Error('runId persist failed');
       const updateRegenerationJobPayload = vi.fn(async () => {
