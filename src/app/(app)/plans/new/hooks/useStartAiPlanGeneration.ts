@@ -18,6 +18,7 @@ const GENERATION_STARTED_TOAST =
   'Your learning plan generation has started.' as const;
 const GENERATION_FAILED_FALLBACK =
   'We could not create your learning plan. Please try again.' as const;
+const GENERATION_ERROR_MESSAGE_MAX_LENGTH = 200;
 
 type PlanGenerationError = ReturnType<typeof normalizeThrown> & {
   planId?: string;
@@ -78,6 +79,15 @@ export function useStartAiPlanGeneration(): {
         },
       },
     )
+      .then((result) => {
+        if (
+          result.status === 'cancelled' &&
+          !cancellationToastShownRef.current
+        ) {
+          toast.info('Generation cancelled');
+          cancellationToastShownRef.current = true;
+        }
+      })
       .catch((streamError: unknown) => {
         const error = normalizeThrown(streamError) as PlanGenerationError;
 
@@ -99,8 +109,12 @@ export function useStartAiPlanGeneration(): {
 
         clientLogger.error('Streaming plan generation failed', streamError);
 
+        const normalizedMessage = error.message.trim();
         const message =
-          error instanceof Error ? error.message : GENERATION_FAILED_FALLBACK;
+          normalizedMessage.length > 0 &&
+          normalizedMessage.length <= GENERATION_ERROR_MESSAGE_MAX_LENGTH
+            ? normalizedMessage
+            : GENERATION_FAILED_FALLBACK;
         const failedPlanId =
           error.planId ?? error.data?.planId ?? planIdRef.current;
 

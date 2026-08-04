@@ -24,4 +24,32 @@ describe('requestJson', () => {
 
     expect(AbortSignal.timeout).toHaveBeenCalledWith(10);
   });
+
+  it('honors caller cancellation when a timeout is configured', async () => {
+    const caller = new AbortController();
+    const timeout = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            reject(init.signal?.reason);
+          });
+        });
+      }),
+    );
+
+    const request = requestJson({
+      url: '/test',
+      init: { signal: caller.signal },
+      schema: z.object({ ok: z.boolean() }),
+      fallbackMessage: 'Failed',
+      timeoutMs: 10,
+    });
+
+    caller.abort(new DOMException('Cancelled', 'AbortError'));
+
+    await expect(request).resolves.toEqual({ kind: 'aborted' });
+  });
 });

@@ -21,7 +21,7 @@ type ReservedRegenerationWorkValue =
 
 type RevertedRegenerationWorkValue =
   | { kind: 'queue-dedupe-conflict'; existingJobId: string }
-  | { kind: 'workflow-start-failed'; jobId: string };
+  | { kind: 'workflow-attach-canceled'; jobId: string };
 
 export async function requestPlanRegeneration(
   args: RequestPlanRegenerationArgs,
@@ -195,7 +195,7 @@ export async function requestPlanRegeneration(
             return {
               disposition: 'revert' as const,
               value: {
-                kind: 'workflow-start-failed' as const,
+                kind: 'workflow-attach-canceled' as const,
                 jobId: acceptedJobId,
               },
               reason: 'workflow-attach-canceled',
@@ -229,6 +229,15 @@ export async function requestPlanRegeneration(
           },
           'Failed to attach plan regeneration workflow',
         );
+        recordRegenerationWorkflowAttachUncertain(
+          {
+            jobId: acceptedJobId,
+            planId,
+            userId,
+            correlationId,
+          },
+          error,
+        );
         try {
           await d.queue.failJob(
             acceptedJobId,
@@ -259,7 +268,7 @@ export async function requestPlanRegeneration(
   }
 
   if (!boundaryResult.consumed) {
-    if (boundaryResult.value.kind === 'workflow-start-failed') {
+    if (boundaryResult.value.kind === 'workflow-attach-canceled') {
       return {
         kind: 'workflow-start-failed',
         jobId: boundaryResult.value.jobId,

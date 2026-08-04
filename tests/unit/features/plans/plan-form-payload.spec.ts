@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const baseFormData: PlanFormData = {
   topic: 'TypeScript',
   skillLevel: 'beginner',
-  weeklyHours: '5',
+  weeklyHours: '3-5',
   learningStyle: 'mixed',
   deadlineWeeks: '2',
 };
@@ -30,15 +30,18 @@ describe('buildCreatePlanPayloadFromForm', () => {
     });
   });
 
-  it('returns a structured error for invalid form values', () => {
-    const result = buildCreatePlanPayloadFromForm({
-      ...baseFormData,
-      weeklyHours: 'invalid',
-    });
+  it.each(['', ' ', '5', 'invalid'])(
+    'returns a structured error for unsupported weekly hours %j',
+    (weeklyHours) => {
+      const result = buildCreatePlanPayloadFromForm({
+        ...baseFormData,
+        weeklyHours,
+      });
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.message).not.toBe('');
-  });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.message).not.toBe('');
+    },
+  );
 });
 
 describe('planFormPayloadErrorMessage', () => {

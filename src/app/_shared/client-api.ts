@@ -30,10 +30,14 @@ export async function requestJson<T>(params: {
     params.timeoutMs === undefined
       ? null
       : AbortSignal.timeout(params.timeoutMs);
+  const signal =
+    timeoutSignal && params.init?.signal
+      ? AbortSignal.any([params.init.signal, timeoutSignal])
+      : (timeoutSignal ?? params.init?.signal);
 
   const init: RequestInit = {
     ...params.init,
-    signal: timeoutSignal ?? params.init?.signal,
+    signal,
   };
 
   let response: Response;
