@@ -153,7 +153,7 @@ Reuse this checklist for Preview/staging or a tunneled local run. Do not put rea
 3. A decline path (for example `4000 0000 0000 0002`) shows a recoverable error.
 4. Abandoning checkout leaves the current entitlement unchanged.
 5. Clerk Dashboard shows the subscription/payment attempt and webhook delivery.
-6. `POST /api/v1/clerk/billing/webhook` acknowledges the event and does not retry endlessly.
+6. `POST /api/v1/clerk/billing/webhook` acknowledges completed events. A concurrent delivery may receive a temporary `503` with `Retry-After` while another request owns the two-minute processing claim; Clerk should retry that delivery, and completed duplicates return `200` without another Clerk refresh.
 7. The correct `users.auth_user_id` receives updated `subscription_tier`, `subscription_status`, `subscription_period_end`, and `cancel_at_period_end`.
 8. Settings (`?checkout=1` sync UI, then settled rows) and at least one quota/feature boundary reflect the upgraded tier.
 9. Cancellation or cancel-at-period-end behavior is verified in Clerk and in the Postgres projection.

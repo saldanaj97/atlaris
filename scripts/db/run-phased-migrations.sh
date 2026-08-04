@@ -13,6 +13,7 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20260706221000_archive_legacy_stripe_entitlements.sql
   supabase/migrations/20260710151930_create_email_notification_delivery_runs.sql
   supabase/migrations/20260809190000_create_email_notification_deliveries.sql
+  supabase/migrations/20260810120000_create_clerk_webhook_event_claims.sql
 )
 
 declare -A APPLIED_VERSIONS=()
