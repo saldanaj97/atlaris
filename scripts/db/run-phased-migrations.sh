@@ -97,6 +97,8 @@ apply_contract_migrations() {
     exit 1
   fi
 
+  # db push applies the contract-only cleanup repair after any out-of-order legacy
+  # migration that recreates cleanup_retained_db_rows without claim retention.
   supabase db push --include-all
 }
 

@@ -316,6 +316,13 @@
       "when": 1783723210002,
       "tag": "20260810120000_create_clerk_webhook_event_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1783723210003,
+      "tag": "20260810120100_restore_clerk_webhook_claim_retention",
+      "breakpoints": true
     }
   ]
 }
