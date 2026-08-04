@@ -194,62 +194,59 @@ export function useTaskStatusBatcher({
     }
   }, [clearScheduledFlush]);
 
-  const queue = useCallback(
-    (
-      taskId: string,
-      nextStatus: ProgressStatus,
-      previousStatus: ProgressStatus,
-    ): Promise<void> => {
-      return new Promise<void>((resolve, reject) => {
-        const pending = pendingRef.current;
+  function queue(
+    taskId: string,
+    nextStatus: ProgressStatus,
+    previousStatus: ProgressStatus,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const pending = pendingRef.current;
 
-        const existing = pending.get(taskId);
-        if (existing) {
-          existing.resolvers.push({ resolve, reject });
+      const existing = pending.get(taskId);
+      if (existing) {
+        existing.resolvers.push({ resolve, reject });
 
-          if (nextStatus === existing.originalStatus) {
-            // Net zero — user toggled back to original. Resolve all and drop.
-            for (const r of existing.resolvers) r.resolve();
-            pending.delete(taskId);
-            if (pending.size === 0) {
-              clearScheduledFlush();
-            }
-            return;
+        if (nextStatus === existing.originalStatus) {
+          // Net zero — user toggled back to original. Resolve all and drop.
+          for (const r of existing.resolvers) r.resolve();
+          pending.delete(taskId);
+          if (pending.size === 0) {
+            clearScheduledFlush();
           }
-
-          existing.targetStatus = nextStatus;
-        } else {
-          pending.set(taskId, {
-            originalStatus: previousStatus,
-            targetStatus: nextStatus,
-            resolvers: [{ resolve, reject }],
-          });
+          return;
         }
 
-        const now = Date.now();
-        if (firstQueuedAtRef.current === null) {
-          firstQueuedAtRef.current = now;
-        }
-        const firstQueuedAt = firstQueuedAtRef.current;
+        existing.targetStatus = nextStatus;
+      } else {
+        pending.set(taskId, {
+          originalStatus: previousStatus,
+          targetStatus: nextStatus,
+          resolvers: [{ resolve, reject }],
+        });
+      }
 
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
-        timerRef.current = setTimeout(() => {
+      const now = Date.now();
+      if (firstQueuedAtRef.current === null) {
+        firstQueuedAtRef.current = now;
+      }
+      const firstQueuedAt = firstQueuedAtRef.current;
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        void flush();
+      }, debounceMs);
+
+      if (maxTimerRef.current === null) {
+        const elapsedMs = now - firstQueuedAt;
+        const remainingMs = Math.max(maxWaitMs - elapsedMs, 0);
+        maxTimerRef.current = setTimeout(() => {
           void flush();
-        }, debounceMs);
-
-        if (maxTimerRef.current === null) {
-          const elapsedMs = now - firstQueuedAt;
-          const remainingMs = Math.max(maxWaitMs - elapsedMs, 0);
-          maxTimerRef.current = setTimeout(() => {
-            void flush();
-          }, remainingMs);
-        }
-      });
-    },
-    [clearScheduledFlush, debounceMs, flush, maxWaitMs],
-  );
+        }, remainingMs);
+      }
+    });
+  }
 
   useEffect(() => {
     // Scope change (navigation/regen): drop stale pending instead of flushing under new scope.
