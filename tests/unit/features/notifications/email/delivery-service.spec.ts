@@ -138,6 +138,7 @@ describe('runEmailNotificationDelivery', () => {
 
     expect(listRecipients).toHaveBeenCalledWith({
       batchSize: 50,
+      categories: ['streak_reminder'],
       cursorUserId: '00000000-0000-0000-0000-000000000000',
       dbClient: expect.anything(),
     });

@@ -560,6 +560,7 @@ export async function runEmailNotificationDelivery(
 
   const { recipients, nextCursor } = await listEmailDeliveryRecipients({
     batchSize,
+    categories: request.categories,
     cursorUserId: request.cursorUserId,
     dbClient: db,
   });
