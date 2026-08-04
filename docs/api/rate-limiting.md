@@ -144,6 +144,7 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 
 - `DELETE /api/v1/plans/[planId]`
 - `PATCH /api/v1/user/preferences`
+- `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`
 
 ### Read (`read`)

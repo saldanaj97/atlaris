@@ -251,22 +251,40 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    // Period restoration from URL runs in an effect after plans load; wait for
-    // the annual redirect instead of asserting the first signed-out render.
-    await waitFor(() => {
-      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
-        'data-redirect',
-        '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
-      );
-      expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      );
-      expect(screen.getByText('$8')).toBeVisible();
-    });
+    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
+      'data-redirect',
+      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+    );
+    expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('$8')).toBeVisible();
     expect(window.location.search).toBe(
       '?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
+  });
+
+  it('defaults billing period to monthly when checkoutPeriod is missing or invalid', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=weekly',
+    );
+    mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
+
+    await renderPricingTable();
+
+    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
+      'data-redirect',
+      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=month',
+    );
+    expect(screen.getByRole('button', { name: 'Monthly' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('$10')).toBeVisible();
   });
 
   it('waits for auth to load before showing signed-out checkout actions', async () => {

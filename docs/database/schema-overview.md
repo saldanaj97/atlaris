@@ -4,6 +4,8 @@
 
 ```text
 users 1—* learning_plans, usage_metrics, ai_usage_events, job_queue, task_progress
+users 1—1 user_email_notification_settings
+users 1—* user_email_notification_preferences   (per email category)
 learning_plans 1—* modules, generation_attempts
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
@@ -11,6 +13,8 @@ task_resources —* resources
 users 1—* oauth_state_tokens
 clerk_webhook_events  (service-owned completed-event ledger)
 clerk_webhook_event_claims  (short-lived service-owned processing claims)
+email_notification_delivery_runs  (service-owned scheduler checkpoints)
+email_notification_deliveries     (service-owned per-message ledger; deny-all RLS)
 ```
 
 ## Enums
@@ -97,3 +101,4 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting (including `lesson_modules_generated` on `usage_metrics`)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)
+- Opt-in email notification preferences + durable delivery ledger/runs (see `docs/architecture/email-notification-delivery-runbook.md`)

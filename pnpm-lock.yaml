@@ -4337,7 +4337,7 @@ packages:
       expo-sqlite: '>=14.0.0'
       gel: '>=2'
       knex: '*'
-      kysely: ^0.28.17
+      kysely: '*'
       mysql2: '>=2'
       pg: '>=8'
       postgres: '>=3'

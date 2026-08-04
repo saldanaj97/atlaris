@@ -2,7 +2,7 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
-**Last Updated:** July 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -175,6 +175,25 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
 
+## Settings ledger (account UI)
+
+Settings is a **single-page ledger** at `/settings`, not an embedded Clerk `UserProfile`. Profile edits go through the custom `ProfileForm` and app APIs (`PUT /api/v1/user/profile`); entitlements stay on the Postgres projection updated by Clerk Billing webhooks.
+
+| Section id | Hash deep link | Contents |
+| ---------- | -------------- | -------- |
+| `profile` | `/settings#profile` | Custom profile form |
+| `billing` | `/settings#billing` | Subscription rows + post-checkout sync |
+| `usage` | `/settings#usage` | Usage / quota |
+| `ai` | `/settings#ai` | AI preferences |
+| `integrations` | `/settings#integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
+| `notifications` | `/settings#notifications` | Email notification preferences |
+
+Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Hash scrolling: `SettingsScrollTarget` (retries after mount for late layout).
+
+**Checkout return:** `/pricing` returns to `/settings?checkout=1&checkoutBaseline=…#billing`. `CheckoutSubscriptionSync` polls `GET /api/v1/user/subscription`, then `router.replace('/settings#billing')`. Details: [Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
+
+**Compatibility shim:** `src/app/(app)/settings/[...user-profile]/page.tsx` still exists for Clerk path-routed billing returns, but it renders the same `SettingsLedgerPage` — not a separate Clerk account portal.
+
 ## Anti-Patterns
 
 | Don't                                                        | Do Instead                                                                         |
@@ -185,6 +204,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
+| Expect embedded Clerk UserProfile under `/settings/...`      | Use the ledger sections and hash deep links above                                  |
 
 ## Code Locations
 
@@ -198,5 +218,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Service-role client   | `supabase/service-role.ts`        |
 | Clerk Auth config     | `src/lib/auth/server.ts`          |
 | Quota / usage logic   | `src/features/billing/usage-metrics.ts` |
+| Settings ledger       | `src/app/(app)/settings/components/SettingsLedgerPage.tsx` |
+| Settings section ids  | `src/app/(app)/settings/settings-section-ids.ts` |
 | RLS policies (schema) | `supabase/schema/tables/*.ts`     |
 | Query modules         | `src/lib/db/queries/*.ts`         |

@@ -54,6 +54,7 @@ jobs:
               - 'vitest.config.ts'
               - 'tsconfig.json'
               - 'package.json'
+              - 'pnpm-workspace.yaml'
               - 'pnpm-lock.yaml'
 
   integration-tests:
