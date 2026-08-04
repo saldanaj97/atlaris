@@ -2,15 +2,13 @@ name: CI - PR (trunk)
 
 on:
   pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'specs/**'
-      - '**/*.txt'
-      - '**/*.csv'
-      - '**/*.log'
   workflow_dispatch:
     inputs:
+      base_ref:
+        description: Branch used as the diff base
+        required: true
+        default: develop
+        type: string
       integration_workers:
         description: 'Workers for integration tests (4 default, 2 fallback)'
         type: choice
@@ -24,6 +22,9 @@ on:
 permissions:
   contents: read
 
+env:
+  BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || inputs.base_ref }}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,6 +32,9 @@ concurrency:
 jobs:
   changes:
     name: Detect Changes
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
@@ -38,9 +42,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050
         id: filter
         with:
+          base: ${{ github.event_name == 'pull_request' && github.base_ref || inputs.base_ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           filters: |
             source:
               - 'src/**'
@@ -60,6 +68,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - '.oxlintrc.json'
               - '.husky/**'
+              - '.github/scripts/**'
               - '.github/workflows/**'
 
   lint-and-type-check:
@@ -115,7 +124,7 @@ jobs:
           version: 11.9.0
       - name: Run dependency audit
         run: |
-          MAX_ATTEMPTS=1
+          MAX_ATTEMPTS=3
           RETRY_DELAY_SECONDS=5
           AUDIT_TIMEOUT_SECONDS=30
 
@@ -162,9 +171,8 @@ jobs:
             fi
           done
 
-          echo "::warning title=Security audit skipped::pnpm audit failed after ${MAX_ATTEMPTS} attempts due to npm registry/advisory endpoint errors or timeout."
-          echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors/timeouts; skipping to unblock CI."
-          exit 0
+          echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors/timeouts; failing closed."
+          exit 1
 
   build:
     name: Build
@@ -260,7 +268,6 @@ jobs:
         env:
           NODE_ENV: 'test'
           SKIP_DB_TEST_SETUP: 'true'
-          BASE_REF: ${{ github.base_ref }}
           SHARD: ${{ matrix.shard }}
           TOTAL: ${{ matrix.total }}
         shell: bash
@@ -418,7 +425,6 @@ jobs:
       - name: Run fast integration tests
         env:
           NODE_ENV: 'test'
-          BASE_REF: ${{ github.base_ref }}
         shell: bash
         run: |
           set -e
@@ -652,6 +658,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Run dependency remediation tests
+        run: node --test .github/scripts/dependency-remediation.test.mjs
       - name: Run production workflow tests
         run: pnpm test:workflow
 
