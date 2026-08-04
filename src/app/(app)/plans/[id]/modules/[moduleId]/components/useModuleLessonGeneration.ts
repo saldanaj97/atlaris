@@ -98,7 +98,6 @@ export function useModuleLessonGeneration({
     }
 
     generationPollCountRef.current = 0;
-    setLongGenerationKey(null);
 
     let cancelled = false;
     let timeoutId: number | undefined;
@@ -228,6 +227,7 @@ export function useModuleLessonGeneration({
     }
 
     setQuotaMessage(null);
+    setLongGenerationKey(null);
     startTransition(async () => {
       try {
         const response = await fetch(
