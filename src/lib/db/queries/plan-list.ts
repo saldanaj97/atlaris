@@ -183,7 +183,8 @@ function planListRowsSql(params: {
       select
         m.plan_id,
         count(t.id)::int as total_tasks,
-        count(t.id) filter (where tp.status = 'completed')::int as completed_tasks
+        count(t.id) filter (where tp.status = 'completed')::int as completed_tasks,
+        max(tp.updated_at) as latest_progress_at
       from modules m
       inner join filtered_user_plans up on up.id = m.plan_id
       left join tasks t on t.module_id = m.id
@@ -196,24 +197,36 @@ function planListRowsSql(params: {
         up.id,
         up.topic,
         up.created_at,
-        up.updated_at,
-	        coalesce(tm.total_tasks, 0)::int as total_tasks,
-	        coalesce(tm.completed_tasks, 0)::int as completed_tasks,
-	        case
-	          when up.generation_status = 'failed' then 'failed'
-	          when up.generation_status in ('generating', 'pending_retry') then 'generating'
-	          when coalesce(mc.module_count, 0) > 0
-	            and coalesce(tm.total_tasks, 0) > 0
-	            and tm.completed_tasks >= tm.total_tasks then 'completed'
+        coalesce(
+          greatest(up.updated_at, tm.latest_progress_at),
+          up.updated_at,
+          tm.latest_progress_at
+        ) as updated_at,
+        coalesce(tm.total_tasks, 0)::int as total_tasks,
+        coalesce(tm.completed_tasks, 0)::int as completed_tasks,
+        case
+          when up.generation_status = 'failed' then 'failed'
+          when up.generation_status in ('generating', 'pending_retry') then 'generating'
+          when coalesce(mc.module_count, 0) > 0
+            and coalesce(tm.total_tasks, 0) > 0
+            and tm.completed_tasks >= tm.total_tasks then 'completed'
           when coalesce(mc.module_count, 0) > 0
             and coalesce(tm.completed_tasks, 0) = 0 then 'not_started'
           when coalesce(mc.module_count, 0) > 0
-	            and up.updated_at is not null
-	            and ${params.referenceTimestamp}::timestamptz - up.updated_at >= interval '30 days' then 'paused'
-	          when coalesce(mc.module_count, 0) > 0 then 'active'
-	          when coalesce(ac.attempt_count, 0) >= ${attemptCap} then 'failed'
-	          else 'generating'
-	        end as status
+            and coalesce(
+              greatest(up.updated_at, tm.latest_progress_at),
+              up.updated_at,
+              tm.latest_progress_at
+            ) is not null
+            and ${params.referenceTimestamp}::timestamptz - coalesce(
+              greatest(up.updated_at, tm.latest_progress_at),
+              up.updated_at,
+              tm.latest_progress_at
+            ) >= interval '30 days' then 'paused'
+          when coalesce(mc.module_count, 0) > 0 then 'active'
+          when coalesce(ac.attempt_count, 0) >= ${attemptCap} then 'failed'
+          else 'generating'
+        end as status
       from filtered_user_plans up
       left join module_counts mc on mc.plan_id = up.id
       left join attempt_counts ac on ac.plan_id = up.id
