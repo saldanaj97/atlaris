@@ -368,15 +368,17 @@ describe('ModuleLessonsClient', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('shows long-running notice and stops polling after max attempts', async () => {
+  it('shows long-running notice and keeps polling until status becomes terminal', async () => {
     vi.useFakeTimers();
-    const fetchMock = vi.fn().mockResolvedValue(
-      mockJsonFetchResponse({
+    let pollCount = 0;
+    const fetchMock = vi.fn(async () => {
+      pollCount += 1;
+      return mockJsonFetchResponse({
         planId: PLAN_ID,
         moduleId: MODULE_ID,
-        status: 'generating',
-      }),
-    );
+        status: pollCount === 22 ? 'ready' : 'generating',
+      });
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     renderClient({
@@ -395,7 +397,7 @@ describe('ModuleLessonsClient', () => {
 
     for (let i = 0; i < 21; i += 1) {
       await act(async () => {
-        vi.advanceTimersByTime(2500);
+        await vi.advanceTimersByTimeAsync(2500);
       });
     }
 
@@ -403,12 +405,11 @@ describe('ModuleLessonsClient', () => {
       screen.getByText('Generation taking longer than expected'),
     ).toBeInTheDocument();
 
-    const callsAfterStop = fetchMock.mock.calls.length;
     await act(async () => {
-      vi.advanceTimersByTime(2500);
+      await vi.advanceTimersByTimeAsync(2500);
     });
-    expect(fetchMock.mock.calls.length).toBe(callsAfterStop);
-    expect(refreshMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(22);
+    expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows failed generation copy from server and retry affordance', () => {
