@@ -20,6 +20,7 @@ describe('private.cleanup_retained_db_rows', () => {
       from "private"."cleanup_retained_db_rows"(${now.toISOString()}::timestamptz)
     `)) as Array<{
       expired_oauth_state_tokens: number;
+      expired_clerk_webhook_event_claims: number;
       old_clerk_webhook_events: number;
       old_job_queue_rows: number;
     }>;
@@ -27,6 +28,7 @@ describe('private.cleanup_retained_db_rows', () => {
     expect(rows).toEqual([
       {
         expired_oauth_state_tokens: 1,
+        expired_clerk_webhook_event_claims: 1,
         old_clerk_webhook_events: 1,
         old_job_queue_rows: 2,
       },
@@ -38,6 +40,8 @@ describe('private.cleanup_retained_db_rows', () => {
         (select count(*)::int from "oauth_state_tokens" where "state_token_hash" = ${fixture.oauth.expiredHash}) as expired_oauth_state_tokens,
         (select count(*)::int from "clerk_webhook_events" where "event_id" = ${fixture.clerk.recentEventId}) as recent_clerk_events,
         (select count(*)::int from "clerk_webhook_events" where "event_id" = ${fixture.clerk.oldEventId}) as old_clerk_events,
+        (select count(*)::int from "clerk_webhook_event_claims" where "event_id" = ${fixture.clerk.recentClaimEventId}) as recent_clerk_claims,
+        (select count(*)::int from "clerk_webhook_event_claims" where "event_id" = ${fixture.clerk.expiredClaimEventId}) as expired_clerk_claims,
         (select count(*)::int from "job_queue" where "status" = 'pending' and "plan_id" = ${fixture.planId}) as pending_jobs,
         (select count(*)::int from "job_queue" where "status" = 'completed' and "plan_id" = ${fixture.planId}) as completed_jobs
     `)) as Array<{
@@ -45,6 +49,8 @@ describe('private.cleanup_retained_db_rows', () => {
       expired_oauth_state_tokens: number;
       recent_clerk_events: number;
       old_clerk_events: number;
+      recent_clerk_claims: number;
+      expired_clerk_claims: number;
       pending_jobs: number;
       completed_jobs: number;
     }>;
@@ -55,6 +61,8 @@ describe('private.cleanup_retained_db_rows', () => {
         expired_oauth_state_tokens: 0,
         recent_clerk_events: 1,
         old_clerk_events: 0,
+        recent_clerk_claims: 1,
+        expired_clerk_claims: 0,
         pending_jobs: 1,
         completed_jobs: 1,
       },

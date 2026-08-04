@@ -31,6 +31,7 @@ import {
 import {
   jobQueue,
   aiUsageEvents,
+  clerkWebhookEventClaims,
   generationAttempts,
   learningPlans,
   modules,
@@ -47,6 +48,21 @@ import { createId } from '@tests/fixtures/ids';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+
+async function expectRlsBlocked(
+  operation: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    const result = await operation();
+    expect(result).toEqual([]);
+  } catch (error) {
+    const err = error as { cause?: { message?: unknown }; message?: unknown };
+    const message = `${String(err.message ?? error)} ${String(err.cause?.message ?? '')}`;
+    expect(message).toMatch(
+      /row[-\s]?level.*security|permission denied|insufficient privilege/i,
+    );
+  }
+}
 
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_generations, oauth_state_tokens.
@@ -309,6 +325,55 @@ describe('RLS Policy Verification', () => {
         : (rawRows as { rows: unknown[] }).rows;
 
       expect(rows).toEqual([]);
+    });
+
+    it('Clerk webhook claims are inaccessible to API roles', async () => {
+      const eventId = 'rls_clerk_webhook_claim';
+      await db.insert(clerkWebhookEventClaims).values({
+        eventId,
+        claimToken: '00000000-0000-4000-8000-000000000051',
+        claimExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const clients = [
+        await createRlsDbForUser('clerk_claim_rls_user'),
+        await createAnonRlsDb(),
+      ];
+
+      for (const client of clients) {
+        await expect(
+          client.select().from(clerkWebhookEventClaims),
+        ).resolves.toEqual([]);
+        await expectRlsBlocked(() =>
+          client
+            .insert(clerkWebhookEventClaims)
+            .values({
+              eventId: `${eventId}_insert`,
+              claimToken: '00000000-0000-4000-8000-000000000052',
+              claimExpiresAt: new Date(Date.now() + 60_000),
+            })
+            .returning(),
+        );
+        await expectRlsBlocked(() =>
+          client
+            .update(clerkWebhookEventClaims)
+            .set({ claimExpiresAt: new Date(Date.now() + 120_000) })
+            .where(eq(clerkWebhookEventClaims.eventId, eventId))
+            .returning(),
+        );
+        await expectRlsBlocked(() =>
+          client
+            .delete(clerkWebhookEventClaims)
+            .where(eq(clerkWebhookEventClaims.eventId, eventId))
+            .returning(),
+        );
+      }
+
+      await expect(
+        db
+          .select({ eventId: clerkWebhookEventClaims.eventId })
+          .from(clerkWebhookEventClaims),
+      ).resolves.toEqual([{ eventId }]);
     });
 
     it('authenticated users can read and update only their own user row', async () => {
