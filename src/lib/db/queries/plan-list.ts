@@ -184,6 +184,7 @@ function planListRowsSql(params: {
         m.plan_id,
         count(t.id)::int as total_tasks,
         count(t.id) filter (where tp.status = 'completed')::int as completed_tasks,
+        count(t.id) filter (where tp.status in ('in_progress', 'completed'))::int as started_tasks,
         max(tp.updated_at) as latest_progress_at
       from modules m
       inner join filtered_user_plans up on up.id = m.plan_id
@@ -211,7 +212,7 @@ function planListRowsSql(params: {
             and coalesce(tm.total_tasks, 0) > 0
             and tm.completed_tasks >= tm.total_tasks then 'completed'
           when coalesce(mc.module_count, 0) > 0
-            and coalesce(tm.completed_tasks, 0) = 0 then 'not_started'
+            and coalesce(tm.started_tasks, 0) = 0 then 'not_started'
           when coalesce(mc.module_count, 0) > 0
             and coalesce(
               greatest(up.updated_at, tm.latest_progress_at),

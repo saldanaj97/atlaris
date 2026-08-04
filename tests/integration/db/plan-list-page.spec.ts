@@ -394,6 +394,34 @@ describe('aggregate plans page query', () => {
     ]);
   });
 
+  it('treats in-progress task rows as started plans', async () => {
+    const userId = await createUser('in-progress-plan-status');
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Started plan',
+      generationStatus: 'ready',
+    });
+    const module = await createTestModule({ planId: plan.id });
+    const task = await createTestTask({ moduleId: module.id });
+
+    await db.insert(taskProgress).values({
+      taskId: task.id,
+      userId,
+      status: 'in_progress',
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ status: 'all' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items).toEqual([
+      expect.objectContaining({ id: plan.id, status: 'active' }),
+    ]);
+  });
+
   it('keeps non-ready plans with modules out of the not-started bucket', async () => {
     const userId = await createUser('non-ready-modules');
     const generatingPlan = await createTestPlan({

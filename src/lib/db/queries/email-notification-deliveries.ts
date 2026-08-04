@@ -48,6 +48,13 @@ function claimSnapshotPredicates(existing: {
   ] as const;
 }
 
+function shouldUseRecomputedRequest(failureClass: string | null): boolean {
+  return (
+    failureClass === 'provider_configuration' ||
+    failureClass === 'provider_recipient_invalid'
+  );
+}
+
 export type EmailNotificationDeliveryLedgerSummary = {
   readonly sent: number;
   readonly skipped: number;
@@ -164,8 +171,10 @@ async function readCurrentClaimResult(
 /**
  * Atomically claim a delivery row for send. Terminal sent/skipped/manual_review
  * is final. Failed rows and expired pending leases can be reclaimed only with
- * their persisted request. Fresh pending leases return in_flight. Ambiguous
- * pending older than the provider window becomes manual_review.
+ * their persisted request, except definitively rejected configuration or
+ * recipient rows, which accept the recomputed request during recovery. Fresh
+ * pending leases return in_flight. Ambiguous pending older than the provider
+ * window becomes manual_review.
  */
 export async function claimEmailNotificationDelivery(
   args: {
@@ -231,6 +240,7 @@ export async function claimEmailNotificationDelivery(
       claimToken: emailNotificationDeliveries.claimToken,
       claimExpiresAt: emailNotificationDeliveries.claimExpiresAt,
       providerRequest: emailNotificationDeliveries.providerRequest,
+      failureClass: emailNotificationDeliveries.failureClass,
       updatedAt: emailNotificationDeliveries.updatedAt,
       createdAt: emailNotificationDeliveries.createdAt,
     })
@@ -257,7 +267,13 @@ export async function claimEmailNotificationDelivery(
 
   if (existing.status === 'failed') {
     const previousRequest = asProviderRequest(existing.providerRequest);
-    if (!previousRequest) {
+    const useRecomputedRequest = shouldUseRecomputedRequest(
+      existing.failureClass,
+    );
+    const requestForRetry = useRecomputedRequest
+      ? args.providerRequest
+      : previousRequest;
+    if (!requestForRetry) {
       throw new Error('Failed delivery missing provider request');
     }
 
@@ -269,7 +285,7 @@ export async function claimEmailNotificationDelivery(
         providerMessageId: null,
         claimToken,
         claimExpiresAt,
-        providerRequest: previousRequest,
+        providerRequest: requestForRetry,
         attemptCount: sql`${emailNotificationDeliveries.attemptCount} + 1`,
         updatedAt: now,
       })
@@ -296,7 +312,7 @@ export async function claimEmailNotificationDelivery(
         deliveryId: reclaimed[0].id,
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
-        reusedProviderRequest: true,
+        reusedProviderRequest: !useRecomputedRequest,
       };
     }
 
