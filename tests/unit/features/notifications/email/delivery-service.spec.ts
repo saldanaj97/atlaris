@@ -139,6 +139,7 @@ describe('runEmailNotificationDelivery', () => {
     expect(listRecipients).toHaveBeenCalledWith({
       batchSize: 50,
       cursorUserId: '00000000-0000-0000-0000-000000000000',
+      categories: ['streak_reminder'],
       dbClient: expect.anything(),
     });
     expect(result.nextCursor).toBe('u1');

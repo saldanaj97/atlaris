@@ -207,7 +207,7 @@ describe('email notification deliveries ledger', () => {
     expect(retried).toMatchObject({ outcome: 'claimed' });
   });
 
-  it('reuses the original provider request and domain idempotency key for failed rows', async () => {
+  it('accepts a recomputed provider request for definitively rejected rows', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-failed');
     const userId = await ensureUser({
       authUserId,
@@ -239,15 +239,16 @@ describe('email notification deliveries ledger', () => {
       db,
     );
 
+    const recomputedRequest = providerRequest({
+      subject: 'Recomputed subject',
+      idempotencyKey: 'recomputed:daily_reminder:2026-07-10',
+    });
     const second = await claimEmailNotificationDelivery(
       {
         userId,
         category: 'daily_reminder',
         deliveryKey: '2026-07-10',
-        providerRequest: providerRequest({
-          subject: 'Recomputed subject',
-          idempotencyKey: 'recomputed:daily_reminder:2026-07-10',
-        }),
+        providerRequest: recomputedRequest,
       },
       db,
     );
@@ -256,8 +257,8 @@ describe('email notification deliveries ledger', () => {
     if (second.outcome !== 'claimed') return;
     expect(second.deliveryId).toBe(first.deliveryId);
     expect(second.claimToken).not.toBe(first.claimToken);
-    expect(second.providerRequest).toEqual(originalRequest);
-    expect(second.reusedProviderRequest).toBe(true);
+    expect(second.providerRequest).toEqual(recomputedRequest);
+    expect(second.reusedProviderRequest).toBe(false);
 
     await markEmailNotificationDeliveryFailed(
       {
@@ -268,23 +269,24 @@ describe('email notification deliveries ledger', () => {
       db,
     );
 
+    const latestRequest = providerRequest({
+      subject: 'Another recomputed subject',
+      idempotencyKey: 'another:daily_reminder:2026-07-10',
+    });
     const third = await claimEmailNotificationDelivery(
       {
         userId,
         category: 'daily_reminder',
         deliveryKey: '2026-07-10',
-        providerRequest: providerRequest({
-          subject: 'Another recomputed subject',
-          idempotencyKey: 'another:daily_reminder:2026-07-10',
-        }),
+        providerRequest: latestRequest,
       },
       db,
     );
 
     expect(third.outcome).toBe('claimed');
     if (third.outcome !== 'claimed') return;
-    expect(third.providerRequest).toEqual(originalRequest);
-    expect(third.reusedProviderRequest).toBe(true);
+    expect(third.providerRequest).toEqual(latestRequest);
+    expect(third.reusedProviderRequest).toBe(false);
 
     await expect(
       markEmailNotificationDeliverySent(
@@ -351,7 +353,7 @@ describe('email notification deliveries ledger', () => {
       {
         deliveryId: first.deliveryId,
         claimToken: first.claimToken,
-        failureClass: 'provider_configuration',
+        failureClass: 'provider_rate_limited',
       },
       db,
     );

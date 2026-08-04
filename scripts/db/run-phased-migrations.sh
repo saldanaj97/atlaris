@@ -7,6 +7,7 @@ readonly DROP_VERSION='20260706222017'
 readonly CONTRACT_CONFIRMATION_VALUE='post-deploy-health-verified'
 readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/0036_add_learning_activity_events.sql
+  supabase/migrations/20260804160000_revoke_task_progress_delete.sql
   supabase/migrations/0037_add_user_analytics_timezone.sql
   supabase/migrations/20260703181947_create_user_preferences_foundation.sql
   supabase/migrations/20260706201202_create_clerk_billing_webhook_events.sql

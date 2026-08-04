@@ -27,6 +27,16 @@ function readBearerToken(request: Request): string | null {
   return match?.[1]?.trim() || null;
 }
 
+function resolveRunKind(request: Request) {
+  const runKindParam = new URL(request.url).searchParams.get('runKind');
+  if (runKindParam === 'daily' || runKindParam === 'weekly') {
+    return runKindParam;
+  }
+
+  const schedule = request.headers.get('x-vercel-cron-schedule');
+  return schedule ? resolveEmailNotificationDeliveryRunKind(schedule) : null;
+}
+
 export type EmailNotificationDeliveryCronRouteDeps = {
   readonly resolveCronSecret?: () => string | undefined;
   readonly resolveDeliveryEnabled?: () => Promise<boolean>;
@@ -78,10 +88,7 @@ export function createEmailNotificationDeliveryCronRoute(
       return jsonError('Unauthorized cron trigger.', { status: 401 });
     }
 
-    const schedule = request.headers.get('x-vercel-cron-schedule');
-    const runKind = schedule
-      ? resolveEmailNotificationDeliveryRunKind(schedule)
-      : null;
+    const runKind = resolveRunKind(request);
     if (!runKind) {
       return jsonError('Unknown email notification cron schedule.', {
         status: 400,

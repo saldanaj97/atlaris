@@ -323,6 +323,13 @@
       "when": 1783723210003,
       "tag": "20260810120100_restore_clerk_webhook_claim_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1785859200000,
+      "tag": "20260804160000_revoke_task_progress_delete",
+      "breakpoints": true
     }
   ]
 }
