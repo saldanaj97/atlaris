@@ -3,13 +3,19 @@
 ## Core entities and relationships
 
 ```text
+users 1—1 user_preferences
+users 1—1 user_email_notification_settings
+users 1—* user_email_notification_preferences
 users 1—* learning_plans, usage_metrics, ai_usage_events, job_queue, task_progress
+users 1—* learning_activity_events
 learning_plans 1—* modules, generation_attempts
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
 task_resources —* resources
 users 1—* oauth_state_tokens
 clerk_webhook_events  (service-owned idempotency ledger)
+email_notification_delivery_runs  (service-owned scheduler checkpoints)
+email_notification_deliveries     (service-owned per-message ledger)
 ```
 
 ## Enums
@@ -61,6 +67,24 @@ RLS is enforced through request-scoped Postgres session state:
 | `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
 | `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
 | `clerk_webhook_events` | `(event_id)` unique, `(created_at)`                                                                         |
+| `learning_activity_events` | `(user_id, occurred_at)`, `(user_id, plan_id, occurred_at)`, `(task_id, occurred_at)`                    |
+| `user_preferences` | PK `user_id`; stores `preferred_ai_model`, `analytics_timezone` (default `UTC`)                             |
+| `user_email_notification_preferences` | PK `(user_id, category)`                                                                      |
+| `email_notification_deliveries` | unique `(user_id, category, delivery_key)`                                                            |
+| `email_notification_delivery_runs` | unique `(run_kind, scheduler_date_utc)`                                                             |
+
+## Preferences and notifications
+
+| Table | Owner | Purpose |
+| ----- | ----- | ------- |
+| `user_preferences` | user (RLS) | Preferred AI model + analytics timezone for `/analytics/usage` |
+| `user_email_notification_settings` | user (RLS) | Global optional-email unsubscribe flag |
+| `user_email_notification_preferences` | user (RLS) | Per-category opt-in (`enabled`, optional `unsubscribed_at`) |
+| `learning_activity_events` | user read (RLS select); writers at DB boundary | Append-only task progress changes for streaks/trends |
+| `email_notification_deliveries` | service-role | Idempotent send ledger |
+| `email_notification_delivery_runs` | service-role | Durable daily/weekly scheduler checkpoints |
+
+Schema: `supabase/schema/tables/user-preferences.ts`, `tasks.ts` (`learning_activity_events`), `email-notification-*.ts`.
 
 ## Ownership and retention
 
@@ -94,3 +118,6 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting (including `lesson_modules_generated` on `usage_metrics`)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)
+- User preferences (AI model + analytics timezone) and email notification opt-ins
+- Usage analytics history via `learning_activity_events` (see `docs/architecture/usage-analytics-metric-contract.md`)
+- Opted-in email delivery ledger + durable delivery runs (see email notification runbook)

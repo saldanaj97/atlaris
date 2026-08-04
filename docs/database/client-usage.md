@@ -98,4 +98,5 @@ Do not import `@supabase/service-role` from request-layer paths (see `supabase/s
 
 - `supabase/service-role.ts` - Detailed usage documentation in comments
 - `supabase/rls.ts` - RLS client factory documentation
-- [docs/testing/testing.md](../testing/testing.md) - Testing with different clients
+- [docs/testing/test-standards.md](../testing/test-standards.md) - Test standards
+- [docs/testing/db-test-patterns.md](../testing/db-test-patterns.md) - Drizzle query helper test patterns

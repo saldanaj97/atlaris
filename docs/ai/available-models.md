@@ -22,10 +22,12 @@ This document provides a comprehensive list of AI models available in Atlaris vi
 
 ## Subscription Tiers
 
-Access to models is gated by your subscription tier:
+Access to models is gated by your subscription tier (`src/features/ai/ai-models.ts`):
 
-- **Free Tier**: Users on the free plan have access to all models marked as `free`. This includes high-performance models like Gemini 2.0 Flash and Claude Haiku 4.5.
-- **Pro Tier**: Pro subscribers have access to the entire catalog, including premium models like Claude Sonnet 4.5 and the latest GPT-5 variants.
+- **Free and Starter**: Access to models marked as `free` only (including Gemini 2.0 Flash and Claude Haiku 4.5). Starter does not unlock pro models.
+- **Pro**: Access to the entire catalog, including premium models like Claude Sonnet 4.5 and the latest GPT-5 variants.
+
+Quota/limits for each product tier live in `src/shared/constants/tier-limits.ts`; do not copy numeric quotas into this page.
 
 ## Understanding Costs
 
