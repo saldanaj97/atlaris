@@ -56,7 +56,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Skips any run whose ref is not `refs/heads/develop`
   - Checks out `develop`
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
-  - `expand` applies and records only the workflow's safe migration list
+  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
 ### 4) `.github/workflows/production-db-migrations.yaml`
@@ -67,7 +67,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Skips any run whose ref is not `refs/heads/main`
   - Checks out `main`
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
-  - `expand` applies and records only the workflow's safe migration list
+  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
 ---
@@ -139,7 +139,7 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
 - Confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
 - For `contract`, confirm rollout health and the Stripe archive counts before entering `post-deploy-health-verified`.
-- Inspect the `supabase db push` logs for the failing migration file.
+- Inspect the Supabase migration runner logs for the failing migration file.
 
 ### Production deploy blocked
 

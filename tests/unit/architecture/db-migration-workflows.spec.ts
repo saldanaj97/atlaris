@@ -5,6 +5,12 @@ import { describe, expect, it } from 'vitest';
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const WORKFLOWS_DIR = join(REPO_ROOT, '.github', 'workflows');
 const MIGRATIONS_DIR = join(REPO_ROOT, 'supabase', 'migrations');
+const PHASED_MIGRATION_SCRIPT = join(
+  REPO_ROOT,
+  'scripts',
+  'db',
+  'run-phased-migrations.sh',
+);
 
 const migrationWorkflows = [
   {
@@ -66,15 +72,27 @@ describe('Supabase migration workflows', () => {
     ({ fileName }) => {
       const workflow = readWorkflow(fileName);
 
-      expect(workflow).toContain('Apply expand migrations');
-      expect(workflow).toContain(
-        '20260706221000_archive_legacy_stripe_entitlements.sql',
-      );
       expect(workflow).toContain('confirm_contract:');
-      expect(workflow).toContain('post-deploy-health-verified');
-      expect(workflow).toContain('supabase db push --include-all');
+      expect(workflow).toContain('MIGRATION_PHASE: ${{ inputs.phase }}');
+      expect(workflow).toContain(
+        'CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}',
+      );
+      expect(workflow).toContain('bash scripts/db/run-phased-migrations.sh');
     },
   );
+
+  it('applies each expand migration and its history record atomically', () => {
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+
+    expect(script).toContain(
+      '20260706221000_archive_legacy_stripe_entitlements.sql',
+    );
+    expect(script).toContain(
+      'supabase migration up --linked --include-all --yes',
+    );
+    expect(script).not.toContain('supabase migration repair');
+    expect(script).not.toContain('db query --linked --file');
+  });
 
   it('archives Stripe and Clerk join keys before the legacy drop', () => {
     const migration = readFileSync(
@@ -92,5 +110,13 @@ describe('Supabase migration workflows', () => {
     expect(migration).toContain(
       'REVOKE ALL ON TABLE "legacy_stripe_entitlement_archive" FROM anon, authenticated',
     );
+    expect(migration).toContain(
+      'Cannot archive legacy Stripe entitlements after their source columns were dropped',
+    );
+
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    expect(script).toContain('20260706222017');
+    expect(script).toContain('20260706221000');
+    expect(script).toContain('Restore a pre-drop backup');
   });
 });

@@ -45,6 +45,8 @@ WHERE users.stripe_customer_id IS NOT NULL
 
 The counts must match. Export the archive to the approved operator location and verify each paid identity is owned by the expected Clerk user before entering the contract confirmation. The archive retains `user_id`, `auth_user_id`, both Stripe IDs, and the subscription projection fields; it does not restore Stripe commerce paths.
 
+The phased migration runner refuses to continue when the drop version is already recorded but the archive version is missing. That state cannot be repaired from the current `users` table. Restore a pre-drop backup into an isolated database, export and verify the legacy identities, import them into `legacy_stripe_entitlement_archive` on the target, and only then repair version `20260706221000` as applied. Do not run the contract phase until the archive is present and verified.
+
 ## Database migrations and internal workers
 
 After deploying a release that includes new Supabase migrations:

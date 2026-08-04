@@ -1,3 +1,24 @@
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+			AND table_name = 'users'
+			AND column_name = 'stripe_customer_id'
+	) OR NOT EXISTS (
+		SELECT 1
+		FROM information_schema.columns
+		WHERE table_schema = 'public'
+			AND table_name = 'users'
+			AND column_name = 'stripe_subscription_id'
+	) THEN
+		RAISE EXCEPTION 'Cannot archive legacy Stripe entitlements after their source columns were dropped'
+			USING HINT = 'Restore a pre-drop backup, export the legacy identities, and import the verified archive before repairing this migration version.';
+	END IF;
+END
+$$;--> statement-breakpoint
+
 CREATE TABLE "legacy_stripe_entitlement_archive" (
 	"user_id" uuid PRIMARY KEY NOT NULL,
 	"auth_user_id" text NOT NULL,

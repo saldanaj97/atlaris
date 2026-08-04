@@ -72,13 +72,11 @@ describe('advanceEmailNotificationDeliveryRun', () => {
   });
 
   it('deploys the generated historical migration with include-all', () => {
-    for (const workflow of [
-      '../../../.github/workflows/staging-db-migrations.yaml',
-      '../../../.github/workflows/production-db-migrations.yaml',
-    ]) {
-      expect(readFileSync(resolve(TEST_DIR, workflow), 'utf8')).toContain(
-        'supabase db push --include-all',
-      );
-    }
+    expect(
+      readFileSync(
+        resolve(TEST_DIR, '../../../scripts/db/run-phased-migrations.sh'),
+        'utf8',
+      ),
+    ).toContain('supabase db push --include-all');
   });
 });
