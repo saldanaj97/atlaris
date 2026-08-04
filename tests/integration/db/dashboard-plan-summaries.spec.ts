@@ -1,4 +1,9 @@
-import { listDashboardPlanSummaries } from '@/features/plans/read-projection/service';
+import {
+  getDashboardPlanData,
+  listDashboardPlanSummaries,
+} from '@/features/plans/read-projection/service';
+import { taskProgress } from '@supabase/schema';
+import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -62,5 +67,54 @@ describe('dashboard plan summaries', () => {
     const returnedIds = new Set(summaries.map((summary) => summary.plan.id));
     const omittedIds = plans.slice(0, 5).map((plan) => plan.id);
     expect(omittedIds.every((id) => !returnedIds.has(id))).toBe(true);
+  });
+
+  it('finds an older resumable plan before capping dashboard activity summaries', async () => {
+    const userId = await createUser('resume-candidate');
+    const now = Date.now();
+    const completedPlans = await Promise.all(
+      Array.from({ length: 20 }, async (_, index) => {
+        const plan = await createTestPlan({
+          userId,
+          topic: `Completed dashboard plan ${index + 1}`,
+          generationStatus: 'ready',
+          updatedAt: new Date(now - index * 60_000),
+        });
+        const module = await createTestModule({ planId: plan.id });
+        const task = await createTestTask({ moduleId: module.id });
+        await db.insert(taskProgress).values({
+          taskId: task.id,
+          userId,
+          status: 'completed',
+        });
+        return plan;
+      }),
+    );
+    const resumablePlan = await createTestPlan({
+      userId,
+      topic: 'Older plan to resume',
+      generationStatus: 'ready',
+      updatedAt: new Date(now - 21 * 60_000),
+    });
+    const resumableModule = await createTestModule({
+      planId: resumablePlan.id,
+    });
+    const completedTask = await createTestTask({
+      moduleId: resumableModule.id,
+    });
+    await createTestTask({ moduleId: resumableModule.id, order: 2 });
+    await db.insert(taskProgress).values({
+      taskId: completedTask.id,
+      userId,
+      status: 'completed',
+    });
+
+    const { summaries, resumePlan } = await getDashboardPlanData({ userId });
+
+    expect(summaries).toHaveLength(20);
+    expect(summaries.map((summary) => summary.plan.id)).toEqual(
+      completedPlans.map((plan) => plan.id),
+    );
+    expect(resumePlan?.plan.id).toBe(resumablePlan.id);
   });
 });

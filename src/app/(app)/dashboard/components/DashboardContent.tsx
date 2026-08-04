@@ -1,5 +1,4 @@
 import {
-  findActivePlan,
   generateActivities,
   getDashboardGreeting,
 } from '@/app/(app)/dashboard/components/activity-utils';
@@ -9,7 +8,7 @@ import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightC
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
-import { listDashboardPlanSummaries } from '@/features/plans/read-projection/service';
+import { getDashboardPlanData } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
 
@@ -61,11 +60,11 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
  */
 export async function DashboardContent() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
-    const summaries = await listDashboardPlanSummaries({
+    const dashboardPlans = await getDashboardPlanData({
       userId: actor.id,
       dbClient: db,
     });
-    return { name: actor.name, summaries };
+    return { name: actor.name, ...dashboardPlans };
   });
 
   if (!result) {
@@ -74,9 +73,8 @@ export async function DashboardContent() {
     );
   }
 
-  const { name, summaries } = result;
+  const { name, summaries, resumePlan: activePlan } = result;
   const activities = generateActivities(summaries).slice(0, 8);
-  const activePlan = findActivePlan(summaries);
 
   return (
     <>

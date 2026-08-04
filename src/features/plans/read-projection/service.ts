@@ -47,7 +47,10 @@ import { logger } from '@/lib/logging/logger';
 async function listPlanSummaries(params: {
   userId: string;
   dbClient?: DbClient;
-  options?: PaginationOptions & { orderBy?: 'createdAt' | 'updatedAt' };
+  options?: PaginationOptions & {
+    orderBy?: 'createdAt' | 'updatedAt';
+    planIds?: string[];
+  };
 }): Promise<PlanSummary[]> {
   const rows = await getPlanSummaryRowsForUser(
     params.userId,
@@ -74,6 +77,52 @@ export async function listDashboardPlanSummaries(params: {
       orderBy: 'updatedAt',
     },
   });
+}
+
+export async function getDashboardPlanData(params: {
+  userId: string;
+  dbClient?: DbClient;
+}): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
+  const [summaries, candidatePage] = await Promise.all([
+    listDashboardPlanSummaries(params),
+    getPlanListPageRowsForUser({
+      userId: params.userId,
+      dbClient: params.dbClient,
+      query: {
+        page: 1,
+        search: '',
+        status: 'all',
+        sort: 'recommended',
+      },
+      referenceTimestamp: new Date().toISOString(),
+      pageSize: 1,
+    }),
+  ]);
+  const candidate = candidatePage.items[0];
+
+  if (
+    !candidate ||
+    (candidate.status !== 'active' &&
+      candidate.status !== 'not_started' &&
+      candidate.status !== 'generating')
+  ) {
+    return { summaries, resumePlan: undefined };
+  }
+
+  const listedCandidate = summaries.find(
+    (summary) => summary.plan.id === candidate.id,
+  );
+  if (listedCandidate) {
+    return { summaries, resumePlan: listedCandidate };
+  }
+
+  const [resumePlan] = await listPlanSummaries({
+    userId: params.userId,
+    dbClient: params.dbClient,
+    options: { planIds: [candidate.id] },
+  });
+
+  return { summaries, resumePlan };
 }
 
 export async function getPlansPageForRead(params: {
