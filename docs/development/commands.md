@@ -19,6 +19,17 @@ pnpm dev:full         # Start Supabase local stack, then run the Next.js dev ser
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
 
+### Local product testing + billing fixtures
+
+Requires fixture-mode env (`LOCAL_PRODUCT_TESTING=true` + seeded `DEV_AUTH_USER_ID`). See [environment.md](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow) and [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
+
+```bash
+pnpm dev:local:starter   # db:dev:start + seed + starter fixture + pnpm dev
+pnpm dev:local:pro       # db:dev:start + seed + pro fixture + pnpm dev
+pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
+# optional: --status active|past_due|canceled|ended  --period-end <iso>
+```
+
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
 ## Build & Production

@@ -2,6 +2,8 @@
 
 Use this runbook for the optional email notification scheduler only. It does not apply to push, SMS, in-app, campaigns, or user-local-time scheduling.
 
+For the end-user settings model and API contract, see [user-preferences.md](./user-preferences.md).
+
 ## Preference model (developer)
 
 Delivery is **opt-in per category**. Defaults are all categories off (`DEFAULT_EMAIL_NOTIFICATION_PREFERENCES` in `src/shared/notifications/email-preferences.ts`).

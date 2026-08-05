@@ -222,3 +222,9 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 | Settings section ids  | `src/app/(app)/settings/settings-section-ids.ts` |
 | RLS policies (schema) | `supabase/schema/tables/*.ts`     |
 | Query modules         | `src/lib/db/queries/*.ts`         |
+
+## Related docs
+
+- [clerk-billing-architecture.md](./clerk-billing-architecture.md) — webhook projection, checkout sync, quotas
+- [user-preferences.md](./user-preferences.md) — preferences tables joined during actor load
+- [database/client-usage.md](../database/client-usage.md) — RLS vs service-role selection
