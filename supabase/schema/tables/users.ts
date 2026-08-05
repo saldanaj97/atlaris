@@ -19,7 +19,11 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     authUserId: text('auth_user_id').notNull().unique(),
-    email: text('email').notNull().unique(),
+    email: text('email').unique(),
+    clerkUserUpdatedAt: timestamp('clerk_user_updated_at', {
+      withTimezone: true,
+    }),
+    clerkDeletedAt: timestamp('clerk_deleted_at', { withTimezone: true }),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')
       .notNull()

@@ -73,10 +73,9 @@ export async function listEmailDeliveryRecipients(args: {
     rows.length > batchSize ? (page[page.length - 1]?.userId ?? null) : null;
 
   return {
-    recipients: page.map((row) => ({
-      userId: row.userId,
-      email: row.email,
-    })),
+    recipients: page.flatMap((row) =>
+      row.email === null ? [] : [{ userId: row.userId, email: row.email }],
+    ),
     nextCursor,
   };
 }

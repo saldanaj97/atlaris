@@ -62,6 +62,22 @@ describe('auth helpers', () => {
     expect(mockGetOrCreateUser).not.toHaveBeenCalled();
   });
 
+  it('requireCurrentUserRecord rejects a tombstoned local user', async () => {
+    const user = buildUserFixture({
+      authUserId: 'auth_deleted',
+      clerkDeletedAt: new Date('2026-08-11T10:02:00.000Z'),
+    });
+
+    setTestUser('auth_deleted');
+    mockGetUserByAuthId.mockResolvedValue(user);
+
+    await expect(requireCurrentUserRecord()).rejects.toThrow(
+      'Auth user has been deleted.',
+    );
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
+  });
+
   it('requireCurrentUserRecord provisions a missing user from Clerk session data', async () => {
     const created = buildUserFixture({
       id: 'user_created',
@@ -78,6 +94,7 @@ describe('auth helpers', () => {
           id: 'auth_created',
           email: 'created@example.com',
           name: 'Created User',
+          clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
         },
       },
     });
@@ -89,6 +106,7 @@ describe('auth helpers', () => {
         authUserId: 'auth_created',
         email: 'created@example.com',
         name: 'Created User',
+        clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
       },
       undefined,
     );

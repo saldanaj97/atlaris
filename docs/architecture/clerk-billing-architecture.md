@@ -1,24 +1,25 @@
-# Clerk Billing Architecture
+# Clerk Billing & Identity Architecture
 
 **Audience:** Developers working on entitlements, pricing checkout, quotas, or billing webhooks.  
 **Last Updated:** August 2026
 
-Atlaris keeps a **single entitlement source**: Postgres `users` subscription columns projected from Clerk Billing webhooks and reconciliation. Do **not** gate features with Clerk `auth().has({ plan })` alongside DB tiers.
+Atlaris keeps a **single entitlement source**: Postgres `users` subscription columns projected from Clerk Billing webhooks and reconciliation. The same signed Clerk endpoint also maintains a minimal identity projection for the current, verified primary email. Do **not** gate features with Clerk `auth().has({ plan })` alongside DB tiers.
 
 Local fixture mode, env checklists, and manual checkout verification live in [environment.md](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow). This page covers the runtime architecture.
 
 ## Flow overview
 
 ```text
-Clerk Checkout / Dashboard
+Clerk Checkout / Dashboard / user lifecycle
         │
         ▼  Svix-signed events
 POST /api/v1/clerk/billing/webhook
         │
         ├── insert clerk_webhook_events (idempotent on svix-id)
-        ├── map event → ClerkBillingProjectionSource
-        ├── optional refresh: clerkClient.billing.getUserBillingSubscription
-        └── UPDATE users (tier, status, period_end, cancel_at_period_end)
+        ├── map billing event → ClerkBillingProjectionSource
+        ├── optional billing refresh: clerkClient.billing.getUserBillingSubscription
+        ├── map user event → ClerkUserProjectionSource
+        └── UPDATE users (entitlements or verified primary email/tombstone)
                 │
                 ├── GET /api/v1/user/subscription  → Settings #billing / #usage
                 └── quota boundaries (plans, regenerations, lesson generations)
@@ -44,8 +45,10 @@ Prefix matching in `src/features/billing/clerk-billing/projection.ts`:
 | `subscriptionItem.` | Single subscription item |
 | `subscription.` | All items on the subscription |
 | `paymentAttempt.` | Items plus payment attempt status |
+| `user.created`, `user.updated` | Current exact verified primary email and Clerk update watermark |
+| `user.deleted` | Clear email and permanently tombstone the local identity projection |
 
-Other types are ignored (`status: 'ignored'`). Subscribe the Clerk endpoint to `subscription.*`, `subscriptionItem.*`, and `paymentAttempt.*`.
+Other types are ignored (`status: 'ignored'`). Subscribe the Clerk endpoint to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
 
 ### Idempotency
 
@@ -61,6 +64,9 @@ Lookup: `users.auth_user_id` = Clerk payer user id (`user_...`).
 | `subscription_status` | `active` \| `canceled` \| `past_due` \| `trialing` |
 | `subscription_period_end` | Period end timestamp |
 | `cancel_at_period_end` | Boolean |
+| `email` | Exact Clerk primary email only while it is verified; otherwise `NULL` |
+| `clerk_user_updated_at` | Provider timestamp used to ignore stale lifecycle events |
+| `clerk_deleted_at` | Permanent local tombstone for a Clerk `user.deleted` event |
 
 Plan slug → tier mapping lives in `src/features/billing/clerk-billing/plan-mapping.ts`:
 
@@ -73,6 +79,35 @@ Plan slug → tier mapping lives in `src/features/billing/clerk-billing/plan-map
 Free and starter may share a Clerk plan id; amount (`0` vs paid) plus slug disambiguate. Projection rules (highest paid tier, past-due retention, canceled-but-in-period, terminal downgrade to free) are implemented in `projectClerkBillingSource` — read that function before changing entitlement semantics.
 
 Webhook applies refresh from Clerk Billing API (`refreshFromClerk: true`) before writing. Local fixtures call `applyClerkBillingSource` **without** refresh or webhook idempotency insert.
+
+### Identity projection
+
+The identity projection is intentionally narrow. `user.created` and `user.updated` use only Clerk's **exact** primary email when its verification status is `verified`; there is no fallback to another address. A missing or unverified primary address stores `NULL`. The provider's `updated_at` timestamp prevents stale deliveries from replacing newer data. A `user.deleted` event clears the email and sets `clerk_deleted_at`; later lifecycle updates cannot resurrect that row.
+
+The event ledger acknowledges lifecycle events for users that do not yet have an Atlaris row as `skipped_no_user`. On the first authenticated use, Atlaris provisions the current Clerk identity instead. A unique-email conflict never transfers an address between local users; the transaction rolls back and Clerk retries the delivery.
+
+For a deliberate one-shot repair after enabling lifecycle subscriptions, the command is dry-run by default:
+
+```bash
+# Local preview / apply
+pnpm clerk:user:reconcile
+pnpm clerk:user:reconcile -- --apply
+
+# Hosted preview / apply (both explicit gates are required to mutate)
+pnpm clerk:user:reconcile -- --allow-non-local true
+pnpm clerk:user:reconcile -- --apply --allow-non-local true
+```
+
+It pages local `auth_user_id` values, obtains the current Clerk user, applies the same verified-primary projection, tombstones Clerk 404s, and exits nonzero if transient retrieval failures remain. Before an apply run, verify that `CLERK_SECRET_KEY` and `POSTGRES_URL` belong to the same target environment and review the dry-run `wouldTombstone` count. It is not a scheduler.
+
+### Lifecycle cutover
+
+1. Apply `20260811100100_add_clerk_user_identity_projection` in the migration workflow's expand phase.
+2. Deploy the application release that handles the lifecycle events.
+3. In the matching Clerk Dashboard instance, add `user.created`, `user.updated`, and `user.deleted` to the existing signed endpoint subscription.
+4. Run the one-shot dry-run, inspect `wouldUpdate` and `wouldTombstone`, then use the explicit apply command only after the counts are expected.
+
+Do not configure the lifecycle events against a different Clerk instance than the deployment's `CLERK_SECRET_KEY`; a mismatch makes current users appear deleted to the reconciliation command.
 
 ## Checkout return sync
 
@@ -122,6 +157,7 @@ Metered reservation core: `src/features/billing/metered-reservation.ts`. Boundar
 | Command | Purpose |
 | ------- | ------- |
 | `pnpm billing:clerk:fixture -- --user-id <auth_user_id> --plan pro` | Apply projection for a local user (localhost Postgres only unless `--allow-non-local true`) |
+| `pnpm clerk:user:reconcile -- --apply` | One-shot lifecycle projection repair; run only with the intended target environment credentials |
 | `pnpm dev:local:starter` | Start DB, seed, fixture starter, `pnpm dev` |
 | `pnpm dev:local:pro` | Same for pro |
 

@@ -7,6 +7,7 @@ import {
   EmailDeliveryLostLeaseError,
   markEmailNotificationDeliveryFailed,
   markEmailNotificationDeliverySent,
+  markEmailNotificationDeliverySkipped,
   summarizeEmailNotificationDeliveriesForRun,
 } from '@/lib/db/queries/email-notification-deliveries';
 import { emailNotificationDeliveries } from '@supabase/schema';
@@ -29,6 +30,32 @@ function providerRequest(
     idempotencyKey: 'user:daily_reminder:2026-07-09',
     ...overrides,
   };
+}
+
+function hasCheckConstraintViolation(
+  err: unknown,
+  constraintName: string,
+): boolean {
+  let current: unknown = err;
+  for (let i = 0; i < 8 && current; i += 1) {
+    if (
+      current !== null &&
+      typeof current === 'object' &&
+      'code' in current &&
+      (current as { code?: unknown }).code === '23514'
+    ) {
+      return true;
+    }
+    if (current instanceof Error) {
+      if (current.message.includes(constraintName)) {
+        return true;
+      }
+      current = current.cause;
+      continue;
+    }
+    break;
+  }
+  return false;
 }
 
 describe('email notification deliveries ledger', () => {
@@ -127,6 +154,110 @@ describe('email notification deliveries ledger', () => {
     expect(row?.providerRequest).toMatchObject(providerRequest());
     expect(row?.attemptCount).toBe(1);
   });
+
+  it('clears resolved delivery payloads while preserving ledger tombstones', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-resolved-payload');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    const sent = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-09',
+        providerRequest: providerRequest(),
+      },
+      db,
+    );
+    expect(sent.outcome).toBe('claimed');
+    if (sent.outcome !== 'claimed') return;
+
+    await markEmailNotificationDeliverySent(
+      {
+        deliveryId: sent.deliveryId,
+        claimToken: sent.claimToken,
+        providerMessageId: 'msg_resolved',
+      },
+      db,
+    );
+
+    const skipped = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'weekly_summary',
+        deliveryKey: '2026-07-13',
+        providerRequest: providerRequest({
+          idempotencyKey: 'resolved:weekly_summary:2026-07-13',
+        }),
+      },
+      db,
+    );
+    expect(skipped.outcome).toBe('claimed');
+    if (skipped.outcome !== 'claimed') return;
+
+    await markEmailNotificationDeliverySkipped(
+      {
+        deliveryId: skipped.deliveryId,
+        claimToken: skipped.claimToken,
+        failureClass: 'preference_disabled',
+      },
+      db,
+    );
+
+    const rows = await db
+      .select()
+      .from(emailNotificationDeliveries)
+      .where(eq(emailNotificationDeliveries.userId, userId));
+    const sentRow = rows.find((row) => row.id === sent.deliveryId);
+    const skippedRow = rows.find((row) => row.id === skipped.deliveryId);
+
+    expect(sentRow).toMatchObject({
+      status: 'sent',
+      providerRequest: null,
+      claimToken: null,
+      claimExpiresAt: null,
+      attemptCount: 1,
+      providerMessageId: 'msg_resolved',
+    });
+    expect(skippedRow).toMatchObject({
+      status: 'skipped',
+      providerRequest: null,
+      claimToken: null,
+      claimExpiresAt: null,
+      attemptCount: 1,
+      failureClass: 'preference_disabled',
+    });
+  });
+
+  it.each(['sent', 'skipped'] as const)(
+    'rejects provider payloads on %s delivery tombstones',
+    async (status) => {
+      const authUserId = buildTestAuthUserId(
+        `email-ledger-${status}-payload-check`,
+      );
+      const userId = await ensureUser({
+        authUserId,
+        email: buildTestEmail(authUserId),
+      });
+
+      await expect(
+        db.insert(emailNotificationDeliveries).values({
+          userId,
+          category: 'daily_reminder',
+          deliveryKey: `2026-07-09-${status}`,
+          status,
+          providerRequest: providerRequest(),
+        }),
+      ).rejects.toSatisfy((error: unknown) =>
+        hasCheckConstraintViolation(
+          error,
+          'email_notification_deliveries_resolved_provider_request_null',
+        ),
+      );
+    },
+  );
 
   it('allows only one concurrent owner for the same delivery key', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-race');
@@ -323,6 +454,59 @@ describe('email notification deliveries ledger', () => {
     });
   });
 
+  it('rebinds a definitively failed delivery when its recipient changes', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-recipient-rebind');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const original = providerRequest({
+      to: 'old@example.com',
+      idempotencyKey: 'rebind:daily:2026-07-10',
+    });
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: original,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    await markEmailNotificationDeliveryFailed(
+      {
+        deliveryId: first.deliveryId,
+        claimToken: first.claimToken,
+        failureClass: 'provider_rate_limited',
+      },
+      db,
+    );
+
+    const replacement = providerRequest({
+      to: 'new@example.com',
+      idempotencyKey: original.idempotencyKey,
+    });
+    const retried = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: replacement,
+      },
+      db,
+    );
+
+    expect(retried).toMatchObject({
+      outcome: 'claimed',
+      deliveryId: first.deliveryId,
+      providerRequest: replacement,
+      reusedProviderRequest: false,
+    });
+  });
+
   it('reuses failed requests when optional fields and headers reorder', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-request-order');
     const userId = await ensureUser({
@@ -501,6 +685,64 @@ describe('email notification deliveries ledger', () => {
       .from(emailNotificationDeliveries)
       .where(eq(emailNotificationDeliveries.id, first.deliveryId));
     expect(row?.status).toBe('manual_review');
+  });
+
+  it('moves an expired pending delivery with a changed recipient to manual review', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-recipient-review');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const claimedAt = new Date('2026-07-01T12:00:00.000Z');
+    const original = providerRequest({
+      to: 'old@example.com',
+      idempotencyKey: 'review:weekly:2026-06-30',
+    });
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'weekly_summary',
+        deliveryKey: '2026-06-30',
+        providerRequest: original,
+        now: claimedAt,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    const retriedAt = new Date(
+      claimedAt.getTime() + EMAIL_DELIVERY_LEASE_MS + 1,
+    );
+    const result = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'weekly_summary',
+        deliveryKey: '2026-06-30',
+        providerRequest: providerRequest({
+          to: 'new@example.com',
+          idempotencyKey: original.idempotencyKey,
+        }),
+        now: retriedAt,
+      },
+      db,
+    );
+
+    expect(result).toEqual({
+      outcome: 'manual_review',
+      deliveryId: first.deliveryId,
+    });
+    const [row] = await db
+      .select()
+      .from(emailNotificationDeliveries)
+      .where(eq(emailNotificationDeliveries.id, first.deliveryId));
+    expect(row).toMatchObject({
+      status: 'manual_review',
+      failureClass: 'recipient_changed_since_claim',
+      providerRequest: original,
+      claimToken: null,
+      claimExpiresAt: null,
+    });
   });
 
   it('does not reset the ambiguity window when an expired pending lease is reclaimed', async () => {

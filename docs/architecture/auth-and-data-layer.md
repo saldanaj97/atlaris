@@ -102,7 +102,7 @@ getEffectiveAuthUserId()
 └── Production → Clerk auth() / currentUser() → Clerk user id
 ```
 
-The `DEV_AUTH_USER_ID` override is **impossible in production** — it's gated by `NODE_ENV` which is a process-level environment variable, not a request parameter.
+The `DEV_AUTH_USER_ID` override is unavailable to a valid hosted runtime: the import-time hosted guard requires `NODE_ENV=production` and rejects both `DEV_AUTH_USER_ID` and `VITEST_WORKER_ID`. `NODE_ENV` alone is not the security boundary because Vitest's marker independently enables test behavior.
 
 For security-sensitive flows (OAuth callbacks), use `getAuthUserId()` instead — it always reads the real session, ignoring dev overrides.
 
@@ -170,6 +170,8 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 2. **Double-layered access control.** Application queries filter by `user.id` AND Postgres RLS policies enforce the same filter at the database level. Even if app code has a bug, the database blocks cross-tenant access.
 
 3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). Clerk Billing local fixtures run through an explicit script and do not bypass the production webhook signature check.
+
+   On first authenticated use, the app stores only Clerk's exact verified primary email and Clerk update timestamp. If the local row is tombstoned after a signed `user.deleted` event, authentication fails closed; an event cannot silently revive it.
 
 4. **Service-role usage is restricted.** Do not import `@supabase/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
 

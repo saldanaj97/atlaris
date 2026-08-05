@@ -77,6 +77,9 @@ async function ensureUserRecord(
 ): Promise<ActorUser> {
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
+    if (existing.clerkDeletedAt !== null) {
+      throw new AuthError('Auth user has been deleted.');
+    }
     return existing;
   }
 
@@ -94,7 +97,14 @@ async function ensureUserRecord(
 
   const email = session.user.email;
   if (!email) {
-    throw new AuthError('Auth user must have an email address.');
+    throw new AuthError(
+      'Auth user must have a verified primary email address.',
+    );
+  }
+
+  const clerkUserUpdatedAt = session.user.clerkUserUpdatedAt;
+  if (!clerkUserUpdatedAt) {
+    throw new AuthError('Auth user timestamp unavailable.');
   }
 
   const actor = await getOrCreateUser(
@@ -102,6 +112,7 @@ async function ensureUserRecord(
       authUserId,
       email,
       name: session.user.name || undefined,
+      clerkUserUpdatedAt,
     },
     dbClient,
   );

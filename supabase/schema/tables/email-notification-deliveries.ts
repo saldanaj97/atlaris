@@ -77,6 +77,10 @@ export const emailNotificationDeliveries = pgTable(
         AND ${table.providerRequest} IS NOT NULL
       )`,
     ),
+    check(
+      'email_notification_deliveries_resolved_provider_request_null',
+      sql`${table.status} NOT IN ('sent', 'skipped') OR ${table.providerRequest} IS NULL`,
+    ),
     pgPolicy('email_notification_deliveries_deny_all', {
       as: 'restrictive',
       for: 'all',

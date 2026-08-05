@@ -124,14 +124,79 @@ describe('Environment Configuration', () => {
       ).not.toThrow();
     });
 
-    it('rejects local-only flags in hosted deploy environments', () => {
-      expect(() =>
-        assertHostedDeployForbiddenFlags({
-          NODE_ENV: 'production',
+    it.each([
+      {
+        label: 'missing NODE_ENV',
+        env: { VERCEL: '1' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'blank NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: ' ' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'development NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: 'development' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'test NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: 'test' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'Vitest worker marker',
+        env: {
           VERCEL: '1',
+          NODE_ENV: 'production',
+          VITEST_WORKER_ID: '1',
+        },
+        envKey: 'VITEST_WORKER_ID',
+      },
+      {
+        label: 'development auth identity override',
+        env: {
+          VERCEL: '1',
+          NODE_ENV: 'production',
+          DEV_AUTH_USER_ID: 'user_test',
+        },
+        envKey: 'DEV_AUTH_USER_ID',
+      },
+      {
+        label: 'local product-testing flag',
+        env: {
+          VERCEL: '1',
+          NODE_ENV: 'production',
           LOCAL_PRODUCT_TESTING: 'true',
-        }),
-      ).toThrow(/LOCAL_PRODUCT_TESTING cannot be enabled in production/);
+        },
+        envKey: 'LOCAL_PRODUCT_TESTING',
+      },
+    ])('rejects $label in hosted deploy environments', ({ env, envKey }) => {
+      expect(() => assertHostedDeployForbiddenFlags(env)).toThrow(
+        EnvValidationError,
+      );
+      try {
+        assertHostedDeployForbiddenFlags(env);
+      } catch (error) {
+        expect(error).toMatchObject({ envKey });
+      }
+    });
+
+    it.each([
+      {
+        VERCEL: '1',
+        NODE_ENV: 'production',
+      },
+      {
+        VERCEL: '1',
+        NODE_ENV: 'production',
+        VITEST_WORKER_ID: ' ',
+        DEV_AUTH_USER_ID: '',
+        LOCAL_PRODUCT_TESTING: '0',
+      },
+    ])('allows production-only hosted runtime inputs', (env) => {
+      expect(() => assertHostedDeployForbiddenFlags(env)).not.toThrow();
     });
   });
 

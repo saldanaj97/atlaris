@@ -71,7 +71,9 @@ describe('ProfileForm', () => {
     });
 
     expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
-    expect(screen.getByText(MOCK_PROFILE.email)).toBeInTheDocument();
+    expect(
+      screen.getByText(MOCK_PROFILE.email ?? 'Unavailable'),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         new Date(MOCK_PROFILE.createdAt).toLocaleDateString('en-US', {
@@ -81,6 +83,16 @@ describe('ProfileForm', () => {
         }),
       ),
     ).toBeInTheDocument();
+  });
+
+  it('shows a neutral email placeholder when Clerk has no verified primary email', async () => {
+    mockFetchSuccess(buildProfile({ email: null }));
+
+    render(<ProfileForm />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Unavailable')).toBeInTheDocument();
+    });
   });
 
   it('shows error message when profile fetch fails', async () => {
