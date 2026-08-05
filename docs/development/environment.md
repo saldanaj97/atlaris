@@ -122,7 +122,18 @@ Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`.
 
 Email notification delivery uses Vercel Cron and a durable Workflow SDK run. Set a separate `CRON_SECRET` in the Vercel environment; Vercel supplies it as the Bearer token for the cron GET route. Do not reuse `MAINTENANCE_WORKER_TOKEN`. The manual recovery route remains protected by `MAINTENANCE_WORKER_TOKEN`; see [the email delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
-Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using `CLERK_WEBHOOK_SIGNING_SECRET`. Manual drift repair runs through `POST /api/internal/maintenance/billing/reconcile-clerk` when `CLERK_BILLING_RECONCILIATION_ENABLED=true`; the route processes up to 100 users and returns `nextCursor` for the next batch.
+Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using `CLERK_WEBHOOK_SIGNING_SECRET`. Manual drift repair runs through `POST /api/internal/maintenance/billing/reconcile-clerk` when `CLERK_BILLING_RECONCILIATION_ENABLED=true`; the route processes up to 100 users and returns `nextCursor` for the next batch. Architecture (projection, quotas, checkout sync): [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
+
+### Vercel Flags (`src/flags.ts`)
+
+Flags use the Flags SDK with `vercelAdapter()` when `FLAGS` is set; otherwise a local fallback returns each flag's `defaultValue` (or `false`).
+
+| Key | Export | Default / fallback | Effect |
+| --- | ------ | ------------------ | ------ |
+| `email-notification-delivery` | `emailNotificationDelivery` | `false` (fail-closed) | Cron, manual recovery, and in-flight workflow pages must not send when off |
+| `maintenance-mode` | `maintenanceMode` | fallback `false` | Proxy routes app traffic to the maintenance page when on |
+
+Local product testing typically has no `FLAGS` env, so email delivery stays disabled until you enable the flag in a Vercel environment. Preference tables and Settings opt-ins are separate from this kill switch — see [user-preferences.md](../architecture/user-preferences.md).
 
 ### Local product testing (development / test)
 
@@ -139,7 +150,7 @@ Google Calendar is intentionally not implemented right now. The settings page ke
 
 ### Clerk development checkout (fixture vs real payment flow)
 
-Atlaris keeps a single entitlement source: the Postgres `users` projection updated from Clerk Billing webhooks/reconciliation. Do not add Clerk `auth().has({ plan })` checks alongside DB tiers.
+Atlaris keeps a single entitlement source: the Postgres `users` projection updated from Clerk Billing webhooks/reconciliation. Do not add Clerk `auth().has({ plan })` checks alongside DB tiers. For webhook → projection → quota details, see [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
 
 Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER_ID` is also set (`LOCAL_PRODUCT_TESTING=false` + non-empty `DEV_AUTH_USER_ID`). Choose exactly one mode:
 
