@@ -16,7 +16,6 @@ import {
 import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
-import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
 import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
 type GenerationDb = Pick<
@@ -170,10 +169,6 @@ type ModuleLessonWorkflowClaimMetadata = {
   readonly runId: string;
   readonly startedAt: string;
 };
-
-function truncateGenerationError(message: string): string {
-  return message.slice(0, MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH);
-}
 
 function assertParsedTasksMatchCurrentTaskRows(
   parsed: ModuleLessonBatchProviderOutput,
@@ -485,7 +480,6 @@ export type CommitModuleLessonGenerationFailureInput = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly message: string;
   readonly now?: () => Date;
 };
 
@@ -508,7 +502,7 @@ export async function commitModuleLessonGenerationFailure(
       .set({
         lessonGenerationStatus: 'failed',
         lessonGenerationFailedAt: failedAt,
-        lessonGenerationError: truncateGenerationError(input.message),
+        lessonGenerationError: null,
         lessonGenerationCompletedAt: null,
       })
       .where(

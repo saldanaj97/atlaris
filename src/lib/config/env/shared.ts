@@ -280,6 +280,28 @@ export function assertHostedDeployForbiddenFlags(env: EnvSource): void {
   if (!isHostedDeployEnv(env)) {
     return;
   }
+
+  if (parseNodeEnv(env) !== 'production') {
+    throw new EnvValidationError(
+      'NODE_ENV must be production in hosted deploy environments',
+      'NODE_ENV',
+    );
+  }
+
+  if (optionalEnvFrom(env, 'VITEST_WORKER_ID')) {
+    throw new EnvValidationError(
+      'VITEST_WORKER_ID cannot be set in hosted deploy environments',
+      'VITEST_WORKER_ID',
+    );
+  }
+
+  if (optionalEnvFrom(env, 'DEV_AUTH_USER_ID')) {
+    throw new EnvValidationError(
+      'DEV_AUTH_USER_ID cannot be set in hosted deploy environments',
+      'DEV_AUTH_USER_ID',
+    );
+  }
+
   const localProductTestingEnvEnabled = toBoolean(
     optionalEnvFrom(env, 'LOCAL_PRODUCT_TESTING'),
     false,

@@ -4,6 +4,7 @@ export type AuthSessionUser = {
   id: string;
   email?: string | null;
   name?: string;
+  clerkUserUpdatedAt?: Date;
 };
 
 export type AuthSessionData = {
@@ -14,6 +15,7 @@ type AuthProviderUser = {
   id: string;
   email: string | null;
   name?: string;
+  clerkUserUpdatedAt: Date;
 };
 
 type AuthSessionResult = {
@@ -35,12 +37,13 @@ function getClerkPrimaryEmail(
 ): string | null {
   if (!user) return null;
 
-  const primaryEmail =
-    user.emailAddresses.find(
-      (email) => email.id === user.primaryEmailAddressId,
-    ) ?? user.emailAddresses[0];
+  const primaryEmail = user.emailAddresses.find(
+    (email) => email.id === user.primaryEmailAddressId,
+  );
 
-  return primaryEmail?.emailAddress ?? null;
+  return primaryEmail?.verification?.status === 'verified'
+    ? primaryEmail.emailAddress
+    : null;
 }
 
 /**
@@ -71,6 +74,7 @@ async function getCurrentAuthUserSafe(options?: {
       id: user.id,
       email: getClerkPrimaryEmail(user),
       name: getClerkUserDisplayName(user),
+      clerkUserUpdatedAt: new Date(user.updatedAt),
     };
   } catch (error) {
     if (options?.strict) {
@@ -90,6 +94,7 @@ export const auth = {
               id: authUser.id,
               email: authUser.email,
               name: authUser.name,
+              clerkUserUpdatedAt: authUser.clerkUserUpdatedAt,
             },
           }
         : null,

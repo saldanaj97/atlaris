@@ -8,6 +8,10 @@ Guidelines for environment variables and logging in this project.
 
 **All env access must go through `@/lib/config/env`.** Do **not** read `process.env` directly outside that module.
 
+### Hosted runtime profile
+
+Every Vercel Preview, Staging, and Production deployment must run with `NODE_ENV=production`. Startup refuses a hosted process with missing, blank, development, or test `NODE_ENV`, or with `VITEST_WORKER_ID`, `DEV_AUTH_USER_ID`, or enabled `LOCAL_PRODUCT_TESTING`. These capability markers remain valid for local development and tests only.
+
 ### Grouped Configs
 
 Prefer the exported grouped configs instead of raw keys:
@@ -70,9 +74,9 @@ Key auth-related server variables include:
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                                                                              | Yes                                         |
 | `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                                                                         | Yes                                         |
-| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                                                                                                                                              | Yes when Clerk Billing webhooks are enabled |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook` (Billing and user lifecycle events)                                                                                                                                                        | Yes when Clerk webhooks are enabled |
 | `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow).                                                 | No                                          |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout.                                                                                  | No                                          |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout and every hosted deployment.                                                       | No                                          |
 | `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                                                                 | No                                          |
 | `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                                                                  | No                                          |
 | `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation)       |
@@ -169,7 +173,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
   - `pro_plan` → `pro`
 - Do not use a generic `pro` Clerk plan slug.
 - Dashboard plan features/limits should match `src/shared/constants/tier-limits.ts` (link the source; do not copy values into docs where drift is likely).
-- Webhook endpoint: `{APP_URL}/api/v1/clerk/billing/webhook`, subscribed to `subscription.*`, `subscriptionItem.*`, and `paymentAttempt.*`.
+- Webhook endpoint: `{APP_URL}/api/v1/clerk/billing/webhook`, subscribed to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `CLERK_WEBHOOK_SIGNING_SECRET` must all belong to that same Development instance. Presence of an encrypted Vercel variable is not proof the value matches the endpoint.
 - Prefer hosted Preview/staging for real checkout. Localhost needs a public tunnel to the webhook path ([Clerk webhook debugging](https://clerk.com/docs/guides/development/webhooks/debugging)).
 - Clerk’s shared development payment gateway uses Stripe test cards ([Stripe testing](https://docs.stripe.com/testing)). **No app-owned Stripe account, Stripe API keys, Stripe products, or Stripe prices are required.**

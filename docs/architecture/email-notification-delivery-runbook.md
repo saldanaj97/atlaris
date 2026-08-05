@@ -85,6 +85,26 @@ WHERE id = '<run-id>';
 
 The run record is an operational checkpoint. `email_notification_deliveries` remains the source of truth for individual sends and idempotency.
 
+## Payload minimization and inventory
+
+Resolved `sent` and `skipped` ledger rows retain their compact idempotency tombstone but must have `provider_request = NULL`. Pending, retryable failed, and `manual_review` rows retain their request because retry/review correctness still depends on it. There is no age-based email-ledger cleanup policy yet.
+
+Inspect only aggregate state while setting that policy; do not select recipient addresses, content, headers, tokens, or `provider_request`:
+
+```sql
+SELECT
+  status,
+  count(*) AS total_rows,
+  count(*) FILTER (WHERE provider_request IS NOT NULL) AS rows_with_provider_request,
+  min(created_at) AS oldest_created_at,
+  min(updated_at) AS oldest_updated_at
+FROM email_notification_deliveries
+GROUP BY status
+ORDER BY status;
+```
+
+If a `sent` or `skipped` row has a payload, stop before validating the invariant and resolve the row under the approved operator policy. Do not delete its tombstone.
+
 ## Trigger a safe manual run
 
 Use the manual recovery route with `MAINTENANCE_WORKER_TOKEN`, never `CRON_SECRET`. It accepts only a code-owned run kind, UTC date, and explicit action.
@@ -110,6 +130,8 @@ For a weekly run, use a Monday UTC date and `"runKind":"weekly"`. A `start` requ
 ## Handle `needs_review`
 
 `needs_review` means the run observed an isolated recipient error or an ambiguous provider/idempotency outcome. It is intentionally terminal and does not automatically resend.
+
+If an expired pending claim has a different current recipient, the ledger enters `manual_review` and retains the original request. Do not replace or resend it automatically: determine whether the provider may have accepted the original delivery first.
 
 1. Inspect the affected ledger rows and resolve the underlying data or provider state.
 2. Confirm no unresolved `manual_review` ledger rows remain for the logical run.

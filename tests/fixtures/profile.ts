@@ -5,7 +5,7 @@
 interface ProfileFixture {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   subscriptionTier: string;
   subscriptionStatus: string;
   createdAt: string;

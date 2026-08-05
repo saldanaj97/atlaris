@@ -311,7 +311,8 @@ export const taskProgress = pgTable(
       `,
       }),
 
-      // Users can delete only their own progress
+      // Defense in depth only: authenticated DELETE is revoked at the table level;
+      // this ownership policy remains inert unless DELETE is deliberately reintroduced.
       pgPolicy('task_progress_delete_own', {
         for: 'delete',
         to: 'authenticated',

@@ -53,16 +53,31 @@ After deploying a release that includes new Supabase migrations:
 
 1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
-3. Set worker tokens in the target environment for enabled internal routes:
+3. After the expand workflow, attest that authenticated users cannot delete task progress:
+
+```sql
+SELECT version::text
+FROM supabase_migrations.schema_migrations
+WHERE version::text = '20260804160000';
+
+SELECT
+  has_table_privilege('authenticated', 'public.task_progress', 'SELECT') AS can_select,
+  has_table_privilege('authenticated', 'public.task_progress', 'INSERT') AS can_insert,
+  has_table_privilege('authenticated', 'public.task_progress', 'UPDATE') AS can_update,
+  has_table_privilege('authenticated', 'public.task_progress', 'DELETE') AS can_delete;
+```
+
+The expected result is migration version `20260804160000`, `can_select`, `can_insert`, and `can_update` true, and `can_delete` false.
+4. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
    - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
-4. Verify plan cleanup scheduler and alerting when `PLAN_CLEANUP_ENABLED=true`:
+5. Verify plan cleanup scheduler and alerting when `PLAN_CLEANUP_ENABLED=true`:
    - Set the GitHub Actions repository variable `PLAN_CLEANUP_ENABLED=true`; scheduled workflow runs are skipped until this variable is enabled, while manual dispatch remains available for checks.
    - Set the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
    - Confirm `.github/workflows/plan-cleanup-scheduler.yml` runs every 15 minutes and returns `200` with `ok: true`.
    - Confirm Sentry monitor `plan-cleanup-maintenance` receives successful check-ins; GitHub workflow failures identify `401`, `503`, and `500` responses.
-5. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
+6. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
 
 ```sql
 SELECT jobid, jobname, schedule, active
@@ -72,13 +87,14 @@ WHERE jobname = 'retention-cleanup';
 
 If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
 
-6. Enable module lesson generation when the hosted environment should serve it:
+7. Enable module lesson generation when the hosted environment should serve it:
    - Set `LESSON_GENERATION_ENABLED=true` in production/staging. When unset outside development, the flag defaults to **off** and `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled`.
    - After deploy, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md` (`LESSON_GENERATION_ENABLED`).
-7. Enable opted-in email notification delivery only after the env and ledger are ready:
+8. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
-   - Apply the email notification deliveries ledger migration, then enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
+   - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization`, then run the non-PII inventory in the email delivery runbook. Do not validate the new check until the inventory reports no historical violations or remediation is approved.
+   - Enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
    - Confirm Vercel Cron and `CRON_SECRET` are configured for production; keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
 See also:
@@ -92,10 +108,14 @@ See also:
 
 The email scheduler must have exactly one active owner. This release removes the GitHub email scheduler and adds the two Vercel Cron entries together.
 
-1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies both `20260710151930_create_email_notification_delivery_runs` and the future-dated delivery ledger without opening the contract gate.
+1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies `20260710151930_create_email_notification_delivery_runs`, the delivery ledger, and `20260811100200_enforce_resolved_email_delivery_payload_minimization` without opening the contract gate.
 2. Set a new `CRON_SECRET` in the target Vercel environment. Keep it distinct from `MAINTENANCE_WORKER_TOKEN`.
 3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` for `/api/cron/notifications/email?runKind=daily` and `30 14 * * 1` for `/api/cron/notifications/email?runKind=weekly`.
 4. Leave the `email-notification-delivery` Vercel Flag disabled and verify both authenticated cron paths return the intentional `disabled` outcome without creating a run.
 5. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Workflow SDK run, Sentry monitor, and delivery ledger before enabling broader delivery.
 
 See [`docs/architecture/email-notification-delivery-runbook.md`](../architecture/email-notification-delivery-runbook.md) for duplicate, failure, and `needs_review` recovery.
+
+## Module lesson-generation error cleanup cutover
+
+Deploy the release that keeps lesson-generation failure diagnostics in logs only before running `20260811100000_clear_module_lesson_generation_errors` in the confirmed contract phase. Wait for all older application instances to drain first; otherwise an older binary could write a raw diagnostic back after the cleanup.

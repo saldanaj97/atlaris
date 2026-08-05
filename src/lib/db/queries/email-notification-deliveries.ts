@@ -48,10 +48,15 @@ function claimSnapshotPredicates(existing: {
   ] as const;
 }
 
-function shouldUseRecomputedRequest(failureClass: string | null): boolean {
+function shouldUseRecomputedRequest(
+  failureClass: string | null,
+  previousRequest: PersistedProviderRequest | null,
+  nextRequest: PersistedProviderRequest,
+): boolean {
   return (
     failureClass === 'provider_configuration' ||
-    failureClass === 'provider_recipient_invalid'
+    failureClass === 'provider_recipient_invalid' ||
+    (previousRequest !== null && previousRequest.to !== nextRequest.to)
   );
 }
 
@@ -172,9 +177,10 @@ async function readCurrentClaimResult(
  * Atomically claim a delivery row for send. Terminal sent/skipped/manual_review
  * is final. Failed rows and expired pending leases can be reclaimed only with
  * their persisted request, except definitively rejected configuration or
- * recipient rows, which accept the recomputed request during recovery. Fresh
- * pending leases return in_flight. Ambiguous pending older than the provider
- * window becomes manual_review.
+ * recipient rows and rows whose recipient changed, which accept the
+ * recomputed request during recovery. Fresh pending leases return in_flight.
+ * An expired pending lease whose recipient changed, or any pending delivery
+ * older than the provider window, becomes manual_review.
  */
 export async function claimEmailNotificationDelivery(
   args: {
@@ -269,6 +275,8 @@ export async function claimEmailNotificationDelivery(
     const previousRequest = asProviderRequest(existing.providerRequest);
     const useRecomputedRequest = shouldUseRecomputedRequest(
       existing.failureClass,
+      previousRequest,
+      args.providerRequest,
     );
     const requestForRetry = useRecomputedRequest
       ? args.providerRequest
@@ -325,15 +333,23 @@ export async function claimEmailNotificationDelivery(
       return { outcome: 'in_flight', status: 'pending' };
     }
 
+    const storedRequest = asProviderRequest(existing.providerRequest);
+    if (!storedRequest) {
+      throw new Error('Expired pending delivery missing provider request');
+    }
+
     // Measure ambiguity from first claim time; reclaim must not reset the window.
     const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
-    if (ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
+    const recipientChanged = storedRequest.to !== args.providerRequest.to;
+    if (recipientChanged || ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
       const reviewed = await dbClient
         .update(emailNotificationDeliveries)
         .set({
           status: 'manual_review',
-          failureClass: 'provider_acceptance_ambiguous',
+          failureClass: recipientChanged
+            ? 'recipient_changed_since_claim'
+            : 'provider_acceptance_ambiguous',
           claimToken: null,
           claimExpiresAt: null,
           updatedAt: now,
@@ -351,11 +367,6 @@ export async function claimEmailNotificationDelivery(
         return { outcome: 'manual_review', deliveryId: reviewed[0].id };
       }
       return readCurrentClaimResult(existing.id, dbClient);
-    }
-
-    const storedRequest = asProviderRequest(existing.providerRequest);
-    if (!storedRequest) {
-      throw new Error('Expired pending delivery missing provider request');
     }
 
     const reclaimed = await dbClient

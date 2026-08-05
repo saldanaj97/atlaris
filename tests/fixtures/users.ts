@@ -99,6 +99,8 @@ export function buildUserFixture(
     id: `user_${randomSuffix()}`,
     authUserId: `auth_test_${randomSuffix()}`,
     email: `test-${randomSuffix()}@example.test`,
+    clerkUserUpdatedAt: null,
+    clerkDeletedAt: null,
     name: null,
     subscriptionTier: 'free',
     ...resolveSubscriptionLifecycle({

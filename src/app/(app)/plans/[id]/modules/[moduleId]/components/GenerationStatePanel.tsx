@@ -77,8 +77,8 @@ function GenerationDescription({
         </>
       ) : lessonGeneration.status === 'failed' ? (
         <p className='text-sm text-muted-foreground'>
-          {lessonGeneration.error ??
-            'Generation failed. Retry to create fresh lesson content for this module.'}
+          Generation failed. Retry to create fresh lesson content for this
+          module.
         </p>
       ) : (
         <p className='text-sm text-muted-foreground'>

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -91,10 +91,51 @@ describe('Supabase migration workflows', () => {
       '20260810120000_create_clerk_webhook_event_claims.sql',
     );
     expect(script).toContain(
+      '20260811100100_add_clerk_user_identity_projection.sql',
+    );
+    expect(script).toContain(
+      '20260811100200_enforce_resolved_email_delivery_payload_minimization.sql',
+    );
+    expect(script).not.toContain(
+      '20260811100000_clear_module_lesson_generation_errors.sql',
+    );
+    expect(script).toContain(
       'supabase migration up --linked --include-all --yes',
     );
     expect(script).not.toContain('supabase migration repair');
     expect(script).not.toContain('db query --linked --file');
+  });
+
+  it('keeps authenticated task-progress deletion revoked after the broad grant', () => {
+    const broadGrantMigration =
+      '20260520194501_harden_authenticated_server_owned_writes.sql';
+    const revokeMigration = '20260804160000_revoke_task_progress_delete.sql';
+    const broadGrant = readFileSync(
+      join(MIGRATIONS_DIR, broadGrantMigration),
+      'utf8',
+    );
+    const revoke = readFileSync(join(MIGRATIONS_DIR, revokeMigration), 'utf8');
+
+    expect(broadGrant).toContain(
+      'GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated',
+    );
+    expect(revokeMigration > broadGrantMigration).toBe(true);
+    expect(revoke).toContain(
+      'REVOKE DELETE ON "task_progress" FROM authenticated',
+    );
+
+    const laterMigrationSql = readdirSync(MIGRATIONS_DIR)
+      .filter(
+        (fileName) => fileName.endsWith('.sql') && fileName > revokeMigration,
+      )
+      .map((fileName) => readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8'))
+      .join('\n');
+    expect(laterMigrationSql).not.toMatch(
+      /GRANT\s+(?:[A-Z]+,\s*)*DELETE\s+ON\s+"task_progress"\s+TO\s+authenticated/i,
+    );
+
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    expect(script).toContain(revokeMigration);
   });
 
   it('repairs claim retention after out-of-order contract migrations', () => {

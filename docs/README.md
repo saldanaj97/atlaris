@@ -34,7 +34,7 @@ System design, pipelines, and operational runbooks.
 | File | Description |
 |------|-------------|
 | [auth-and-data-layer.md](./architecture/auth-and-data-layer.md) | Auth, authorization, RLS / tenant isolation |
-| [clerk-billing-architecture.md](./architecture/clerk-billing-architecture.md) | Clerk Billing webhooks, projection, quotas, checkout sync |
+| [clerk-billing-architecture.md](./architecture/clerk-billing-architecture.md) | Clerk Billing and identity webhooks, projections, quotas, checkout sync |
 | [email-notification-delivery-runbook.md](./architecture/email-notification-delivery-runbook.md) | Email notification scheduler runbook |
 | [internal-worker-routes.md](./architecture/internal-worker-routes.md) | Internal `/api/internal/` workers and token auth |
 | [plan-cleanup-runbook.md](./architecture/plan-cleanup-runbook.md) | Stuck-plan and orphaned-attempt maintenance |

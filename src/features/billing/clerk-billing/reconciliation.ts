@@ -3,6 +3,12 @@ import type { Logger } from '@/lib/logging/logger';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
+  applyClerkUserProjectionSource,
+  clerkUserProjectionSourceFromWebhook,
+  type ClerkUserProjectionApplyResult,
+  type ClerkUserProjectionSource,
+} from '@/features/auth/clerk-user-projection';
+import {
   clerkBillingSourceFromBackendSubscription,
   clerkBillingSourceFromWebhook,
   projectClerkBillingSource,
@@ -51,10 +57,18 @@ export type ClerkBillingApplyResult =
   | 'skipped_no_user'
   | 'ignored';
 
+type ClerkWebhookProjectionSource =
+  | { kind: 'billing'; source: ClerkBillingProjectionSource }
+  | { kind: 'user'; source: ClerkUserProjectionSource };
+
+type ClerkWebhookApplyResult =
+  | ClerkBillingApplyResult
+  | ClerkUserProjectionApplyResult;
+
 export type ApplyVerifiedClerkBillingEventResult =
   | { status: 'duplicate' }
   | { status: 'in_flight'; retryAfterSeconds: number }
-  | { status: 'inserted'; result: ClerkBillingApplyResult };
+  | { status: 'inserted'; result: ClerkWebhookApplyResult };
 
 type ClerkWebhookClaimResult =
   | { outcome: 'claimed'; claimToken: string }
@@ -184,7 +198,7 @@ async function finalizeClerkWebhookEvent(
     event: WebhookEvent;
     eventId: string;
     claimToken: string;
-    refreshedSource: ClerkBillingProjectionSource | null;
+    projectionSource: ClerkWebhookProjectionSource | null;
   },
   deps: ApplyVerifiedClerkBillingEventDeps,
 ): Promise<ApplyVerifiedClerkBillingEventResult> {
@@ -227,21 +241,32 @@ async function finalizeClerkWebhookEvent(
       return { status: 'duplicate' };
     }
 
-    if (args.refreshedSource === null) {
+    if (args.projectionSource === null) {
       deps.logger.debug(
         { type: args.event.type },
-        'Ignored non-billing Clerk webhook event',
+        'Ignored unsupported Clerk webhook event',
       );
       return { status: 'inserted', result: 'ignored' };
     }
 
-    const result = await applyClerkBillingSource(args.refreshedSource, {
-      ...deps,
-      db: tx,
-    });
-    if (result === 'skipped_no_user') {
-      throw new Error('No local user found for Clerk Billing payer');
+    if (args.projectionSource.kind === 'billing') {
+      const result = await applyClerkBillingSource(
+        args.projectionSource.source,
+        {
+          ...deps,
+          db: tx,
+        },
+      );
+      if (result === 'skipped_no_user') {
+        throw new Error('No local user found for Clerk Billing payer');
+      }
+      return { status: 'inserted', result };
     }
+
+    const result = await applyClerkUserProjectionSource(
+      args.projectionSource.source,
+      { ...deps, db: tx },
+    );
     return { status: 'inserted', result };
   });
 }
@@ -357,16 +382,25 @@ export async function applyVerifiedClerkBillingEvent(
     }
 
     claimToken = claim.claimToken;
-    const source = clerkBillingSourceFromWebhook(event);
-    const refreshedSource =
-      source === null ? null : await refreshClerkBillingSource(source, deps);
+    const billingSource = clerkBillingSourceFromWebhook(event);
+    const userSource = billingSource
+      ? null
+      : clerkUserProjectionSourceFromWebhook(event);
+    const projectionSource: ClerkWebhookProjectionSource | null = billingSource
+      ? {
+          kind: 'billing',
+          source: await refreshClerkBillingSource(billingSource, deps),
+        }
+      : userSource
+        ? { kind: 'user', source: userSource }
+        : null;
 
     return await finalizeClerkWebhookEvent(
       {
         event,
         eventId,
         claimToken,
-        refreshedSource,
+        projectionSource,
       },
       deps,
     );

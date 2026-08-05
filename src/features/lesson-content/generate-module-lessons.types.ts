@@ -40,7 +40,7 @@ export type GenerateModuleLessonsResult =
       readonly limit: number;
     }
   | { readonly kind: 'success'; readonly durationMs: number }
-  | { readonly kind: 'failed'; readonly message: string };
+  | { readonly kind: 'failed' };
 
 export type ModuleLessonGenerationWorkResult = Exclude<
   GenerateModuleLessonsResult,

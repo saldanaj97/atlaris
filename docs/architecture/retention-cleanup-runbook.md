@@ -9,7 +9,7 @@ Expired OAuth state tokens, old Clerk webhook idempotency rows, and old terminal
 
 - `private.cleanup_retained_db_rows()`
 
-Supabase Cron schedules the function daily through migration `20260522223908_schedule_retention_cleanup.sql`. Raw `ai_usage_events` rows are intentionally excluded until a monthly aggregation model exists.
+Supabase Cron schedules the function daily through migration `20260522223908_schedule_retention_cleanup.sql`. Raw `ai_usage_events` rows are intentionally excluded until a monthly aggregation model exists. Email delivery runs and ledger tombstones are also excluded: their retry, manual-review, and idempotency retention policy has not yet been approved.
 
 ## Required Environment
 
@@ -27,6 +27,7 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 | `clerk_webhook_events`  | Delete rows older than 45 days                               |
 | `job_queue`             | Delete terminal `completed`/`failed` rows older than 30 days |
 | `ai_usage_events`       | Not deleted by this endpoint                                 |
+| `email_notification_delivery_runs` / `email_notification_deliveries` | Not deleted by this endpoint; see the email delivery runbook for payload minimization and non-sensitive inventory |
 
 ## Scheduled Cleanup
 

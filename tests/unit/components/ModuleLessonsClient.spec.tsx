@@ -466,27 +466,7 @@ describe('ModuleLessonsClient', () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows failed generation copy from server and retry affordance', () => {
-    renderClient({
-      lessonGeneration: {
-        status: 'failed',
-        startedAt: null,
-        completedAt: null,
-        failedAt: new Date('2025-06-01T00:00:00.000Z'),
-        error: 'Upstream provider timed out.',
-      },
-    });
-
-    expect(screen.getByText('Failed')).toBeInTheDocument();
-    expect(
-      screen.getByText('Upstream provider timed out.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Retry lesson generation' }),
-    ).toBeInTheDocument();
-  });
-
-  it('shows fallback failure hint when server error is empty', () => {
+  it('shows a generic failed-generation hint and retry affordance', () => {
     renderClient({
       lessonGeneration: {
         status: 'failed',
@@ -497,11 +477,36 @@ describe('ModuleLessonsClient', () => {
       },
     });
 
+    expect(screen.getByText('Failed')).toBeInTheDocument();
     expect(
       screen.getByText(
         'Generation failed. Retry to create fresh lesson content for this module.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not render stale server diagnostics when a prior row contains one', () => {
+    renderClient({
+      lessonGeneration: {
+        status: 'failed',
+        startedAt: null,
+        completedAt: null,
+        failedAt: new Date('2025-06-01T00:00:00.000Z'),
+        error: 'Upstream provider timed out.',
+      },
+    });
+
+    expect(
+      screen.getByText(
+        'Generation failed. Retry to create fresh lesson content for this module.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Upstream provider timed out.'),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Retry lesson generation' }),
     ).toBeInTheDocument();

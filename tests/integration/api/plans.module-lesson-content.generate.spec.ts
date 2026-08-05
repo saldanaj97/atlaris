@@ -193,12 +193,30 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
     });
   });
 
-  it('maps provider failure to provider_failure state', async () => {
+  it('maps failed generation to a generic provider failure response', async () => {
     const userId = await authenticateTestUser('provider-failure');
     await seedOwnedPlanForLessonContentApi(userId);
+    mockStartModuleLessonGeneration.mockResolvedValue({ kind: 'failed' });
+
+    const { request, context } = createRequest();
+    const response = await POST(request, context);
+    const body = await response.json();
+
+    expect(response.status).toBe(502);
+    expect(body).toEqual({
+      state: 'provider_failure',
+      planId: VALID_PLAN_ID,
+      moduleId: VALID_MODULE_ID,
+      message: 'Lesson generation failed. Please try again.',
+    });
+  });
+
+  it('does not expose workflow startup diagnostics', async () => {
+    const userId = await authenticateTestUser('workflow-start-failure');
+    await seedOwnedPlanForLessonContentApi(userId);
     mockStartModuleLessonGeneration.mockResolvedValue({
-      kind: 'failed',
-      message: 'Provider output was invalid.',
+      kind: 'workflow_start_failed',
+      message: 'internal workflow setup detail',
     });
 
     const { request, context } = createRequest();
@@ -210,8 +228,11 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       state: 'provider_failure',
       planId: VALID_PLAN_ID,
       moduleId: VALID_MODULE_ID,
-      message: 'Provider output was invalid.',
+      message: 'Lesson generation failed. Please try again.',
     });
+    expect(JSON.stringify(body)).not.toContain(
+      'internal workflow setup detail',
+    );
   });
 
   it('maps disabled generation to disabled state', async () => {
