@@ -33,8 +33,8 @@ const bulkRemovePlanResultSchema = z.discriminatedUnion('success', [
 
 const bulkDeletePlansResultSchema = z.object({
   success: z.boolean(),
-  deletedCount: z.number(),
-  failedCount: z.number(),
+  deletedCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
   results: z.array(bulkRemovePlanResultSchema),
 });
 
