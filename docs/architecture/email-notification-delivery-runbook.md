@@ -15,6 +15,32 @@ Vercel Cron can be delayed, missed, or invoked more than once. Hobby precision i
 
 Only one email scheduler may be active. The GitHub workflow `.github/workflows/email-notification-delivery-scheduler.yml` must stay absent while the Vercel Cron entries are enabled.
 
+## User preferences and opt-in contract
+
+Optional product emails are **opt-in**. Defaults leave every category off, so a healthy cron run can still send zero messages until at least one recipient enables a category.
+
+| Concern | Detail |
+| --- | --- |
+| Categories | `weekly_summary`, `daily_reminder`, `streak_reminder` (`email_notification_category`) |
+| Defaults | All categories `enabled=false`; `unsubscribe_all_optional_emails=false` |
+| Effective prefs | `resolveEffectiveEmailPreferences()` — master unsubscribe forces every category off |
+| Delivery gate | Delivery skips a user when no effective category is enabled (`delivery-service.ts`) |
+| Settings UI | `/settings#notifications` loads prefs and saves via `PATCH /api/v1/user/preferences/notifications` |
+| Preference tables | `user_email_notification_settings` (master unsubscribe) + `user_email_notification_preferences` (per category) |
+| Actor prefs | `user_preferences` holds `analytics_timezone` / `preferred_ai_model` used by content bucketing |
+
+Shared defaults and effective-pref helpers live in `src/shared/notifications/email-preferences.ts`. Query helpers are in `src/lib/db/queries/user-preferences.ts`.
+
+### Public unsubscribe
+
+Signed unsubscribe links hit `GET|POST /api/v1/notifications/email/unsubscribe?token=…`:
+
+- **GET** is confirmation-only HTML (no mutation — safe for scanners/prefetchers).
+- **POST** applies one-click unsubscribe for optional emails (`applySignedEmailUnsubscribe`).
+- Users can re-enable categories later from `/settings#notifications`.
+
+If cron runs but `sent` stays at zero, check the Vercel flag first, then confirm the test account has at least one category enabled and is not fully unsubscribed.
+
 ## Inspect a run
 
 1. In Vercel, inspect the Cron invocation for `GET /api/cron/notifications/email` and record the response's `runId` and `workflowRunId`.

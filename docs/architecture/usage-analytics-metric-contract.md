@@ -73,7 +73,8 @@ exposes historical analytics from that source.
 - Current task progress schema:
   `supabase/schema/tables/tasks.ts`
 - Analytics timezone source:
-  `supabase/schema/tables/users.ts`
+  `supabase/schema/tables/user-preferences.ts` (`user_preferences.analytics_timezone`;
+  joined onto the actor in `src/lib/db/queries/users.ts`)
 
 ## Downstream Issue Boundaries
 

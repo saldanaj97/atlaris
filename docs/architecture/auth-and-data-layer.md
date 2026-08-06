@@ -93,6 +93,8 @@ There are two user IDs in the system:
 
 **Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` is the full `DbUser`. In server actions/components, the callback receives the full `DbUser`.
 
+`ensureUserRecord` / actor assembly left-joins `user_preferences` so the actor always exposes `preferredAiModel` and `analyticsTimezone` (defaults from `DEFAULT_USER_PREFERENCES` when the row is missing). Those fields no longer live on `users` after the preferences contract migration — see `docs/database/schema-overview.md` and `docs/development/deploy.md` (User Preferences Cutover).
+
 ### How auth user ID is obtained
 
 ```
