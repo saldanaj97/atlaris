@@ -259,6 +259,16 @@ describe('email notification deliveries ledger', () => {
     },
   );
 
+  it('validates the resolved-payload constraint after scrubbing legacy rows', async () => {
+    const constraints = (await db.execute(sql`
+      select convalidated
+      from pg_constraint
+      where conname = 'email_notification_deliveries_resolved_provider_request_null'
+    `)) as Array<{ convalidated: boolean }>;
+
+    expect(constraints).toEqual([{ convalidated: true }]);
+  });
+
   it('allows only one concurrent owner for the same delivery key', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-race');
     const userId = await ensureUser({

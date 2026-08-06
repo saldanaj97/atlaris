@@ -51,6 +51,10 @@ require_archive_recovery_if_drop_already_ran() {
   fi
 }
 
+attest_effective_privileges() {
+  bash scripts/db/attest-effective-privileges.sh
+}
+
 apply_expand_migrations() {
   local migration
   local migration_workspace
@@ -108,9 +112,11 @@ apply_contract_migrations() {
 case "${MIGRATION_PHASE:-}" in
   expand)
     apply_expand_migrations
+    attest_effective_privileges
     ;;
   contract)
     apply_contract_migrations
+    attest_effective_privileges
     ;;
   *)
     printf 'MIGRATION_PHASE must be expand or contract.\n' >&2

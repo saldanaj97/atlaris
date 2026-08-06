@@ -6,11 +6,12 @@ import {
   userEmailNotificationSettings,
   users,
 } from '@supabase/schema';
-import { and, eq, gt, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 
 export type EmailDeliveryRecipient = {
   userId: string;
   email: string;
+  clerkUserUpdatedAt: Date;
 };
 
 /**
@@ -54,12 +55,15 @@ export async function listEmailDeliveryRecipients(args: {
     .select({
       userId: users.id,
       email: users.email,
+      clerkUserUpdatedAt: users.clerkUserUpdatedAt,
     })
     .from(users)
     .where(
       and(
         isNotNull(users.email),
         ne(users.email, ''),
+        isNotNull(users.clerkUserUpdatedAt),
+        isNull(users.clerkDeletedAt),
         categoryFilter,
         unsubscribeFilter,
         args.cursorUserId ? gt(users.id, args.cursorUserId) : sql`true`,
@@ -73,9 +77,46 @@ export async function listEmailDeliveryRecipients(args: {
     rows.length > batchSize ? (page[page.length - 1]?.userId ?? null) : null;
 
   return {
-    recipients: page.flatMap((row) =>
-      row.email === null ? [] : [{ userId: row.userId, email: row.email }],
-    ),
+    recipients: page.flatMap((row) => {
+      if (row.email === null || row.clerkUserUpdatedAt === null) {
+        return [];
+      }
+
+      return [
+        {
+          userId: row.userId,
+          email: row.email,
+          clerkUserUpdatedAt: row.clerkUserUpdatedAt,
+        },
+      ];
+    }),
     nextCursor,
   };
+}
+
+/**
+ * Fences a scheduled send against the latest locally projected Clerk identity.
+ */
+export async function isEmailDeliveryRecipientCurrent(args: {
+  userId: string;
+  email: string;
+  clerkUserUpdatedAt: Date;
+  dbClient: Pick<DbClient, 'select'>;
+}): Promise<boolean> {
+  const rows = await args.dbClient
+    .select({ userId: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, args.userId),
+        eq(users.email, args.email),
+        eq(users.clerkUserUpdatedAt, args.clerkUserUpdatedAt),
+        isNotNull(users.email),
+        ne(users.email, ''),
+        isNull(users.clerkDeletedAt),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
 }

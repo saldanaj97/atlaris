@@ -44,6 +44,13 @@ Use these helpers only:
 
 Do not return ad-hoc `Response.json(...)` error payloads from API handlers.
 
+### Completed bulk operations
+
+A completed bulk evaluation returns HTTP `200` with its per-item result array,
+including when every item has an intentional domain outcome such as a conflict
+or not found result. An unexpected execution failure must escape to the
+canonical HTTP `500` response; never synthesize it as an item conflict.
+
 ## Required client parser
 
 Client fetch consumers must parse errors with:

@@ -247,6 +247,40 @@ describe('POST /api/v1/plans/bulk-delete', () => {
     expect(remaining).toHaveLength(1);
   });
 
+  it('returns 200 with per-plan conflicts when every selected plan is generating', async () => {
+    setTestUser(ownerAuthId);
+    const ownerId = await ensureUser({
+      authUserId: ownerAuthId,
+      email: ownerEmail,
+    });
+    const plans = await db
+      .insert(learningPlans)
+      .values([
+        buildPlanValues(ownerId, 'Bulk Generating Plan One', 'generating'),
+        buildPlanValues(ownerId, 'Bulk Generating Plan Two', 'generating'),
+      ])
+      .returning();
+
+    const response = await POST(
+      buildBulkDeleteRequest(plans.map((plan) => plan.id)),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      deletedCount: 0,
+      failedCount: 2,
+      results: expect.arrayContaining(
+        plans.map((plan) => ({
+          planId: plan.id,
+          success: false,
+          reason: 'currently_generating',
+          message: 'Cannot delete a plan that is currently generating.',
+        })),
+      ),
+    });
+  });
+
   it('returns 400 for invalid bulk delete payloads', async () => {
     setTestUser(ownerAuthId);
     await ensureUser({

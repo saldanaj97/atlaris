@@ -341,9 +341,9 @@ describe('RLS Policy Verification', () => {
       ];
 
       for (const client of clients) {
-        await expect(
+        await expectRlsBlocked(() =>
           client.select().from(clerkWebhookEventClaims),
-        ).resolves.toEqual([]);
+        );
         await expectRlsBlocked(() =>
           client
             .insert(clerkWebhookEventClaims)

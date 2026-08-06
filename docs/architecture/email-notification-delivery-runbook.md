@@ -48,11 +48,11 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
 2. Flag `email-notification-delivery` on; `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
-3. Recipient has a non-empty email and qualifies for the requested category:
+3. Recipient has a non-empty, current Clerk-projected email and qualifies for the requested category:
    - Daily reminder: no activity today in the user's local time zone and an incomplete plan.
    - Streak reminder: no activity today and activity on each of the prior three local days.
    - Weekly summary: a Monday run and activity on at least one day in the prior week.
-4. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`).
+4. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`). Before provider delivery, the worker rechecks the recipient's email/timestamp projection and effective preferences.
 5. Not suppressed by streak reminder in the same daily pass.
 
 ## Schedule and ownership
@@ -87,7 +87,7 @@ The run record is an operational checkpoint. `email_notification_deliveries` rem
 
 ## Payload minimization and inventory
 
-Resolved `sent` and `skipped` ledger rows retain their compact idempotency tombstone but must have `provider_request = NULL`. Pending, retryable failed, and `manual_review` rows retain their request because retry/review correctness still depends on it. There is no age-based email-ledger cleanup policy yet.
+Resolved `sent` and `skipped` ledger rows retain their compact idempotency tombstone but must have `provider_request = NULL`. Contract migration `20260811100300_scrub_resolved_email_delivery_payloads` scrubs historical resolved payloads and validates that invariant. Pending, retryable failed, and `manual_review` rows retain their request because retry/review correctness still depends on it. There is no age-based email-ledger cleanup policy yet: compact tombstones remain until a maximum replay, manual-review, and idempotency period is approved.
 
 Inspect only aggregate state while setting that policy; do not select recipient addresses, content, headers, tokens, or `provider_request`:
 
@@ -103,7 +103,7 @@ GROUP BY status
 ORDER BY status;
 ```
 
-If a `sent` or `skipped` row has a payload, stop before validating the invariant and resolve the row under the approved operator policy. Do not delete its tombstone.
+If a `sent` or `skipped` row has a payload, treat it as an invariant breach and incident. Do not delete its tombstone.
 
 ## Trigger a safe manual run
 
@@ -131,7 +131,7 @@ For a weekly run, use a Monday UTC date and `"runKind":"weekly"`. A `start` requ
 
 `needs_review` means the run observed an isolated recipient error or an ambiguous provider/idempotency outcome. It is intentionally terminal and does not automatically resend.
 
-If an expired pending claim has a different current recipient, the ledger enters `manual_review` and retains the original request. Do not replace or resend it automatically: determine whether the provider may have accepted the original delivery first.
+If an expired pending claim has a different current recipient, or preferences are disabled after a persisted provider request is reclaimed, the ledger enters `manual_review` and retains the original request. A fresh claim with a stale recipient or disabled preference is skipped before provider delivery. Do not replace or resend an ambiguous request automatically: determine whether the provider may have accepted the original delivery first.
 
 1. Inspect the affected ledger rows and resolve the underlying data or provider state.
 2. Confirm no unresolved `manual_review` ledger rows remain for the logical run.

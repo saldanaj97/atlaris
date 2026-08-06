@@ -53,21 +53,13 @@ After deploying a release that includes new Supabase migrations:
 
 1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
-3. After the expand workflow, attest that authenticated users cannot delete task progress:
+3. Each successful phase runs the read-only effective-privilege attestation automatically. To re-run it against the linked target, use:
 
-```sql
-SELECT version::text
-FROM supabase_migrations.schema_migrations
-WHERE version::text = '20260804160000';
-
-SELECT
-  has_table_privilege('authenticated', 'public.task_progress', 'SELECT') AS can_select,
-  has_table_privilege('authenticated', 'public.task_progress', 'INSERT') AS can_insert,
-  has_table_privilege('authenticated', 'public.task_progress', 'UPDATE') AS can_update,
-  has_table_privilege('authenticated', 'public.task_progress', 'DELETE') AS can_delete;
+```bash
+bash scripts/db/attest-effective-privileges.sh
 ```
 
-The expected result is migration version `20260804160000`, `can_select`, `can_insert`, and `can_update` true, and `can_delete` false.
+It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants.
 4. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
@@ -93,7 +85,7 @@ If the migration applied but no cron job exists, enable `pg_cron` in Supabase an
 8. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
-   - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization`, then run the non-PII inventory in the email delivery runbook. Do not validate the new check until the inventory reports no historical violations or remediation is approved.
+   - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.
    - Enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
    - Confirm Vercel Cron and `CRON_SECRET` are configured for production; keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
