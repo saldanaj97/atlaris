@@ -14,12 +14,10 @@ interface ModulePageProps {
 const MODULE_METADATA_DESCRIPTION =
   'View module details, tasks, and resources for this learning plan module.';
 
-export function generateMetadata(): Metadata {
-  return {
-    title: 'Module Details | Atlaris',
-    description: MODULE_METADATA_DESCRIPTION,
-  };
-}
+export const metadata: Metadata = {
+  title: 'Module Details | Atlaris',
+  description: MODULE_METADATA_DESCRIPTION,
+};
 
 /**
  * Module detail page with Suspense boundary for data-dependent content.

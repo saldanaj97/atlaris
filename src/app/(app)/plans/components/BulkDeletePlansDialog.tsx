@@ -1,8 +1,8 @@
 'use client';
 
 import type { PlanListItem } from '@/features/plans/read-projection/types';
-import type { BulkRemovePlanResult } from '@/features/plans/write-service';
 
+import { requestJson } from '@/app/_shared/client-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,18 +13,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { parseApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
-export type BulkDeletePlansResult = {
-  success: boolean;
-  deletedCount: number;
-  failedCount: number;
-  results: BulkRemovePlanResult[];
-};
+const bulkRemovePlanResultSchema = z.discriminatedUnion('success', [
+  z.object({
+    planId: z.string(),
+    success: z.literal(true),
+  }),
+  z.object({
+    planId: z.string(),
+    success: z.literal(false),
+    reason: z.enum(['not_found', 'currently_generating']),
+    message: z.string(),
+  }),
+]);
+
+const bulkDeletePlansResultSchema = z.object({
+  success: z.boolean(),
+  deletedCount: z.number(),
+  failedCount: z.number(),
+  results: z.array(bulkRemovePlanResultSchema),
+});
+
+export type BulkDeletePlansResult = z.infer<typeof bulkDeletePlansResultSchema>;
 
 type BulkDeletePlansDialogProps = {
   open: boolean;
@@ -78,48 +92,41 @@ export function BulkDeletePlansDialog({
     setDeleting(true);
 
     let result: BulkDeleteRequestResult;
+    let isCurrentRequest = false;
     try {
-      const res = await fetch('/api/v1/plans/bulk-delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planIds }),
-        signal: controller.signal,
+      const response = await requestJson({
+        url: '/api/v1/plans/bulk-delete',
+        init: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planIds }),
+          signal: controller.signal,
+        },
+        schema: bulkDeletePlansResultSchema,
+        fallbackMessage: 'Failed to delete selected plans',
       });
-
-      if (!res.ok) {
-        const parsed = await parseApiErrorResponse(
-          res,
-          'Failed to delete selected plans',
-        );
-        result = {
-          kind: 'error',
-          message: parsed.error,
-          error: new Error(parsed.error),
-        };
-      } else {
-        result = {
-          kind: 'success',
-          result: (await res.json()) as BulkDeletePlansResult,
-        };
-      }
+      result =
+        response.kind === 'success'
+          ? { kind: 'success', result: response.data }
+          : response;
     } catch (error: unknown) {
-      result = isAbortError(error)
-        ? { kind: 'aborted' }
-        : {
-            kind: 'error',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Failed to delete selected plans',
-            error,
-          };
+      result = {
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete selected plans',
+        error,
+      };
+    } finally {
+      isCurrentRequest = abortControllerRef.current === controller;
+      if (isCurrentRequest) {
+        abortControllerRef.current = null;
+        setDeleting(false);
+      }
     }
 
-    if (abortControllerRef.current !== controller) {
-      return;
-    }
-    abortControllerRef.current = null;
-    setDeleting(false);
+    if (!isCurrentRequest) return;
 
     if (result.kind === 'success') {
       onOpenChange(false);

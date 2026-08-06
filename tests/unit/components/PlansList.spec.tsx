@@ -423,6 +423,49 @@ describe('PlansList', () => {
     expect(mockRefresh).toHaveBeenCalled();
   });
 
+  it('rejects a malformed bulk delete success response', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          deletedCount: 2,
+          failedCount: 0,
+          results: null,
+        }),
+        { status: 200 },
+      ),
+    );
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    expect(toast.error).toHaveBeenCalledWith(expect.any(String));
+    expect(mockRefresh).not.toHaveBeenCalled();
+    expect(screen.getByText('Delete selected plans')).toBeInTheDocument();
+  });
+
+  it('re-enables bulk delete after a request failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockRejectedValue(new Error('Network unavailable'));
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Delete 2 plans' }),
+    ).toBeEnabled();
+    expect(toast.error).toHaveBeenCalledWith('Network unavailable');
+  });
+
   it('renders stable server pagination links', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3, totalItems: 45 },
