@@ -2,7 +2,6 @@ name: CI - PR (trunk)
 
 on:
   pull_request:
-    branches: [main, develop]
   workflow_dispatch:
     inputs:
       base_ref:
