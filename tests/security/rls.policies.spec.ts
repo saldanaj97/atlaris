@@ -427,6 +427,24 @@ describe('RLS Policy Verification', () => {
       expect(crossTenantUpdate).toHaveLength(0);
     });
 
+    it('does not grant authenticated users direct INSERT on user rows', async () => {
+      const deniedAuthUserId = 'user_insert_denied';
+      const deniedDb = await createRlsDbForUser(deniedAuthUserId);
+      await expectRlsBlocked(() =>
+        deniedDb.insert(users).values({
+          authUserId: deniedAuthUserId,
+          email: 'insert-denied@test.com',
+          clerkUserUpdatedAt: new Date('2026-08-11T10:00:00.000Z'),
+        }),
+      );
+      await expect(
+        db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.authUserId, deniedAuthUserId)),
+      ).resolves.toEqual([]);
+    });
+
     // Transitive ownership: `job_queue_select_own` only returns rows for plans
     // owned by the current user. Anonymous has no `job_queue` visibility.
     it('authenticated can read own job_queue rows, cannot forge/change rows; anonymous cannot read or write', async () => {

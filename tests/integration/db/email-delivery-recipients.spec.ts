@@ -49,12 +49,6 @@ describe('email delivery recipient query', () => {
       userId: unsubscribedUserId,
       unsubscribeAllOptionalEmails: true,
     });
-    const clerkUserUpdatedAt = new Date('2026-08-05T12:00:00.000Z');
-    await db
-      .update(users)
-      .set({ clerkUserUpdatedAt })
-      .where(eq(users.id, enabledUserId));
-
     const result = await listEmailDeliveryRecipients({
       batchSize: 1,
       categories: ['daily_reminder'],
@@ -65,35 +59,26 @@ describe('email delivery recipient query', () => {
       {
         userId: enabledUserId,
         email: buildTestEmail(enabledAuthUserId),
-        clerkUserUpdatedAt,
       },
     ]);
     expect(result.nextCursor).toBeNull();
   });
 
-  it('excludes unprojected and tombstoned identities from scheduled delivery', async () => {
+  it('excludes tombstoned identities from scheduled delivery', async () => {
     const validAuthUserId = buildTestAuthUserId('email-recipient-projected');
-    const unprojectedAuthUserId = buildTestAuthUserId(
-      'email-recipient-unprojected',
-    );
     const tombstonedAuthUserId = buildTestAuthUserId(
       'email-recipient-tombstoned',
     );
-    const [validUserId, unprojectedUserId, tombstonedUserId] =
-      await Promise.all([
-        ensureUser({
-          authUserId: validAuthUserId,
-          email: buildTestEmail(validAuthUserId),
-        }),
-        ensureUser({
-          authUserId: unprojectedAuthUserId,
-          email: buildTestEmail(unprojectedAuthUserId),
-        }),
-        ensureUser({
-          authUserId: tombstonedAuthUserId,
-          email: buildTestEmail(tombstonedAuthUserId),
-        }),
-      ]);
+    const [validUserId, tombstonedUserId] = await Promise.all([
+      ensureUser({
+        authUserId: validAuthUserId,
+        email: buildTestEmail(validAuthUserId),
+      }),
+      ensureUser({
+        authUserId: tombstonedAuthUserId,
+        email: buildTestEmail(tombstonedAuthUserId),
+      }),
+    ]);
     const clerkUserUpdatedAt = new Date('2026-08-05T12:00:00.000Z');
 
     await db
@@ -109,11 +94,6 @@ describe('email delivery recipient query', () => {
       .where(eq(users.id, tombstonedUserId));
     await db.insert(userEmailNotificationPreferences).values([
       { userId: validUserId, category: 'daily_reminder', enabled: true },
-      {
-        userId: unprojectedUserId,
-        category: 'daily_reminder',
-        enabled: true,
-      },
       {
         userId: tombstonedUserId,
         category: 'daily_reminder',
@@ -131,7 +111,6 @@ describe('email delivery recipient query', () => {
       {
         userId: validUserId,
         email: buildTestEmail(validAuthUserId),
-        clerkUserUpdatedAt,
       },
     ]);
   });
@@ -142,15 +121,9 @@ describe('email delivery recipient query', () => {
       authUserId,
       email: buildTestEmail(authUserId),
     });
-    const clerkUserUpdatedAt = new Date('2026-08-05T12:00:00.000Z');
-    await db
-      .update(users)
-      .set({ clerkUserUpdatedAt })
-      .where(eq(users.id, userId));
     const args = {
       userId,
       email: buildTestEmail(authUserId),
-      clerkUserUpdatedAt,
       dbClient: db,
     };
 
@@ -158,9 +131,14 @@ describe('email delivery recipient query', () => {
 
     await db
       .update(users)
+      .set({ clerkUserUpdatedAt: new Date('2026-08-05T12:01:00.000Z') })
+      .where(eq(users.id, userId));
+    await expect(isEmailDeliveryRecipientCurrent(args)).resolves.toBe(true);
+
+    await db
+      .update(users)
       .set({
         email: 'new-address@example.com',
-        clerkUserUpdatedAt: new Date('2026-08-05T12:01:00.000Z'),
       })
       .where(eq(users.id, userId));
     await expect(isEmailDeliveryRecipientCurrent(args)).resolves.toBe(false);

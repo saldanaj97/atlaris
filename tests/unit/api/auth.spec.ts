@@ -12,13 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),
-  getOrCreateUser: vi.fn(),
+  provisionUser: vi.fn(),
   getSession: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/users', () => ({
   getUserByAuthId: mocks.getUserByAuthId,
-  getOrCreateUser: mocks.getOrCreateUser,
+}));
+
+vi.mock('@/features/auth/user-provisioning', () => ({
+  provisionUserFromVerifiedAuthSession: mocks.provisionUser,
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -28,14 +31,14 @@ vi.mock('@/lib/auth/server', () => ({
 }));
 
 const mockGetUserByAuthId = mocks.getUserByAuthId;
-const mockGetOrCreateUser = mocks.getOrCreateUser;
+const mockProvisionUser = mocks.provisionUser;
 const mockGetSession = mocks.getSession;
 
 describe('auth helpers', () => {
   beforeEach(() => {
     vi.stubEnv('LOCAL_PRODUCT_TESTING', 'false');
     mockGetUserByAuthId.mockReset();
-    mockGetOrCreateUser.mockReset();
+    mockProvisionUser.mockReset();
     mockGetSession.mockReset();
     clearTestUser();
   });
@@ -59,7 +62,7 @@ describe('auth helpers', () => {
     mockGetUserByAuthId.mockResolvedValue(user);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(user);
-    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord rejects a tombstoned local user', async () => {
@@ -75,7 +78,7 @@ describe('auth helpers', () => {
       'Auth user has been deleted.',
     );
     expect(mockGetSession).not.toHaveBeenCalled();
-    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord provisions a missing user from Clerk session data', async () => {
@@ -98,18 +101,15 @@ describe('auth helpers', () => {
         },
       },
     });
-    mockGetOrCreateUser.mockResolvedValue(created);
+    mockProvisionUser.mockResolvedValue(created);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(created);
-    expect(mockGetOrCreateUser).toHaveBeenCalledWith(
-      {
-        authUserId: 'auth_created',
-        email: 'created@example.com',
-        name: 'Created User',
-        clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
-      },
-      undefined,
-    );
+    expect(mockProvisionUser).toHaveBeenCalledWith({
+      authUserId: 'auth_created',
+      email: 'created@example.com',
+      name: 'Created User',
+      clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
+    });
   });
 
   it('requireCurrentUserRecord fails closed when Clerk user data is unavailable', async () => {
@@ -118,7 +118,27 @@ describe('auth helpers', () => {
     mockGetSession.mockResolvedValue({ data: null });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
+  });
+
+  it('requireCurrentUserRecord rejects a Clerk session identity change before provisioning', async () => {
+    setTestUser('auth_original');
+    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'auth_replaced',
+          email: 'replaced@example.com',
+          name: 'Replaced User',
+          clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
+        },
+      },
+    });
+
+    await expect(requireCurrentUserRecord()).rejects.toThrow(
+      'Auth user changed during provisioning.',
+    );
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord fails closed when the Clerk user has no email', async () => {
@@ -135,7 +155,7 @@ describe('auth helpers', () => {
     });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockGetOrCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('withServerComponentContext installs request context in test mode', async () => {

@@ -25,6 +25,7 @@ import {
 } from '@/lib/db/queries/email-delivery-recipients';
 import {
   claimEmailNotificationDelivery,
+  EMAIL_DELIVERY_FAILURE_CLASS,
   EMAIL_DELIVERY_LEASE_MS,
   type EmailDeliveryClaimResult,
   EmailDeliveryLostLeaseError,
@@ -67,6 +68,9 @@ const RETRYABLE_DATABASE_ERROR_CODES = new Set([
 ]);
 
 type DeliveryDb = DbClient;
+type EffectiveEmailPreferences = ReturnType<
+  typeof resolveEffectiveEmailPreferences
+>;
 
 function isRetryableDatabaseError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -138,6 +142,15 @@ function recordDeliveryFailure(
   });
 }
 
+async function getEffectiveEmailPreferences(
+  userId: string,
+  db: DeliveryDb,
+): Promise<EffectiveEmailPreferences> {
+  return resolveEffectiveEmailPreferences(
+    await getEmailNotificationPreferences(userId, db),
+  );
+}
+
 async function buildRecipientEmailContents(args: {
   recipient: EmailDeliveryRecipient;
   requested: ReadonlySet<EmailNotificationCategory>;
@@ -148,11 +161,10 @@ async function buildRecipientEmailContents(args: {
   now: Date;
   deliveryNow: Date;
 }): Promise<BuiltEmailContent[]> {
-  const preferences = await getEmailNotificationPreferences(
+  const effective = await getEffectiveEmailPreferences(
     args.recipient.userId,
     args.db,
   );
-  const effective = resolveEffectiveEmailPreferences(preferences);
   const enabledCategories = new Set(
     (Object.keys(effective) as Array<keyof typeof effective>).filter(
       (category) => effective[category] && args.requested.has(category),
@@ -478,17 +490,17 @@ async function processEmailContent(args: {
     (await isEmailDeliveryRecipientCurrent({
       userId: recipient.userId,
       email: claim.providerRequest.to,
-      clerkUserUpdatedAt: recipient.clerkUserUpdatedAt,
       dbClient: context.db,
     }));
   if (!recipientIdentityCurrent) {
-    if (claim.reusedProviderRequest) {
+    if (claim.reclaimedExpiredPending) {
       await persistDeliveryState(() =>
         markEmailNotificationDeliveryManualReview(
           {
             deliveryId: claim.deliveryId,
             claimToken: claim.claimToken,
-            failureClass: 'recipient_changed_since_claim',
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim,
           },
           context.db,
         ),
@@ -498,7 +510,8 @@ async function processEmailContent(args: {
       countMetric('atlaris.email.notification.manual_review', 1, {
         attributes: {
           category: content.category,
-          reason: 'recipient_changed_since_claim',
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim,
         },
       });
     } else {
@@ -507,7 +520,8 @@ async function processEmailContent(args: {
           {
             deliveryId: claim.deliveryId,
             claimToken: claim.claimToken,
-            failureClass: 'recipient_identity_changed',
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedBeforeDelivery,
           },
           context.db,
         ),
@@ -516,24 +530,27 @@ async function processEmailContent(args: {
       countMetric('atlaris.email.notification.skipped', 1, {
         attributes: {
           category: content.category,
-          reason: 'recipient_identity_changed',
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedBeforeDelivery,
         },
       });
     }
     return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
   }
 
-  const finalPreferences = resolveEffectiveEmailPreferences(
-    await getEmailNotificationPreferences(recipient.userId, context.db),
+  const finalPreferences = await getEffectiveEmailPreferences(
+    recipient.userId,
+    context.db,
   );
   if (!finalPreferences[content.category]) {
-    if (claim.reusedProviderRequest) {
+    if (claim.reclaimedExpiredPending) {
       await persistDeliveryState(() =>
         markEmailNotificationDeliveryManualReview(
           {
             deliveryId: claim.deliveryId,
             claimToken: claim.claimToken,
-            failureClass: 'preferences_disabled_after_ambiguous_claim',
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledAfterAmbiguousClaim,
           },
           context.db,
         ),
@@ -543,7 +560,8 @@ async function processEmailContent(args: {
       countMetric('atlaris.email.notification.manual_review', 1, {
         attributes: {
           category: content.category,
-          reason: 'preferences_disabled_after_ambiguous_claim',
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledAfterAmbiguousClaim,
         },
       });
     } else {
@@ -552,7 +570,8 @@ async function processEmailContent(args: {
           {
             deliveryId: claim.deliveryId,
             claimToken: claim.claimToken,
-            failureClass: 'preference_disabled_before_delivery',
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledBeforeDelivery,
           },
           context.db,
         ),
@@ -561,7 +580,8 @@ async function processEmailContent(args: {
       countMetric('atlaris.email.notification.skipped', 1, {
         attributes: {
           category: content.category,
-          reason: 'preference_disabled_before_delivery',
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledBeforeDelivery,
         },
       });
     }

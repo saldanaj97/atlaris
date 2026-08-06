@@ -11,7 +11,6 @@ import { and, eq, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 export type EmailDeliveryRecipient = {
   userId: string;
   email: string;
-  clerkUserUpdatedAt: Date;
 };
 
 /**
@@ -55,14 +54,12 @@ export async function listEmailDeliveryRecipients(args: {
     .select({
       userId: users.id,
       email: users.email,
-      clerkUserUpdatedAt: users.clerkUserUpdatedAt,
     })
     .from(users)
     .where(
       and(
         isNotNull(users.email),
         ne(users.email, ''),
-        isNotNull(users.clerkUserUpdatedAt),
         isNull(users.clerkDeletedAt),
         categoryFilter,
         unsubscribeFilter,
@@ -78,7 +75,7 @@ export async function listEmailDeliveryRecipients(args: {
 
   return {
     recipients: page.flatMap((row) => {
-      if (row.email === null || row.clerkUserUpdatedAt === null) {
+      if (row.email === null) {
         return [];
       }
 
@@ -86,7 +83,6 @@ export async function listEmailDeliveryRecipients(args: {
         {
           userId: row.userId,
           email: row.email,
-          clerkUserUpdatedAt: row.clerkUserUpdatedAt,
         },
       ];
     }),
@@ -95,12 +91,11 @@ export async function listEmailDeliveryRecipients(args: {
 }
 
 /**
- * Fences a scheduled send against the latest locally projected Clerk identity.
+ * Fences a scheduled send against the current local delivery identity.
  */
 export async function isEmailDeliveryRecipientCurrent(args: {
   userId: string;
   email: string;
-  clerkUserUpdatedAt: Date;
   dbClient: Pick<DbClient, 'select'>;
 }): Promise<boolean> {
   const rows = await args.dbClient
@@ -110,7 +105,6 @@ export async function isEmailDeliveryRecipientCurrent(args: {
       and(
         eq(users.id, args.userId),
         eq(users.email, args.email),
-        eq(users.clerkUserUpdatedAt, args.clerkUserUpdatedAt),
         isNotNull(users.email),
         ne(users.email, ''),
         isNull(users.clerkDeletedAt),

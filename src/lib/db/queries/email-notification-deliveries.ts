@@ -9,6 +9,13 @@ import { randomUUID } from 'node:crypto';
 
 export const EMAIL_DELIVERY_LEASE_MS = 15 * 60 * 1000;
 export const EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const EMAIL_DELIVERY_FAILURE_CLASS = {
+  recipientIdentityChangedBeforeDelivery: 'recipient_identity_changed',
+  recipientIdentityChangedAfterAmbiguousClaim: 'recipient_changed_since_claim',
+  preferencesDisabledBeforeDelivery: 'preference_disabled_before_delivery',
+  preferencesDisabledAfterAmbiguousClaim:
+    'preferences_disabled_after_ambiguous_claim',
+} as const;
 
 export type EmailDeliveryClaimResult =
   | {
@@ -17,6 +24,7 @@ export type EmailDeliveryClaimResult =
       claimToken: string;
       providerRequest: PersistedProviderRequest;
       reusedProviderRequest: boolean;
+      reclaimedExpiredPending: boolean;
     }
   | {
       outcome: 'already_terminal';
@@ -236,6 +244,7 @@ export async function claimEmailNotificationDelivery(
       claimToken: inserted[0].claimToken,
       providerRequest: stored,
       reusedProviderRequest: false,
+      reclaimedExpiredPending: false,
     };
   }
 
@@ -321,6 +330,7 @@ export async function claimEmailNotificationDelivery(
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
         reusedProviderRequest: !useRecomputedRequest,
+        reclaimedExpiredPending: false,
       };
     }
 
@@ -348,7 +358,7 @@ export async function claimEmailNotificationDelivery(
         .set({
           status: 'manual_review',
           failureClass: recipientChanged
-            ? 'recipient_changed_since_claim'
+            ? EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim
             : 'provider_acceptance_ambiguous',
           claimToken: null,
           claimExpiresAt: null,
@@ -403,6 +413,7 @@ export async function claimEmailNotificationDelivery(
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
         reusedProviderRequest: true,
+        reclaimedExpiredPending: true,
       };
     }
 
