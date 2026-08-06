@@ -108,9 +108,27 @@ BEGIN
     RAISE EXCEPTION '%', violation;
   END IF;
 
-  -- The legacy Stripe archive is expand-phase-only. Check it when present without
-  -- requiring fresh local schemas to materialize a deliberately phased archive.
+  -- Webhook and email ledgers are mandatory service-only tables. The legacy
+  -- Stripe archive is expand-phase-only, so it remains optional when absent.
   WITH required_tables AS (
+    SELECT unnest(
+      ARRAY['clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
+    ) AS table_name
+  )
+  SELECT format('required service-only public.%I table is missing', required_tables.table_name)
+    INTO violation
+  FROM required_tables
+  LEFT JOIN pg_class AS class
+    ON class.relname = required_tables.table_name
+   AND class.relnamespace = 'public'::regnamespace
+   AND class.relkind IN ('r', 'p')
+  WHERE class.oid IS NULL
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
+  WITH service_only_tables AS (
     SELECT unnest(
       ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
     ) AS table_name
@@ -125,16 +143,55 @@ BEGIN
       '%I has %s on service-only public.%I',
       role_name,
       privilege_type,
-      required_tables.table_name
+      service_only_tables.table_name
     )
     INTO violation
-  FROM required_tables
-  LEFT JOIN pg_class AS class
-    ON class.relname = required_tables.table_name
+  FROM service_only_tables
+  JOIN pg_class AS class
+    ON class.relname = service_only_tables.table_name
    AND class.relnamespace = 'public'::regnamespace
+   AND class.relkind IN ('r', 'p')
   CROSS JOIN client_roles
   CROSS JOIN all_privileges
   WHERE has_table_privilege(role_name, class.oid, privilege_type)
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
+  WITH service_only_tables AS (
+    SELECT unnest(
+      ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
+    ) AS table_name
+  ), client_roles AS (
+    SELECT unnest(ARRAY['anon', 'authenticated']) AS role_name
+  ), column_privileges AS (
+    SELECT unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'REFERENCES']) AS privilege_type
+  )
+  SELECT format(
+      '%I has %s column privilege on service-only public.%I.%I',
+      role_name,
+      privilege_type,
+      service_only_tables.table_name,
+      column_info.column_name
+    )
+    INTO violation
+  FROM service_only_tables
+  JOIN pg_class AS class
+    ON class.relname = service_only_tables.table_name
+   AND class.relnamespace = 'public'::regnamespace
+   AND class.relkind IN ('r', 'p')
+  JOIN information_schema.columns AS column_info
+    ON column_info.table_schema = 'public'
+   AND column_info.table_name = service_only_tables.table_name
+  CROSS JOIN client_roles
+  CROSS JOIN column_privileges
+  WHERE has_column_privilege(
+      role_name,
+      format('public.%I', service_only_tables.table_name),
+      column_info.column_name,
+      privilege_type
+    )
   LIMIT 1;
   IF violation IS NOT NULL THEN
     RAISE EXCEPTION '%', violation;

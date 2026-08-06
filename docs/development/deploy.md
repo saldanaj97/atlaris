@@ -28,6 +28,18 @@ Do not deploy the application release before the expand migration is applied. Au
 
 Do not run the contract migration before the new application release is fully rolled out. Older binaries may still read or write the legacy `users` preference columns during rolling deploys.
 
+## Authenticated users INSERT revoke cutover
+
+Migration `20260811100400_revoke_users_authenticated_insert` is intentionally contract-only. The expand runner applies the explicit predeploy set; the confirmed contract phase runs `supabase db push --include-all` after the application rollout. Older binaries provision a first user through the authenticated database role and still need table-level `INSERT`; the new release provisions through the service-role boundary.
+
+Required order:
+
+1. Dispatch the target environment's migration workflow with phase `expand`. The users `INSERT` revoke must not be applied yet.
+2. Deploy the release that uses service-role user provisioning, wait for all old instances to drain, and verify the new release is healthy.
+3. Dispatch phase `contract` with confirmation `post-deploy-health-verified`. This applies the users `INSERT` revoke after the old binary path is no longer serving traffic.
+
+Rolling back before the contract phase preserves the old binary's provisioning path. After the revoke is applied, do not roll back to a binary that provisions through `authenticated`; its first-user insert will fail with a permission error. Roll forward the service-role provisioner instead of restoring the broad grant as an ad hoc rollback step.
+
 ## Legacy Stripe entitlement archive
 
 The expand phase runs `20260706221000_archive_legacy_stripe_entitlements` before the contract phase can drop the legacy Stripe columns. Before contract dispatch, verify every legacy Stripe identity was archived:
