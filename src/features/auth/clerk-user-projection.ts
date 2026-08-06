@@ -3,7 +3,7 @@ import type { Logger } from '@/lib/logging/logger';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import { users } from '@supabase/schema';
-import { and, asc, eq, gt, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lt, lte, or } from 'drizzle-orm';
 
 type UserProjectionDb = Pick<DbTransaction, 'select' | 'update'>;
 
@@ -38,6 +38,7 @@ export type ClerkBackendUser = {
 export type ClerkUserProjectionSource =
   | {
       readonly kind: 'upsert';
+      readonly origin: 'webhook' | 'reconciliation';
       readonly type: 'user.created' | 'user.updated';
       readonly authUserId: string;
       readonly email: string | null;
@@ -123,6 +124,7 @@ export function clerkUserProjectionSourceFromWebhook(
     const user = event.data as ClerkWebhookUser;
     return {
       kind: 'upsert',
+      origin: 'webhook',
       type: event.type,
       authUserId: user.id,
       email: verifiedPrimaryEmail(
@@ -153,6 +155,7 @@ export function clerkUserProjectionSourceFromBackendUser(
 ): ClerkUserProjectionSource {
   return {
     kind: 'upsert',
+    origin: 'reconciliation',
     type: 'user.updated',
     authUserId: user.id,
     email: verifiedPrimaryEmail(
@@ -195,7 +198,8 @@ function projectedApplyResult(
     const localUpdatedAt = user.clerkUserUpdatedAt.getTime();
     if (
       sourceUpdatedAt < localUpdatedAt ||
-      (sourceUpdatedAt === localUpdatedAt && source.email === user.email)
+      (sourceUpdatedAt === localUpdatedAt &&
+        (source.origin === 'webhook' || source.email === user.email))
     ) {
       return 'ignored';
     }
@@ -274,10 +278,15 @@ export async function applyClerkUserProjectionSource(
       and(
         eq(users.id, user.id),
         isNull(users.clerkDeletedAt),
-        or(
-          isNull(users.clerkUserUpdatedAt),
-          lte(users.clerkUserUpdatedAt, source.clerkUserUpdatedAt),
-        ),
+        source.origin === 'webhook'
+          ? or(
+              isNull(users.clerkUserUpdatedAt),
+              lt(users.clerkUserUpdatedAt, source.clerkUserUpdatedAt),
+            )
+          : or(
+              isNull(users.clerkUserUpdatedAt),
+              lte(users.clerkUserUpdatedAt, source.clerkUserUpdatedAt),
+            ),
       ),
     )
     .returning({ id: users.id });
