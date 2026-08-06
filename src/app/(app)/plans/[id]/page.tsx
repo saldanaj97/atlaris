@@ -16,17 +16,15 @@ const PLAN_METADATA_TITLE =
 const PLAN_METADATA_DESCRIPTION =
   'Generate a time-blocked study plan from any goal with modules, resources, and progress tracking.';
 
-export function generateMetadata(): Metadata {
-  return {
+export const metadata: Metadata = {
+  title: PLAN_METADATA_TITLE,
+  description: PLAN_METADATA_DESCRIPTION,
+  openGraph: {
     title: PLAN_METADATA_TITLE,
     description: PLAN_METADATA_DESCRIPTION,
-    openGraph: {
-      title: PLAN_METADATA_TITLE,
-      description: PLAN_METADATA_DESCRIPTION,
-      type: 'website',
-    },
-  };
-}
+    type: 'website',
+  },
+};
 
 /**
  * Plan detail page with Suspense boundary for data-dependent content.
