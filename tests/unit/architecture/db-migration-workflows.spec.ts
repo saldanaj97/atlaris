@@ -154,11 +154,17 @@ describe('Supabase migration workflows', () => {
     const broadGrantMigration =
       '20260520194501_harden_authenticated_server_owned_writes.sql';
     const revokeMigration = '20260804160000_revoke_task_progress_delete.sql';
+    const dropPolicyMigration =
+      '20260811100400_drop_task_progress_delete_policy.sql';
     const broadGrant = readFileSync(
       join(MIGRATIONS_DIR, broadGrantMigration),
       'utf8',
     );
     const revoke = readFileSync(join(MIGRATIONS_DIR, revokeMigration), 'utf8');
+    const dropPolicy = readFileSync(
+      join(MIGRATIONS_DIR, dropPolicyMigration),
+      'utf8',
+    );
 
     expect(broadGrant).toContain(
       'GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated',
@@ -166,6 +172,10 @@ describe('Supabase migration workflows', () => {
     expect(revokeMigration > broadGrantMigration).toBe(true);
     expect(revoke).toContain(
       'REVOKE DELETE ON "task_progress" FROM authenticated',
+    );
+    expect(dropPolicyMigration > revokeMigration).toBe(true);
+    expect(dropPolicy).toContain(
+      'DROP POLICY IF EXISTS "task_progress_delete_own" ON "task_progress"',
     );
 
     const laterMigrationSql = readdirSync(MIGRATIONS_DIR)
@@ -180,6 +190,7 @@ describe('Supabase migration workflows', () => {
 
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     expect(script).toContain(revokeMigration);
+    expect(script).toContain(dropPolicyMigration);
   });
 
   it('repairs claim retention after out-of-order contract migrations', () => {

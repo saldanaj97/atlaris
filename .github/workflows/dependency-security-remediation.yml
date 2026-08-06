@@ -41,7 +41,10 @@ jobs:
           test "$GITHUB_REF_NAME" = "$DEFAULT_BRANCH"
 
       - name: Preserve trusted remediation logic
-        run: cp .github/scripts/dependency-remediation.mjs "$RUNNER_TEMP/dependency-remediation.mjs"
+        run: |
+          mkdir -p "$RUNNER_TEMP/dependency-remediation"
+          cp .github/scripts/dependency-remediation.mjs "$RUNNER_TEMP/dependency-remediation.mjs"
+          cp -R .github/scripts/dependency-remediation/. "$RUNNER_TEMP/dependency-remediation/"
 
       - name: Fetch the exact develop base
         run: |
@@ -75,38 +78,7 @@ jobs:
           git show "$BASE_SHA:pnpm-workspace.yaml" > before-workspace.yaml
           pnpm list --prod --depth 100 --json > before-versions.json
 
-          run_audit() {
-            local output="$1"
-            local attempt command_status parser_status
-            for attempt in 1 2 3; do
-              rm -f "$output" "$output.stderr" "$output.status"
-              set +e
-              timeout 60s pnpm audit --prod --audit-level=high --json > "$output" 2> "$output.stderr"
-              command_status=$?
-              set -e
-              if [ ! -s "$output" ] || [ "$command_status" -eq 124 ] || [ "$command_status" -eq 137 ] || { [ "$command_status" -ne 0 ] && [ "$command_status" -ne 1 ]; }; then
-                if [ "$attempt" -lt 3 ]; then sleep "$attempt"; fi
-                continue
-              fi
-              set +e
-              node "$RUNNER_TEMP/dependency-remediation.mjs" audit-status --file "$output" > "$output.status"
-              parser_status=$?
-              set -e
-              if [ "$command_status" -eq 0 ] && [ "$parser_status" -eq 0 ]; then
-                echo clean > "$output.result"
-                return 0
-              fi
-              if [ "$command_status" -eq 1 ] && [ "$parser_status" -eq 1 ]; then
-                echo vulnerable > "$output.result"
-                return 0
-              fi
-              if [ "$attempt" -lt 3 ]; then sleep "$attempt"; fi
-            done
-            echo registry-error > "$output.result"
-            return 1
-          }
-
-          if ! run_audit before-audit.json; then
+          if ! bash "$RUNNER_TEMP/dependency-remediation/run-audit.sh" "$RUNNER_TEMP/dependency-remediation.mjs" before-audit.json; then
             echo 'Dependency audit failed closed after three registry/infrastructure attempts.' >> "$GITHUB_STEP_SUMMARY"
             cat before-audit.json.stderr >&2 || true
             exit 1
@@ -125,37 +97,6 @@ jobs:
           set -euo pipefail
           mkdir -p remediation-artifact
 
-          run_audit() {
-            local output="$1"
-            local attempt command_status parser_status
-            for attempt in 1 2 3; do
-              rm -f "$output" "$output.stderr" "$output.status"
-              set +e
-              timeout 60s pnpm audit --prod --audit-level=high --json > "$output" 2> "$output.stderr"
-              command_status=$?
-              set -e
-              if [ ! -s "$output" ] || [ "$command_status" -eq 124 ] || [ "$command_status" -eq 137 ] || { [ "$command_status" -ne 0 ] && [ "$command_status" -ne 1 ]; }; then
-                if [ "$attempt" -lt 3 ]; then sleep "$attempt"; fi
-                continue
-              fi
-              set +e
-              node "$RUNNER_TEMP/dependency-remediation.mjs" audit-status --file "$output" > "$output.status"
-              parser_status=$?
-              set -e
-              if [ "$command_status" -eq 0 ] && [ "$parser_status" -eq 0 ]; then
-                echo clean > "$output.result"
-                return 0
-              fi
-              if [ "$command_status" -eq 1 ] && [ "$parser_status" -eq 1 ]; then
-                echo vulnerable > "$output.result"
-                return 0
-              fi
-              if [ "$attempt" -lt 3 ]; then sleep "$attempt"; fi
-            done
-            echo registry-error > "$output.result"
-            return 1
-          }
-
           if [ "$BEFORE_AUDIT_RESULT" = clean ]; then
             cp before-audit.json after-audit.json
             cp before-workspace.yaml after-workspace.yaml
@@ -173,7 +114,7 @@ jobs:
             cp pnpm-workspace.yaml after-workspace.yaml
             git diff --name-only "$BASE_SHA" > changed-files.txt
             git diff --binary "$BASE_SHA" -- pnpm-lock.yaml pnpm-workspace.yaml > remediation.patch
-            if ! run_audit after-audit.json; then
+            if ! bash "$RUNNER_TEMP/dependency-remediation/run-audit.sh" "$RUNNER_TEMP/dependency-remediation.mjs" after-audit.json; then
               echo 'Post-remediation audit failed closed after three registry/infrastructure attempts.' >> "$GITHUB_STEP_SUMMARY"
               cat after-audit.json.stderr >&2 || true
               exit 1

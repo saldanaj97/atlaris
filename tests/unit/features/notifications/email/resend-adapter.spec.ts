@@ -188,6 +188,33 @@ describe('createResendEmailSender', () => {
     });
   });
 
+  it('treats an empty Resend response as an ambiguous provider failure', async () => {
+    const client: ResendEmailsClient = {
+      send: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    const sender = createResendEmailSender(
+      {
+        apiKey: 're_test',
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+      },
+      client,
+    );
+
+    await expect(
+      sender.sendResolved({
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+        to: 'u@example.com',
+        subject: 'Hello',
+        html: '<p>Hi</p>',
+        text: 'Hi',
+        idempotencyKey: 'key-1',
+      }),
+    ).rejects.toMatchObject({
+      failureClass: 'provider_error',
+      outcome: 'unknown',
+    });
+  });
+
   it('throws outcome-unknown EmailProviderError for thrown network errors', async () => {
     const client: ResendEmailsClient = {
       send: vi.fn().mockRejectedValue(new Error('socket hang up')),

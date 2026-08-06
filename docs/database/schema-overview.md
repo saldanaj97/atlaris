@@ -65,6 +65,8 @@ RLS is enforced through request-scoped Postgres session state:
 
 Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `clerk_webhook_events`, `email_notification_deliveries`, and `email_notification_delivery_runs` use deny-all RLS (service-role only).
 
+Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDATE`; `DELETE` is intentionally absent from both the policy set and table grants.
+
 ## Frequently referenced indexes
 
 | Table                | Index / uniqueness                                                                                            |

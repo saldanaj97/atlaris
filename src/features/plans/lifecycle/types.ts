@@ -14,6 +14,7 @@ import type {
   GenerationInput,
   PlanGenerationCoreFields,
   PlanGenerationCoreFieldsNormalized,
+  ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
@@ -150,7 +151,7 @@ export type ProcessGenerationInput = {
 /** Data returned on a successful generation. */
 export type GenerationSuccessData = {
   readonly modules: GeneratedModule[];
-  readonly metadata: Record<string, unknown>;
+  readonly metadata: ProviderMetadata;
   readonly durationMs: number;
 };
 

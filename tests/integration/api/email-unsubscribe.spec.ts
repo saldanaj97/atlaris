@@ -126,7 +126,7 @@ describe('email unsubscribe route', () => {
       new Request(`${BASE_URL}?token=${encodeURIComponent(first.token)}`, {
         method: 'POST',
         headers: {
-          'content-type': 'application/x-www-form-urlencoded',
+          'content-type': 'application/x-www-form-urlencoded; charset=utf-8',
         },
         body: 'List-Unsubscribe=One-Click',
       }),
@@ -153,6 +153,75 @@ describe('email unsubscribe route', () => {
     expect(
       (await settingsFor(second.userId))?.unsubscribeAllOptionalEmails,
     ).toBe(true);
+  });
+
+  it('rejects unsupported media types and forms that are not exactly one entry', async () => {
+    const { userId, token } = await seedUser();
+    const url = `${BASE_URL}?token=${encodeURIComponent(token)}`;
+
+    const unsupported = await POST_UNSUBSCRIBE(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{"List-Unsubscribe":"One-Click"}',
+      }),
+    );
+    expect(unsupported.status).toBe(415);
+
+    const extraField = await POST_UNSUBSCRIBE(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'List-Unsubscribe=One-Click&extra=ignored',
+      }),
+    );
+    expect(extraField.status).toBe(400);
+
+    const duplicate = await POST_UNSUBSCRIBE(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'List-Unsubscribe=One-Click&List-Unsubscribe=One-Click',
+      }),
+    );
+    expect(duplicate.status).toBe(400);
+
+    const multipart = new FormData();
+    multipart.set('List-Unsubscribe', 'One-Click');
+    multipart.set('attachment', new Blob(['unexpected']), 'unexpected.txt');
+    const fileValue = await POST_UNSUBSCRIBE(
+      new Request(url, { method: 'POST', body: multipart }),
+    );
+    expect(fileValue.status).toBe(400);
+    expect(await settingsFor(userId)).toBeNull();
+  });
+
+  it('rejects oversized declared and streamed request bodies before applying unsubscribe', async () => {
+    const { userId, token } = await seedUser();
+    const url = `${BASE_URL}?token=${encodeURIComponent(token)}`;
+
+    const declaredOversize = await POST_UNSUBSCRIBE(
+      new Request(url, {
+        method: 'POST',
+        headers: {
+          'content-length': String(64 * 1024 + 1),
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: 'List-Unsubscribe=One-Click',
+      }),
+    );
+    expect(declaredOversize.status).toBe(413);
+
+    const streamedRequest = new Request(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: `List-Unsubscribe=One-Click&padding=${'x'.repeat(64 * 1024)}`,
+    });
+    streamedRequest.headers.delete('content-length');
+    const streamedOversize = await POST_UNSUBSCRIBE(streamedRequest);
+
+    expect(streamedOversize.status).toBe(413);
+    expect(await settingsFor(userId)).toBeNull();
   });
 
   it('rejects invalid token, missing form field, and body-only token without mutating', async () => {

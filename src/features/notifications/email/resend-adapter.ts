@@ -111,7 +111,15 @@ export function createResendEmailSender(
           );
         }
 
-        return { providerMessageId: data?.id ?? null };
+        if (!data?.id) {
+          throw new EmailProviderError(
+            'Email provider returned no delivery result.',
+            'provider_error',
+            'unknown',
+          );
+        }
+
+        return { providerMessageId: data.id };
       } catch (err) {
         if (err instanceof EmailProviderError) {
           throw err;

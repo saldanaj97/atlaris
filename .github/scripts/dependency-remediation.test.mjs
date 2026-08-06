@@ -4,7 +4,22 @@ import {
   renderPlan,
 } from './dependency-remediation.mjs';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import {
+  chmodSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import * as remediation from './dependency-remediation.mjs';
 
 const cleanAudit = {
   auditReportVersion: 2,
@@ -46,6 +61,113 @@ const baseInput = (overrides = {}) => ({
   versionsBefore: { 'example-package': '1.2.2' },
   versionsAfter: { 'example-package': '1.2.3' },
   ...overrides,
+});
+
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const helperPath = join(scriptDirectory, 'dependency-remediation', 'run-audit.sh');
+const facadePath = join(scriptDirectory, 'dependency-remediation.mjs');
+
+const writeExecutable = (file, source) => {
+  writeFileSync(file, source);
+  chmodSync(file, 0o755);
+};
+
+const runAuditHelper = ({ auditBody, auditStatus }) => {
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-'));
+  try {
+    const bin = join(directory, 'bin');
+    const attempts = join(directory, 'attempts');
+    const output = join(directory, 'audit.json');
+    mkdirSync(bin);
+    writeExecutable(
+      join(bin, 'pnpm'),
+      '#!/usr/bin/env bash\nprintf \'x\\n\' >> "$AUDIT_ATTEMPTS"\nprintf \'%s\\n\' "$AUDIT_BODY"\nexit "$AUDIT_STATUS"\n',
+    );
+    writeExecutable(
+      join(bin, 'timeout'),
+      '#!/usr/bin/env bash\nshift\nexec "$@"\n',
+    );
+    writeExecutable(join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n');
+    const result = spawnSync('bash', [helperPath, facadePath, output], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        AUDIT_ATTEMPTS: attempts,
+        AUDIT_BODY: auditBody,
+        AUDIT_STATUS: String(auditStatus),
+        PATH: `${bin}:${process.env.PATH ?? ''}`,
+      },
+    });
+    return {
+      ...result,
+      attempts: readFileSync(attempts, 'utf8').trim().split('\n').length,
+      outcome: readFileSync(`${output}.result`, 'utf8').trim(),
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+};
+
+test('the facade preserves the remediation public API', () => {
+  assert.deepEqual(Object.keys(remediation).sort(), [
+    'buildPlan',
+    'classifyPlan',
+    'classifyRemediation',
+    'compareResolvedVersions',
+    'inspectWorkspaceDiff',
+    'normalizeResolvedVersions',
+    'normalizeVersions',
+    'parseAudit',
+    'parseAuditJson',
+    'parseStableSemver',
+    'parseStableVersion',
+    'renderPlan',
+    'renderPrBody',
+    'renderRemediationPlan',
+    'renderSummary',
+    'validateWorkspaceDiff',
+  ]);
+});
+
+test('a trusted facade copy retains its runtime closure', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-copy-'));
+  try {
+    const copiedFacade = join(directory, 'dependency-remediation.mjs');
+    const auditFile = join(directory, 'audit.json');
+    cpSync(facadePath, copiedFacade);
+    cpSync(
+      join(scriptDirectory, 'dependency-remediation'),
+      join(directory, 'dependency-remediation'),
+      { recursive: true },
+    );
+    writeFileSync(auditFile, JSON.stringify(cleanAudit));
+
+    const result = spawnSync(
+      process.execPath,
+      [realpathSync(copiedFacade), 'audit-status', '--file', auditFile],
+      { encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout, 'clean\n');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('the checked-in audit helper accepts matched results and retries parser mismatches', () => {
+  const clean = runAuditHelper({
+    auditBody: JSON.stringify(cleanAudit),
+    auditStatus: 0,
+  });
+  assert.equal(clean.status, 0);
+  assert.equal(clean.attempts, 1);
+  assert.equal(clean.outcome, 'clean');
+
+  const invalid = runAuditHelper({ auditBody: '{', auditStatus: 1 });
+  assert.equal(invalid.status, 1);
+  assert.equal(invalid.attempts, 3);
+  assert.equal(invalid.outcome, 'registry-error');
 });
 
 test('clean audit produces a deterministic no-op plan', () => {

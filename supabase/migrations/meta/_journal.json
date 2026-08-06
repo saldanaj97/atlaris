@@ -363,7 +363,14 @@
       "idx": 51,
       "version": "7",
       "when": 1786442640000,
-      "tag": "20260811100400_revoke_users_authenticated_insert",
+      "tag": "20260811100400_drop_task_progress_delete_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786442700000,
+      "tag": "20260811100500_revoke_users_authenticated_insert",
       "breakpoints": true
     }
   ]
