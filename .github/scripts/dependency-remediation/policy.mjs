@@ -157,7 +157,7 @@ export function classifyRemediation(input = {}) {
   ].sort();
   if (before.highCritical.length !== packages.length) {
     plan.reasons.push(
-      'audit maps a finding to more than one package ambiguously',
+      'audit maps multiple high/critical findings to the same package ambiguously',
     );
     return plan;
   }
