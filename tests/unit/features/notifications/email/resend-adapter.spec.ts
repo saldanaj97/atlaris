@@ -192,7 +192,7 @@ describe('createResendEmailSender', () => {
     ['null', null],
     ['ID-less', {}],
   ])(
-    'treats a $0 Resend response as a non-recoverable provider failure',
+    'treats a $0 Resend response as an ambiguous provider failure',
     async (_, data) => {
       const client = {
         send: vi.fn().mockResolvedValue({ data, error: null }),
@@ -216,7 +216,7 @@ describe('createResendEmailSender', () => {
         }),
       ).rejects.toMatchObject({
         failureClass: 'provider_error',
-        outcome: 'rejected',
+        outcome: 'unknown',
       });
       expect(client.send).toHaveBeenCalledWith(expect.anything(), {
         idempotencyKey: 'key-1',
