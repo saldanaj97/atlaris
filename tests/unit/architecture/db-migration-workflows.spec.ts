@@ -128,14 +128,25 @@ describe('Supabase migration workflows', () => {
     );
 
     expect(script).toMatch(
-      /expand\)[\s\S]*apply_expand_migrations[\s\S]*attest_effective_privileges/,
+      /expand\)[\s\S]*apply_expand_migrations[\s\S]*attest_effective_privileges expand/,
     );
     expect(script).toMatch(
-      /contract\)[\s\S]*apply_contract_migrations[\s\S]*attest_effective_privileges/,
+      /contract\)[\s\S]*apply_contract_migrations[\s\S]*attest_effective_privileges contract/,
     );
     expect(attestation).toContain('supabase db query --linked');
+    expect(attestation).toContain('--file "$ATTESTATION_SQL_FILE"');
+    expect(attestation).toContain("ATTESTATION_PHASE='contract'");
+    expect(attestation).toContain('expand|contract)');
     expect(attestation).toContain(
-      '--file "$SCRIPT_DIR/attest-effective-privileges.sql"',
+      "set_config('app.atlaris_migration_phase', '%s', false)",
+    );
+    expect(
+      readFileSync(
+        join(REPO_ROOT, 'scripts', 'db', 'attest-effective-privileges.sql'),
+        'utf8',
+      ),
+    ).toContain(
+      "migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract')",
     );
   });
 

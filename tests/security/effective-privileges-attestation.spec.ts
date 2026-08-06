@@ -20,6 +20,10 @@ const ATTESTATION_SQL = readFileSync(
   'utf8',
 );
 
+function attestationSql(phase: 'expand' | 'contract' = 'contract'): string {
+  return `SELECT set_config('app.atlaris_migration_phase', '${phase}', true);\n${ATTESTATION_SQL}`;
+}
+
 function sqlArray(values: readonly string[]): string {
   return `ARRAY['${values.join("', '")}']`;
 }
@@ -79,7 +83,7 @@ describe('effective database privilege attestation', () => {
       ),
     );
 
-    await expect(db.execute(sql.raw(ATTESTATION_SQL))).resolves.toBeDefined();
+    await expect(db.execute(sql.raw(attestationSql()))).resolves.toBeDefined();
   });
 
   it('rejects a service-only column grant when table-level privileges are absent', async () => {
@@ -98,8 +102,14 @@ describe('effective database privilege attestation', () => {
       `)) as Array<{ has_table_select: boolean }>;
       expect(tablePrivilegeRows[0]?.has_table_select).toBe(false);
 
-      await expect(tx.execute(sql.raw(ATTESTATION_SQL))).rejects.toThrow(
-        /authenticated has SELECT column privilege on service-only public\.clerk_webhook_events\./,
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /authenticated has SELECT column privilege on service-only public\.clerk_webhook_events\./,
+            ),
+          }),
+        },
       );
     });
   });
@@ -111,8 +121,14 @@ describe('effective database privilege attestation', () => {
         RENAME TO "effective_privileges_attestation_missing_email_runs";
       `);
 
-      await expect(tx.execute(sql.raw(ATTESTATION_SQL))).rejects.toThrow(
-        /required service-only public\.email_notification_delivery_runs table is missing/,
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /required service-only public\.email_notification_delivery_runs table is missing/,
+            ),
+          }),
+        },
       );
     });
 
@@ -128,7 +144,89 @@ describe('effective database privilege attestation', () => {
         `);
       }
 
-      await expect(tx.execute(sql.raw(ATTESTATION_SQL))).resolves.toBeDefined();
+      await expect(
+        tx.execute(sql.raw(attestationSql())),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  it('allows the expand-only users INSERT grant but rejects it in contract', async () => {
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        GRANT INSERT ON TABLE "users" TO authenticated;
+      `);
+
+      await expect(
+        tx.execute(sql.raw(attestationSql('expand'))),
+      ).resolves.toBeDefined();
+      await expect(
+        tx.execute(sql.raw(attestationSql('contract'))),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          message: expect.stringMatching(
+            /authenticated has INSERT on public\.users/,
+          ),
+        }),
+      });
+    });
+  });
+
+  it('rejects a column-only users INSERT grant in every phase', async () => {
+    for (const phase of ['expand', 'contract'] as const) {
+      await runInRolledBackTransaction(async (tx) => {
+        await tx.execute(sql`
+          REVOKE INSERT ON TABLE "users" FROM authenticated;
+          GRANT INSERT (auth_user_id) ON TABLE "users" TO authenticated;
+        `);
+
+        await expect(
+          tx.execute(sql.raw(attestationSql(phase))),
+        ).rejects.toMatchObject({
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /authenticated has INSERT column privilege on public\.users\./,
+            ),
+          }),
+        });
+      });
+    }
+  });
+
+  it('rejects column-only writes on application and server-owned tables', async () => {
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        REVOKE INSERT ON TABLE "learning_plans" FROM anon;
+        GRANT INSERT (topic) ON TABLE "learning_plans" TO anon;
+        REVOKE UPDATE ON TABLE "learning_plans" FROM authenticated;
+        GRANT UPDATE (generation_status) ON TABLE "learning_plans" TO authenticated;
+      `);
+
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /anon has INSERT column privilege on public\.learning_plans\./,
+            ),
+          }),
+        },
+      );
+    });
+
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        REVOKE UPDATE ON TABLE "learning_plans" FROM authenticated;
+        GRANT UPDATE (generation_status) ON TABLE "learning_plans" TO authenticated;
+      `);
+
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /authenticated has UPDATE column privilege on server-owned public\.learning_plans\.generation_status/,
+            ),
+          }),
+        },
+      );
     });
   });
 });

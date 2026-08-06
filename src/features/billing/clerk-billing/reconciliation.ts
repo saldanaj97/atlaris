@@ -273,6 +273,13 @@ async function finalizeClerkWebhookEvent(
     ) {
       throw new Error('No local user found for Clerk deletion event');
     }
+    if (
+      result === 'skipped_no_user' &&
+      args.projectionSource.source.kind === 'upsert' &&
+      args.projectionSource.source.type === 'user.updated'
+    ) {
+      throw new Error('No local user found for Clerk update event');
+    }
     return { status: 'inserted', result };
   });
 }
