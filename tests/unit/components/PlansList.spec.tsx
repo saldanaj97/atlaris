@@ -342,7 +342,7 @@ describe('PlansList', () => {
     ).toBeInTheDocument();
   });
 
-  it('refreshes and clears selection after a successful bulk delete', async () => {
+  it('accepts zero and positive integer counts after a successful bulk delete', async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -448,6 +448,40 @@ describe('PlansList', () => {
     expect(mockRefresh).not.toHaveBeenCalled();
     expect(screen.getByText('Delete selected plans')).toBeInTheDocument();
   });
+
+  it.each([
+    ['deletedCount', -1, 0],
+    ['deletedCount', 0.5, 0],
+    ['failedCount', 0, -1],
+    ['failedCount', 0, 0.5],
+  ])(
+    'rejects a %s value that is not a non-negative integer',
+    async (_field, deletedCount, failedCount) => {
+      const user = userEvent.setup();
+      vi.mocked(fetch).mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            deletedCount,
+            failedCount,
+            results: [],
+          }),
+          { status: 200 },
+        ),
+      );
+      renderPlansList();
+
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+      );
+      await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+      await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String));
+      expect(mockRefresh).not.toHaveBeenCalled();
+      expect(screen.getByText('Delete selected plans')).toBeInTheDocument();
+    },
+  );
 
   it('re-enables bulk delete after a request failure', async () => {
     const user = userEvent.setup();
