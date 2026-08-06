@@ -56,7 +56,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Skips any run whose ref is not `refs/heads/develop`
   - Checks out `develop`
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
-  - Runs `supabase db push`
+  - Runs `supabase db push --include-all` (required so historical / out-of-order migration versions still apply)
 
 ### 4) `.github/workflows/production-db-migrations.yaml`
 
@@ -66,7 +66,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Skips any run whose ref is not `refs/heads/main`
   - Checks out `main`
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
-  - Runs `supabase db push`
+  - Runs `supabase db push --include-all` (required so historical / out-of-order migration versions still apply)
 
 ---
 
@@ -92,7 +92,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Runs `ci-trunk.yml`
 - Runs `production-db-migrations.yaml`
   - links the production Supabase project
-  - applies committed migrations with `supabase db push`
+  - applies committed migrations with `supabase db push --include-all`
 
 ---
 
@@ -138,12 +138,12 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 - Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
 - For manual runs, confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
-- Inspect the `supabase db push` logs for the failing migration file.
+- Inspect the `supabase db push --include-all` logs for the failing migration file.
 
 ### Production deploy blocked
 
 - Check `production-db-migrations.yaml`
-- If migrations ran, inspect the `supabase db push` logs
+- If migrations ran, inspect the `supabase db push --include-all` logs
 - Verify Vercel secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) for deployment stage
 
 ---

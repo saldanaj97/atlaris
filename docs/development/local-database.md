@@ -111,7 +111,7 @@ supabase db reset
 
 ## Hosted Supabase migrations
 
-Hosted migrations are applied from GitHub Actions with `supabase link --project-ref ...` followed by `supabase db push`.
+Hosted migrations are applied from GitHub Actions with `supabase link --project-ref ...` followed by `supabase db push --include-all` (see `docs/ci-cd/pipeline-and-deployment-strategy.md`).
 
 Hosted deployment and migration workflows are separate from the local-dev stack. Do not point local reset/seed commands at hosted databases.
 

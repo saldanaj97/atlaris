@@ -9,7 +9,7 @@ Required order:
 1. Deploy the application release that no longer reads or writes PDF plan artifacts.
 2. Wait for the rollout to finish across all pods/instances.
 3. Verify the new release is healthy.
-4. Run the Supabase migration workflow for the target environment (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`), which applies committed migrations with `supabase db push`.
+4. Run the Supabase migration workflow for the target environment (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`), which applies committed migrations with `supabase db push --include-all`.
 
 Do not reverse the order. Running the migration first can break rolling deploys or failovers against still-old binaries.
 
@@ -32,8 +32,8 @@ Do not run the contract migration before the new application release is fully ro
 
 After deploying a release that includes new Supabase migrations:
 
-1. Run the environment workflow (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
-2. If the CLI reports out-of-order local migrations, use `supabase db push --include-all` against the target project (see `docs/architecture/retention-cleanup-runbook.md`).
+1. Run the environment workflow (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). Hosted workflows always use `supabase db push --include-all`.
+2. For a manual CLI push outside Actions, use `supabase db push --include-all` against the target project when out-of-order historical versions are present (see `docs/architecture/retention-cleanup-runbook.md` and the email delivery runbook).
 3. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics

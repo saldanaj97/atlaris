@@ -16,8 +16,12 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
+pnpm dev:local:starter  # Local product-testing: start DB, seed, apply starter billing fixture, then `pnpm dev`
+pnpm dev:local:pro      # Same as starter, with pro billing fixture
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
+
+`pnpm dev:local:starter` / `pnpm dev:local:pro` require local product-testing env (`LOCAL_PRODUCT_TESTING=true`, seeded `DEV_AUTH_USER_ID`). They apply Clerk Billing **fixtures** only — not live checkout. See [environment.md](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
 
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 

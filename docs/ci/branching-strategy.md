@@ -117,7 +117,7 @@ We use 4 core GitHub Actions workflows:
 - Skips any run whose ref is not `refs/heads/develop`
 - Checks out `develop`
 - Links the Supabase CLI to the project in `STAGING_PROJECT_ID`
-- Runs `supabase db push`
+- Runs `supabase db push --include-all` (applies historical / out-of-order versions that plain `db push` would skip)
 
 **Purpose:** Keep the staging database aligned with committed migrations on `develop`.
 
@@ -130,7 +130,7 @@ We use 4 core GitHub Actions workflows:
 - Skips any run whose ref is not `refs/heads/main`
 - Checks out `main`
 - Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
-- Runs `supabase db push`
+- Runs `supabase db push --include-all` (applies historical / out-of-order versions that plain `db push` would skip)
 
 **Purpose:** Keep the production database aligned with committed migrations on `main`.
 
@@ -185,8 +185,8 @@ git commit -m "feat: ..."
 | Stage          | What happens                                                           |
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | `staging-db-migrations.yaml` runs `supabase db push` on `develop`      |
-| **Production** | `production-db-migrations.yaml` runs `supabase db push` on `main`      |
+| **Staging**    | `staging-db-migrations.yaml` runs `supabase db push --include-all` on `develop` |
+| **Production** | `production-db-migrations.yaml` runs `supabase db push --include-all` on `main` |
 
 Migration-related changes include:
 
@@ -205,7 +205,7 @@ Target `develop` unless it is a true production hotfix.
 
 ### What if a migration workflow fails?
 
-Check the GitHub Actions logs for `supabase db push`, confirm the run used the intended environment and branch (`develop` for staging, `main` for production), and fix the failing migration SQL in a follow-up commit.
+Check the GitHub Actions logs for `supabase db push --include-all`, confirm the run used the intended environment and branch (`develop` for staging, `main` for production), and fix the failing migration SQL in a follow-up commit.
 
 ### How do I test against a real DB before merge?
 
