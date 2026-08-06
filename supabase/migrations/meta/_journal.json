@@ -351,6 +351,13 @@
       "when": 1786442520000,
       "tag": "20260811100200_enforce_resolved_email_delivery_payload_minimization",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786442580000,
+      "tag": "20260811100300_scrub_resolved_email_delivery_payloads",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,12 @@ const PHASED_MIGRATION_SCRIPT = join(
   'db',
   'run-phased-migrations.sh',
 );
+const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
+  REPO_ROOT,
+  'scripts',
+  'db',
+  'attest-effective-privileges.sh',
+);
 
 const migrationWorkflows = [
   {
@@ -104,6 +110,25 @@ describe('Supabase migration workflows', () => {
     );
     expect(script).not.toContain('supabase migration repair');
     expect(script).not.toContain('db query --linked --file');
+  });
+
+  it('attests effective privileges after each successful migration phase', () => {
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    const attestation = readFileSync(
+      EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT,
+      'utf8',
+    );
+
+    expect(script).toMatch(
+      /expand\)[\s\S]*apply_expand_migrations[\s\S]*attest_effective_privileges/,
+    );
+    expect(script).toMatch(
+      /contract\)[\s\S]*apply_contract_migrations[\s\S]*attest_effective_privileges/,
+    );
+    expect(attestation).toContain('supabase db query --linked');
+    expect(attestation).toContain(
+      '--file "$SCRIPT_DIR/attest-effective-privileges.sql"',
+    );
   });
 
   it('keeps authenticated task-progress deletion revoked after the broad grant', () => {

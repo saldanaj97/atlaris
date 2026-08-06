@@ -115,25 +115,29 @@ describe('removePlansForWrite', () => {
     ]);
   });
 
-  it('returns per-plan unknown failures when deletePlan throws', async () => {
+  it('propagates unexpected delete errors instead of converting them to conflicts', async () => {
+    const error = new Error('database unavailable');
+    mockDeletePlan.mockRejectedValueOnce(error);
+
+    await expect(
+      removePlansForWrite({
+        planIds: [firstPlanId, secondPlanId],
+        userId,
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it('propagates a later unexpected delete error after an earlier success', async () => {
+    const error = new Error('database unavailable');
     mockDeletePlan
-      .mockRejectedValueOnce(new Error('database unavailable'))
-      .mockResolvedValueOnce({ success: true });
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(error);
 
-    const results = await removePlansForWrite({
-      planIds: [firstPlanId, secondPlanId],
-      userId,
-    });
-
-    expect(mockDeletePlan).toHaveBeenCalledTimes(2);
-    expect(results).toEqual([
-      {
-        planId: firstPlanId,
-        success: false,
-        reason: 'unknown',
-        message: 'Cannot delete learning plan in its current state.',
-      },
-      { planId: secondPlanId, success: true },
-    ]);
+    await expect(
+      removePlansForWrite({
+        planIds: [firstPlanId, secondPlanId],
+        userId,
+      }),
+    ).rejects.toBe(error);
   });
 });

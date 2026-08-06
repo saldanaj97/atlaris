@@ -19,6 +19,7 @@ import {
   listEmailActivityDayKeysForUser,
 } from '@/lib/db/queries/email-delivery-content';
 import {
+  isEmailDeliveryRecipientCurrent,
   listEmailDeliveryRecipients,
   type EmailDeliveryRecipient,
 } from '@/lib/db/queries/email-delivery-recipients';
@@ -469,6 +470,101 @@ async function processEmailContent(args: {
         reason: 'suppressed_by_streak_reminder',
       },
     });
+    return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
+  }
+
+  const recipientIdentityCurrent =
+    claim.providerRequest.to === recipient.email &&
+    (await isEmailDeliveryRecipientCurrent({
+      userId: recipient.userId,
+      email: claim.providerRequest.to,
+      clerkUserUpdatedAt: recipient.clerkUserUpdatedAt,
+      dbClient: context.db,
+    }));
+  if (!recipientIdentityCurrent) {
+    if (claim.reusedProviderRequest) {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryManualReview(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: 'recipient_changed_since_claim',
+          },
+          context.db,
+        ),
+      );
+      context.counts.manualReview += 1;
+      context.counts.needsReview = true;
+      countMetric('atlaris.email.notification.manual_review', 1, {
+        attributes: {
+          category: content.category,
+          reason: 'recipient_changed_since_claim',
+        },
+      });
+    } else {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliverySkipped(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: 'recipient_identity_changed',
+          },
+          context.db,
+        ),
+      );
+      context.counts.skipped += 1;
+      countMetric('atlaris.email.notification.skipped', 1, {
+        attributes: {
+          category: content.category,
+          reason: 'recipient_identity_changed',
+        },
+      });
+    }
+    return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
+  }
+
+  const finalPreferences = resolveEffectiveEmailPreferences(
+    await getEmailNotificationPreferences(recipient.userId, context.db),
+  );
+  if (!finalPreferences[content.category]) {
+    if (claim.reusedProviderRequest) {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryManualReview(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: 'preferences_disabled_after_ambiguous_claim',
+          },
+          context.db,
+        ),
+      );
+      context.counts.manualReview += 1;
+      context.counts.needsReview = true;
+      countMetric('atlaris.email.notification.manual_review', 1, {
+        attributes: {
+          category: content.category,
+          reason: 'preferences_disabled_after_ambiguous_claim',
+        },
+      });
+    } else {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliverySkipped(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass: 'preference_disabled_before_delivery',
+          },
+          context.db,
+        ),
+      );
+      context.counts.skipped += 1;
+      countMetric('atlaris.email.notification.skipped', 1, {
+        attributes: {
+          category: content.category,
+          reason: 'preference_disabled_before_delivery',
+        },
+      });
+    }
     return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
   }
 
