@@ -466,6 +466,42 @@ describe('PlansList', () => {
     expect(toast.error).toHaveBeenCalledWith('Network unavailable');
   });
 
+  it('times out a stalled bulk delete request', async () => {
+    const user = userEvent.setup();
+    const timeoutController = new AbortController();
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(timeoutController.signal);
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          timeoutController.signal.addEventListener(
+            'abort',
+            () => reject(timeoutController.signal.reason),
+            { once: true },
+          );
+        }),
+    );
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+    timeoutController.abort(new DOMException('Timed out', 'TimeoutError'));
+
+    expect(
+      await screen.findByRole('button', { name: 'Delete 2 plans' }),
+    ).toBeEnabled();
+    expect(toast.error).toHaveBeenCalledWith(
+      'Request timed out — please try again',
+    );
+    timeoutSpy.mockRestore();
+  });
+
   it('renders stable server pagination links', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3, totalItems: 45 },
