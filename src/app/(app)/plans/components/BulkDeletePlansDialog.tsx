@@ -38,6 +38,8 @@ const bulkDeletePlansResultSchema = z.object({
   results: z.array(bulkRemovePlanResultSchema),
 });
 
+const BULK_DELETE_REQUEST_TIMEOUT_MS = 30_000;
+
 export type BulkDeletePlansResult = z.infer<typeof bulkDeletePlansResultSchema>;
 
 type BulkDeletePlansDialogProps = {
@@ -104,6 +106,7 @@ export function BulkDeletePlansDialog({
         },
         schema: bulkDeletePlansResultSchema,
         fallbackMessage: 'Failed to delete selected plans',
+        timeoutMs: BULK_DELETE_REQUEST_TIMEOUT_MS,
       });
       result =
         response.kind === 'success'
