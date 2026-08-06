@@ -12,10 +12,11 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 
 import { AuthError } from './errors';
+import { provisionUserFromVerifiedAuthSession } from '@/features/auth/user-provisioning';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-import { getOrCreateUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@supabase/runtime';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
@@ -95,6 +96,10 @@ async function ensureUserRecord(
     throw new AuthError('Auth user data unavailable.');
   }
 
+  if (session.user.id !== authUserId) {
+    throw new AuthError('Auth user changed during provisioning.');
+  }
+
   const email = session.user.email;
   if (!email) {
     throw new AuthError(
@@ -107,15 +112,12 @@ async function ensureUserRecord(
     throw new AuthError('Auth user timestamp unavailable.');
   }
 
-  const actor = await getOrCreateUser(
-    {
-      authUserId,
-      email,
-      name: session.user.name || undefined,
-      clerkUserUpdatedAt,
-    },
-    dbClient,
-  );
+  const actor = await provisionUserFromVerifiedAuthSession({
+    authUserId,
+    email,
+    name: session.user.name || undefined,
+    clerkUserUpdatedAt,
+  });
 
   if (!actor) {
     throw new AuthError('Failed to provision user record.');

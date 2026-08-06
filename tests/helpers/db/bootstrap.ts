@@ -60,6 +60,7 @@ export async function grantRlsPermissions(
     ).join(', ');
 
     await sql.unsafe(`
+      REVOKE INSERT ON "users" FROM authenticated;
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
       REVOKE DELETE ON "users" FROM authenticated;

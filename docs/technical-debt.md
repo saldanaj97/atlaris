@@ -128,15 +128,16 @@ and UI logic.~~
 
 ~~This remains deferred until a broader resource-taxonomy cleanup is scheduled.~~
 
-## `users` table column-level UPDATE grant
+## `users` table client grants
 
-The migration chain restricts the `authenticated` role to only UPDATE `name`
-and `updated_at` on the `users` table. User-owned preferences live in
-`user_preferences` with their own RLS policies and column-level grants. All
-other `users` columns (billing, system-managed) are only writable by the
-service-role which has BYPASSRLS.
+The migration chain gives the `authenticated` role no direct INSERT access
+to `users` and restricts UPDATE to only `name` and `updated_at`. First-row
+provisioning uses the service role only after the server has read the current
+Clerk session. User-owned preferences live in `user_preferences` with their
+own RLS policies and column-level grants. All other `users` columns
+(billing, system-managed) remain service-role-only.
 
-**Canonical column list:** [`supabase/privileges/users-authenticated-update-columns.ts`](../supabase/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
+**Canonical column list:** [`users-authenticated-update-columns.ts`](../supabase/privileges/users-authenticated-update-columns.ts) (`USERS_AUTHENTICATED_UPDATE_COLUMNS`). Every other copy must match this module and the migration.
 
 When adding new user-editable columns to the `users` table, update in lockstep:
 
@@ -145,8 +146,8 @@ When adding new user-editable columns to the `users` table, update in lockstep:
 3. [`tests/helpers/db/rls-bootstrap.ts`](../tests/helpers/db/rls-bootstrap.ts) — `ensureRlsRolesAndPermissions()` (integration helpers that mirror grants after `db:migrate`).
 4. [`tests/helpers/db/bootstrap.ts`](../tests/helpers/db/bootstrap.ts) — `grantRlsPermissions()` (shared with [`tests/setup/testcontainers.ts`](../tests/setup/testcontainers.ts) for ephemeral Postgres).
 
-Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration and bootstrap sources against the canonical list.
+Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration and bootstrap sources against the canonical list and direct-INSERT revoke.
 
 **CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` uses the Testcontainers-backed migration bootstrap instead of a `pnpm db:push` shortcut, so PR integration DBs now run through the committed migration path. Keep this aligned with trunk (`ci-trunk.yml`) and the files above when privilege rules change.
 
-Failure to update consumers after changing the allowlist will cause authenticated users to lose `UPDATE` on new columns or leave billing columns writable — caught by security/unit tests and the drift spec.
+Failure to update consumers after changing the allowlist will cause authenticated users to lose `UPDATE` on new columns or leave system columns writable — caught by security/unit tests and the drift spec.

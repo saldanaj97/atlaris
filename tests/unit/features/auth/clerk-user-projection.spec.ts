@@ -1,6 +1,7 @@
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
+  applyClerkUserProjectionSource,
   clerkUserProjectionSourceFromWebhook,
   reconcileClerkUserIdentities,
 } from '@/features/auth/clerk-user-projection';
@@ -29,6 +30,7 @@ function dryRunDb(
   localUsers: readonly {
     id: string;
     authUserId: string;
+    email: string | null;
     clerkUserUpdatedAt: Date | null;
     clerkDeletedAt: Date | null;
   }[],
@@ -96,12 +98,14 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
       {
         id: 'local_user',
         authUserId: 'user_current',
+        email: null,
         clerkUserUpdatedAt: null,
         clerkDeletedAt: null,
       },
       {
         id: 'local_deleted_user',
         authUserId: 'user_missing_in_clerk',
+        email: null,
         clerkUserUpdatedAt: null,
         clerkDeletedAt: null,
       },
@@ -143,5 +147,72 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
       nextCursor: null,
     });
     expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('ignores an equal Clerk watermark when the projected email already matches', async () => {
+    const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+    const localUser = {
+      id: 'local_user',
+      authUserId: 'user_current',
+      email: 'current@example.com',
+      clerkUserUpdatedAt,
+      clerkDeletedAt: null,
+    };
+    const db = dryRunDb([localUser]);
+    const getUser = vi.fn().mockResolvedValue({
+      id: localUser.authUserId,
+      updatedAt: clerkUserUpdatedAt.getTime(),
+      primaryEmailAddressId: 'primary',
+      emailAddresses: [
+        {
+          id: 'primary',
+          emailAddress: localUser.email,
+          verification: { status: 'verified' },
+        },
+      ],
+    });
+
+    await expect(
+      reconcileClerkUserIdentities({
+        apply: false,
+        clerkClient: { users: { getUser } },
+        db: db as never,
+        logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+      }),
+    ).resolves.toEqual({
+      checked: 1,
+      updated: 0,
+      tombstoned: 0,
+      wouldUpdate: 0,
+      wouldTombstone: 0,
+      skipped: 0,
+      ignored: 1,
+      failed: 0,
+      nextCursor: null,
+    });
+
+    const limit = vi.fn().mockResolvedValue([localUser]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const applyDb = {
+      select: vi.fn().mockReturnValue({ from }),
+      update: vi.fn(),
+    };
+    await expect(
+      applyClerkUserProjectionSource(
+        {
+          kind: 'upsert',
+          type: 'user.updated',
+          authUserId: localUser.authUserId,
+          email: localUser.email,
+          clerkUserUpdatedAt,
+        },
+        {
+          db: applyDb as never,
+          logger: { info: vi.fn(), warn: vi.fn() },
+        },
+      ),
+    ).resolves.toBe('ignored');
+    expect(applyDb.update).not.toHaveBeenCalled();
   });
 });

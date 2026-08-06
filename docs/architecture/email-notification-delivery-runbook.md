@@ -48,11 +48,11 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
 2. Flag `email-notification-delivery` on; `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
-3. Recipient has a non-empty, current Clerk-projected email and qualifies for the requested category:
+3. Recipient has a non-empty, current Clerk-projected email and qualifies for the requested category. The Clerk watermark orders lifecycle projections; it does not exclude an otherwise valid existing recipient:
    - Daily reminder: no activity today in the user's local time zone and an incomplete plan.
    - Streak reminder: no activity today and activity on each of the prior three local days.
    - Weekly summary: a Monday run and activity on at least one day in the prior week.
-4. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`). Before provider delivery, the worker rechecks the recipient's email/timestamp projection and effective preferences.
+4. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`). Before provider delivery, the worker rechecks the recipient's current email/deletion identity and effective preferences.
 5. Not suppressed by streak reminder in the same daily pass.
 
 ## Schedule and ownership
@@ -131,7 +131,7 @@ For a weekly run, use a Monday UTC date and `"runKind":"weekly"`. A `start` requ
 
 `needs_review` means the run observed an isolated recipient error or an ambiguous provider/idempotency outcome. It is intentionally terminal and does not automatically resend.
 
-If an expired pending claim has a different current recipient, or preferences are disabled after a persisted provider request is reclaimed, the ledger enters `manual_review` and retains the original request. A fresh claim with a stale recipient or disabled preference is skipped before provider delivery. Do not replace or resend an ambiguous request automatically: determine whether the provider may have accepted the original delivery first.
+If an expired pending claim has a different current recipient, or preferences are disabled after an expired pending claim is reclaimed, the ledger enters `manual_review` and retains the original request. A fresh claim or confirmed failed retry with a stale recipient or disabled preference is skipped before provider delivery. Do not replace or resend an ambiguous request automatically: determine whether the provider may have accepted the original delivery first.
 
 1. Inspect the affected ledger rows and resolve the underlying data or provider state.
 2. Confirm no unresolved `manual_review` ledger rows remain for the logical run.

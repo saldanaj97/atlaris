@@ -67,6 +67,7 @@ export async function ensureRlsRolesAndPermissions() {
   // Matches the final migration grant and users-authenticated-update-columns.
   // Harden `job_queue` to match 0028: no role writes from clients (service role for workers only).
   await db.execute(sql`
+    REVOKE INSERT ON "users" FROM authenticated;
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
     REVOKE DELETE ON "users" FROM authenticated;

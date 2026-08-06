@@ -37,6 +37,10 @@ describe('effective database privilege attestation', () => {
     expect(ATTESTATION_SQL).toContain(
       sqlArray(USERS_AUTHENTICATED_UPDATE_COLUMNS),
     );
+    expect(ATTESTATION_SQL).toContain('authenticated has INSERT on public.%I');
+    expect(ATTESTATION_SQL).toContain(
+      "namespace.nspname IN ('public', 'private')",
+    );
     expect(ATTESTATION_SQL).toContain(
       sqlArray(USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS),
     );

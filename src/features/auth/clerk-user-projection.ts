@@ -65,6 +65,7 @@ export type ClerkUserIdentityClient = {
 type LocalUserProjection = {
   id: string;
   authUserId: string;
+  email: string | null;
   clerkUserUpdatedAt: Date | null;
   clerkDeletedAt: Date | null;
 };
@@ -189,11 +190,15 @@ function projectedApplyResult(
     return 'skipped_deleted_user';
   }
 
-  if (
-    user.clerkUserUpdatedAt !== null &&
-    source.clerkUserUpdatedAt.getTime() < user.clerkUserUpdatedAt.getTime()
-  ) {
-    return 'ignored';
+  if (user.clerkUserUpdatedAt !== null) {
+    const sourceUpdatedAt = source.clerkUserUpdatedAt.getTime();
+    const localUpdatedAt = user.clerkUserUpdatedAt.getTime();
+    if (
+      sourceUpdatedAt < localUpdatedAt ||
+      (sourceUpdatedAt === localUpdatedAt && source.email === user.email)
+    ) {
+      return 'ignored';
+    }
   }
 
   return 'updated';
@@ -207,6 +212,7 @@ export async function applyClerkUserProjectionSource(
     .select({
       id: users.id,
       authUserId: users.authUserId,
+      email: users.email,
       clerkUserUpdatedAt: users.clerkUserUpdatedAt,
       clerkDeletedAt: users.clerkDeletedAt,
     })
@@ -329,6 +335,7 @@ export async function reconcileClerkUserIdentities({
         .select({
           id: users.id,
           authUserId: users.authUserId,
+          email: users.email,
           clerkUserUpdatedAt: users.clerkUserUpdatedAt,
           clerkDeletedAt: users.clerkDeletedAt,
         })
@@ -340,6 +347,7 @@ export async function reconcileClerkUserIdentities({
         .select({
           id: users.id,
           authUserId: users.authUserId,
+          email: users.email,
           clerkUserUpdatedAt: users.clerkUserUpdatedAt,
           clerkDeletedAt: users.clerkDeletedAt,
         })

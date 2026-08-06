@@ -3,6 +3,7 @@ import {
   removePlansForWrite,
 } from '@/features/plans/write-service';
 import { deletePlan } from '@/lib/db/queries/plans';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,7 @@ vi.mock('@/lib/db/queries/plans', () => ({
 }));
 
 const mockDeletePlan = vi.mocked(deletePlan);
+const mockTransaction = vi.mocked(serviceRoleDb.transaction);
 
 describe('removePlanForWrite', () => {
   const planId = createId('plan');
@@ -18,6 +20,7 @@ describe('removePlanForWrite', () => {
 
   beforeEach(() => {
     mockDeletePlan.mockReset();
+    mockTransaction.mockClear();
   });
 
   it('delegates to deletePlan with ownership context only', async () => {
@@ -55,6 +58,7 @@ describe('removePlansForWrite', () => {
 
   beforeEach(() => {
     mockDeletePlan.mockReset();
+    mockTransaction.mockClear();
   });
 
   it('returns all successes when every plan deletes', async () => {
@@ -69,6 +73,19 @@ describe('removePlansForWrite', () => {
       { planId: firstPlanId, success: true },
       { planId: secondPlanId, success: true },
     ]);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
   });
 
   it('returns per-plan success and failure results without throwing', async () => {
@@ -81,8 +98,19 @@ describe('removePlansForWrite', () => {
       userId,
     });
 
-    expect(mockDeletePlan).toHaveBeenNthCalledWith(1, firstPlanId, userId);
-    expect(mockDeletePlan).toHaveBeenNthCalledWith(2, secondPlanId, userId);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
     expect(results).toEqual([
       { planId: firstPlanId, success: true },
       {
@@ -127,7 +155,7 @@ describe('removePlansForWrite', () => {
     ).rejects.toBe(error);
   });
 
-  it('propagates a later unexpected delete error after an earlier success', async () => {
+  it('propagates a later unexpected delete error from the shared transaction', async () => {
     const error = new Error('database unavailable');
     mockDeletePlan
       .mockResolvedValueOnce({ success: true })
@@ -139,5 +167,18 @@ describe('removePlansForWrite', () => {
         userId,
       }),
     ).rejects.toBe(error);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
   });
 });

@@ -358,6 +358,13 @@
       "when": 1786442580000,
       "tag": "20260811100300_scrub_resolved_email_delivery_payloads",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786442640000,
+      "tag": "20260811100400_revoke_users_authenticated_insert",
+      "breakpoints": true
     }
   ]
 }

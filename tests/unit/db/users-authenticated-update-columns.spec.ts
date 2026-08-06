@@ -72,6 +72,37 @@ describe('authenticated users UPDATE allowlist sync', () => {
     );
   });
 
+  it('keeps the final migration and test bootstraps revoking users INSERT', () => {
+    const migrationsDir = resolve(TEST_DIR, '../../../supabase/migrations');
+    const journal = JSON.parse(
+      readFileSync(resolve(migrationsDir, 'meta/_journal.json'), 'utf8'),
+    ) as MigrationJournal;
+    const migrationContents = journal.entries
+      .map((entry) =>
+        readFileSync(resolve(migrationsDir, `${entry.tag}.sql`), 'utf8'),
+      )
+      .join('\n');
+
+    const sharedBootstrap = readFileSync(
+      resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
+      'utf8',
+    );
+    const rlsBootstrap = readFileSync(
+      resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
+      'utf8',
+    );
+
+    expect(migrationContents).toMatch(
+      /REVOKE INSERT ON "users" FROM authenticated;/,
+    );
+    expect(sharedBootstrap).toContain(
+      'REVOKE INSERT ON "users" FROM authenticated;',
+    );
+    expect(rlsBootstrap).toContain(
+      'REVOKE INSERT ON "users" FROM authenticated;',
+    );
+  });
+
   it('installs auth.jwt from the shared bootstrap module and rls-bootstrap', () => {
     const sharedBootstrap = readFileSync(
       resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),

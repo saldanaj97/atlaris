@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError } from '@/lib/api/errors';
-import { deletePlan } from '@/lib/db/queries/plans';
+import { deletePlan, type DeletePlanDbClient } from '@/lib/db/queries/plans';
+import { db as serviceRoleDb } from '@supabase/service-role';
 
 export type BulkRemovePlanFailureReason = 'not_found' | 'currently_generating';
 
@@ -44,8 +45,13 @@ export async function removePlanForWrite(params: {
 async function removePlanForBulkWrite(params: {
   planId: string;
   userId: string;
+  dbClient: DeletePlanDbClient;
 }): Promise<BulkRemovePlanResult> {
-  const result = await deletePlan(params.planId, params.userId);
+  const result = await deletePlan(
+    params.planId,
+    params.userId,
+    params.dbClient,
+  );
 
   if (result.success) {
     return { planId: params.planId, success: true };
@@ -63,12 +69,17 @@ export async function removePlansForWrite(params: {
   planIds: string[];
   userId: string;
 }): Promise<BulkRemovePlanResult[]> {
-  return Promise.all(
-    params.planIds.map((planId) =>
-      removePlanForBulkWrite({
-        planId,
-        userId: params.userId,
-      }),
-    ),
-  );
+  return serviceRoleDb.transaction(async (tx) => {
+    const results: BulkRemovePlanResult[] = [];
+    for (const planId of params.planIds) {
+      results.push(
+        await removePlanForBulkWrite({
+          planId,
+          userId: params.userId,
+          dbClient: tx,
+        }),
+      );
+    }
+    return results;
+  });
 }

@@ -575,6 +575,7 @@ describe('email notification deliveries ledger', () => {
       firstRequest.idempotencyKey,
     );
     expect(second.reusedProviderRequest).toBe(true);
+    expect(second.reclaimedExpiredPending).toBe(false);
   });
 
   it('does not steal a fresh pending lease and reclaims an expired one with the original request', async () => {
@@ -639,6 +640,7 @@ describe('email notification deliveries ledger', () => {
     if (reclaimed.outcome !== 'claimed') return;
     expect(reclaimed.providerRequest).toMatchObject(original);
     expect(reclaimed.reusedProviderRequest).toBe(true);
+    expect(reclaimed.reclaimedExpiredPending).toBe(true);
   });
 
   it('moves ambiguous pending older than the provider window to manual_review', async () => {

@@ -40,7 +40,7 @@ import {
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
-type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
+export type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
 type PlanSummaryRows = {
   planRows: LearningPlan[];

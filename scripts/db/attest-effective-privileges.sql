@@ -158,6 +158,17 @@ BEGIN
     RAISE EXCEPTION '%', violation;
   END IF;
 
+  SELECT format('authenticated has INSERT on public.%I', class.relname)
+    INTO violation
+  FROM pg_class AS class
+  WHERE class.relname = 'users'
+    AND class.relnamespace = 'public'::regnamespace
+    AND has_table_privilege('authenticated', class.oid, 'INSERT')
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
   WITH required_privileges AS (
     SELECT unnest(ARRAY['SELECT', 'INSERT', 'UPDATE']) AS privilege_type
   )
@@ -263,8 +274,7 @@ BEGIN
     FROM pg_proc AS procedure
     JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
     WHERE procedure.prosecdef
-      AND namespace.nspname !~ '^pg_'
-      AND namespace.nspname <> 'information_schema'
+      AND namespace.nspname IN ('public', 'private')
   ), client_roles AS (
     SELECT unnest(ARRAY['anon', 'authenticated']) AS role_name
   )

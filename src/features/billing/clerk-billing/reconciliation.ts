@@ -267,6 +267,12 @@ async function finalizeClerkWebhookEvent(
       args.projectionSource.source,
       { ...deps, db: tx },
     );
+    if (
+      result === 'skipped_no_user' &&
+      args.projectionSource.source.kind === 'deleted'
+    ) {
+      throw new Error('No local user found for Clerk deletion event');
+    }
     return { status: 'inserted', result };
   });
 }
