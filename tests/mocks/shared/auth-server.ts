@@ -5,6 +5,7 @@ type AuthSessionData = {
     id: string;
     email?: string | null;
     name?: string;
+    clerkUserUpdatedAt?: Date;
   } | null;
 };
 
@@ -12,6 +13,7 @@ type AuthProviderUser = {
   id: string;
   email: string | null;
   name?: string;
+  clerkUserUpdatedAt: Date;
 };
 
 type GetSessionResult = { data: AuthSessionData | null };
@@ -26,6 +28,7 @@ const defaultSession: GetSessionResult = {
       id: 'test-auth-user',
       email: 'test@example.com',
       name: 'Test User',
+      clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
     },
   },
 };
@@ -34,6 +37,7 @@ const defaultAuthUser: AuthProviderUser = {
   id: 'test-auth-user',
   email: 'test@example.com',
   name: 'Test User',
+  clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
 };
 
 export const auth: MockAuth = {
