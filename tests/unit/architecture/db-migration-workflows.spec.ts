@@ -11,6 +11,7 @@ const PHASED_MIGRATION_SCRIPT = join(
   'db',
   'run-phased-migrations.sh',
 );
+const MIGRATION_JOURNAL = join(MIGRATIONS_DIR, 'meta', '_journal.json');
 const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
   REPO_ROOT,
   'scripts',
@@ -155,7 +156,7 @@ describe('Supabase migration workflows', () => {
       '20260520194501_harden_authenticated_server_owned_writes.sql';
     const revokeMigration = '20260804160000_revoke_task_progress_delete.sql';
     const dropPolicyMigration =
-      '20260811100400_drop_task_progress_delete_policy.sql';
+      '20260811100600_drop_task_progress_delete_policy.sql';
     const broadGrant = readFileSync(
       join(MIGRATIONS_DIR, broadGrantMigration),
       'utf8',
@@ -191,6 +192,111 @@ describe('Supabase migration workflows', () => {
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     expect(script).toContain(revokeMigration);
     expect(script).toContain(dropPolicyMigration);
+  });
+
+  it('keeps published migration versions unique and maps the retained ledger identities', () => {
+    const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((fileName) =>
+      fileName.endsWith('.sql'),
+    );
+    const numericPrefixes = migrationFiles.map(
+      (fileName) => fileName.match(/^(\d+)_/)?.[1],
+    );
+
+    expect(numericPrefixes.every(Boolean)).toBe(true);
+    expect(new Set(numericPrefixes).size).toBe(numericPrefixes.length);
+    expect(migrationFiles).not.toContain(
+      '20260811100400_drop_task_progress_delete_policy.sql',
+    );
+    for (const [version, expectedFileName] of Object.entries({
+      '20260811100400': '20260811100400_revoke_users_authenticated_insert.sql',
+      '20260811100500': '20260811100500_revoke_users_authenticated_insert.sql',
+    })) {
+      expect(
+        migrationFiles.filter((fileName) => fileName.startsWith(`${version}_`)),
+      ).toEqual([expectedFileName]);
+    }
+
+    const migrationSql = (fileName: string) =>
+      readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8');
+    expect(
+      migrationSql('20260811100400_revoke_users_authenticated_insert.sql'),
+    ).toBe('REVOKE INSERT ON "users" FROM authenticated;\n');
+    expect(
+      migrationSql('20260811100500_revoke_users_authenticated_insert.sql'),
+    ).toBe('REVOKE INSERT ON "users" FROM authenticated;\n');
+    expect(
+      migrationSql('20260811100600_drop_task_progress_delete_policy.sql'),
+    ).toBe(
+      'DROP POLICY IF EXISTS "task_progress_delete_own" ON "task_progress";\n',
+    );
+
+    const journal = JSON.parse(readFileSync(MIGRATION_JOURNAL, 'utf8')) as {
+      entries: Array<{
+        idx: number;
+        version: string;
+        when: number;
+        tag: string;
+        breakpoints: boolean;
+      }>;
+    };
+    const targetEntries = journal.entries.filter((entry) =>
+      entry.tag.startsWith('20260811100'),
+    );
+    expect(targetEntries.slice(-3)).toEqual([
+      {
+        idx: 51,
+        version: '7',
+        when: 1786442640000,
+        tag: '20260811100400_revoke_users_authenticated_insert',
+        breakpoints: true,
+      },
+      {
+        idx: 52,
+        version: '7',
+        when: 1786442700000,
+        tag: '20260811100500_revoke_users_authenticated_insert',
+        breakpoints: true,
+      },
+      {
+        idx: 53,
+        version: '7',
+        when: 1786442760000,
+        tag: '20260811100600_drop_task_progress_delete_policy',
+        breakpoints: true,
+      },
+    ]);
+    for (const entry of targetEntries.slice(-3)) {
+      expect(migrationFiles).toContain(`${entry.tag}.sql`);
+    }
+
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    const expandMigrations = script.match(
+      /readonly -a EXPAND_MIGRATIONS=\(([\s\S]*?)\n\)/,
+    )?.[1];
+    expect(expandMigrations).toBeDefined();
+    expect(expandMigrations).not.toContain(
+      '20260811100400_revoke_users_authenticated_insert.sql',
+    );
+    expect(expandMigrations).not.toContain(
+      '20260811100500_revoke_users_authenticated_insert.sql',
+    );
+    expect(expandMigrations).not.toContain(
+      '20260811100400_drop_task_progress_delete_policy.sql',
+    );
+    const taskProgressRevokeIndex = expandMigrations?.indexOf(
+      '20260804160000_revoke_task_progress_delete.sql',
+    );
+    const taskProgressDropIndex = expandMigrations?.indexOf(
+      '20260811100600_drop_task_progress_delete_policy.sql',
+    );
+    expect(taskProgressRevokeIndex).toBeGreaterThanOrEqual(0);
+    expect(taskProgressDropIndex).toBeGreaterThan(
+      taskProgressRevokeIndex ?? -1,
+    );
+    expect(script).toContain(
+      '# Keep the users INSERT revoke contract-only until service-role provisioning is live.',
+    );
+    expect(script).toContain('supabase db push --include-all');
   });
 
   it('repairs claim retention after out-of-order contract migrations', () => {
