@@ -42,9 +42,7 @@ function parseBulkDeletePlanIds(body: BulkDeleteRequestBody): string[] {
     });
   }
 
-  const dedupedPlanIds = [...new Set(body.planIds)];
-
-  const invalidIds = dedupedPlanIds.filter(
+  const invalidIds = body.planIds.filter(
     (planId) => typeof planId !== 'string' || !UUID_REGEX.test(planId),
   );
 
@@ -54,7 +52,11 @@ function parseBulkDeletePlanIds(body: BulkDeleteRequestBody): string[] {
     });
   }
 
-  return dedupedPlanIds as string[];
+  return [
+    ...new Set(
+      (body.planIds as string[]).map((planId) => planId.toLowerCase()),
+    ),
+  ];
 }
 
 /**

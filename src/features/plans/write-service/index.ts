@@ -70,15 +70,20 @@ export async function removePlansForWrite(params: {
   userId: string;
 }): Promise<BulkRemovePlanResult[]> {
   return serviceRoleDb.transaction(async (tx) => {
-    const results: BulkRemovePlanResult[] = [];
-    for (const planId of params.planIds) {
-      results.push(
-        await removePlanForBulkWrite({
-          planId,
-          userId: params.userId,
-          dbClient: tx,
-        }),
-      );
+    const orderedPlanIds = params.planIds
+      .map((planId, index) => ({ planId, index }))
+      .sort((left, right) => {
+        const leftKey = left.planId.toLowerCase();
+        const rightKey = right.planId.toLowerCase();
+        return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+      });
+    const results = new Array<BulkRemovePlanResult>(params.planIds.length);
+    for (const { planId, index } of orderedPlanIds) {
+      results[index] = await removePlanForBulkWrite({
+        planId,
+        userId: params.userId,
+        dbClient: tx,
+      });
     }
     return results;
   });

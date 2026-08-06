@@ -452,6 +452,62 @@ describe('runEmailNotificationDelivery', () => {
     );
   });
 
+  it('preserves a reclaimed pending daily delivery for review when streak was already sent', async () => {
+    claim
+      .mockResolvedValueOnce({
+        outcome: 'already_terminal',
+        status: 'sent',
+      })
+      .mockResolvedValueOnce({
+        outcome: 'claimed',
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        providerRequest: {
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: "A quick nudge for today's learning",
+          html: '<p>daily</p>',
+          text: 'daily',
+          idempotencyKey: 'u1:daily_reminder:2026-07-09',
+        },
+        reusedProviderRequest: true,
+        reclaimedExpiredPending: true,
+      });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder', 'streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markSkipped).not.toHaveBeenCalled();
+    expect(markManualReview).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        failureClass: 'provider_acceptance_ambiguous',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      manualReview: 1,
+      needsReview: true,
+      skipped: 0,
+      sent: 0,
+    });
+  });
+
   it('sends daily when streak is already terminal for a non-sent status', async () => {
     claim
       .mockResolvedValueOnce({
@@ -869,6 +925,93 @@ describe('runEmailNotificationDelivery', () => {
       expect.anything(),
     );
     expect(result).toMatchObject({ claimed: 1, skipped: 1, sent: 0 });
+  });
+
+  it('finalizes a fresh claim when the pre-send identity check fails', async () => {
+    isRecipientCurrent.mockRejectedValue(new Error('identity unavailable'));
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markFailed).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_processing_error',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      failed: 1,
+      recipientErrors: 0,
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'recipient_processing_error',
+        retryAfterMs: 60_000,
+      },
+    });
+  });
+
+  it('finalizes a fresh claim when the final preference check fails', async () => {
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: false,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      })
+      .mockRejectedValueOnce(new Error('preferences unavailable'));
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markFailed).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_processing_error',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      failed: 1,
+      recipientErrors: 0,
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'recipient_processing_error',
+        retryAfterMs: 60_000,
+      },
+    });
   });
 
   it('requires manual review when an expired pending request no longer matches the recipient', async () => {

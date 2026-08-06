@@ -465,6 +465,22 @@ async function processEmailContent(args: {
 
   context.counts.claimed += 1;
   if (content.category === 'daily_reminder' && args.streakSentThisPass) {
+    if (claim.reclaimedExpiredPending) {
+      return {
+        action: await handleProviderFailure({
+          failure: {
+            kind: 'manual_review',
+            failureClass: 'provider_acceptance_ambiguous',
+          },
+          claim,
+          category: content.category,
+          db: context.db,
+          counts: context.counts,
+          logger: context.logger,
+        }),
+        streakSentThisPass: args.streakSentThisPass,
+      };
+    }
     await persistDeliveryState(() =>
       markEmailNotificationDeliverySkipped(
         {
@@ -485,13 +501,34 @@ async function processEmailContent(args: {
     return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
   }
 
-  const recipientIdentityCurrent =
-    claim.providerRequest.to === recipient.email &&
-    (await isEmailDeliveryRecipientCurrent({
-      userId: recipient.userId,
-      email: claim.providerRequest.to,
-      dbClient: context.db,
-    }));
+  let recipientIdentityCurrent: boolean;
+  try {
+    recipientIdentityCurrent =
+      claim.providerRequest.to === recipient.email &&
+      (await isEmailDeliveryRecipientCurrent({
+        userId: recipient.userId,
+        email: claim.providerRequest.to,
+        dbClient: context.db,
+      }));
+  } catch (error) {
+    if (claim.reclaimedExpiredPending) {
+      throw error;
+    }
+    return {
+      action: await handleProviderFailure({
+        failure: {
+          kind: 'retryable',
+          failureClass: 'recipient_processing_error',
+        },
+        claim,
+        category: content.category,
+        db: context.db,
+        counts: context.counts,
+        logger: context.logger,
+      }),
+      streakSentThisPass: args.streakSentThisPass,
+    };
+  }
   if (!recipientIdentityCurrent) {
     if (claim.reclaimedExpiredPending) {
       await persistDeliveryState(() =>
@@ -538,10 +575,31 @@ async function processEmailContent(args: {
     return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
   }
 
-  const finalPreferences = await getEffectiveEmailPreferences(
-    recipient.userId,
-    context.db,
-  );
+  let finalPreferences: EffectiveEmailPreferences;
+  try {
+    finalPreferences = await getEffectiveEmailPreferences(
+      recipient.userId,
+      context.db,
+    );
+  } catch (error) {
+    if (claim.reclaimedExpiredPending) {
+      throw error;
+    }
+    return {
+      action: await handleProviderFailure({
+        failure: {
+          kind: 'retryable',
+          failureClass: 'recipient_processing_error',
+        },
+        claim,
+        category: content.category,
+        db: context.db,
+        counts: context.counts,
+        logger: context.logger,
+      }),
+      streakSentThisPass: args.streakSentThisPass,
+    };
+  }
   if (!finalPreferences[content.category]) {
     if (claim.reclaimedExpiredPending) {
       await persistDeliveryState(() =>
