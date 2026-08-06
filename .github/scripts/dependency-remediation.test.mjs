@@ -398,7 +398,10 @@ test('rejects multiple high or critical findings that map to one package', () =>
   );
 
   assert.equal(plan.status, 'rejected');
-  assert.match(plan.reasons.join('\n'), /more than one package ambiguously/i);
+  assert.match(
+    plan.reasons.join('\n'),
+    /multiple high\/critical findings to the same package ambiguously/i,
+  );
 });
 
 test('registry failures and non-JSON audit responses fail closed', () => {
