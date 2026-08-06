@@ -2,7 +2,12 @@
 DO $$
 DECLARE
   violation text;
+  migration_phase text := current_setting('app.atlaris_migration_phase', true);
 BEGIN
+  IF migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract') THEN
+    RAISE EXCEPTION 'attestation phase must be expand or contract';
+  END IF;
+
   SELECT format('role %I is missing, superuser, or bypasses RLS', expected.role_name)
     INTO violation
   FROM (VALUES ('anon'), ('authenticated')) AS expected(role_name)
@@ -81,6 +86,46 @@ BEGIN
     RAISE EXCEPTION '%', violation;
   END IF;
 
+  WITH application_tables AS (
+    SELECT class.oid, class.relname
+    FROM pg_class AS class
+    JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND class.relkind IN ('r', 'p')
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pg_depend AS dependency
+        WHERE dependency.classid = 'pg_class'::regclass
+          AND dependency.objid = class.oid
+          AND dependency.deptype = 'e'
+      )
+  ), column_privileges AS (
+    SELECT unnest(ARRAY['INSERT', 'UPDATE', 'REFERENCES']) AS privilege_type
+  )
+  SELECT format(
+      'anon has %s column privilege on public.%I.%I',
+      privilege_type,
+      application_tables.relname,
+      column_info.column_name
+    )
+    INTO violation
+  FROM application_tables
+  JOIN information_schema.columns AS column_info
+    ON column_info.table_schema = 'public'
+   AND column_info.table_name = application_tables.relname
+  CROSS JOIN column_privileges
+  WHERE NOT has_table_privilege('anon', application_tables.oid, privilege_type)
+    AND has_column_privilege(
+      'anon',
+      format('public.%I', application_tables.relname),
+      column_info.column_name,
+      privilege_type
+    )
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
   WITH required_tables AS (
     SELECT unnest(
       ARRAY['ai_usage_events', 'generation_attempts', 'learning_activity_events', 'learning_plans', 'modules', 'plan_schedules', 'resources', 'task_resources', 'tasks', 'usage_metrics']
@@ -103,6 +148,41 @@ BEGIN
   CROSS JOIN forbidden_privileges
   WHERE class.oid IS NULL
      OR has_table_privilege('authenticated', class.oid, privilege_type)
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
+  WITH required_tables AS (
+    SELECT unnest(
+      ARRAY['ai_usage_events', 'generation_attempts', 'learning_activity_events', 'learning_plans', 'modules', 'plan_schedules', 'resources', 'task_resources', 'tasks', 'usage_metrics']
+    ) AS table_name
+  ), column_privileges AS (
+    SELECT unnest(ARRAY['INSERT', 'UPDATE']) AS privilege_type
+  )
+  SELECT format(
+      'authenticated has %s column privilege on server-owned public.%I.%I',
+      privilege_type,
+      required_tables.table_name,
+      column_info.column_name
+    )
+    INTO violation
+  FROM required_tables
+  JOIN pg_class AS class
+    ON class.relname = required_tables.table_name
+   AND class.relnamespace = 'public'::regnamespace
+   AND class.relkind IN ('r', 'p')
+  JOIN information_schema.columns AS column_info
+    ON column_info.table_schema = 'public'
+   AND column_info.table_name = required_tables.table_name
+  CROSS JOIN column_privileges
+  WHERE NOT has_table_privilege('authenticated', class.oid, privilege_type)
+    AND has_column_privilege(
+      'authenticated',
+      format('public.%I', required_tables.table_name),
+      column_info.column_name,
+      privilege_type
+    )
   LIMIT 1;
   IF violation IS NOT NULL THEN
     RAISE EXCEPTION '%', violation;
@@ -220,7 +300,28 @@ BEGIN
   FROM pg_class AS class
   WHERE class.relname = 'users'
     AND class.relnamespace = 'public'::regnamespace
+    AND migration_phase = 'contract'
     AND has_table_privilege('authenticated', class.oid, 'INSERT')
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
+  SELECT format(
+      'authenticated has INSERT column privilege on public.users.%I',
+      column_info.column_name
+    )
+    INTO violation
+  FROM information_schema.columns AS column_info
+  WHERE column_info.table_schema = 'public'
+    AND column_info.table_name = 'users'
+    AND NOT has_table_privilege('authenticated', 'public.users', 'INSERT')
+    AND has_column_privilege(
+      'authenticated',
+      'public.users',
+      column_info.column_name,
+      'INSERT'
+    )
   LIMIT 1;
   IF violation IS NOT NULL THEN
     RAISE EXCEPTION '%', violation;

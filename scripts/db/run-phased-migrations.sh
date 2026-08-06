@@ -54,7 +54,9 @@ require_archive_recovery_if_drop_already_ran() {
 }
 
 attest_effective_privileges() {
-  bash scripts/db/attest-effective-privileges.sh
+  local phase="$1"
+
+  bash scripts/db/attest-effective-privileges.sh "$phase"
 }
 
 apply_expand_migrations() {
@@ -114,11 +116,11 @@ apply_contract_migrations() {
 case "${MIGRATION_PHASE:-}" in
   expand)
     apply_expand_migrations
-    attest_effective_privileges
+    attest_effective_privileges expand
     ;;
   contract)
     apply_contract_migrations
-    attest_effective_privileges
+    attest_effective_privileges contract
     ;;
   *)
     printf 'MIGRATION_PHASE must be expand or contract.\n' >&2

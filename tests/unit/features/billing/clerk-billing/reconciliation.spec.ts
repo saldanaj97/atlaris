@@ -34,6 +34,34 @@ function makeBillingEventWithoutUserPayer(): WebhookEvent {
   } as unknown as WebhookEvent;
 }
 
+function makeUserIdentityEvent(
+  type: 'user.created' | 'user.updated',
+): WebhookEvent {
+  return {
+    type,
+    data: {
+      id: 'user_missing',
+      updated_at: new Date('2026-08-11T10:00:00.000Z').getTime(),
+      primary_email_address_id: 'email_primary',
+      email_addresses: [
+        {
+          id: 'email_primary',
+          email_address: 'updated@example.com',
+          verification: { status: 'verified' },
+        },
+      ],
+    },
+  } as unknown as WebhookEvent;
+}
+
+function makeUserCreatedEvent(): WebhookEvent {
+  return makeUserIdentityEvent('user.created');
+}
+
+function makeUserUpdatedEvent(): WebhookEvent {
+  return makeUserIdentityEvent('user.updated');
+}
+
 function makeFailedPaymentAttemptEvent(): WebhookEvent {
   return {
     type: 'paymentAttempt.failed',
@@ -298,6 +326,42 @@ describe('applyVerifiedClerkBillingEvent', () => {
       'user_missing',
     );
     expect(db.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves missing local user.updated events retryable', async () => {
+    const db = makeDb({ selectResults: [[], []] });
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeUserUpdatedEvent(),
+        'evt_user_updated_missing',
+        {
+          db,
+          logger: makeLogger(),
+        },
+      ),
+    ).rejects.toThrow('No local user found for Clerk update event');
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('acknowledges missing local user.created events', async () => {
+    const db = makeDb({ selectResults: [[], []] });
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeUserCreatedEvent(),
+        'evt_user_created_missing',
+        {
+          db,
+          logger: makeLogger(),
+        },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'skipped_no_user' });
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.delete).toHaveBeenCalledTimes(1);
   });
 
   it('does not claim the event when the Clerk refresh fails', async () => {
