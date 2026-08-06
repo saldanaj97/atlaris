@@ -171,6 +171,67 @@ describe('effective database privilege attestation', () => {
     });
   });
 
+  it('allows legacy users UPDATE columns only during expand', async () => {
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        ALTER TABLE "users" ADD COLUMN "preferred_ai_model" text;
+        ALTER TABLE "users" ADD COLUMN "analytics_timezone" text;
+        REVOKE UPDATE ON TABLE "users" FROM authenticated;
+        GRANT UPDATE ("name", "preferred_ai_model", "analytics_timezone", "updated_at") ON TABLE "users" TO authenticated;
+      `);
+
+      await expect(
+        tx.execute(sql.raw(attestationSql('expand'))),
+      ).resolves.toBeDefined();
+      await expect(
+        tx.execute(sql.raw(attestationSql('contract'))),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          message: expect.stringMatching(
+            /authenticated has incorrect UPDATE column privilege on public\.users\.(preferred_ai_model|analytics_timezone)/,
+          ),
+        }),
+      });
+    });
+
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        ALTER TABLE "users" ADD COLUMN "preferred_ai_model" text;
+        ALTER TABLE "users" ADD COLUMN "analytics_timezone" text;
+        REVOKE UPDATE ON TABLE "users" FROM authenticated;
+        GRANT UPDATE ("name", "preferred_ai_model", "analytics_timezone", "updated_at", "auth_user_id") ON TABLE "users" TO authenticated;
+      `);
+
+      await expect(
+        tx.execute(sql.raw(attestationSql('expand'))),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          message: expect.stringMatching(
+            /authenticated has incorrect UPDATE column privilege on public\.users\.auth_user_id/,
+          ),
+        }),
+      });
+    });
+
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        ALTER TABLE "users" ADD COLUMN "preferred_ai_model" text;
+        ALTER TABLE "users" ADD COLUMN "analytics_timezone" text;
+        GRANT UPDATE ON TABLE "users" TO authenticated;
+      `);
+
+      await expect(
+        tx.execute(sql.raw(attestationSql('expand'))),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          message: expect.stringMatching(
+            /authenticated has incorrect UPDATE column privilege on public\.users\./,
+          ),
+        }),
+      });
+    });
+  });
+
   it('rejects a column-only users INSERT grant in every phase', async () => {
     for (const phase of ['expand', 'contract'] as const) {
       await runInRolledBackTransaction(async (tx) => {

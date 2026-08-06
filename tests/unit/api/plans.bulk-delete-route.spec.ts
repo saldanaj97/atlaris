@@ -62,4 +62,27 @@ describe('POST /api/v1/plans/bulk-delete', () => {
       code: 'INTERNAL_ERROR',
     });
   });
+
+  it('normalizes and deduplicates mixed-case plan IDs before bulk deletion', async () => {
+    const canonicalPlanId = 'a0000000-0000-4000-8000-000000000000';
+    removePlansForWrite.mockResolvedValue([
+      { planId: canonicalPlanId, success: true },
+    ]);
+
+    const response = await POST(
+      new Request('http://localhost/api/v1/plans/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planIds: [canonicalPlanId.toUpperCase(), canonicalPlanId],
+        }),
+      }),
+    );
+
+    expect(removePlansForWrite).toHaveBeenCalledWith({
+      planIds: [canonicalPlanId],
+      userId: 'user-1',
+    });
+    expect(response.status).toBe(200);
+  });
 });

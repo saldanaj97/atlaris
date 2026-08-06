@@ -53,8 +53,8 @@ describe('removePlanForWrite', () => {
 
 describe('removePlansForWrite', () => {
   const userId = createId('user');
-  const firstPlanId = createId('plan');
-  const secondPlanId = createId('plan');
+  const firstPlanId = '00000000-0000-4000-8000-000000000001';
+  const secondPlanId = '00000000-0000-4000-8000-000000000002';
 
   beforeEach(() => {
     mockDeletePlan.mockReset();
@@ -119,6 +119,41 @@ describe('removePlansForWrite', () => {
         reason: 'not_found',
         message: 'Learning plan not found.',
       },
+    ]);
+  });
+
+  it('acquires plan locks in canonical UUID order while preserving result order', async () => {
+    const laterPlanId = 'f0000000-0000-4000-8000-000000000000';
+    const earlierPlanId = 'A0000000-0000-4000-8000-000000000000';
+    mockDeletePlan
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false, reason: 'not_found' });
+
+    const results = await removePlansForWrite({
+      planIds: [laterPlanId, earlierPlanId],
+      userId,
+    });
+
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      earlierPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      laterPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(results).toEqual([
+      {
+        planId: laterPlanId,
+        success: false,
+        reason: 'not_found',
+        message: 'Learning plan not found.',
+      },
+      { planId: earlierPlanId, success: true },
     ]);
   });
 

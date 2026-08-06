@@ -3,9 +3,33 @@ DO $$
 DECLARE
   violation text;
   migration_phase text := current_setting('app.atlaris_migration_phase', true);
+  users_update_columns text[] := ARRAY['name', 'updated_at'];
 BEGIN
   IF migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract') THEN
     RAISE EXCEPTION 'attestation phase must be expand or contract';
+  END IF;
+
+  IF migration_phase = 'expand'
+    AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns AS legacy_column
+      WHERE legacy_column.table_schema = 'public'
+        AND legacy_column.table_name = 'users'
+        AND legacy_column.column_name = 'preferred_ai_model'
+    )
+    AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns AS legacy_column
+      WHERE legacy_column.table_schema = 'public'
+        AND legacy_column.table_name = 'users'
+        AND legacy_column.column_name = 'analytics_timezone'
+    ) THEN
+    users_update_columns := ARRAY[
+      'name',
+      'preferred_ai_model',
+      'analytics_timezone',
+      'updated_at'
+    ];
   END IF;
 
   SELECT format('role %I is missing, superuser, or bypasses RLS', expected.role_name)
@@ -365,7 +389,7 @@ BEGIN
   WITH expected_grants AS (
     SELECT *
     FROM (VALUES
-      ('users', 'UPDATE', ARRAY['name', 'updated_at']),
+      ('users', 'UPDATE', users_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
@@ -396,7 +420,7 @@ BEGIN
   WITH expected_grants AS (
     SELECT *
     FROM (VALUES
-      ('users', 'UPDATE', ARRAY['name', 'updated_at']),
+      ('users', 'UPDATE', users_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
