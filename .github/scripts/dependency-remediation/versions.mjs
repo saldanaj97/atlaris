@@ -13,7 +13,6 @@ export function parseStableVersion(value) {
   };
 }
 
-
 const addResolvedVersion = (versions, name, value) => {
   const packageValue = packageName(name);
   if (
@@ -71,7 +70,6 @@ export function normalizeResolvedVersions(input) {
   };
 }
 
-
 export const versionsFor = (input, packageValue) => {
   const normalized = normalizeResolvedVersions(input);
   if (!normalized.valid)
@@ -80,7 +78,7 @@ export const versionsFor = (input, packageValue) => {
   return { values, ambiguous: values.length !== 1 };
 };
 
-const compareResolvedVersionMaps = (beforeInput, afterInput) => {
+export const compareResolvedVersionMaps = (beforeInput, afterInput) => {
   const before = normalizeResolvedVersions(beforeInput);
   const after = normalizeResolvedVersions(afterInput);
   if (!before.valid || !after.valid) {
@@ -109,5 +107,3 @@ const compareResolvedVersionMaps = (beforeInput, afterInput) => {
     }));
   return { valid: true, changes };
 };
-
-export const compareResolvedVersions = compareResolvedVersionMaps;

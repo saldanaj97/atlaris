@@ -11,8 +11,6 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 type DeliveryRunDb = Pick<DbClient, 'insert' | 'select' | 'update'>;
 
-export type EmailNotificationDeliveryRunCounts = EmailDeliveryRunCounts;
-
 export type EmailNotificationDeliveryRun =
   typeof emailNotificationDeliveryRuns.$inferSelect;
 
@@ -282,7 +280,7 @@ export async function advanceEmailNotificationDeliveryRun(
     workflowRunId: string;
     expectedCursorUserId: string | null;
     nextCursorUserId: string | null;
-    counts: EmailNotificationDeliveryRunCounts;
+    counts: EmailDeliveryRunCounts;
     now?: Date;
   },
   dbClient: Pick<DbClient, 'update'>,

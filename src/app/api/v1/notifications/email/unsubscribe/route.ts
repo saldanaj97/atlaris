@@ -13,59 +13,50 @@ const ONE_CLICK_MEDIA_TYPES = new Set([
   'multipart/form-data',
 ]);
 
-function confirmationHtml(): string {
+function htmlPage(title: string, content: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Unsubscribe from Atlaris emails</title>
+  <title>${title}</title>
 </head>
 <body>
   <main>
-    <h1>Unsubscribe from optional Atlaris emails?</h1>
+    ${content}
+  </main>
+</body>
+</html>`;
+}
+
+function confirmationHtml(): string {
+  return htmlPage(
+    'Unsubscribe from Atlaris emails',
+    `<h1>Unsubscribe from optional Atlaris emails?</h1>
     <p>Confirm below to stop optional email notifications. You can re-enable them later in settings.</p>
     <form method="post">
       <input type="hidden" name="List-Unsubscribe" value="One-Click"/>
       <button type="submit">Unsubscribe</button>
-    </form>
-  </main>
-</body>
-</html>`;
+    </form>`,
+  );
 }
 
 function successHtml(): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Unsubscribed</title>
-</head>
-<body>
-  <main>
-    <h1>You're unsubscribed</h1>
+  return htmlPage(
+    'Unsubscribed',
+    `<h1>You're unsubscribed</h1>
     <p>Optional Atlaris email notifications are turned off for this address.</p>
-  </main>
-</body>
-</html>`;
+`,
+  );
 }
 
 function failureHtml(): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Unsubscribe unavailable</title>
-</head>
-<body>
-  <main>
-    <h1>Unsubscribe link unavailable</h1>
+  return htmlPage(
+    'Unsubscribe unavailable',
+    `<h1>Unsubscribe link unavailable</h1>
     <p>This unsubscribe link is invalid or expired. You can manage email preferences from your Atlaris settings.</p>
-  </main>
-</body>
-</html>`;
+`,
+  );
 }
 
 function htmlResponse(body: string, status = 200): Response {
@@ -139,10 +130,10 @@ async function parseOneClickForm(
   }
 }
 
-async function handleGet(): Promise<Response> {
+export const GET = withErrorBoundary(async () => {
   // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
-}
+});
 
 async function handlePost(request: Request): Promise<Response> {
   const token = new URL(request.url).searchParams.get('token');
@@ -173,5 +164,4 @@ async function handlePost(request: Request): Promise<Response> {
   return htmlResponse(successHtml(), 200);
 }
 
-export const GET = withErrorBoundary(handleGet);
 export const POST = withErrorBoundary(handlePost);

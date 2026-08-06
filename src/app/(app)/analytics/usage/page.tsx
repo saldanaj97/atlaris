@@ -1,10 +1,7 @@
 import type { Metadata } from 'next';
 
 import { UsageAnalyticsContent } from './usage-analytics-content';
-import {
-  buildUsageAnalyticsModel,
-  type UsageAnalyticsModel,
-} from './usage-analytics-model';
+import { buildUsageAnalyticsModel } from './usage-analytics-model';
 import { UsageAnalyticsTimezoneSync } from './usage-analytics-timezone-sync';
 import { ROUTES } from '@/features/navigation/routes';
 import { listUsageAnalyticsPlanSummaries } from '@/features/plans/read-projection/service';
@@ -48,15 +45,12 @@ export default async function UsageAnalyticsPage() {
     redirect(SIGN_IN_RETURN_PATH);
   }
 
-  return <UsageAnalyticsView model={result} />;
-}
-
-/** Renders timezone sync and the usage analytics dashboard from the loaded model. */
-function UsageAnalyticsView({ model }: { model: UsageAnalyticsModel }) {
   return (
     <>
-      <UsageAnalyticsTimezoneSync analyticsTimezone={model.analyticsTimezone} />
-      <UsageAnalyticsContent model={model} />
+      <UsageAnalyticsTimezoneSync
+        analyticsTimezone={result.analyticsTimezone}
+      />
+      <UsageAnalyticsContent model={result} />
     </>
   );
 }

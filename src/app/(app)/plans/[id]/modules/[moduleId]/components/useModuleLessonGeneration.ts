@@ -61,10 +61,6 @@ function applyModuleLessonGenerationResponse(
   }
 }
 
-function buildModuleLessonStatusUrl(planId: string, moduleId: string): string {
-  return `/api/v1/plans/${planId}/modules/${moduleId}/lesson-content/status`;
-}
-
 export function useModuleLessonGeneration({
   planId,
   moduleId,
@@ -104,7 +100,7 @@ export function useModuleLessonGeneration({
     let cancelled = false;
     let timeoutId: number | undefined;
     const abortController = new AbortController();
-    const statusUrl = buildModuleLessonStatusUrl(planId, moduleId);
+    const statusUrl = `/api/v1/plans/${planId}/modules/${moduleId}/lesson-content/status`;
 
     const pollStatus = async (): Promise<
       'continue' | 'terminal' | 'error' | 'aborted'

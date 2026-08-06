@@ -113,24 +113,16 @@ const runAuditHelper = ({ auditBody, auditStatus }) => {
   }
 };
 
-test('the facade preserves the remediation public API', () => {
+test('the facade exports the remediation implementation API', () => {
   assert.deepEqual(Object.keys(remediation).sort(), [
-    'buildPlan',
-    'classifyPlan',
     'classifyRemediation',
-    'compareResolvedVersions',
+    'compareResolvedVersionMaps',
     'inspectWorkspaceDiff',
     'normalizeResolvedVersions',
-    'normalizeVersions',
     'parseAudit',
-    'parseAuditJson',
-    'parseStableSemver',
     'parseStableVersion',
     'renderPlan',
-    'renderPrBody',
-    'renderRemediationPlan',
     'renderSummary',
-    'validateWorkspaceDiff',
   ]);
 });
 

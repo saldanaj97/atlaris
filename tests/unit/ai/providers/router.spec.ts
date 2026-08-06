@@ -51,12 +51,9 @@ vi.mock('@openrouter/sdk', () => {
 const mockInput = createGenerationInput();
 
 describe('RouterGenerationProvider', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
   beforeEach(() => {
-    originalEnv = { ...process.env };
-    process.env.AI_PROVIDER = 'router';
-    process.env.OPENROUTER_API_KEY = 'test-api-key';
+    vi.stubEnv('AI_PROVIDER', 'router');
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
     vi.clearAllMocks();
     mockSend.mockReset();
     mockSend.mockResolvedValue(DEFAULT_OPENROUTER_RESPONSE);
@@ -64,12 +61,11 @@ describe('RouterGenerationProvider', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    process.env = originalEnv;
   });
 
   describe('constructor', () => {
     it('uses DEFAULT_MODEL when no model is provided', async () => {
-      delete process.env.AI_DEFAULT_MODEL;
+      vi.stubEnv('AI_DEFAULT_MODEL', undefined);
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
@@ -91,7 +87,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('uses aiEnv.defaultModel when available', async () => {
-      process.env.AI_DEFAULT_MODEL = 'openai/gpt-4o-mini-2024-07-18';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
@@ -159,7 +155,7 @@ describe('RouterGenerationProvider', () => {
 
   describe('model configuration priority', () => {
     it('prioritizes config.model over aiEnv.defaultModel', async () => {
-      process.env.AI_DEFAULT_MODEL = 'env-default-model';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'env-default-model');
 
       const config: RouterConfig = {
         model: 'config-model',
@@ -173,7 +169,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('falls back to aiEnv.defaultModel when config.model is not provided', async () => {
-      process.env.AI_DEFAULT_MODEL = 'openai/gpt-4o-mini-2024-07-18';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
 
       const provider = new RouterGenerationProvider({});
       const result = await provider.generate(mockInput);
@@ -183,7 +179,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('falls back to DEFAULT_MODEL when neither config nor env provides model', async () => {
-      delete process.env.AI_DEFAULT_MODEL;
+      vi.stubEnv('AI_DEFAULT_MODEL', undefined);
 
       const provider = new RouterGenerationProvider({});
       const result = await provider.generate(mockInput);
@@ -195,7 +191,7 @@ describe('RouterGenerationProvider', () => {
 
   describe('explicit mock configuration', () => {
     it('allows the real provider in test when useMock is false', async () => {
-      process.env.VITEST_WORKER_ID = '1';
+      vi.stubEnv('VITEST_WORKER_ID', '1');
 
       const provider = new RouterGenerationProvider({
         model: 'test/model',

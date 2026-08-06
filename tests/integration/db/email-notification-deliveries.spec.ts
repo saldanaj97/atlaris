@@ -32,6 +32,11 @@ function providerRequest(
   };
 }
 
+async function createDeliveryUser(suffix: string): Promise<string> {
+  const authUserId = buildTestAuthUserId(suffix);
+  return ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+}
+
 function hasCheckConstraintViolation(
   err: unknown,
   constraintName: string,
@@ -73,17 +78,9 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('reconciles terminal counts for a logical run from the ledger', async () => {
-    const firstAuthUserId = buildTestAuthUserId('email-ledger-summary-first');
-    const secondAuthUserId = buildTestAuthUserId('email-ledger-summary-second');
     const [firstUserId, secondUserId] = await Promise.all([
-      ensureUser({
-        authUserId: firstAuthUserId,
-        email: buildTestEmail(firstAuthUserId),
-      }),
-      ensureUser({
-        authUserId: secondAuthUserId,
-        email: buildTestEmail(secondAuthUserId),
-      }),
+      createDeliveryUser('email-ledger-summary-first'),
+      createDeliveryUser('email-ledger-summary-second'),
     ]);
 
     await db.insert(emailNotificationDeliveries).values([
@@ -125,11 +122,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('claims a new key and persists the provider request', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-new');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-new');
 
     const claim = await claimEmailNotificationDelivery(
       {
@@ -156,11 +149,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('clears resolved delivery payloads while preserving ledger tombstones', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-resolved-payload');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-resolved-payload');
 
     const sent = await claimEmailNotificationDelivery(
       {
@@ -234,13 +223,9 @@ describe('email notification deliveries ledger', () => {
   it.each(['sent', 'skipped'] as const)(
     'rejects provider payloads on %s delivery tombstones',
     async (status) => {
-      const authUserId = buildTestAuthUserId(
+      const userId = await createDeliveryUser(
         `email-ledger-${status}-payload-check`,
       );
-      const userId = await ensureUser({
-        authUserId,
-        email: buildTestEmail(authUserId),
-      });
 
       await expect(
         db.insert(emailNotificationDeliveries).values({
@@ -270,11 +255,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('allows only one concurrent owner for the same delivery key', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-race');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-race');
 
     const [first, second] = await Promise.all([
       claimEmailNotificationDelivery(
@@ -312,11 +293,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('reclaims an expired lease using the retry wall clock', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-expired-lease');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-expired-lease');
     const referenceNow = new Date('2026-07-10T14:00:00.000Z');
     const retryNow = new Date(
       referenceNow.getTime() + EMAIL_DELIVERY_LEASE_MS + 1,
@@ -349,11 +326,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('accepts a recomputed provider request for definitively rejected rows', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-failed');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-failed');
 
     const originalRequest = providerRequest({
       subject: 'Original subject',
@@ -465,11 +438,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('rebinds a definitively failed delivery when its recipient changes', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-recipient-rebind');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-recipient-rebind');
     const original = providerRequest({
       to: 'old@example.com',
       idempotencyKey: 'rebind:daily:2026-07-10',
@@ -518,11 +487,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('reuses failed requests when optional fields and headers reorder', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-request-order');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-request-order');
     const firstRequest = providerRequest({
       idempotencyKey: 'order:daily:2026-07-10',
       replyTo: 'support@atlaris.app',
@@ -581,11 +546,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('recomputes failed deliveries with malformed persisted headers', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-malformed-failed');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-malformed-failed');
     const first = await claimEmailNotificationDelivery(
       {
         userId,
@@ -640,11 +601,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('does not steal a fresh pending lease and reclaims an expired one with the original request', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-lease');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-lease');
     const original = providerRequest({
       idempotencyKey: 'lease:daily:2026-07-11',
       subject: 'Original subject',
@@ -705,11 +662,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('moves ambiguous pending older than the provider window to manual_review', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-manual');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-manual');
 
     const claimedAt = new Date('2026-07-01T12:00:00.000Z');
     const first = await claimEmailNotificationDelivery(
@@ -761,11 +714,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('moves an expired pending delivery with a changed recipient to manual review', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-recipient-review');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-recipient-review');
     const claimedAt = new Date('2026-07-01T12:00:00.000Z');
     const original = providerRequest({
       to: 'old@example.com',
@@ -820,11 +769,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('moves an expired pending delivery with malformed headers to manual review', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-malformed-pending');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-malformed-pending');
     const claimedAt = new Date('2026-07-01T12:00:00.000Z');
     const first = await claimEmailNotificationDelivery(
       {
@@ -883,11 +828,7 @@ describe('email notification deliveries ledger', () => {
   });
 
   it('does not reset the ambiguity window when an expired pending lease is reclaimed', async () => {
-    const authUserId = buildTestAuthUserId('email-ledger-reclaim-window');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
+    const userId = await createDeliveryUser('email-ledger-reclaim-window');
     const claimedAt = new Date('2026-07-01T12:00:00.000Z');
     const first = await claimEmailNotificationDelivery(
       {

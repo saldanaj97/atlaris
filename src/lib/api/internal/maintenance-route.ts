@@ -10,7 +10,6 @@ import * as Sentry from '@sentry/nextjs';
 type MaintenanceRouteContext = {
   request: Request;
   logger: Logger;
-  pathname: string;
 };
 
 type MaintenanceMonitor = {
@@ -49,7 +48,7 @@ export function createMaintenancePostRoute(
       unauthorizedLogMessage: args.unauthorizedLogMessage,
     });
 
-    const context = { request, logger, pathname };
+    const context = { request, logger };
     return args.monitor
       ? Sentry.withMonitor(
           args.monitor.slug,

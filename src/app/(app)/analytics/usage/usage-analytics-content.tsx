@@ -253,7 +253,11 @@ function MetricTile({
         <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
           {label}
         </p>
-        {status ? <MetricTrendIcon trend={status} /> : null}
+        {status ? (
+          <span role='img' aria-label={status.label} className='inline-flex'>
+            <TrendStatusIcon kind={status.icon} />
+          </span>
+        ) : null}
       </div>
 
       <div className='mt-3 min-w-0'>
@@ -266,14 +270,6 @@ function MetricTile({
       <div className='mt-4 min-h-36 overflow-visible'>{chart}</div>
       <p className='mt-auto pt-3 text-sm text-muted-foreground'>{comparison}</p>
     </div>
-  );
-}
-
-function MetricTrendIcon({ trend }: { trend: MetricTrend }) {
-  return (
-    <span role='img' aria-label={trend.label} className='inline-flex'>
-      <TrendStatusIcon kind={trend.icon} />
-    </span>
   );
 }
 

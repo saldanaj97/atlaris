@@ -18,8 +18,6 @@ export type IncompletePlanLike = {
 };
 
 export type EmailContentContext = {
-  userId: string;
-  email: string;
   analyticsTimezone: string;
   /** UTC scheduler date YYYY-MM-DD */
   schedulerDateUtc: string;
@@ -42,12 +40,6 @@ export type EmailContentDateWindow = {
   startDateKeyInclusive: string;
   endDateKeyExclusive: string;
 };
-
-function asDayKeySet(
-  dayKeys: ReadonlySet<string> | readonly string[],
-): Set<string> {
-  return dayKeys instanceof Set ? dayKeys : new Set(dayKeys);
-}
 
 /** Escapes text content only. Use escapeHtmlAttribute for HTML attributes. */
 function escapeHtml(text: string): string {
@@ -144,11 +136,6 @@ export function qualifyStreakReminder(args: {
   if (args.dayKeys.has(args.todayLocalKey)) {
     return { qualifies: false };
   }
-  const yesterday = addDays(args.todayLocalKey, -1);
-  if (!args.dayKeys.has(yesterday)) {
-    return { qualifies: false };
-  }
-
   // Bounded window only proves "at least threshold days", not lifetime streak.
   for (let i = 1; i <= STREAK_REMINDER_THRESHOLD; i += 1) {
     if (!args.dayKeys.has(addDays(args.todayLocalKey, -i))) {
@@ -202,7 +189,7 @@ export function buildEmailContents(
 ): BuiltEmailContent[] {
   const timeZone = normalizeTimeZone(ctx.analyticsTimezone);
   const todayLocalKey = dateKeyInTimeZone(ctx.referenceDate, timeZone);
-  const dayKeys = asDayKeySet(ctx.activityDayKeys);
+  const dayKeys = new Set(ctx.activityDayKeys);
   const priorWeekStart = priorClosedWeekStartKey(todayLocalKey);
   const streak = qualifyStreakReminder({
     dayKeys,

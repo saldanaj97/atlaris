@@ -44,12 +44,9 @@ export function ModuleLessonsClient({
     });
 
   const totalLessons = lessons.length;
-  let completedLessons = 0;
-  for (const lesson of lessons) {
-    if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
-      completedLessons++;
-    }
-  }
+  const completedLessons = lessons.filter(
+    (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
+  ).length;
   const isModuleComplete =
     totalLessons > 0 && completedLessons === totalLessons;
 

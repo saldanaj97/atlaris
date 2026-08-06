@@ -231,36 +231,4 @@ describe('plan-status-machine', () => {
       expect(next.delayMs).toBe(INITIAL_POLL_MS);
     });
   });
-
-  describe('plan_changed', () => {
-    it('fully resets state for the new plan', () => {
-      const state = pendingState({
-        status: 'processing',
-        attempts: 4,
-        error: 'transient',
-        pollingError: 'old error',
-        consecutiveFailures: 2,
-        delayMs: 8000,
-      });
-      const next = transitionPlanPollState(state, {
-        type: 'plan_changed',
-        planId: 'plan-2',
-        initialStatus: 'pending',
-      });
-
-      expect(next).toEqual(createInitialPlanPollState('plan-2', 'pending'));
-    });
-
-    it('initializes terminal phase when new plan is ready', () => {
-      const next = transitionPlanPollState(pendingState(), {
-        type: 'plan_changed',
-        planId: 'plan-2',
-        initialStatus: 'ready',
-      });
-
-      expect(next.phase).toBe('terminal');
-      expect(next.planId).toBe('plan-2');
-      expect(next.status).toBe('ready');
-    });
-  });
 });

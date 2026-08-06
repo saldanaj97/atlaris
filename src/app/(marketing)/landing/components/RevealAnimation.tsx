@@ -1,28 +1,20 @@
 'use client';
 
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import { cn } from '@/lib/utils';
 import { useLayoutEffect, useRef } from 'react';
 
 import styles from './landing.module.css';
 
 interface RevealAnimationProps {
   children: ReactNode;
-  className?: string;
-  /** Transition delay in milliseconds, staggers siblings. */
-  delay?: number;
 }
 
 /**
  * Progressively enhances visible content with a rise-and-fade on scroll.
  * Missing observer support and reduced motion both stay visible.
  */
-export function RevealAnimation({
-  children,
-  className,
-  delay = 0,
-}: RevealAnimationProps) {
+export function RevealAnimation({ children }: RevealAnimationProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -44,17 +36,8 @@ export function RevealAnimation({
     return () => observer.disconnect();
   }, []);
 
-  const style: CSSProperties | undefined = delay
-    ? { transitionDelay: `${delay}ms` }
-    : undefined;
-
   return (
-    <div
-      ref={ref}
-      style={style}
-      className={cn(styles.reveal, className)}
-      data-reveal-state='idle'
-    >
+    <div ref={ref} className={styles.reveal} data-reveal-state='idle'>
       {children}
     </div>
   );

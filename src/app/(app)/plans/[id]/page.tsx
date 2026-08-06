@@ -16,7 +16,7 @@ const PLAN_METADATA_TITLE =
 const PLAN_METADATA_DESCRIPTION =
   'Generate a time-blocked study plan from any goal with modules, resources, and progress tracking.';
 
-export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
+export function generateMetadata(): Metadata {
   return {
     title: PLAN_METADATA_TITLE,
     description: PLAN_METADATA_DESCRIPTION,
