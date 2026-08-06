@@ -1,6 +1,7 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { auth } from '../../mocks/shared/auth-server';
+import { GET } from '@/app/api/v1/resources/route';
 import { resources } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { NextRequest } from 'next/server';
@@ -77,7 +78,6 @@ describe('GET /api/v1/resources', () => {
   });
 
   it('returns resources with the expected public fields', async () => {
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest('http://localhost:3000/api/v1/resources', {
       method: 'GET',
     });
@@ -113,7 +113,6 @@ describe('GET /api/v1/resources', () => {
   });
 
   it('filters resources by type', async () => {
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/resources?type=video',
       {
@@ -131,7 +130,6 @@ describe('GET /api/v1/resources', () => {
   });
 
   it('rejects invalid type query with validation error', async () => {
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/resources?type=not-a-valid-enum',
       { method: 'GET' },
@@ -146,7 +144,6 @@ describe('GET /api/v1/resources', () => {
   });
 
   it('supports limit and offset pagination', async () => {
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/resources?limit=1&offset=1',
       {
@@ -163,7 +160,6 @@ describe('GET /api/v1/resources', () => {
   });
 
   it('clamps oversized limit query parameters to the max page size', async () => {
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/resources?limit=999',
       {
@@ -184,7 +180,6 @@ describe('GET /api/v1/resources', () => {
 
     vi.mocked(auth.getSession).mockResolvedValue({ data: null });
 
-    const { GET } = await import('@/app/api/v1/resources/route');
     const request = new NextRequest('http://localhost:3000/api/v1/resources', {
       method: 'GET',
     });

@@ -327,7 +327,6 @@ describe('runEmailNotificationDelivery', () => {
       sent: 1,
       failed: 1,
       recipientErrors: 1,
-      needsReview: true,
       pageFailure: null,
       nextCursor: 'u2',
     });

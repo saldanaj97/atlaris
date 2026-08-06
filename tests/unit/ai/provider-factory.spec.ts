@@ -24,15 +24,13 @@ async function loadProviderFactory() {
 
 describe('AI Provider Factory', () => {
   beforeEach(() => {
-    delete process.env.AI_PROVIDER;
-    delete process.env.MOCK_GENERATION_SEED;
+    vi.stubEnv('AI_PROVIDER', undefined);
+    vi.stubEnv('MOCK_GENERATION_SEED', undefined);
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VITEST_WORKER_ID', '1');
   });
 
   afterEach(() => {
-    delete process.env.AI_PROVIDER;
-    delete process.env.MOCK_GENERATION_SEED;
     vi.unstubAllEnvs();
   });
 
@@ -45,7 +43,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns MockGenerationProvider when AI_PROVIDER is "mock"', async () => {
-      process.env.AI_PROVIDER = 'mock';
+      vi.stubEnv('AI_PROVIDER', 'mock');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -54,8 +52,8 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns MockGenerationProvider with deterministic seed when MOCK_GENERATION_SEED is set', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '12345';
+      vi.stubEnv('AI_PROVIDER', 'mock');
+      vi.stubEnv('MOCK_GENERATION_SEED', '12345');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -64,8 +62,8 @@ describe('AI Provider Factory', () => {
     });
 
     it('handles invalid MOCK_GENERATION_SEED gracefully', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = 'not-a-number';
+      vi.stubEnv('AI_PROVIDER', 'mock');
+      vi.stubEnv('MOCK_GENERATION_SEED', 'not-a-number');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -74,7 +72,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('handles case-insensitive AI_PROVIDER values', async () => {
-      process.env.AI_PROVIDER = 'MOCK';
+      vi.stubEnv('AI_PROVIDER', 'MOCK');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -87,7 +85,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProvider } = await loadProviderFactory();
 
       providers.forEach((providerType) => {
-        process.env.AI_PROVIDER = providerType;
+        vi.stubEnv('AI_PROVIDER', providerType);
 
         const provider = getGenerationProvider();
 
@@ -99,7 +97,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProvider } = await loadProviderFactory();
 
       for (const providerType of ['openai', 'anthropic', 'google']) {
-        process.env.AI_PROVIDER = providerType;
+        vi.stubEnv('AI_PROVIDER', providerType);
 
         expect(() => getGenerationProvider()).toThrow(/AI_PROVIDER must be/);
       }
@@ -122,7 +120,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns MockGenerationProvider when explicitly set to "mock" in production', async () => {
-      process.env.AI_PROVIDER = 'mock';
+      vi.stubEnv('AI_PROVIDER', 'mock');
       const provider = await withServerWindowHiddenAsync(async () => {
         const { getGenerationProvider } = await loadProviderFactory();
         return getGenerationProvider();
@@ -132,7 +130,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns RouterGenerationProvider when AI_PROVIDER=router in production', async () => {
-      process.env.AI_PROVIDER = 'router';
+      vi.stubEnv('AI_PROVIDER', 'router');
       const provider = await withServerWindowHiddenAsync(async () => {
         const { getGenerationProvider } = await loadProviderFactory();
         return getGenerationProvider();
@@ -144,7 +142,7 @@ describe('AI Provider Factory', () => {
 
   describe('Edge cases', () => {
     it('handles empty string AI_PROVIDER', async () => {
-      process.env.AI_PROVIDER = '';
+      vi.stubEnv('AI_PROVIDER', '');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -153,7 +151,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('handles whitespace in AI_PROVIDER', async () => {
-      process.env.AI_PROVIDER = '  mock  ';
+      vi.stubEnv('AI_PROVIDER', '  mock  ');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -162,8 +160,8 @@ describe('AI Provider Factory', () => {
     });
 
     it('handles zero as MOCK_GENERATION_SEED', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '0';
+      vi.stubEnv('AI_PROVIDER', 'mock');
+      vi.stubEnv('MOCK_GENERATION_SEED', '0');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -172,8 +170,8 @@ describe('AI Provider Factory', () => {
     });
 
     it('handles negative MOCK_GENERATION_SEED', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '-100';
+      vi.stubEnv('AI_PROVIDER', 'mock');
+      vi.stubEnv('MOCK_GENERATION_SEED', '-100');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -193,7 +191,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns MockGenerationProvider when AI_PROVIDER is "mock"', async () => {
-      process.env.AI_PROVIDER = 'mock';
+      vi.stubEnv('AI_PROVIDER', 'mock');
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
@@ -204,7 +202,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('returns RouterGenerationProvider when AI_PROVIDER is "router"', async () => {
-      process.env.AI_PROVIDER = 'router';
+      vi.stubEnv('AI_PROVIDER', 'router');
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
@@ -215,7 +213,7 @@ describe('AI Provider Factory', () => {
     });
 
     it('accepts any model ID string', async () => {
-      process.env.AI_PROVIDER = 'router';
+      vi.stubEnv('AI_PROVIDER', 'router');
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider1 = getGenerationProviderWithModel(
@@ -232,8 +230,8 @@ describe('AI Provider Factory', () => {
     });
 
     it('respects MOCK_GENERATION_SEED in test environment', async () => {
-      process.env.AI_PROVIDER = 'mock';
-      process.env.MOCK_GENERATION_SEED = '42';
+      vi.stubEnv('AI_PROVIDER', 'mock');
+      vi.stubEnv('MOCK_GENERATION_SEED', '42');
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(

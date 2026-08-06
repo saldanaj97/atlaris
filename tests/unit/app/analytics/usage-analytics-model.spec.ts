@@ -38,7 +38,6 @@ function planSummary(
 /** Extracts aggregate completion totals from a usage analytics model. */
 function pickTotals(model: UsageAnalyticsModel) {
   return {
-    planCount: model.planCount,
     completedTasks: model.completedTasks,
     totalTasks: model.totalTasks,
     taskCompletionPercent: model.taskCompletionPercent,
@@ -68,7 +67,6 @@ describe('buildUsageAnalyticsModel', () => {
     const model = buildUsageAnalyticsModel([]);
 
     expect(pickTotals(model)).toEqual({
-      planCount: 0,
       completedTasks: 0,
       totalTasks: 0,
       taskCompletionPercent: 0,
@@ -95,7 +93,6 @@ describe('buildUsageAnalyticsModel', () => {
     ]);
 
     expect(pickTotals(model)).toMatchObject({
-      planCount: 1,
       completedTasks: 0,
       totalTasks: 5,
       taskCompletionPercent: 0,
@@ -129,7 +126,6 @@ describe('buildUsageAnalyticsModel', () => {
     ]);
 
     expect(pickTotals(model)).toMatchObject({
-      planCount: 2,
       completedTasks: 5,
       totalTasks: 10,
       taskCompletionPercent: 50,
@@ -139,10 +135,7 @@ describe('buildUsageAnalyticsModel', () => {
       completedMinutes: 100,
       totalMinutes: 200,
     });
-    expect(model.plans).toMatchObject([
-      { topic: 'React', taskCompletionPercent: 40 },
-      { topic: 'SQL', taskCompletionPercent: 60 },
-    ]);
+    expect(model.plans.map((plan) => plan.topic)).toEqual(['React', 'SQL']);
   });
 
   it('counts completed plans and modules from current completion totals', () => {
@@ -160,13 +153,6 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.taskCompletionPercent).toBe(100);
     expect(model.moduleCompletionPercent).toBe(100);
-    expect(model.plans[0]).toMatchObject({
-      completedTasks: 4,
-      totalTasks: 4,
-      taskCompletionPercent: 100,
-      completedModules: 2,
-      totalModules: 2,
-    });
   });
 
   it('does not round incomplete progress up to complete', () => {
@@ -182,7 +168,6 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.taskCompletionPercent).toBe(99);
     expect(model.moduleCompletionPercent).toBe(50);
-    expect(model.plans[0].taskCompletionPercent).toBe(99);
   });
 
   it('uses only currently completed task estimates for completed learning time', () => {
@@ -198,8 +183,6 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.completedMinutes).toBe(25);
     expect(model.totalMinutes).toBe(140);
-    expect(model.plans[0].completedMinutes).toBe(25);
-    expect(model.plans[0].totalMinutes).toBe(140);
   });
 
   it('buckets activity days in the analytics timezone', () => {
@@ -218,7 +201,6 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.history.currentStreakDays).toBe(2);
     expect(model.history.currentWeek.activeDays).toBe(2);
-    expect(model.plans[0].currentStreakDays).toBe(2);
   });
 
   it('counts the current streak through yesterday when today has no activity', () => {
@@ -254,7 +236,7 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.history.longestStreakDays).toBe(2);
   });
 
-  it('keeps global and per-plan streaks separate', () => {
+  it('counts global streak days across plans', () => {
     const model = buildUsageAnalyticsModel(
       [
         planSummary({ id: 'plan-1', topic: 'React' }),
@@ -280,10 +262,6 @@ describe('buildUsageAnalyticsModel', () => {
     );
 
     expect(model.history.currentStreakDays).toBe(2);
-    expect(model.plans).toMatchObject([
-      { topic: 'React', currentStreakDays: 1 },
-      { topic: 'SQL', currentStreakDays: 2 },
-    ]);
   });
 
   it('builds Monday-start weekly trend rows', () => {
@@ -396,9 +374,5 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.history.currentWeek.completedEvents).toBe(1);
     expect(model.history.currentWeek.estimatedCompletionAddedMinutes).toBe(40);
-    expect(model.plans[0]).toMatchObject({
-      completedEventsThisWeek: 1,
-      estimatedCompletionAddedThisWeek: 40,
-    });
   });
 });

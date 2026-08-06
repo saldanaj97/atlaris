@@ -86,7 +86,11 @@ export function RadialTextMetricChart({
   sublabel: string;
   percent: number;
 }) {
-  const chartData = [{ value: clampPercent(percent) }];
+  const chartData = [
+    {
+      value: Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0,
+    },
+  ];
 
   return (
     <WithRecharts>
@@ -692,14 +696,6 @@ function AnimatedPointLabel({
       {value}
     </text>
   );
-}
-
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.min(100, Math.max(0, value));
 }
 
 function planCapacityForWidth(width: number, planCount: number): number {

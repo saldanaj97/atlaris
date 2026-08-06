@@ -14,10 +14,7 @@ interface ModulePageProps {
 const MODULE_METADATA_DESCRIPTION =
   'View module details, tasks, and resources for this learning plan module.';
 
-export async function generateMetadata({
-  params,
-}: ModulePageProps): Promise<Metadata> {
-  await params;
+export function generateMetadata(): Metadata {
   return {
     title: 'Module Details | Atlaris',
     description: MODULE_METADATA_DESCRIPTION,

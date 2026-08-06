@@ -2,7 +2,10 @@
 
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { batchUpdateTaskProgressCore } from '@/features/plans/task-progress/batch-action-core';
+import {
+  batchUpdateTaskProgressCore,
+  type BatchUpdateTaskProgressCoreResult,
+} from '@/features/plans/task-progress/batch-action-core';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 interface BatchUpdateTaskProgressInput {
@@ -24,14 +27,10 @@ interface BatchUpdateTaskProgressInput {
  *
  * React Doctor note: `server-auth-actions` is a false positive for actions using this wrapper.
  */
-export type BatchUpdateTaskProgressResult = {
-  readonly revalidateFailed: boolean;
-};
-
 export async function batchUpdateTaskProgressAction({
   planId,
   updates,
-}: BatchUpdateTaskProgressInput): Promise<BatchUpdateTaskProgressResult | void> {
+}: BatchUpdateTaskProgressInput): Promise<BatchUpdateTaskProgressCoreResult | void> {
   if (updates.length === 0) return;
 
   const result = await requestBoundary.action(async ({ actor, db }) =>

@@ -38,77 +38,6 @@ type BulkDeleteRequestResult =
   | { kind: 'aborted' }
   | { kind: 'error'; message: string; error: unknown };
 
-function startBulkDeleteRequest(abortControllerRef: {
-  current: AbortController | null;
-}): AbortController {
-  abortControllerRef.current?.abort();
-  const controller = new AbortController();
-  abortControllerRef.current = controller;
-  return controller;
-}
-
-async function requestBulkPlanDeletion(
-  planIds: string[],
-  signal: AbortSignal,
-): Promise<BulkDeleteRequestResult> {
-  try {
-    const res = await fetch('/api/v1/plans/bulk-delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planIds }),
-      signal,
-    });
-
-    if (!res.ok) {
-      const parsed = await parseApiErrorResponse(
-        res,
-        'Failed to delete selected plans',
-      );
-      return {
-        kind: 'error',
-        message: parsed.error,
-        error: new Error(parsed.error),
-      };
-    }
-
-    return {
-      kind: 'success',
-      result: (await res.json()) as BulkDeletePlansResult,
-    };
-  } catch (error: unknown) {
-    if (isAbortError(error)) {
-      return { kind: 'aborted' };
-    }
-
-    return {
-      kind: 'error',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete selected plans',
-      error,
-    };
-  }
-}
-
-function finalizeBulkDeleteRequest({
-  controller,
-  abortControllerRef,
-  setDeleting,
-}: {
-  controller: AbortController;
-  abortControllerRef: { current: AbortController | null };
-  setDeleting: (value: boolean) => void;
-}): boolean {
-  if (abortControllerRef.current !== controller) {
-    return false;
-  }
-
-  abortControllerRef.current = null;
-  setDeleting(false);
-  return true;
-}
-
 function formatPlanTopicList(plans: Pick<PlanListItem, 'topic'>[]): string {
   const preview = plans.slice(0, 5).map((plan) => plan.topic);
   const remaining = plans.length - preview.length;
@@ -142,46 +71,68 @@ export function BulkDeletePlansDialog({
       return;
     }
 
-    const controller = startBulkDeleteRequest(abortControllerRef);
+    const planIds = plans.map((plan) => plan.id);
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setDeleting(true);
-    const result = await requestBulkPlanDeletion(
-      plans.map((plan) => plan.id),
-      controller.signal,
-    );
 
-    switch (result.kind) {
-      case 'success':
-        if (!finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        })) {
-          return;
-        }
-        onOpenChange(false);
-        onDeleted(result.result);
-        return;
-      case 'aborted':
-        finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        });
-        return;
-      case 'error':
-        if (!finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        })) {
-          return;
-        }
-        clientLogger.error('Bulk plan deletion failed', {
-          planIds: plans.map((plan) => plan.id),
-          error: result.error,
-        });
-        toast.error(result.message);
-        return;
+    let result: BulkDeleteRequestResult;
+    try {
+      const res = await fetch('/api/v1/plans/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planIds }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const parsed = await parseApiErrorResponse(
+          res,
+          'Failed to delete selected plans',
+        );
+        result = {
+          kind: 'error',
+          message: parsed.error,
+          error: new Error(parsed.error),
+        };
+      } else {
+        result = {
+          kind: 'success',
+          result: (await res.json()) as BulkDeletePlansResult,
+        };
+      }
+    } catch (error: unknown) {
+      result = isAbortError(error)
+        ? { kind: 'aborted' }
+        : {
+            kind: 'error',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Failed to delete selected plans',
+            error,
+          };
+    }
+
+    if (abortControllerRef.current !== controller) {
+      return;
+    }
+    abortControllerRef.current = null;
+    setDeleting(false);
+
+    if (result.kind === 'success') {
+      onOpenChange(false);
+      onDeleted(result.result);
+      return;
+    }
+
+    if (result.kind === 'error') {
+      clientLogger.error('Bulk plan deletion failed', {
+        planIds,
+        error: result.error,
+      });
+      toast.error(result.message);
     }
   };
 
