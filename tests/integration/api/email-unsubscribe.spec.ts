@@ -224,6 +224,33 @@ describe('email unsubscribe route', () => {
     expect(await settingsFor(userId)).toBeNull();
   });
 
+  it('returns 413 when cancellation of an oversized stream rejects', async () => {
+    const { userId, token } = await seedUser();
+    const url = `${BASE_URL}?token=${encodeURIComponent(token)}`;
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(`padding=${'x'.repeat(64 * 1024 + 1)}`),
+        );
+      },
+      cancel,
+    });
+
+    const response = await POST_UNSUBSCRIBE(
+      new Request(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body,
+        duplex: 'half',
+      } as RequestInit),
+    );
+
+    expect(response.status).toBe(413);
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(await settingsFor(userId)).toBeNull();
+  });
+
   it('rejects invalid token, missing form field, and body-only token without mutating', async () => {
     const { userId, token } = await seedUser();
 

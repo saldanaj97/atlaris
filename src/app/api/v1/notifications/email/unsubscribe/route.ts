@@ -94,7 +94,7 @@ async function readBodyCapped(request: Request): Promise<Uint8Array | null> {
 
     length += value.byteLength;
     if (length > ONE_CLICK_MAX_BYTES) {
-      await reader.cancel();
+      await reader.cancel().catch(() => undefined);
       return null;
     }
     chunks.push(value);

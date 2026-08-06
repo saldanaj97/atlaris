@@ -2,6 +2,7 @@ import type {
   RequestPlanRegenerationArgs,
   RequestPlanRegenerationResult,
 } from './types';
+import type { RegenerationQuotaWorkResult } from '@/features/billing/regeneration-quota-boundary';
 
 import { attachPlanRegenerationWorkflow } from './attach-workflow';
 import {
@@ -10,7 +11,6 @@ import {
 } from './deps';
 import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
-import type { RegenerationQuotaWorkResult } from '@/features/billing/regeneration-quota-boundary';
 import { workflowEnv } from '@/lib/config/env/workflow';
 import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { getDb } from '@supabase/runtime';
@@ -48,7 +48,11 @@ type RegenerationAdmission =
   | { readonly kind: 'rejected'; readonly result: RegenerationRejectedResult };
 
 type ReservationBoundaryResult =
-  | { readonly ok: false; readonly currentCount: number; readonly limit: number }
+  | {
+      readonly ok: false;
+      readonly currentCount: number;
+      readonly limit: number;
+    }
   | {
       readonly ok: true;
       readonly consumed: true;
@@ -312,6 +316,7 @@ async function runReservedRegenerationAdmission(
 function mapReservedRegenerationAdmission(
   planId: string,
   boundaryResult: ReservationBoundaryResult,
+  d: RegenerationOrchestrationDeps,
 ): SettledRegenerationAdmission {
   if (!boundaryResult.ok) {
     return {
@@ -327,6 +332,16 @@ function mapReservedRegenerationAdmission(
 
   if (!boundaryResult.consumed) {
     if (boundaryResult.value.kind === 'workflow-attach-canceled') {
+      if (boundaryResult.reconciliationRequired) {
+        d.logger.error(
+          {
+            jobId: boundaryResult.value.jobId,
+            planId,
+            reconciliationRequired: true,
+          },
+          'Regeneration quota revert requires reconciliation after workflow attach cancellation',
+        );
+      }
       return {
         kind: 'result',
         result: {
@@ -427,6 +442,7 @@ export async function requestPlanRegeneration(
   const settled = mapReservedRegenerationAdmission(
     admission.value.planId,
     boundaryResult,
+    d,
   );
   if (settled.kind === 'result') return settled.result;
 

@@ -64,14 +64,12 @@ export function classifyRemediation(input = {}) {
   const before = parseAudit(
     input.beforeAudit ?? input.auditBefore ?? input.before ?? diff.beforeAudit,
   );
-  const after = parseAudit(
-    input.afterAudit ??
-      input.auditAfter ??
-      input.after ??
-      diff.afterAudit ??
-      input.beforeAudit ??
-      input.auditBefore,
-  );
+  const afterAudit =
+    input.afterAudit ?? input.auditAfter ?? input.after ?? diff.afterAudit;
+  if (afterAudit === undefined) {
+    throw new Error('afterAudit is required');
+  }
+  const after = parseAudit(afterAudit);
 
   if (!before.valid || !after.valid) {
     plan.registryError = before.registryError || after.registryError;
@@ -157,12 +155,7 @@ export function classifyRemediation(input = {}) {
       before.highCritical.map((finding) => finding.package).filter(Boolean),
     ),
   ].sort();
-  if (
-    packages.length !==
-    new Set(
-      before.highCritical.map((finding) => finding.package).filter(Boolean),
-    ).size
-  ) {
+  if (before.highCritical.length !== packages.length) {
     plan.reasons.push(
       'audit maps a finding to more than one package ambiguously',
     );

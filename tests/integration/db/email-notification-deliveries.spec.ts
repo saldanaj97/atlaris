@@ -529,6 +529,7 @@ describe('email notification deliveries ledger', () => {
       headers: {
         'List-Unsubscribe': '<https://example.com/unsub>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Trace': 'trace\tvalue',
       },
     });
     const first = await claimEmailNotificationDelivery(
@@ -563,6 +564,7 @@ describe('email notification deliveries ledger', () => {
           headers: {
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
             'List-Unsubscribe': '<https://example.com/unsub>',
+            'X-Trace': 'trace\tvalue',
           },
         }),
       },
@@ -802,6 +804,7 @@ describe('email notification deliveries ledger', () => {
     expect(result).toEqual({
       outcome: 'manual_review',
       deliveryId: first.deliveryId,
+      failureClass: 'recipient_changed_since_claim',
     });
     const [row] = await db
       .select()
@@ -865,6 +868,7 @@ describe('email notification deliveries ledger', () => {
     expect(result).toEqual({
       outcome: 'manual_review',
       deliveryId: first.deliveryId,
+      failureClass: 'persisted_provider_request_invalid',
     });
     const [row] = await db
       .select()

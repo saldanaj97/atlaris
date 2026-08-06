@@ -115,7 +115,7 @@ export function createResendEmailSender(
           throw new EmailProviderError(
             'Email provider returned no delivery result.',
             'provider_error',
-            'unknown',
+            'rejected',
           );
         }
 

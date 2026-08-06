@@ -31,7 +31,7 @@ export type EmailDeliveryClaimResult =
       status: 'sent' | 'skipped' | 'manual_review';
     }
   | { outcome: 'in_flight'; status: 'pending' }
-  | { outcome: 'manual_review'; deliveryId: string };
+  | { outcome: 'manual_review'; deliveryId: string; failureClass: string };
 
 export class EmailDeliveryLostLeaseError extends Error {
   constructor(message = 'Email delivery lease was lost before finalization') {
@@ -124,13 +124,23 @@ export async function countEmailNotificationDeliveryManualReviews(
 
 const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 const hasForbiddenHeaderValue = (value: string) =>
-  value.includes('\r') ||
-  value.includes('\n') ||
-  value.includes(String.fromCharCode(0));
+  [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 8 || (code >= 10 && code <= 31) || code === 127;
+  });
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
 
 function asHeaders(value: unknown): Record<string, string> | null | undefined {
   if (value === undefined) return undefined;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     return null;
   }
 
@@ -146,34 +156,41 @@ function asHeaders(value: unknown): Record<string, string> | null | undefined {
     return null;
   }
 
-  return Object.fromEntries(headers);
+  return Object.fromEntries(headers) as Record<string, string>;
 }
 
 function asProviderRequest(value: unknown): PersistedProviderRequest | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     return null;
   }
-  const record = Object.fromEntries(Object.entries(value));
-  const headers = asHeaders(record.headers);
+  const headers = asHeaders(value.headers);
+  const replyTo =
+    value.replyTo === undefined
+      ? undefined
+      : typeof value.replyTo === 'string' &&
+          !hasForbiddenHeaderValue(value.replyTo)
+        ? value.replyTo
+        : null;
   if (
-    typeof record.from !== 'string' ||
-    typeof record.to !== 'string' ||
-    typeof record.subject !== 'string' ||
-    typeof record.html !== 'string' ||
-    typeof record.text !== 'string' ||
-    typeof record.idempotencyKey !== 'string' ||
-    headers === null
+    typeof value.from !== 'string' ||
+    typeof value.to !== 'string' ||
+    typeof value.subject !== 'string' ||
+    typeof value.html !== 'string' ||
+    typeof value.text !== 'string' ||
+    typeof value.idempotencyKey !== 'string' ||
+    headers === null ||
+    replyTo === null
   ) {
     return null;
   }
   return {
-    from: record.from,
-    to: record.to,
-    subject: record.subject,
-    html: record.html,
-    text: record.text,
-    idempotencyKey: record.idempotencyKey,
-    ...(typeof record.replyTo === 'string' ? { replyTo: record.replyTo } : {}),
+    from: value.from,
+    to: value.to,
+    subject: value.subject,
+    html: value.html,
+    text: value.text,
+    idempotencyKey: value.idempotencyKey,
+    ...(replyTo === undefined ? {} : { replyTo }),
     ...(headers === undefined ? {} : { headers }),
   };
 }
@@ -409,7 +426,11 @@ export async function claimEmailNotificationDelivery(
         .returning({ id: emailNotificationDeliveries.id });
 
       if (reviewed[0]) {
-        return { outcome: 'manual_review', deliveryId: reviewed[0].id };
+        return {
+          outcome: 'manual_review',
+          deliveryId: reviewed[0].id,
+          failureClass,
+        };
       }
       return readCurrentClaimResult(existing.id, dbClient);
     }

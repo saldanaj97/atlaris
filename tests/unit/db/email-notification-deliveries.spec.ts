@@ -15,6 +15,41 @@ function providerRequest(): PersistedProviderRequest {
 }
 
 describe('claimEmailNotificationDelivery', () => {
+  it('rejects malformed header and reply-to fields', async () => {
+    const invalidRequests = [
+      {
+        ...providerRequest(),
+        headers: { 'X-Trace': 'value\u0001' },
+      },
+      {
+        ...providerRequest(),
+        headers: new Map([['X-Trace', 'value']]),
+      },
+      {
+        ...providerRequest(),
+        replyTo: 42,
+      },
+      {
+        ...providerRequest(),
+        replyTo: 'support@example.com\u007f',
+      },
+    ];
+
+    for (const providerRequest of invalidRequests) {
+      await expect(
+        claimEmailNotificationDelivery(
+          {
+            userId: 'user-1',
+            category: 'daily_reminder',
+            deliveryKey: '2026-07-09',
+            providerRequest: providerRequest as PersistedProviderRequest,
+          },
+          {} as never,
+        ),
+      ).rejects.toThrow('Invalid provider request');
+    }
+  });
+
   it('returns the current sent status when an ambiguity manual-review CAS loses', async () => {
     const createdAt = new Date('2026-07-01T12:00:00.000Z');
     const claimExpiresAt = new Date('2026-07-01T12:15:00.000Z');

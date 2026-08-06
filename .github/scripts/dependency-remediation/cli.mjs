@@ -1,11 +1,10 @@
-import { execFileSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { parseAudit } from './audit.mjs';
 import { classifyRemediation } from './policy.mjs';
 import { renderPlan, renderSummary } from './render.mjs';
 import { inspectWorkspaceDiff } from './workspace.mjs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const parseArgs = (argv) => {
   const result = {};
@@ -99,10 +98,7 @@ export function runCli(argv = process.argv.slice(2)) {
   }
   if (command === 'plan') {
     const beforeAudit = readRequired(args['before-audit'], 'before-audit');
-    const afterAudit = readRequired(
-      args['after-audit'] ?? args['before-audit'],
-      'after-audit',
-    );
+    const afterAudit = readRequired(args['after-audit'], 'after-audit');
     const changedFiles = readRequired(args['changed-files'], 'changed-files');
     const input = {
       baseSha: args['base-sha'],
