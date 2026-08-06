@@ -188,32 +188,41 @@ describe('createResendEmailSender', () => {
     });
   });
 
-  it('treats an empty Resend response as an ambiguous provider failure', async () => {
-    const client: ResendEmailsClient = {
-      send: vi.fn().mockResolvedValue({ data: null, error: null }),
-    };
-    const sender = createResendEmailSender(
-      {
-        apiKey: 're_test',
-        from: 'Atlaris <notifications@mail.atlaris.app>',
-      },
-      client,
-    );
+  it.each([
+    ['null', null],
+    ['ID-less', {}],
+  ])(
+    'treats a $0 Resend response as a non-recoverable provider failure',
+    async (_, data) => {
+      const client = {
+        send: vi.fn().mockResolvedValue({ data, error: null }),
+      } as unknown as ResendEmailsClient;
+      const sender = createResendEmailSender(
+        {
+          apiKey: 're_test',
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+        },
+        client,
+      );
 
-    await expect(
-      sender.sendResolved({
-        from: 'Atlaris <notifications@mail.atlaris.app>',
-        to: 'u@example.com',
-        subject: 'Hello',
-        html: '<p>Hi</p>',
-        text: 'Hi',
+      await expect(
+        sender.sendResolved({
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: 'Hello',
+          html: '<p>Hi</p>',
+          text: 'Hi',
+          idempotencyKey: 'key-1',
+        }),
+      ).rejects.toMatchObject({
+        failureClass: 'provider_error',
+        outcome: 'rejected',
+      });
+      expect(client.send).toHaveBeenCalledWith(expect.anything(), {
         idempotencyKey: 'key-1',
-      }),
-    ).rejects.toMatchObject({
-      failureClass: 'provider_error',
-      outcome: 'unknown',
-    });
-  });
+      });
+    },
+  );
 
   it('throws outcome-unknown EmailProviderError for thrown network errors', async () => {
     const client: ResendEmailsClient = {

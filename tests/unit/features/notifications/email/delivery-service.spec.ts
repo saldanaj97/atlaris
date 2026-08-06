@@ -927,6 +927,48 @@ describe('runEmailNotificationDelivery', () => {
     expect(result).toMatchObject({ claimed: 1, skipped: 1, sent: 0 });
   });
 
+  it.each([
+    'recipient_changed_since_claim',
+    'persisted_provider_request_invalid',
+  ])('records the claimed manual-review reason: %s', async (failureClass) => {
+    claim.mockResolvedValue({
+      outcome: 'manual_review',
+      deliveryId: 'd1',
+      failureClass,
+    });
+    const logger = { info: vi.fn(), warn: vi.fn() };
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender: createSender(),
+        logger: logger as never,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(result).toMatchObject({
+      claimed: 0,
+      manualReview: 1,
+      sent: 0,
+    });
+    expect(countMetric).toHaveBeenCalledWith(
+      'atlaris.email.notification.manual_review',
+      1,
+      { attributes: { category: 'daily_reminder', reason: failureClass } },
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ failureClass }),
+      'Email notification delivery requires manual review',
+    );
+  });
+
   it('finalizes a fresh claim when the pre-send identity check fails', async () => {
     isRecipientCurrent.mockRejectedValue(new Error('identity unavailable'));
     const sender = createSender();

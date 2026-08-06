@@ -3,6 +3,8 @@ import {
   parseAudit,
   renderPlan,
 } from './dependency-remediation.mjs';
+import * as remediation from './dependency-remediation.mjs';
+import { runCli } from './dependency-remediation/cli.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -19,7 +21,6 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import * as remediation from './dependency-remediation.mjs';
 
 const cleanAudit = {
   auditReportVersion: 2,
@@ -64,7 +65,11 @@ const baseInput = (overrides = {}) => ({
 });
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const helperPath = join(scriptDirectory, 'dependency-remediation', 'run-audit.sh');
+const helperPath = join(
+  scriptDirectory,
+  'dependency-remediation',
+  'run-audit.sh',
+);
 const facadePath = join(scriptDirectory, 'dependency-remediation.mjs');
 
 const writeExecutable = (file, source) => {
@@ -181,6 +186,26 @@ test('clean audit produces a deterministic no-op plan', () => {
   assert.equal(plan.status, 'noop');
   assert.equal(plan.classification, 'none');
   assert.deepEqual(plan.advisoryIds, []);
+});
+
+test('requires independent after-audit evidence', () => {
+  assert.throws(
+    () => classifyRemediation(baseInput({ afterAudit: undefined })),
+    /afterAudit is required/,
+  );
+
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-'));
+  try {
+    const beforeAuditPath = join(directory, 'before-audit.json');
+    writeFileSync(beforeAuditPath, JSON.stringify(vulnerableAudit));
+
+    assert.throws(
+      () => runCli(['plan', '--before-audit', beforeAuditPath]),
+      /missing --after-audit/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('malformed or unknown audit JSON is rejected instead of treated as clean', () => {
@@ -337,6 +362,43 @@ test('residual high or critical findings are rejected', () => {
 
   assert.equal(plan.status, 'rejected');
   assert.match(plan.reasons.join('\n'), /residual/i);
+});
+
+test('rejects multiple high or critical findings that map to one package', () => {
+  const plan = classifyRemediation(
+    baseInput({
+      beforeAudit: {
+        ...vulnerableAudit,
+        vulnerabilities: {
+          ...vulnerableAudit.vulnerabilities,
+          'example-package-second-advisory': {
+            ...vulnerableAudit.vulnerabilities['example-package'],
+            name: 'example-package',
+            via: [
+              {
+                source: 'GHSA-example-second',
+                severity: 'high',
+                range: '<1.2.3',
+                title: 'Second example advisory',
+              },
+            ],
+          },
+        },
+        metadata: {
+          vulnerabilities: {
+            info: 0,
+            low: 0,
+            moderate: 0,
+            high: 2,
+            critical: 0,
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(plan.status, 'rejected');
+  assert.match(plan.reasons.join('\n'), /more than one package ambiguously/i);
 });
 
 test('registry failures and non-JSON audit responses fail closed', () => {
