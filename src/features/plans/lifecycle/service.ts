@@ -19,7 +19,10 @@ import type {
   GenerationAttemptRecord,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
-import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type {
+  GenerationInput,
+  ProviderMetadata,
+} from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
@@ -97,7 +100,7 @@ export type GenerationRunParams = {
 type GenerationRunSuccess = {
   status: 'success';
   modules: GeneratedModule[];
-  metadata: Record<string, unknown>;
+  metadata: ProviderMetadata;
   usage: CanonicalAIUsage;
   durationMs: number;
   reservation: AttemptReservation;
@@ -108,7 +111,7 @@ type GenerationRunFailure = {
   status: 'failure';
   classification: FailureClassification;
   error: Error;
-  metadata?: Record<string, unknown>;
+  metadata?: ProviderMetadata;
   usage?: CanonicalAIUsage;
   durationMs: number;
   reservation?: AttemptReservation;

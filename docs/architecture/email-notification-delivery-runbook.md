@@ -35,7 +35,7 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 - Tokens from `createUnsubscribeToken()` (`src/features/notifications/email/unsubscribe-token.ts`); default TTL **90 days**; secret `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
 - `GET` is confirmation-only (no mutation). `POST` applies unsubscribe.
-- A one-click `POST` must use `Content-Type: application/x-www-form-urlencoded` with exactly one body field: `List-Unsubscribe=One-Click`.
+- A one-click `POST` accepts `multipart/form-data` or `application/x-www-form-urlencoded`, with exactly one body field: `List-Unsubscribe=One-Click`.
 - Route bypasses Clerk auth; authenticates via HMAC token. Still reachable during maintenance (`middleware-policy.ts`).
 
 ### Send nuances

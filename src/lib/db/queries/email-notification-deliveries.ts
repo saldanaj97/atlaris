@@ -122,18 +122,47 @@ export async function countEmailNotificationDeliveryManualReviews(
     .manualReview;
 }
 
-function asProviderRequest(value: unknown): PersistedProviderRequest | null {
-  if (!value || typeof value !== 'object') {
+const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const hasForbiddenHeaderValue = (value: string) =>
+  value.includes('\r') ||
+  value.includes('\n') ||
+  value.includes(String.fromCharCode(0));
+
+function asHeaders(value: unknown): Record<string, string> | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
-  const record = value as Partial<PersistedProviderRequest>;
+
+  const headers = Object.entries(value);
+  if (
+    headers.some(
+      ([name, headerValue]) =>
+        !HEADER_NAME.test(name) ||
+        typeof headerValue !== 'string' ||
+        hasForbiddenHeaderValue(headerValue),
+    )
+  ) {
+    return null;
+  }
+
+  return Object.fromEntries(headers);
+}
+
+function asProviderRequest(value: unknown): PersistedProviderRequest | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const record = Object.fromEntries(Object.entries(value));
+  const headers = asHeaders(record.headers);
   if (
     typeof record.from !== 'string' ||
     typeof record.to !== 'string' ||
     typeof record.subject !== 'string' ||
     typeof record.html !== 'string' ||
     typeof record.text !== 'string' ||
-    typeof record.idempotencyKey !== 'string'
+    typeof record.idempotencyKey !== 'string' ||
+    headers === null
   ) {
     return null;
   }
@@ -145,9 +174,7 @@ function asProviderRequest(value: unknown): PersistedProviderRequest | null {
     text: record.text,
     idempotencyKey: record.idempotencyKey,
     ...(typeof record.replyTo === 'string' ? { replyTo: record.replyTo } : {}),
-    ...(record.headers && typeof record.headers === 'object'
-      ? { headers: record.headers as Record<string, string> }
-      : {}),
+    ...(headers === undefined ? {} : { headers }),
   };
 }
 
@@ -201,6 +228,10 @@ export async function claimEmailNotificationDelivery(
   dbClient: DeliveryDb,
 ): Promise<EmailDeliveryClaimResult> {
   const now = args.now ?? new Date();
+  const providerRequest = asProviderRequest(args.providerRequest);
+  if (!providerRequest) {
+    throw new Error('Invalid provider request');
+  }
   const claimToken = randomUUID();
   const claimExpiresAt = leaseExpiry(now);
 
@@ -213,7 +244,7 @@ export async function claimEmailNotificationDelivery(
       status: 'pending',
       claimToken,
       claimExpiresAt,
-      providerRequest: args.providerRequest,
+      providerRequest,
       attemptCount: 1,
       // Keep ledger timestamps aligned with the injected delivery clock so
       // ambiguity-window checks stay consistent in tests and scheduled runs.
@@ -285,11 +316,12 @@ export async function claimEmailNotificationDelivery(
     const useRecomputedRequest = shouldUseRecomputedRequest(
       existing.failureClass,
       previousRequest,
-      args.providerRequest,
+      providerRequest,
     );
-    const requestForRetry = useRecomputedRequest
-      ? args.providerRequest
-      : previousRequest;
+    const requestForRetry =
+      useRecomputedRequest || previousRequest === null
+        ? providerRequest
+        : previousRequest;
     if (!requestForRetry) {
       throw new Error('Failed delivery missing provider request');
     }
@@ -329,7 +361,8 @@ export async function claimEmailNotificationDelivery(
         deliveryId: reclaimed[0].id,
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
-        reusedProviderRequest: !useRecomputedRequest,
+        reusedProviderRequest:
+          previousRequest !== null && !useRecomputedRequest,
         reclaimedExpiredPending: false,
       };
     }
@@ -344,22 +377,24 @@ export async function claimEmailNotificationDelivery(
     }
 
     const storedRequest = asProviderRequest(existing.providerRequest);
-    if (!storedRequest) {
-      throw new Error('Expired pending delivery missing provider request');
-    }
 
     // Measure ambiguity from first claim time; reclaim must not reset the window.
     const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
-    const recipientChanged = storedRequest.to !== args.providerRequest.to;
-    if (recipientChanged || ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
+    const failureClass =
+      storedRequest === null
+        ? 'persisted_provider_request_invalid'
+        : storedRequest.to !== providerRequest.to
+          ? 'recipient_changed_since_claim'
+          : ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS
+            ? 'provider_acceptance_ambiguous'
+            : null;
+    if (failureClass) {
       const reviewed = await dbClient
         .update(emailNotificationDeliveries)
         .set({
           status: 'manual_review',
-          failureClass: recipientChanged
-            ? EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim
-            : 'provider_acceptance_ambiguous',
+          failureClass,
           claimToken: null,
           claimExpiresAt: null,
           updatedAt: now,
@@ -377,6 +412,10 @@ export async function claimEmailNotificationDelivery(
         return { outcome: 'manual_review', deliveryId: reviewed[0].id };
       }
       return readCurrentClaimResult(existing.id, dbClient);
+    }
+
+    if (!storedRequest) {
+      throw new Error('Expired pending delivery missing provider request');
     }
 
     const reclaimed = await dbClient

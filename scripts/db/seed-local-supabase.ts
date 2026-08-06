@@ -68,7 +68,6 @@ async function main(): Promise<void> {
   await seedLocalProductTestingUser(databaseUrl);
 
   console.log('[seed-local-supabase] Done.');
-  console.log(`[seed-local-supabase] POSTGRES_URL=${databaseUrl}`);
 }
 
 main().catch((err) => {

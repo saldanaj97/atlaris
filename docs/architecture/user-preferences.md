@@ -82,7 +82,7 @@ See [usage-analytics-metric-contract.md](./usage-analytics-metric-contract.md).
 | Method | Path | Behavior |
 | ------ | ---- | -------- |
 | `GET` | `/api/v1/notifications/email/unsubscribe?token=...` | Confirmation HTML only — **never mutates** (anti-prefetch) |
-| `POST` | same + form `List-Unsubscribe=One-Click` | Sets `unsubscribe_all_optional_emails = true` via service role; category rows unchanged |
+| `POST` | same + exactly one `multipart/form-data` or URL-encoded field `List-Unsubscribe=One-Click` | Sets `unsubscribe_all_optional_emails = true` via service role; category rows unchanged |
 
 Token: HMAC payload with purpose `email_unsubscribe_all` (`src/features/notifications/email/unsubscribe-token.ts`).
 
