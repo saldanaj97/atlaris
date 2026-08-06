@@ -8,7 +8,7 @@ import type React from 'react';
 
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -444,9 +444,11 @@ describe('PlansList', () => {
     await user.click(screen.getByRole('button', { name: 'Delete selected' }));
     await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
 
-    expect(toast.error).toHaveBeenCalledWith(expect.any(String));
-    expect(mockRefresh).not.toHaveBeenCalled();
-    expect(screen.getByText('Delete selected plans')).toBeInTheDocument();
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(toast.error).toHaveBeenCalledWith(
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+    );
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
   });
 
   it.each([
@@ -477,15 +479,42 @@ describe('PlansList', () => {
       await user.click(screen.getByRole('button', { name: 'Delete selected' }));
       await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
 
-      expect(toast.error).toHaveBeenCalledWith(expect.any(String));
-      expect(mockRefresh).not.toHaveBeenCalled();
-      expect(screen.getByText('Delete selected plans')).toBeInTheDocument();
+      await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+      expect(toast.error).toHaveBeenCalledWith(
+        'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+      );
+      expect(
+        screen.queryByText('Delete selected plans'),
+      ).not.toBeInTheDocument();
     },
   );
 
-  it('re-enables bulk delete after a request failure', async () => {
+  it('reconciles bulk delete after an unknown transport failure', async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockRejectedValue(new Error('Network unavailable'));
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(toast.error).toHaveBeenCalledWith(
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+    );
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
+  });
+
+  it('keeps bulk delete retryable after a definitive server error', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json(
+        { error: 'Plans cannot be deleted right now.', code: 'CONFLICT' },
+        { status: 409 },
+      ),
+    );
     renderPlansList();
 
     await user.click(
@@ -497,10 +526,13 @@ describe('PlansList', () => {
     expect(
       await screen.findByRole('button', { name: 'Delete 2 plans' }),
     ).toBeEnabled();
-    expect(toast.error).toHaveBeenCalledWith('Network unavailable');
+    expect(toast.error).toHaveBeenCalledWith(
+      'Plans cannot be deleted right now.',
+    );
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  it('times out a stalled bulk delete request', async () => {
+  it('reconciles a timed-out bulk delete before another deletion can be opened', async () => {
     const user = userEvent.setup();
     const timeoutController = new AbortController();
     const timeoutSpy = vi
@@ -527,11 +559,13 @@ describe('PlansList', () => {
     expect(timeoutSpy).toHaveBeenCalledWith(30_000);
     timeoutController.abort(new DOMException('Timed out', 'TimeoutError'));
 
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Delete 2 plans' }),
-    ).toBeEnabled();
+      screen.queryByRole('button', { name: 'Delete selected' }),
+    ).not.toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith(
-      'Request timed out — please try again',
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
     );
     timeoutSpy.mockRestore();
   });

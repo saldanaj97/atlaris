@@ -47,12 +47,18 @@ type BulkDeletePlansDialogProps = {
   onOpenChange: (open: boolean) => void;
   plans: Pick<PlanListItem, 'id' | 'topic' | 'status'>[];
   onDeleted: (result: BulkDeletePlansResult) => void;
+  onOutcomeUnknown: () => void;
 };
 
 type BulkDeleteRequestResult =
   | { kind: 'success'; result: BulkDeletePlansResult }
   | { kind: 'aborted' }
-  | { kind: 'error'; message: string; error: unknown };
+  | {
+      kind: 'error';
+      message: string;
+      error: unknown;
+      outcomeUnknown?: true;
+    };
 
 function formatPlanTopicList(plans: Pick<PlanListItem, 'topic'>[]): string {
   const preview = plans.slice(0, 5).map((plan) => plan.topic);
@@ -70,6 +76,7 @@ export function BulkDeletePlansDialog({
   onOpenChange,
   plans,
   onDeleted,
+  onOutcomeUnknown,
 }: BulkDeletePlansDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -142,6 +149,16 @@ export function BulkDeletePlansDialog({
         planIds,
         error: result.error,
       });
+
+      if (result.outcomeUnknown) {
+        onOpenChange(false);
+        onOutcomeUnknown();
+        toast.error(
+          'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+        );
+        return;
+      }
+
       toast.error(result.message);
     }
   };

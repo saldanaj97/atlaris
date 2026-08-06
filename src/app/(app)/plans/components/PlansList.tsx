@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 interface PlansListProps {
@@ -147,11 +147,13 @@ function SortableTableHead({
 function BulkPlanActionsToolbar({
   selectedCount,
   toolbarMessage,
+  deleteDisabled,
   onClear,
   onDelete,
 }: {
   selectedCount: number;
   toolbarMessage: string | null;
+  deleteDisabled: boolean;
   onClear: () => void;
   onDelete: () => void;
 }) {
@@ -186,6 +188,7 @@ function BulkPlanActionsToolbar({
             type='button'
             variant='destructive'
             size='sm'
+            disabled={deleteDisabled}
             onClick={onDelete}
           >
             Delete selected
@@ -312,6 +315,7 @@ function PlansTable({
 
 export function PlansList({ page, query }: PlansListProps) {
   const router = useRouter();
+  const [isReconciliationPending, startReconciliation] = useTransition();
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -340,6 +344,13 @@ export function PlansList({ page, query }: PlansListProps) {
   const handleClearSelection = (): void => {
     setSelectedPlanIds(new Set());
     setToolbarMessage(null);
+  };
+
+  const handleBulkDeleteOutcomeUnknown = (): void => {
+    handleClearSelection();
+    startReconciliation(() => {
+      router.refresh();
+    });
   };
 
   const handleBulkDeleted = (result: BulkDeletePlansResult): void => {
@@ -396,8 +407,12 @@ export function PlansList({ page, query }: PlansListProps) {
         <BulkPlanActionsToolbar
           selectedCount={selectedDeletablePlans.length}
           toolbarMessage={toolbarMessage}
+          deleteDisabled={isReconciliationPending}
           onClear={handleClearSelection}
-          onDelete={() => setBulkDeleteOpen(true)}
+          onDelete={() => {
+            if (isReconciliationPending) return;
+            setBulkDeleteOpen(true);
+          }}
         />
       ) : null}
 
@@ -406,6 +421,7 @@ export function PlansList({ page, query }: PlansListProps) {
         onOpenChange={setBulkDeleteOpen}
         plans={selectedDeletablePlans}
         onDeleted={handleBulkDeleted}
+        onOutcomeUnknown={handleBulkDeleteOutcomeUnknown}
       />
 
       {page.items.length === 0 ? (
