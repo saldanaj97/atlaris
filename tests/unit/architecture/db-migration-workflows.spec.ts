@@ -89,6 +89,14 @@ describe('Supabase migration workflows', () => {
 
   it('applies each expand migration and its history record atomically', () => {
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    const expandMigrations = script.match(
+      /readonly -a EXPAND_MIGRATIONS=\(([\s\S]*?)\n\)/,
+    )?.[1];
+
+    expect(expandMigrations).toBeDefined();
+    expect(expandMigrations).not.toContain(
+      '20260811100400_revoke_users_authenticated_insert.sql',
+    );
 
     expect(script).toContain(
       '20260706221000_archive_legacy_stripe_entitlements.sql',
