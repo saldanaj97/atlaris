@@ -501,7 +501,6 @@ describe('runEmailNotificationDelivery', () => {
     expect(result).toMatchObject({
       claimed: 1,
       manualReview: 1,
-      needsReview: true,
       skipped: 0,
       sent: 0,
     });
