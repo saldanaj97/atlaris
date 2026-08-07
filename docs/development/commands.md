@@ -62,6 +62,16 @@ pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
 pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
 ```
 
+### Local billing & tier fixtures
+
+Convenience scripts start the local DB, seed the product-testing user, apply a Clerk Billing fixture, then run the Next.js server. Flag and env details live in [environment.md](./environment.md) and [local-database.md](./local-database.md).
+
+```bash
+pnpm billing:clerk:fixture --user-id <uuid> --plan starter|pro   # Apply fixture only
+pnpm dev:local:starter   # Seed + fixture starter for 00000000-0000-4000-8000-000000000001 + pnpm dev
+pnpm dev:local:pro       # Same path with --plan pro
+```
+
 ## Testing
 
 See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehensive testing documentation.
