@@ -1,7 +1,13 @@
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
@@ -195,6 +201,54 @@ describe('ModuleLessonsClient', () => {
       }),
     );
     expect(refreshMock).not.toHaveBeenCalled();
+  });
+
+  it('polls after a workflow starts before refreshed server state becomes generating', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse(
+          {
+            state: 'generating',
+            planId: PLAN_ID,
+            moduleId: MODULE_ID,
+          },
+          { status: 202 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'ready',
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Generate lessons' }));
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(GENERATE_URL, { method: 'POST' });
+    expect(
+      screen.getByRole('button', { name: 'Generating...' }),
+    ).toBeDisabled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      STATUS_URL,
+      expect.objectContaining({
+        cache: 'no-store',
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(refreshMock).toHaveBeenCalledTimes(2);
   });
 
   it('refreshes once when status polling returns ready', async () => {

@@ -22,11 +22,12 @@ type LongGenerationKey = {
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
+    markGenerating: () => void;
     setQuotaMessage: (value: string | null) => void;
     refresh: () => void;
   },
 ): void {
-  const { setQuotaMessage, refresh } = params;
+  const { markGenerating, setQuotaMessage, refresh } = params;
 
   switch (body.state) {
     case 'quota_denied':
@@ -50,8 +51,11 @@ function applyModuleLessonGenerationResponse(
       toast.error('Plan or module was not found.');
       refresh();
       return;
-    case 'ready':
     case 'generating':
+      markGenerating();
+      refresh();
+      return;
+    case 'ready':
       refresh();
       return;
     default: {
@@ -75,17 +79,22 @@ export function useModuleLessonGeneration({
   const { refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
   const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
+  const [requestedGenerationKey, setRequestedGenerationKey] =
+    useState<LongGenerationKey | null>(null);
   const [longGenerationKey, setLongGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const generationPollCountRef = useRef(0);
+  const generationRequested =
+    requestedGenerationKey?.planId === planId &&
+    requestedGenerationKey.moduleId === moduleId;
   const generationTakingLong =
-    status === 'generating' &&
+    (status === 'generating' || generationRequested) &&
     previousModulesComplete &&
     longGenerationKey?.planId === planId &&
     longGenerationKey.moduleId === moduleId;
 
   useEffect(() => {
-    if (status !== 'generating') {
+    if (status !== 'generating' && !generationRequested) {
       generationPollCountRef.current = 0;
       return;
     }
@@ -204,6 +213,7 @@ export function useModuleLessonGeneration({
               return;
             }
             if (outcome === 'terminal') {
+              setRequestedGenerationKey(null);
               refresh();
               return;
             }
@@ -236,7 +246,14 @@ export function useModuleLessonGeneration({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [moduleId, planId, previousModulesComplete, refresh, status]);
+  }, [
+    generationRequested,
+    moduleId,
+    planId,
+    previousModulesComplete,
+    refresh,
+    status,
+  ]);
 
   const generateLessons = (): void => {
     if (!previousModulesComplete) {
@@ -244,6 +261,7 @@ export function useModuleLessonGeneration({
     }
 
     setQuotaMessage(null);
+    setRequestedGenerationKey(null);
     setLongGenerationKey(null);
     startTransition(async () => {
       try {
@@ -292,6 +310,7 @@ export function useModuleLessonGeneration({
         }
 
         applyModuleLessonGenerationResponse(parsed.data, {
+          markGenerating: () => setRequestedGenerationKey({ planId, moduleId }),
           setQuotaMessage,
           refresh,
         });
@@ -309,7 +328,7 @@ export function useModuleLessonGeneration({
   return {
     generateLessons,
     generationTakingLong,
-    isPending,
+    isPending: isPending || generationRequested,
     quotaMessage,
   };
 }
