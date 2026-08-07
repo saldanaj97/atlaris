@@ -169,7 +169,10 @@ export function useModuleLessonGeneration({
           return 'error';
         }
 
-        if (parsed.data.status === 'generating') {
+        if (
+          parsed.data.status === 'generating' ||
+          (generationRequested && parsed.data.status === 'not_generated')
+        ) {
           return 'continue';
         }
 

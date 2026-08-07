@@ -251,6 +251,66 @@ describe('ModuleLessonsClient', () => {
     expect(refreshMock).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps polling while a queued workflow has not claimed the module yet', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse(
+          {
+            state: 'generating',
+            planId: PLAN_ID,
+            moduleId: MODULE_ID,
+          },
+          { status: 202 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'not_generated',
+        }),
+      )
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse({
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+          status: 'ready',
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Generate lessons' }));
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      STATUS_URL,
+      expect.objectContaining({
+        cache: 'no-store',
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Generating...' }),
+    ).toBeDisabled();
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(refreshMock).toHaveBeenCalledTimes(2);
+  });
+
   it('refreshes once when status polling returns ready', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn().mockResolvedValue(
