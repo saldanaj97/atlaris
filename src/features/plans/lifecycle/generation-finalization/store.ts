@@ -136,6 +136,7 @@ export async function commitPlanGenerationFailure(
   const metadata = buildMetadata({
     sanitized: input.preparation.sanitized,
     providerMetadata: input.providerMetadata,
+    workflowMetadata: input.workflowMetadata,
     modulesClamped: false,
     tasksClamped: false,
     startedAt: input.preparation.startedAt,

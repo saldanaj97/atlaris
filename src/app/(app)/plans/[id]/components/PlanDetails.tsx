@@ -55,10 +55,9 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
 
   const overviewStats = computeOverviewStats(plan, statuses);
 
-  const isPendingOrProcessing =
+  const isGenerating =
     plan.status === 'pending' || plan.status === 'processing';
-
-  const isGenerating = isPendingOrProcessing;
+  const shouldShowPendingState = isGenerating || plan.status === 'failed';
 
   return (
     <div className='pb-12 md:pb-20'>
@@ -90,7 +89,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         </div>
       </header>
 
-      {isPendingOrProcessing ? (
+      {shouldShowPendingState ? (
         <PlanPendingState plan={plan} />
       ) : (
         <>

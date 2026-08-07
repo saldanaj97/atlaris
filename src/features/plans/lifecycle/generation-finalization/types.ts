@@ -48,6 +48,7 @@ export type FinalizeGenerationFailureWithAttemptInput = {
   readonly timedOut: boolean;
   readonly extendedTimeout: boolean;
   readonly providerMetadata?: ProviderMetadata;
+  readonly workflowMetadata?: AttemptWorkflowMetadata;
   readonly usage?: CanonicalAIUsage;
   readonly usageKind: 'plan';
   readonly retryable: boolean;

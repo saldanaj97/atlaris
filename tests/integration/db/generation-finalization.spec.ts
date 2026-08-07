@@ -189,6 +189,12 @@ describe('plan generation finalization (single transaction)', () => {
       extendedTimeout: false,
       usageKind: 'plan',
       retryable: true,
+      workflowMetadata: {
+        provider: 'workflow-sdk',
+        runId: 'run-plan-generation-failure-1',
+        startedAt: '2026-03-02T08:00:00.000Z',
+        completedAt: '2026-03-02T08:00:01.000Z',
+      },
       now: () => new Date('2026-03-02T08:00:02.000Z'),
     });
 
@@ -203,6 +209,13 @@ describe('plan generation finalization (single transaction)', () => {
     });
     expect(attempt?.status).toBe('failure');
     expect(attempt?.classification).toBe('timeout');
+    const attemptMetadata = attempt?.metadata as AttemptMetadata | undefined;
+    expect(attemptMetadata?.workflow).toEqual({
+      provider: 'workflow-sdk',
+      runId: 'run-plan-generation-failure-1',
+      startedAt: '2026-03-02T08:00:00.000Z',
+      completedAt: '2026-03-02T08:00:01.000Z',
+    });
 
     const usageRows = await db
       .select()

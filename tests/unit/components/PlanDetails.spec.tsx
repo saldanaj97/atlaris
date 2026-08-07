@@ -66,7 +66,7 @@ describe('PlanDetails', () => {
     cleanup();
   });
 
-  it.each(['pending', 'processing'] as const)(
+  it.each(['pending', 'processing', 'failed'] as const)(
     'renders pending state for %s plans',
     async (status) => {
       await renderPlanDetails(createMockPlan(status));
