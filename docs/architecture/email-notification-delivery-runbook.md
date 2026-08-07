@@ -2,6 +2,33 @@
 
 Use this runbook for the optional email notification scheduler only. It does not apply to push, SMS, in-app, campaigns, or user-local-time scheduling.
 
+## Preference model & public surfaces
+
+Optional email categories are **opt-in** (default off). Delivery eligibility uses
+`resolveEffectiveEmailPreferences()` in `src/shared/notifications/email-preferences.ts`:
+a category sends only when the global kill switch is off **and** that category is enabled.
+
+| Layer | Location |
+| --- | --- |
+| Global kill switch | `user_email_notification_settings.unsubscribe_all_optional_emails` |
+| Per-category opt-in | `user_email_notification_preferences` (`weekly_summary`, `daily_reminder`, `streak_reminder`) |
+| Form / API shape | `{ unsubscribeAllOptionalEmails, weeklySummary, dailyReminder, streakReminder }` |
+| Settings UI | `/settings` → Notifications (`NotificationPreferencesForm`) |
+| Update API | `PATCH /api/v1/user/preferences/notifications` (`mutation` rate limit) |
+| Read path | Server component / query helper only — **no public GET** for notification prefs |
+
+### One-click unsubscribe
+
+| Item | Detail |
+| --- | --- |
+| Routes | `GET` + `POST` `/api/v1/notifications/email/unsubscribe` |
+| Token | Signed query `token` (`EMAIL_UNSUBSCRIBE_TOKEN_SECRET`) |
+| GET | Confirmation HTML only — **never mutates** (prefetch/scanner safe) |
+| POST | Requires `List-Unsubscribe=One-Click` form field (RFC 8058); sets `unsubscribe_all_optional_emails = true` via service-role |
+| Scope | Global optional opt-out only; does not rewrite per-category rows |
+
+Cron run kinds map to categories as listed below (`daily` → reminder + streak; `weekly` → summary).
+
 ## Schedule and ownership
 
 Vercel Cron owns email invocation through one path:
