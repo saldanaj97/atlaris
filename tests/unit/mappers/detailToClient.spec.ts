@@ -313,10 +313,12 @@ describe('mapDetailToClient', () => {
   it('should derive status as "failed" when plan generation status is failed', () => {
     const detail = buildPlanDetail({
       plan: buildPlan({ generationStatus: 'failed', modules: [] }),
+      attemptsCount: 1,
     });
 
     const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('failed');
+    expect(result).toMatchObject({ attempts: 1 });
   });
 
   it('should derive status as "processing" when generation is in progress with no modules', () => {

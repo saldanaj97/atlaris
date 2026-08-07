@@ -115,6 +115,26 @@ describe('PlanPendingState', () => {
     ).toBeInTheDocument();
   });
 
+  it('uses the persisted attempt count for a reloaded failed plan', () => {
+    mockPlanStatus({ status: 'failed', attempts: 0 });
+    const plan = createTestPlanDetail({ status: 'failed', attempts: 1 });
+
+    render(<PlanPendingState plan={plan} />);
+
+    expect(screen.getByText('Attempt 1 of 3')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Retry Generation (2 attempts remaining)',
+      }),
+    ).toBeInTheDocument();
+    expect(mockUseRetryGeneration).toHaveBeenLastCalledWith(
+      plan.id,
+      MAX_RETRY_ATTEMPTS,
+      1,
+      expect.anything(),
+    );
+  });
+
   it('keeps the interrupted fallback when a retry session is cancelled', () => {
     mockRetryGeneration({
       status: 'cancelled',
@@ -162,7 +182,12 @@ describe('PlanPendingState', () => {
     });
 
     render(
-      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
+      <PlanPendingState
+        plan={createTestPlanDetail({
+          status: 'failed',
+          attempts: MAX_RETRY_ATTEMPTS,
+        })}
+      />,
     );
 
     expect(

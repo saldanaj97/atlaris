@@ -159,6 +159,7 @@ export function createTestPlanDetail(
     totalMinutes: 90,
     completedMinutes: 45,
     completedModules: 0,
+    attempts: 0,
     status: 'ready',
     latestAttempt: null,
     modules: [

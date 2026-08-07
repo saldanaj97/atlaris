@@ -26,6 +26,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const planGenerationSession = usePlanGenerationSession();
   const { status, attempts, error, pollingError, isPolling, revalidate } =
     usePlanStatus(plan.id, plan.status ?? 'pending');
+  const currentAttempts = plan.status === 'failed' ? plan.attempts : attempts;
 
   const {
     status: retryStatus,
@@ -35,7 +36,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   } = useRetryGeneration(
     plan.id,
     MAX_RETRY_ATTEMPTS,
-    attempts,
+    currentAttempts,
     planGenerationSession,
   );
 
@@ -48,7 +49,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const viewState = buildPlanPendingViewState({
     status,
     retryStatus,
-    attempts,
+    attempts: currentAttempts,
     error,
     pollingError,
     retryError,

@@ -178,6 +178,7 @@ export function toClientPlanDetail(
     totalMinutes: detail.totalMinutes,
     completedMinutes: detail.completedMinutes,
     completedModules: detail.completedModules,
+    attempts: detail.attemptsCount,
     status: statusSnapshot.status,
     latestAttempt: detail.latestAttempt
       ? toClientAttempt(detail.latestAttempt)
