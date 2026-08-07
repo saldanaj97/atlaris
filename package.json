@@ -85,6 +85,7 @@
   "devDependencies": {
     "@clerk/testing": "^2.0.25",
     "@google/design.md": "^0.3.0",
+    "@mdelapenya/testcontainers-resend": "0.1.0",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testcontainers/postgresql": "^11.14.0",
