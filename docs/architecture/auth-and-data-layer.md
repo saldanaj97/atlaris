@@ -91,7 +91,21 @@ There are two user IDs in the system:
 | `authUserId` | External | Clerk Auth    | `user_...` (Clerk user id)   | RLS claims, session identity |
 | `user.id`    | Internal | `users` table | `a1b2c3d4-...` (app DB UUID) | Foreign keys, ownership      |
 
-**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` is the full `DbUser`. In server actions/components, the callback receives the full `DbUser`.
+**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` / `actor` is the resolved actor record. In server actions/components, the callback receives `actor` (`ActorUser`).
+
+### Actor model and user preferences
+
+Auth boundaries resolve an **`ActorUser`**, not a raw `users` row alone:
+
+| Field | Storage | Default when no preferences row |
+| ----- | ------- | ------------------------------- |
+| Core identity / billing columns | `users` | Created by `ensureUserRecord` / `getOrCreateUser` |
+| `preferredAiModel` | `user_preferences.preferred_ai_model` | `null` (runtime falls back to `openrouter/free`) |
+| `analyticsTimezone` | `user_preferences.analytics_timezone` | `'UTC'` |
+
+`getUserByAuthId` left-joins `user_preferences` and merges via `toActorUser()` in `src/lib/db/queries/users.ts`. Preference upserts live in `src/lib/db/queries/user-preferences.ts`. Do not read AI model or analytics timezone from `users` — those columns were moved off the table.
+
+Email notification opt-ins are separate tables (`user_email_notification_settings`, `user_email_notification_preferences`) and are not part of `ActorUser`. See the [email delivery runbook](./email-notification-delivery-runbook.md#preference-model--public-surfaces).
 
 ### How auth user ID is obtained
 
@@ -181,6 +195,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Call `getDb()` outside an auth wrapper                       | Use `withAuth` or `requestBoundary` (or the legacy shims)                          |
 | Pass user ID from request body to query functions            | Always use `ctx.user` / `actor` from the boundary callback                         |
+| Read `preferredAiModel` / `analyticsTimezone` from `users`   | Use `actor` fields or `src/lib/db/queries/user-preferences.ts`                     |
 | Import `@supabase/service-role` in API routes                | Use `getDb()` which returns the RLS-scoped client                                  |
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
@@ -193,6 +208,10 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Auth + legacy shims   | `src/lib/api/auth.ts`             |
 | Request boundary      | `src/lib/api/request-boundary.ts` |
 | Request context       | `src/lib/api/context.ts`          |
+| Actor / DbUser types  | `src/lib/db/queries/types/users.types.ts` |
+| User + preferences join | `src/lib/db/queries/users.ts`   |
+| Preference upserts    | `src/lib/db/queries/user-preferences.ts` |
+| Preferences schema    | `supabase/schema/tables/user-preferences.ts` |
 | RLS client factory    | `supabase/rls.ts`                 |
 | DB client resolver    | `supabase/runtime.ts`             |
 | Service-role client   | `supabase/service-role.ts`        |

@@ -3,14 +3,16 @@
 This contract defines what user-facing usage analytics may promise from current
 completion state and append-only learning activity history.
 
-## First Release Boundary
+## Shipped surface
 
-The first `/analytics/usage` release may show completion analytics and clearly
-labeled estimated completed learning time. After JCS-27, historical analytics
-may show streaks, weekly summaries, and trends only from recorded
-`learning_activity_events`.
+`/analytics/usage` shows:
 
-Use this wording for the MVP time metric:
+- Completion analytics and clearly labeled estimated completed learning time
+  from current-state projections
+- Streaks, weekly summaries, and trends from recorded `learning_activity_events`
+  only (no pre-launch backfill)
+
+Use this wording for the time metric:
 
 - Label: `Estimated completed learning time`
 - Helper copy: `Based on estimates for tasks currently marked complete. This is not recorded study time.`
@@ -31,23 +33,24 @@ Use this wording for the MVP time metric:
 | `weekly_summaries` | `learning_activity_events` | Historical | Summarize recorded progress-change activity in Monday-start learning weeks. |
 | `trends` | `learning_activity_events` | Historical | Show recent weekly progress-change and completed-event history from recorded events only. |
 
-## Future Activity Semantics
-
-JCS-27 creates `learning_activity_events` as the durable activity source. JCS-28
-exposes historical analytics from that source.
+## Activity history semantics
 
 - A study day is any calendar day with at least one recorded task progress
   status change.
 - Activity history is forward-only from the activity-history launch date.
 - `learning_activity_events` records task progress status changes at the
-  database boundary. Rows are deleted if their user, plan, module, or task is
-  deleted.
+  database boundary via trigger `record_learning_activity_event` on
+  `task_progress` (function `private.record_learning_activity_event()`).
+  Application code does not insert these rows. Authenticated role has SELECT
+  only.
+- Rows are deleted if their user, plan, module, or task is deleted.
 - Do not reconstruct complete pre-launch history from mutable current-state
   rows.
 - Streaks support both global and per-plan views.
-- Date bucketing uses `user_preferences.analytics_timezone`. New and existing
-  users default to `UTC`; `/analytics/usage` may update the setting from the
-  browser's IANA timezone after authenticated render.
+- Date bucketing uses `user_preferences.analytics_timezone` (exposed on
+  `ActorUser.analyticsTimezone`). New and existing users default to `UTC`;
+  `/analytics/usage` may update the setting from the browser's IANA timezone
+  after authenticated render.
 
 ## Guardrails
 
@@ -57,29 +60,32 @@ exposes historical analytics from that source.
   `task_progress.completed_at`, plan timestamps, or dashboard activity items.
 - Do not backfill full historical study sessions from data that was never
   recorded.
-- Reuse existing completion projections for JCS-26 instead of creating a
-  parallel completion model.
+- Reuse existing completion projections for current-state completion metrics
+  instead of creating a parallel completion model.
 - Keep operational telemetry, billing usage metrics, and user-facing learning
   analytics separate.
 
 ## Relevant Code Surfaces
 
-- `/analytics/usage` placeholder:
+- `/analytics/usage` page loader:
   `src/app/(app)/analytics/usage/page.tsx`
+- Chart / content UI:
+  `src/app/(app)/analytics/usage/usage-analytics-content.tsx`
+- Historical model (streaks, weeks, trends):
+  `src/app/(app)/analytics/usage/usage-analytics-model.ts`
+- Browser timezone sync:
+  `src/app/(app)/analytics/usage/usage-analytics-timezone-sync.tsx`
+- Timezone update action:
+  `src/app/(app)/analytics/usage/actions.ts`
 - Completion calculations:
   `src/features/plans/read-projection/completion-metrics.ts`
 - Plan summary projection:
   `src/features/plans/read-projection/summary-projection.ts`
-- Current task progress schema:
-  `supabase/schema/tables/tasks.ts`
-- Analytics timezone source:
-  `supabase/schema/tables/users.ts`
-
-## Downstream Issue Boundaries
-
-- JCS-26 may ship completion analytics and estimated completed learning time
-  from existing current-state projections.
-- JCS-27 adds append-only learning activity history in
-  `learning_activity_events`; no historical analytics ship in that slice.
-- JCS-28 builds streaks, weekly summaries, and trends only from recorded
-  activity history and the stored analytics timezone.
+- Activity event schema + trigger:
+  `supabase/schema/tables/tasks.ts` (`learning_activity_events`)
+- Activity event reads:
+  `src/lib/db/queries/tasks.ts` (`getLearningActivityEventsForUser`)
+- Analytics timezone storage:
+  `supabase/schema/tables/user-preferences.ts` (`analytics_timezone`)
+- Preference upserts:
+  `src/lib/db/queries/user-preferences.ts`

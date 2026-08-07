@@ -3,13 +3,18 @@
 ## Core entities and relationships
 
 ```text
+users 1—1 user_preferences
+users 1—1 user_email_notification_settings
+users 1—* user_email_notification_preferences   (PK: user_id + category)
 users 1—* learning_plans, usage_metrics, ai_usage_events, job_queue, task_progress
+users 1—* learning_activity_events              (append-only; written by DB trigger on task_progress)
 learning_plans 1—* modules, generation_attempts
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
 task_resources —* resources
 users 1—* oauth_state_tokens
 clerk_webhook_events  (service-owned idempotency ledger)
+email_notification_delivery_runs / email_notification_deliveries  (service-owned email scheduler ledger)
 ```
 
 ## Enums
@@ -29,6 +34,8 @@ Defined in `supabase/enums.ts`:
 | `subscription_tier`        | `free`, `starter`, `pro`                                                                                  |
 | `subscription_status`      | `active`, `canceled`, `past_due`, `trialing`                                                              |
 | `plan_origin`              | `ai`, `template`, `manual`                                                                                |
+| `email_notification_category` | `weekly_summary`, `daily_reminder`, `streak_reminder`                                                  |
+| `preferred_ai_model`       | Persistable OpenRouter model IDs (excludes the runtime `openrouter/free` router)                          |
 
 ## Key constraints
 
@@ -37,6 +44,9 @@ Defined in `supabase/enums.ts`:
 - **Email uniqueness:** `users.email` is unique
 - **Ownership integrity:** foreign keys generally cascade on delete
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
+- **Preferences split:** `preferred_ai_model` and `analytics_timezone` live on `user_preferences` (1:1 with `users`), not on `users`
+- **Email prefs:** per-category rows in `user_email_notification_preferences`; global optional kill switch on `user_email_notification_settings.unsubscribe_all_optional_emails`
+- **Activity history:** `learning_activity_events` is written only by `private.record_learning_activity_event()` on `task_progress` status changes (authenticated has SELECT only)
 
 ## Row Level Security (RLS)
 
@@ -61,6 +71,11 @@ RLS is enforced through request-scoped Postgres session state:
 | `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
 | `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
 | `clerk_webhook_events` | `(event_id)` unique, `(created_at)`                                                                         |
+| `user_preferences`   | PK `user_id`                                                                                                  |
+| `user_email_notification_preferences` | PK `(user_id, category)`                                                                       |
+| `learning_activity_events` | `(user_id, occurred_at)`, `(user_id, plan_id, occurred_at)`, `(task_id, occurred_at)`                  |
+| `email_notification_delivery_runs` | unique `(run_kind, scheduler_date_utc)`                                                          |
+| `email_notification_deliveries` | unique `(user_id, category, delivery_key)`                                                            |
 
 ## Ownership and retention
 
@@ -69,6 +84,8 @@ RLS is enforced through request-scoped Postgres session state:
 - `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `private.cleanup_retained_db_rows()` via Supabase Cron.
 - `clerk_webhook_events` keeps Clerk/Svix delivery IDs for 45 days before `private.cleanup_retained_db_rows()` prunes old idempotency rows.
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
+- `learning_activity_events` rows cascade-delete with their user/plan/module/task. Do not backfill pre-launch history from mutable current-state tables.
+- Email delivery run/ledger tables are service-role only; see `docs/architecture/email-notification-delivery-runbook.md`.
 
 Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).
 
@@ -77,9 +94,12 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 | Concern                  | Location                                         |
 | ------------------------ | ------------------------------------------------ |
 | Schema tables            | `supabase/schema/tables/`                        |
+| User preferences tables  | `supabase/schema/tables/user-preferences.ts`     |
+| Activity events          | `supabase/schema/tables/tasks.ts` (`learning_activity_events`) |
 | Enum definitions         | `supabase/enums.ts`                              |
 | Relations                | `supabase/schema/relations.ts`                   |
 | Query modules            | `src/lib/db/queries/`                            |
+| Preference queries       | `src/lib/db/queries/user-preferences.ts`         |
 | Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts` |
 | Usage tracking           | `supabase/usage.ts`                              |
 | Migrations               | `supabase/migrations/`                           |
@@ -94,3 +114,6 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting (including `lesson_modules_generated` on `usage_metrics`)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)
+- User preferences (`preferred_ai_model`, `analytics_timezone`) and optional email notification opt-ins
+- Forward-only learning activity history for usage analytics streaks/trends
+- Optional email notification delivery ledger (service-owned)
