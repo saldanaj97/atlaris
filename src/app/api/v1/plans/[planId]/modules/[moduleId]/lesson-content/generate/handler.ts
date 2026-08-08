@@ -71,6 +71,15 @@ function mapModuleLessonGenerationResult(
 ) {
   switch (result.kind) {
     case 'workflow_started':
+      return json(
+        ModuleLessonGenerationApiResponseSchema.parse({
+          state: 'generating',
+          planId,
+          moduleId,
+          workflowRunId: result.runId,
+        }),
+        { status: 202 },
+      );
     case 'in_flight':
       return json(
         ModuleLessonGenerationApiResponseSchema.parse({

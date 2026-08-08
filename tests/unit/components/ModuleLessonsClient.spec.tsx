@@ -213,6 +213,7 @@ describe('ModuleLessonsClient', () => {
             state: 'generating',
             planId: PLAN_ID,
             moduleId: MODULE_ID,
+            workflowRunId: 'wrun_current',
           },
           { status: 202 },
         ),
@@ -261,6 +262,7 @@ describe('ModuleLessonsClient', () => {
             state: 'generating',
             planId: PLAN_ID,
             moduleId: MODULE_ID,
+            workflowRunId: 'wrun_current',
           },
           { status: 202 },
         ),
@@ -270,6 +272,7 @@ describe('ModuleLessonsClient', () => {
           planId: PLAN_ID,
           moduleId: MODULE_ID,
           status: 'not_generated',
+          workflowRunId: 'wrun_previous',
         }),
       )
       .mockResolvedValueOnce(
@@ -311,7 +314,7 @@ describe('ModuleLessonsClient', () => {
     expect(refreshMock).toHaveBeenCalledTimes(2);
   });
 
-  it('stops polling when not_generated returns after generating (quota rollback)', async () => {
+  it('stops polling when the accepted workflow run rolls back before generating is observed', async () => {
     vi.useFakeTimers();
     const fetchMock = vi
       .fn()
@@ -321,6 +324,7 @@ describe('ModuleLessonsClient', () => {
             state: 'generating',
             planId: PLAN_ID,
             moduleId: MODULE_ID,
+            workflowRunId: 'wrun_current',
           },
           { status: 202 },
         ),
@@ -329,14 +333,8 @@ describe('ModuleLessonsClient', () => {
         mockJsonFetchResponse({
           planId: PLAN_ID,
           moduleId: MODULE_ID,
-          status: 'generating',
-        }),
-      )
-      .mockResolvedValueOnce(
-        mockJsonFetchResponse({
-          planId: PLAN_ID,
-          moduleId: MODULE_ID,
           status: 'not_generated',
+          workflowRunId: 'wrun_current',
         }),
       );
     vi.stubGlobal('fetch', fetchMock);
@@ -351,15 +349,6 @@ describe('ModuleLessonsClient', () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2500);
-    });
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(refreshMock).toHaveBeenCalledTimes(2);
     expect(
       screen.getByRole('button', { name: 'Generate lessons' }),

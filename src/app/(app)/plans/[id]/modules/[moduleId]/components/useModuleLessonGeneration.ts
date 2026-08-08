@@ -17,12 +17,13 @@ const MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS = 10_000;
 type LongGenerationKey = {
   planId: string;
   moduleId: string;
+  workflowRunId?: string;
 };
 
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
-    markGenerating: () => void;
+    markGenerating: (workflowRunId?: string) => void;
     setQuotaMessage: (value: string | null) => void;
     refresh: () => void;
   },
@@ -52,7 +53,7 @@ function applyModuleLessonGenerationResponse(
       refresh();
       return;
     case 'generating':
-      markGenerating();
+      markGenerating(body.workflowRunId);
       refresh();
       return;
     case 'ready':
@@ -89,6 +90,7 @@ export function useModuleLessonGeneration({
   const generationRequested =
     requestedGenerationKey?.planId === planId &&
     requestedGenerationKey.moduleId === moduleId;
+  const requestedWorkflowRunId = requestedGenerationKey?.workflowRunId;
   const generationTakingLong =
     (status === 'generating' || generationRequested) &&
     previousModulesComplete &&
@@ -180,15 +182,23 @@ export function useModuleLessonGeneration({
           return 'continue';
         }
 
-        // Pre-claim only: workflow may still show not_generated/failed until CAS.
-        // After generating was observed, those statuses are terminal (e.g. quota rollback).
+        // A matching workflow run proves the queued request claimed and settled.
+        // Otherwise, wait for a visible claim before treating it as terminal.
         if (
           generationRequested &&
-          !hasObservedGeneratingRef.current &&
           (parsed.data.status === 'not_generated' ||
             parsed.data.status === 'failed')
         ) {
-          return 'continue';
+          if (
+            requestedWorkflowRunId !== undefined &&
+            requestedWorkflowRunId === parsed.data.workflowRunId
+          ) {
+            return 'terminal';
+          }
+
+          if (!hasObservedGeneratingRef.current) {
+            return 'continue';
+          }
         }
 
         return 'terminal';
@@ -270,6 +280,7 @@ export function useModuleLessonGeneration({
     planId,
     previousModulesComplete,
     refresh,
+    requestedWorkflowRunId,
     status,
   ]);
 
@@ -329,7 +340,8 @@ export function useModuleLessonGeneration({
         }
 
         applyModuleLessonGenerationResponse(parsed.data, {
-          markGenerating: () => setRequestedGenerationKey({ planId, moduleId }),
+          markGenerating: (workflowRunId) =>
+            setRequestedGenerationKey({ planId, moduleId, workflowRunId }),
           setQuotaMessage,
           refresh,
         });

@@ -103,12 +103,16 @@ export async function getModuleLessonGenerationStatus(
   moduleId: string,
   userId: string,
   dbClient?: ModulesDbClient,
-): Promise<'not_generated' | 'generating' | 'ready' | 'failed' | null> {
+): Promise<{
+  status: 'not_generated' | 'generating' | 'ready' | 'failed';
+  workflowRunId?: string;
+} | null> {
   const client = dbClient ?? getDb();
 
   const [row] = await client
     .select({
       status: modules.lessonGenerationStatus,
+      metadata: modules.lessonGenerationMetadata,
     })
     .from(modules)
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
@@ -125,5 +129,10 @@ export async function getModuleLessonGenerationStatus(
     return null;
   }
 
-  return row.status;
+  return {
+    status: row.status,
+    ...(row.metadata?.workflow?.runId
+      ? { workflowRunId: row.metadata.workflow.runId }
+      : {}),
+  };
 }
