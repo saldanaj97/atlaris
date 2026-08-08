@@ -2,7 +2,7 @@ import type { PlainHandler } from '@/lib/api/auth';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import { applyVerifiedClerkBillingEvent } from '@/features/billing/clerk-billing/reconciliation';
-import { RateLimitError } from '@/lib/api/errors';
+import { RateLimitError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { clerkAuthEnv } from '@/lib/config/env';
@@ -58,7 +58,7 @@ export const POST: PlainHandler = withErrorBoundary(async (req: Request) => {
         { event: 'clerk_billing_webhook_rate_limited', requestId },
         'Clerk Billing webhook rate limited',
       );
-      return respond('rate limited', { status: 429 });
+      return attachRequestIdHeader(toErrorResponse(error), requestId);
     }
     throw error;
   }
