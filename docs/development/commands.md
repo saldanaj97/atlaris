@@ -15,11 +15,15 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
+pnpm dev:workflow     # Next.js dev server with Webpack (workflow bundling)
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
+pnpm dev:local-preview # 1Password Local Preview lane (Local World + atlaris-dev + Clerk Development)
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
 
-Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
+Use `pnpm dev:local-preview` for Workflow SDK **Local World** iteration against the hosted `atlaris-dev` database. It requires the 1Password CLI (`op`), access to the **Atlaris Local Preview** Environment, and does not create or mount secret env files. See [Workflow SDK — Local World vs Vercel Preview](../architecture/workflow-sdk.md#local-world-vs-vercel-preview).
+
+Use `pnpm deploy:preview` for the final hosted Vercel Preview acceptance check (Vercel Queue, callback security, platform observability). It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
 ## Build & Production
 

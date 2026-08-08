@@ -57,7 +57,7 @@ Key auth-related server variables include:
 
 ### Workflow SDK
 
-**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
+**Source of truth for workflow env vars.** For day-to-day Local World iteration with the three product flags enabled, use `pnpm dev:local-preview` (1Password **Atlaris Local Preview** Environment; see [Workflow SDK](../architecture/workflow-sdk.md#local-world-vs-vercel-preview)). For final hosted acceptance, configure the flags in Vercel's Preview environment and use `pnpm deploy:preview`. Ordinary local UI development (`pnpm dev`) should leave workflow flags unset.
 
 #### App-parsed product flags (`workflowEnv`)
 
@@ -74,9 +74,10 @@ Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off*
 
 #### SDK-read variables (not parsed in app code)
 
-| Variable             | Purpose                                                                                                                                                              | Required |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
+| Variable                | Purpose                                                                                                                                                              | Required |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `WORKFLOW_SOURCEMAP`    | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
+| `WORKFLOW_TARGET_WORLD` | Workflow SDK world selector. Local Preview forces `local`. Do not set this for ordinary `pnpm dev` UI work.                                                          | No       |
 
 Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 

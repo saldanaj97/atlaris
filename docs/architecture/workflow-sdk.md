@@ -1,7 +1,7 @@
 # Workflow SDK (durable execution)
 
 **Audience:** Developers operating or extending workflow-backed generation.
-**Last Updated:** May 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -65,9 +65,24 @@ To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow 
 
 Set the relevant env flag to `false` (or unset). The app falls back to the pre-workflow code paths (inline generation, queue drain without workflow, or synchronous SSE generation).
 
-## Preview testing
+## Local World vs Vercel Preview
 
-Workflow behavior is tested in Vercel Preview rather than through a local workflow runtime. Set the relevant feature flag in Vercel's Preview environment, then run:
+Use two distinct lanes:
+
+| Lane | Command | World | When to use |
+| ---- | ------- | ----- | ----------- |
+| **Local Preview** | `pnpm dev:local-preview` | Workflow SDK **Local World** (`WORKFLOW_TARGET_WORLD=local`) | Fast iteration for workflow acceptance (module lessons, success/failure/retry with mock AI) against the hosted `atlaris-dev` database and real Clerk Development. |
+| **Vercel Preview** | `pnpm deploy:preview` | Vercel Queue / hosted world | Final confirmation of Vercel Queue, hosted callback security, deployed environment selection, and platform observability. |
+
+### Local Preview (`pnpm dev:local-preview`)
+
+Injects the 1Password Environment **Atlaris Local Preview** at runtime via `op run` (no `.env.local` / secret-file mount). The launcher validates required variable **names**, confirms the `atlaris-dev` database host, forces Local World + `LOCAL_PRODUCT_TESTING=false`, clears `VERCEL*`, `WORKFLOW_CALLBACK_TOKEN`, and `DEV_AUTH_*`, then starts the Webpack workflow path (`next dev --webpack`).
+
+Inspect Local World runs locally — do **not** use the Vercel Workflow dashboard as evidence for this lane. Do not run migrations, resets, seeds, fixture scripts, Clerk reconciliation, cron, or maintenance from this lane (the hosted development database is write-capable).
+
+### Vercel Preview (`pnpm deploy:preview`)
+
+After Local Preview acceptance passes, set the relevant feature flag in Vercel's Preview environment and run:
 
 ```bash
 pnpm deploy:preview
@@ -98,6 +113,6 @@ Orchestration for product workflows is covered in `tests/unit/features/**/workfl
 - [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows-optional)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
 - [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and workflow-backed drain
 - [Environment variables](../development/environment.md#workflow-sdk) — feature flags and `workflowEnv`
-- [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands
+- [Development commands](../development/commands.md) — `pnpm dev:local-preview`, `pnpm deploy:preview`, and workflow test commands
 - [Test guidance](../../tests/AGENTS.md#workflow-sdk-tests) — Workflow SDK Vitest harness and changed-test workflow phase
 - [README testing](../../README.md#testing) — default changed bundle includes the workflow test phase
