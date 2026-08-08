@@ -84,6 +84,8 @@ export function useModuleLessonGeneration({
   const [longGenerationKey, setLongGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const generationPollCountRef = useRef(0);
+  // Distinguishes pre-claim queue latency from post-claim terminal rollbacks.
+  const hasObservedGeneratingRef = useRef(false);
   const generationRequested =
     requestedGenerationKey?.planId === planId &&
     requestedGenerationKey.moduleId === moduleId;
@@ -94,6 +96,10 @@ export function useModuleLessonGeneration({
     longGenerationKey.moduleId === moduleId;
 
   useEffect(() => {
+    if (status === 'generating') {
+      hasObservedGeneratingRef.current = true;
+    }
+
     if (status !== 'generating' && !generationRequested) {
       generationPollCountRef.current = 0;
       return;
@@ -169,9 +175,18 @@ export function useModuleLessonGeneration({
           return 'error';
         }
 
+        if (parsed.data.status === 'generating') {
+          hasObservedGeneratingRef.current = true;
+          return 'continue';
+        }
+
+        // Pre-claim only: workflow may still show not_generated/failed until CAS.
+        // After generating was observed, those statuses are terminal (e.g. quota rollback).
         if (
-          parsed.data.status === 'generating' ||
-          (generationRequested && parsed.data.status === 'not_generated')
+          generationRequested &&
+          !hasObservedGeneratingRef.current &&
+          (parsed.data.status === 'not_generated' ||
+            parsed.data.status === 'failed')
         ) {
           return 'continue';
         }
@@ -266,6 +281,7 @@ export function useModuleLessonGeneration({
     setQuotaMessage(null);
     setRequestedGenerationKey(null);
     setLongGenerationKey(null);
+    hasObservedGeneratingRef.current = false;
     startTransition(async () => {
       try {
         const response = await fetch(
