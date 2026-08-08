@@ -53,6 +53,7 @@ function createMockPlan(status: ClientPlanDetail['status']): ClientPlanDetail {
     completedMinutes: 0,
     completedModules: 0,
     attempts: 0,
+    attemptCap: 3,
     modules: [],
   };
 }

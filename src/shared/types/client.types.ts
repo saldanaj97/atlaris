@@ -77,6 +77,7 @@ export type ClientPlanDetail = {
   completedMinutes: number;
   completedModules: number;
   attempts: number;
+  attemptCap: number;
   status?: PlanStatus;
   latestAttempt?: ClientGenerationAttempt | null;
 };

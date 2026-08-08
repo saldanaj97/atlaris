@@ -4,10 +4,7 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 import { GenerationStatusContent } from './GenerationStatusContent';
 import { PendingPlanDetails } from './PendingPlanDetails';
-import {
-  buildPlanPendingViewState,
-  MAX_RETRY_ATTEMPTS,
-} from './plan-pending-view-state';
+import { buildPlanPendingViewState } from './plan-pending-view-state';
 import { PlanStatusHeader } from './PlanStatusHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
@@ -35,7 +32,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
     retryGeneration,
   } = useRetryGeneration(
     plan.id,
-    MAX_RETRY_ATTEMPTS,
+    plan.attemptCap,
     currentAttempts,
     planGenerationSession,
   );
@@ -50,6 +47,7 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
     status,
     retryStatus,
     attempts: currentAttempts,
+    attemptCap: plan.attemptCap,
     error,
     pollingError,
     retryError,

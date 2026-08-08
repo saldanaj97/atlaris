@@ -1,15 +1,16 @@
-import { MAX_RETRY_ATTEMPTS } from './plan-pending-view-state';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 export function RetryAction({
   attempts,
+  attemptCap,
   isRetrying,
   isRetryDisabled,
   onRetry,
 }: {
   attempts: number;
+  attemptCap: number;
   isRetrying: boolean;
   isRetryDisabled: boolean;
   onRetry: () => void;
@@ -24,7 +25,7 @@ export function RetryAction({
       ) : (
         <>
           <RefreshCw className='mr-2 size-4' />
-          Retry Generation ({MAX_RETRY_ATTEMPTS - attempts} attempts remaining)
+          Retry Generation ({attemptCap - attempts} attempts remaining)
         </>
       )}
     </Button>

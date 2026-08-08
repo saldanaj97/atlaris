@@ -18,6 +18,7 @@ import {
   buildTask,
   buildTaskResource,
 } from '../../fixtures/plan-detail';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   toClientGenerationAttempts,
   toClientPlanDetail,
@@ -121,6 +122,7 @@ describe('mapDetailToClient', () => {
     expect(result?.modules[0].tasks[0].status).toBe('completed');
     expect(result?.modules[0].tasks[0].resources).toHaveLength(1);
     expect(result?.status).toBe('ready');
+    expect(result?.attemptCap).toBe(getGenerationAttemptCap());
     expect(result?.latestAttempt).toBeDefined();
     expect(result?.latestAttempt?.model).toBe('gpt-4');
     expect(result).not.toHaveProperty('extractedContext');

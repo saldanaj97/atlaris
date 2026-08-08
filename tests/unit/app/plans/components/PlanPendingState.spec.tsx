@@ -1,6 +1,5 @@
 import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 
-import { MAX_RETRY_ATTEMPTS } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -115,13 +114,17 @@ describe('PlanPendingState', () => {
     ).toBeInTheDocument();
   });
 
-  it('uses the persisted attempt count for a reloaded failed plan', () => {
+  it('uses the configured attempt cap for a reloaded failed plan', () => {
     mockPlanStatus({ status: 'failed', attempts: 0 });
-    const plan = createTestPlanDetail({ status: 'failed', attempts: 1 });
+    const plan = createTestPlanDetail({
+      status: 'failed',
+      attempts: 3,
+      attemptCap: 5,
+    });
 
     render(<PlanPendingState plan={plan} />);
 
-    expect(screen.getByText('Attempt 1 of 3')).toBeInTheDocument();
+    expect(screen.getByText('Attempt 3 of 5')).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
         name: 'Retry Generation (2 attempts remaining)',
@@ -129,8 +132,8 @@ describe('PlanPendingState', () => {
     ).toBeInTheDocument();
     expect(mockUseRetryGeneration).toHaveBeenLastCalledWith(
       plan.id,
-      MAX_RETRY_ATTEMPTS,
-      1,
+      5,
+      3,
       expect.anything(),
     );
   });
@@ -177,7 +180,7 @@ describe('PlanPendingState', () => {
   it('shows a create-plan link instead of retry when retries are exhausted', () => {
     mockPlanStatus({
       status: 'failed',
-      attempts: MAX_RETRY_ATTEMPTS,
+      attempts: 2,
       error: 'Generation failed',
     });
 
@@ -185,7 +188,8 @@ describe('PlanPendingState', () => {
       <PlanPendingState
         plan={createTestPlanDetail({
           status: 'failed',
-          attempts: MAX_RETRY_ATTEMPTS,
+          attempts: 2,
+          attemptCap: 2,
         })}
       />,
     );
