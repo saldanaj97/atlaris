@@ -84,6 +84,7 @@ const clientPlanDetailSchema = z.strictObject({
   completedMinutes: z.number(),
   completedModules: z.number(),
   attempts: z.number(),
+  attemptCap: z.number(),
   status: z.string().optional(),
   latestAttempt: z.unknown().nullable(),
 });
