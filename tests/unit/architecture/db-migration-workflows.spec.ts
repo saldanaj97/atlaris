@@ -111,6 +111,9 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '20260811100200_enforce_resolved_email_delivery_payload_minimization.sql',
     );
+    expect(script).toContain(
+      '20260811100700_revoke_anon_unsafe_table_privileges.sql',
+    );
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -119,6 +122,27 @@ describe('Supabase migration workflows', () => {
     );
     expect(script).not.toContain('supabase migration repair');
     expect(script).not.toContain('db query --linked --file');
+  });
+
+  it('revokes unsafe anonymous table privileges for existing and future tables', () => {
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260811100700_revoke_anon_unsafe_table_privileges.sql',
+      ),
+      'utf8',
+    );
+
+    expect(migration).toContain(
+      'REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER\nON ALL TABLES IN SCHEMA public\nFROM PUBLIC, anon;',
+    );
+    expect(migration).toContain(
+      'ALTER DEFAULT PRIVILEGES\n  REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES\n  FROM PUBLIC, anon;',
+    );
+    expect(migration).toContain(
+      'ALTER DEFAULT PRIVILEGES IN SCHEMA public\n  REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES\n  FROM PUBLIC, anon;',
+    );
+    expect(migration).not.toMatch(/REVOKE SELECT/i);
   });
 
   it('attests effective privileges after each successful migration phase', () => {
@@ -242,7 +266,7 @@ describe('Supabase migration workflows', () => {
     const targetEntries = journal.entries.filter((entry) =>
       entry.tag.startsWith('20260811100'),
     );
-    expect(targetEntries.slice(-3)).toEqual([
+    expect(targetEntries.slice(-4)).toEqual([
       {
         idx: 51,
         version: '7',
@@ -264,8 +288,15 @@ describe('Supabase migration workflows', () => {
         tag: '20260811100600_drop_task_progress_delete_policy',
         breakpoints: true,
       },
+      {
+        idx: 54,
+        version: '7',
+        when: 1786442820000,
+        tag: '20260811100700_revoke_anon_unsafe_table_privileges',
+        breakpoints: true,
+      },
     ]);
-    for (const entry of targetEntries.slice(-3)) {
+    for (const entry of targetEntries.slice(-4)) {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
 
