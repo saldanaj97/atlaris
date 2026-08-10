@@ -1,4 +1,5 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL } from '../../../supabase/privileges/authenticated-table-privileges';
+import { TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/task-progress-authenticated-update-columns';
 import {
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL,
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL,
@@ -87,7 +88,9 @@ export async function ensureRlsRolesAndPermissions() {
     REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(
       AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL,
     )} FROM authenticated;
-    GRANT INSERT, UPDATE ON "task_progress" TO authenticated;
+    GRANT INSERT ON "task_progress" TO authenticated;
+    REVOKE UPDATE ON "task_progress" FROM authenticated;
+    GRANT UPDATE (${sql.raw(TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "task_progress" TO authenticated;
     REVOKE DELETE ON "task_progress" FROM authenticated;
   `);
 
