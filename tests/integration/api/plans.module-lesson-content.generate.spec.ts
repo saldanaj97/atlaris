@@ -150,6 +150,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       state: 'generating',
       planId: VALID_PLAN_ID,
       moduleId: VALID_MODULE_ID,
+      workflowRunId: 'wrun_test123',
     });
   });
 

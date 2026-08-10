@@ -6,6 +6,7 @@
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
+import { DEFAULT_ATTEMPT_CAP } from '@/shared/constants/generation';
 import { learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { randomUUID } from 'node:crypto';
@@ -159,6 +160,8 @@ export function createTestPlanDetail(
     totalMinutes: 90,
     completedMinutes: 45,
     completedModules: 0,
+    attempts: 0,
+    attemptCap: DEFAULT_ATTEMPT_CAP,
     status: 'ready',
     latestAttempt: null,
     modules: [

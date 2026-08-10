@@ -38,6 +38,7 @@ async function seedOwnedPlanForStatusApi(userId: string): Promise<void> {
 async function seedOwnedModule(
   status: LessonGenerationStatus,
   moduleId = VALID_MODULE_ID,
+  workflowRunId?: string,
 ): Promise<void> {
   await db.insert(modules).values({
     id: moduleId,
@@ -47,6 +48,18 @@ async function seedOwnedModule(
     description: 'Module for lesson status API tests',
     estimatedMinutes: 30,
     lessonGenerationStatus: status,
+    ...(workflowRunId
+      ? {
+          lessonGenerationMetadata: {
+            version: 1,
+            workflow: {
+              provider: 'workflow-sdk',
+              runId: workflowRunId,
+              startedAt: '2026-08-08T00:00:00.000Z',
+            },
+          },
+        }
+      : {}),
   });
 }
 
@@ -102,6 +115,27 @@ describe('GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status', ()
       });
     },
   );
+
+  it('returns the persisted workflow run ID when available', async () => {
+    const userId = await authenticateTestUser('workflow-run-id');
+    await seedOwnedPlanForStatusApi(userId);
+    await seedOwnedModule('not_generated', VALID_MODULE_ID, 'wrun_current');
+
+    const response = await GET(
+      createRequest(),
+      buildRouteHandlerContext({
+        planId: VALID_PLAN_ID,
+        moduleId: VALID_MODULE_ID,
+      }),
+    );
+
+    expect(await response.json()).toEqual({
+      planId: VALID_PLAN_ID,
+      moduleId: VALID_MODULE_ID,
+      status: 'not_generated',
+      workflowRunId: 'wrun_current',
+    });
+  });
 
   it('returns 404 for a missing module', async () => {
     const userId = await authenticateTestUser('missing-module');

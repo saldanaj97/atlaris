@@ -17,16 +17,18 @@ const MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS = 10_000;
 type LongGenerationKey = {
   planId: string;
   moduleId: string;
+  workflowRunId?: string;
 };
 
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
+    markGenerating: (workflowRunId?: string) => void;
     setQuotaMessage: (value: string | null) => void;
     refresh: () => void;
   },
 ): void {
-  const { setQuotaMessage, refresh } = params;
+  const { markGenerating, setQuotaMessage, refresh } = params;
 
   switch (body.state) {
     case 'quota_denied':
@@ -50,8 +52,11 @@ function applyModuleLessonGenerationResponse(
       toast.error('Plan or module was not found.');
       refresh();
       return;
-    case 'ready':
     case 'generating':
+      markGenerating(body.workflowRunId);
+      refresh();
+      return;
+    case 'ready':
       refresh();
       return;
     default: {
@@ -75,17 +80,29 @@ export function useModuleLessonGeneration({
   const { refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
   const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
+  const [requestedGenerationKey, setRequestedGenerationKey] =
+    useState<LongGenerationKey | null>(null);
   const [longGenerationKey, setLongGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const generationPollCountRef = useRef(0);
+  // Distinguishes pre-claim queue latency from post-claim terminal rollbacks.
+  const hasObservedGeneratingRef = useRef(false);
+  const generationRequested =
+    requestedGenerationKey?.planId === planId &&
+    requestedGenerationKey.moduleId === moduleId;
+  const requestedWorkflowRunId = requestedGenerationKey?.workflowRunId;
   const generationTakingLong =
-    status === 'generating' &&
+    (status === 'generating' || generationRequested) &&
     previousModulesComplete &&
     longGenerationKey?.planId === planId &&
     longGenerationKey.moduleId === moduleId;
 
   useEffect(() => {
-    if (status !== 'generating') {
+    if (status === 'generating') {
+      hasObservedGeneratingRef.current = true;
+    }
+
+    if (status !== 'generating' && !generationRequested) {
       generationPollCountRef.current = 0;
       return;
     }
@@ -161,7 +178,27 @@ export function useModuleLessonGeneration({
         }
 
         if (parsed.data.status === 'generating') {
+          hasObservedGeneratingRef.current = true;
           return 'continue';
+        }
+
+        // A matching workflow run proves the queued request claimed and settled.
+        // Otherwise, wait for a visible claim before treating it as terminal.
+        if (
+          generationRequested &&
+          (parsed.data.status === 'not_generated' ||
+            parsed.data.status === 'failed')
+        ) {
+          if (
+            requestedWorkflowRunId !== undefined &&
+            requestedWorkflowRunId === parsed.data.workflowRunId
+          ) {
+            return 'terminal';
+          }
+
+          if (!hasObservedGeneratingRef.current) {
+            return 'continue';
+          }
         }
 
         return 'terminal';
@@ -204,6 +241,7 @@ export function useModuleLessonGeneration({
               return;
             }
             if (outcome === 'terminal') {
+              setRequestedGenerationKey(null);
               refresh();
               return;
             }
@@ -236,7 +274,15 @@ export function useModuleLessonGeneration({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [moduleId, planId, previousModulesComplete, refresh, status]);
+  }, [
+    generationRequested,
+    moduleId,
+    planId,
+    previousModulesComplete,
+    refresh,
+    requestedWorkflowRunId,
+    status,
+  ]);
 
   const generateLessons = (): void => {
     if (!previousModulesComplete) {
@@ -244,7 +290,9 @@ export function useModuleLessonGeneration({
     }
 
     setQuotaMessage(null);
+    setRequestedGenerationKey(null);
     setLongGenerationKey(null);
+    hasObservedGeneratingRef.current = false;
     startTransition(async () => {
       try {
         const response = await fetch(
@@ -292,6 +340,8 @@ export function useModuleLessonGeneration({
         }
 
         applyModuleLessonGenerationResponse(parsed.data, {
+          markGenerating: (workflowRunId) =>
+            setRequestedGenerationKey({ planId, moduleId, workflowRunId }),
           setQuotaMessage,
           refresh,
         });
@@ -309,7 +359,7 @@ export function useModuleLessonGeneration({
   return {
     generateLessons,
     generationTakingLong,
-    isPending,
+    isPending: isPending || generationRequested,
     quotaMessage,
   };
 }

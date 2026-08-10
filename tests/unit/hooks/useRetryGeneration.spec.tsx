@@ -61,6 +61,38 @@ describe('useRetryGeneration', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('refreshes the router when a retry stream fails', async () => {
+    const startSession = vi.fn().mockRejectedValue(new Error('provider down'));
+    const session = createMockSession({ startSession });
+
+    const { result } = renderHook(() =>
+      useRetryGeneration('plan-1', 3, 1, session),
+    );
+
+    await act(async () => {
+      await expect(result.current.retryGeneration()).resolves.toBeUndefined();
+    });
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refresh the router when retry is aborted', async () => {
+    const startSession = vi
+      .fn()
+      .mockRejectedValue(new DOMException('Aborted', 'AbortError'));
+    const session = createMockSession({ startSession });
+
+    const { result } = renderHook(() =>
+      useRetryGeneration('plan-1', 3, 1, session),
+    );
+
+    await act(async () => {
+      await expect(result.current.retryGeneration()).resolves.toBeUndefined();
+    });
+
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
   it('disables retry while session is generating', () => {
     const session = createMockSession({
       state: {

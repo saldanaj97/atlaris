@@ -26,6 +26,7 @@ export type PlanDetailStatusSnapshot = {
   planId: string;
   status: ClientPlanStatus;
   attempts: number;
+  attemptCap: number;
   latestClassification: FailureClassification | 'unknown' | null;
   createdAt: string | undefined;
   updatedAt: string | undefined;
@@ -41,6 +42,7 @@ export function buildPlanDetailStatusSnapshot(params: {
   latestAttempt: Pick<GenerationAttempt, 'classification'> | null;
 }): PlanDetailStatusSnapshot {
   const { plan, hasModules, attemptsCount, latestAttempt } = params;
+  const attemptCap = getGenerationAttemptCap();
 
   return {
     planId: plan.id,
@@ -48,9 +50,10 @@ export function buildPlanDetailStatusSnapshot(params: {
       generationStatus: plan.generationStatus,
       hasModules,
       attemptsCount,
-      attemptCap: getGenerationAttemptCap(),
+      attemptCap,
     }),
     attempts: attemptsCount,
+    attemptCap,
     latestClassification: toStatusClassification(latestAttempt?.classification),
     createdAt: plan.createdAt?.toISOString(),
     updatedAt: plan.updatedAt?.toISOString(),

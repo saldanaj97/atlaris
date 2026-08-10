@@ -96,6 +96,7 @@ export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
     }),
     ModuleLessonGenerationApiBaseSchema.extend({
       state: z.literal('generating'),
+      workflowRunId: z.string().min(1).optional(),
     }),
     ModuleLessonGenerationApiBaseSchema.extend({
       state: z.literal('disabled'),
@@ -121,4 +122,5 @@ export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
 export const ModuleLessonGenerationStatusResponseSchema =
   ModuleLessonGenerationApiBaseSchema.extend({
     status: z.enum(['not_generated', 'generating', 'ready', 'failed']),
+    workflowRunId: z.string().min(1).optional(),
   });

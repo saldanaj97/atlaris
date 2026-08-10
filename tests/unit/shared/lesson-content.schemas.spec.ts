@@ -190,8 +190,9 @@ describe('lesson content Zod contracts', () => {
         state: 'generating',
         planId,
         moduleId,
+        workflowRunId: 'wrun_current',
       }),
-    ).toMatchObject({ state: 'generating' });
+    ).toMatchObject({ state: 'generating', workflowRunId: 'wrun_current' });
 
     expect(
       ModuleLessonGenerationApiResponseSchema.parse({
@@ -294,6 +295,20 @@ describe('module lesson generation status response schema', () => {
         status: 'processing',
       }),
     ).toThrow();
+  });
+
+  it('accepts a workflow run ID with a persisted status', () => {
+    const planId = randomUUID();
+    const moduleId = randomUUID();
+
+    expect(
+      ModuleLessonGenerationStatusResponseSchema.parse({
+        planId,
+        moduleId,
+        status: 'not_generated',
+        workflowRunId: 'wrun_current',
+      }),
+    ).toMatchObject({ workflowRunId: 'wrun_current' });
   });
 
   it('rejects invalid UUID params', () => {

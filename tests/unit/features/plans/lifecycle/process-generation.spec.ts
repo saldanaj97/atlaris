@@ -225,6 +225,45 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     );
   });
 
+  it('preserves workflow metadata when a reserved attempt fails', async () => {
+    const resv = makeAttemptReservation();
+    const workflowMetadata = {
+      provider: 'workflow-sdk' as const,
+      runId: 'run-provider-error',
+      startedAt: '2026-03-01T10:00:00.000Z',
+    };
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'provider_error',
+          error: new Error('provider down'),
+          durationMs: 300,
+          reservation: resv,
+          timedOut: false,
+          extendedTimeout: false,
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    await service.processGenerationAttempt({
+      ...validGenerationInput,
+      workflowMetadata,
+    });
+
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowMetadata: {
+          ...workflowMetadata,
+          completedAt: new Date(resv.startedAt.getTime() + 300).toISOString(),
+        },
+      }),
+    );
+  });
+
   it('does NOT record usage on retryable failure', async () => {
     const resv = makeAttemptReservation();
     ports = createMockPorts({

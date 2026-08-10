@@ -64,13 +64,44 @@ describe('Clerk billing webhook POST', () => {
 
   it('returns 429 when rate limited', async () => {
     mocks.checkIpRateLimit.mockImplementation(() => {
-      throw new RateLimitError('limited');
+      throw new RateLimitError('limited', {
+        retryAfter: 42,
+        limit: 100,
+        remaining: 0,
+        reset: 1234567890,
+      });
     });
 
     const response = await POST(request({ 'svix-id': 'evt_1' }));
 
     expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-ratelimit-limit')).toBe('100');
+    expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+    expect(response.headers.get('x-ratelimit-reset')).toBe('1234567890');
+    expect(response.headers.get('x-correlation-id')).toBe('req_webhook_test');
+    expect(response.headers.get('content-type')).toContain('application/json');
+    await expect(response.json()).resolves.toEqual({
+      error: 'limited',
+      code: 'RATE_LIMITED',
+      classification: 'rate_limit',
+      details: {
+        retryAfter: 42,
+        limit: 100,
+        remaining: 0,
+        reset: 1234567890,
+      },
+      retryAfter: 42,
+    });
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      {
+        event: 'clerk_billing_webhook_rate_limited',
+        requestId: 'req_webhook_test',
+      },
+      'Clerk Billing webhook rate limited',
+    );
     expect(mocks.verifyWebhook).not.toHaveBeenCalled();
+    expect(mocks.applyVerifiedClerkBillingEvent).not.toHaveBeenCalled();
   });
 
   it('returns 400 without a svix-id', async () => {

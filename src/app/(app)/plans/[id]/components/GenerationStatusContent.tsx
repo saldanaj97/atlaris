@@ -40,7 +40,12 @@ export function GenerationStatusContent({
         />
       );
     case 'processing':
-      return <ProcessingPanel attempts={viewState.attempts} />;
+      return (
+        <ProcessingPanel
+          attempts={viewState.attempts}
+          attemptCap={viewState.attemptCap}
+        />
+      );
     case 'pending':
       return <PendingPanel />;
     case 'ready':

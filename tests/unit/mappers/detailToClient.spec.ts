@@ -18,6 +18,7 @@ import {
   buildTask,
   buildTaskResource,
 } from '../../fixtures/plan-detail';
+import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
   toClientGenerationAttempts,
   toClientPlanDetail,
@@ -121,6 +122,7 @@ describe('mapDetailToClient', () => {
     expect(result?.modules[0].tasks[0].status).toBe('completed');
     expect(result?.modules[0].tasks[0].resources).toHaveLength(1);
     expect(result?.status).toBe('ready');
+    expect(result?.attemptCap).toBe(getGenerationAttemptCap());
     expect(result?.latestAttempt).toBeDefined();
     expect(result?.latestAttempt?.model).toBe('gpt-4');
     expect(result).not.toHaveProperty('extractedContext');
@@ -313,10 +315,12 @@ describe('mapDetailToClient', () => {
   it('should derive status as "failed" when plan generation status is failed', () => {
     const detail = buildPlanDetail({
       plan: buildPlan({ generationStatus: 'failed', modules: [] }),
+      attemptsCount: 1,
     });
 
     const result = toClientPlanDetail(detail);
     expect(result?.status).toBe('failed');
+    expect(result).toMatchObject({ attempts: 1 });
   });
 
   it('should derive status as "processing" when generation is in progress with no modules', () => {

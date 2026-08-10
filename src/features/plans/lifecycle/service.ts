@@ -386,6 +386,17 @@ export class PlanLifecycleService {
           timedOut: generationResult.timedOut ?? false,
           extendedTimeout: generationResult.extendedTimeout ?? false,
           providerMetadata: generationResult.metadata,
+          ...(input.workflowMetadata
+            ? {
+                workflowMetadata: {
+                  ...input.workflowMetadata,
+                  completedAt: deterministicCompletedAt(
+                    reservation.startedAt,
+                    generationResult.durationMs,
+                  ),
+                },
+              }
+            : {}),
         });
       } else {
         logger.error(

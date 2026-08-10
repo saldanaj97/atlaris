@@ -235,22 +235,23 @@ export async function getModuleLessonGenerationStatusForRead(params: {
   planId: string;
   moduleId: string;
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
+  workflowRunId?: string;
 } | null> {
-  const status = await getModuleLessonGenerationStatus(
+  const snapshot = await getModuleLessonGenerationStatus(
     params.planId,
     params.moduleId,
     params.userId,
     params.dbClient,
   );
 
-  if (!status) {
+  if (!snapshot) {
     return null;
   }
 
   return {
     planId: params.planId,
     moduleId: params.moduleId,
-    status,
+    ...snapshot,
   };
 }
 
