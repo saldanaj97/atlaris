@@ -14,9 +14,11 @@ describe('proxy security headers', () => {
         .find((directive) => directive.startsWith('script-src ')) ?? '';
 
     expect(scriptSrc).toBe(
-      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://js.stripe.com",
     );
-    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com");
+    expect(csp).toContain(
+      "frame-src 'self' https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
+    );
     expect(csp).toContain("connect-src 'self' https: wss:");
     expect(scriptSrc).not.toContain("'unsafe-inline'");
     expect(csp).not.toContain("'unsafe-eval'");

@@ -8,6 +8,7 @@ import type {
   LightweightModuleMetricsRow,
   LightweightPlanListRow,
   PlanAttemptsPlanMeta,
+  PlanDetailTaskRow,
   PlanProgressStatusRow,
   PlanSummaryTaskRow,
 } from '@/lib/db/queries/types/plans.types';
@@ -16,7 +17,6 @@ import type {
   GenerationAttempt,
   LearningPlan,
   Module,
-  Task,
   TaskProgress,
 } from '@/shared/types/db.types';
 
@@ -40,14 +40,13 @@ import {
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
-type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
+export type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
 
 type PlanSummaryRows = {
   planRows: LearningPlan[];
   moduleRows: Module[];
   taskRows: PlanSummaryTaskRow[];
   progressRows: PlanProgressStatusRow[];
-  attemptCountsByPlanId: Map<string, number>;
 };
 
 type LightweightPlanSummaryRows = {
@@ -58,7 +57,7 @@ type LightweightPlanSummaryRows = {
 type LearningPlanDetailRows = {
   plan: LearningPlan;
   moduleRows: Module[];
-  taskRows: Task[];
+  taskRows: PlanDetailTaskRow[];
   progressRows: TaskProgress[];
   resourceRows: TaskResourceWithResource[];
   latestAttempt: GenerationAttempt | null;
@@ -78,6 +77,11 @@ type PlanStatusRows = {
 /** Maximum number of generation attempts to return in attempt history queries. */
 const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
 const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
+type PlanListOrdering = 'createdAt' | 'updatedAt';
+type PlanListOptions = PaginationOptions & {
+  orderBy?: PlanListOrdering;
+  planIds?: string[];
+};
 type PlanGenerationStatus =
   (typeof learningPlans.$inferSelect)['generationStatus'];
 
@@ -111,14 +115,22 @@ const LIGHTWEIGHT_PLAN_LIST_SELECTION = {
 
 function applyPlanListOrderingAndPagination(
   planQuery: {
-    orderBy: <TOrderByArg>(column: TOrderByArg) => unknown;
+    orderBy: (...columns: ReturnType<typeof desc>[]) => unknown;
     limit: (n: number) => unknown;
     offset: (n: number) => unknown;
   },
-  orderByColumn: ReturnType<typeof desc>,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): void {
-  planQuery.orderBy(orderByColumn);
+  if (options?.orderBy === 'updatedAt') {
+    planQuery.orderBy(
+      desc(
+        sql`coalesce(${learningPlans.updatedAt}, ${learningPlans.createdAt})`,
+      ),
+      desc(learningPlans.id),
+    );
+  } else {
+    planQuery.orderBy(desc(learningPlans.createdAt), desc(learningPlans.id));
+  }
   if (options?.limit !== undefined) {
     planQuery.limit(options.limit);
   }
@@ -127,59 +139,42 @@ function applyPlanListOrderingAndPagination(
   }
 }
 
-function userPlanListWhere(userId: string) {
+function userPlanListWhere(userId: string, planIds?: string[]) {
+  if (planIds) {
+    return and(
+      eq(learningPlans.userId, userId),
+      inArray(learningPlans.id, planIds),
+    );
+  }
+
   return eq(learningPlans.userId, userId);
 }
 
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): Promise<LearningPlan[]>;
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options: PaginationOptions | undefined,
+  options: PlanListOptions | undefined,
   selection: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION,
 ): Promise<LightweightPlanListRow[]>;
 async function fetchUserPlanListRows(
   client: DbClient,
   userId: string,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
   selection?: typeof LIGHTWEIGHT_PLAN_LIST_SELECTION,
 ): Promise<LearningPlan[] | LightweightPlanListRow[]> {
   const planQuery = (selection ? client.select(selection) : client.select())
     .from(learningPlans)
-    .where(userPlanListWhere(userId))
+    .where(userPlanListWhere(userId, options?.planIds))
     .$dynamic();
 
-  applyPlanListOrderingAndPagination(
-    planQuery,
-    desc(learningPlans.createdAt),
-    options,
-  );
+  applyPlanListOrderingAndPagination(planQuery, options);
 
   return await planQuery;
-}
-
-async function getPlanAttemptCounts(
-  client: DbClient,
-  planIds: string[],
-): Promise<Map<string, number>> {
-  if (planIds.length === 0) {
-    return new Map();
-  }
-
-  const rows = await client
-    .select({
-      planId: generationAttempts.planId,
-      attemptsCount: sql<number>`count(*)::int`,
-    })
-    .from(generationAttempts)
-    .where(inArray(generationAttempts.planId, planIds))
-    .groupBy(generationAttempts.planId);
-
-  return new Map(rows.map((row) => [row.planId, row.attemptsCount]));
 }
 
 function isDeletablePlanStatus(
@@ -193,7 +188,7 @@ function isDeletablePlanStatus(
 export async function getPlanSummaryRowsForUser(
   userId: string,
   dbClient?: DbClient,
-  options?: PaginationOptions,
+  options?: PlanListOptions,
 ): Promise<PlanSummaryRows> {
   const client = dbClient ?? getDb();
   assertValidPaginationOptions(options);
@@ -205,13 +200,12 @@ export async function getPlanSummaryRowsForUser(
       moduleRows: [],
       taskRows: [],
       progressRows: [],
-      attemptCountsByPlanId: new Map(),
     };
   }
 
   const planIds = planRows.map((plan) => plan.id);
 
-  const [moduleRows, taskRows, attemptCountsByPlanId] = await Promise.all([
+  const [moduleRows, taskRows] = await Promise.all([
     client
       .select()
       .from(modules)
@@ -227,7 +221,6 @@ export async function getPlanSummaryRowsForUser(
       .from(tasks)
       .innerJoin(modules, eq(tasks.moduleId, modules.id))
       .where(inArray(modules.planId, planIds)),
-    getPlanAttemptCounts(client, planIds),
   ]);
 
   const taskIds = taskRows.map((task) => task.id);
@@ -243,7 +236,6 @@ export async function getPlanSummaryRowsForUser(
     moduleRows,
     taskRows,
     progressRows,
-    attemptCountsByPlanId,
   };
 }
 
@@ -345,9 +337,19 @@ export async function getLearningPlanDetailRows(
 
   const moduleIds = moduleRows.map((module) => module.id);
 
-  const taskRows = moduleIds.length
+  const taskRows: PlanDetailTaskRow[] = moduleIds.length
     ? await client
-        .select()
+        .select({
+          id: tasks.id,
+          moduleId: tasks.moduleId,
+          order: tasks.order,
+          title: tasks.title,
+          description: tasks.description,
+          estimatedMinutes: tasks.estimatedMinutes,
+          hasMicroExplanation: tasks.hasMicroExplanation,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        })
         .from(tasks)
         .where(inArray(tasks.moduleId, moduleIds))
         .orderBy(asc(tasks.order))

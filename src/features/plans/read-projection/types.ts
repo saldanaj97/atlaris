@@ -1,10 +1,8 @@
-import type { DbClient } from '@/lib/db/types';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import type { LessonContent } from '@/shared/types/lesson-content.types';
 
-export type PlanDbClient = DbClient;
-
 export type PlanReadStatus =
+  | 'not_started'
   | 'active'
   | 'paused'
   | 'completed'
@@ -13,9 +11,61 @@ export type PlanReadStatus =
 
 /**
  * List-filter status used by plan read projections.
- * `inactive` is a UI aggregate for non-active plan rows rather than a DB status.
+ * `inactive` is the canonical URL/UI aggregate for paused rows.
+ * `not_started` is the URL/UI bucket for ready plans with no completed tasks.
  */
-export type FilterStatus = 'all' | PlanReadStatus | 'inactive';
+export type FilterStatus =
+  | 'all'
+  | Exclude<PlanReadStatus, 'paused'>
+  | 'inactive';
+
+export const PLAN_LIST_PAGE_SIZE = 20 as const;
+
+export const PLAN_LIST_SORTS = [
+  'recommended',
+  'recently_updated',
+  'newest',
+  'topic_asc',
+  'topic_desc',
+  'progress_asc',
+  'progress_desc',
+  'status_asc',
+  'status_desc',
+  'updated_asc',
+] as const;
+
+export type PlanListSort = (typeof PLAN_LIST_SORTS)[number];
+
+export type PlanListQuery = {
+  page: number;
+  search: string;
+  status: FilterStatus;
+  sort: PlanListSort;
+};
+
+export type PlanListItem = {
+  id: string;
+  topic: string;
+  createdAt: string;
+  updatedAt: string | null;
+  status: PlanReadStatus;
+  completion: number;
+  completedTasks: number;
+  totalTasks: number;
+};
+
+export type PlanListStatusCounts = Record<PlanReadStatus, number>;
+
+export type PlanListPage = {
+  items: PlanListItem[];
+  page: number;
+  pageSize: typeof PLAN_LIST_PAGE_SIZE;
+  totalItems: number;
+  totalPages: number;
+  totalSearchResults: number;
+  statusCounts: PlanListStatusCounts;
+  referenceTimestamp: string;
+};
 
 /** Flat resource on module-detail task (type/title/url map to UI). */
 export type ModuleDetailResource = {

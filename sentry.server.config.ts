@@ -2,7 +2,9 @@
 // The config you add here will be used whenever the server handles a request.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
+import { sentryEnv } from '@/lib/config/env/observability';
 import { shouldEnableLogs, tracesSampler } from '@/lib/observability/sampling';
+import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
 
 Sentry.init({
@@ -11,6 +13,8 @@ Sentry.init({
   // Context-aware trace sampling — see src/lib/observability/sampling.ts for
   // per-route rates and rationale.
   tracesSampler,
+
+  beforeSend: beforeSendSentryEvent,
 
   // SDK log shipping — disabled in production to reduce ingest volume.
   // Errors are still captured via captureException.
@@ -29,7 +33,7 @@ Sentry.init({
     Sentry.vercelAIIntegration({ force: true }),
   ],
 
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // Forward user PII only when explicitly opted in (default false). Mirrors the
+  // client gate in src/instrumentation-client.ts.
+  sendDefaultPii: sentryEnv.sendDefaultPii,
 });

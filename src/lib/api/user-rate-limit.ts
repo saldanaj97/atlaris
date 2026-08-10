@@ -91,15 +91,6 @@ export const USER_RATE_LIMIT_CONFIGS = {
   },
 
   /**
-   * SPECIAL - Stripe operations (checkout, portal)
-   * These create real financial transactions.
-   */
-  billing: {
-    maxRequests: 10,
-    windowMs: 60 * 1000, // 10 requests per minute
-  },
-
-  /**
    * SPECIAL - OAuth flows
    * Auth endpoints need protection from brute force but allow normal flows.
    */

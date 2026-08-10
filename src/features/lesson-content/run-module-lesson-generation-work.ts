@@ -12,7 +12,6 @@ import {
   resolveTimeoutConfig,
   setupAbortAndTimeout,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
-import { ParserError } from '@/features/ai/parser';
 import { safeNormalizeUsage } from '@/features/ai/usage';
 import {
   type LessonGenerationQuotaWorkResult,
@@ -34,17 +33,7 @@ import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 type LessonQuotaConsumed = { durationMs: number };
-type LessonQuotaReverted = { kind: 'failed'; message: string };
-
-function errorToPersistedMessage(error: unknown): string {
-  if (error instanceof ParserError) {
-    return error.message;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
+type LessonQuotaReverted = { kind: 'failed' };
 
 /**
  * Provider + quota + persist after a successful CAS claim. Safe for workflow replay
@@ -54,7 +43,16 @@ export async function runModuleLessonGenerationWork(
   params: RunModuleLessonGenerationAfterClaimParams,
   deps: GenerateModuleLessonsDeps = {},
 ): Promise<ModuleLessonGenerationWorkResult> {
+  const serverDbClient = deps.serverDbClient ?? serviceRoleDb;
+  const workflowRunId = params.generationMetadata?.workflow?.runId;
+
   if (!lessonContentEnv.generationEnabled) {
+    await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
+      userId: params.userId,
+      planId: params.planId,
+      moduleId: params.moduleId,
+      workflowRunId,
+    });
     return { kind: 'disabled' };
   }
 
@@ -63,7 +61,6 @@ export async function runModuleLessonGenerationWork(
   const timeoutConfig = resolveTimeoutConfig(params.timeoutConfig, clock);
   const runReserved =
     deps.runLessonQuotaReserved ?? runLessonGenerationQuotaReserved;
-  const serverDbClient = deps.serverDbClient ?? serviceRoleDb;
 
   const expectedTaskIds = params.load.tasks.map((t) => t.id);
   const promptInput: ModuleLessonBatchPromptInput = {
@@ -177,7 +174,6 @@ export async function runModuleLessonGenerationWork(
             },
           };
         } catch (error) {
-          const message = errorToPersistedMessage(error);
           logger.warn(
             { err: error, planId: params.planId, moduleId: params.moduleId },
             'Module lesson batch generation failed',
@@ -188,7 +184,6 @@ export async function runModuleLessonGenerationWork(
               userId: params.userId,
               planId: params.planId,
               moduleId: params.moduleId,
-              message,
               now: nowFn,
             });
           } catch (persistErr) {
@@ -205,7 +200,7 @@ export async function runModuleLessonGenerationWork(
 
           return {
             disposition: 'revert',
-            value: { kind: 'failed' as const, message },
+            value: { kind: 'failed' as const },
           };
         } finally {
           if (lifecycle) {
@@ -219,12 +214,12 @@ export async function runModuleLessonGenerationWork(
       },
     });
   } catch (error) {
-    const message = errorToPersistedMessage(error);
     try {
       await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
+        workflowRunId,
       });
     } catch (revertErr) {
       logger.error(
@@ -244,7 +239,7 @@ export async function runModuleLessonGenerationWork(
       },
       'Module lesson quota reservation failed',
     );
-    return { kind: 'failed', message };
+    return { kind: 'failed' };
   }
 
   if (!quotaResult.ok) {
@@ -253,6 +248,7 @@ export async function runModuleLessonGenerationWork(
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
+        workflowRunId,
       });
     } catch (revertErr) {
       logger.error(
@@ -286,9 +282,5 @@ export async function runModuleLessonGenerationWork(
     );
   }
 
-  return { kind: 'failed', message: quotaResult.value.message };
+  return { kind: 'failed' };
 }
-
-/** @deprecated Use `runModuleLessonGenerationWork`. */
-export const runModuleLessonGenerationAfterClaim =
-  runModuleLessonGenerationWork;

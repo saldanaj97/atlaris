@@ -93,3 +93,46 @@ export async function getModuleDetailRows(
     resourceRows,
   };
 }
+
+/**
+ * Returns the owned module's lesson generation status, or null when missing or
+ * unauthorized. Uses the injected request DB client for RLS-scoped reads.
+ */
+export async function getModuleLessonGenerationStatus(
+  planId: string,
+  moduleId: string,
+  userId: string,
+  dbClient?: ModulesDbClient,
+): Promise<{
+  status: 'not_generated' | 'generating' | 'ready' | 'failed';
+  workflowRunId?: string;
+} | null> {
+  const client = dbClient ?? getDb();
+
+  const [row] = await client
+    .select({
+      status: modules.lessonGenerationStatus,
+      metadata: modules.lessonGenerationMetadata,
+    })
+    .from(modules)
+    .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
+    .where(
+      and(
+        eq(modules.id, moduleId),
+        eq(modules.planId, planId),
+        eq(learningPlans.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    status: row.status,
+    ...(row.metadata?.workflow?.runId
+      ? { workflowRunId: row.metadata.workflow.runId }
+      : {}),
+  };
+}

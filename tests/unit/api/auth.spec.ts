@@ -12,13 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getUserByAuthId: vi.fn(),
-  createUser: vi.fn(),
+  provisionUser: vi.fn(),
   getSession: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/users', () => ({
   getUserByAuthId: mocks.getUserByAuthId,
-  createUser: mocks.createUser,
+}));
+
+vi.mock('@/features/auth/user-provisioning', () => ({
+  provisionUserFromVerifiedAuthSession: mocks.provisionUser,
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -28,13 +31,14 @@ vi.mock('@/lib/auth/server', () => ({
 }));
 
 const mockGetUserByAuthId = mocks.getUserByAuthId;
-const mockCreateUser = mocks.createUser;
+const mockProvisionUser = mocks.provisionUser;
 const mockGetSession = mocks.getSession;
 
 describe('auth helpers', () => {
   beforeEach(() => {
+    vi.stubEnv('LOCAL_PRODUCT_TESTING', 'false');
     mockGetUserByAuthId.mockReset();
-    mockCreateUser.mockReset();
+    mockProvisionUser.mockReset();
     mockGetSession.mockReset();
     clearTestUser();
   });
@@ -58,7 +62,23 @@ describe('auth helpers', () => {
     mockGetUserByAuthId.mockResolvedValue(user);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(user);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
+  });
+
+  it('requireCurrentUserRecord rejects a tombstoned local user', async () => {
+    const user = buildUserFixture({
+      authUserId: 'auth_deleted',
+      clerkDeletedAt: new Date('2026-08-11T10:02:00.000Z'),
+    });
+
+    setTestUser('auth_deleted');
+    mockGetUserByAuthId.mockResolvedValue(user);
+
+    await expect(requireCurrentUserRecord()).rejects.toThrow(
+      'Auth user has been deleted.',
+    );
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord provisions a missing user from Clerk session data', async () => {
@@ -70,27 +90,26 @@ describe('auth helpers', () => {
     });
 
     setTestUser('auth_created');
-    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetUserByAuthId.mockResolvedValueOnce(null);
     mockGetSession.mockResolvedValue({
       data: {
         user: {
           id: 'auth_created',
           email: 'created@example.com',
           name: 'Created User',
+          clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
         },
       },
     });
-    mockCreateUser.mockResolvedValue(created);
+    mockProvisionUser.mockResolvedValue(created);
 
     await expect(requireCurrentUserRecord()).resolves.toEqual(created);
-    expect(mockCreateUser).toHaveBeenCalledWith(
-      {
-        authUserId: 'auth_created',
-        email: 'created@example.com',
-        name: 'Created User',
-      },
-      undefined,
-    );
+    expect(mockProvisionUser).toHaveBeenCalledWith({
+      authUserId: 'auth_created',
+      email: 'created@example.com',
+      name: 'Created User',
+      clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
+    });
   });
 
   it('requireCurrentUserRecord fails closed when Clerk user data is unavailable', async () => {
@@ -99,7 +118,27 @@ describe('auth helpers', () => {
     mockGetSession.mockResolvedValue({ data: null });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
+  });
+
+  it('requireCurrentUserRecord rejects a Clerk session identity change before provisioning', async () => {
+    setTestUser('auth_original');
+    mockGetUserByAuthId.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue({
+      data: {
+        user: {
+          id: 'auth_replaced',
+          email: 'replaced@example.com',
+          name: 'Replaced User',
+          clerkUserUpdatedAt: new Date('2026-08-05T00:00:00.000Z'),
+        },
+      },
+    });
+
+    await expect(requireCurrentUserRecord()).rejects.toThrow(
+      'Auth user changed during provisioning.',
+    );
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('requireCurrentUserRecord fails closed when the Clerk user has no email', async () => {
@@ -116,7 +155,7 @@ describe('auth helpers', () => {
     });
 
     await expect(requireCurrentUserRecord()).rejects.toBeInstanceOf(AuthError);
-    expect(mockCreateUser).not.toHaveBeenCalled();
+    expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
   it('withServerComponentContext installs request context in test mode', async () => {
@@ -135,13 +174,8 @@ describe('auth helpers', () => {
         const requestContext = getRequestContext();
 
         expect(currentUser).toEqual(user);
-        expect(requestContext).toMatchObject({
-          userId: 'auth_1',
-          user: {
-            id: 'user_1',
-            authUserId: 'auth_1',
-          },
-        });
+        expect(requestContext?.userId).toBe('auth_1');
+        expect(requestContext?.user).toEqual(user);
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.id;
@@ -166,13 +200,8 @@ describe('auth helpers', () => {
 
         expect(currentUser).toEqual(user);
         expect(db).toBe(serviceDb);
-        expect(requestContext).toMatchObject({
-          userId: 'auth_2',
-          user: {
-            id: 'user_2',
-            authUserId: 'auth_2',
-          },
-        });
+        expect(requestContext?.userId).toBe('auth_2');
+        expect(requestContext?.user).toEqual(user);
         expect(requestContext?.db).toBe(serviceDb);
 
         return currentUser.authUserId;

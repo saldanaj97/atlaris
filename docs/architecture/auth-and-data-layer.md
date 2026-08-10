@@ -2,7 +2,7 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
-**Last Updated:** May 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -48,15 +48,22 @@ export const GET = withAuth(async ({ user }) => {
 
 // Server action (preferred) — requestBoundary.action
 import { requestBoundary } from '@/lib/api/request-boundary';
-export async function getPlanForPage(planId: string) {
-  const result = await requestBoundary.action(async ({ actor }) => {
-    return getLearningPlanDetail(planId, actor.id);
+export async function updatePlanAction(planId: string) {
+  const result = await requestBoundary.action(async ({ actor, db }) => {
+    return updatePlan(planId, actor.id, db);
   });
-  if (result === null) return unauthorized();
+  if (result === null) throw new Error('You must be signed in.');
   return result;
 }
 
-// Server component (preferred) — requestBoundary.component
+// Server component (preferred) — requestBoundary.component + page data module
+import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
+export async function PlanDetailContent({ planId }: { planId: string }) {
+  const planResult = await loadPlanForPage(planId);
+  // handle planResult (success / NOT_FOUND / UNAUTHORIZED)
+}
+
+// Lower-level component boundary (same as loadPlanForPage internally)
 import { requestBoundary } from '@/lib/api/request-boundary';
 const tier = await requestBoundary.component(
   async ({ actor }) => actor.subscriptionTier,
@@ -95,7 +102,7 @@ getEffectiveAuthUserId()
 └── Production → Clerk auth() / currentUser() → Clerk user id
 ```
 
-The `DEV_AUTH_USER_ID` override is **impossible in production** — it's gated by `NODE_ENV` which is a process-level environment variable, not a request parameter.
+The `DEV_AUTH_USER_ID` override is unavailable to a valid hosted runtime: the import-time hosted guard requires `NODE_ENV=production` and rejects both `DEV_AUTH_USER_ID` and `VITEST_WORKER_ID`. `NODE_ENV` alone is not the security boundary because Vitest's marker independently enables test behavior.
 
 For security-sensitive flows (OAuth callbacks), use `getAuthUserId()` instead — it always reads the real session, ignoring dev overrides.
 
@@ -144,7 +151,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
 | Workers / background jobs    | `db` from `@supabase/service-role` | No user session exists                                 |
-| Stripe webhooks              | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
+| Clerk webhooks               | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
 
@@ -162,11 +169,32 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 2. **Double-layered access control.** Application queries filter by `user.id` AND Postgres RLS policies enforce the same filter at the database level. Even if app code has a bug, the database blocks cross-tenant access.
 
-3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). `STRIPE_WEBHOOK_DEV_MODE` has a startup assertion that crashes the process if enabled outside dev/test.
+3. **Dev overrides cannot leak to production.** `DEV_AUTH_USER_ID` is gated by `NODE_ENV` (process-level). Clerk Billing local fixtures run through an explicit script and do not bypass the production webhook signature check.
+
+   On first authenticated use, the app stores only Clerk's exact verified primary email and Clerk update timestamp. If the local row is tombstoned after a signed `user.deleted` event, authentication fails closed; an event cannot silently revive it.
 
 4. **Service-role usage is restricted.** Do not import `@supabase/service-role` from `src/app/api/**`, `src/lib/api/**`, or `src/lib/integrations/**` (enforce via architecture review and Oxlint).
 
 5. **RLS connections are isolated.** Each request gets a dedicated non-pooled connection (`max: 1`). Session variables cannot leak between requests. Cleanup is guaranteed via `finally`.
+
+## Settings ledger (account UI)
+
+Settings is a **single-page ledger** at `/settings`, not an embedded Clerk `UserProfile`. Profile edits go through the custom `ProfileForm` and app APIs (`PUT /api/v1/user/profile`); entitlements stay on the Postgres projection updated by Clerk Billing webhooks.
+
+| Section id | Hash deep link | Contents |
+| ---------- | -------------- | -------- |
+| `profile` | `/settings#profile` | Custom profile form |
+| `billing` | `/settings#billing` | Subscription rows + post-checkout sync |
+| `usage` | `/settings#usage` | Usage / quota |
+| `ai` | `/settings#ai` | AI preferences |
+| `integrations` | `/settings#integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
+| `notifications` | `/settings#notifications` | Email notification preferences |
+
+Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Hash scrolling: `SettingsScrollTarget` (retries after mount for late layout).
+
+**Checkout return:** `/pricing` returns to `/settings?checkout=1&checkoutBaseline=…#billing`. `CheckoutSubscriptionSync` polls `GET /api/v1/user/subscription`, then `router.replace('/settings#billing')`. Details: [Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
+
+**Compatibility shim:** `src/app/(app)/settings/[...user-profile]/page.tsx` still exists for Clerk path-routed billing returns, but it renders the same `SettingsLedgerPage` — not a separate Clerk account portal.
 
 ## Anti-Patterns
 
@@ -178,6 +206,7 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
+| Expect embedded Clerk UserProfile under `/settings/...`      | Use the ledger sections and hash deep links above                                  |
 
 ## Code Locations
 
@@ -190,6 +219,14 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | DB client resolver    | `supabase/runtime.ts`             |
 | Service-role client   | `supabase/service-role.ts`        |
 | Clerk Auth config     | `src/lib/auth/server.ts`          |
-| Quota / usage logic   | `src/lib/stripe/usage.ts`         |
+| Quota / usage logic   | `src/features/billing/usage-metrics.ts` |
+| Settings ledger       | `src/app/(app)/settings/components/SettingsLedgerPage.tsx` |
+| Settings section ids  | `src/app/(app)/settings/settings-section-ids.ts` |
 | RLS policies (schema) | `supabase/schema/tables/*.ts`     |
 | Query modules         | `src/lib/db/queries/*.ts`         |
+
+## Related docs
+
+- [clerk-billing-architecture.md](./clerk-billing-architecture.md) — webhook projection, checkout sync, quotas
+- [user-preferences.md](./user-preferences.md) — preferences tables joined during actor load
+- [database/client-usage.md](../database/client-usage.md) — RLS vs service-role selection

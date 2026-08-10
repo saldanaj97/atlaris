@@ -1,8 +1,4 @@
-import {
-  preferredAiModel as preferredAiModelEnum,
-  subscriptionStatus,
-  subscriptionTier,
-} from '../../enums';
+import { subscriptionStatus, subscriptionTier } from '../../enums';
 import { timestampFields } from '../helpers';
 import { currentUserId } from './common';
 import { sql } from 'drizzle-orm';
@@ -23,20 +19,21 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     authUserId: text('auth_user_id').notNull().unique(),
-    email: text('email').notNull().unique(),
+    email: text('email').unique(),
+    clerkUserUpdatedAt: timestamp('clerk_user_updated_at', {
+      withTimezone: true,
+    }),
+    clerkDeletedAt: timestamp('clerk_deleted_at', { withTimezone: true }),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')
       .notNull()
       .default('free'),
-    stripeCustomerId: text('stripe_customer_id').unique(),
-    stripeSubscriptionId: text('stripe_subscription_id').unique(),
     subscriptionStatus: subscriptionStatus('subscription_status'),
     subscriptionPeriodEnd: timestamp('subscription_period_end', {
       withTimezone: true,
     }),
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
-    preferredAiModel: preferredAiModelEnum('preferred_ai_model'),
     ...timestampFields,
   },
   (table) => [
@@ -63,7 +60,7 @@ export const users = pgTable(
     }),
 
     // Users can update only their own profile fields.
-    // Column-level privileges (migration 0018; see
+    // Column-level privileges (see
     // privileges/users-authenticated-update-columns.ts) restrict the authenticated
     // role. Billing and system columns are only writable by the service-role (BYPASSRLS).
     pgPolicy('users_update_own', {

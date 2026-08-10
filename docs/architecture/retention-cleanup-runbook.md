@@ -1,15 +1,15 @@
 # Retention Cleanup Runbook
 
 **Audience:** Developers and operators running database retention maintenance.
-**Last Updated:** May 2026
+**Last Updated:** July 2026
 
 ## Overview
 
-Expired OAuth state tokens, old Stripe webhook idempotency rows, and old terminal job-queue rows are pruned by the database-owned retention function:
+Expired OAuth state tokens, old Clerk webhook idempotency rows, and old terminal job-queue rows are pruned by the database-owned retention function:
 
 - `private.cleanup_retained_db_rows()`
 
-Supabase Cron schedules the function daily through migration `20260522223908_schedule_retention_cleanup.sql`. Raw `ai_usage_events` rows are intentionally excluded until a monthly aggregation model exists.
+Supabase Cron schedules the function daily through migration `20260522223908_schedule_retention_cleanup.sql`. Raw `ai_usage_events` rows are intentionally excluded until a monthly aggregation model exists. Email delivery runs and ledger tombstones are also excluded: their retry, manual-review, and idempotency retention policy has not yet been approved.
 
 ## Required Environment
 
@@ -23,9 +23,11 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 | Table                   | Policy                                                       |
 | ----------------------- | ------------------------------------------------------------ |
 | `oauth_state_tokens`    | Delete rows with `expires_at < now()`                        |
-| `stripe_webhook_events` | Delete rows older than 45 days                               |
+| `clerk_webhook_event_claims` | Delete claims whose lease expired more than one day ago      |
+| `clerk_webhook_events`  | Delete rows older than 45 days                               |
 | `job_queue`             | Delete terminal `completed`/`failed` rows older than 30 days |
 | `ai_usage_events`       | Not deleted by this endpoint                                 |
+| `email_notification_delivery_runs` / `email_notification_deliveries` | Not deleted by this endpoint; see the email delivery runbook for payload minimization and non-sensitive inventory |
 
 ## Scheduled Cleanup
 
@@ -63,7 +65,8 @@ Success shape:
 {
   "ok": true,
   "expiredOauthStateTokens": 0,
-  "oldStripeWebhookEvents": 0,
+  "expiredClerkWebhookEventClaims": 0,
+  "oldClerkWebhookEvents": 0,
   "oldJobQueueRows": 0
 }
 ```
@@ -73,7 +76,7 @@ Failure shape follows the canonical API error contract (`docs/api/error-contract
 ## Operational Checks
 
 - In Supabase, inspect the `cron.job` and `cron.job_run_details` records for the `retention-cleanup` job.
-- Monitor table growth for `oauth_state_tokens`, `stripe_webhook_events`, and terminal `job_queue` rows if the scheduler stops running.
+- Monitor table growth for `oauth_state_tokens`, `clerk_webhook_event_claims`, `clerk_webhook_events`, and terminal `job_queue` rows if the scheduler stops running.
 - Alert on `401` responses from the internal cleanup endpoint (token mismatch/absence).
 - Alert on `503` responses from the manual cleanup endpoint (`RETENTION_CLEANUP_ENABLED=false` or missing worker token in production).
 

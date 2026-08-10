@@ -6,11 +6,14 @@ export {
   openRouterEnv,
 } from '@/lib/config/env/ai';
 export { appEnv, createAppEnv } from '@/lib/config/env/app';
-export { createClerkAuthEnv, devAuthEnv } from '@/lib/config/env/auth';
-export { stripeEnv } from '@/lib/config/env/billing';
+export {
+  clerkAuthEnv,
+  createClerkAuthEnv,
+  devAuthEnv,
+} from '@/lib/config/env/auth';
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
-export { loggingEnv } from '@/lib/config/env/observability';
+export { loggingEnv, sentryEnv } from '@/lib/config/env/observability';
 export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
 export {
   createMaintenanceEnvForTests,
@@ -19,14 +22,17 @@ export {
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export {
   createWorkflowEnvForTests,
+  readWorkflowCallbackTokenConfig,
   workflowEnv,
 } from '@/lib/config/env/workflow';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,
+  assertMixedDevAuthIdentity,
   createServerEnvAccess,
   EnvValidationError,
   getSmokeStateFileEnv,
+  isHostedDeployEnv,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,

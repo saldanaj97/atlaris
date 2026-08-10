@@ -1,5 +1,6 @@
 import {
   type EnvSource,
+  createServerEnvAccess,
   EnvValidationError,
   getProcessEnvSource,
   getServerOptional,
@@ -26,6 +27,7 @@ const clerkAuthFields = z.object({
 });
 
 type ClerkAuthEnv = z.infer<typeof clerkAuthFields>;
+const defaultClerkAuthAccess = createServerEnvAccess(getProcessEnvSource);
 
 /**
  * Parse Clerk Auth config from an explicit env source (unit tests; no process mutation).
@@ -63,26 +65,6 @@ export function createClerkAuthEnv(env: EnvSource): ClerkAuthEnv {
   return parsed.data;
 }
 
-let clerkAuthLazy: ClerkAuthEnv | undefined;
-
-function loadClerkAuthFromProcess(): ClerkAuthEnv {
-  if (clerkAuthLazy) {
-    return clerkAuthLazy;
-  }
-  clerkAuthLazy = createClerkAuthEnv(getProcessEnvSource());
-  return clerkAuthLazy;
-}
-
-/** Lazy Clerk auth config; validates on first property read. */
-export const clerkAuthEnv = {
-  get publishableKey() {
-    return loadClerkAuthFromProcess().publishableKey;
-  },
-  get secretKey() {
-    return loadClerkAuthFromProcess().secretKey;
-  },
-} as const;
-
 export const devAuthEnv = {
   get userId() {
     return getServerOptional('DEV_AUTH_USER_ID');
@@ -92,5 +74,13 @@ export const devAuthEnv = {
   },
   get name() {
     return getServerOptional('DEV_AUTH_USER_NAME') ?? 'Dev User';
+  },
+} as const;
+
+export const clerkAuthEnv = {
+  get webhookSigningSecret(): string {
+    return defaultClerkAuthAccess.getServerRequired(
+      'CLERK_WEBHOOK_SIGNING_SECRET',
+    );
   },
 } as const;

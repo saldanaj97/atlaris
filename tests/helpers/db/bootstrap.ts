@@ -1,4 +1,13 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../../supabase/privileges/authenticated-table-privileges';
+import { TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/task-progress-authenticated-update-columns';
+import {
+  USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS,
+  USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS,
+  USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_INSERT_COLUMNS,
+  USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_UPDATE_COLUMNS,
+  USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS,
+  USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS,
+} from '../../../supabase/privileges/user-preferences-authenticated-columns';
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 /**
@@ -52,13 +61,28 @@ export async function grantRlsPermissions(
     ).join(', ');
 
     await sql.unsafe(`
+      REVOKE INSERT ON "users" FROM authenticated;
       REVOKE UPDATE ON "users" FROM authenticated;
       GRANT UPDATE (${USERS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "users" TO authenticated;
       REVOKE DELETE ON "users" FROM authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "user_preferences" FROM authenticated;
+      GRANT INSERT (${USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS.join(', ')}) ON "user_preferences" TO authenticated;
+      GRANT UPDATE (${USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "user_preferences" TO authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_settings" FROM authenticated;
+      GRANT INSERT (${USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_INSERT_COLUMNS.join(', ')}) ON "user_email_notification_settings" TO authenticated;
+      GRANT UPDATE (${USER_EMAIL_NOTIFICATION_SETTINGS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "user_email_notification_settings" TO authenticated;
+      REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_preferences" FROM authenticated;
+      GRANT INSERT (${USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS.join(', ')}) ON "user_email_notification_preferences" TO authenticated;
+      GRANT UPDATE (${USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "user_email_notification_preferences" TO authenticated;
+      REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences", "clerk_webhook_events", "clerk_webhook_event_claims", "email_notification_delivery_runs", "email_notification_deliveries" FROM anon;
+      REVOKE ALL ON "clerk_webhook_events", "clerk_webhook_event_claims", "email_notification_delivery_runs", "email_notification_deliveries" FROM authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
       REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
       REVOKE INSERT, UPDATE, DELETE ON ${serverOwnedTablesSql} FROM authenticated;
-      GRANT INSERT, UPDATE, DELETE ON "task_progress" TO authenticated;
+      GRANT INSERT ON "task_progress" TO authenticated;
+      REVOKE UPDATE ON "task_progress" FROM authenticated;
+      GRANT UPDATE (${TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "task_progress" TO authenticated;
+      REVOKE DELETE ON "task_progress" FROM authenticated;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`
@@ -77,7 +101,7 @@ export async function grantRlsPermissions(
       grantedSorted.some((c, i) => c !== expectedSorted[i])
     ) {
       throw new Error(
-        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with supabase/migrations/0018_harden_users_update_columns.sql and supabase/privileges/users-authenticated-update-columns.ts.`,
+        `Bootstrap: authenticated UPDATE columns on public.users expected [${expectedSorted.join(', ')}], got [${grantedSorted.join(', ')}]. Sync grantRlsPermissions with the final users UPDATE grant and supabase/privileges/users-authenticated-update-columns.ts.`,
       );
     }
 
@@ -121,6 +145,10 @@ export async function grantRlsPermissions(
       );
     }
 
+    await sql`
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public
+        REVOKE INSERT, UPDATE, DELETE ON TABLES FROM authenticated
+    `;
     await sql`
       ALTER DEFAULT PRIVILEGES IN SCHEMA public
         GRANT SELECT ON TABLES TO authenticated

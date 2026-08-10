@@ -1,0 +1,615 @@
+import type { DbClient } from '@/lib/db/types';
+import type { PersistedProviderRequest } from '@/shared/notifications/email-delivery';
+import type { EmailNotificationCategory } from '@/shared/types/db.types';
+import type { EmailNotificationDeliveryStatus } from '@supabase/schema';
+
+import { emailNotificationDeliveries } from '@supabase/schema';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+
+export const EMAIL_DELIVERY_LEASE_MS = 15 * 60 * 1000;
+export const EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const EMAIL_DELIVERY_FAILURE_CLASS = {
+  recipientIdentityChangedBeforeDelivery: 'recipient_identity_changed',
+  recipientIdentityChangedAfterAmbiguousClaim: 'recipient_changed_since_claim',
+  preferencesDisabledBeforeDelivery: 'preference_disabled_before_delivery',
+  preferencesDisabledAfterAmbiguousClaim:
+    'preferences_disabled_after_ambiguous_claim',
+} as const;
+
+export type EmailDeliveryClaimResult =
+  | {
+      outcome: 'claimed';
+      deliveryId: string;
+      claimToken: string;
+      providerRequest: PersistedProviderRequest;
+      reusedProviderRequest: boolean;
+      reclaimedExpiredPending: boolean;
+    }
+  | {
+      outcome: 'already_terminal';
+      status: 'sent' | 'skipped' | 'manual_review';
+    }
+  | { outcome: 'in_flight'; status: 'pending' }
+  | { outcome: 'manual_review'; deliveryId: string; failureClass: string };
+
+export class EmailDeliveryLostLeaseError extends Error {
+  constructor(message = 'Email delivery lease was lost before finalization') {
+    super(message);
+    this.name = 'EmailDeliveryLostLeaseError';
+  }
+}
+
+type DeliveryDb = Pick<DbClient, 'execute' | 'insert' | 'update' | 'select'>;
+
+function claimSnapshotPredicates(existing: {
+  claimToken: string | null;
+  claimExpiresAt: Date | null;
+}) {
+  return [
+    existing.claimToken === null
+      ? isNull(emailNotificationDeliveries.claimToken)
+      : eq(emailNotificationDeliveries.claimToken, existing.claimToken),
+    existing.claimExpiresAt === null
+      ? isNull(emailNotificationDeliveries.claimExpiresAt)
+      : eq(emailNotificationDeliveries.claimExpiresAt, existing.claimExpiresAt),
+  ] as const;
+}
+
+function shouldUseRecomputedRequest(
+  failureClass: string | null,
+  previousRequest: PersistedProviderRequest | null,
+  nextRequest: PersistedProviderRequest,
+): boolean {
+  return (
+    failureClass === 'provider_configuration' ||
+    failureClass === 'provider_recipient_invalid' ||
+    (previousRequest !== null && previousRequest.to !== nextRequest.to)
+  );
+}
+
+export type EmailNotificationDeliveryLedgerSummary = {
+  readonly sent: number;
+  readonly skipped: number;
+  readonly failed: number;
+  readonly manualReview: number;
+};
+
+/**
+ * The delivery ledger is authoritative when a workflow step is replayed after
+ * a provider side effect but before its run counter checkpoint is committed.
+ */
+export async function summarizeEmailNotificationDeliveriesForRun(
+  args: {
+    categories: readonly EmailNotificationCategory[];
+    deliveryKeys: readonly string[];
+  },
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<EmailNotificationDeliveryLedgerSummary> {
+  const [result] = await dbClient
+    .select({
+      sent: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'sent')::int`,
+      skipped: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'skipped')::int`,
+      failed: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'failed')::int`,
+      manualReview: sql<number>`count(*) filter (where ${emailNotificationDeliveries.status} = 'manual_review')::int`,
+    })
+    .from(emailNotificationDeliveries)
+    .where(
+      and(
+        inArray(emailNotificationDeliveries.category, [...args.categories]),
+        inArray(emailNotificationDeliveries.deliveryKey, [
+          ...args.deliveryKeys,
+        ]),
+      ),
+    );
+
+  return {
+    sent: Number(result?.sent ?? 0),
+    skipped: Number(result?.skipped ?? 0),
+    failed: Number(result?.failed ?? 0),
+    manualReview: Number(result?.manualReview ?? 0),
+  };
+}
+
+export async function countEmailNotificationDeliveryManualReviews(
+  args: {
+    categories: readonly EmailNotificationCategory[];
+    deliveryKeys: readonly string[];
+  },
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  return (await summarizeEmailNotificationDeliveriesForRun(args, dbClient))
+    .manualReview;
+}
+
+const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const hasForbiddenHeaderValue = (value: string) =>
+  [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 8 || (code >= 10 && code <= 31) || code === 127;
+  });
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function asHeaders(value: unknown): Record<string, string> | null | undefined {
+  if (value === undefined) return undefined;
+  if (!isPlainObject(value)) {
+    return null;
+  }
+
+  const headers = Object.entries(value);
+  if (
+    headers.some(
+      ([name, headerValue]) =>
+        !HEADER_NAME.test(name) ||
+        typeof headerValue !== 'string' ||
+        hasForbiddenHeaderValue(headerValue),
+    )
+  ) {
+    return null;
+  }
+
+  return Object.fromEntries(headers) as Record<string, string>;
+}
+
+function asProviderRequest(value: unknown): PersistedProviderRequest | null {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+  const headers = asHeaders(value.headers);
+  const replyTo =
+    value.replyTo === undefined
+      ? undefined
+      : typeof value.replyTo === 'string' &&
+          !hasForbiddenHeaderValue(value.replyTo)
+        ? value.replyTo
+        : null;
+  if (
+    typeof value.from !== 'string' ||
+    typeof value.to !== 'string' ||
+    typeof value.subject !== 'string' ||
+    typeof value.html !== 'string' ||
+    typeof value.text !== 'string' ||
+    typeof value.idempotencyKey !== 'string' ||
+    headers === null ||
+    replyTo === null
+  ) {
+    return null;
+  }
+  return {
+    from: value.from,
+    to: value.to,
+    subject: value.subject,
+    html: value.html,
+    text: value.text,
+    idempotencyKey: value.idempotencyKey,
+    ...(replyTo === undefined ? {} : { replyTo }),
+    ...(headers === undefined ? {} : { headers }),
+  };
+}
+
+function leaseExpiry(now: Date): Date {
+  return new Date(now.getTime() + EMAIL_DELIVERY_LEASE_MS);
+}
+
+async function readCurrentClaimResult(
+  deliveryId: string,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<EmailDeliveryClaimResult> {
+  const [current] = await dbClient
+    .select({ status: emailNotificationDeliveries.status })
+    .from(emailNotificationDeliveries)
+    .where(eq(emailNotificationDeliveries.id, deliveryId));
+
+  if (!current) {
+    throw new Error('Delivery ledger row missing after lost claim race');
+  }
+
+  if (
+    current.status === 'sent' ||
+    current.status === 'skipped' ||
+    current.status === 'manual_review'
+  ) {
+    return { outcome: 'already_terminal', status: current.status };
+  }
+
+  // A concurrent worker owns or may immediately reclaim any non-terminal row.
+  // Do not send from a stale claim snapshot.
+  return { outcome: 'in_flight', status: 'pending' };
+}
+
+/**
+ * Atomically claim a delivery row for send. Terminal sent/skipped/manual_review
+ * is final. Failed rows and expired pending leases can be reclaimed only with
+ * their persisted request, except definitively rejected configuration or
+ * recipient rows and rows whose recipient changed, which accept the
+ * recomputed request during recovery. Fresh pending leases return in_flight.
+ * An expired pending lease whose recipient changed, or any pending delivery
+ * older than the provider window, becomes manual_review.
+ */
+export async function claimEmailNotificationDelivery(
+  args: {
+    userId: string;
+    category: EmailNotificationCategory;
+    deliveryKey: string;
+    providerRequest: PersistedProviderRequest;
+    now?: Date;
+  },
+  dbClient: DeliveryDb,
+): Promise<EmailDeliveryClaimResult> {
+  const now = args.now ?? new Date();
+  const providerRequest = asProviderRequest(args.providerRequest);
+  if (!providerRequest) {
+    throw new Error('Invalid provider request');
+  }
+  const claimToken = randomUUID();
+  const claimExpiresAt = leaseExpiry(now);
+
+  const inserted = await dbClient
+    .insert(emailNotificationDeliveries)
+    .values({
+      userId: args.userId,
+      category: args.category,
+      deliveryKey: args.deliveryKey,
+      status: 'pending',
+      claimToken,
+      claimExpiresAt,
+      providerRequest,
+      attemptCount: 1,
+      // Keep ledger timestamps aligned with the injected delivery clock so
+      // ambiguity-window checks stay consistent in tests and scheduled runs.
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoNothing({
+      target: [
+        emailNotificationDeliveries.userId,
+        emailNotificationDeliveries.category,
+        emailNotificationDeliveries.deliveryKey,
+      ],
+    })
+    .returning({
+      id: emailNotificationDeliveries.id,
+      claimToken: emailNotificationDeliveries.claimToken,
+      providerRequest: emailNotificationDeliveries.providerRequest,
+    });
+
+  if (inserted[0]?.claimToken) {
+    const stored = asProviderRequest(inserted[0].providerRequest);
+    if (!stored) {
+      throw new Error('Inserted delivery row missing provider request');
+    }
+    return {
+      outcome: 'claimed',
+      deliveryId: inserted[0].id,
+      claimToken: inserted[0].claimToken,
+      providerRequest: stored,
+      reusedProviderRequest: false,
+      reclaimedExpiredPending: false,
+    };
+  }
+
+  const [existing] = await dbClient
+    .select({
+      id: emailNotificationDeliveries.id,
+      status: emailNotificationDeliveries.status,
+      claimToken: emailNotificationDeliveries.claimToken,
+      claimExpiresAt: emailNotificationDeliveries.claimExpiresAt,
+      providerRequest: emailNotificationDeliveries.providerRequest,
+      failureClass: emailNotificationDeliveries.failureClass,
+      updatedAt: emailNotificationDeliveries.updatedAt,
+      createdAt: emailNotificationDeliveries.createdAt,
+    })
+    .from(emailNotificationDeliveries)
+    .where(
+      and(
+        eq(emailNotificationDeliveries.userId, args.userId),
+        eq(emailNotificationDeliveries.category, args.category),
+        eq(emailNotificationDeliveries.deliveryKey, args.deliveryKey),
+      ),
+    );
+
+  if (!existing) {
+    throw new Error('Delivery ledger row missing after claim race');
+  }
+
+  if (
+    existing.status === 'sent' ||
+    existing.status === 'skipped' ||
+    existing.status === 'manual_review'
+  ) {
+    return { outcome: 'already_terminal', status: existing.status };
+  }
+
+  if (existing.status === 'failed') {
+    const previousRequest = asProviderRequest(existing.providerRequest);
+    const useRecomputedRequest = shouldUseRecomputedRequest(
+      existing.failureClass,
+      previousRequest,
+      providerRequest,
+    );
+    const requestForRetry =
+      useRecomputedRequest || previousRequest === null
+        ? providerRequest
+        : previousRequest;
+    if (!requestForRetry) {
+      throw new Error('Failed delivery missing provider request');
+    }
+
+    const reclaimed = await dbClient
+      .update(emailNotificationDeliveries)
+      .set({
+        status: 'pending',
+        failureClass: null,
+        providerMessageId: null,
+        claimToken,
+        claimExpiresAt,
+        providerRequest: requestForRetry,
+        attemptCount: sql`${emailNotificationDeliveries.attemptCount} + 1`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(emailNotificationDeliveries.id, existing.id),
+          eq(emailNotificationDeliveries.status, 'failed'),
+          ...claimSnapshotPredicates(existing),
+        ),
+      )
+      .returning({
+        id: emailNotificationDeliveries.id,
+        claimToken: emailNotificationDeliveries.claimToken,
+        providerRequest: emailNotificationDeliveries.providerRequest,
+      });
+
+    if (reclaimed[0]?.claimToken) {
+      const stored = asProviderRequest(reclaimed[0].providerRequest);
+      if (!stored) {
+        throw new Error('Reclaimed failed delivery missing provider request');
+      }
+      return {
+        outcome: 'claimed',
+        deliveryId: reclaimed[0].id,
+        claimToken: reclaimed[0].claimToken,
+        providerRequest: stored,
+        reusedProviderRequest:
+          previousRequest !== null && !useRecomputedRequest,
+        reclaimedExpiredPending: false,
+      };
+    }
+
+    return readCurrentClaimResult(existing.id, dbClient);
+  }
+
+  if (existing.status === 'pending') {
+    const expiresAt = existing.claimExpiresAt;
+    if (expiresAt && expiresAt.getTime() > now.getTime()) {
+      return { outcome: 'in_flight', status: 'pending' };
+    }
+
+    const storedRequest = asProviderRequest(existing.providerRequest);
+
+    // Measure ambiguity from first claim time; reclaim must not reset the window.
+    const ambiguityStartedAt = existing.createdAt;
+    const ageMs = now.getTime() - ambiguityStartedAt.getTime();
+    const failureClass =
+      storedRequest === null
+        ? 'persisted_provider_request_invalid'
+        : storedRequest.to !== providerRequest.to
+          ? 'recipient_changed_since_claim'
+          : ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS
+            ? 'provider_acceptance_ambiguous'
+            : null;
+    if (failureClass) {
+      const reviewed = await dbClient
+        .update(emailNotificationDeliveries)
+        .set({
+          status: 'manual_review',
+          failureClass,
+          claimToken: null,
+          claimExpiresAt: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(emailNotificationDeliveries.id, existing.id),
+            eq(emailNotificationDeliveries.status, 'pending'),
+            ...claimSnapshotPredicates(existing),
+          ),
+        )
+        .returning({ id: emailNotificationDeliveries.id });
+
+      if (reviewed[0]) {
+        return {
+          outcome: 'manual_review',
+          deliveryId: reviewed[0].id,
+          failureClass,
+        };
+      }
+      return readCurrentClaimResult(existing.id, dbClient);
+    }
+
+    if (!storedRequest) {
+      throw new Error('Expired pending delivery missing provider request');
+    }
+
+    const reclaimed = await dbClient
+      .update(emailNotificationDeliveries)
+      .set({
+        claimToken,
+        claimExpiresAt,
+        attemptCount: sql`${emailNotificationDeliveries.attemptCount} + 1`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(emailNotificationDeliveries.id, existing.id),
+          eq(emailNotificationDeliveries.status, 'pending'),
+          ...claimSnapshotPredicates(existing),
+          sql`(
+            ${emailNotificationDeliveries.claimExpiresAt} IS NULL
+            OR ${emailNotificationDeliveries.claimExpiresAt} <= ${now.toISOString()}
+          )`,
+        ),
+      )
+      .returning({
+        id: emailNotificationDeliveries.id,
+        claimToken: emailNotificationDeliveries.claimToken,
+        providerRequest: emailNotificationDeliveries.providerRequest,
+      });
+
+    if (reclaimed[0]?.claimToken) {
+      const stored =
+        asProviderRequest(reclaimed[0].providerRequest) ?? storedRequest;
+      return {
+        outcome: 'claimed',
+        deliveryId: reclaimed[0].id,
+        claimToken: reclaimed[0].claimToken,
+        providerRequest: stored,
+        reusedProviderRequest: true,
+        reclaimedExpiredPending: true,
+      };
+    }
+
+    return readCurrentClaimResult(existing.id, dbClient);
+  }
+
+  return { outcome: 'in_flight', status: 'pending' };
+}
+
+async function finalizePendingDelivery(
+  args: {
+    deliveryId: string;
+    claimToken: string;
+    values: {
+      status: EmailNotificationDeliveryStatus;
+      providerMessageId?: string | null;
+      failureClass?: string | null;
+      clearProviderRequest?: boolean;
+    };
+  },
+  dbClient: Pick<DbClient, 'update'>,
+): Promise<void> {
+  const updated = await dbClient
+    .update(emailNotificationDeliveries)
+    .set({
+      status: args.values.status,
+      providerMessageId:
+        args.values.providerMessageId === undefined
+          ? undefined
+          : args.values.providerMessageId,
+      failureClass:
+        args.values.failureClass === undefined
+          ? undefined
+          : args.values.failureClass,
+      claimToken: null,
+      claimExpiresAt: null,
+      ...(args.values.clearProviderRequest ? { providerRequest: null } : {}),
+      updatedAt: sql<Date>`now()`,
+    })
+    .where(
+      and(
+        eq(emailNotificationDeliveries.id, args.deliveryId),
+        eq(emailNotificationDeliveries.status, 'pending'),
+        eq(emailNotificationDeliveries.claimToken, args.claimToken),
+      ),
+    )
+    .returning({ id: emailNotificationDeliveries.id });
+
+  if (!updated[0]) {
+    throw new EmailDeliveryLostLeaseError();
+  }
+}
+
+export async function markEmailNotificationDeliverySent(
+  args: {
+    deliveryId: string;
+    claimToken: string;
+    providerMessageId: string | null;
+  },
+  dbClient: Pick<DbClient, 'update'>,
+): Promise<void> {
+  await finalizePendingDelivery(
+    {
+      deliveryId: args.deliveryId,
+      claimToken: args.claimToken,
+      values: {
+        status: 'sent',
+        providerMessageId: args.providerMessageId,
+        failureClass: null,
+        clearProviderRequest: true,
+      },
+    },
+    dbClient,
+  );
+}
+export async function markEmailNotificationDeliverySkipped(
+  args: {
+    deliveryId: string;
+    claimToken: string;
+    failureClass: string;
+  },
+  dbClient: Pick<DbClient, 'update'>,
+): Promise<void> {
+  await finalizePendingDelivery(
+    {
+      deliveryId: args.deliveryId,
+      claimToken: args.claimToken,
+      values: {
+        status: 'skipped',
+        failureClass: args.failureClass,
+        clearProviderRequest: true,
+      },
+    },
+    dbClient,
+  );
+}
+export async function markEmailNotificationDeliveryFailed(
+  args: {
+    deliveryId: string;
+    claimToken: string;
+    failureClass: string;
+  },
+  dbClient: Pick<DbClient, 'update'>,
+): Promise<void> {
+  await finalizePendingDelivery(
+    {
+      deliveryId: args.deliveryId,
+      claimToken: args.claimToken,
+      values: {
+        status: 'failed',
+        failureClass: args.failureClass,
+        clearProviderRequest: false,
+      },
+    },
+    dbClient,
+  );
+}
+
+export async function markEmailNotificationDeliveryManualReview(
+  args: {
+    deliveryId: string;
+    claimToken: string;
+    failureClass: string;
+  },
+  dbClient: Pick<DbClient, 'update'>,
+): Promise<void> {
+  await finalizePendingDelivery(
+    {
+      deliveryId: args.deliveryId,
+      claimToken: args.claimToken,
+      values: {
+        status: 'manual_review',
+        failureClass: args.failureClass,
+        clearProviderRequest: false,
+      },
+    },
+    dbClient,
+  );
+}

@@ -3,16 +3,17 @@ import type { PlanSummary } from '@/shared/types/db.types';
 
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import { toValidDate } from '@/lib/date/relative-time';
-import { differenceInDays } from 'date-fns';
 
 /**
  * UI-facing plan status for list/dashboard: canonical summary status plus
- * inactivity → `paused` when underlying status is `active`.
+ * no progress → `not_started` and inactivity → `paused` when underlying
+ * status is `active`.
  *
  * `referenceDate` defaults to `new Date()` so callers only need to pass it when
  * they want deterministic comparisons (for example, tests).
  */
 const PLAN_STALENESS_THRESHOLD_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export function derivePlanSummaryDisplayStatus(params: {
   summary: PlanSummary;
@@ -23,6 +24,10 @@ export function derivePlanSummaryDisplayStatus(params: {
 
   if (canonicalStatus !== 'active') {
     return canonicalStatus;
+  }
+
+  if (summary.modules.length > 0 && summary.completedTasks === 0) {
+    return 'not_started';
   }
 
   const updatedAt = toValidDate(summary.plan.updatedAt);
@@ -36,15 +41,13 @@ export function derivePlanSummaryDisplayStatus(params: {
   }
 
   if (updatedAt) {
-    const daysSinceUpdate = differenceInDays(reference, updatedAt);
+    const daysSinceUpdate = Math.trunc(
+      (reference.getTime() - updatedAt.getTime()) / MS_PER_DAY,
+    );
     if (daysSinceUpdate >= PLAN_STALENESS_THRESHOLD_DAYS) {
       return 'paused';
     }
   }
 
   return 'active';
-}
-
-export function isPlanSummaryFullyComplete(summary: PlanSummary): boolean {
-  return deriveCanonicalPlanSummaryStatus(summary) === 'completed';
 }

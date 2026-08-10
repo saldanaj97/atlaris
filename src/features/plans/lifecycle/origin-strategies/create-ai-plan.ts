@@ -39,21 +39,6 @@ export async function createAiPlanWithStrategy(
   }
 
   const normalizedTopic = input.topic.trim();
-  const existingPlanId = await ports.planPersistence.findRecentDuplicatePlan(
-    input.userId,
-    normalizedTopic,
-  );
-  if (existingPlanId) {
-    logger.info(
-      { userId: input.userId, existingPlanId },
-      `${getCreateLogBase('create')}: duplicate detected`,
-    );
-    return {
-      status: 'duplicate_detected',
-      existingPlanId,
-    };
-  }
-
   return insertCreatedPlan({
     planPersistence: ports.planPersistence,
     userId: input.userId,

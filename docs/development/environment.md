@@ -6,85 +6,196 @@ Guidelines for environment variables and logging in this project.
 
 ### Core Rule
 
-**All env access must go through `@/lib/config/env`.** Do **not** read `process.env` directly outside that module.
+**All env access must go through a module under `@/lib/config/env`.** Do **not** read `process.env` directly outside that directory. Import stable shared exports from `@/lib/config/env`; import a facet directly when it is intentionally not part of that compatibility barrel.
+
+### Hosted runtime profile
+
+Every Vercel Preview, Staging, and Production deployment must run with `NODE_ENV=production`. Startup refuses a hosted process with missing, blank, development, or test `NODE_ENV`, or with `VITEST_WORKER_ID`, `DEV_AUTH_USER_ID`, or enabled `LOCAL_PRODUCT_TESTING`. These capability markers remain valid for local development and tests only.
 
 ### Grouped Configs
 
 Prefer the exported grouped configs instead of raw keys:
 
-- `appEnv` - Runtime mode, app URL, maintenance mode
+- `appEnv` - Runtime mode, app URL, maintenance mode (`MAINTENANCE_MODE` env hard-on; combines with the `maintenance-mode` Vercel Flag — see [Vercel Flags](#vercel-flags))
 - `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
-- `stripeEnv` - Stripe API keys, settings, and `localMode` when `STRIPE_LOCAL_MODE=true`
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `aiTimeoutEnv` - AI generation timeout settings
 - `openRouterEnv` - OpenRouter transport configuration
 - `devAuthEnv` - Development auth overrides
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
-- `attemptsEnv` - Attempt cap overrides
+- `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)
 - `regenerationQueueEnv` - Worker queue toggles and shared token
-- `maintenanceEnv` - Manual retention cleanup route toggle and token
-- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
-- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
-- `loggingEnv` - Logging configuration
-- `observabilityEnv` - Sentry and telemetry configuration
+- `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). Import from `@/lib/config/env/email`. `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
+- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; import from `@/lib/config/env/lesson-content`)
+- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
+- `loggingEnv` - Logging, Sentry, and telemetry configuration
+
+### Vercel Flags
+
+Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are **not** the Workflow SDK product toggles in `workflowEnv`.
+
+| Variable | Purpose | Required |
+| -------- | ------- | -------- |
+| `FLAGS` | Enables the Vercel Flags adapter (`vercelAdapter()`). When unset, flags resolve through a local fallback that returns each flag's `defaultValue` (or `false`). | Preview/Production when using Vercel Flags |
+| `FLAGS_SECRET` | Flags Explorer / encryption secret for the Vercel Flags integration | Preview/Production when using Vercel Flags |
+
+Declared flags:
+
+| Flag key | Code export | Default / failure mode | Combines with |
+| -------- | ----------- | ---------------------- | ------------- |
+| `maintenance-mode` | `maintenanceMode` | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
+| `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts` | Resend + production `APP_URL` (see `emailEnv`) |
+
+**Local without `FLAGS`:** both flags resolve to their fallback (`defaultValue ?? false`), so email delivery stays off and maintenance stays off unless `MAINTENANCE_MODE=true`.
+
+**Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
+
+Hosted templates list `FLAGS` / `FLAGS_SECRET` in `.env.preview.example` and `.env.production.example`. Production also documents `MAINTENANCE_MODE`.
 
 ### Adding New Variables
 
 If you need a new variable:
 
-1. Add it to `src/lib/config/env.ts`
+1. Add it to the owning facet under `src/lib/config/env/`.
 2. Include proper validation (using Zod)
-3. Export it through the appropriate grouped config
+3. Re-export it from `src/lib/config/env.ts` only when it is a stable shared config; otherwise keep the direct facet import and document it here.
 
 ### Auth Variables
 
 The application uses Clerk Auth for UI, route protection, and server session reads.
 
+**Clerk UI delivery:** Auth and billing UI load from Clerk’s CDN through the default `@clerk/nextjs` `ClerkProvider` path (`src/app/layout.tsx`). The app does **not** pin or bundle `@clerk/ui`. CSP allows Clerk Frontend API scripts via `https://*.clerk.accounts.dev` in `src/lib/proxy/security-headers.ts`. If sign-in, UserButton, or pricing UI fails to load, check that CSP allowlist and network access to Clerk accounts hosts before assuming an app bug. Appearance and localization still come from Atlaris props on `ClerkProvider`.
+
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                                                               | Required |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys)                                                            | No       |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB                                            | No       |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
-| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`) | No       |
-
-Workflow SDK feature flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`) are documented in [Workflow SDK](#workflow-sdk) below (see `workflowEnv`).
+| Variable                            | Purpose                                                                                                                                                                                                                                                         | Required                                    |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                                                                              | Yes                                         |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                                                                         | Yes                                         |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook` (Billing and user lifecycle events)                                                                                                                                                        | Yes when Clerk webhooks are enabled |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow).                                                 | No                                          |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout and every hosted deployment.                                                       | No                                          |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                                                                 | No                                          |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                                                                  | No                                          |
+| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation)       |
 
 ### Workflow SDK
 
-| Variable                  | Purpose                                                                                                                                                                                                 | Required |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `WORKFLOW_SOURCEMAP`      | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime, not parsed in app code.                                      | No       |
-| `MODULE_LESSON_WORKFLOW_ENABLED` | Routes `POST .../lesson-content/generate` through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                        | No       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration worker drains through a durable workflow; defaults **off**. See `workflowEnv`.                                                                                            | No       |
-| `PLAN_GENERATION_WORKFLOW_ENABLED` | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged; defaults **off**. See `workflowEnv`.                                              | No       |
+**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
+
+#### App-parsed product flags (`workflowEnv`)
+
+Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off** when unset or empty. These opt into durable workflow paths; they are not production defaults.
+
+| Variable                             | Purpose                                                                                                                                                              | Required                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)                                                                      | No                            |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                                                                                              | No                            |
+| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged                                                                | No                            |
+| `WORKFLOW_CALLBACK_TOKEN`            | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
+
+**Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
+
+#### SDK-read variables (not parsed in app code)
+
+| Variable             | Purpose                                                                                                                                                              | Required |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
+
+Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 
 ### Internal worker routes
 
 Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`. See `docs/architecture/internal-worker-routes.md`.
 
-| Variable                    | Purpose                                                            | Required in production                 |
-| --------------------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                    |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
-| `MAINTENANCE_WORKER_TOKEN`  | Auth for `POST /api/internal/maintenance/retention/cleanup`        | Yes only when manual route is enabled          |
+| Variable                               | Purpose                                                                                              | Required in production                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `REGENERATION_WORKER_TOKEN`            | Auth for `POST /api/internal/jobs/regeneration/process`                                              | Yes                                                 |
+| `RETENTION_CLEANUP_ENABLED`            | Master switch for the **manual** retention cleanup HTTP route only                                   | Set `true` only when enabling the manual route      |
+| `PLAN_CLEANUP_ENABLED`                 | Master switch for the plan cleanup HTTP route                                                        | Set `true` when scheduled cleanup is enabled        |
+| `CLERK_BILLING_RECONCILIATION_ENABLED` | Master switch for the manual Clerk Billing reconciliation route                                      | Set `true` only when enabling manual reconciliation |
+| `MAINTENANCE_WORKER_TOKEN`             | Auth for maintenance cleanup routes and the plan cleanup scheduler                                   | Yes when any maintenance route is enabled           |
+| `CRON_SECRET`                          | Bearer auth for Vercel `GET /api/cron/notifications/email`; keep distinct from the maintenance token | Yes when email Vercel Cron is enabled               |
+| `WORKER_HEALTH_TOKEN`                  | Auth for `GET /api/health/worker` operator metrics                                                   | Yes                                                 |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
+
+Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
+
+Email notification delivery uses Vercel Cron and a durable Workflow SDK run. Set a separate `CRON_SECRET` in the Vercel environment; Vercel supplies it as the Bearer token for the cron GET route. Do not reuse `MAINTENANCE_WORKER_TOKEN`. The manual recovery route remains protected by `MAINTENANCE_WORKER_TOKEN`; see [the email delivery runbook](../architecture/email-notification-delivery-runbook.md).
+
+Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using `CLERK_WEBHOOK_SIGNING_SECRET`. Manual drift repair runs through `POST /api/internal/maintenance/billing/reconcile-clerk` when `CLERK_BILLING_RECONCILIATION_ENABLED=true`; the route processes up to 100 users and returns `nextCursor` for the next batch. Architecture (projection, quotas, checkout sync): [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
+
+### Vercel Flags (`src/flags.ts`)
+
+Flags use the Flags SDK with `vercelAdapter()` when `FLAGS` is set; otherwise a local fallback returns each flag's `defaultValue` (or `false`).
+
+| Key | Export | Default / fallback | Effect |
+| --- | ------ | ------------------ | ------ |
+| `email-notification-delivery` | `emailNotificationDelivery` | `false` (fail-closed) | Cron, manual recovery, and in-flight workflow pages must not send when off |
+| `maintenance-mode` | `maintenanceMode` | fallback `false` | Proxy routes app traffic to the maintenance page when on |
+
+Local product testing typically has no `FLAGS` env, so email delivery stays disabled until you enable the flag in a Vercel environment. Preference tables and Settings opt-ins are separate from this kill switch — see [user-preferences.md](../architecture/user-preferences.md).
 
 ### Local product testing (development / test)
 
 | Variable                | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
 | `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |
-| `STRIPE_LOCAL_MODE`     | Use local billing catalog + in-process Stripe mock (forbidden in hosted deploys)  |
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
+Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
+
+**Fixture mode does not exercise checkout or webhooks.** It only updates the Postgres entitlement projection for local product testing.
+
 Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
+
+### Clerk development checkout (fixture vs real payment flow)
+
+Atlaris keeps a single entitlement source: the Postgres `users` projection updated from Clerk Billing webhooks/reconciliation. Do not add Clerk `auth().has({ plan })` checks alongside DB tiers. For webhook → projection → quota details, see [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
+
+Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER_ID` is also set (`LOCAL_PRODUCT_TESTING=false` + non-empty `DEV_AUTH_USER_ID`). Choose exactly one mode:
+
+| Mode                                | Env contract                                                                                                                                                      | What it proves                                                                                                                                               |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
+| **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota.                                                                                              |
+
+**Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders After Hours plan cards through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
+
+#### Clerk Dashboard contract (same Development instance)
+
+- Plans for Users must use exact slugs mapped in `src/features/billing/clerk-billing/plan-mapping.ts`:
+  - `free_user` → `free`
+  - `starter_plan` → `starter`
+  - `pro_plan` → `pro`
+- Do not use a generic `pro` Clerk plan slug.
+- Dashboard plan features/limits should match `src/shared/constants/tier-limits.ts` (link the source; do not copy values into docs where drift is likely).
+- Webhook endpoint: `{APP_URL}/api/v1/clerk/billing/webhook`, subscribed to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `CLERK_WEBHOOK_SIGNING_SECRET` must all belong to that same Development instance. Presence of an encrypted Vercel variable is not proof the value matches the endpoint.
+- Prefer hosted Preview/staging for real checkout. Localhost needs a public tunnel to the webhook path ([Clerk webhook debugging](https://clerk.com/docs/guides/development/webhooks/debugging)).
+- Clerk’s shared development payment gateway uses Stripe test cards ([Stripe testing](https://docs.stripe.com/testing)). **No app-owned Stripe account, Stripe API keys, Stripe products, or Stripe prices are required.**
+- Never commit Clerk keys or webhook secrets.
+
+Before checkout, `/pricing` adds the signed-in user's current billing signature to Clerk's `/settings?checkout=1&checkoutBaseline=...#billing` return URL. Settings compares that short-lived UI-only baseline with the DB-backed subscription API, shows a bounded “Updating your subscription…” state while the webhook projection catches up, then removes both query markers and refreshes the rows. Settings remains the DB-backed account and entitlement surface.
+
+#### Manual real-checkout verification (opt-in; not default CI)
+
+Reuse this checklist for Preview/staging or a tunneled local run. Do not put real payment tests in the default CI suite. Complements the Clerk Billing deployment smoke intent (JCS-37); do not maintain a second competing checklist elsewhere.
+
+1. `/pricing` renders the publicly available Clerk user plans (`free_user`, `starter_plan`, `pro_plan`).
+2. Checkout succeeds with `4242 4242 4242 4242`, a future expiry, any valid CVC, and any valid postal code.
+3. A decline path (for example `4000 0000 0000 0002`) shows a recoverable error.
+4. Abandoning checkout leaves the current entitlement unchanged.
+5. Clerk Dashboard shows the subscription/payment attempt and webhook delivery.
+6. `POST /api/v1/clerk/billing/webhook` acknowledges completed events. A concurrent delivery may receive a temporary `503` with `Retry-After` while another request owns the two-minute processing claim; Clerk should retry that delivery, and completed duplicates return `200` without another Clerk refresh.
+7. The correct `users.auth_user_id` receives updated `subscription_tier`, `subscription_status`, `subscription_period_end`, and `cancel_at_period_end`.
+8. Settings (`?checkout=1` sync UI, then settled rows) and at least one quota/feature boundary reflect the upgraded tier.
+9. Cancellation or cancel-at-period-end behavior is verified in Clerk and in the Postgres projection.
+
+Record evidence without secrets: environment name, Clerk Development instance name/ID, test user email/id, selected plan slug, webhook event ID + delivery outcome, resulting DB tier/status, settings/quota observation, and any sync timeout/retry behavior.
 
 ### Local Supabase database
 
@@ -98,6 +209,10 @@ Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current
 | `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
 
 Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
+
+### Cloud agents (1Password Environments)
+
+Codex / Cursor cloud agents can materialize `.env.local` from a 1Password Environment via `scripts/agents/codex-1password-env.sh`. Required cloud secrets: `OP_ENVIRONMENT_ID`, `OP_SERVICE_ACCOUNT_TOKEN`. This path is separate from Vercel hosted env templates. Full steps and overwrite rules: [1Password agents setup](../third-party-services/1password-agents-setup.md). Seeded shape reference: `.env.agents.example`.
 
 ## Logging
 
@@ -188,7 +303,10 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 ## Related Files
 
 - `docs/development/logging.md` - Comprehensive logging architecture guide
-- `src/lib/config/env.ts` - Environment variable definitions and validation
+- `docs/third-party-services/1password-agents-setup.md` - Cloud agent env bootstrap from 1Password
+- `docs/architecture/email-notification-delivery-runbook.md` - Email delivery ops + preference model
+- `src/flags.ts` - Vercel Flags declarations
+- `src/lib/config/env.ts` - Stable environment-config compatibility barrel; facet modules under `src/lib/config/env/` own definitions and validation
 - `src/lib/logging/logger.ts` - Server-side Pino structured logging
 - `src/lib/logging/client.ts` - Client-side console wrapper
 - `src/lib/logging/request-context.ts` - Request context helpers for API routes

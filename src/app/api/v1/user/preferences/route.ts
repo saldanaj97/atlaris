@@ -6,7 +6,7 @@ import { AppError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { updateUserPreferredAiModel } from '@/lib/db/queries/users';
+import { upsertUserPreferredAiModel } from '@/lib/db/queries/user-preferences';
 import {
   attachRequestIdHeader,
   createLoggingRequestContext,
@@ -77,7 +77,7 @@ export const GET = requestBoundary.route(
  */
 export const PATCH = requestBoundary.route(
   { rateLimit: 'mutation' },
-  async ({ req, actor }) => {
+  async ({ req, actor, db }) => {
     const { requestId, logger } = createLoggingRequestContext(req, {
       route: 'PATCH /api/v1/user/preferences',
       userId: actor.id,
@@ -100,20 +100,24 @@ export const PATCH = requestBoundary.route(
     const userTier = actor.subscriptionTier;
 
     if (parsed.data.preferredAiModel === null) {
-      const updatedUser = await updateUserPreferredAiModel(actor.id, null);
+      const updatedPreferences = await upsertUserPreferredAiModel(
+        actor.id,
+        null,
+        db,
+      );
 
-      if (!updatedUser) {
+      if (!updatedPreferences) {
         throw createPreferencesUpdateFailedError(actor.id);
       }
 
       logger.info(
-        { preferredAiModel: updatedUser.preferredAiModel },
+        { preferredAiModel: updatedPreferences.preferredAiModel },
         'User preferences cleared (tier default applies)',
       );
 
       const response = json({
         message: 'Preferences updated',
-        preferredAiModel: updatedUser.preferredAiModel,
+        preferredAiModel: updatedPreferences.preferredAiModel,
       });
 
       return attachRequestIdHeader(response, requestId);
@@ -171,16 +175,17 @@ export const PATCH = requestBoundary.route(
       }
     }
 
-    const updatedUser = await updateUserPreferredAiModel(
+    const updatedPreferences = await upsertUserPreferredAiModel(
       actor.id,
       parsed.data.preferredAiModel,
+      db,
     );
 
-    if (!updatedUser) {
+    if (!updatedPreferences) {
       throw createPreferencesUpdateFailedError(actor.id);
     }
 
-    if (updatedUser.preferredAiModel === null) {
+    if (updatedPreferences.preferredAiModel === null) {
       throw new AppError('Failed to persist preference value.', {
         status: 500,
         code: 'PREFERENCES_PERSISTED_NULL',
@@ -189,13 +194,13 @@ export const PATCH = requestBoundary.route(
     }
 
     logger.info(
-      { preferredAiModel: updatedUser.preferredAiModel },
+      { preferredAiModel: updatedPreferences.preferredAiModel },
       'User preferences updated successfully',
     );
 
     const response = json({
       message: 'Preferences updated',
-      preferredAiModel: updatedUser.preferredAiModel,
+      preferredAiModel: updatedPreferences.preferredAiModel,
     });
 
     return attachRequestIdHeader(response, requestId);

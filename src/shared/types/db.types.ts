@@ -2,6 +2,7 @@ import type { GenerationAttemptRecord } from '@/lib/db/queries/types/attempts.ty
 import type {
   Module,
   ModuleWithTasks,
+  PlanDetailModuleWithTasks,
 } from '@/lib/db/queries/types/modules.types';
 import type { LightweightPlanListRow } from '@/lib/db/queries/types/plans.types';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -17,6 +18,8 @@ export type ProgressStatus =
   DbEnumsModule['progressStatus']['enumValues'][number];
 export type GenerationStatus =
   DbEnumsModule['generationStatus']['enumValues'][number];
+export type EmailNotificationCategory =
+  DbEnumsModule['emailNotificationCategory']['enumValues'][number];
 
 export type LearningPlan = InferSelectModel<DbSchemaModule['learningPlans']>;
 
@@ -38,6 +41,10 @@ export type GenerationAttempt = GenerationAttemptRecord;
 
 export type LearningPlanWithModules = LearningPlan & {
   modules: ModuleWithTasks[];
+};
+
+export type LearningPlanWithModulesForDetail = LearningPlan & {
+  modules: PlanDetailModuleWithTasks[];
 };
 
 type ProgressMetrics = {
@@ -70,7 +77,7 @@ export type LightweightPlanSummary = LightweightPlanListRow &
   };
 
 export type LearningPlanDetail = Omit<ProgressMetrics, 'completion'> & {
-  plan: LearningPlanWithModules;
+  plan: LearningPlanWithModulesForDetail;
   latestAttempt: GenerationAttempt | null;
   attemptsCount: number;
 };

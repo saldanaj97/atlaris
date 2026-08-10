@@ -3,6 +3,7 @@ import {
   ModuleLessonBatchProviderOutputSchema,
   ModuleLessonGenerationApiResponseSchema,
   ModuleLessonGenerationMetadataSchema,
+  ModuleLessonGenerationStatusResponseSchema,
 } from '@/shared/schemas/lesson-content.schemas';
 import {
   MAX_LESSON_BLOCK_TEXT_LENGTH,
@@ -189,8 +190,9 @@ describe('lesson content Zod contracts', () => {
         state: 'generating',
         planId,
         moduleId,
+        workflowRunId: 'wrun_current',
       }),
-    ).toMatchObject({ state: 'generating' });
+    ).toMatchObject({ state: 'generating', workflowRunId: 'wrun_current' });
 
     expect(
       ModuleLessonGenerationApiResponseSchema.parse({
@@ -259,6 +261,62 @@ describe('lesson content Zod contracts', () => {
         planId,
         moduleId,
         reason: 'disabled',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('module lesson generation status response schema', () => {
+  it('accepts each persisted status', () => {
+    const planId = randomUUID();
+    const moduleId = randomUUID();
+
+    for (const status of [
+      'not_generated',
+      'generating',
+      'ready',
+      'failed',
+    ] as const) {
+      expect(
+        ModuleLessonGenerationStatusResponseSchema.parse({
+          planId,
+          moduleId,
+          status,
+        }),
+      ).toEqual({ planId, moduleId, status });
+    }
+  });
+
+  it('rejects unknown status values', () => {
+    expect(() =>
+      ModuleLessonGenerationStatusResponseSchema.parse({
+        planId: randomUUID(),
+        moduleId: randomUUID(),
+        status: 'processing',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts a workflow run ID with a persisted status', () => {
+    const planId = randomUUID();
+    const moduleId = randomUUID();
+
+    expect(
+      ModuleLessonGenerationStatusResponseSchema.parse({
+        planId,
+        moduleId,
+        status: 'not_generated',
+        workflowRunId: 'wrun_current',
+      }),
+    ).toMatchObject({ workflowRunId: 'wrun_current' });
+  });
+
+  it('rejects invalid UUID params', () => {
+    expect(() =>
+      ModuleLessonGenerationStatusResponseSchema.parse({
+        planId: 'not-a-uuid',
+        moduleId: randomUUID(),
+        status: 'ready',
       }),
     ).toThrow();
   });

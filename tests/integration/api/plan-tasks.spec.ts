@@ -1,5 +1,6 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET } from '@/app/api/v1/plans/[planId]/tasks/route';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
@@ -90,7 +91,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
   });
 
   it('should return all tasks for the plan owner', async () => {
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
       { method: 'GET' },
@@ -110,7 +110,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
 
   it('should return 404 for non-existent plan', async () => {
     const missingPlanId = randomUUID();
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${missingPlanId}/tasks`,
       { method: 'GET' },
@@ -133,7 +132,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       data: { user: null },
     });
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
       { method: 'GET' },
@@ -151,7 +149,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       data: null,
     });
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
       { method: 'GET' },
@@ -168,7 +165,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
 
     setTestUser(otherAuthId);
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
       { method: 'GET' },
@@ -194,7 +190,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       })
       .returning();
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${emptyPlan.id}/tasks`,
       { method: 'GET' },
@@ -240,7 +235,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
       },
     ]);
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/tasks/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${planId}/tasks`,
       { method: 'GET' },

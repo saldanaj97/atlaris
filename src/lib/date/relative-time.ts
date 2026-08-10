@@ -1,12 +1,3 @@
-import {
-  compareAsc,
-  differenceInCalendarDays,
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  parseISO,
-} from 'date-fns';
-
 const SCHEDULED_EVENT_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
@@ -19,9 +10,24 @@ const SCHEDULED_EVENT_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
 
 type ValidDateInput = Date | string | null | undefined;
 
+const MS_PER_MINUTE = 60 * 1000;
+const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+const MS_PER_DAY = 24 * MS_PER_HOUR;
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+function parseDate(value: string): Date {
+  const dateOnly = DATE_ONLY_RE.exec(value);
+  if (dateOnly) {
+    const [, year, month, day] = dateOnly;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  return new Date(value);
+}
+
 export function toValidDate(value: ValidDateInput): Date | null {
   if (!value) return null;
-  const parsed = value instanceof Date ? value : parseISO(value);
+  const parsed = value instanceof Date ? value : parseDate(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -38,10 +44,11 @@ type PastDelta = {
 };
 
 function getClampedPastDelta(targetDate: Date, reference: Date): PastDelta {
+  const elapsedMs = reference.getTime() - targetDate.getTime();
   return {
-    minutes: Math.max(0, differenceInMinutes(reference, targetDate)),
-    hours: Math.max(0, differenceInHours(reference, targetDate)),
-    days: Math.max(0, differenceInDays(reference, targetDate)),
+    minutes: Math.max(0, Math.trunc(elapsedMs / MS_PER_MINUTE)),
+    hours: Math.max(0, Math.trunc(elapsedMs / MS_PER_HOUR)),
+    days: Math.max(0, Math.trunc(elapsedMs / MS_PER_DAY)),
   };
 }
 
@@ -115,7 +122,7 @@ export function formatScheduledEventRelative(
   const reference = toValidDate(referenceDate);
   if (!targetDate || !reference) return 'Recently';
 
-  const comparison = compareAsc(targetDate, reference);
+  const comparison = Math.sign(targetDate.getTime() - reference.getTime());
 
   if (comparison < 0) {
     return formatRelativePast(targetDate, {
@@ -128,15 +135,16 @@ export function formatScheduledEventRelative(
     return 'Now';
   }
 
-  const diffCalendarDays = differenceInCalendarDays(targetDate, reference);
+  const diffCalendarDays = calendarDayDifference(targetDate, reference);
 
   if (diffCalendarDays === 0) {
-    const diffHours = differenceInHours(targetDate, reference);
+    const diffMs = targetDate.getTime() - reference.getTime();
+    const diffHours = Math.trunc(diffMs / MS_PER_HOUR);
     if (diffHours >= 1) {
       return `In ${diffHours}h`;
     }
 
-    const diffMinutes = differenceInMinutes(targetDate, reference);
+    const diffMinutes = Math.trunc(diffMs / MS_PER_MINUTE);
     if (diffMinutes === 0) {
       return 'Now';
     }
@@ -153,4 +161,15 @@ export function formatScheduledEventRelative(
   }
 
   return SCHEDULED_EVENT_DATE_FORMATTER.format(targetDate);
+}
+
+function calendarDayDifference(date: Date, referenceDate: Date): number {
+  const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const referenceDay = Date.UTC(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  );
+
+  return Math.round((dateDay - referenceDay) / MS_PER_DAY);
 }

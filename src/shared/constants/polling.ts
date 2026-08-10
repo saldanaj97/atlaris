@@ -8,6 +8,9 @@
 /** Delay (ms) for the very first poll after mount. */
 export const INITIAL_POLL_MS = 1_000;
 
+/** Upper bound (ms) for a single plan-status fetch before aborting. */
+export const PLAN_STATUS_FETCH_TIMEOUT_MS = 30_000;
+
 /** Upper bound (ms) for any single poll delay. */
 export const MAX_POLL_MS = 10_000;
 

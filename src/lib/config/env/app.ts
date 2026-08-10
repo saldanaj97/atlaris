@@ -12,7 +12,7 @@ import {
 } from '@/lib/config/env/shared';
 import { z } from 'zod';
 
-const APP_URL_SCHEMA = z.string().url();
+const APP_URL_SCHEMA = z.url();
 const APP_URL_CACHE_KEY = 'APP_URL_NORMALIZED';
 
 /**
@@ -32,7 +32,9 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
   const normalizeUrl = (requireHttps: boolean): string => {
     const raw = requireHttps
       ? access.getServerRequired('APP_URL')
-      : (access.getServerOptional('APP_URL') ?? 'http://localhost:3000');
+      : (access.getServerOptional('APP_URL') ??
+        access.getServerOptional('PORTLESS_URL') ??
+        'http://localhost:3000');
     const parsed = APP_URL_SCHEMA.safeParse(raw);
     if (!parsed.success) {
       throw new EnvValidationError(
@@ -66,7 +68,7 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
       return this.nodeEnv === 'test' || Boolean(this.vitestWorkerId);
     },
     /**
-     * Application base URL for constructing absolute URLs (e.g., Stripe redirects).
+     * Application base URL for constructing absolute URLs.
      * Required in production, falls back to localhost in development/test environments.
      */
     get url(): string {

@@ -3,10 +3,7 @@ import {
   ExhaustedRetriesMessage,
   RetryAction,
 } from './generation-retry-actions';
-import {
-  MAX_RETRY_ATTEMPTS,
-  type PlanPendingViewState,
-} from './plan-pending-view-state';
+import { type PlanPendingViewState } from './plan-pending-view-state';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
 
@@ -34,7 +31,7 @@ export function FailurePanel({
       meta={
         viewState.attempts > 0 ? (
           <p className='text-sm text-muted-foreground'>
-            Attempt {viewState.attempts} of {MAX_RETRY_ATTEMPTS}
+            Attempt {viewState.attempts} of {viewState.attemptCap}
           </p>
         ) : null
       }
@@ -44,6 +41,7 @@ export function FailurePanel({
         ) : (
           <RetryAction
             attempts={viewState.attempts}
+            attemptCap={viewState.attemptCap}
             isRetrying={viewState.isRetrying}
             isRetryDisabled={isRetryDisabled}
             onRetry={onRetry}
@@ -76,10 +74,16 @@ export function ConnectionIssuePanel({
   );
 }
 
-export function ProcessingPanel({ attempts }: { attempts: number }) {
+export function ProcessingPanel({
+  attempts,
+  attemptCap,
+}: {
+  attempts: number;
+  attemptCap: number;
+}) {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none' />
       <div className='space-y-1'>
         <p className='font-semibold'>Generating Your Learning Plan</p>
         <p className='text-sm text-muted-foreground'>
@@ -88,7 +92,7 @@ export function ProcessingPanel({ attempts }: { attempts: number }) {
         </p>
         {attempts > 1 ? (
           <p className='text-sm text-muted-foreground'>
-            Attempt {attempts} of {MAX_RETRY_ATTEMPTS}
+            Attempt {attempts} of {attemptCap}
           </p>
         ) : null}
       </div>
@@ -99,7 +103,7 @@ export function ProcessingPanel({ attempts }: { attempts: number }) {
 export function PendingPanel() {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-muted/50 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none' />
       <div className='space-y-1'>
         <p className='font-semibold'>Queued for Generation</p>
         <p className='text-sm text-muted-foreground'>
@@ -113,7 +117,7 @@ export function PendingPanel() {
 export function ReadyPanel() {
   return (
     <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary' />
+      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none' />
       <div className='space-y-1'>
         <p className='font-semibold'>Loading…</p>
         <p className='text-sm text-muted-foreground'>

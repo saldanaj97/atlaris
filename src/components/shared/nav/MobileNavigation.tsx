@@ -3,6 +3,7 @@
 import type { NavItem } from '@/features/navigation';
 
 import BrandLogo from '../BrandLogo';
+import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,23 +17,33 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
 import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
 interface MobileNavigationProps {
+  isMarketing: boolean;
   pathname: string;
   navItems: NavItem[];
+  isAuthenticated?: boolean;
 }
 
 /**
  * Mobile navigation component with left-sliding sheet.
  */
 export default function MobileNavigation({
+  isMarketing,
   pathname,
   navItems,
+  isAuthenticated = false,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
+  const primaryCtaHref = isAuthenticated
+    ? ROUTES.PLANS.NEW
+    : ROUTES.AUTH.SIGN_IN;
+  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -42,7 +53,7 @@ export default function MobileNavigation({
             variant='ghost'
             size='icon-sm'
             onClick={() => setOpen(true)}
-            className='rounded-xl bg-white/40 text-muted-foreground shadow-sm backdrop-blur-sm transition hover:bg-white/60 dark:bg-white/10 dark:hover:bg-white/20'
+            className='rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             aria-label='Open menu'
           >
             <Menu className='size-5' />
@@ -54,7 +65,7 @@ export default function MobileNavigation({
       {/* Sheet content sliding from left */}
       <SheetContent
         side='left'
-        className='w-72 border-r border-white/30 bg-white/65 p-0 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/55'
+        className='w-72 border-r border-border bg-card p-0 shadow-lg'
       >
         <SheetHeader className='p-6'>
           <BrandLogo size='sm' onClick={() => setOpen(false)} />
@@ -66,20 +77,27 @@ export default function MobileNavigation({
           className='flex flex-1 flex-col gap-2 px-4'
           aria-label='Mobile navigation'
         >
-          {/* Create New Plan - Primary Action */}
+          {/* Primary action — marketing peach CTA or app create-plan */}
           <Button
             asChild
             variant='default'
-            className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+            className={
+              isMarketing
+                ? cn(
+                    marketingHeaderPrimaryCtaClassName,
+                    'mb-2 h-auto w-full justify-center py-3',
+                  )
+                : 'mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+            }
           >
             <Link
-              href='/plans/new'
+              href={isMarketing ? primaryCtaHref : ROUTES.PLANS.NEW}
               onClick={() => {
                 setOpen(false);
               }}
             >
-              <Plus className='size-4' />
-              Create New Plan
+              {isMarketing ? null : <Plus className='size-4' />}
+              {isMarketing ? primaryCtaLabel : 'Create New Plan'}
             </Link>
           </Button>
 
@@ -91,10 +109,10 @@ export default function MobileNavigation({
                   href={item.href}
                   onClick={() => setOpen(false)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`rounded-xl px-4 py-3 text-sm font-medium transition-all ${
+                  className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                     isActive
-                      ? 'bg-primary text-white shadow-md'
-                      : 'text-muted-foreground hover:bg-white/60 hover:text-primary dark:hover:bg-white/10 dark:hover:text-primary'
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'text-muted-foreground hover:bg-muted hover:text-primary'
                   }`}
                 >
                   {item.label}
@@ -109,7 +127,7 @@ export default function MobileNavigation({
                           href={subItem.href}
                           onClick={() => setOpen(false)}
                           aria-current={isSubActive ? 'page' : undefined}
-                          className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                          className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                             isSubActive
                               ? 'text-primary dark:text-primary'
                               : 'text-muted-foreground hover:text-primary dark:hover:text-primary'

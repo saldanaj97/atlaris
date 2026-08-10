@@ -1,6 +1,5 @@
 import type { UsePlanGenerationSessionResult } from '@/features/plans/session/usePlanGenerationSession';
 
-import { MAX_RETRY_ATTEMPTS } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -115,6 +114,30 @@ describe('PlanPendingState', () => {
     ).toBeInTheDocument();
   });
 
+  it('uses the configured attempt cap for a reloaded failed plan', () => {
+    mockPlanStatus({ status: 'failed', attempts: 0 });
+    const plan = createTestPlanDetail({
+      status: 'failed',
+      attempts: 3,
+      attemptCap: 5,
+    });
+
+    render(<PlanPendingState plan={plan} />);
+
+    expect(screen.getByText('Attempt 3 of 5')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: 'Retry Generation (2 attempts remaining)',
+      }),
+    ).toBeInTheDocument();
+    expect(mockUseRetryGeneration).toHaveBeenLastCalledWith(
+      plan.id,
+      5,
+      3,
+      expect.anything(),
+    );
+  });
+
   it('keeps the interrupted fallback when a retry session is cancelled', () => {
     mockRetryGeneration({
       status: 'cancelled',
@@ -157,12 +180,18 @@ describe('PlanPendingState', () => {
   it('shows a create-plan link instead of retry when retries are exhausted', () => {
     mockPlanStatus({
       status: 'failed',
-      attempts: MAX_RETRY_ATTEMPTS,
+      attempts: 2,
       error: 'Generation failed',
     });
 
     render(
-      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
+      <PlanPendingState
+        plan={createTestPlanDetail({
+          status: 'failed',
+          attempts: 2,
+          attemptCap: 2,
+        })}
+      />,
     );
 
     expect(

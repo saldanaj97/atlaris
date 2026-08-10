@@ -2,11 +2,7 @@ import type { DbClient } from '@/lib/db/types';
 
 import { makeDbClient } from '../../fixtures/db-mocks';
 import { buildUserFixture } from '../../fixtures/users';
-import {
-  createUser,
-  getUserByAuthId,
-  updateUserPreferredAiModel,
-} from '@/lib/db/queries/users';
+import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockedGetRequestContext = vi.fn();
@@ -41,14 +37,19 @@ describe('users queries optimization', () => {
 
     const rows = [
       {
-        id: 'internal-user-2',
-        authUserId: 'auth-user-2',
+        user: buildUserFixture({
+          id: 'internal-user-2',
+          authUserId: 'auth-user-2',
+        }),
+        preferences: null,
       },
     ];
     const dbClient = makeDbClient({
       select: (() => ({
         from: () => ({
-          where: () => Promise.resolve(rows),
+          leftJoin: () => ({
+            where: () => Promise.resolve(rows),
+          }),
         }),
       })) as unknown as DbClient['select'],
     });
@@ -68,11 +69,18 @@ describe('users queries optimization', () => {
   it('bypasses request context cache when explicit db client provided', async () => {
     const where = vi.fn().mockResolvedValue([
       {
-        id: 'internal-user-3-db',
-        authUserId: 'auth-user-3',
+        user: buildUserFixture({
+          id: 'internal-user-3-db',
+          authUserId: 'auth-user-3',
+        }),
+        preferences: {
+          preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+          analyticsTimezone: 'America/Chicago',
+        },
       },
     ]);
-    const from = vi.fn().mockReturnValue({ where });
+    const leftJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ leftJoin });
     const select = vi.fn().mockReturnValue({ from });
     const explicitClient = makeDbClient({
       select: select as unknown as DbClient['select'],
@@ -85,6 +93,7 @@ describe('users queries optimization', () => {
     });
 
     expect(user?.id).toBe('internal-user-3-db');
+    expect(user?.analyticsTimezone).toBe('America/Chicago');
     expect(mockedGetRequestContext).not.toHaveBeenCalled();
     expect(mockedGetDb).not.toHaveBeenCalled();
   });
@@ -98,11 +107,21 @@ describe('users queries optimization', () => {
       },
     });
 
-    const rows = [{ id: 'full-user', authUserId: 'auth-partial' }];
+    const rows = [
+      {
+        user: buildUserFixture({
+          id: 'full-user',
+          authUserId: 'auth-partial',
+        }),
+        preferences: null,
+      },
+    ];
     const dbClient = makeDbClient({
       select: (() => ({
         from: () => ({
-          where: () => Promise.resolve(rows),
+          leftJoin: () => ({
+            where: () => Promise.resolve(rows),
+          }),
         }),
       })) as unknown as DbClient['select'],
     });
@@ -114,6 +133,8 @@ describe('users queries optimization', () => {
     });
 
     expect(user?.id).toBe('full-user');
+    expect(user?.preferredAiModel).toBeNull();
+    expect(user?.analyticsTimezone).toBe('UTC');
     expect(mockedGetDb).toHaveBeenCalledTimes(1);
   });
 
@@ -148,31 +169,37 @@ describe('users queries optimization', () => {
     expect(insert).toHaveBeenCalledTimes(1);
   });
 
-  it('uses injected getDb when updateUserPreferredAiModel has no explicit client', async () => {
-    const returning = vi.fn().mockResolvedValue([
+  it('defaults actor preference values when no preference row exists', async () => {
+    mockedGetRequestContext.mockReturnValue(undefined);
+
+    const rows = [
       {
-        id: 'internal-user-5',
-        authUserId: 'auth-user-5',
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
+        user: buildUserFixture({
+          id: 'internal-user-5',
+          authUserId: 'auth-user-5',
+        }),
+        preferences: null,
       },
-    ]);
-    const where = vi.fn().mockReturnValue({ returning });
-    const set = vi.fn().mockReturnValue({ where });
-    const update = vi.fn().mockReturnValue({ set });
+    ];
+    const dbClient = makeDbClient({
+      select: (() => ({
+        from: () => ({
+          leftJoin: () => ({
+            where: () => Promise.resolve(rows),
+          }),
+        }),
+      })) as unknown as DbClient['select'],
+    });
 
-    mockedGetDb.mockReturnValue(
-      makeDbClient({ update: update as unknown as DbClient['update'] }),
-    );
+    mockedGetDb.mockReturnValue(dbClient);
 
-    const user = await updateUserPreferredAiModel(
-      'internal-user-5',
-      'google/gemini-2.0-flash-exp:free',
-      undefined,
-      { getDb: mockedGetDb },
-    );
+    const user = await getUserByAuthId('auth-user-5', undefined, {
+      getRequestContext: mockedGetRequestContext,
+      getDb: mockedGetDb,
+      cleanupDbClient: mockedCleanupDbClient,
+    });
 
-    expect(user?.id).toBe('internal-user-5');
-    expect(mockedGetDb).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalledTimes(1);
+    expect(user?.preferredAiModel).toBeNull();
+    expect(user?.analyticsTimezone).toBe('UTC');
   });
 });

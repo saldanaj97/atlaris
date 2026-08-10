@@ -1,8 +1,6 @@
 import type { ActivityItem } from '../types';
 import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
 
-import { formatMinutes } from '@/features/plans/formatters';
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
 type DatedActivity = {
@@ -23,7 +21,7 @@ function getPlanProgressTimestamp(plan: LearningPlan, fallback: Date): Date {
 
 /**
  * Generates activity items from plan summaries.
- * Creates milestone events for new plans, progress updates, and completion events.
+ * Creates generated, progress, and completion events.
  */
 export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
   const datedActivities: DatedActivity[] = [];
@@ -33,10 +31,8 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     const plan = summary.plan;
     const createdAt = plan.createdAt ? new Date(plan.createdAt) : now;
     const progressAt = getPlanProgressTimestamp(plan, createdAt);
-    const completionPercent = Math.round(summary.completion * 100);
-
     // Add plan creation as a milestone if recently created
-    if (plan.createdAt) {
+    if (plan.createdAt && plan.generationStatus === 'ready') {
       const daysSinceCreation = Math.floor(
         (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
       );
@@ -45,13 +41,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
           activityDate: createdAt,
           activity: {
             id: `plan-${plan.id}`,
-            type: 'milestone',
+            kind: 'generated',
             planId: plan.id,
-            planTitle: plan.topic,
-            title: `Started: ${plan.topic}`,
-            description: `Created a new learning plan with ${summary.totalTasks} tasks.`,
+            title: plan.topic,
             timestamp: formatTimeAgo(createdAt, now),
-            metadata: { progress: completionPercent },
+            occurredAt: createdAt.toISOString(),
           },
         });
       }
@@ -63,16 +57,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
         activityDate: progressAt,
         activity: {
           id: `progress-${plan.id}`,
-          type: 'progress',
+          kind: 'progress',
           planId: plan.id,
-          planTitle: plan.topic,
-          title: 'Progress Update',
-          description: `You completed ${summary.completedTasks} of ${summary.totalTasks} tasks (${completionPercent}% complete).`,
+          title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
-          metadata: {
-            progress: completionPercent,
-            duration: formatMinutes(summary.completedMinutes),
-          },
+          occurredAt: progressAt.toISOString(),
         },
       });
     }
@@ -83,13 +72,11 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
         activityDate: progressAt,
         activity: {
           id: `complete-${plan.id}`,
-          type: 'milestone',
+          kind: 'completed',
           planId: plan.id,
-          planTitle: plan.topic,
-          title: `Completed: ${plan.topic}`,
-          description: `Congratulations! You've completed all ${summary.totalTasks} tasks.`,
+          title: plan.topic,
           timestamp: formatTimeAgo(progressAt, now),
-          metadata: { progress: 100 },
+          occurredAt: progressAt.toISOString(),
         },
       });
     }
@@ -100,38 +87,28 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     .map(({ activity }) => activity);
 }
 
-/**
- * Finds the most recently active (incomplete) plan from summaries.
- */
-export function findActivePlan(
-  summaries: PlanSummary[],
-): PlanSummary | undefined {
-  const now = new Date();
-  const rankedSummaries = summaries
-    .map((summary) => ({
-      summary,
-      status: derivePlanSummaryDisplayStatus({
-        summary,
-        referenceDate: now,
-      }),
-    }))
-    .filter(({ status }) => status === 'active' || status === 'generating')
-    .toSorted((a, b) => {
-      const aStatus = a.status;
-      const bStatus = b.status;
+export function getDashboardGreeting(
+  name: string | null | undefined,
+  activePlan?: PlanSummary,
+): string {
+  const firstName = name?.trim().split(/\s+/)[0];
+  const welcome = firstName ? `Welcome back, ${firstName}.` : 'Welcome back.';
 
-      if (aStatus !== bStatus) {
-        return aStatus === 'active' ? -1 : 1;
-      }
+  if (!activePlan) {
+    return `${welcome} Ready for your next challenge?`;
+  }
 
-      const aTime = a.summary.plan.updatedAt
-        ? new Date(a.summary.plan.updatedAt).getTime()
-        : 0;
-      const bTime = b.summary.plan.updatedAt
-        ? new Date(b.summary.plan.updatedAt).getTime()
-        : 0;
-      return bTime - aTime;
-    });
+  if (activePlan.plan.generationStatus !== 'ready') {
+    return `${welcome} Your plan for ${activePlan.plan.topic} is still being created.`;
+  }
 
-  return rankedSummaries[0]?.summary;
+  const progressPercent = Math.round(
+    Math.max(0, Math.min(1, activePlan.completion)) * 100,
+  );
+
+  if (progressPercent === 0) {
+    return `${welcome} ${activePlan.plan.topic} is ready when you are.`;
+  }
+
+  return `${welcome} You’re ${progressPercent}% through ${activePlan.plan.topic}. Keep the momentum going.`;
 }

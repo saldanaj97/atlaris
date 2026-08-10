@@ -1,11 +1,11 @@
 import { ModuleDetailPageError } from './Error';
 import { ModuleDetail } from './ModuleDetail';
 import { ModuleDetailContentSkeleton } from './ModuleDetailContentSkeleton';
-import { getModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import {
   getModuleError,
   isModuleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
+import { loadModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/module-page-data';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
@@ -25,7 +25,7 @@ export async function ModuleDetailContent({
   planId,
   moduleId,
 }: ModuleDetailContentProps) {
-  const moduleResult = await getModuleForPage(planId, moduleId);
+  const moduleResult = await loadModuleForPage(planId, moduleId);
 
   if (!isModuleSuccess(moduleResult)) {
     const error = getModuleError(moduleResult);

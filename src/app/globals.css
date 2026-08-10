@@ -4,60 +4,88 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.98 0.01 75);
-  --foreground: oklch(0.25 0.02 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.32 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.32 0 0);
-  --primary: oklch(0.62 0.19 259.76);
-  --primary-dark: oklch(0.49 0.22 264.43);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.45 0.03 257.68);
-  --muted: oklch(0.98 0 0);
-  --muted-foreground: oklch(0.55 0.02 264.41);
-  --accent: oklch(0.95 0.03 233.56);
-  --accent-foreground: oklch(0.38 0.14 265.59);
+  color-scheme: light;
+  /* After Hours — celestial parchment */
+  --background: #f4ebe1;
+  --foreground: #26102a;
+  --card: #faf4ec;
+  --card-foreground: #26102a;
+  --popover: #faf4ec;
+  --popover-foreground: #26102a;
+  --primary: #984c2c;
+  --primary-dark: #984c2c;
+  --primary-foreground: #f4ebe1;
+  --secondary: #e6d5c9;
+  --secondary-foreground: #6e5268;
+  --muted: #efe5db;
+  --muted-foreground: #6e5268;
+  --accent: #e6d5c9;
+  --accent-foreground: #6e5268;
   --destructive: oklch(0.64 0.21 25.39);
   /* Success (Phase 4): completion / positive UI; use bg-success, text-success, border-success/* */
   --success: oklch(0.52 0.14 155);
   --success-foreground: oklch(0.99 0 0);
   /* Product surfaces: panels, inset areas, subtle emphasis (not marketing glass) */
-  --panel: oklch(1 0 0);
-  --panel-foreground: oklch(0.32 0 0);
-  --panel-muted: oklch(0.98 0 0);
-  --panel-border: oklch(0.93 0.01 261.82);
+  --panel: #faf4ec;
+  --panel-foreground: #26102a;
+  --panel-muted: #efe5db;
+  --panel-border: #c9a898;
   --warning: oklch(0.75 0.15 85);
   --warning-foreground: oklch(0.22 0.04 85);
   --disabled: oklch(0.96 0.01 261.82);
-  --disabled-foreground: oklch(0.55 0.02 264.41);
-  --border: oklch(0.93 0.01 261.82);
-  --input: oklch(0.93 0.01 261.82);
-  --ring: oklch(0.62 0.19 259.76);
-  --chart-1: oklch(0.62 0.19 259.76);
-  --chart-2: oklch(0.55 0.22 262.96);
-  --chart-3: oklch(0.49 0.22 264.43);
-  --chart-4: oklch(0.42 0.18 265.55);
-  --chart-5: oklch(0.38 0.14 265.59);
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.14 0 0);
-  --sidebar-primary: oklch(0.2 0 0);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.2 0 0);
-  --sidebar-border: oklch(0.92 0 0);
-  --sidebar-ring: oklch(0.71 0 0);
+  --disabled-foreground: #6e5268;
+  --border: #c9a898;
+  --input: #c9a898;
+  --ring: #c96d42;
+  --chart-1: #c96d42;
+  --chart-2: #984c2c;
+  --chart-3: #8b4560;
+  --chart-4: #6e5268;
+  --chart-5: #26102a;
+  --sidebar: #faf4ec;
+  --sidebar-foreground: #26102a;
+  --sidebar-primary: #984c2c;
+  --sidebar-primary-foreground: #f4ebe1;
+  --sidebar-accent: #efe5db;
+  --sidebar-accent-foreground: #26102a;
+  --sidebar-border: #c9a898;
+  --sidebar-ring: #c96d42;
+  --app-background-image:
+    radial-gradient(
+      circle at 78% 0%,
+      color-mix(in srgb, #c96d42 14%, #f4ebe1) 0,
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 12% 88%,
+      color-mix(in srgb, #c9a898 40%, #f4ebe1) 0,
+      transparent 42%
+    ),
+    linear-gradient(160deg, #f4ebe1 0%, #faf4ec 48%, #e6d5c9 100%);
+  --app-background-size: auto, auto, auto;
 
-  --font-sans:
-    'Geist', 'Geist Fallback', ui-sans-serif, system-ui, -apple-system,
+  --font-family-base:
+    var(--font-work-sans), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-serif: 'Source Serif 4', serif;
-  --font-mono: JetBrains Mono, monospace;
+    'Noto Sans', sans-serif;
+  --font-family-heading:
+    var(--font-work-sans), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-family-display:
+    var(--font-sora), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-weight-base: 400;
+  --font-weight-heading: 600;
 
-  --radius: 2rem;
+  --font-sans: var(--font-family-base);
+  --font-serif: var(--font-family-display);
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Product controls derive rounded-* from --radius; marketing keeps explicit rounded-2xl/3xl. */
+  --radius: 0.75rem;
+  --radius-marketing: 2rem;
 
   --shadow-2xs: 0 1px 1px 0px oklch(0 0 0 / 0.03);
   --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.05);
@@ -77,62 +105,65 @@
 }
 
 .dark {
-  --background: oklch(0.2 0 0);
-  --foreground: oklch(0.92 0 0);
-  --card: oklch(0.27 0 0);
-  --card-foreground: oklch(0.92 0 0);
-  --popover: oklch(0.27 0 0);
-  --popover-foreground: oklch(0.92 0 0);
-  --primary: oklch(0.62 0.19 259.76);
-  --primary-dark: oklch(0.55 0.22 262.96);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.27 0 0);
-  --secondary-foreground: oklch(0.92 0 0);
-  --muted: oklch(0.27 0 0);
-  --muted-foreground: oklch(0.72 0 0);
-  --accent: oklch(0.38 0.14 265.59);
-  --accent-foreground: oklch(0.88 0.06 254.63);
+  color-scheme: dark;
+  /* After Hours — velvet nocturne */
+  --background: #180d18;
+  --foreground: #f8ead7;
+  --card: #2b1728;
+  --card-foreground: #f8ead7;
+  --popover: #2b1728;
+  --popover-foreground: #f8ead7;
+  --primary: #f0a06e;
+  --primary-dark: #f0a06e;
+  --primary-foreground: #1b0e19;
+  --secondary: #3b2135;
+  --secondary-foreground: #c7aeb7;
+  --muted: #351b30;
+  --muted-foreground: #c7aeb7;
+  --accent: #3b2135;
+  --accent-foreground: #f0a06e;
   --destructive: oklch(0.64 0.21 25.39);
   --success: oklch(0.62 0.14 155);
   --success-foreground: oklch(0.12 0.02 155);
-  --panel: oklch(0.24 0 0);
-  --panel-foreground: oklch(0.92 0 0);
-  --panel-muted: oklch(0.21 0 0);
-  --panel-border: oklch(0.37 0 0);
+  --panel: #2b1728;
+  --panel-foreground: #f8ead7;
+  --panel-muted: #351b30;
+  --panel-border: #7a4b62;
   --warning: oklch(0.72 0.14 85);
   --warning-foreground: oklch(0.15 0.02 85);
   --disabled: oklch(0.3 0 0);
-  --disabled-foreground: oklch(0.55 0 0);
-  --border: oklch(0.37 0 0);
-  --input: oklch(0.37 0 0);
-  --ring: oklch(0.62 0.19 259.76);
-  --chart-1: oklch(0.71 0.14 254.69);
-  --chart-2: oklch(0.62 0.19 259.76);
-  --chart-3: oklch(0.55 0.22 262.96);
-  --chart-4: oklch(0.49 0.22 264.43);
-  --chart-5: oklch(0.42 0.18 265.55);
-  --sidebar: oklch(0.21 0.01 285.56);
-  --sidebar-foreground: oklch(0.99 0 0);
-  --sidebar-primary: oklch(0.49 0.24 264.41);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.27 0.01 285.81);
-  --sidebar-accent-foreground: oklch(0.99 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.55 0.02 285.76);
-
-  --shadow-2xs: 0 1px 1px 0px oklch(0 0 0 / 0.03);
-  --shadow-xs: 0 1px 2px 0px oklch(0 0 0 / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06);
-  --shadow:
-    0 2px 4px 0px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08);
-  --shadow-md:
-    0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
-  --shadow-xl:
-    0 20px 25px -5px oklch(0 0 0 / 0.1), 0 8px 10px -6px oklch(0 0 0 / 0.1);
-  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
+  --disabled-foreground: #c7aeb7;
+  --border: #7a4b62;
+  --input: #7a4b62;
+  --ring: #f0a06e;
+  --chart-1: #f0a06e;
+  --chart-2: #e8b896;
+  /* Mid series / completed status: warm peach-rose — stronger than muted ink on nocturne. */
+  --chart-3: #d9a08c;
+  --chart-4: #7a4b62;
+  /* Soft series: muted parchment-rose — readable on card (#2b1728); old soft fill was invisible. */
+  --chart-5: #c7aeb7;
+  --sidebar: #2b1728;
+  --sidebar-foreground: #f8ead7;
+  --sidebar-primary: #f0a06e;
+  --sidebar-primary-foreground: #1b0e19;
+  --sidebar-accent: #351b30;
+  --sidebar-accent-foreground: #f8ead7;
+  --sidebar-border: #7a4b62;
+  --sidebar-ring: #f0a06e;
+  --app-background-image:
+    radial-gradient(
+      circle at 78% 0%,
+      color-mix(in srgb, #f0a06e 12%, #180d18) 0,
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 14% 86%,
+      color-mix(in srgb, #7a4b62 28%, #180d18) 0,
+      transparent 42%
+    ),
+    linear-gradient(140deg, #180d18 0%, #2b1728 52%, #351b30 100%);
+  --app-background-size: auto, auto, auto;
 }
 
 @theme inline {
@@ -187,6 +218,8 @@
   --radius-md: calc(var(--radius) * 0.875);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.25);
+  /* Marketing arched cards (`rounded-4xl`) read `--radius-marketing`. */
+  --radius-4xl: var(--radius-marketing);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
@@ -198,10 +231,54 @@
   --shadow-2xl: var(--shadow-2xl);
 }
 
+@keyframes dashboard-unfold {
+  0% {
+    opacity: 0;
+    clip-path: inset(48% 0 48% 0 round 1rem);
+    transform: translateX(var(--dashboard-entry-x, 0)) scaleX(0.985);
+  }
+
+  45% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 1rem);
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes dashboard-trace {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes dashboard-ledger-row {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 @layer base {
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-family-base);
+    background-image: var(--app-background-image);
+    background-size: var(--app-background-size, auto);
   }
 
   /*
@@ -265,91 +342,35 @@
     letter-spacing: 0;
     color: var(--muted-foreground);
   }
+}
 
-  /*
-   * Marketing Typography - Large scale for landing/marketing pages
-   * Major Third (1.25x) scale with tight letter-spacing
-   */
-  .marketing-h1 {
-    font-family: var(--font-family-heading);
-    font-weight: var(--font-weight-heading);
-    font-size: 3.0625rem; /* 49px */
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    text-wrap: balance;
-  }
+@utility animate-dashboard-unfold {
+  animation-name: dashboard-unfold;
+  animation-duration: 700ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
 
-  .marketing-h2 {
-    font-family: var(--font-family-heading);
-    font-weight: var(--font-weight-heading);
-    font-size: 2.4375rem; /* 39px */
-    line-height: 1.15;
-    letter-spacing: -0.025em;
-    text-wrap: balance;
-  }
+@utility animate-dashboard-trace {
+  animation-name: dashboard-trace;
+  animation-duration: 720ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
 
-  .marketing-h3 {
-    font-family: var(--font-family-heading);
-    font-weight: var(--font-weight-heading);
-    font-size: 1.9375rem; /* 31px */
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
-  }
-
-  .marketing-h4 {
-    font-family: var(--font-family-heading);
-    font-weight: var(--font-weight-heading);
-    font-size: 1.5625rem; /* 25px */
-    line-height: 1.25;
-    letter-spacing: -0.015em;
-    text-wrap: balance;
-  }
-
-  /* Card titles inside marketing sections (features, steps, problem/solution) */
-  .marketing-card-title {
-    font-family: var(--font-family-heading);
-    font-weight: 600;
-    font-size: 1.25rem; /* 20px — aligns with text-xl */
-    line-height: 1.3;
-    letter-spacing: -0.015em;
-    text-wrap: balance;
-    color: var(--foreground);
-  }
-
-  .marketing-subtitle {
-    font-family: var(--font-family-base);
-    font-weight: var(--font-weight-base);
-    font-size: 1.25rem; /* 20px */
-    line-height: 1.5;
-    letter-spacing: 0;
-    color: var(--muted-foreground);
-  }
-
-  /* Responsive scaling for marketing typography */
-  @media (max-width: 640px) {
-    .marketing-h1 {
-      font-size: 2.4375rem; /* 39px on mobile */
-    }
-    .marketing-h2 {
-      font-size: 1.9375rem; /* 31px on mobile */
-    }
-    .marketing-h3 {
-      font-size: 1.5625rem; /* 25px on mobile */
-    }
-    .marketing-h4 {
-      font-size: 1.25rem; /* 20px on mobile */
-    }
-    .marketing-card-title {
-      font-size: 1.125rem; /* 18px on mobile */
-    }
-    .marketing-subtitle {
-      font-size: 1rem; /* 16px on mobile */
-    }
-  }
+@utility animate-dashboard-ledger-row {
+  animation-name: dashboard-ledger-row;
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
 }
 
 @layer utilities {
+  .font-heading {
+    font-family: var(--font-family-heading);
+    font-weight: var(--font-weight-heading);
+  }
+
   /* Brand gradient - used for badges, highlights, and decorative fills */
   .gradient-brand {
     @apply bg-linear-to-r from-primary to-accent;
@@ -389,5 +410,13 @@
   }
   .dark .gradient-text-symmetric {
     @apply from-primary via-accent to-primary;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dashboard-unfold,
+  .animate-dashboard-trace,
+  .animate-dashboard-ledger-row {
+    animation: none;
   }
 }

@@ -1,49 +1,44 @@
 import type { FilterStatus } from '@/features/plans/read-projection/types';
 
 import { Button } from '@/components/ui/button';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@/components/ui/empty';
-import { FileText, Plus } from 'lucide-react';
+import { RouteEmptyState } from '@/components/ui/route-empty-state';
+import { FileText, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 interface EmptyPlansListProps {
   searchQuery: string;
   filterStatus: FilterStatus;
+  isFirstRun?: boolean;
 }
 
 export function EmptyPlansList({
   searchQuery,
   filterStatus,
+  isFirstRun = false,
 }: EmptyPlansListProps) {
-  const hasFilters = searchQuery || filterStatus !== 'all';
+  const hasFilters = Boolean(searchQuery) || filterStatus !== 'all';
+  const title = isFirstRun ? 'No learning plans yet' : 'No plans found';
+  const description = isFirstRun
+    ? "Start by describing what you want to learn and we'll create a personalized learning plan with resources and milestones."
+    : hasFilters
+      ? 'No plans match your search or filters. Try adjusting your criteria.'
+      : "You haven't created any plans yet. Create your first plan to get started.";
+  const Icon = isFirstRun ? Sparkles : FileText;
 
   return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyMedia variant='icon'>
-          <FileText />
-        </EmptyMedia>
-        <EmptyTitle>No Plans Found</EmptyTitle>
-        <EmptyDescription>
-          {hasFilters
-            ? 'No plans found matching your filters. Try adjusting your search or filter criteria.'
-            : "You haven't created any plans yet. Get started by creating your first plan."}
-        </EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
+    <RouteEmptyState
+      icon={Icon}
+      title={title}
+      description={description}
+      className='flex min-h-72 animate-in flex-col items-center justify-center rounded-xl border border-dashed border-border bg-panel/40 px-6 py-12 text-center animation-duration-500 fill-mode-both fade-in motion-reduce:animate-none'
+      action={
         <Button asChild>
           <Link href='/plans/new'>
             <Plus />
-            New Plan
+            New plan
           </Link>
         </Button>
-      </EmptyContent>
-    </Empty>
+      }
+    />
   );
 }

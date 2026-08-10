@@ -1,8 +1,12 @@
+import type {
+  FilterStatus,
+  PlanListQuery,
+  PlanListSort,
+} from '@/features/plans/read-projection/types';
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import {
-  PlanCountBadgeContent,
+  PlanHeaderSummaryContent,
   PlansContent,
 } from '@/app/(app)/plans/components/PlansContent';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
@@ -10,6 +14,7 @@ import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -27,24 +32,72 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Plans list page with Suspense boundaries for data-dependent content.
- *
- * Static elements (title, "New Plan" button) render immediately.
- * Data-dependent elements (plan count badge, search bar, filters, plans list) are wrapped in Suspense.
- */
-export default function PlansPage(): JSX.Element {
-  const plansPageData = loadPlansPageData();
+type PlansPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+const PLAN_FILTERS = new Set<FilterStatus>([
+  'all',
+  'not_started',
+  'active',
+  'completed',
+  'generating',
+  'failed',
+  'inactive',
+]);
+
+const PLAN_SORTS = new Set<PlanListSort>(PLAN_LIST_SORTS);
+
+function firstSearchParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
+}
+
+async function parsePlansQuery(
+  searchParams: PlansPageProps['searchParams'],
+): Promise<PlanListQuery> {
+  const params = await searchParams;
+  const pageValue = Number(firstSearchParam(params?.page));
+  const statusValue = firstSearchParam(params?.status);
+  const canonicalStatusValue =
+    statusValue === 'paused' ? 'inactive' : statusValue;
+  const status = PLAN_FILTERS.has(canonicalStatusValue as FilterStatus)
+    ? (canonicalStatusValue as FilterStatus)
+    : 'all';
+  const sortValue = firstSearchParam(params?.sort);
+  const sort = PLAN_SORTS.has(sortValue as PlanListSort)
+    ? (sortValue as PlanListSort)
+    : 'recommended';
+
+  return {
+    page:
+      Number.isFinite(pageValue) && pageValue >= 1 ? Math.floor(pageValue) : 1,
+    search: firstSearchParam(params?.search).trim(),
+    status,
+    sort,
+  };
+}
+
+export default async function PlansPage({ searchParams }: PlansPageProps) {
+  const query = await parsePlansQuery(searchParams);
+  const plansPageData = loadPlansPageData(query);
 
   return (
     <>
-      {/* Static header - renders immediately; count waits independently. */}
+      {/* Static header - renders immediately; usage summary streams in independently. */}
       <PageHeader
         title='Your Plans'
+        subtitle='Search, sort, and track your learning plan library.'
         actions={
           <>
-            <Suspense fallback={<Skeleton className='h-6 w-16 rounded-full' />}>
-              <PlanCountBadgeContent dataPromise={plansPageData} />
+            <Suspense
+              fallback={
+                <div className='flex items-center gap-3'>
+                  <Skeleton className='h-4 w-32' />
+                  <Skeleton className='h-6 w-24 rounded-full' />
+                </div>
+              }
+            >
+              <PlanHeaderSummaryContent dataPromise={plansPageData} />
             </Suspense>
             <Button asChild>
               <Link href='/plans/new'>
@@ -56,9 +109,9 @@ export default function PlansPage(): JSX.Element {
         }
       />
 
-      {/* Data-dependent content (search, filters, list) - wrapped in Suspense */}
+      {/* Data-dependent content (search and table) - wrapped in Suspense */}
       <Suspense fallback={<PlansContentSkeleton />}>
-        <PlansContent dataPromise={plansPageData} />
+        <PlansContent dataPromise={plansPageData} query={query} />
       </Suspense>
     </>
   );

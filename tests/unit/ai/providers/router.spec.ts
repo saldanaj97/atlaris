@@ -51,11 +51,9 @@ vi.mock('@openrouter/sdk', () => {
 const mockInput = createGenerationInput();
 
 describe('RouterGenerationProvider', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
   beforeEach(() => {
-    originalEnv = { ...process.env };
-    process.env.OPENROUTER_API_KEY = 'test-api-key';
+    vi.stubEnv('AI_PROVIDER', 'router');
+    vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
     vi.clearAllMocks();
     mockSend.mockReset();
     mockSend.mockResolvedValue(DEFAULT_OPENROUTER_RESPONSE);
@@ -63,13 +61,11 @@ describe('RouterGenerationProvider', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    process.env = originalEnv;
   });
 
   describe('constructor', () => {
     it('uses DEFAULT_MODEL when no model is provided', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      delete process.env.AI_DEFAULT_MODEL;
+      vi.stubEnv('AI_DEFAULT_MODEL', undefined);
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
@@ -79,8 +75,6 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('uses provided model in config', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       const config: RouterConfig = {
         model: 'anthropic/claude-haiku-4.5',
       };
@@ -93,8 +87,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('uses aiEnv.defaultModel when available', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      process.env.AI_DEFAULT_MODEL = 'openai/gpt-4o-mini-2024-07-18';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
@@ -115,17 +108,14 @@ describe('RouterGenerationProvider', () => {
       expect(result.metadata.provider).toBe('mock');
     });
 
-    it('config.useMock=true overrides AI_USE_MOCK env when set to false', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
+    it('uses the explicit useMock configuration over the router default', async () => {
       const provider = new RouterGenerationProvider({ useMock: true });
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('mock');
     });
 
-    it('config.useMock=false overrides AI_USE_MOCK env when set to true', async () => {
-      process.env.AI_USE_MOCK = 'true';
+    it('uses the explicit useMock=false configuration for the real provider', async () => {
       vi.stubEnv('NODE_ENV', 'development');
 
       const provider = new RouterGenerationProvider({
@@ -137,19 +127,7 @@ describe('RouterGenerationProvider', () => {
       expect(result.metadata.provider).toBe('openrouter');
     });
 
-    it('uses MockGenerationProvider when AI_USE_MOCK is "true" in non-production', async () => {
-      process.env.AI_USE_MOCK = 'true';
-      vi.stubEnv('NODE_ENV', 'development');
-
-      const provider = new RouterGenerationProvider();
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('mock');
-    });
-
     it('does not include Google AI fallback', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       const provider = new RouterGenerationProvider({
         model: 'anthropic/claude-haiku-4.5',
       });
@@ -160,8 +138,6 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('forwards fallbackModels to OpenRouterProvider', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       const provider = new RouterGenerationProvider({
         model: 'anthropic/claude-haiku-4.5',
         fallbackModels: [AI_DEFAULT_MODEL],
@@ -179,8 +155,7 @@ describe('RouterGenerationProvider', () => {
 
   describe('model configuration priority', () => {
     it('prioritizes config.model over aiEnv.defaultModel', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      process.env.AI_DEFAULT_MODEL = 'env-default-model';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'env-default-model');
 
       const config: RouterConfig = {
         model: 'config-model',
@@ -194,8 +169,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('falls back to aiEnv.defaultModel when config.model is not provided', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      process.env.AI_DEFAULT_MODEL = 'openai/gpt-4o-mini-2024-07-18';
+      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
 
       const provider = new RouterGenerationProvider({});
       const result = await provider.generate(mockInput);
@@ -205,8 +179,7 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('falls back to DEFAULT_MODEL when neither config nor env provides model', async () => {
-      process.env.AI_USE_MOCK = 'false';
-      delete process.env.AI_DEFAULT_MODEL;
+      vi.stubEnv('AI_DEFAULT_MODEL', undefined);
 
       const provider = new RouterGenerationProvider({});
       const result = await provider.generate(mockInput);
@@ -216,20 +189,9 @@ describe('RouterGenerationProvider', () => {
     });
   });
 
-  describe('mock configuration', () => {
-    it('respects mock settings in test environment', async () => {
-      process.env.VITEST_WORKER_ID = '1';
-      process.env.AI_USE_MOCK = 'true';
-
-      const provider = new RouterGenerationProvider();
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('mock');
-    });
-
-    it('allows real provider in test when AI_USE_MOCK is false', async () => {
-      process.env.VITEST_WORKER_ID = '1';
-      process.env.AI_USE_MOCK = 'false';
+  describe('explicit mock configuration', () => {
+    it('allows the real provider in test when useMock is false', async () => {
+      vi.stubEnv('VITEST_WORKER_ID', '1');
 
       const provider = new RouterGenerationProvider({
         model: 'test/model',
@@ -244,8 +206,6 @@ describe('RouterGenerationProvider', () => {
 
   describe('retry policy', () => {
     it('retries once on provider rate limit errors', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       mockSend
         .mockRejectedValueOnce({
           response: { status: 429 },
@@ -263,8 +223,6 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('retries once on provider 5xx errors', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       mockSend
         .mockRejectedValueOnce({
           status: 500,
@@ -282,8 +240,6 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('does not retry non-429 4xx errors', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       mockSend.mockRejectedValueOnce({
         status: 400,
         message: 'Bad Request',
@@ -300,8 +256,6 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('does not retry invalid provider responses', async () => {
-      process.env.AI_USE_MOCK = 'false';
-
       mockSend
         .mockResolvedValueOnce({
           choices: [

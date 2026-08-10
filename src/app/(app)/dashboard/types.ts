@@ -1,15 +1,8 @@
 export interface ActivityItem {
   id: string;
-  type: 'progress' | 'milestone';
+  kind: 'generated' | 'progress' | 'completed';
   planId: string;
-  planTitle: string;
   title: string;
-  description?: string;
   timestamp: string;
-  metadata?: {
-    progress?: number;
-    duration?: string;
-  };
+  occurredAt: string;
 }
-
-export type ActivityFilter = 'all' | 'milestone' | 'progress';

@@ -36,14 +36,14 @@ const errorResponseSchema = z
   .openapi('ErrorResponse');
 
 const learningPlanBaseFields = {
-  id: z.string().uuid(),
+  id: z.uuid(),
   topic: z.string(),
   skillLevel: SKILL_LEVEL_ENUM,
   weeklyHours: z.number().int().nullable().optional(),
   learningStyle: LEARNING_STYLE_ENUM,
   visibility: z.literal('private'),
   origin: z.enum(['ai', 'manual', 'template'] as const),
-  createdAt: z.string().datetime().nullable().optional(),
+  createdAt: z.iso.datetime().nullable().optional(),
 };
 
 const learningPlanSchema = z.object({
@@ -52,7 +52,7 @@ const learningPlanSchema = z.object({
 
 const lightweightPlanSummarySchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     topic: z.string(),
     skillLevel: SKILL_LEVEL_ENUM,
     learningStyle: LEARNING_STYLE_ENUM,
@@ -64,8 +64,8 @@ const lightweightPlanSummarySchema = z
       'failed',
       'pending_retry',
     ] as const),
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
     completion: z.number(),
     completedTasks: z.number().int(),
     totalTasks: z.number().int(),
@@ -86,7 +86,7 @@ const subscriptionResponseSchema = z
   .object({
     tier: z.enum(['free', 'starter', 'pro']),
     status: z.enum(['active', 'canceled', 'past_due', 'trialing']).nullable(),
-    periodEnd: z.string().datetime().nullable(),
+    periodEnd: z.iso.datetime().nullable(),
     cancelAtPeriodEnd: z.boolean(),
     usage: subscriptionUsageSchema,
   })

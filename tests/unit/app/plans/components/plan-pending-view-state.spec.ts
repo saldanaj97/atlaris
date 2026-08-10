@@ -4,7 +4,6 @@ import {
   buildPlanPendingViewState,
   formatOrigin,
   getStatusBadgeVariant,
-  MAX_RETRY_ATTEMPTS,
 } from '@/app/(app)/plans/[id]/components/plan-pending-view-state';
 import { describe, expect, it } from 'vitest';
 
@@ -33,6 +32,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'failed' as const,
         retryStatus: 'idle' as const,
         attempts: 1,
+        attemptCap: 3,
         error: 'Generation failed',
         pollingError: null,
         retryError: null,
@@ -46,6 +46,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'processing' as const,
         retryStatus: 'idle' as const,
         attempts: 0,
+        attemptCap: 3,
         error: null,
         pollingError: 'Unable to reach the server',
         retryError: null,
@@ -58,6 +59,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'processing' as const,
         retryStatus: 'idle' as const,
         attempts: 2,
+        attemptCap: 3,
         error: null,
         pollingError: null,
         retryError: null,
@@ -70,6 +72,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'pending' as const,
         retryStatus: 'idle' as const,
         attempts: 0,
+        attemptCap: 3,
         error: null,
         pollingError: null,
         retryError: null,
@@ -82,6 +85,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'ready' as const,
         retryStatus: 'idle' as const,
         attempts: 0,
+        attemptCap: 3,
         error: null,
         pollingError: null,
         retryError: null,
@@ -94,6 +98,7 @@ describe('buildPlanPendingViewState', () => {
         status: 'archived' as const,
         retryStatus: 'idle' as const,
         attempts: 0,
+        attemptCap: 3,
         error: null,
         pollingError: null,
         retryError: null,
@@ -118,6 +123,7 @@ describe('buildPlanPendingViewState', () => {
       status: 'failed',
       retryStatus: 'retrying',
       attempts: 1,
+      attemptCap: 3,
       error: null,
       pollingError: null,
       retryError: null,
@@ -133,6 +139,7 @@ describe('buildPlanPendingViewState', () => {
       status: 'failed',
       retryStatus: 'cancelled',
       attempts: 1,
+      attemptCap: 3,
       error: null,
       pollingError: null,
       retryError: null,
@@ -150,6 +157,7 @@ describe('buildPlanPendingViewState', () => {
       status: 'processing',
       retryStatus: 'idle',
       attempts: 0,
+      attemptCap: 3,
       error: 'Plan error',
       pollingError: 'Polling error',
       retryError: 'Retry error',
@@ -163,6 +171,7 @@ describe('buildPlanPendingViewState', () => {
       status: 'processing',
       retryStatus: 'idle',
       attempts: 0,
+      attemptCap: 3,
       error: 'Plan error',
       pollingError: 'Polling error',
       retryError: null,
@@ -176,6 +185,7 @@ describe('buildPlanPendingViewState', () => {
       status: 'failed',
       retryStatus: 'idle',
       attempts: 1,
+      attemptCap: 3,
       error: 'Plan error',
       pollingError: null,
       retryError: null,
@@ -185,16 +195,23 @@ describe('buildPlanPendingViewState', () => {
     expect(viewState.failedPlanMessage).toBe('Plan error');
   });
 
-  it('marks retries as exhausted at the attempt cap', () => {
-    const viewState = buildPlanPendingViewState({
-      status: 'failed',
-      retryStatus: 'idle',
-      attempts: MAX_RETRY_ATTEMPTS,
-      error: 'Generation failed',
-      pollingError: null,
-      retryError: null,
-    });
+  it.each([
+    { attempts: 3, attemptCap: 5, hasExhaustedRetries: false },
+    { attempts: 2, attemptCap: 2, hasExhaustedRetries: true },
+  ])(
+    'uses the supplied cap when attempts=$attempts and cap=$attemptCap',
+    ({ attempts, attemptCap, hasExhaustedRetries }) => {
+      const viewState = buildPlanPendingViewState({
+        status: 'failed',
+        retryStatus: 'idle',
+        attempts,
+        attemptCap,
+        error: 'Generation failed',
+        pollingError: null,
+        retryError: null,
+      });
 
-    expect(viewState.hasExhaustedRetries).toBe(true);
-  });
+      expect(viewState.hasExhaustedRetries).toBe(hasExhaustedRetries);
+    },
+  );
 });

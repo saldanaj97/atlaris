@@ -1,10 +1,10 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Work_Sans, Young_Serif } from 'next/font/google';
+import { Sora, Work_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
 
 import './globals.css';
@@ -14,20 +14,59 @@ const workSans = Work_Sans({
   variable: '--font-work-sans',
 });
 
-const youngSerif = Young_Serif({
+const sora = Sora({
   subsets: ['latin'],
-  weight: '400',
-  variable: '--font-young-serif',
+  variable: '--font-sora',
 });
+
+const metadataDescription =
+  'Create personalized learning plans with AI-generated modules and tasks. Track progress and learn smarter.';
+
+const clerkAppearance = {
+  variables: {
+    borderRadius: 'var(--radius)',
+    colorBackground: 'var(--panel)',
+    colorPrimary: 'var(--primary)',
+    colorText: 'var(--foreground)',
+    colorTextSecondary: 'var(--muted-foreground)',
+    fontFamily: 'var(--font-family-base)',
+  },
+  elements: {
+    card: 'bg-panel shadow-none',
+    cardBox: 'rounded-2xl border border-panel-border shadow-sm',
+    footerActionLink: 'text-primary hover:text-primary-dark',
+    formButtonPrimary: 'bg-primary hover:bg-primary/90',
+    headerSubtitle: 'text-muted-foreground',
+    headerTitle: 'text-foreground',
+    socialButtonsBlockButton: 'border-border text-foreground hover:bg-muted/70',
+  },
+};
+
+const clerkLocalization = {
+  signIn: {
+    start: {
+      title: 'Sign in to Atlaris',
+      titleCombined: 'Sign in to Atlaris',
+      subtitle: 'Continue building your learning schedule.',
+      subtitleCombined: 'Continue building your learning schedule.',
+    },
+  },
+  signUp: {
+    start: {
+      title: 'Create your Atlaris account',
+      titleCombined: 'Create your Atlaris account',
+      subtitle: 'Turn your learning goal into a structured plan.',
+      subtitleCombined: 'Turn your learning goal into a structured plan.',
+    },
+  },
+};
 
 export const metadata: Metadata = {
   title: 'Atlaris - AI-Powered Learning Paths',
-  description:
-    'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
+  description: metadataDescription,
   openGraph: {
     title: 'Atlaris - AI-Powered Learning Paths',
-    description:
-      'Create personalized learning plans with AI-generated modules and tasks. Track progress, sync to Google Calendar, and learn smarter.',
+    description: metadataDescription,
     images: [
       { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
       {
@@ -43,13 +82,19 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Atlaris - AI-Powered Learning Paths',
-    description:
-      'Create personalized learning plans with AI-generated modules and tasks.',
+    description: metadataDescription,
     images: ['/og-default.jpg'],
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },
   metadataBase: new URL('https://atlaris.app'),
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f4ebe1' },
+    { media: '(prefers-color-scheme: dark)', color: '#180d18' },
+  ],
 };
 
 export default function RootLayout({
@@ -65,14 +110,20 @@ export default function RootLayout({
   );
 
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html
+      lang='en'
+      suppressHydrationWarning
+      className={`${workSans.variable} ${sora.variable}`}
+    >
       <body
-        className={`${workSans.variable} ${youngSerif.variable} ${workSans.className} flex min-h-screen w-full flex-col antialiased`}
+        className={`${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
         {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
         {shouldUseClerkUi() ? (
           <ClerkProvider
             afterSignOutUrl='/'
+            appearance={clerkAppearance}
+            localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
           >

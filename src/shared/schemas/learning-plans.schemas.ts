@@ -44,34 +44,32 @@ export const createLearningPlanNotesSchema = notesSchema
   .nullable()
   .transform((value) => (value ? value : undefined));
 
-export const createLearningPlanSchema = z
-  .object({
-    topic: topicSchema,
-    skillLevel: SKILL_LEVEL_ENUM,
-    weeklyHours: weeklyHoursSchema,
-    learningStyle: LEARNING_STYLE_ENUM,
-    notes: createLearningPlanNotesSchema,
-    startDate: z
-      .string()
-      .trim()
-      .optional()
-      .nullable()
-      .refine(
-        (value) => !value || !Number.isNaN(Date.parse(value)),
-        'Start date must be a valid ISO date string.',
-      )
-      .transform((value) => (value ? value : undefined)),
-    deadlineDate: z
-      .string()
-      .trim()
-      .optional()
-      .nullable()
-      .refine(
-        (value) => !value || !Number.isNaN(Date.parse(value)),
-        'Deadline date must be a valid ISO date string.',
-      )
-      .transform((value) => (value ? value : undefined)),
-    visibility: z.literal('private').optional().default('private'),
-    origin: z.enum(['ai', 'manual', 'template'] as const).default('ai'),
-  })
-  .strict();
+export const createLearningPlanSchema = z.strictObject({
+  topic: topicSchema,
+  skillLevel: SKILL_LEVEL_ENUM,
+  weeklyHours: weeklyHoursSchema,
+  learningStyle: LEARNING_STYLE_ENUM,
+  notes: createLearningPlanNotesSchema,
+  startDate: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine(
+      (value) => !value || !Number.isNaN(Date.parse(value)),
+      'Start date must be a valid ISO date string.',
+    )
+    .transform((value) => (value ? value : undefined)),
+  deadlineDate: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine(
+      (value) => !value || !Number.isNaN(Date.parse(value)),
+      'Deadline date must be a valid ISO date string.',
+    )
+    .transform((value) => (value ? value : undefined)),
+  visibility: z.literal('private').optional().default('private'),
+  origin: z.enum(['ai', 'manual', 'template'] as const).default('ai'),
+});

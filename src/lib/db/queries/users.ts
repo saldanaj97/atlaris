@@ -1,14 +1,19 @@
 import type { PreferredAiModel } from '../../../../supabase/enums';
 import type {
+  ActorUser,
   CreateUserData,
   DbUser,
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
 
 import { getRequestContext } from '@/lib/api/context';
+import {
+  DEFAULT_USER_PREFERENCES,
+  type UserPreferenceValues,
+} from '@/lib/db/queries/user-preferences';
 import { isValidModelId } from '@/shared/constants/ai-models';
 import { getDb } from '@supabase/runtime';
-import { users } from '@supabase/schema';
+import { userPreferences, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 
 const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
@@ -37,22 +42,22 @@ function isOptionalPreferredAiModel(
   return value === null || (typeof value === 'string' && isValidModelId(value));
 }
 
-function hasCoreIdentityFields(maybeUser: Partial<DbUser>): boolean {
+function hasCoreIdentityFields(maybeUser: Partial<ActorUser>): boolean {
   return (
     typeof maybeUser.id === 'string' &&
     typeof maybeUser.authUserId === 'string' &&
-    typeof maybeUser.email === 'string'
+    (typeof maybeUser.email === 'string' || maybeUser.email === null)
   );
 }
 
-function hasValidSubscriptionTier(maybeUser: Partial<DbUser>): boolean {
+function hasValidSubscriptionTier(maybeUser: Partial<ActorUser>): boolean {
   return (
     typeof maybeUser.subscriptionTier === 'string' &&
     SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier)
   );
 }
 
-function hasValidSubscriptionStatus(maybeUser: Partial<DbUser>): boolean {
+function hasValidSubscriptionStatus(maybeUser: Partial<ActorUser>): boolean {
   return (
     maybeUser.subscriptionStatus === null ||
     (typeof maybeUser.subscriptionStatus === 'string' &&
@@ -60,12 +65,12 @@ function hasValidSubscriptionStatus(maybeUser: Partial<DbUser>): boolean {
   );
 }
 
-function isDbUser(user: unknown): user is DbUser {
+function isActorUser(user: unknown): user is ActorUser {
   if (!user || typeof user !== 'object') {
     return false;
   }
 
-  const maybeUser = user as Partial<DbUser>;
+  const maybeUser = user as Partial<ActorUser>;
 
   return (
     hasCoreIdentityFields(maybeUser) &&
@@ -73,19 +78,18 @@ function isDbUser(user: unknown): user is DbUser {
     typeof maybeUser.monthlyExportCount === 'number' &&
     maybeUser.createdAt instanceof Date &&
     maybeUser.updatedAt instanceof Date &&
+    typeof maybeUser.analyticsTimezone === 'string' &&
     isOptionalString(maybeUser.name) &&
-    isOptionalString(maybeUser.stripeCustomerId) &&
-    isOptionalString(maybeUser.stripeSubscriptionId) &&
     hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
     isOptionalPreferredAiModel(maybeUser.preferredAiModel)
   );
 }
 
-function matchingContextDbUser(
+function matchingContextActorUser(
   contextUser: unknown,
   authUserId: string,
-): DbUser | undefined {
+): ActorUser | undefined {
   if (
     !contextUser ||
     typeof contextUser !== 'object' ||
@@ -94,7 +98,22 @@ function matchingContextDbUser(
   ) {
     return undefined;
   }
-  return isDbUser(contextUser) ? contextUser : undefined;
+  return isActorUser(contextUser) ? contextUser : undefined;
+}
+
+function toActorUser(
+  user: DbUser,
+  preferences: UserPreferenceValues | null,
+): ActorUser {
+  return {
+    ...user,
+    preferredAiModel:
+      preferences?.preferredAiModel ??
+      DEFAULT_USER_PREFERENCES.preferredAiModel,
+    analyticsTimezone:
+      preferences?.analyticsTimezone ??
+      DEFAULT_USER_PREFERENCES.analyticsTimezone,
+  };
 }
 
 interface GetUserByAuthIdDeps extends UsersQueryDeps {
@@ -127,10 +146,10 @@ export async function getUserByAuthId(
   authUserId: string,
   dbClient?: UsersDbClient,
   deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps,
-): Promise<DbUser | undefined> {
+): Promise<ActorUser | undefined> {
   if (dbClient === undefined) {
     const contextUser = deps.getRequestContext()?.user;
-    const cached = matchingContextDbUser(contextUser, authUserId);
+    const cached = matchingContextActorUser(contextUser, authUserId);
     if (cached !== undefined) {
       return cached;
     }
@@ -139,10 +158,18 @@ export async function getUserByAuthId(
   const client = dbClient ?? deps.getDb();
 
   const result = await client
-    .select()
+    .select({
+      user: users,
+      preferences: {
+        preferredAiModel: userPreferences.preferredAiModel,
+        analyticsTimezone: userPreferences.analyticsTimezone,
+      },
+    })
     .from(users)
+    .leftJoin(userPreferences, eq(users.id, userPreferences.userId))
     .where(eq(users.authUserId, authUserId));
-  return result[0];
+  const row = result[0];
+  return row ? toActorUser(row.user, row.preferences) : undefined;
 }
 
 /**
@@ -163,6 +190,7 @@ export async function createUser(
     authUserId: userData.authUserId,
     email: userData.email,
     name: userData.name,
+    clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
   };
 
   const result = await client.insert(users).values(insertData).returning();
@@ -170,29 +198,29 @@ export async function createUser(
 }
 
 /**
- * Updates a user's preferred AI model.
- *
- * @param userId - Internal user ID
- * @param preferredAiModel - Valid model ID from the preferred_ai_model enum, or null to clear preference
- * @param dbClient - Optional RLS-enforced client; defaults to getDb()
- * @returns The updated user record, or undefined if not found
+ * Creates a user when absent, or returns the row created by a concurrent request.
+ * Email conflicts belonging to a different auth identity remain database errors.
  */
-export async function updateUserPreferredAiModel(
-  userId: string,
-  preferredAiModel: PreferredAiModel | null,
+export async function getOrCreateUser(
+  userData: CreateUserData,
   dbClient?: UsersDbClient,
   deps: UsersQueryDeps = defaultUsersQueryDeps,
-): Promise<DbUser | undefined> {
+): Promise<ActorUser | undefined> {
   const client = dbClient ?? deps.getDb();
-
-  const result = await client
-    .update(users)
-    .set({
-      preferredAiModel,
-      updatedAt: new Date(),
+  const inserted = await client
+    .insert(users)
+    .values({
+      authUserId: userData.authUserId,
+      email: userData.email,
+      name: userData.name,
+      clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
     })
-    .where(eq(users.id, userId))
+    .onConflictDoNothing({ target: users.authUserId })
     .returning();
 
-  return result[0];
+  if (inserted[0]) {
+    return toActorUser(inserted[0], null);
+  }
+
+  return getUserByAuthId(userData.authUserId, client);
 }

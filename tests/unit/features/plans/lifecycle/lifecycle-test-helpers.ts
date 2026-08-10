@@ -34,11 +34,10 @@ export function createMockPorts(
   const defaults = {
     planPersistence: {
       atomicInsertPlan: async () => ({
-        success: true as const,
+        status: 'created' as const,
         id: 'plan-123',
       }),
       findCappedPlanWithoutModules: async () => null,
-      findRecentDuplicatePlan: async () => null,
       markGenerationSuccess: vi.fn().mockResolvedValue(undefined),
       markGenerationFailure: vi.fn().mockResolvedValue(undefined),
     },

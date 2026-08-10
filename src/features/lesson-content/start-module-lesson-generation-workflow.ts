@@ -26,7 +26,8 @@ export type StartModuleLessonGenerationParams = {
 
 export type StartModuleLessonGenerationResult =
   | GenerateModuleLessonsResult
-  | { readonly kind: 'workflow_started'; readonly runId: string };
+  | { readonly kind: 'workflow_started'; readonly runId: string }
+  | { readonly kind: 'workflow_start_failed'; readonly message: string };
 
 export type StartModuleLessonGenerationDeps = {
   readonly isWorkflowEnabled?: () => boolean;
@@ -88,16 +89,23 @@ export async function startModuleLessonGeneration(
     return preflight;
   }
 
-  const run = await workflowStart(workflowFn, [
-    {
-      userId: params.userId,
-      planId: params.planId,
-      moduleId: params.moduleId,
-      userTier: params.userTier,
-      modelOverride: params.modelOverride,
-      correlationId: params.correlationId,
-    },
-  ]);
+  try {
+    const run = await workflowStart(workflowFn, [
+      {
+        userId: params.userId,
+        planId: params.planId,
+        moduleId: params.moduleId,
+        userTier: params.userTier,
+        modelOverride: params.modelOverride,
+        correlationId: params.correlationId,
+      },
+    ]);
 
-  return { kind: 'workflow_started', runId: run.runId };
+    return { kind: 'workflow_started', runId: run.runId };
+  } catch {
+    return {
+      kind: 'workflow_start_failed',
+      message: 'Module lesson generation could not be started.',
+    };
+  }
 }

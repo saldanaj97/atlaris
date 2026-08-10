@@ -2,14 +2,12 @@
 
 import type { TimelineModule } from './plan-timeline-state';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
 import {
   getTimelineCardClassName,
   getTimelineTitleClassName,
-  getTimelineWeekBadgeClassName,
 } from '@/app/(app)/plans/plans-progress-theme';
 import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -33,7 +31,7 @@ export function TimelineModuleCard({
   statuses,
   onModuleToggle,
   onTaskStatusChange,
-}: TimelineModuleCardProps): JSX.Element {
+}: TimelineModuleCardProps) {
   const isLocked = module.status === 'locked';
 
   return (
@@ -49,7 +47,7 @@ export function TimelineModuleCard({
         value={module.id}
         disabled={isLocked}
         className={cn(
-          'group/accordion flex flex-1 flex-col rounded-2xl border transition-all duration-300',
+          'group/accordion flex flex-1 flex-col rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300',
           getTimelineCardClassName(module.status),
         )}
       >
@@ -66,24 +64,25 @@ export function TimelineModuleCard({
           )}
         >
           <div className='min-w-0 flex-1'>
-            <div className='mb-2 flex items-center gap-2'>
+            <p className='mb-2 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
               <span
-                className={cn(
-                  'rounded-md px-2 py-0.5 text-xs font-semibold',
-                  getTimelineWeekBadgeClassName(module.status),
-                )}
+                className={
+                  module.status === 'active' ? 'text-primary' : undefined
+                }
               >
                 Week {module.order}
               </span>
-              <span className='text-xs text-muted-foreground'>
-                {module.duration}
-              </span>
-              {module.tasks.length > 0 && (
-                <span className='text-xs text-muted-foreground'>
-                  • {module.completedTasks}/{module.tasks.length} tasks
-                </span>
-              )}
-            </div>
+              {' · '}
+              {module.duration}
+              {module.tasks.length > 0 ? (
+                <>
+                  {' · '}
+                  <span className='tabular-nums'>
+                    {module.completedTasks}/{module.tasks.length} tasks
+                  </span>
+                </>
+              ) : null}
+            </p>
             <h3
               className={cn(
                 'font-semibold wrap-break-word',

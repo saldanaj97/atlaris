@@ -19,6 +19,7 @@ export type ModuleLessonWorkflowClaimStepResult =
   | (ModuleLessonWorkflowRunResultBase & {
       readonly kind: 'claimed';
       readonly load: ModuleLessonGenerationContext;
+      readonly startedAt: string;
     })
   | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'already_ready' })
   | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'in_flight' })
@@ -32,10 +33,7 @@ export type ModuleLessonWorkflowResult =
       readonly kind: 'success';
       readonly durationMs: number;
     })
-  | (ModuleLessonWorkflowRunResultBase & {
-      readonly kind: 'failed';
-      readonly message: string;
-    })
+  | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'failed' })
   | (ModuleLessonWorkflowRunResultBase & {
       readonly kind: 'quota_denied';
       readonly currentCount: number;

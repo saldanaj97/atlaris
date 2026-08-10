@@ -11,19 +11,19 @@ export const PLAN_RESOURCE_DISPLAY: Record<
     label: 'Video',
     icon: PlayCircle,
     badgeClass:
-      'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400',
+      'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive',
   },
   article: {
     label: 'Article',
     icon: FileText,
     badgeClass:
-      'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+      'bg-chart-3/10 text-chart-3 dark:bg-chart-3/20 dark:text-chart-3',
   },
   course: {
     label: 'Course',
     icon: Target,
     badgeClass:
-      'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400',
+      'bg-warning/10 text-warning dark:bg-warning/20 dark:text-warning',
   },
   doc: {
     label: 'Documentation',

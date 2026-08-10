@@ -2,7 +2,7 @@
 
 **Parent:** [Root AGENTS.md](../AGENTS.md)
 
-This directory owns local Supabase configuration, SQL migrations, and Drizzle schema definitions. Keep this file short; put durable architecture detail in `docs/architecture/` and task notes in `.agents/plans/`.
+This directory owns local Supabase configuration, SQL migrations, and Drizzle schema definitions. Keep this file short; put durable architecture detail in `docs/architecture/` and task notes under `.agents/recaps/MM-DD-YYYY/plans/`.
 
 ## Client Boundaries
 
@@ -41,6 +41,7 @@ Retention cleanup is database-owned through `private.cleanup_retained_db_rows()`
 
 - The manual HTTP fallback is `POST /api/internal/maintenance/retention/cleanup`.
 - Enable the manual route with `RETENTION_CLEANUP_ENABLED=true`.
+- Plan cleanup (stuck plans and orphaned attempts) is `POST /api/internal/maintenance/plans/cleanup` with `PLAN_CLEANUP_ENABLED=true`.
 - In production, the manual route requires `MAINTENANCE_WORKER_TOKEN`.
 - Cron does not use the HTTP route or worker token.
 - Cleanup must not run from user read paths.

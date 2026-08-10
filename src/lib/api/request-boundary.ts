@@ -4,7 +4,7 @@ import type {
   RouteParams,
 } from '@/lib/api/types/auth.types';
 import type { UserRateLimitCategory } from '@/lib/api/user-rate-limit';
-import type { DbUser } from '@/lib/db/queries/types/users.types';
+import type { ActorUser } from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
 import {
@@ -18,7 +18,7 @@ import { getDb } from '@supabase/runtime';
 import { randomUUID } from 'node:crypto';
 
 export type RequestScope = Readonly<{
-  actor: DbUser;
+  actor: ActorUser;
   db: DbClient;
   owned: Readonly<{
     userId: string;
@@ -40,7 +40,7 @@ type RouteBoundaryOptions = Readonly<{
   rateLimit?: UserRateLimitCategory;
 }>;
 
-function buildScope(actor: DbUser, db: DbClient): RequestScope {
+function buildScope(actor: ActorUser, db: DbClient): RequestScope {
   return {
     actor,
     db,

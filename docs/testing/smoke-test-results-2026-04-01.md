@@ -19,7 +19,7 @@
 
 ### Phase 0 — Environment Setup
 
-- `pnpm db:dev:bootstrap` passed
+- `pnpm db:dev:reset` passed
 - Anonymous server startup passed with no env validation errors
 - Authenticated server startup passed with no env validation errors
 
@@ -45,11 +45,7 @@
   - `/dashboard`
   - `/plans`
   - `/plans/new`
-  - `/settings/profile`
-  - `/settings/billing`
-  - `/settings/ai`
-  - `/settings/integrations`
-  - `/settings/notifications`
+  - `/settings`
   - `/analytics`
   - `/analytics/usage`
   - `/analytics/achievements`
@@ -75,10 +71,10 @@
   - `/pricing` rendered correctly in auth mode
   - Portal eligibility message showed correctly before checkout
   - Starter subscribe CTA launched local checkout
-  - Local checkout returned to `/settings/billing`
+  - Local checkout returned to `/settings#billing`
   - Billing page showed Starter plan and usage cards
   - Manage Subscription button remained available after checkout
-  - Local portal path returned to `/settings/billing?local_portal=1`
+  - Local portal path returned to `/settings?local_portal=1#billing`
 
 ## Defects
 
@@ -103,7 +99,7 @@
 ## Verification Commands
 
 ```bash
-pnpm db:dev:bootstrap
+pnpm db:dev:reset
 pnpm dev
 pnpm test:changed
 chrome-devtools navigate_page --url http://localhost:3000/landing

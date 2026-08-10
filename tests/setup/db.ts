@@ -1,5 +1,4 @@
 import { resetDbForIntegrationTestFile } from '../helpers/db/reset';
-import { ensureStripeWebhookEvents } from '../helpers/db/schema-fixups';
 import { waitForInlineRegenerationDrains } from '@/features/jobs/regeneration-worker';
 import { beforeEach } from 'vitest';
 
@@ -9,6 +8,5 @@ if (!skipDbSetup) {
   beforeEach(async () => {
     await waitForInlineRegenerationDrains();
     await resetDbForIntegrationTestFile();
-    await ensureStripeWebhookEvents();
   });
 }

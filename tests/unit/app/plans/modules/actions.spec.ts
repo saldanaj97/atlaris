@@ -148,4 +148,28 @@ describe('batchUpdateModuleTaskProgressAction', () => {
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans/p1');
     expect(revalidatePathMock).toHaveBeenCalledWith('/plans');
   });
+
+  it('maps boundary persistence errors to generic user message', async () => {
+    requestBoundaryActionMock.mockImplementationOnce(
+      mockRequestBoundaryAction(makeActionTestScope()),
+    );
+    const persistenceError = new Error('db exploded');
+    applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
+
+    await expect(
+      batchUpdateModuleTaskProgressAction({
+        planId: 'p1',
+        moduleId: 'm1',
+        updates: [{ taskId: 't1', status: 'completed' }],
+      }),
+    ).rejects.toThrow('Unable to update task progress right now.');
+
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskIds: ['t1'],
+        err: expect.objectContaining({ message: 'db exploded' }),
+      }),
+      'Failed to batch update module task progress',
+    );
+  });
 });

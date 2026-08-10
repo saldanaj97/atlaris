@@ -1,78 +1,56 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
-import { ComingSoonAlert } from '@/components/shared/ComingSoonAlert';
-import { LockedFeatureCard } from '@/components/ui/locked-feature-card';
-import { PageHeader } from '@/components/ui/page-header';
-import { PageShell } from '@/components/ui/page-shell';
-import { BarChart3, Clock, Flame, Target } from 'lucide-react';
+import { UsageAnalyticsContent } from './usage-analytics-content';
+import { buildUsageAnalyticsModel } from './usage-analytics-model';
+import { UsageAnalyticsTimezoneSync } from './usage-analytics-timezone-sync';
+import { ROUTES } from '@/features/navigation/routes';
+import { listUsageAnalyticsPlanSummaries } from '@/features/plans/read-projection/service';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import { getLearningActivityEventsForUser } from '@/lib/db/queries/tasks';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Usage Analytics | Atlaris',
   description:
-    'Track your learning progress with detailed usage analytics — study time, completion rates, streaks, and more.',
+    'Review current completion progress and estimated completed learning time across your plans.',
   openGraph: {
     title: 'Usage Analytics | Atlaris',
     description:
-      'Track your learning progress with detailed usage analytics — study time, completion rates, streaks, and more.',
+      'Review current completion progress and estimated completed learning time across your plans.',
     url: '/analytics/usage',
     images: ['/og-default.jpg'],
   },
 };
 
-const iconClass = 'text-primary size-8 shrink-0';
+const SIGN_IN_RETURN_PATH = `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.ANALYTICS.USAGE)}`;
 
-const PREVIEW_CARDS = [
-  {
-    icon: <Clock className={iconClass} aria-hidden />,
-    title: 'Study Time Tracking',
-    description:
-      'See exactly how many hours you spend learning each week. Spot your most productive days and find your ideal study rhythm.',
-  },
-  {
-    icon: <Target className={iconClass} aria-hidden />,
-    title: 'Completion Rates',
-    description:
-      "Track your progress across every plan. Know which topics you're crushing and where you might need a little more focus.",
-  },
-  {
-    icon: <Flame className={iconClass} aria-hidden />,
-    title: 'Learning Streaks',
-    description:
-      'Build consistency with daily and weekly streak tracking. Small wins compound — watch your momentum grow.',
-  },
-  {
-    icon: <BarChart3 className={iconClass} aria-hidden />,
-    title: 'Weekly Reports',
-    description:
-      'Get a clear snapshot of your week — time invested, milestones hit, and personalized suggestions for what to tackle next.',
-  },
-];
+/** Server page that loads usage analytics and redirects unauthenticated users. */
+export default async function UsageAnalyticsPage() {
+  const result = await requestBoundary.component(async ({ actor, db }) => {
+    const [summaries, activityEvents] = await Promise.all([
+      listUsageAnalyticsPlanSummaries({
+        userId: actor.id,
+        dbClient: db,
+      }),
+      getLearningActivityEventsForUser(actor.id, db),
+    ]);
 
-export default function UsageAnalyticsPage(): JSX.Element {
+    return buildUsageAnalyticsModel(summaries, {
+      activityEvents,
+      analyticsTimezone: actor.analyticsTimezone,
+    });
+  });
+
+  if (!result) {
+    redirect(SIGN_IN_RETURN_PATH);
+  }
+
   return (
-    <PageShell>
-      <PageHeader
-        title='Usage'
-        subtitle='Understand how you learn, so you can learn even better'
+    <>
+      <UsageAnalyticsTimezoneSync
+        analyticsTimezone={result.analyticsTimezone}
       />
-
-      <ComingSoonAlert
-        title="We're building something special"
-        description="Usage analytics will give you a clear picture of your learning habits and progress. We're putting the finishing touches on it — we'll let you know when it's ready."
-        className='mb-6'
-      />
-
-      <div className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
-        {PREVIEW_CARDS.map((card) => (
-          <LockedFeatureCard
-            key={card.title}
-            icon={card.icon}
-            title={card.title}
-            description={card.description}
-          />
-        ))}
-      </div>
-    </PageShell>
+      <UsageAnalyticsContent model={result} />
+    </>
   );
 }

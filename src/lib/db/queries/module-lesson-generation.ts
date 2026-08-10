@@ -1,7 +1,6 @@
-import type { DbClient } from '@/lib/db/types';
+import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type {
-  LessonContent,
   ModuleLessonBatchProviderOutput,
   ModuleLessonGenerationMetadata,
 } from '@/shared/types/lesson-content.types';
@@ -17,7 +16,6 @@ import {
 import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
-import { MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH } from '@supabase/schema/constants';
 import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
 
 type GenerationDb = Pick<
@@ -159,22 +157,18 @@ export async function loadModuleLessonGenerationContext(
 }
 
 export type LessonGenerationClaimResult =
-  | { readonly kind: 'claimed' }
+  | {
+      readonly kind: 'claimed';
+      readonly workflowStartedAt: string | null;
+    }
   | { readonly kind: 'already_ready' }
   | { readonly kind: 'in_flight' }
   | { readonly kind: 'not_found' };
 
-export type PersistModuleLessonWorkflowRunInput = {
-  readonly userId: string;
-  readonly planId: string;
-  readonly moduleId: string;
+type ModuleLessonWorkflowClaimMetadata = {
   readonly runId: string;
-  readonly startedAt?: string;
+  readonly startedAt: string;
 };
-
-function truncateGenerationError(message: string): string {
-  return message.slice(0, MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH);
-}
 
 function assertParsedTasksMatchCurrentTaskRows(
   parsed: ModuleLessonBatchProviderOutput,
@@ -208,8 +202,13 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     readonly userId: string;
     readonly planId: string;
     readonly moduleId: string;
+    readonly workflowRunId?: string;
   },
 ): Promise<void> {
+  const matchingWorkflowRun = args.workflowRunId
+    ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
+    : undefined;
+
   await dbClient
     .update(modules)
     .set({
@@ -218,6 +217,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
       lessonGenerationCompletedAt: null,
       lessonGenerationFailedAt: null,
       lessonGenerationError: null,
+      lessonGenerationMetadata: null,
     })
     .where(
       and(
@@ -225,18 +225,25 @@ export async function revertModuleLessonGeneratingToNotGenerated(
         eq(modules.planId, args.planId),
         eq(modules.lessonGenerationStatus, 'generating'),
         moduleOwnedByUser(args.userId),
+        matchingWorkflowRun,
       ),
     );
 }
 
-async function readScopedModuleStatus(
+async function readScopedModuleState(
   dbClient: GenerationDb,
   planId: string,
   moduleId: string,
   userId: string,
-): Promise<InferSelectModel<typeof modules>['lessonGenerationStatus'] | null> {
+): Promise<{
+  status: InferSelectModel<typeof modules>['lessonGenerationStatus'];
+  metadata: ModuleLessonGenerationMetadata | null;
+} | null> {
   const [row] = await dbClient
-    .select({ status: modules.lessonGenerationStatus })
+    .select({
+      status: modules.lessonGenerationStatus,
+      metadata: modules.lessonGenerationMetadata,
+    })
     .from(modules)
     .innerJoin(learningPlans, eq(modules.planId, learningPlans.id))
     .where(
@@ -248,43 +255,29 @@ async function readScopedModuleStatus(
     )
     .limit(1);
 
-  return row?.status ?? null;
+  return row ?? null;
 }
 
-/**
- * Records Workflow SDK run metadata on a module already in `generating` state.
- */
-export async function persistModuleLessonWorkflowRunMetadata(
-  dbClient: GenerationDb,
-  input: PersistModuleLessonWorkflowRunInput,
-): Promise<void> {
-  const metadata = ModuleLessonGenerationMetadataSchema.parse({
-    version: 1,
-    workflow: {
-      provider: 'workflow-sdk',
-      runId: input.runId,
-      startedAt: input.startedAt,
-    },
-  });
-
-  const updated = await dbClient
-    .update(modules)
-    .set({ lessonGenerationMetadata: metadata })
-    .where(
-      and(
-        eq(modules.id, input.moduleId),
-        eq(modules.planId, input.planId),
-        eq(modules.lessonGenerationStatus, 'generating'),
-        moduleOwnedByUser(input.userId),
-      ),
-    )
-    .returning({ id: modules.id });
-
-  if (updated.length !== 1) {
-    throw new Error(
-      'Module lesson workflow metadata update did not match exactly one row',
-    );
+function classifyModuleLessonGenerationClaimState(
+  state: Awaited<ReturnType<typeof readScopedModuleState>>,
+  workflow: ModuleLessonWorkflowClaimMetadata | undefined,
+): LessonGenerationClaimResult | null {
+  if (state == null) {
+    return { kind: 'not_found' };
   }
+  if (state.status === 'ready') {
+    return { kind: 'already_ready' };
+  }
+  if (state.status !== 'generating') {
+    return null;
+  }
+  if (workflow && state.metadata?.workflow?.runId === workflow.runId) {
+    return {
+      kind: 'claimed',
+      workflowStartedAt: state.metadata.workflow.startedAt ?? null,
+    };
+  }
+  return { kind: 'in_flight' };
 }
 
 /**
@@ -296,17 +289,37 @@ export async function claimModuleLessonGenerationOrDescribe(
   planId: string,
   moduleId: string,
   userId: string,
-  now: () => Date = () => new Date(),
+  options?: {
+    readonly now?: () => Date;
+    readonly workflow?: ModuleLessonWorkflowClaimMetadata;
+  },
 ): Promise<LessonGenerationClaimResult> {
+  const now = options?.now ?? (() => new Date());
+  const workflowMetadata = options?.workflow
+    ? ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: options.workflow.runId,
+          startedAt: options.workflow.startedAt,
+        },
+      })
+    : undefined;
+  const claimStartedAt = options?.workflow
+    ? new Date(options.workflow.startedAt)
+    : now();
   const attemptClaim = async (): Promise<boolean> => {
     const touched = await dbClient
       .update(modules)
       .set({
         lessonGenerationStatus: 'generating',
-        lessonGenerationStartedAt: now(),
+        lessonGenerationStartedAt: claimStartedAt,
         lessonGenerationCompletedAt: null,
         lessonGenerationFailedAt: null,
         lessonGenerationError: null,
+        ...(workflowMetadata
+          ? { lessonGenerationMetadata: workflowMetadata }
+          : {}),
       })
       .where(
         and(
@@ -323,45 +336,39 @@ export async function claimModuleLessonGenerationOrDescribe(
 
   for (let attempt = 0; attempt < 2; attempt++) {
     if (await attemptClaim()) {
-      return { kind: 'claimed' };
+      return {
+        kind: 'claimed',
+        workflowStartedAt: options?.workflow?.startedAt ?? null,
+      };
     }
 
-    const status = await readScopedModuleStatus(
+    const state = await readScopedModuleState(
       dbClient,
       planId,
       moduleId,
       userId,
     );
 
-    if (status == null) {
-      return { kind: 'not_found' };
-    }
-    if (status === 'ready') {
-      return { kind: 'already_ready' };
-    }
-    if (status === 'generating') {
-      return { kind: 'in_flight' };
+    const result = classifyModuleLessonGenerationClaimState(
+      state,
+      options?.workflow,
+    );
+    if (result) {
+      return result;
     }
   }
 
-  const status = await readScopedModuleStatus(
-    dbClient,
-    planId,
-    moduleId,
-    userId,
+  const state = await readScopedModuleState(dbClient, planId, moduleId, userId);
+  const result = classifyModuleLessonGenerationClaimState(
+    state,
+    options?.workflow,
   );
-  if (status == null) {
-    return { kind: 'not_found' };
-  }
-  if (status === 'ready') {
-    return { kind: 'already_ready' };
-  }
-  if (status === 'generating') {
-    return { kind: 'in_flight' };
+  if (result) {
+    return result;
   }
 
   throw new Error(
-    `Unexpected module lesson_generation_status after claim retries: ${String(status)}`,
+    `Unexpected module lesson_generation_status after claim retries: ${String(state?.status)}`,
   );
 }
 
@@ -375,6 +382,43 @@ export type CommitModuleLessonBatchSuccessInput = {
   readonly requestId?: string | null;
   readonly now?: () => Date;
 };
+
+/**
+ * Updates all task lesson rows for a module in one statement so content and timestamp
+ * commit atomically with the module ready transition.
+ */
+async function updateTaskLessonsInTx(
+  tx: Pick<DbTransaction, 'execute'>,
+  moduleId: string,
+  parsedTasks: ModuleLessonBatchProviderOutput['tasks'],
+  finishedAt: Date,
+): Promise<void> {
+  if (parsedTasks.length === 0) {
+    return;
+  }
+
+  const valueRows = parsedTasks.map(
+    (task) =>
+      sql`(${task.taskId}::uuid, ${JSON.stringify(task.content)}::jsonb)`,
+  );
+
+  const updated = (await tx.execute(sql`
+    UPDATE tasks AS t
+    SET
+      lesson_content = v.content,
+      lesson_content_updated_at = ${finishedAt.toISOString()}::timestamptz
+    FROM (VALUES ${sql.join(valueRows, sql`, `)}) AS v(id, content)
+    WHERE t.id = v.id
+      AND t.module_id = ${moduleId}::uuid
+    RETURNING t.id
+  `)) as Array<{ id: string }>;
+
+  if (updated.length !== parsedTasks.length) {
+    throw new Error(
+      `Expected ${parsedTasks.length} task lesson rows updated, got ${updated.length}`,
+    );
+  }
+}
 
 /**
  * Persists all task lessons, module ready fields, metadata, and AI usage in one RLS-aware transaction.
@@ -400,24 +444,12 @@ export async function commitModuleLessonBatchSuccess(
 
     assertParsedTasksMatchCurrentTaskRows(input.parsed, currentTasks);
 
-    for (const task of input.parsed.tasks) {
-      const updated = await tx
-        .update(tasks)
-        .set({
-          lessonContent: task.content as LessonContent,
-          lessonContentUpdatedAt: finishedAt,
-        })
-        .where(
-          and(eq(tasks.id, task.taskId), eq(tasks.moduleId, input.moduleId)),
-        )
-        .returning({ id: tasks.id });
-
-      if (updated.length !== 1) {
-        throw new Error(
-          `Expected exactly one task lesson row updated for task ${task.taskId}`,
-        );
-      }
-    }
+    await updateTaskLessonsInTx(
+      tx,
+      input.moduleId,
+      input.parsed.tasks,
+      finishedAt,
+    );
 
     const moduleUpdated = await tx
       .update(modules)
@@ -455,7 +487,6 @@ export type CommitModuleLessonGenerationFailureInput = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly message: string;
   readonly now?: () => Date;
 };
 
@@ -478,7 +509,7 @@ export async function commitModuleLessonGenerationFailure(
       .set({
         lessonGenerationStatus: 'failed',
         lessonGenerationFailedAt: failedAt,
-        lessonGenerationError: truncateGenerationError(input.message),
+        lessonGenerationError: null,
         lessonGenerationCompletedAt: null,
       })
       .where(

@@ -2,8 +2,6 @@ import type {
   GenerateModuleLessonsDeps,
   GenerateModuleLessonsParams,
   GenerateModuleLessonsResult,
-  ModuleLessonGenerationWorkResult,
-  RunModuleLessonGenerationAfterClaimParams,
 } from '@/features/lesson-content/generate-module-lessons.types';
 
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
@@ -19,14 +17,7 @@ export type {
   GenerateModuleLessonsDeps,
   GenerateModuleLessonsParams,
   GenerateModuleLessonsResult,
-  ModuleLessonGenerationWorkResult,
-  RunModuleLessonGenerationAfterClaimParams,
 } from '@/features/lesson-content/generate-module-lessons.types';
-
-export {
-  runModuleLessonGenerationAfterClaim,
-  runModuleLessonGenerationWork,
-} from '@/features/lesson-content/run-module-lesson-generation-work';
 
 /**
  * Ownership-scoped module lesson batch: CAS → model/provider → parse → single transaction persist (tasks + module + usage).
@@ -61,7 +52,7 @@ export async function generateModuleLessons(
     params.planId,
     params.moduleId,
     params.userId,
-    nowFn,
+    { now: nowFn },
   );
 
   if (claim.kind !== 'claimed') {

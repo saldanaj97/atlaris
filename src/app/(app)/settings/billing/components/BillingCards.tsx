@@ -1,178 +1,129 @@
-import type { JSX } from 'react';
-
-import ManageSubscriptionButton from './ManageSubscriptionButton';
+import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
+import {
+  LedgerRow,
+  LedgerStackedRow,
+} from '@/app/(app)/settings/components/LedgerPrimitives';
 import {
   formatCompactUsageLimit,
   formatUsageLimitLabel,
   getUsagePercent,
 } from '@/app/_shared/usage-formatting';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
-import { ROUTES } from '@/features/navigation/routes';
-import { requestBoundary } from '@/lib/api/request-boundary';
-import { redirect } from 'next/navigation';
 
-/**
- * Async component that fetches subscription and usage data.
- * Wrapped in Suspense boundary by the parent page.
- */
-export async function BillingCards(): Promise<JSX.Element> {
-  const result = await requestBoundary.component(async ({ actor, db }) => ({
-    user: actor,
-    snapshot: await getBillingAccountSnapshot({
-      userId: actor.id,
-      dbClient: db,
-    }),
-  }));
+type UsageMeterRowProps = {
+  label: string;
+  ariaLabel: string;
+  used: number;
+  limit: number | null | undefined;
+};
 
-  if (!result) {
-    redirect(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.BILLING)}`,
-    );
+function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
+  return (
+    <LedgerStackedRow label={label}>
+      <div className='flex items-center justify-between text-sm'>
+        <span className='text-muted-foreground tabular-nums'>
+          {used}/{formatCompactUsageLimit(limit)}
+        </span>
+      </div>
+      <Progress
+        value={getUsagePercent(used, limit)}
+        aria-label={`${ariaLabel}: ${used} of ${formatUsageLimitLabel(limit)}`}
+      />
+    </LedgerStackedRow>
+  );
+}
+
+function formatNextBilling(
+  subscriptionPeriodEnd: Date | string | null | undefined,
+  locale?: string,
+): string {
+  if (!subscriptionPeriodEnd) {
+    return '—';
   }
 
-  const { snapshot } = result;
+  return new Date(subscriptionPeriodEnd).toLocaleDateString(locale ?? 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * Plan & billing rows for the Ledger settings surface.
+ */
+export async function BillingPlanRows({ locale }: { locale?: string }) {
+  const snapshot = await loadBillingSnapshot();
+  const nextBilling = formatNextBilling(
+    snapshot?.subscriptionPeriodEnd,
+    locale,
+  );
 
   if (!snapshot) {
     return (
-      <Card className='p-6'>
-        <h2 className='text-xl font-semibold'>Billing unavailable</h2>
-        <p className='mt-2 text-sm text-muted-foreground'>
-          We couldn&apos;t load your billing details right now.
-        </p>
-      </Card>
+      <LedgerRow label='Billing'>
+        <span>Unavailable right now.</span>
+      </LedgerRow>
     );
   }
 
-  const nextBilling = snapshot.subscriptionPeriodEnd
-    ? new Date(snapshot.subscriptionPeriodEnd).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    : '—';
+  return (
+    <>
+      <LedgerRow label='Current plan'>
+        <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
+      </LedgerRow>
+      <LedgerRow label='Status'>
+        <span className='text-foreground'>
+          {snapshot.subscriptionStatus ?? '—'}
+        </span>
+      </LedgerRow>
+      <LedgerRow label='Next billing date'>
+        <span className='text-foreground'>{nextBilling}</span>
+      </LedgerRow>
+    </>
+  );
+}
 
-  const plansValue = getUsagePercent(
-    snapshot.usage.activePlans.current,
-    snapshot.usage.activePlans.limit,
-  );
-  const regenValue = getUsagePercent(
-    snapshot.usage.regenerations.used,
-    snapshot.usage.regenerations.limit,
-  );
-  const exportValue = getUsagePercent(
-    snapshot.usage.exports.used,
-    snapshot.usage.exports.limit,
-  );
-  const lessonGenerationValue = getUsagePercent(
-    snapshot.usage.lessonGenerations.used,
-    snapshot.usage.lessonGenerations.limit,
-  );
+/**
+ * Usage meters for the Ledger settings surface.
+ */
+export async function UsageRows() {
+  const snapshot = await loadBillingSnapshot();
+
+  if (!snapshot) {
+    return (
+      <LedgerRow label='Usage'>
+        <span>Unavailable right now.</span>
+      </LedgerRow>
+    );
+  }
 
   return (
     <>
-      <Card className='p-6'>
-        <div className='mb-4 flex items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-semibold'>Current Plan</h2>
-            <p className='text-sm text-muted-foreground'>
-              Manage your subscription
-            </p>
-          </div>
-          <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
-        </div>
-
-        <div className='space-y-2 text-sm'>
-          <div className='flex items-center justify-between'>
-            <span>Status</span>
-            <span className='text-muted-foreground'>
-              {snapshot.subscriptionStatus ?? '—'}
-            </span>
-          </div>
-          <div className='flex items-center justify-between'>
-            <span>Next billing date</span>
-            <span className='text-muted-foreground'>{nextBilling}</span>
-          </div>
-        </div>
-
-        <div className='mt-4'>
-          <ManageSubscriptionButton
-            className='w-full'
-            canOpenBillingPortal={snapshot.canOpenBillingPortal}
-          />
-          {!snapshot.canOpenBillingPortal && (
-            <p className='mt-2 text-center text-sm text-muted-foreground'>
-              Billing features are unavailable.
-            </p>
-          )}
-        </div>
-      </Card>
-
-      <Card className='p-6'>
-        <h2 className='mb-4 text-xl font-semibold'>Usage</h2>
-
-        <div className='space-y-5'>
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Active plans</span>
-              <span className='text-muted-foreground'>
-                {snapshot.usage.activePlans.current}/
-                {formatCompactUsageLimit(snapshot.usage.activePlans.limit)}
-              </span>
-            </div>
-            <Progress
-              value={plansValue}
-              aria-label={`Active plans: ${snapshot.usage.activePlans.current} of ${formatUsageLimitLabel(snapshot.usage.activePlans.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Regenerations (monthly)</span>
-              <span className='text-muted-foreground'>
-                {snapshot.usage.regenerations.used}/
-                {formatCompactUsageLimit(snapshot.usage.regenerations.limit)}
-              </span>
-            </div>
-            <Progress
-              value={regenValue}
-              aria-label={`Monthly regenerations: ${snapshot.usage.regenerations.used} of ${formatUsageLimitLabel(snapshot.usage.regenerations.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Exports (monthly)</span>
-              <span className='text-muted-foreground'>
-                {snapshot.usage.exports.used}/
-                {formatCompactUsageLimit(snapshot.usage.exports.limit)}
-              </span>
-            </div>
-            <Progress
-              value={exportValue}
-              aria-label={`Monthly exports: ${snapshot.usage.exports.used} of ${formatUsageLimitLabel(snapshot.usage.exports.limit)}`}
-            />
-          </div>
-
-          <div>
-            <div className='mb-1 flex items-center justify-between text-sm'>
-              <span>Lesson generations (monthly)</span>
-              <span className='text-muted-foreground'>
-                {snapshot.usage.lessonGenerations.used}/
-                {formatCompactUsageLimit(
-                  snapshot.usage.lessonGenerations.limit,
-                )}
-              </span>
-            </div>
-            <Progress
-              value={lessonGenerationValue}
-              aria-label={`Monthly lesson generations: ${snapshot.usage.lessonGenerations.used} of ${formatUsageLimitLabel(snapshot.usage.lessonGenerations.limit)}`}
-            />
-          </div>
-        </div>
-      </Card>
+      <UsageMeterRow
+        label='Active plans'
+        ariaLabel='Active plans'
+        used={snapshot.usage.activePlans.current}
+        limit={snapshot.usage.activePlans.limit}
+      />
+      <UsageMeterRow
+        label='Regenerations (monthly)'
+        ariaLabel='Monthly regenerations'
+        used={snapshot.usage.regenerations.used}
+        limit={snapshot.usage.regenerations.limit}
+      />
+      <UsageMeterRow
+        label='Exports (monthly)'
+        ariaLabel='Monthly exports'
+        used={snapshot.usage.exports.used}
+        limit={snapshot.usage.exports.limit}
+      />
+      <UsageMeterRow
+        label='Lesson generations (monthly)'
+        ariaLabel='Monthly lesson generations'
+        used={snapshot.usage.lessonGenerations.used}
+        limit={snapshot.usage.lessonGenerations.limit}
+      />
     </>
   );
 }

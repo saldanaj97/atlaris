@@ -3,6 +3,7 @@ import type { PlanRegenerationJobPayload } from './schema';
 import type { ProcessPlanRegenerationJobResult } from './types';
 import type { Job } from '@/features/jobs/types';
 
+import { attachPlanRegenerationWorkflow } from './attach-workflow';
 import { createDefaultRegenerationOrchestrationDeps } from './deps';
 import {
   applyRegenerationGenerationResult,
@@ -10,14 +11,14 @@ import {
   loadAuthorizedRegenerationPlan,
   validateQueuedRegenerationPayload,
 } from './process-workflow-support';
-import { planRegenerationJobPayloadSchema } from './schema';
 import { JOB_TYPES } from '@/features/jobs/types';
-import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
+import {
+  PLAN_REGENERATION_SYNC_FAILURE_MESSAGE,
+  PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+} from '@/features/plans/start-plan-regeneration-workflow';
 import { workflowEnv } from '@/lib/config/env/workflow';
+import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { start } from 'workflow/api';
-
-const UNSAFE_WORKER_FAILURE_MESSAGE = 'Queued plan regeneration failed.';
 
 export async function processNextPlanRegenerationJob(
   deps?: RegenerationOrchestrationDeps,
@@ -40,6 +41,7 @@ export async function processPlanRegenerationJob(
 
   /** Set after successful parse; available in `catch` for `permanent-failure` planId when the row lacks it. */
   let payload: PlanRegenerationJobPayload | undefined;
+  const workflowEnabled = workflowEnv.planRegenerationWorkflowEnabled;
 
   try {
     const validation = await validateQueuedRegenerationPayload(job, d);
@@ -61,8 +63,19 @@ export async function processPlanRegenerationJob(
       };
     }
 
-    if (workflowEnv.planRegenerationWorkflowEnabled) {
-      if (payload.workflow?.runId) {
+    if (workflowEnabled) {
+      const attachResult = await attachPlanRegenerationWorkflow(
+        {
+          jobId: job.id,
+          planId: payload.planId,
+          userId: job.userId,
+          payload,
+          correlationId: `regen-drain-${job.id}`,
+        },
+        d.queue,
+      );
+
+      if (attachResult.kind === 'already-attached') {
         return {
           kind: 'workflow-in-flight',
           jobId: job.id,
@@ -70,24 +83,56 @@ export async function processPlanRegenerationJob(
         };
       }
 
-      const run = await start(planRegenerationWorkflow, [
-        {
+      if (attachResult.kind === 'start-failed') {
+        await d.queue.failJob(
+          job.id,
+          PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+          {
+            retryable: false,
+          },
+        );
+        return {
+          kind: 'permanent-failure',
           jobId: job.id,
           planId: payload.planId,
-          userId: job.userId,
-          correlationId: `regen-drain-${job.id}`,
-        },
-      ]);
+        };
+      }
 
-      const launchedPayload = planRegenerationJobPayloadSchema.parse({
-        ...payload,
-        workflow: {
-          provider: 'workflow-sdk' as const,
-          runId: run.runId,
-          startedAt: payload.workflow?.startedAt ?? new Date().toISOString(),
-        },
-      });
-      await d.queue.updateRegenerationJobPayload(job.id, launchedPayload);
+      if (attachResult.kind === 'persist-failed') {
+        d.logger.error(
+          {
+            jobId: job.id,
+            planId: payload.planId,
+            userId: job.userId,
+            workflowRunId: attachResult.runId,
+            persistError: attachResult.persistError,
+            cancellationSucceeded: attachResult.cancellation.succeeded,
+          },
+          'Failed to persist plan regeneration workflow run id after start',
+        );
+        if (!attachResult.cancellation.succeeded) {
+          recordRegenerationWorkflowAttachUncertain(
+            {
+              jobId: job.id,
+              planId: payload.planId,
+              userId: job.userId,
+              workflowRunId: attachResult.runId,
+              cancellationSucceeded: false,
+            },
+            attachResult.persistError,
+          );
+        }
+        await d.queue.failJob(
+          job.id,
+          'Failed to persist plan regeneration workflow run id.',
+          { retryable: false },
+        );
+        return {
+          kind: 'permanent-failure',
+          jobId: job.id,
+          planId: payload.planId,
+        };
+      }
 
       return {
         kind: 'workflow-in-flight',
@@ -113,8 +158,12 @@ export async function processPlanRegenerationJob(
       'Failed while processing queued plan regeneration job',
     );
 
+    const failureMessage = workflowEnabled
+      ? PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE
+      : PLAN_REGENERATION_SYNC_FAILURE_MESSAGE;
+
     try {
-      await d.queue.failJob(job.id, UNSAFE_WORKER_FAILURE_MESSAGE, {
+      await d.queue.failJob(job.id, failureMessage, {
         retryable: false,
       });
     } catch (secondaryError) {

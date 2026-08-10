@@ -73,8 +73,8 @@ We use two protected branches that serve as anchors for all development:
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: `.github/workflows/staging-db-migrations.yaml` applies committed Supabase migrations to the staging Supabase project on `develop`.
-- **Production**: `.github/workflows/production-db-migrations.yaml` applies committed Supabase migrations to the production Supabase project on `main`.
+- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases.
+- **Production**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand and contract phases.
 
 ---
 
@@ -93,7 +93,7 @@ We use 4 core GitHub Actions workflows:
 - Security audit (dependency vulnerabilities)
 - Build (Next.js)
 - Unit tests
-- Light integration tests
+- Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
 
 **Purpose:** Fast feedback on PRs before merge.
 
@@ -110,29 +110,31 @@ We use 4 core GitHub Actions workflows:
 
 ### 3. `staging-db-migrations.yaml` - Staging Database Migration Workflow
 
-**Triggers:** Push to `develop`, or `workflow_dispatch` from `develop`
+**Trigger:** Manual `workflow_dispatch` from `develop`
 
 **What it does:**
 
 - Skips any run whose ref is not `refs/heads/develop`
 - Checks out `develop`
 - Links the Supabase CLI to the project in `STAGING_PROJECT_ID`
-- Runs `supabase db push`
+- `expand` applies and records only the explicit safe migration list
+- `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
-**Purpose:** Keep the staging database aligned with committed migrations on `develop`.
+**Purpose:** Preserve expand/deploy/contract ordering for the staging database.
 
 ### 4. `production-db-migrations.yaml` - Production Database Migration Workflow
 
-**Triggers:** Push to `main`, or `workflow_dispatch` from `main`
+**Trigger:** Manual `workflow_dispatch` from `main`
 
 **What it does:**
 
 - Skips any run whose ref is not `refs/heads/main`
 - Checks out `main`
 - Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
-- Runs `supabase db push`
+- `expand` applies and records only the explicit safe migration list
+- `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
-**Purpose:** Keep the production database aligned with committed migrations on `main`.
+**Purpose:** Preserve expand/deploy/contract ordering for the production database.
 
 ---
 
@@ -168,15 +170,15 @@ git commit -m "feat: ..."
 ### Step 5: Merge to `develop`
 
 1. Full CI runs (`ci-trunk.yml`)
-2. `staging-db-migrations.yaml` applies committed migrations to staging
-3. Vercel deploys staging
+2. An operator dispatches `staging-db-migrations.yaml` phase `expand`
+3. Vercel deploys staging; after health verification, the operator dispatches phase `contract`
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
 2. Full CI runs
-3. `production-db-migrations.yaml` applies committed migrations to production
-4. Production app deploy runs
+3. An operator dispatches `production-db-migrations.yaml` phase `expand`
+4. Production app deploy runs; after health verification and archive checks, the operator dispatches phase `contract`
 
 ---
 
@@ -185,8 +187,8 @@ git commit -m "feat: ..."
 | Stage          | What happens                                                           |
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | `staging-db-migrations.yaml` runs `supabase db push` on `develop`      |
-| **Production** | `production-db-migrations.yaml` runs `supabase db push` on `main`      |
+| **Staging**    | Operator dispatches `expand`, deploys, verifies health, then dispatches confirmed `contract` on `develop` |
+| **Production** | Operator dispatches `expand`, deploys, verifies health/archive, then dispatches confirmed `contract` on `main` |
 
 Migration-related changes include:
 

@@ -5,6 +5,7 @@
  */
 export const ROUTES = {
   HOME: '/',
+  LANDING: '/landing',
   DASHBOARD: '/dashboard',
   AUTH: {
     SIGN_IN: '/auth/sign-in',
@@ -20,13 +21,11 @@ export const ROUTES = {
   },
   SETTINGS: {
     ROOT: '/settings',
-    PROFILE: '/settings/profile',
-    NOTIFICATIONS: '/settings/notifications',
-    INTEGRATIONS: '/settings/integrations',
-    BILLING: '/settings/billing',
-    AI: '/settings/ai',
   },
   PRICING: '/pricing',
-  ABOUT: '/about',
   MAINTENANCE: '/maintenance',
 } as const;
+
+export function planDetailPath(planId: string): string {
+  return `${ROUTES.PLANS.ROOT}/${planId}`;
+}

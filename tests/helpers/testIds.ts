@@ -1,6 +1,4 @@
-import { customAlphabet } from 'nanoid';
-
-const nanoid = customAlphabet('0123456789abcdefghijklmnopqrstuvwxyz', 6);
+import { randomUUID } from 'node:crypto';
 
 function sanitizeScenario(scenario: string): string {
   return scenario
@@ -15,7 +13,7 @@ function sanitizeScenario(scenario: string): string {
  */
 export function buildTestAuthUserId(scenario: string): string {
   const timestamp = Date.now().toString(36);
-  const suffix = nanoid();
+  const suffix = randomUUID().slice(0, 6);
   const sanitized = sanitizeScenario(scenario || 'test');
   return `auth_test_${sanitized}-${timestamp}-${suffix}`;
 }

@@ -7,16 +7,20 @@ import {
 } from '@/lib/config/env/shared';
 
 /**
- * Retention cleanup env flags consumed by the internal maintenance route.
+ * Maintenance cleanup env flags consumed by internal maintenance routes.
  */
 interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
+  readonly planCleanupEnabled: boolean;
+  readonly clerkBillingReconciliationEnabled: boolean;
+  readonly cronSecret: string | undefined;
   readonly workerToken: string | undefined;
+  readonly workerHealthToken: string | undefined;
 }
 
 const defaultMaintenanceAccess = createServerEnvAccess(getProcessEnvSource);
 
-export function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
+function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
   return {
     /**
      * Master switch for the manual retention cleanup HTTP endpoint.
@@ -29,13 +33,37 @@ export function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
       );
     },
     /**
-     * Bearer token for manual retention cleanup via the internal HTTP route.
+     * Master switch for the manual plan cleanup HTTP endpoint.
+     */
+    get planCleanupEnabled(): boolean {
+      return toBoolean(access.getServerOptional('PLAN_CLEANUP_ENABLED'), false);
+    },
+    /**
+     * Master switch for the manual Clerk Billing reconciliation HTTP endpoint.
+     */
+    get clerkBillingReconciliationEnabled(): boolean {
+      return toBoolean(
+        access.getServerOptional('CLERK_BILLING_RECONCILIATION_ENABLED'),
+        false,
+      );
+    },
+    /** Bearer secret used only by Vercel Cron GET routes. */
+    get cronSecret(): string | undefined {
+      return access.getServerRequiredProdOnly('CRON_SECRET');
+    },
+    /**
+     * Bearer token for authenticated maintenance HTTP routes.
+     * Availability is independent of the email-notification-delivery Vercel Flag.
+     * In production, missing token makes the authenticated worker boundary unavailable.
      */
     get workerToken(): string | undefined {
-      if (!this.retentionCleanupEnabled) {
-        return undefined;
-      }
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');
+    },
+    /**
+     * Bearer token for GET /api/health/worker operator metrics.
+     */
+    get workerHealthToken(): string | undefined {
+      return access.getServerRequiredProdOnly('WORKER_HEALTH_TOKEN');
     },
   };
 }

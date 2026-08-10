@@ -1,8 +1,15 @@
 import { maintenanceMode } from '@/flags';
-import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
+import {
+  appEnv,
+  devAuthEnv,
+  isHostedDeployEnv,
+  localProductTestingEnv,
+  readWorkflowCallbackTokenConfig,
+} from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
+  isProviderWebhookRoute,
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
@@ -12,8 +19,14 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
+import {
+  isWorkflowCallbackPath,
+  resolveWorkflowCallbackAccess,
+} from '@/lib/proxy/workflow-callback-auth';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from 'next/server';
+
+type ProxyRequestContext = ReturnType<typeof buildProxyRequestContext>;
 
 function buildProxyRequestContext(request: NextRequest) {
   const correlationId = getCorrelationId(request);
@@ -25,10 +38,28 @@ function buildProxyRequestContext(request: NextRequest) {
   return { correlationId, nonce, contentSecurityPolicy };
 }
 
-function applyProxyDecorations(
-  response: NextResponse,
-  ctx: ReturnType<typeof buildProxyRequestContext>,
+function nextWithProxyContext(
+  request: NextRequest,
+  options?: { skipCsp?: boolean; ctx?: ProxyRequestContext },
 ): NextResponse {
+  const ctx = options?.ctx ?? buildProxyRequestContext(request);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-correlation-id', ctx.correlationId);
+
+  if (!options?.skipCsp) {
+    requestHeaders.set('x-nonce', ctx.nonce);
+    requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
+  }
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  if (options?.skipCsp) {
+    response.headers.set('x-correlation-id', ctx.correlationId);
+    return response;
+  }
+
   response.headers.set('x-correlation-id', ctx.correlationId);
   return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
     isProduction: appEnv.isProduction,
@@ -40,32 +71,51 @@ const withCorrelationId = (
   response: NextResponse,
 ): NextResponse => {
   const ctx = buildProxyRequestContext(request);
-  return applyProxyDecorations(response, ctx);
-};
-
-const nextWithCorrelationId = (
-  request: NextRequest,
-  existingCtx?: ReturnType<typeof buildProxyRequestContext>,
-): NextResponse => {
-  const ctx = existingCtx ?? buildProxyRequestContext(request);
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-correlation-id', ctx.correlationId);
-  requestHeaders.set('x-nonce', ctx.nonce);
-  requestHeaders.set('Content-Security-Policy', ctx.contentSecurityPolicy);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
+  response.headers.set('x-correlation-id', ctx.correlationId);
+  return applyProxySecurityHeaders(response, ctx.contentSecurityPolicy, {
+    isProduction: appEnv.isProduction,
   });
-  return applyProxyDecorations(response, ctx);
 };
 
 const proxy = clerkMiddleware(
   async (auth, request: NextRequest) => {
     const { pathname } = request.nextUrl;
 
-    // Stripe webhooks bypass all checks including maintenance mode
-    if (pathname.startsWith('/api/v1/stripe/webhook')) {
-      return nextWithCorrelationId(request);
+    if (isWorkflowCallbackPath(pathname)) {
+      const tokenConfig = readWorkflowCallbackTokenConfig();
+      // Fail-fast on misconfigured token (e.g. whitespace-only); all workflow routes 503 until fixed.
+      if (tokenConfig.status === 'invalid') {
+        return new NextResponse(null, { status: 503 });
+      }
+
+      const callbackAccess = await resolveWorkflowCallbackAccess(
+        {
+          method: request.method,
+          pathname,
+          searchParams: request.nextUrl.searchParams,
+          headers: request.headers,
+        },
+        {
+          isProduction: appEnv.isProduction,
+          isHostedVercelDeploy: isHostedDeployEnv(process.env),
+          callbackToken: tokenConfig.token,
+        },
+      );
+
+      if (callbackAccess.status === 'allow') {
+        return nextWithProxyContext(request, { skipCsp: true });
+      }
+
+      if (callbackAccess.status === 'misconfigured') {
+        return new NextResponse(null, { status: 503 });
+      }
+
+      return new NextResponse(null, { status: 401 });
+    }
+
+    // Payment/auth provider webhooks bypass all checks including maintenance mode.
+    if (isProviderWebhookRoute(pathname)) {
+      return nextWithProxyContext(request);
     }
 
     // Maintenance mode
@@ -108,13 +158,13 @@ const proxy = clerkMiddleware(
           pathname,
           correlationId: ctx.correlationId,
         });
-        return nextWithCorrelationId(request, ctx);
+        return nextWithProxyContext(request, { ctx });
       }
 
       await auth.protect();
     }
 
-    return nextWithCorrelationId(request);
+    return nextWithProxyContext(request);
   },
   {
     signInUrl: '/auth/sign-in',
@@ -126,9 +176,8 @@ export default proxy;
 
 export const config = {
   matcher: [
-    // Workflow SDK webhook/callback routes under `/.well-known/workflow/` must stay
-    // outside Clerk, maintenance redirects, and CSP middleware (see workflow-sdk.md).
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)|\\.well-known/workflow/).*)',
+    // Workflow SDK machine routes run an early auth branch before Clerk/CSP.
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],
 };

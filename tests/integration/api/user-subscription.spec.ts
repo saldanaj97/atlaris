@@ -1,5 +1,6 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET } from '@/app/api/v1/user/subscription/route';
 import { learningPlans, usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
@@ -44,7 +45,6 @@ describe('GET /api/v1/user/subscription', () => {
       .where(eq(usageMetrics.userId, userId));
     expect(before).toHaveLength(0);
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },
@@ -104,7 +104,6 @@ describe('GET /api/v1/user/subscription', () => {
       },
     ]);
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },
@@ -126,7 +125,6 @@ describe('GET /api/v1/user/subscription', () => {
       data: { user: null },
     });
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },
@@ -146,7 +144,6 @@ describe('GET /api/v1/user/subscription', () => {
       subscriptionTier: 'pro',
     });
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },
@@ -166,7 +163,6 @@ describe('GET /api/v1/user/subscription', () => {
       subscriptionTier: 'starter',
     });
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },
@@ -185,7 +181,6 @@ describe('GET /api/v1/user/subscription', () => {
       .set({ cancelAtPeriodEnd: true })
       .where(eq(users.id, userId));
 
-    const { GET } = await import('@/app/api/v1/user/subscription/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/subscription',
       { method: 'GET' },

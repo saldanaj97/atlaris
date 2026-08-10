@@ -8,10 +8,13 @@ import {
 import { requestBoundary } from '@/lib/api/request-boundary';
 import {
   getShellAuthUserId,
+  isLocalProductTestingAuthEnabled,
   shouldUseClerkUi,
 } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
+import { devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import { currentUser } from '@clerk/nextjs/server';
 
 /**
  * Server component wrapper for the site header.
@@ -57,6 +60,8 @@ export default async function SiteHeader() {
 
   // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
+  let userName: string | undefined;
+  let userImageUrl: string | undefined;
   if (authUserId) {
     try {
       const result = await requestBoundary.component(
@@ -74,18 +79,46 @@ export default async function SiteHeader() {
         'Subscription tier fetch failed; header renders without tier badge',
       );
     }
+
+    // Avatar fallback only — Clerk UserButton owns production avatars.
+    if (!showClerkUserButton) {
+      if (isLocalProductTestingAuthEnabled()) {
+        userName = devAuthEnv.name;
+      } else {
+        try {
+          const user = await currentUser();
+          if (user) {
+            const composedName = [user.firstName, user.lastName]
+              .filter(Boolean)
+              .join(' ');
+            userName =
+              (user.fullName ?? composedName) || user.username || undefined;
+            userImageUrl = user.imageUrl;
+          }
+        } catch (err) {
+          logger.warn(
+            {
+              err,
+              authUserId,
+              source: 'SiteHeader.currentUser',
+            },
+            'Clerk user fetch failed; header avatar falls back to initials',
+          );
+        }
+      }
+    }
   }
 
   return (
-    <header className='fixed top-0 left-0 z-50 w-full px-4 pt-3 lg:px-6 lg:pt-4'>
-      <div className='mx-auto max-w-7xl'>
-        <SiteHeaderChrome
-          navItems={navItems}
-          tier={tier}
-          isAuthenticated={Boolean(authUserId)}
-          showClerkUserButton={showClerkUserButton}
-        />
-      </div>
+    <header className='fixed top-0 left-0 z-50 w-full'>
+      <SiteHeaderChrome
+        navItems={navItems}
+        tier={tier}
+        isAuthenticated={Boolean(authUserId)}
+        showClerkUserButton={showClerkUserButton}
+        userName={userName}
+        userImageUrl={userImageUrl}
+      />
     </header>
   );
 }

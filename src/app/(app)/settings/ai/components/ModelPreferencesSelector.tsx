@@ -2,7 +2,6 @@
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { JSX } from 'react';
 
 import { ModelSelector } from '@/app/(app)/settings/ai/components/model-selector';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
@@ -22,7 +21,7 @@ export function ModelPreferencesSelector({
   currentModel,
   userTier,
   availableModels,
-}: ModelPreferencesSelectorProps): JSX.Element {
+}: ModelPreferencesSelectorProps) {
   const router = useRouter();
 
   async function handleSave(modelId: string | null): Promise<void> {

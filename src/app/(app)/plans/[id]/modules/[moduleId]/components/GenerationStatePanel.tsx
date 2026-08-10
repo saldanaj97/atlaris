@@ -1,5 +1,4 @@
 import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projection/types';
-import type { JSX } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,11 +24,11 @@ function getGenerationStatusLabel(
   }
 }
 
-function LockedGenerationPanel(): JSX.Element {
+function LockedGenerationPanel() {
   return (
     <Surface variant='default' padding='none' className='mb-6 p-5'>
       <div className='flex items-start gap-3'>
-        <div className='rounded-xl bg-muted p-2 text-muted-foreground'>
+        <div className='rounded-lg bg-muted p-2 text-muted-foreground'>
           <Sparkles className='size-5' />
         </div>
         <div>
@@ -53,7 +52,7 @@ function GenerationDescription({
   lessonGeneration: ModuleLessonGenerationSummary;
   generationTakingLong: boolean;
   quotaMessage: string | null;
-}): JSX.Element {
+}) {
   return (
     <div>
       <div className='mb-2 flex items-center gap-2'>
@@ -71,15 +70,15 @@ function GenerationDescription({
             lessons, resources, and progress while content is prepared.
           </p>
           {generationTakingLong ? (
-            <p className='mt-2 text-sm font-medium text-amber-700 dark:text-amber-400'>
+            <p className='mt-2 text-sm font-medium text-warning'>
               Generation taking longer than expected
             </p>
           ) : null}
         </>
       ) : lessonGeneration.status === 'failed' ? (
         <p className='text-sm text-muted-foreground'>
-          {lessonGeneration.error ??
-            'Generation failed. Retry to create fresh lesson content for this module.'}
+          Generation failed. Retry to create fresh lesson content for this
+          module.
         </p>
       ) : (
         <p className='text-sm text-muted-foreground'>
@@ -88,9 +87,7 @@ function GenerationDescription({
         </p>
       )}
       {quotaMessage ? (
-        <p className='mt-2 text-sm font-medium text-amber-700 dark:text-amber-400'>
-          {quotaMessage}
-        </p>
+        <p className='mt-2 text-sm font-medium text-warning'>{quotaMessage}</p>
       ) : null}
     </div>
   );
@@ -104,14 +101,14 @@ function GenerationAction({
   status: ModuleLessonGenerationSummary['status'];
   isPending: boolean;
   onGenerate: () => void;
-}): JSX.Element | null {
+}) {
   if (status === 'generating') {
     return (
       <div className='flex items-center gap-2 text-sm font-medium text-primary'>
-        <span className='animate-spin'>
+        <span className='animate-spin motion-reduce:animate-none'>
           <Loader2 className='size-4' />
         </span>
-        Generating
+        Generating lessons...
       </div>
     );
   }
@@ -123,7 +120,11 @@ function GenerationAction({
 
   return (
     <Button onClick={onGenerate} disabled={isPending}>
-      {isPending ? 'Generating...' : 'Generate lessons'}
+      {isPending
+        ? 'Generating...'
+        : status === 'failed'
+          ? 'Retry lesson generation'
+          : 'Generate lessons'}
     </Button>
   );
 }
@@ -142,7 +143,7 @@ export function GenerationStatePanel({
   generationTakingLong: boolean;
   onGenerate: () => void;
   isPending: boolean;
-}): JSX.Element | null {
+}) {
   if (!previousModulesComplete) {
     return <LockedGenerationPanel />;
   }
@@ -152,7 +153,12 @@ export function GenerationStatePanel({
   }
 
   return (
-    <Surface variant='default' padding='none' className='mb-6 p-5'>
+    <Surface
+      variant='default'
+      padding='none'
+      className='mb-6 p-5'
+      aria-live='polite'
+    >
       <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
         <GenerationDescription
           lessonGeneration={lessonGeneration}

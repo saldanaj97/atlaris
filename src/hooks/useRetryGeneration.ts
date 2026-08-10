@@ -82,19 +82,18 @@ export function useRetryGeneration(
     }, RETRY_COOLDOWN_MS);
 
     try {
-      const result = await startSession({ kind: 'retry', planId });
-      if (result.status === 'completed') {
+      // Refresh on any settle so failed-plan SSR `plan.attempts` rehydrates
+      // (terminal usePlanStatus keeps poller attempts at 0).
+      await startSession({ kind: 'retry', planId });
+      router.refresh();
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        clientLogger.error('Retry generation failed:', error);
         router.refresh();
       }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return;
-      }
-
-      clientLogger.error('Retry generation failed:', error);
-    } finally {
-      retryInFlightRef.current = false;
     }
+
+    retryInFlightRef.current = false;
   }, [cooldownActive, planId, router, startSession]);
 
   return {

@@ -5,14 +5,18 @@ import type {
   PlainHandler,
   RouteHandlerContext,
 } from '@/lib/api/types/auth.types';
-import type { DbUser, UsersDbClient } from '@/lib/db/queries/types/users.types';
+import type {
+  ActorUser,
+  UsersDbClient,
+} from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
 import { AuthError } from './errors';
+import { provisionUserFromVerifiedAuthSession } from '@/features/auth/user-provisioning';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 import { getDb } from '@supabase/runtime';
 
 export type { PlainHandler } from '@/lib/api/types/auth.types';
@@ -71,15 +75,18 @@ async function requireUser(): Promise<string> {
 async function ensureUserRecord(
   authUserId: string,
   dbClient?: UsersDbClient,
-): Promise<DbUser> {
+): Promise<ActorUser> {
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
+    if (existing.clerkDeletedAt !== null) {
+      throw new AuthError('Auth user has been deleted.');
+    }
     return existing;
   }
 
   if (localProductTestingEnv.enabled) {
     throw new AuthError(
-      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:bootstrap and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
+      'Local product testing requires a seeded user row for DEV_AUTH_USER_ID. Run pnpm db:dev:seed and set DEV_AUTH_USER_ID to the seed auth id (see localProductTestingEnv.seed in @/lib/config/env).',
     );
   }
 
@@ -89,28 +96,37 @@ async function ensureUserRecord(
     throw new AuthError('Auth user data unavailable.');
   }
 
-  const email = session.user.email;
-  if (!email) {
-    throw new AuthError('Auth user must have an email address.');
+  if (session.user.id !== authUserId) {
+    throw new AuthError('Auth user changed during provisioning.');
   }
 
-  const created = await createUser(
-    {
-      authUserId,
-      email,
-      name: session.user.name || undefined,
-    },
-    dbClient,
-  );
+  const email = session.user.email;
+  if (!email) {
+    throw new AuthError(
+      'Auth user must have a verified primary email address.',
+    );
+  }
 
-  if (!created) {
+  const clerkUserUpdatedAt = session.user.clerkUserUpdatedAt;
+  if (!clerkUserUpdatedAt) {
+    throw new AuthError('Auth user timestamp unavailable.');
+  }
+
+  const actor = await provisionUserFromVerifiedAuthSession({
+    authUserId,
+    email,
+    name: session.user.name || undefined,
+    clerkUserUpdatedAt,
+  });
+
+  if (!actor) {
     throw new AuthError('Failed to provision user record.');
   }
 
-  return created;
+  return actor;
 }
 
-export async function requireCurrentUserRecord(): Promise<DbUser> {
+export async function requireCurrentUserRecord(): Promise<ActorUser> {
   const userId = await requireUser();
   return ensureUserRecord(userId);
 }
@@ -121,7 +137,7 @@ export async function requireCurrentUserRecord(): Promise<DbUser> {
  */
 async function runWithAuthenticatedContext<T>(
   authUserId: string,
-  fn: (user: DbUser, rlsDb: RlsClient) => MaybePromise<T>,
+  fn: (user: ActorUser, rlsDb: RlsClient) => MaybePromise<T>,
   req?: Request,
 ): Promise<T> {
   const { createAuthenticatedRlsClient } =
@@ -137,7 +153,7 @@ async function runWithAuthenticatedContext<T>(
   try {
     return await withRequestContext(requestContext, async () => {
       const user = await ensureUserRecord(authUserId, rlsDb);
-      requestContext.user = { id: user.id, authUserId: user.authUserId };
+      requestContext.user = user;
       return fn(user, rlsDb);
     });
   } finally {
@@ -147,14 +163,14 @@ async function runWithAuthenticatedContext<T>(
 
 async function runWithTestContext<T>(
   authUserId: string,
-  fn: (user: DbUser, db: DbClient) => MaybePromise<T>,
+  fn: (user: ActorUser, db: DbClient) => MaybePromise<T>,
   req?: Request,
 ): Promise<T> {
   const requestDb = getDb();
   const user = await ensureUserRecord(authUserId, requestDb);
   const requestContext = createRequestContext(req, {
     userId: authUserId,
-    user: { id: user.id, authUserId: user.authUserId },
+    user,
     db: requestDb,
     cleanup: async () => {},
   });
@@ -202,7 +218,7 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 let didWarnWithServerComponentContextDeprecation = false;
 
 export async function withServerComponentContext<T>(
-  fn: (user: DbUser) => MaybePromise<T>,
+  fn: (user: ActorUser) => MaybePromise<T>,
 ): Promise<T | null> {
   if (!didWarnWithServerComponentContextDeprecation) {
     didWarnWithServerComponentContextDeprecation = true;
@@ -211,7 +227,7 @@ export async function withServerComponentContext<T>(
     );
   }
 
-  const authUserId = await getEffectiveAuthUserId();
+  const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;
 
   if (appEnv.isTest) {
@@ -234,7 +250,7 @@ export async function withServerComponentContext<T>(
  * Returns null if user is not authenticated (caller should handle).
  */
 export async function withServerActionContext<T>(
-  fn: (user: DbUser, db: RlsClient) => MaybePromise<T>,
+  fn: (user: ActorUser, db: RlsClient) => MaybePromise<T>,
 ): Promise<T | null> {
   const authUserId = await getEffectiveAuthUserId({ strict: true });
   if (!authUserId) return null;

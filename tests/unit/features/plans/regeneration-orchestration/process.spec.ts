@@ -3,6 +3,7 @@ import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneratio
 import type { DbClient } from '@/lib/db/types';
 
 import { JOB_TYPES } from '@/features/jobs/types';
+import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import {
   processNextPlanRegenerationJob,
   processPlanRegenerationJob,
@@ -12,7 +13,19 @@ import {
   makeRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDepsOverrides,
 } from '@tests/helpers/regeneration-orchestration-deps';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const workflowStartMock = vi.hoisted(() => vi.fn());
+const workflowGetRunMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    cancel: vi.fn(async () => undefined),
+  })),
+);
+
+vi.mock('workflow/api', () => ({
+  start: workflowStartMock,
+  getRun: workflowGetRunMock,
+}));
 
 const planRow = {
   id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -473,7 +486,7 @@ describe('processPlanRegenerationJob', () => {
     });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
-      'Queued plan regeneration failed.',
+      'Failed while processing queued plan regeneration job.',
       {
         retryable: false,
       },
@@ -482,6 +495,217 @@ describe('processPlanRegenerationJob', () => {
       expect.objectContaining({ jobId: job.id, error: expect.any(Error) }),
       'Failed while processing queued plan regeneration job',
     );
+  });
+
+  describe('workflow-enabled drain', () => {
+    beforeEach(() => {
+      resetPlanRegenerationCancellationMarkersForTests();
+      vi.stubEnv('PLAN_REGENERATION_WORKFLOW_ENABLED', 'true');
+      workflowStartMock.mockReset();
+      workflowGetRunMock.mockReset();
+      workflowGetRunMock.mockImplementation(() => ({
+        cancel: vi.fn(async () => undefined),
+      }));
+      workflowStartMock.mockResolvedValue({
+        runId: 'wrun_drain',
+        returnValue: Promise.resolve({
+          kind: 'completed',
+          jobId: 'job-1',
+          planId: planRow.id,
+        }),
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('returns workflow-in-flight when payload already has runId', async () => {
+      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const processAttempt = vi.fn();
+      const deps = buildProcessDeps({
+        queue: { updateRegenerationJobPayload },
+        lifecycle: {
+          service: makeLifecycleServiceMock(processAttempt),
+        },
+      });
+      const job = makeJob({
+        data: {
+          planId: planRow.id,
+          workflow: {
+            provider: 'workflow-sdk',
+            runId: 'wrun_existing',
+            startedAt: '2026-05-27T10:00:00.000Z',
+          },
+        },
+      });
+
+      const result = await processPlanRegenerationJob(job, deps);
+
+      expect(result).toEqual({
+        kind: 'workflow-in-flight',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      expect(workflowStartMock).not.toHaveBeenCalled();
+      expect(processAttempt).not.toHaveBeenCalled();
+      expect(updateRegenerationJobPayload).not.toHaveBeenCalled();
+    });
+
+    it('starts workflow, persists runId, and returns workflow-in-flight', async () => {
+      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const processAttempt = vi.fn();
+      const deps = buildProcessDeps({
+        queue: { updateRegenerationJobPayload },
+        lifecycle: {
+          service: makeLifecycleServiceMock(processAttempt),
+        },
+      });
+      const job = makeJob();
+
+      const result = await processPlanRegenerationJob(job, deps);
+
+      expect(result).toEqual({
+        kind: 'workflow-in-flight',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      expect(workflowStartMock).toHaveBeenCalledTimes(1);
+      expect(updateRegenerationJobPayload).toHaveBeenCalledWith(
+        job.id,
+        expect.objectContaining({
+          planId: planRow.id,
+          workflow: expect.objectContaining({
+            provider: 'workflow-sdk',
+            runId: 'wrun_drain',
+            startedAt: expect.any(String),
+          }),
+        }),
+      );
+      expect(processAttempt).not.toHaveBeenCalled();
+    });
+
+    it('retries attach on pending job after initial start failure without permanent failure', async () => {
+      let startCalls = 0;
+      workflowStartMock.mockImplementation(async () => {
+        startCalls += 1;
+        if (startCalls === 1) {
+          throw new Error('sdk-start-fail');
+        }
+        return {
+          runId: 'wrun_retry',
+          returnValue: Promise.resolve({
+            kind: 'completed',
+            jobId: 'job-1',
+            planId: planRow.id,
+          }),
+        };
+      });
+      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const failJob = vi.fn(async () => null);
+      const deps = buildProcessDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+      });
+      const job = makeJob({ status: 'pending', attempts: 1 });
+
+      const firstAttempt = await processPlanRegenerationJob(job, deps);
+      expect(firstAttempt).toEqual({
+        kind: 'permanent-failure',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+
+      const retryResult = await processPlanRegenerationJob(job, deps);
+      expect(retryResult).toEqual({
+        kind: 'workflow-in-flight',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      expect(startCalls).toBe(2);
+      expect(updateRegenerationJobPayload).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns permanent-failure when workflow start throws', async () => {
+      workflowStartMock.mockRejectedValue(new Error('sdk-start-fail'));
+      const failJob = vi.fn(async () => null);
+      const deps = buildProcessDeps({ queue: { failJob } });
+      const job = makeJob();
+
+      const result = await processPlanRegenerationJob(job, deps);
+
+      expect(result).toEqual({
+        kind: 'permanent-failure',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      expect(failJob).toHaveBeenCalledWith(
+        job.id,
+        'Queued plan regeneration failed.',
+        { retryable: false },
+      );
+    });
+
+    it('returns permanent-failure when runId persist fails after workflow start', async () => {
+      workflowStartMock.mockResolvedValue({
+        runId: 'wrun_drain',
+        returnValue: Promise.resolve({
+          kind: 'completed',
+          jobId: 'job-1',
+          planId: planRow.id,
+        }),
+      });
+      const updateRegenerationJobPayload = vi.fn(async () => {
+        throw new Error('runId persist failed');
+      });
+      const failJob = vi.fn(async () => null);
+      const deps = buildProcessDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+      });
+      const job = makeJob();
+
+      const result = await processPlanRegenerationJob(job, deps);
+
+      expect(result).toEqual({
+        kind: 'permanent-failure',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      expect(failJob).toHaveBeenCalledWith(
+        job.id,
+        'Failed to persist plan regeneration workflow run id.',
+        { retryable: false },
+      );
+      expect(failJob).toHaveBeenCalledTimes(1);
+    });
+
+    it('terminalizes the job when drain-launched workflow returnValue rejects', async () => {
+      const rejection = new Error('workflow-fatal');
+      workflowStartMock.mockResolvedValue({
+        runId: 'wrun_drain',
+        returnValue: Promise.reject(rejection),
+      });
+      const failJob = vi.fn(async () => null);
+      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const deps = buildProcessDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+      });
+      const job = makeJob();
+
+      const result = await processPlanRegenerationJob(job, deps);
+
+      expect(result).toEqual({
+        kind: 'workflow-in-flight',
+        jobId: job.id,
+        planId: planRow.id,
+      });
+      await vi.waitFor(() => {
+        expect(failJob).toHaveBeenCalledWith(
+          job.id,
+          'Queued plan regeneration failed.',
+          { retryable: false },
+        );
+      });
+    });
   });
 
   it('already_finalized completes with zero counts', async () => {

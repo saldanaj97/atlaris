@@ -56,25 +56,6 @@ export async function claimPlanRegenerationJobStep(
     return { kind: 'claimed', runId };
   }
 
-  const claimed = await claimRegenerationJob(job.id, {
-    planId: input.planId,
-    userId: input.userId,
-  });
-
-  if (!claimed) {
-    const latest = await loadJobById(input.jobId);
-    if (latest?.status === 'completed') {
-      return { kind: 'already-completed', jobId: job.id };
-    }
-    if (latest?.status === 'processing') {
-      const run = latest.data.workflow?.runId;
-      if (run) {
-        return { kind: 'in-flight', jobId: job.id, runId: run };
-      }
-    }
-    return { kind: 'job-not-found', jobId: input.jobId };
-  }
-
   const payload = planRegenerationJobPayloadSchema.parse({
     ...validation.payload,
     workflow: {
@@ -84,7 +65,31 @@ export async function claimPlanRegenerationJobStep(
     },
   });
 
-  await updateJobPayload(job.id, payload);
+  const claimed = await claimRegenerationJob(
+    job.id,
+    {
+      planId: input.planId,
+      userId: input.userId,
+    },
+    payload,
+  );
+
+  if (!claimed) {
+    const latest = await loadJobById(input.jobId);
+    if (latest?.status === 'completed') {
+      return { kind: 'already-completed', jobId: job.id };
+    }
+    if (latest?.status === 'processing') {
+      const run = latest.data.workflow?.runId;
+      if (run === runId) {
+        return { kind: 'claimed', runId };
+      }
+      if (run) {
+        return { kind: 'in-flight', jobId: job.id, runId: run };
+      }
+    }
+    return { kind: 'job-not-found', jobId: input.jobId };
+  }
 
   return { kind: 'claimed', runId };
 }

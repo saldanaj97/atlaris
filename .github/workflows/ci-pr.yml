@@ -2,16 +2,13 @@ name: CI - PR (trunk)
 
 on:
   pull_request:
-    branches: [main, develop]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'specs/**'
-      - '**/*.txt'
-      - '**/*.csv'
-      - '**/*.log'
   workflow_dispatch:
     inputs:
+      base_ref:
+        description: Branch used as the diff base
+        required: true
+        default: develop
+        type: string
       integration_workers:
         description: 'Workers for integration tests (4 default, 2 fallback)'
         type: choice
@@ -24,7 +21,9 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+
+env:
+  BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || inputs.base_ref }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -33,6 +32,9 @@ concurrency:
 jobs:
   changes:
     name: Detect Changes
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
@@ -40,9 +42,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050
         id: filter
         with:
+          base: ${{ github.event_name == 'pull_request' && github.base_ref || inputs.base_ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           filters: |
             source:
               - 'src/**'
@@ -55,13 +61,14 @@ jobs:
               - 'tests/**'
               - 'scripts/**'
               - 'vitest.config.ts'
+              - 'vitest.workflow.config.ts'
               - 'tsconfig.json'
               - 'package.json'
+              - 'pnpm-workspace.yaml'
               - 'pnpm-lock.yaml'
               - '.oxlintrc.json'
-              - '.prettierignore'
-              - 'prettier.config.mjs'
               - '.husky/**'
+              - '.github/scripts/**'
               - '.github/workflows/**'
 
   lint-and-type-check:
@@ -76,7 +83,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -87,7 +94,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
@@ -114,10 +121,10 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Run dependency audit
         run: |
-          MAX_ATTEMPTS=1
+          MAX_ATTEMPTS=3
           RETRY_DELAY_SECONDS=5
           AUDIT_TIMEOUT_SECONDS=30
 
@@ -164,9 +171,8 @@ jobs:
             fi
           done
 
-          echo "::warning title=Security audit skipped::pnpm audit failed after ${MAX_ATTEMPTS} attempts due to npm registry/advisory endpoint errors or timeout."
-          echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors/timeouts; skipping to unblock CI."
-          exit 0
+          echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors/timeouts; failing closed."
+          exit 1
 
   build:
     name: Build
@@ -180,7 +186,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -191,7 +197,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
@@ -204,17 +210,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build Next.js app
-        env:
-          # `next build` runs with NODE_ENV=production and prerenders /pricing,
-          # which evaluates `stripeEnv.pricing.*` in `src/lib/config/env/billing.ts`.
-          # The localMode escape hatch is refused under NODE_ENV=production, so the
-          # build needs the real (test-mode) Stripe secrets. Vercel handles the
-          # actual production deploy; CI only validates compilation.
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_STARTER_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_MONTHLY_PRICE_ID }}
-          STRIPE_STARTER_YEARLY_PRICE_ID: ${{ secrets.STRIPE_STARTER_YEARLY_PRICE_ID }}
-          STRIPE_PRO_MONTHLY_PRICE_ID: ${{ secrets.STRIPE_PRO_MONTHLY_PRICE_ID }}
-          STRIPE_PRO_YEARLY_PRICE_ID: ${{ secrets.STRIPE_PRO_YEARLY_PRICE_ID }}
         run: pnpm build
       - name: Save Next.js cache
         if: always()
@@ -242,7 +237,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -253,7 +248,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
@@ -273,7 +268,6 @@ jobs:
         env:
           NODE_ENV: 'test'
           SKIP_DB_TEST_SETUP: 'true'
-          BASE_REF: ${{ github.base_ref }}
           SHARD: ${{ matrix.shard }}
           TOTAL: ${{ matrix.total }}
         shell: bash
@@ -287,7 +281,7 @@ jobs:
 
           # Filter to TS/TSX files under src/ or tests/
           FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
-          COUNT=$(echo "${FILES}" | wc -l | tr -d ' ')
+          COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
           echo "Changed candidate files: ${COUNT}"
 
           if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
@@ -384,7 +378,7 @@ jobs:
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   integration-light:
-    name: Integration (related or light)
+    name: Integration (related/full/light)
     runs-on: ubuntu-latest
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
@@ -402,7 +396,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -413,7 +407,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
@@ -431,11 +425,9 @@ jobs:
       - name: Run fast integration tests
         env:
           NODE_ENV: 'test'
-          BASE_REF: ${{ github.base_ref }}
-          # No POSTGRES_URL: tests/setup/testcontainers.ts spins up Postgres and
-          # tests/setup/test-env.ts derives per-worker DBs from VITEST_POOL_ID.
         shell: bash
         run: |
+          set -e
           echo "Base ref: ${BASE_REF}"
           CHANGED_FILES=""
           if [ -n "${BASE_REF}" ]; then
@@ -444,10 +436,9 @@ jobs:
           fi
 
           FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
-          COUNT=$(echo "${FILES}" | wc -l | tr -d ' ')
+          COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
           echo "Changed candidate files: ${COUNT}"
 
-          # Global changes that should skip related integration and rely on light subset
           read -r -d '' GLOBAL_TRIGGER_PATTERN <<'EOF' || true
           ^(
             pnpm-lock\.yaml|
@@ -459,49 +450,62 @@ jobs:
             supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?
           )$
           EOF
-          # Remove newlines and spaces for grep -E compatibility
           GLOBAL_TRIGGER_PATTERN_CLEAN=$(echo "${GLOBAL_TRIGGER_PATTERN}" | tr -d '\n' | sed 's/ //g')
           GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E "${GLOBAL_TRIGGER_PATTERN_CLEAN}" || true)
+
+          MODE="light"
           if [ -n "${GLOBAL_TRIGGER}" ]; then
-            echo "Detected global change impacting many tests; skipping related integration."
-            COUNT=0
-          fi
-
-          if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
-            echo "Running vitest related for integration project..."
-            pnpm vitest related --project integration --run --coverage \
-              --reporter=default \
-              --reporter=json \
-              --outputFile=test-results.json \
-              ${FILES}
-            EXIT=$?
-            if [ $EXIT -eq 0 ]; then
-              echo "Related integration run completed."
-              # Ensure coverage file exists before exiting
-              if [ -f coverage/lcov.info ]; then
-                echo "Coverage report generated successfully."
-              else
-                echo "⚠️ Warning: coverage/lcov.info not found after test run"
-              fi
-              exit 0
-            else
-              echo "Related run failed; falling back to light subset."
-            fi
+            MODE="full"
+            echo "Integration mode: full (global trigger detected)"
+          elif [ "${COUNT}" -gt 50 ]; then
+            MODE="full"
+            echo "Integration mode: full (${COUNT} candidate TypeScript files)"
+          elif [ "${COUNT}" -gt 0 ]; then
+            MODE="related"
+            echo "Integration mode: related (${COUNT} candidate TypeScript files)"
           else
-            echo "No suitable changed files; using light subset."
+            echo "Integration mode: light (no suitable source candidates)"
           fi
 
-          # Light subset fallback (or primary when no related)
-          mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
-          if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
-            echo "No light integration tests found; skipping."
-            exit 0
+          case "${MODE}" in
+            related)
+              pnpm vitest related --project integration --run --coverage \
+                --passWithNoTests \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json \
+                ${FILES}
+              ;;
+            full)
+              pnpm vitest run --project integration tests/integration \
+                --coverage \
+                --coverage.thresholds.lines=0 \
+                --coverage.thresholds.functions=0 \
+                --coverage.thresholds.branches=0 \
+                --coverage.thresholds.statements=0 \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json
+              ;;
+            light)
+              mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name "*.test.ts" -o -name "*.spec.ts" -o -name "*.test.tsx" -o -name "*.spec.tsx" \))
+              if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
+                echo "No light integration tests found; skipping."
+                exit 0
+              fi
+              pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
+                --coverage \
+                --reporter=default \
+                --reporter=json \
+                --outputFile=test-results.json
+              ;;
+          esac
+
+          if [ -f coverage/lcov.info ]; then
+            echo "Coverage report generated successfully."
+          else
+            echo "⚠️ Warning: coverage/lcov.info not found after test run"
           fi
-          pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
-            --coverage \
-            --reporter=default \
-            --reporter=json \
-            --outputFile=test-results.json
       - name: Generate test summary
         if: always()
         run: |
@@ -568,7 +572,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
         with:
-          version: 9
+          version: 11.9.0
       - name: Setup pnpm store cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -579,7 +583,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: '22'
+          node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
@@ -627,6 +631,39 @@ jobs:
             node_modules/.vitest
           key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
+  workflow-tests:
+    name: Production Workflow Tests
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 11.9.0
+      - name: Setup pnpm store cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run dependency remediation tests
+        run: node --test .github/scripts/dependency-remediation.test.mjs
+      - name: Run production workflow tests
+        run: pnpm test:workflow
+
   all-checks-pr:
     name: All Checks Passed (PR)
     needs:
@@ -638,6 +675,7 @@ jobs:
         unit-tests,
         integration-light,
         security-tests,
+        workflow-tests,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -653,10 +691,11 @@ jobs:
             [unit-tests]="${{ needs['unit-tests'].result }}"
             [integration-light]="${{ needs['integration-light'].result }}"
             [security-tests]="${{ needs['security-tests'].result }}"
+            [workflow-tests]="${{ needs['workflow-tests'].result }}"
           )
 
           failed=0
-          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests; do
+          for job in changes lint-and-type-check vulnerability-scan build unit-tests integration-light security-tests workflow-tests; do
             result="${results[$job]}"
             echo "${job} -> ${result}"
             # Treat 'success' as pass; allow 'skipped' (e.g., when changes filter is false)

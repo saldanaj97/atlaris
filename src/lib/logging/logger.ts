@@ -3,7 +3,9 @@ import pino, { type LoggerOptions, stdTimeFunctions } from 'pino';
 
 export type Logger = import('pino').Logger;
 
-const level = loggingEnv.level ?? (appEnv.isProduction ? 'info' : 'debug');
+const level =
+  loggingEnv.level ??
+  (appEnv.isProduction ? 'info' : appEnv.isTest ? 'silent' : 'debug');
 
 const loggerOptions: LoggerOptions = {
   level,

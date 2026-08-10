@@ -1,6 +1,6 @@
 # Pre-Launch Security & Abuse-Resistance Audit Checklist (24 Areas)
 
-> **Stack context**: Next.js 16 + React 19 + Clerk Auth + Stripe billing + Supabase Postgres + RLS + OpenRouter AI
+> **Stack context**: Next.js 16 + React 19 + Clerk Auth + Clerk Billing (Stripe gateway) + Supabase Postgres + RLS + OpenRouter AI
 
 ---
 
@@ -83,6 +83,7 @@
 - [ ] API versioning doesn't accidentally expose deprecated insecure endpoints.
 - [ ] OPTIONS/HEAD methods don't bypass auth checks.
 - [ ] Verify no sensitive operations possible via GET requests (all mutations use POST/PUT/DELETE).
+- [ ] Workflow SDK callback routes (`/.well-known/workflow/v1/flow`, `/step`) are not reachable via unauthenticated forged POSTs outside Vercel queue consumer security; self-hosted production sets `WORKFLOW_CALLBACK_TOKEN`.
 
 ### 8) Error handling & information leakage
 
@@ -129,9 +130,9 @@
 - [ ] Subscription status checked on every gated request (not cached too long).
 - [ ] Trial expiry enforced server-side with grace period handling.
 - [ ] Cancelled subscriptions: verify access revoked at period end, not immediately.
-- [ ] Test subscription status with Stripe test clocks for edge cases.
+- [ ] Test subscription status with Clerk Billing fixtures and reconciliation edge cases.
 
-### 12) Webhook security (Stripe, etc.)
+### 12) Webhook security (Clerk Billing, etc.)
 
 - [ ] Verify signatures on every webhook and reject unsigned/invalid payloads.
 - [ ] Add idempotency and replay protection (don't double-process events).
@@ -139,7 +140,7 @@
 - [ ] Webhook endpoint not guessable (use random path segment).
 - [ ] Webhook processing timeout handling (don't hang on slow operations).
 - [ ] Test webhook replay attacks with old valid signatures.
-- [ ] Stripe webhook events verified against expected event types (ignore unknown).
+- [ ] Clerk webhook events verified against expected event types (ignore unknown).
 
 ---
 
@@ -220,7 +221,8 @@
 - [ ] Lockfile integrity: pinned versions, no untrusted git dependencies.
 - [ ] Watch for malicious install scripts (postinstall) and CI execution risks.
 - [ ] `pnpm audit` runs in CI and blocks on high/critical vulnerabilities.
-- [ ] Dependabot or similar enabled for security updates.
+- [ ] `minimumReleaseAge` and `trustPolicy` supply-chain policy configured in `pnpm-workspace.yaml` and documented in [supply-chain-policy.md](./supply-chain-policy.md).
+- [x] Dependabot version updates and the daily/manual `pnpm audit --fix=update` remediation workflow are configured, with platform labels and code-owner rules enabled. Scheduled runs begin after these files are promoted to the default `main` branch; native Dependabot security-update PRs remain intentionally disabled because security PRs must target `develop`. See [supply-chain-policy.md](./supply-chain-policy.md).
 - [ ] Review new dependencies before adding (check maintainer, download count, last update).
 
 ### 21) Infrastructure, deployment & config hardening

@@ -39,15 +39,17 @@ async function createRequest(planId: string, body: unknown) {
 describe('POST /api/v1/plans/:id/regenerate', () => {
   const authUserId = buildTestAuthUserId('api-regen-user');
   const authEmail = buildTestEmail(authUserId);
+  let userId: string;
 
   beforeEach(async () => {
     clearAllUserRateLimiters();
     mockRequestPlanRegeneration.mockReset();
+    setTestUser(authUserId);
+    userId = await ensureUser({ authUserId, email: authEmail });
   });
 
   it('maps enqueued boundary result to 202 with rate limit headers', async () => {
-    setTestUser(authUserId);
-    const userId = await ensureUser({
+    await ensureUser({
       authUserId,
       email: authEmail,
       subscriptionTier: 'pro',
@@ -92,12 +94,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('maps plan-not-found to 404', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({ kind: 'plan-not-found' });
 
@@ -113,12 +109,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('maps queue-disabled to 503', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({ kind: 'queue-disabled' });
 
@@ -134,13 +124,30 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     );
   });
 
-  it('maps active-job-conflict to 409 with job id', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
+  it('maps workflow-start-failed to its stable 503 error boundary', async () => {
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'workflow-start-failed',
+      jobId: 'job-1',
+      planId,
+      retryable: true,
     });
 
+    const { request, context } = await createRequest(planId, {
+      overrides: { topic: 'interview prep' },
+    });
+
+    const response = await POST(request, context);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Failed to start plan regeneration workflow.',
+      code: 'WORKFLOW_START_FAILED',
+      details: { jobId: 'job-1', planId, retryable: true },
+    });
+  });
+
+  it('maps active-job-conflict to 409 with job id', async () => {
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({
       kind: 'active-job-conflict',
@@ -159,12 +166,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('maps queue-dedupe-conflict with reconciliation flag', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({
       kind: 'queue-dedupe-conflict',
@@ -184,12 +185,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('maps quota-denied to 429', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({
       kind: 'quota-denied',
@@ -213,12 +208,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('propagates RateLimitError from boundary as 429', async () => {
-    setTestUser(authUserId);
-    await ensureUser({
-      authUserId,
-      email: authEmail,
-    });
-
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockRejectedValue(
       new RateLimitError(
@@ -246,7 +235,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   it('returns 400 with invalid JSON message when body is not JSON', async () => {
-    setTestUser(authUserId);
     await ensureUser({
       authUserId,
       email: authEmail,
@@ -271,12 +259,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
   describe('invalid overrides schema', () => {
     it('rejects topic that is too short', async () => {
-      setTestUser(authUserId);
-      await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
@@ -292,12 +274,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects invalid weeklyHours', async () => {
-      setTestUser(authUserId);
-      await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
@@ -312,12 +288,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects invalid skillLevel', async () => {
-      setTestUser(authUserId);
-      await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
@@ -332,12 +302,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     it('rejects extra fields in overrides', async () => {
-      setTestUser(authUserId);
-      await ensureUser({
-        authUserId,
-        email: authEmail,
-      });
-
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {

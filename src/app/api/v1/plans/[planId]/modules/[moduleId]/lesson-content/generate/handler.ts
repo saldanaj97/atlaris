@@ -1,6 +1,5 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
-import { getBillingAccountSnapshot } from '@/features/billing/account-snapshot';
 import {
   startModuleLessonGeneration,
   type StartModuleLessonGenerationResult,
@@ -15,6 +14,8 @@ import { logger } from '@/lib/logging/logger';
 import { ModuleLessonGenerationApiResponseSchema } from '@/shared/schemas/lesson-content.schemas';
 
 type StartModuleLessonGeneration = typeof startModuleLessonGeneration;
+const LESSON_GENERATION_FAILURE_MESSAGE =
+  'Lesson generation failed. Please try again.';
 
 /**
  * Factory for the module lesson content generate POST handler.
@@ -34,19 +35,12 @@ export function createModuleLessonContentGenerateHandler(
         dbClient: db,
       });
 
-      const billing = await getBillingAccountSnapshot({
-        userId: actor.id,
-        dbClient: db,
-        projection: 'subscription',
-        correlationId,
-      });
-
       const result = await startGeneration({
         dbClient: db,
         userId: actor.id,
         planId,
         moduleId,
-        userTier: billing.tier,
+        userTier: actor.subscriptionTier,
         signal: req.signal,
         correlationId,
       });
@@ -77,6 +71,15 @@ function mapModuleLessonGenerationResult(
 ) {
   switch (result.kind) {
     case 'workflow_started':
+      return json(
+        ModuleLessonGenerationApiResponseSchema.parse({
+          state: 'generating',
+          planId,
+          moduleId,
+          workflowRunId: result.runId,
+        }),
+        { status: 202 },
+      );
     case 'in_flight':
       return json(
         ModuleLessonGenerationApiResponseSchema.parse({
@@ -104,12 +107,13 @@ function mapModuleLessonGenerationResult(
         }),
       );
     case 'failed':
+    case 'workflow_start_failed':
       return json(
         ModuleLessonGenerationApiResponseSchema.parse({
           state: 'provider_failure',
           planId,
           moduleId,
-          message: result.message,
+          message: LESSON_GENERATION_FAILURE_MESSAGE,
         }),
         { status: 502 },
       );

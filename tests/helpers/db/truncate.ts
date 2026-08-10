@@ -1,17 +1,24 @@
 import {
   aiUsageEvents,
+  clerkWebhookEventClaims,
+  clerkWebhookEvents,
+  emailNotificationDeliveries,
+  emailNotificationDeliveryRuns,
   generationAttempts,
   jobQueue,
+  learningActivityEvents,
   learningPlans,
   modules,
   oauthStateTokens,
   planSchedules,
   resources,
-  stripeWebhookEvents,
   taskProgress,
   taskResources,
   tasks,
   usageMetrics,
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
   users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -65,6 +72,7 @@ function assertSafeToTruncate() {
  */
 const TRUNCATE_TABLES = [
   taskResources,
+  learningActivityEvents,
   taskProgress,
   aiUsageEvents,
   generationAttempts,
@@ -75,7 +83,13 @@ const TRUNCATE_TABLES = [
   resources,
   learningPlans,
   usageMetrics,
-  stripeWebhookEvents,
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
+  emailNotificationDeliveries,
+  emailNotificationDeliveryRuns,
+  clerkWebhookEventClaims,
+  clerkWebhookEvents,
   oauthStateTokens,
   users,
 ] as const;

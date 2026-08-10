@@ -41,7 +41,6 @@ type AiProviderEnvValue = 'mock' | 'router';
  */
 interface AiEnvConfig {
   readonly provider: AiProviderEnvValue | undefined;
-  readonly useMock: boolean | undefined;
   readonly mockSeed: number | undefined;
   readonly mockScenario: string | undefined;
   readonly mock: AiMockEnv;
@@ -84,28 +83,6 @@ interface AiEnvFacets {
   readonly attemptsEnv: AttemptsEnv;
 }
 
-function parseStrictOptionalBooleanFlag(
-  value: string | undefined,
-  envKey: string,
-): boolean | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  if (normalized === 'true' || normalized === '1') {
-    return true;
-  }
-  if (normalized === 'false' || normalized === '0') {
-    return false;
-  }
-
-  throw new EnvValidationError(
-    `${envKey} must be one of: true, false, 1, 0`,
-    envKey,
-  );
-}
-
 function getAiTimeoutBaseMs(access: ServerEnvAccess): number {
   return parseEnvNumber(
     access.getServerOptional('AI_TIMEOUT_BASE_MS'),
@@ -126,12 +103,6 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       throw new EnvValidationError(
         `AI_PROVIDER must be one of: mock, router (or unset to use environment defaults). Received: ${raw}`,
         'AI_PROVIDER',
-      );
-    },
-    get useMock() {
-      return parseStrictOptionalBooleanFlag(
-        access.getServerOptional('AI_USE_MOCK'),
-        'AI_USE_MOCK',
       );
     },
     get mockSeed() {

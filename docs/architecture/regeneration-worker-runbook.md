@@ -13,25 +13,30 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 
 ## Required Environment
 
-| Variable                          | Purpose                                       | Production expectation      |
-| --------------------------------- | --------------------------------------------- | --------------------------- |
-| `REGENERATION_QUEUE_ENABLED`      | Master switch for enqueue/drain behavior      | `true`                      |
-| `REGENERATION_MAX_JOBS_PER_DRAIN` | Max jobs processed per drain call             | Set to a safe bounded value |
-| `REGENERATION_WORKER_TOKEN`       | Shared bearer token for internal drain auth   | Required                    |
-| `REGENERATION_INLINE_PROCESSING`  | Inline processing fallback from enqueue route | `false` in production       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default) |
+| Variable                             | Purpose                                                                | Production expectation      |
+| ------------------------------------ | ---------------------------------------------------------------------- | --------------------------- |
+| `REGENERATION_QUEUE_ENABLED`         | Master switch for enqueue/drain behavior                               | Explicitly `true` after the worker trigger is configured; otherwise defaults `false` |
+| `REGENERATION_MAX_JOBS_PER_DRAIN`    | Max jobs processed per drain call                                      | Set to a safe bounded value |
+| `REGENERATION_WORKER_TOKEN`          | Shared bearer token for internal drain auth                            | Required                    |
+| `REGENERATION_INLINE_PROCESSING`     | Inline processing fallback from enqueue route                          | `false` in production       |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default)           |
+
+The queue and inline fallback default on in development, test, and Vercel Preview. Both default off in Production until a worker trigger is configured and verified.
 
 ## Workflow-backed regeneration
 
 When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 
-- Successful enqueue calls `startPlanRegenerationWorkflow()` (fire-and-forget).
+- Both enqueue and drain launch via `startPlanRegenerationWorkflow()` (fire-and-forget after the run is created).
 - The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
+- Rejected workflow runs are terminalized via `failJob(..., { retryable: false })` when `run.returnValue` rejects, even if finalization never runs.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
 
-Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See `docs/architecture/workflow-sdk.md`.
+Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Env flags: [environment variables](../development/environment.md#workflow-sdk). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
 
 ## Triggering the Worker
+
+Configure and verify a recurring worker trigger before setting `REGENERATION_QUEUE_ENABLED=true` in production.
 
 Use a scheduler (Cron, GitHub Actions, Vercel cron, etc.) to call:
 
@@ -86,3 +91,10 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 2. **401 unauthorized:** rotate/redeploy `REGENERATION_WORKER_TOKEN`; confirm Bearer or `x-regeneration-worker-token` on scheduler calls.
 3. **Repeated failed jobs:** inspect worker logs and `job_queue.last_error`, then replay by re-enqueueing or manual retry.
 4. **Emergency load shedding:** temporarily set `REGENERATION_MAX_JOBS_PER_DRAIN=0` (drains become no-op) while investigating.
+
+## Related docs
+
+- [Workflow SDK](./workflow-sdk.md) — `PLAN_REGENERATION_WORKFLOW_ENABLED`, run correlation, and Preview testing
+- [Plan generation architecture](./plan-generation-architecture.md) — create/retry and module lesson pipelines (separate from queued regeneration)
+- [Environment variables](../development/environment.md#workflow-sdk) — workflow and regeneration queue env vars
+- [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands

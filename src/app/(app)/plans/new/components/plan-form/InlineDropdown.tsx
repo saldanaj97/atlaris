@@ -1,7 +1,7 @@
 'use client';
 
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
-import type { CSSProperties, JSX } from 'react';
+import type { CSSProperties } from 'react';
 
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
@@ -56,7 +56,7 @@ export function InlineDropdown<TValue extends string>({
   placeholder,
   onChange,
   variant = 'primary',
-}: InlineDropdownProps<TValue>): JSX.Element {
+}: InlineDropdownProps<TValue>) {
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
@@ -92,7 +92,7 @@ export function InlineDropdown<TValue extends string>({
       <div
         ref={sizerRef}
         aria-hidden='true'
-        className='pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap'
+        className='pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap'
       >
         {icon}
         <span
@@ -117,7 +117,7 @@ export function InlineDropdown<TValue extends string>({
           id={componentId}
           aria-label={ariaLabel}
           className={cn(
-            'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-xl border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm outline-none sm:w-[var(--inline-dropdown-width)]',
+            'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm outline-none sm:w-[var(--inline-dropdown-width)]',
             'transition-[width,background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
             'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background',
             isPlaceholder
@@ -138,7 +138,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align='start'
             className={cn(
-              'z-50 min-w-[220px] overflow-hidden rounded-2xl border bg-popover shadow-xl',
+              'z-50 min-w-[220px] overflow-hidden rounded-md border bg-popover shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -153,7 +153,7 @@ export function InlineDropdown<TValue extends string>({
                   value={option.value}
                   textValue={option.label}
                   className={cn(
-                    'relative w-full cursor-default rounded-xl py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
+                    'relative w-full cursor-default rounded-sm py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
                     styles.item,
                   )}
                 >

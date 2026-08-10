@@ -7,7 +7,6 @@ import type {
   AttemptsDbClient,
   GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 import {
   canonicalUsageToRecordParams,
@@ -20,7 +19,7 @@ import {
 import {
   markPlanGenerationFailureInTx,
   markPlanGenerationSuccessInTx,
-} from '@/features/plans/lifecycle/adapters/plan-persistence-store';
+} from '@/features/plans/lifecycle/plan-persistence-store';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import { buildMetadata } from '@/lib/db/queries/helpers/attempts-input';
@@ -33,10 +32,6 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-
-function asProviderMetadata(value: Record<string, unknown>): ProviderMetadata {
-  return value as ProviderMetadata;
-}
 
 export async function commitPlanGenerationSuccess(
   dbClient: AttemptsDbClient,
@@ -59,7 +54,7 @@ export async function commitPlanGenerationSuccess(
 
   const metadata = buildMetadata({
     sanitized: input.preparation.sanitized,
-    providerMetadata: asProviderMetadata(input.providerMetadata),
+    providerMetadata: input.providerMetadata,
     workflowMetadata: input.workflowMetadata,
     modulesClamped: normalizationFlags.modulesClamped,
     tasksClamped: normalizationFlags.tasksClamped,
@@ -141,6 +136,7 @@ export async function commitPlanGenerationFailure(
   const metadata = buildMetadata({
     sanitized: input.preparation.sanitized,
     providerMetadata: input.providerMetadata,
+    workflowMetadata: input.workflowMetadata,
     modulesClamped: false,
     tasksClamped: false,
     startedAt: input.preparation.startedAt,

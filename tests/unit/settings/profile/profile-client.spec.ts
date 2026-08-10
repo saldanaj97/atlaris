@@ -37,6 +37,22 @@ describe('profile-client', () => {
     expect(result).toEqual({ kind: 'success', profile: PROFILE });
   });
 
+  it('defaults missing legacy analytics timezone responses to UTC', async () => {
+    const legacyProfile: Partial<typeof PROFILE> = { ...PROFILE };
+    delete legacyProfile.analyticsTimezone;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(mockJsonResponse(legacyProfile));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await requestProfile();
+
+    expect(result).toEqual({
+      kind: 'success',
+      profile: { ...legacyProfile, analyticsTimezone: 'UTC' },
+    });
+  });
+
   it('rejects malformed profile responses instead of accepting partial data', async () => {
     vi.stubGlobal(
       'fetch',

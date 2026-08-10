@@ -100,7 +100,9 @@ export function createDefaultRegenerationOrchestrationDeps(
       failJob,
       updateRegenerationJobPayload: updateJobPayload,
     },
-    quota: { runReserved: runRegenerationQuotaReserved },
+    quota: {
+      runReserved: runRegenerationQuotaReserved,
+    },
     plans: {
       getActiveRegenerationJob,
       findOwnedPlan: async (planId, userId, client) => {

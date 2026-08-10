@@ -1,5 +1,6 @@
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET } from '@/app/api/v1/plans/[planId]/status/route';
 import { learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
@@ -61,7 +62,6 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
   });
 
   it('returns status for the owner plan (allowed)', async () => {
-    const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${ownerPlanId}/status`,
       { method: 'GET' },
@@ -91,7 +91,6 @@ describe('GET /api/v1/plans/:planId/status - access control', () => {
       })
       .returning();
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${otherPlan.id}/status`,
       { method: 'GET' },

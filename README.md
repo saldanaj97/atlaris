@@ -10,17 +10,17 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 - Streams AI generation progress to the client over SSE
 - Tracks generation attempts, failure classifications, and retryability
 - Enforces tenant isolation with PostgreSQL Row Level Security (RLS)
-- Supports Google Calendar OAuth token storage and disconnect flows
+- Google Calendar sync is planned (not yet implemented — shown as "Coming Soon" in Settings → Integrations)
 - Applies usage limits, rate limiting, and subscription gating server-side
 
 ## Core stack
 
-- **Framework:** Next.js 16.2.4 + React 19
+- **Framework:** Next.js 16.2.6 + React 19
 - **Language:** TypeScript (strict mode)
 - **Database:** Supabase local Postgres / hosted Supabase Postgres via Drizzle ORM
 - **Auth:** Clerk for UI, route protection, and server session reads
-- **AI:** OpenRouter via `@openrouter/sdk` and the Vercel AI SDK
-- **Payments:** Stripe
+- **AI:** OpenRouter via `@openrouter/sdk`
+- **Payments:** Clerk Billing (Stripe gateway)
 - **Testing:** Vitest + Testing Library + Testcontainers
 
 ## Getting started
@@ -51,12 +51,12 @@ pnpm install
 pnpm dev              # Turbopack app only
 pnpm dev:full        # local DB + app
 pnpm check:full      # lint + type-check (runs check:lint + check:type)
-pnpm test            # lightweight changed bundle (same as test:changed)
+pnpm test            # lightweight changed unit + integration-class bundle
 ```
 
 Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
 
-On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + Prettier on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
+On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
 
 ## Project structure
 
@@ -64,9 +64,9 @@ On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + Prettier on staged
 src/
 ├── app/           # App Router pages + API routes
 ├── components/    # Shared UI and feature components
+├── features/      # Domain features (ai, plans, billing, jobs, lesson-content, integrations)
 ├── hooks/         # Client hooks
 ├── lib/
-│   ├── ai/        # Providers, orchestration, parsing, streaming
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers
 │   ├── auth/      # Auth server/client wiring
 │   ├── config/    # Typed environment access
@@ -98,7 +98,7 @@ The default `pnpm test` command runs a lightweight changed-only bundle: unit tes
 Use the explicit scoped commands for day-to-day work, and prefer targeted integration runs instead of the full suite whenever possible:
 
 ```bash
-pnpm test:changed
+pnpm test
 pnpm test:unit:changed
 pnpm test:integration:changed
 pnpm test:workflow
@@ -107,26 +107,31 @@ pnpm test:workflow
 For direct file targeting:
 
 ```bash
-pnpm exec tsx scripts/tests/run.ts changed
-pnpm exec tsx scripts/tests/run.ts unit path/to/file.spec.ts
-pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts
+pnpm test:unit:changed
+pnpm test:integration:changed
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
+NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.
 
+Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and correlation: [docs/architecture/workflow-sdk.md](docs/architecture/workflow-sdk.md).
+
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `stripeEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, `workflowEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation
 
 - `AGENTS.md`
+- `docs/architecture/workflow-sdk.md`
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/architecture/plan-generation-architecture.md`
 - `docs/architecture/internal-worker-routes.md`
 - `docs/architecture/regeneration-worker-runbook.md`
 - `docs/architecture/retention-cleanup-runbook.md`
 - `docs/api/error-contract.md`
+- API reference (OpenAPI/Scalar UI): served at `/api/docs` — route `src/app/api/docs/route.ts`
 - `docs/database/schema-overview.md`

@@ -1,5 +1,6 @@
 import type {
   DbTask,
+  DbLearningActivityEvent,
   DbTaskProgress,
   TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
@@ -7,8 +8,14 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import type { SQL } from 'drizzle-orm';
 
 import { getDb } from '@supabase/runtime';
-import { learningPlans, modules, taskProgress, tasks } from '@supabase/schema';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import {
+  learningActivityEvents,
+  learningPlans,
+  modules,
+  taskProgress,
+  tasks,
+} from '@supabase/schema';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 interface TaskProgressBatchScope {
   planId?: string;
@@ -54,6 +61,19 @@ export async function getAllTasksInPlan(
   return rows.map((row) => row.task);
 }
 
+export async function getLearningActivityEventsForUser(
+  userId: string,
+  dbClient?: TasksDbClient,
+): Promise<DbLearningActivityEvent[]> {
+  const client = dbClient ?? getDb();
+
+  return client
+    .select()
+    .from(learningActivityEvents)
+    .where(eq(learningActivityEvents.userId, userId))
+    .orderBy(asc(learningActivityEvents.occurredAt));
+}
+
 /**
  * Sets or updates the progress status for a specific task for a user.
  * Validates task ownership in SQL before updating.
@@ -79,9 +99,7 @@ async function setTaskProgress(
       tx,
       userId,
       eq(tasks.id, taskId),
-    )
-      .limit(1)
-      .for('update');
+    ).limit(1);
 
     if (!taskRow) {
       throw new Error('Task not found or access denied');
@@ -173,7 +191,7 @@ export async function setTaskProgressBatch(
       tx,
       userId,
       and(...scopeConditions)!,
-    ).for('update');
+    );
 
     const ownedIds = new Set(ownedTasks.map((row) => row.task.id));
     const missingIds = taskIds.filter((id) => !ownedIds.has(id));

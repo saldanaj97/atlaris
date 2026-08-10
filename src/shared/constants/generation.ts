@@ -3,7 +3,7 @@
  *
  * These are deterministic values with no runtime dependencies.
  * The env-overridable ATTEMPT_CAP is computed via {@link resolveAttemptCap}
- * in both lib/config/env.ts (for lib consumers) and
+ * in lib/config/env/ai.ts (for lib consumers) and
  * features/ai/generation-policy.ts (for feature consumers and tests).
  */
 

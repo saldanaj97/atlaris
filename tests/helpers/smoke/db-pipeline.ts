@@ -2,7 +2,10 @@ import {
   bootstrapDatabase,
   grantRlsPermissions,
 } from '@tests/helpers/db/bootstrap';
-import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
+import {
+  seedLocalProductTestingBillingFixture,
+  seedLocalProductTestingUser,
+} from '@tests/helpers/db/seed-local-product-testing';
 /**
  * Bootstrap, migrate, grant, and seed the disposable smoke database.
  * Uses `NODE_ENV=test` only inside the migration subprocess (matches Vitest Testcontainers).
@@ -56,4 +59,7 @@ export async function prepareSmokeDatabase(
 
   console.log('[smoke] Seeding local product-testing user…');
   await seedLocalProductTestingUser(connectionUrl);
+
+  console.log('[smoke] Seeding local Clerk billing fixture…');
+  await seedLocalProductTestingBillingFixture(connectionUrl);
 }

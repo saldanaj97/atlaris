@@ -19,7 +19,7 @@ export function GradientProgressHeroFrame({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-6 shadow-sm sm:p-7',
+        'relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-5 shadow-sm sm:p-6',
         className,
       )}
     >
@@ -37,7 +37,7 @@ export function GradientProgressHeroFrame({
         aria-hidden
       >
         <div
-          className='h-full bg-primary transition-all duration-500'
+          className='h-full bg-primary transition-[width] duration-500 motion-reduce:transition-none'
           style={{ width: `${completion}%` }}
         />
       </div>

@@ -95,6 +95,16 @@ export const POST: PlainHandler = requestBoundary.route(
             limit: result.limit,
           },
         );
+      case 'workflow-start-failed':
+        throw new AppError('Failed to start plan regeneration workflow.', {
+          status: 503,
+          code: 'WORKFLOW_START_FAILED',
+          details: {
+            jobId: result.jobId,
+            planId: result.planId,
+            retryable: result.retryable,
+          },
+        });
       case 'enqueued':
         return json(
           {

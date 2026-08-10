@@ -4,7 +4,6 @@ import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provi
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
-import { buildPlanGenerationInputFields } from '@/features/plans/generation-input';
 
 type SuccessfulCreatePlanGenerationResult = {
   planId: string;
@@ -42,7 +41,7 @@ export function buildCreateGenerationInput({
     planId,
     userId,
     tier,
-    input: buildPlanGenerationInputFields({
+    input: {
       topic: ni.topic,
       notes: body.notes,
       skillLevel: body.skillLevel,
@@ -50,7 +49,7 @@ export function buildCreateGenerationInput({
       learningStyle: body.learningStyle,
       startDate: ni.startDate,
       deadlineDate: ni.deadlineDate,
-    }),
+    },
     modelOverride,
   };
 }

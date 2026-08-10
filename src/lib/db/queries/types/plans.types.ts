@@ -18,6 +18,12 @@ export type PlanSummaryTaskRow = Pick<
   'id' | 'moduleId' | 'estimatedMinutes'
 > & { planId: string };
 
+/** Task row shape for plan detail reads (excludes large lesson JSON blobs). */
+export type PlanDetailTaskRow = Omit<
+  TaskRow,
+  'lessonContent' | 'lessonContentUpdatedAt'
+>;
+
 export type PlanProgressStatusRow = Pick<TaskProgressRow, 'taskId' | 'status'>;
 
 /**

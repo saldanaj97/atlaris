@@ -27,9 +27,7 @@ const SMOKE_CONTROLLED_ENV_KEYS = [
   'NEXT_PUBLIC_ENABLE_SENTRY',
   'PORT',
   'SMOKE_NEXT_DIST_DIR',
-  'STRIPE_LOCAL_MODE',
   'AI_PROVIDER',
-  'AI_USE_MOCK',
 ] as const;
 const SMOKE_CONTROLLED_ENV_KEY_SET = new Set<string>(SMOKE_CONTROLLED_ENV_KEYS);
 
@@ -65,9 +63,7 @@ export function buildAnonModeLayer(
     ...baseSmokeLayer(state),
     DEV_AUTH_USER_ID: '',
     LOCAL_PRODUCT_TESTING: 'false',
-    STRIPE_LOCAL_MODE: 'false',
     AI_PROVIDER: '',
-    AI_USE_MOCK: 'false',
     PORT: String(SMOKE_ANON_PORT),
     APP_URL: smokeAnonAppUrl(),
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-anon',
@@ -84,9 +80,7 @@ export function buildAuthModeLayer(
     ...baseSmokeLayer(state),
     DEV_AUTH_USER_ID: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
     LOCAL_PRODUCT_TESTING: 'true',
-    STRIPE_LOCAL_MODE: 'true',
-    AI_PROVIDER: '',
-    AI_USE_MOCK: 'true',
+    AI_PROVIDER: 'mock',
     PORT: String(SMOKE_AUTH_PORT),
     APP_URL: smokeAuthAppUrl(),
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',

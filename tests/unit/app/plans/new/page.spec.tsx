@@ -1,13 +1,12 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger, next/navigation).
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
   PlanGenerationResult,
-  StreamingPlanState,
-  UseStreamingPlanGenerationResult,
-} from '@/hooks/useStreamingPlanGeneration';
+  PlanGenerationSessionState,
+  UsePlanGenerationSessionResult,
+} from '@/features/plans/session/usePlanGenerationSession';
 
-import { ManualCreatePanel } from '@/app/(app)/plans/new/components/ManualCreatePanel';
+import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
 import { clientLogger } from '@/lib/logging/client';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -25,28 +24,23 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockStartGeneration =
-  vi.fn<
-    (
-      input: CreateLearningPlanInput,
-      options?: { onPlanIdReady?: (planId: string) => void },
-    ) => Promise<PlanGenerationResult>
-  >();
+  vi.fn<UsePlanGenerationSessionResult['startSession']>();
 const mockCancel = vi.fn<() => void>();
-const mockUseStreamingPlanGeneration =
-  vi.fn<() => UseStreamingPlanGenerationResult>();
+const mockUsePlanGenerationSession =
+  vi.fn<() => UsePlanGenerationSessionResult>();
 
-vi.mock('@/hooks/useStreamingPlanGeneration', async () => {
+vi.mock('@/features/plans/session/usePlanGenerationSession', async () => {
   const actual = await vi.importActual<
-    typeof import('@/hooks/useStreamingPlanGeneration')
-  >('@/hooks/useStreamingPlanGeneration');
+    typeof import('@/features/plans/session/usePlanGenerationSession')
+  >('@/features/plans/session/usePlanGenerationSession');
 
   return {
     ...actual,
-    useStreamingPlanGeneration: () => mockUseStreamingPlanGeneration(),
+    usePlanGenerationSession: () => mockUsePlanGenerationSession(),
   };
 });
 
-const mockState: StreamingPlanState = {
+const mockState: PlanGenerationSessionState = {
   status: 'idle',
   modules: [],
   planId: undefined,
@@ -54,7 +48,7 @@ const mockState: StreamingPlanState = {
   error: undefined,
 };
 
-describe('ManualCreatePanel', () => {
+describe('AiPlanGenerationPanel', () => {
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
@@ -67,9 +61,9 @@ describe('ManualCreatePanel', () => {
       progress: undefined,
       error: undefined,
     });
-    mockUseStreamingPlanGeneration.mockReturnValue({
+    mockUsePlanGenerationSession.mockReturnValue({
       state: mockState,
-      startGeneration: mockStartGeneration,
+      startSession: mockStartGeneration,
       cancel: mockCancel,
     });
   });
@@ -107,7 +101,7 @@ describe('ManualCreatePanel', () => {
 
   describe('form validity', () => {
     it('keeps submit disabled until the topic and all preferences are selected', async () => {
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       expect(
         screen.getByRole('button', { name: /generate my plan/i }),
@@ -137,7 +131,7 @@ describe('ManualCreatePanel', () => {
           result: 'plan-keyboard',
         });
 
-        render(<ManualCreatePanel />);
+        render(<AiPlanGenerationPanel />);
 
         const topicInput = screen.getByLabelText(/what do you want to learn/i);
         await user.type(topicInput, 'Keyboard topic');
@@ -158,7 +152,7 @@ describe('ManualCreatePanel', () => {
 
   describe('defaults', () => {
     it('shows preference placeholders before selection', async () => {
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
       expect(deadline).toHaveTextContent('Finish by');
@@ -182,7 +176,7 @@ describe('ManualCreatePanel', () => {
         return { status: 'completed', planId, result: planId };
       });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Test Topic');
       await chooseDefaultPreferences();
@@ -193,7 +187,10 @@ describe('ManualCreatePanel', () => {
       });
 
       const callArgs = mockStartGeneration.mock.calls[0]?.[0];
-      expect(callArgs).toMatchObject({
+      if (callArgs?.kind !== 'create') {
+        throw new Error('Expected a create session request');
+      }
+      expect(callArgs.input).toMatchObject({
         topic: 'Test Topic',
         skillLevel: 'beginner',
         weeklyHours: 5,
@@ -201,8 +198,8 @@ describe('ManualCreatePanel', () => {
         visibility: 'private',
         origin: 'ai',
       });
-      expect(callArgs?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(callArgs?.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(
@@ -222,7 +219,7 @@ describe('ManualCreatePanel', () => {
         result: 'plan-456',
       });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('  Learn Rust  ');
       await chooseOption('Experience', 'Advanced');
@@ -236,7 +233,10 @@ describe('ManualCreatePanel', () => {
       });
 
       const callArgs = mockStartGeneration.mock.calls[0]?.[0];
-      expect(callArgs).toMatchObject({
+      if (callArgs?.kind !== 'create') {
+        throw new Error('Expected a create session request');
+      }
+      expect(callArgs.input).toMatchObject({
         topic: 'Learn Rust',
         skillLevel: 'advanced',
         weeklyHours: 15,
@@ -244,8 +244,8 @@ describe('ManualCreatePanel', () => {
         visibility: 'private',
         origin: 'ai',
       });
-      expect(callArgs?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(callArgs?.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 
@@ -255,7 +255,7 @@ describe('ManualCreatePanel', () => {
         new DOMException('Aborted', 'AbortError'),
       );
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Cancelled topic');
       await chooseDefaultPreferences();
@@ -264,6 +264,24 @@ describe('ManualCreatePanel', () => {
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalledTimes(1);
       });
+
+      await waitFor(() => {
+        expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
+      });
+
+      expect(pushMock).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    it('shows the cancellation toast when generation resolves as cancelled', async () => {
+      mockStartGeneration.mockResolvedValue({ status: 'cancelled' });
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Cancelled result topic');
+      await chooseDefaultPreferences();
+      await submitForm();
 
       await waitFor(() => {
         expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
@@ -287,7 +305,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithPlanId);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery topic');
       await chooseDefaultPreferences();
@@ -324,7 +342,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithData);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery from error data');
       await chooseDefaultPreferences();
@@ -349,7 +367,7 @@ describe('ManualCreatePanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithoutPlanId);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Recovery from state');
       await chooseDefaultPreferences();
@@ -366,7 +384,7 @@ describe('ManualCreatePanel', () => {
       const genericError = new Error('Network error');
       mockStartGeneration.mockRejectedValue(genericError);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Generic error topic');
       await chooseDefaultPreferences();
@@ -387,10 +405,42 @@ describe('ManualCreatePanel', () => {
       );
     });
 
-    it('falls back to the generic error toast when the thrown value has no message', async () => {
-      mockStartGeneration.mockRejectedValue({ status: 500 });
+    it('shows a normalized object error message', async () => {
+      mockStartGeneration.mockRejectedValue({
+        message: 'Gateway unavailable',
+      });
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Object error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Gateway unavailable');
+      });
+    });
+
+    it('falls back when the normalized message exceeds the safe limit', async () => {
+      mockStartGeneration.mockRejectedValue(new Error('x'.repeat(201)));
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Long error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          'We could not create your learning plan. Please try again.',
+        );
+      });
+    });
+
+    it('falls back to the generic error toast when the thrown value has no message', async () => {
+      mockStartGeneration.mockRejectedValue({ message: '' });
+
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Fallback error topic');
       await chooseDefaultPreferences();
@@ -409,7 +459,7 @@ describe('ManualCreatePanel', () => {
       const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
 
-      render(<ManualCreatePanel />);
+      render(<AiPlanGenerationPanel />);
 
       await fillTopic('Long running topic');
       await chooseDefaultPreferences();

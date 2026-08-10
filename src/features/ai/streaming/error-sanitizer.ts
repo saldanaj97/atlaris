@@ -11,7 +11,7 @@
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { getFailurePresentation } from '@/features/ai/failure-presentation';
-import { coerceUnknownToMessage } from '@/lib/api/coerce-unknown-to-message';
+import { coerceUnknownToMessage } from '@/lib/errors/normalize-unknown';
 import { logger } from '@/lib/logging/logger';
 
 export type ErrorLike = {

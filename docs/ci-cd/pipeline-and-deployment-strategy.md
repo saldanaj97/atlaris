@@ -1,7 +1,7 @@
 # CI/CD Pipeline and Deployment Strategy
 
 **Audience:** New engineers (especially junior hires)  
-**Last Updated:** February 2026
+**Last Updated:** August 2026
 
 ## Why this exists
 
@@ -20,6 +20,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging.
 - Merging to `main` runs Supabase CLI migrations against production.
+- Dependency automation is defined on `main`, evaluates `develop`, and opens dependency PRs only against `develop`.
 
 ---
 
@@ -39,8 +40,8 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### 1) `.github/workflows/ci-pr.yml`
 
 - Trigger: PRs to `develop` or `main`
-- Runs: lint, type-check, dependency audit, build, unit tests, light integration tests
-- Skips docs-only changes (`docs/**`, `**/*.md`, etc.)
+- Runs: lint, type-check, dependency audit, build, unit tests, and PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
+- Internal path filtering skips expensive jobs when no code changed, while the aggregate `All Checks Passed (PR)` check is still emitted for every PR.
 
 ### 2) `.github/workflows/ci-trunk.yml`
 
@@ -48,25 +49,42 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - Runs: full integration and RLS security checks on trunk branches
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
 
-### 3) `.github/workflows/staging-db-migrations.yaml`
+### 3) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
-- Trigger: push to `develop` (or manual dispatch from `develop`)
-- Purpose: apply committed Supabase migrations to the staging Supabase project
+- The configuration is read from the default branch, so it must be present on `main` before Dependabot or its weekly cadence is expected to run.
+- Native version updates use the npm root, target `develop`, run weekly, and apply a seven-day cooldown. Patch and minor updates are grouped separately; major updates are not opened automatically.
+- Native Dependabot security-update PRs are intentionally disabled. GitHub sends those PRs to default `main` regardless of `target-branch`; security remediation instead uses the custom workflow below so every automated dependency PR follows the `develop` integration path.
+- Patch auto-merge only queues a squash merge for an exact Dependabot patch update to `develop` whose file list is `pnpm-lock.yaml` alone or exactly `package.json` plus `pnpm-lock.yaml`, with no policy changes. GitHub cannot complete the queued merge until all required checks are green; the workflow does not approve or bypass CI. Minor, major, security-remediation, and policy PRs require human review.
+
+### 4) `.github/workflows/dependency-security-remediation.yml`
+
+- The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
+- `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
+- A validated run updates one bot-owned branch/PR targeting `develop`; a clean audit is a no-op, and registry failures, residual findings, unexpected files, or ambiguous versions fail closed without mutating a PR.
+- The workflow explicitly dispatches `ci-pr.yml` with `base_ref=develop` on the final bot-branch SHA and verifies `All Checks Passed (PR)` is attached to that exact SHA. This is required because a `GITHUB_TOKEN`-created PR does not reliably trigger an unattended PR workflow.
+- The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
+
+### 5) `.github/workflows/staging-db-migrations.yaml`
+
+- Trigger: manual dispatch from `develop`
+- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
 - Behavior:
   - Skips any run whose ref is not `refs/heads/develop`
   - Checks out `develop`
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
-  - Runs `supabase db push`
+  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
+  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
-### 4) `.github/workflows/production-db-migrations.yaml`
+### 6) `.github/workflows/production-db-migrations.yaml`
 
-- Trigger: push to `main` (or manual dispatch from `main`)
-- Purpose: apply committed Supabase migrations to the production Supabase project
+- Trigger: manual dispatch from `main`
+- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
 - Behavior:
   - Skips any run whose ref is not `refs/heads/main`
   - Checks out `main`
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
-  - Runs `supabase db push`
+  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
+  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
 
 ---
 
@@ -84,15 +102,17 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 ### Merge to `develop`
 
 - Runs `ci-trunk.yml`
-- Runs `staging-db-migrations.yaml`
+- Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
 - Vercel deploys staging
 
 ### Merge to `main`
 
 - Runs `ci-trunk.yml`
-- Runs `production-db-migrations.yaml`
-  - links the production Supabase project
-  - applies committed migrations with `supabase db push`
+- Requires an operator to run `production-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
+
+### Urgent production hotfix
+
+For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and production deployment gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
 
 ---
 
@@ -100,22 +120,22 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### GitHub environment gates
 
-Create protected GitHub environments named `staging` and `production`.
+Create protected GitHub environments named `staging` and `Production – atlaris`.
 
-| Environment  | Deployment branch rule | Required reviewers |
-| ------------ | ---------------------- | ------------------ |
-| `staging`    | `develop`              | Yes                |
-| `production` | `main`                 | Yes                |
+| Environment            | Deployment branch rule | Required reviewers |
+| ---------------------- | ---------------------- | ------------------ |
+| `staging`              | `develop`              | Yes                |
+| `Production – atlaris` | `main`                 | Yes                |
 
 Store the Supabase migration secrets below as environment secrets on the matching environment, not as broad repository secrets.
 
 ### GitHub environment secrets
 
-- `SUPABASE_ACCESS_TOKEN` (set separately on `staging` and `production`)
+- `SUPABASE_ACCESS_TOKEN` (set separately on `staging` and `Production – atlaris`)
 - `STAGING_PROJECT_ID` (set on `staging`)
 - `STAGING_DB_PASSWORD` (set on `staging`)
-- `PRODUCTION_PROJECT_ID` (set on `production`)
-- `PRODUCTION_DB_PASSWORD` (set on `production`)
+- `PRODUCTION_PROJECT_ID` (set on `Production – atlaris`)
+- `PRODUCTION_DB_PASSWORD` (set on `Production – atlaris`)
 
 ### GitHub repository secrets
 
@@ -137,14 +157,22 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 - Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
-- For manual runs, confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
-- Inspect the `supabase db push` logs for the failing migration file.
+- Confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
+- For `contract`, confirm rollout health and the Stripe archive counts before entering `post-deploy-health-verified`.
+- Inspect the Supabase migration runner logs for the failing migration file.
 
 ### Production deploy blocked
 
 - Check `production-db-migrations.yaml`
 - If migrations ran, inspect the `supabase db push` logs
 - Verify Vercel secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) for deployment stage
+
+### Dependency remediation did not publish a PR
+
+- Confirm the scheduled/manual workflow run is present on `main`; schedules on other branches are not authoritative.
+- Check whether `develop` moved between planning and publication; the workflow intentionally stops and re-plans on the next run.
+- For a residual high/critical or manifest-required advisory, follow the dedicated manual remediation-PR lane in [`docs/security/supply-chain-policy.md`](../security/supply-chain-policy.md).
+- For a bot PR with missing checks, inspect the explicit `ci-pr.yml` dispatch and verify it ran against the latest bot-branch SHA with `base_ref=develop`.
 
 ---
 
@@ -153,6 +181,8 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 - Do not push directly to `develop` or `main`
 - Do not force-push shared branches
 - Do not skip CI checks to "unblock" deploys
+- Do not route routine dependency or security PRs to `main`; `main` is the default/release branch and `develop` is the integration target.
+- Do not merge a fresh release-age exception without the required `@saldanaj97` code-owner approval.
 - Do not run service-role DB client in request handlers
 - Do not rely on CI to generate migrations for you; migration files must be committed with schema changes
 

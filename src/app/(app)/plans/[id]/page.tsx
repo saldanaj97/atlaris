@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import type { JSX } from 'react';
 
 import { PlanDetailPageError } from '@/app/(app)/plans/[id]/components/Error';
 import {
@@ -15,19 +14,17 @@ interface PlanPageProps {
 const PLAN_METADATA_TITLE =
   'Atlaris — Turn learning goals into a scheduled plan';
 const PLAN_METADATA_DESCRIPTION =
-  'Generate a time-blocked study schedule from any goal and sync it to your calendar so you stay on track.';
+  'Generate a time-blocked study plan from any goal with modules, resources, and progress tracking.';
 
-export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
-  return {
+export const metadata: Metadata = {
+  title: PLAN_METADATA_TITLE,
+  description: PLAN_METADATA_DESCRIPTION,
+  openGraph: {
     title: PLAN_METADATA_TITLE,
     description: PLAN_METADATA_DESCRIPTION,
-    openGraph: {
-      title: PLAN_METADATA_TITLE,
-      description: PLAN_METADATA_DESCRIPTION,
-      type: 'website',
-    },
-  };
-}
+    type: 'website',
+  },
+};
 
 /**
  * Plan detail page with Suspense boundary for data-dependent content.
@@ -36,9 +33,7 @@ export function generateMetadata({ params: _params }: PlanPageProps): Metadata {
  * in a Suspense boundary for loading states. Runtime errors are handled
  * by the route-level error.tsx boundary.
  */
-export default async function PlanDetailPage({
-  params,
-}: PlanPageProps): Promise<JSX.Element> {
+export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
   if (!id) return <PlanDetailPageError />;
 

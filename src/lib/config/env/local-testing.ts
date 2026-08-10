@@ -14,7 +14,7 @@ export const localProductTestingEnv = {
   get enabled(): boolean {
     return toBoolean(getServerOptional('LOCAL_PRODUCT_TESTING'), false);
   },
-  /** Deterministic seed user row identifiers; same values as `pnpm db:dev:bootstrap` inserts. */
+  /** Deterministic seed user row identifiers; same values as `pnpm db:dev:seed` inserts. */
   seed: {
     userRowId: LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID,
     authUserId: LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,

@@ -54,28 +54,27 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Workflow    | Workflow SDK harness  | In-process SDK runtime                | No                  | 90s     |
+| Workflow    | Workflow SDK harness  | In-process SDK runtime                | Yes                 | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Smoke       | Playwright            | Serial local runner; auth spec serial | Disposable Postgres | 180s    |
+| Smoke       | Playwright            | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |
 
 ## Commands
 
 ```bash
 pnpm test                              # Changed unit + integration-class bundle
-pnpm test:changed                      # Explicit alias for changed unit + integration-class bundle
 pnpm test:unit                         # Unit tests only
 pnpm test:unit:changed                 # Changed unit tests
-pnpm test:unit:watch                   # Watch unit tests
-pnpm exec tsx scripts/tests/run.ts unit path/to/file    # Single unit test file
-pnpm exec tsx scripts/tests/run.ts integration path     # Single integration file (Testcontainers)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Watch unit tests
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts  # Single unit test file
+NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts  # Single integration file (Testcontainers)
 pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase
-pnpm test:integration                  # Full integration suite + Workflow SDK phase
-pnpm test:workflow                     # Workflow SDK tests only
+pnpm test:integration                  # Full DB/API integration suite
+pnpm test:workflow                     # Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
-pnpm test:smoke                        # Playwright smoke: ephemeral DB + anon/auth app servers
-pnpm test:smoke -- --project smoke-anon  # Anon-only smoke iteration
-pnpm test:smoke -- --project smoke-auth  # Auth-only smoke iteration
+pnpm test:smoke                        # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
+pnpm test:smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
+pnpm test:smoke -- --project smoke-auth  # Auth-only (single auth server)
 pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
 ```
 
@@ -84,9 +83,11 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 
 ## Workflow SDK Tests
 
-- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary, even though it does not use Testcontainers.
-- Keep `vitest.workflow.config.ts` separate from DB/API integration tests so the Workflow SDK harness does not inherit global Testcontainers setup.
-- Use `pnpm test:integration` or `pnpm test:integration:changed` when validating the full integration-class test surface; these commands run the DB/API integration phase first and then the workflow phase.
+See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for feature flags, Preview validation (`pnpm deploy:preview`), run correlation, and the full test command matrix.
+
+- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary against an isolated Testcontainers database.
+- Keep `vitest.workflow.config.ts` separate from DB/API integration tests; its harness owns production workflow discovery and its own Testcontainers lifecycle.
+- Use `pnpm test:integration:changed` for changed DB/API and workflow coverage, or `pnpm test:all` for both complete suites.
 - Use `pnpm test:workflow` for targeted Workflow SDK iteration.
 - Keep unit tests for workflow helpers, wrappers, and orchestration under `tests/unit/**`; reserve `tests/workflow/**` for runtime wiring and SDK behavior.
 
@@ -94,13 +95,13 @@ pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra 
 
 - `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
 - **UI audit baselines** (`pnpm ui:capture-baseline`): see [UI baseline capture](../docs/testing/ui-baseline-capture.md) — separate from smoke; disposable DB + dual dev servers or `--anon-base` / `--auth-base`.
-- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle and passes `SMOKE_STATE_FILE` to Playwright.
-- Playwright owns both app servers; do not start smoke servers manually for normal runs.
+- `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle, clears `.test-dist/next-smoke-*`, and passes `SMOKE_STATE_FILE` to Playwright. A full run invokes Playwright twice (anon+clerk, then auth) so only one Turbopack dev server is alive at a time.
+- Playwright owns app servers via `webServer`; a single `--project` starts only the server that project needs. Do not start smoke servers manually for normal runs.
 - `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
 - Shared smoke runtime modules live under `tests/helpers/smoke/`; keep `scripts/tests/smoke/` limited to entrypoints.
 - Do not touch `.env.local` for smoke runs. Mode selection comes from launcher-owned process env only.
 - Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
-- Keep the auth browser lane deterministic. The current local runner stays serial for stability; do not re-enable project-level parallelism casually.
+- Keep the auth browser lane deterministic. The local runner stays serial for stability; do not re-enable project-level parallelism or concurrent dual dev servers without documenting RAM impact (see [Playwright local smoke](../docs/testing/playwright-local-smoke.md#memory-and-local-resources)).
 
 To skip Testcontainers and use an existing database (e.g. CI):
 

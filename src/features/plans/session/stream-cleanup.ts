@@ -1,8 +1,8 @@
 import type { ErrorLike } from '@/features/ai/streaming/error-sanitizer';
-import type { PlanGenerationStatusPort } from '@/features/plans/lifecycle/ports';
+import type { PlanGenerationFailureMarker } from '@/features/plans/lifecycle/service';
 import type { DbClient } from '@/lib/db/types';
 
-import { PlanPersistenceAdapter } from '@/features/plans/lifecycle/adapters/plan-persistence-adapter';
+import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-persistence-store';
 import {
   safeStringifyUnknown,
   unknownThrownCore,
@@ -42,7 +42,7 @@ type SafeMarkPlanFailedDeps = {
 export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
-  persistence: PlanGenerationStatusPort,
+  persistence: PlanGenerationFailureMarker,
   deps?: SafeMarkPlanFailedDeps,
 ): Promise<void> {
   const errorLogger = deps?.logger ?? logger;
@@ -66,10 +66,9 @@ export async function safeMarkPlanFailed(
 }
 
 /**
- * `safeMarkPlanFailedWithDbClient` builds the `PlanPersistenceAdapter` used by
- * `safeMarkPlanFailed`. Plan failure marking mutates server-owned plan state;
- * pass serviceRoleDb from feature-owned generation boundaries. Workers/tests
- * may pass service-role or other privileged clients matching their context.
+ * Plan failure marking mutates server-owned plan state; pass serviceRoleDb from
+ * feature-owned generation boundaries. Workers/tests may pass service-role or
+ * other privileged clients matching their context.
  */
 export async function safeMarkPlanFailedWithDbClient(
   planId: string,
@@ -80,7 +79,10 @@ export async function safeMarkPlanFailedWithDbClient(
   await safeMarkPlanFailed(
     planId,
     userId,
-    new PlanPersistenceAdapter(dbClient),
+    {
+      markGenerationFailure: (failedPlanId) =>
+        markPlanGenerationFailure(failedPlanId, dbClient),
+    },
     deps,
   );
 }

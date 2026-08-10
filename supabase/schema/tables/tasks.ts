@@ -85,6 +85,7 @@ export const modules = pgTable(
       check('estimated_minutes_check', sql`${table.estimatedMinutes} >= 0`),
       check(
         'module_lesson_generation_error_length',
+        // react-doctor-disable-next-line react-doctor/raw-sql-injection-risk -- static numeric limit from repo constants, not user input.
         sql`(${table.lessonGenerationError} IS NULL OR char_length(${table.lessonGenerationError}) <= ${sql.raw(String(MAX_MODULE_LESSON_GENERATION_ERROR_LENGTH))})`,
       ),
       check('module_title_length', sql`char_length(${table.title}) <= 500`),
@@ -310,12 +311,58 @@ export const taskProgress = pgTable(
       `,
       }),
 
-      // Users can delete only their own progress
-      pgPolicy('task_progress_delete_own', {
-        for: 'delete',
-        to: 'authenticated',
-        using: userOwnsRecord,
-      }),
     ];
   },
+).enableRLS();
+
+export const learningActivityEvents = pgTable(
+  'learning_activity_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => learningPlans.id, { onDelete: 'cascade' }),
+    moduleId: uuid('module_id')
+      .notNull()
+      .references(() => modules.id, { onDelete: 'cascade' }),
+    taskId: uuid('task_id')
+      .notNull()
+      .references(() => tasks.id, { onDelete: 'cascade' }),
+    previousStatus: progressStatus('previous_status'),
+    status: progressStatus('status').notNull(),
+    taskEstimatedMinutes: integer('task_estimated_minutes').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      'learning_activity_events_task_estimated_minutes_nonneg',
+      sql`${table.taskEstimatedMinutes} >= 0`,
+    ),
+    index('idx_learning_activity_events_user_occurred').on(
+      table.userId,
+      table.occurredAt,
+    ),
+    index('idx_learning_activity_events_user_plan_occurred').on(
+      table.userId,
+      table.planId,
+      table.occurredAt,
+    ),
+    index('idx_learning_activity_events_task_occurred').on(
+      table.taskId,
+      table.occurredAt,
+    ),
+
+    // Users can read their own learning activity history.
+    pgPolicy('learning_activity_events_select_own', {
+      for: 'select',
+      to: 'authenticated',
+      using: recordOwnedByCurrentUser(table.userId),
+    }),
+  ],
 ).enableRLS();

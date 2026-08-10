@@ -156,6 +156,7 @@ export async function claimNextPendingJob(
 export async function claimRegenerationJobById(
   jobId: string,
   expected: { planId: string; userId: string },
+  payload: JobPayload,
   dbClient?: JobsDbClient,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
@@ -186,6 +187,7 @@ export async function claimRegenerationJobById(
       .set({
         status: 'processing',
         startedAt: startTime,
+        payload,
         updatedAt: startTime,
       })
       .where(eq(jobQueue.id, jobId))

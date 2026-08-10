@@ -4,6 +4,11 @@ Quick reference for all common development commands.
 
 See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migration deploys.
 
+## Package manager
+
+- CI pins **pnpm 11.9.0** (see `.github/workflows/ci-pr.yml`).
+- Supply-chain release-age policy (`minimumReleaseAge`) is configured in `pnpm-workspace.yaml`; see [supply-chain policy](../security/supply-chain-policy.md).
+
 ## Development Server
 
 > **Note**: Do not auto-run these commands; listed for reference only.
@@ -11,7 +16,21 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 ```bash
 pnpm dev              # Next.js dev server (Turbopack enabled)
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
+pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
+
+### Local product testing + billing fixtures
+
+Requires fixture-mode env (`LOCAL_PRODUCT_TESTING=true` + seeded `DEV_AUTH_USER_ID`). See [environment.md](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow) and [clerk-billing-architecture.md](../architecture/clerk-billing-architecture.md).
+
+```bash
+pnpm dev:local:starter   # db:dev:start + seed + starter fixture + pnpm dev
+pnpm dev:local:pro       # db:dev:start + seed + pro fixture + pnpm dev
+pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
+# optional: --status active|past_due|canceled|ended  --period-end <iso>
+```
+
+Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
 ## Build & Production
 
@@ -31,15 +50,17 @@ pnpm check:lint:ci      # Oxlint with GitHub annotations for Actions
 pnpm check:type         # TypeScript type checking only
 ```
 
-Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus Prettier on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run Prettier explicitly, for example `pnpm exec prettier . --write --ignore-unknown`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
+Local Git hooks run through Husky in `.husky/`. **Pre-commit** runs `lint-staged`: Oxlint with `--fix` plus oxfmt on **staged** files only, then `ggshield` when installed. For repo-wide formatting without staging everything, run oxfmt explicitly, for example `pnpm exec oxfmt --no-error-on-unmatched-pattern .`. For repo-wide Oxlint fixes, run `pnpm exec oxlint src tests scripts supabase --fix --max-warnings=0`.
 
-## Database (Supabase migrations + Drizzle ORM)
+## Database (Supabase migrations)
 
 ```bash
 supabase migration new <name> # Create a new SQL migration file
 supabase db diff -f <name>    # Generate a migration from local DB changes
 supabase db reset             # Recreate local Supabase DB from migrations + seed.sql
 ```
+
+Migration authoring uses the Supabase CLI. Package scripts still use Drizzle Kit for local/test migration application and CI schema push where documented below.
 
 ### Local dev database (Supabase local)
 
@@ -50,7 +71,6 @@ pnpm db:dev:start     # Start Supabase local stack
 pnpm db:dev:stop      # Stop Supabase local stack
 pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
 pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
-pnpm db:dev:bootstrap # Backward-compatible alias for db:dev:seed
 ```
 
 ## Testing
@@ -61,30 +81,29 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 
 ```bash
 pnpm test                     # Run changed unit + integration-class tests
-pnpm test:changed             # Explicit alias for the changed unit + integration-class bundle
 pnpm test:unit                # Run all unit tests
 pnpm test:unit:changed        # Run unit tests for changed files only
-pnpm exec tsx scripts/tests/run.ts unit --watch # Unit tests watch mode (no dedicated package.json alias)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
 pnpm test:integration:changed # Run changed integration + Workflow SDK tests
-pnpm test:integration         # Run full integration + Workflow SDK suites (heavier; use sparingly)
-pnpm test:workflow            # Run only the Workflow SDK Vitest harness
+pnpm test:integration         # Run the full DB/API integration suite (heavier; use sparingly)
+pnpm test:workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test:security            # Run RLS policy tests
 pnpm test:smoke               # Run Playwright smoke coverage
 pnpm test:all                 # Run lint, typecheck, unit, integration, workflow, and security suites
+pnpm test:all:e2e             # Full suite plus E2E tests
 ```
 
-### Direct Script Usage
+Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-sdk.md#testing) · [tests/AGENTS.md](../../tests/AGENTS.md#workflow-sdk-tests).
 
-The unified test runner can also be invoked directly with additional options:
+### Targeted Vitest commands
+
+Use native Vitest arguments for single-file or watch runs:
 
 ```bash
-pnpm exec tsx scripts/tests/run.ts changed                                # Changed unit + integration-class bundle
-pnpm exec tsx scripts/tests/run.ts unit                                   # Run all unit tests
-pnpm exec tsx scripts/tests/run.ts unit --changed                         # Run tests for changed files
-pnpm exec tsx scripts/tests/run.ts unit --watch                           # Watch mode
-pnpm exec tsx scripts/tests/run.ts integration tests/integration/path/to/file.spec.ts  # Targeted integration file
-pnpm exec tsx scripts/tests/run.ts workflow                               # Run only Workflow SDK tests
-pnpm exec tsx scripts/tests/run.ts all --with-e2e                         # Full suite (+ optional E2E)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # watch
+NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
+NODE_ENV=test pnpm vitest run --config vitest.workflow.config.ts tests/workflow/path/to/file.workflow.spec.ts
 ```
 
 ## Local API Testing Guidance

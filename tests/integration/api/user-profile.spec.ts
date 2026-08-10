@@ -1,7 +1,8 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET, PUT } from '@/app/api/v1/user/profile/route';
 import { USER_PROFILE_NAME_MAX_LENGTH } from '@/app/api/v1/user/profile/validation';
-import { users } from '@supabase/schema';
+import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { eq } from 'drizzle-orm';
@@ -46,7 +47,6 @@ describe('GET /api/v1/user/profile', () => {
   });
 
   it('returns safe profile fields for the authenticated user', async () => {
-    const { GET } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -64,13 +64,12 @@ describe('GET /api/v1/user/profile', () => {
       email: 'profile@example.com',
       subscriptionTier: 'starter',
       subscriptionStatus: 'active',
+      analyticsTimezone: 'UTC',
     });
     expect(typeof body.id).toBe('string');
     expect(new Date(body.createdAt).toString()).not.toBe('Invalid Date');
 
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('stripeCustomerId');
-    expect(body).not.toHaveProperty('stripeSubscriptionId');
     expect(body).not.toHaveProperty('monthlyExportCount');
   });
 });
@@ -101,7 +100,6 @@ describe('PUT /api/v1/user/profile', () => {
     });
     expect(before).toBeDefined();
 
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -118,10 +116,9 @@ describe('PUT /api/v1/user/profile', () => {
     expect(body).toMatchObject({
       name: 'New Name',
       email: 'update-profile@example.com',
+      analyticsTimezone: 'UTC',
     });
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('stripeCustomerId');
-    expect(body).not.toHaveProperty('stripeSubscriptionId');
     expect(body).not.toHaveProperty('monthlyExportCount');
 
     const updated = await db.query.users.findFirst({
@@ -134,7 +131,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('allows setting name to null', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -155,8 +151,65 @@ describe('PUT /api/v1/user/profile', () => {
     expect(updated?.name).toBeNull();
   });
 
+  it('updates analytics timezone without requiring a name change', async () => {
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ analyticsTimezone: 'America/Chicago' }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.analyticsTimezone).toBe('America/Chicago');
+    expect(body.name).toBe('Before Update');
+
+    const userRow = await db.query.users.findFirst({
+      where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
+    });
+    expect(userRow).toBeDefined();
+
+    const [preferencesRow] = await db
+      .select({ analyticsTimezone: userPreferences.analyticsTimezone })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    expect(preferencesRow?.analyticsTimezone).toBe('America/Chicago');
+  });
+
+  it('updates name and analytics timezone atomically in one request', async () => {
+    const request = new NextRequest('http://localhost/api/v1/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: 'Combined Update',
+        analyticsTimezone: 'Europe/London',
+      }),
+    });
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      name: 'Combined Update',
+      analyticsTimezone: 'Europe/London',
+    });
+
+    const userRow = await db.query.users.findFirst({
+      where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
+    });
+    expect(userRow?.name).toBe('Combined Update');
+
+    const [preferencesRow] = await db
+      .select({ analyticsTimezone: userPreferences.analyticsTimezone })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    expect(preferencesRow?.analyticsTimezone).toBe('Europe/London');
+  });
+
   it('returns 400 when PUT body is not valid JSON', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -176,7 +229,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('rejects payloads with unknown fields', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -196,8 +248,23 @@ describe('PUT /api/v1/user/profile', () => {
     expect(typeof body.error).toBe('string');
   });
 
+  it('rejects invalid analytics timezones', async () => {
+    const request = new NextRequest(
+      'http://localhost:3000/api/v1/user/profile',
+      {
+        method: 'PUT',
+        body: JSON.stringify({ analyticsTimezone: 'Not/AZone' }),
+      },
+    );
+
+    const response = await PUT(request);
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.code).toBe('VALIDATION_ERROR');
+  });
+
   it('rejects names longer than 100 characters', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {

@@ -12,7 +12,7 @@ pnpm ui:capture-baseline -- --out=screenshots/frontend-baseline-2026-04-27
 ## Infra (default)
 
 - Ephemeral Postgres (Testcontainers), migrate + smoke seed (same as smoke).
-- Two `next dev --turbopack` instances: **anon** `http://127.0.0.1:3100`, **auth** `http://127.0.0.1:3101` (same env contract as smoke).
+- Two `next dev --turbopack` instances: **anon** `http://127.0.0.1:3100`, **auth** `http://127.0.0.1:3101` (same env contract as smoke). Unlike `pnpm test:smoke`, capture still starts **both** servers concurrently for wall-clock speed; expect higher peak RAM. Prefer `--anon-base` / `--auth-base` when servers are already running, or run smoke-style single-server iteration via [Playwright local smoke](./playwright-local-smoke.md#memory-and-local-resources) if you only need browser checks.
 
 **Requires:** Docker running, Playwright Chromium (`pnpm exec playwright install chromium`).
 
@@ -35,6 +35,6 @@ Under the chosen directory (default `screenshots/frontend-baseline-<YYYY-MM-DD>/
 
 Viewports: **desktop** 1440×1000, **tablet** 834×1112, **mobile** 390×844.
 
-Routes: anon — `/landing`, `/about`, `/pricing`, `/auth/sign-in`, `/auth/sign-up`; auth — `/dashboard`, `/plans`, `/plans/new`, `/analytics/usage`, `/settings/profile`.
+Routes: anon — `/landing`, `/pricing`, `/auth/sign-in`, `/auth/sign-up`; auth — `/dashboard`, `/plans`, `/plans/new`, `/analytics/usage`, `/settings`.
 
 Script: [`scripts/ui/capture-baseline.ts`](../../scripts/ui/capture-baseline.ts).

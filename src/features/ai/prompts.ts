@@ -4,6 +4,7 @@ import {
   NOTES_PROMPT_MAX_CHARS,
   TOPIC_PROMPT_MAX_CHARS,
 } from '@/features/ai/constants';
+import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 
 type PromptSchemaField = {
   readonly name: string;
@@ -37,19 +38,6 @@ function formatSchemaFields(fields: readonly PromptSchemaField[]): string {
       return `${field.name}${optionalMarker}: ${field.type}`;
     })
     .join(', ');
-}
-
-/**
- * Sanitizes user-provided text for prompt assembly to reduce prompt-injection risk.
- * Collapses excessive newlines and neutralizes delimiter sequences.
- */
-function sanitizeUserInput(value: string, maxChars: number): string {
-  const collapsed = value
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/---+/g, '—');
-  return collapsed.slice(0, maxChars).trim();
 }
 
 /**

@@ -20,6 +20,7 @@ type TaskStatusUpdateErrorContext = {
 
 type UseOptimisticTaskStatusUpdatesOptions = {
   initialStatuses: Record<string, ProgressStatus>;
+  scopedTaskIds?: ReadonlySet<string>;
   flushAction: (
     updates: Array<{ taskId: string; status: ProgressStatus }>,
   ) => Promise<void>;
@@ -28,6 +29,7 @@ type UseOptimisticTaskStatusUpdatesOptions = {
 
 export function useOptimisticTaskStatusUpdates({
   initialStatuses,
+  scopedTaskIds,
   flushAction,
   onError,
 }: UseOptimisticTaskStatusUpdatesOptions): {
@@ -53,7 +55,7 @@ export function useOptimisticTaskStatusUpdates({
 
   const [_isPending, startTransition] = useTransition();
 
-  const batcher = useTaskStatusBatcher({ flushAction });
+  const batcher = useTaskStatusBatcher({ flushAction, scopedTaskIds });
 
   const handleStatusChange = useCallback(
     (taskId: string, nextStatus: ProgressStatus) => {

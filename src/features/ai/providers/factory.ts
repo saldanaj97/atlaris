@@ -19,9 +19,8 @@ function parseMockSeed(): number | undefined {
  * Resolution order:
  * 1. `AI_PROVIDER=mock` → mock
  * 2. `AI_PROVIDER=router` → router (real provider)
- * 3. `AI_PROVIDER` unset, test env → `AI_USE_MOCK ?? true`
- * 4. `AI_PROVIDER` unset, development → mock
- * 5. Production fallback → router (real provider)
+ * 3. `AI_PROVIDER` unset in test or development → mock
+ * 4. `AI_PROVIDER` unset in production → router (real provider)
  *
  * Any other `AI_PROVIDER` value throws at env-parse time (see ai.ts), so we
  * only see the two legal explicit values here.
@@ -30,17 +29,12 @@ function shouldUseMock(): boolean {
   const provider = aiEnv.provider;
   if (provider === 'mock') return true;
   if (provider === 'router') return false;
-  if (appEnv.isTest) {
-    return aiEnv.useMock ?? true;
-  }
-  if (appEnv.isDevelopment) return true;
-  return false;
+  return appEnv.isTest || appEnv.isDevelopment;
 }
 
 /**
  * Creates a generation provider configured with a specific model.
  * Used when a user has selected a preferred model or when explicitly specifying a model.
- * `AI_USE_MOCK`, when set, must be one of: `true`, `false`, `1`, or `0`.
  *
  * The `tier` argument is a routing hint, not an access-control gate; callers
  * should already have validated the model/tier pair through
@@ -79,9 +73,8 @@ export function getGenerationProviderWithModel(
  * Selects and returns an AI generation provider implementation based on environment configuration.
  * Uses the default model when no specific model is requested.
  *
- * Prioritizes an explicit `AI_PROVIDER`, prefers mock providers in development and most test scenarios
- * (unless `AI_USE_MOCK` is explicitly `false`/`0`), and defaults to a router-based provider for production.
- * When provided, `AI_USE_MOCK` must be `true`, `false`, `1`, or `0`.
+ * Prioritizes an explicit `AI_PROVIDER`, defaults to mocks in development and test,
+ * and defaults to a router-based provider for production.
  * If `MOCK_GENERATION_SEED` contains a valid integer, that value is passed as `deterministicSeed` to the mock provider.
  *
  * @returns An instance implementing `AiPlanGenerationProvider` — either a `MockGenerationProvider` (possibly configured with a deterministic seed) or a `RouterGenerationProvider`

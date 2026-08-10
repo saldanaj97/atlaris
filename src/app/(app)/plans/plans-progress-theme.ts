@@ -2,7 +2,7 @@ export type ProgressSurfaceKind = 'locked' | 'active' | 'completed';
 
 export type ModuleStatus = ProgressSurfaceKind;
 
-export type PlanFooterStatus = 'complete' | 'incomplete';
+type PlanFooterStatus = 'complete' | 'incomplete';
 
 const TIMELINE_MODULE_THEME: Record<
   ModuleStatus,
@@ -16,21 +16,20 @@ const TIMELINE_MODULE_THEME: Record<
     title: 'text-foreground/90',
   },
   active: {
-    marker:
-      'scale-110 border-primary text-primary shadow-[0_0_12px_hsl(var(--primary)/0.4)]',
-    card: 'border-primary/30 bg-panel shadow-md dark:border-primary/50',
+    marker: 'scale-110 border-primary text-primary',
+    card: 'border-primary/30 bg-panel shadow-sm dark:border-primary/50',
     badge: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
     title: 'text-foreground',
   },
   locked: {
-    marker: 'border-muted-foreground/40 text-muted-foreground/50',
-    card: 'border-border bg-muted/40 dark:bg-muted/25',
-    badge: 'bg-muted text-muted-foreground',
-    title: 'text-muted-foreground',
+    marker: 'border-muted-foreground/60 text-muted-foreground/70',
+    card: 'border-border bg-panel-muted shadow-sm dark:bg-muted/30',
+    badge: 'bg-muted text-foreground/70',
+    title: 'text-foreground/70',
   },
 };
 
-export const PLAN_FOOTER_THEME: Record<
+const PLAN_FOOTER_THEME: Record<
   PlanFooterStatus,
   {
     marker: string;
@@ -73,10 +72,10 @@ const LESSON_PROGRESS_THEME: Record<
     mutedText: 'text-muted-foreground',
   },
   locked: {
-    marker: 'bg-muted text-muted-foreground/50',
-    card: `${TIMELINE_MODULE_THEME.locked.card} opacity-75`,
-    title: 'text-muted-foreground/50',
-    mutedText: 'text-muted-foreground/50',
+    marker: 'bg-muted text-muted-foreground/70',
+    card: `${TIMELINE_MODULE_THEME.locked.card} opacity-90`,
+    title: 'text-foreground/70',
+    mutedText: 'text-muted-foreground/80',
   },
 };
 
@@ -86,10 +85,6 @@ export function getTimelineMarkerClassName(status: ModuleStatus): string {
 
 export function getTimelineCardClassName(status: ModuleStatus): string {
   return TIMELINE_MODULE_THEME[status].card;
-}
-
-export function getTimelineWeekBadgeClassName(status: ModuleStatus): string {
-  return TIMELINE_MODULE_THEME[status].badge;
 }
 
 export function getTimelineTitleClassName(status: ModuleStatus): string {

@@ -1,7 +1,19 @@
-name: 'Deploy PR #428 EXPAND Migrations to Production'
+name: Deploy Migrations to Production
 
 on:
   workflow_dispatch:
+    inputs:
+      phase:
+        description: Migration phase to apply
+        required: true
+        type: choice
+        options:
+          - expand
+          - contract
+      confirm_contract:
+        description: Type post-deploy-health-verified for the contract phase
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -11,8 +23,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-expand:
-    name: Apply reviewed EXPAND migrations
+  deploy:
+    name: Push Supabase migrations to production
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: Production – atlaris
@@ -23,10 +35,10 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
 
     steps:
-      - name: 'Checkout frozen PR #428 release'
+      - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: da998eca6b70820ddc6ca15402848fa59050bcf3
+          ref: main
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
@@ -39,8 +51,9 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Apply reviewed EXPAND migrations
+      - name: Apply selected migration phase
         env:
-          MIGRATION_PHASE: expand
+          MIGRATION_PHASE: ${{ inputs.phase }}
+          CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}
         shell: bash
         run: bash scripts/db/run-phased-migrations.sh

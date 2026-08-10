@@ -31,6 +31,7 @@ import {
 import {
   jobQueue,
   aiUsageEvents,
+  clerkWebhookEventClaims,
   generationAttempts,
   learningPlans,
   modules,
@@ -47,6 +48,21 @@ import { createId } from '@tests/fixtures/ids';
 import { eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
+
+async function expectRlsBlocked(
+  operation: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    const result = await operation();
+    expect(result).toEqual([]);
+  } catch (error) {
+    const err = error as { cause?: { message?: unknown }; message?: unknown };
+    const message = `${String(err.message ?? error)} ${String(err.cause?.message ?? '')}`;
+    expect(message).toMatch(
+      /row[-\s]?level.*security|permission denied|insufficient privilege/i,
+    );
+  }
+}
 
 // Coverage gap (not functionally exercised in this suite yet):
 // plan_generations, oauth_state_tokens.
@@ -106,6 +122,21 @@ describe('RLS Policy Verification', () => {
       for (const roles of rolesByPolicy.values()) {
         expect(roles.size).toBeGreaterThan(0);
       }
+    });
+
+    it('does not retain a task-progress DELETE policy', async () => {
+      const result = await db.execute(sql`
+        SELECT policyname
+        FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'task_progress'
+          AND cmd = 'DELETE'
+      `);
+      const rows = Array.isArray(result)
+        ? result
+        : (result as { rows: unknown[] }).rows;
+
+      expect(rows).toEqual([]);
     });
   });
 
@@ -311,6 +342,55 @@ describe('RLS Policy Verification', () => {
       expect(rows).toEqual([]);
     });
 
+    it('Clerk webhook claims are inaccessible to API roles', async () => {
+      const eventId = 'rls_clerk_webhook_claim';
+      await db.insert(clerkWebhookEventClaims).values({
+        eventId,
+        claimToken: '00000000-0000-4000-8000-000000000051',
+        claimExpiresAt: new Date(Date.now() + 60_000),
+      });
+
+      const clients = [
+        await createRlsDbForUser('clerk_claim_rls_user'),
+        await createAnonRlsDb(),
+      ];
+
+      for (const client of clients) {
+        await expectRlsBlocked(() =>
+          client.select().from(clerkWebhookEventClaims),
+        );
+        await expectRlsBlocked(() =>
+          client
+            .insert(clerkWebhookEventClaims)
+            .values({
+              eventId: `${eventId}_insert`,
+              claimToken: '00000000-0000-4000-8000-000000000052',
+              claimExpiresAt: new Date(Date.now() + 60_000),
+            })
+            .returning(),
+        );
+        await expectRlsBlocked(() =>
+          client
+            .update(clerkWebhookEventClaims)
+            .set({ claimExpiresAt: new Date(Date.now() + 120_000) })
+            .where(eq(clerkWebhookEventClaims.eventId, eventId))
+            .returning(),
+        );
+        await expectRlsBlocked(() =>
+          client
+            .delete(clerkWebhookEventClaims)
+            .where(eq(clerkWebhookEventClaims.eventId, eventId))
+            .returning(),
+        );
+      }
+
+      await expect(
+        db
+          .select({ eventId: clerkWebhookEventClaims.eventId })
+          .from(clerkWebhookEventClaims),
+      ).resolves.toEqual([{ eventId }]);
+    });
+
     it('authenticated users can read and update only their own user row', async () => {
       const [user1] = await db
         .insert(users)
@@ -360,6 +440,24 @@ describe('RLS Policy Verification', () => {
         .returning({ id: users.id });
 
       expect(crossTenantUpdate).toHaveLength(0);
+    });
+
+    it('does not grant authenticated users direct INSERT on user rows', async () => {
+      const deniedAuthUserId = 'user_insert_denied';
+      const deniedDb = await createRlsDbForUser(deniedAuthUserId);
+      await expectRlsBlocked(() =>
+        deniedDb.insert(users).values({
+          authUserId: deniedAuthUserId,
+          email: 'insert-denied@test.com',
+          clerkUserUpdatedAt: new Date('2026-08-11T10:00:00.000Z'),
+        }),
+      );
+      await expect(
+        db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.authUserId, deniedAuthUserId)),
+      ).resolves.toEqual([]);
     });
 
     // Transitive ownership: `job_queue_select_own` only returns rows for plans
@@ -519,7 +617,6 @@ describe('RLS Policy Verification', () => {
         .returning({
           id: users.id,
           cancelAtPeriodEnd: users.cancelAtPeriodEnd,
-          stripeCustomerId: users.stripeCustomerId,
           subscriptionStatus: users.subscriptionStatus,
         });
 
@@ -535,13 +632,6 @@ describe('RLS Policy Verification', () => {
       await expectRlsViolation(() =>
         userDb
           .update(users)
-          .set({ stripeCustomerId: 'cus_fake123' })
-          .where(eq(users.id, user.id)),
-      );
-
-      await expectRlsViolation(() =>
-        userDb
-          .update(users)
           .set({ subscriptionStatus: 'active' })
           .where(eq(users.id, user.id)),
       );
@@ -549,7 +639,6 @@ describe('RLS Policy Verification', () => {
       const [billingAfterViolations] = await userDb
         .select({
           cancelAtPeriodEnd: users.cancelAtPeriodEnd,
-          stripeCustomerId: users.stripeCustomerId,
           subscriptionStatus: users.subscriptionStatus,
         })
         .from(users)
@@ -557,7 +646,6 @@ describe('RLS Policy Verification', () => {
 
       expect(billingAfterViolations).toEqual({
         cancelAtPeriodEnd: user.cancelAtPeriodEnd,
-        stripeCustomerId: user.stripeCustomerId,
         subscriptionStatus: user.subscriptionStatus,
       });
 
@@ -569,17 +657,6 @@ describe('RLS Policy Verification', () => {
 
       expect(updatedName).toHaveLength(1);
       expect(updatedName[0]?.name).toBe('Updated Name');
-
-      const updatedPreferred = await userDb
-        .update(users)
-        .set({ preferredAiModel: 'google/gemini-2.0-flash-exp:free' })
-        .where(eq(users.id, user.id))
-        .returning({ id: users.id, preferredAiModel: users.preferredAiModel });
-
-      expect(updatedPreferred).toHaveLength(1);
-      expect(updatedPreferred[0]?.preferredAiModel).toBe(
-        'google/gemini-2.0-flash-exp:free',
-      );
     });
 
     it('authenticated users cannot directly mutate their own usage metrics', async () => {
@@ -1446,6 +1523,21 @@ describe('RLS Policy Verification', () => {
 
       expect(updated).toHaveLength(1);
       expect(updated[0]?.status).toBe('in_progress');
+
+      await expectRlsBlocked(() =>
+        authDb
+          .update(taskProgress)
+          .set({ taskId: task.id })
+          .where(eq(taskProgress.taskId, task.id))
+          .returning(),
+      );
+      await expectRlsBlocked(() =>
+        authDb
+          .update(taskProgress)
+          .set({ userId: user.id })
+          .where(eq(taskProgress.taskId, task.id))
+          .returning(),
+      );
     });
   });
 

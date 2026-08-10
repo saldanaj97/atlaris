@@ -1,3 +1,4 @@
+import type { ActorUser } from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -6,10 +7,7 @@ import { randomUUID } from 'node:crypto';
 type RequestContext = {
   correlationId: string;
   userId?: string;
-  user?: {
-    id: string;
-    authUserId: string;
-  };
+  user?: ActorUser;
   db?: DbClient;
   cleanup?: () => Promise<void>;
 };

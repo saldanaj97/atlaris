@@ -1,0 +1,71 @@
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - brace-expansion@5.0.9
+  - nanoid@3.3.17
+  - "@next/env@16.2.11"
+  - "@next/swc-darwin-arm64@16.2.11"
+  - "@next/swc-darwin-x64@16.2.11"
+  - "@next/swc-linux-arm64-gnu@16.2.11"
+  - "@next/swc-linux-arm64-musl@16.2.11"
+  - "@next/swc-linux-x64-gnu@16.2.11"
+  - "@next/swc-linux-x64-musl@16.2.11"
+  - "@next/swc-win32-arm64-msvc@16.2.11"
+  - "@next/swc-win32-x64-msvc@16.2.11"
+  - next@16.2.11
+minimumReleaseAgeStrict: true
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - "@swc/core-darwin-arm64@1.15.3"
+  - "@swc/core-darwin-x64@1.15.3"
+  - "@swc/core-linux-arm-gnueabihf@1.15.3"
+  - "@swc/core-linux-arm64-gnu@1.15.3"
+  - "@swc/core-linux-arm64-musl@1.15.3"
+  - "@swc/core-linux-x64-gnu@1.15.3"
+  - "@swc/core-linux-x64-musl@1.15.3"
+  - "@swc/core-win32-arm64-msvc@1.15.3"
+  - "@swc/core-win32-ia32-msvc@1.15.3"
+  - "@swc/core-win32-x64-msvc@1.15.3"
+  - chokidar@4.0.3
+  - semver@6.3.1
+  - undici-types@6.21.0
+overrides:
+  "@workflow/core>nanoid": 5.1.16
+  "@workflow/builders>esbuild": 0.28.1
+  "@workflow/cli>esbuild": 0.28.1
+  "@esbuild-kit/core-utils>esbuild": ^0.25.0
+  "@esbuild-kit/esm-loader>esbuild": ^0.25.0
+  js-cookie: ^3.0.7
+  minimatch: ^10.2.3
+  tar: ^7.5.19
+  rollup: ^4.59.0
+  fast-uri: ^3.1.5
+  undici: ^7.29.0
+  devalue: ^5.8.1
+  shell-quote: ^1.8.5
+  protobufjs: ^7.6.3
+  "@protobufjs/utf8": ^1.1.1
+  "@grpc/grpc-js": ^1.14.4
+  ws: ^8.21.0
+  piscina: ^4.9.3
+  postcss: ^8.5.18
+  uuid: ^11.1.1
+  brace-expansion: ^5.0.9
+  sharp: ^0.35.0
+  "@babel/core": ^7.29.6
+  "@opentelemetry/core": ^2.8.0
+  "@xhmikosr/decompress": 11.1.3
+allowBuilds:
+  "@sentry/cli": true
+  "@swc/core": true
+  "@clerk/shared": false
+  "@nestjs/core": false
+  cbor-extract: true
+  core-js: true
+  cpu-features: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  ssh2: true
+  supabase: true
+  bufferutil: true
+  utf-8-validate: true

@@ -26,7 +26,7 @@ export type FinalizeGenerationSuccessInput = {
   readonly attemptId: string;
   readonly preparation: AttemptReservation;
   readonly modules: readonly ParsedModule[];
-  readonly providerMetadata: Record<string, unknown>;
+  readonly providerMetadata: ProviderMetadata;
   readonly usage: CanonicalAIUsage;
   readonly durationMs: number;
   readonly extendedTimeout: boolean;
@@ -48,6 +48,7 @@ export type FinalizeGenerationFailureWithAttemptInput = {
   readonly timedOut: boolean;
   readonly extendedTimeout: boolean;
   readonly providerMetadata?: ProviderMetadata;
+  readonly workflowMetadata?: AttemptWorkflowMetadata;
   readonly usage?: CanonicalAIUsage;
   readonly usageKind: 'plan';
   readonly retryable: boolean;

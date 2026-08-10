@@ -1,0 +1,59 @@
+name: Dependabot patch auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.base_ref == 'develop' &&
+      github.event.pull_request.base.ref == 'develop' &&
+      github.repository == 'saldanaj97/atlaris' &&
+      github.event.pull_request.base.repo.full_name == 'saldanaj97/atlaris' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check changed files
+        id: files
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t files < <(
+            gh api --paginate \
+              "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" \
+              --jq '.[].filename' | sort
+          )
+
+          if [[ ( "${#files[@]}" -eq 1 && "${files[0]}" == "pnpm-lock.yaml" ) ||
+            ( "${#files[@]}" -eq 2 && "${files[0]}" == "package.json" && "${files[1]}" == "pnpm-lock.yaml" ) ]]; then
+            echo "allowed=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "allowed=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Queue squash auto-merge
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' && steps.files.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: gh pr merge --auto --squash "${PR_NUMBER}" --repo "${REPOSITORY}"

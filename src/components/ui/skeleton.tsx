@@ -6,8 +6,7 @@ function Skeleton({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot='skeleton'
-      role='status'
-      aria-busy='true'
+      aria-hidden='true'
       className={cn('animate-pulse rounded-md bg-accent', className)}
       {...props}
     />

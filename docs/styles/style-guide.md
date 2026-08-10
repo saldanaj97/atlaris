@@ -1,8 +1,12 @@
 # Atlaris style guide
 
-Single reference for **colors, tokens, typography, spacing, layout patterns, glassmorphism, components, and shell layout** so new UI stays aligned with the product.
+Single reference for **colors, tokens, typography, spacing, layout patterns, marketing celestial depth, components, and shell layout** so new UI stays aligned with the product.
 
-**Source of truth:** [`src/app/globals.css`](../../src/app/globals.css) (`:root`, `.dark`, `@theme inline`, utilities), plus [`src/app/layout.tsx`](../../src/app/layout.tsx) for root fonts and structure.
+**Source of truth (live):** [`src/app/globals.css`](../../src/app/globals.css) (`:root`, `.dark`, `@theme inline`, utilities), plus [`src/app/layout.tsx`](../../src/app/layout.tsx) for root fonts and structure.
+
+**Live brand direction:** [After Hours](./after-hours-direction.md) — Sora (brand/marketing) + Work Sans (product), plum/peach light & dark palettes. Semantic token names are unchanged; values and display font are After Hours.
+
+**Conflict rule:** If this guide conflicts with [`DESIGN.md`](../../DESIGN.md) or `globals.css`, prefer those. Liquid-glass and deleted shared marketing wrappers (`MarketingHero`, `MarketingSection`, `MarketingCard`) are retired.
 
 ---
 
@@ -16,10 +20,10 @@ Solid product style guides usually spell out: **semantic color and tokens**; **t
 
 Atlaris has two visual contexts:
 
-| Context              | Character                                                                           |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| **Hero / marketing** | Centered, large responsive type, gradient accents, decorative background orbs.      |
-| **Content / app**    | Left-aligned, compact, functional—no decorative orbs or marketing-only type scales. |
+| Context              | Character                                                                                                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Hero / marketing** | Centered Sora display type, section overlines, hairline dividers, celestial backdrop (semantic orbs + `StarField`), italic `text-primary` emphasis, opaque `rounded-4xl` panels, optional inverted Polaris band. |
+| **Content / app**    | Left-aligned, compact, functional—no decorative orbs or marketing-only type scales.                                                                                                                              |
 
 **Rule:** Pick one context per page or major section. Do not blend hero marketing patterns into dashboard-style pages, or vice versa.
 
@@ -35,44 +39,55 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 ### Semantic palette (Tailwind / roles)
 
-| Token (Tailwind)                                              | Role                                                    |
-| ------------------------------------------------------------- | ------------------------------------------------------- |
-| `background` / `foreground`                                   | Page surface and default text                           |
-| `card` / `card-foreground`                                    | Card surfaces and text on cards                         |
-| `primary` / `primary-foreground`                              | Primary actions, brand emphasis                         |
-| `primary-dark`                                                | Gradient stops, stronger brand contrast (see utilities) |
-| `accent` / `accent-foreground`                                | Secondary emphasis; pairs with primary in gradients     |
-| `muted` / `muted-foreground`                                  | Subtle panels, helper text                              |
-| `secondary` / `secondary-foreground`                          | Secondary surfaces                                      |
-| `destructive`                                                 | Errors, destructive actions                             |
-| `success` / `success-foreground`                              | Positive completion states                              |
-| `border` / `input` / `ring`                                   | Strokes, fields, focus rings                            |
-| `chart-1` … `chart-5`                                         | Data visualization (brand-aligned progression)          |
-| `sidebar-*`                                                   | Sidebar-specific styling when used                      |
-| `panel` / `panel-foreground` / `panel-muted` / `panel-border` | Opaque app panels, metrics, and non-glass surfaces      |
-| `warning` / `warning-foreground`                              | Caution (non-destructive)                               |
-| `disabled` / `disabled-foreground`                            | Unavailable or disabled copy/surfaces                   |
+| Token (Tailwind)                                              | Role                                                |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| `background` / `foreground`                                   | Page surface and default text                       |
+| `card` / `card-foreground`                                    | Card surfaces and text on cards                     |
+| `primary` / `primary-foreground`                              | Brand emphasis, links, and soft primary surfaces    |
+| `primary-dark`                                                | Solid primary fills when paired with white text     |
+| `accent` / `accent-foreground`                                | Secondary emphasis; pairs with primary in gradients |
+| `muted` / `muted-foreground`                                  | Subtle panels, helper text                          |
+| `secondary` / `secondary-foreground`                          | Secondary surfaces                                  |
+| `destructive`                                                 | Errors, destructive actions                         |
+| `success` / `success-foreground`                              | Positive completion states                          |
+| `border` / `input` / `ring`                                   | Strokes, fields, focus rings                        |
+| `chart-1` … `chart-5`                                         | Data visualization (brand-aligned progression)      |
+| `sidebar-*`                                                   | Sidebar-specific styling when used                  |
+| `panel` / `panel-foreground` / `panel-muted` / `panel-border` | Opaque app panels, metrics, and product surfaces    |
+| `warning` / `warning-foreground`                              | Caution (non-destructive)                           |
+| `disabled` / `disabled-foreground`                            | Unavailable or disabled copy/surfaces               |
 
-**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Reserve glass recipes (`backdrop-blur`, `bg-white/30`, high blur) for marketing/hero, not default dashboard content.
+**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Product routes stay opaque — no marketing celestial backdrop. Marketing panels are mostly opaque `bg-card` / `rounded-4xl`; use `backdrop-blur` only for narrow cases (e.g. dashed screenshot placeholders). Do not reintroduce liquid-glass or a shared glass surface system.
+
+**Site header:** marketing paths (`/`, `/landing`, `/pricing`) use marketing navigation; other paths use app navigation. Shared header chrome is a flat full-bleed `bg-background` with an editorial hairline — not glass. Marketing nav/CTA classes live in [`marketing-header-classes.ts`](../../src/components/shared/nav/marketing-header-classes.ts). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+
+**Marketing composition:**
+
+- Shell: [`MarketingPageShell`](<../../src/app/(marketing)/_shared/MarketingPageShell.tsx>)
+- Stars: [`StarField`](<../../src/app/(marketing)/_shared/StarField.tsx>)
+- Pill CTAs: [`marketing-cta.ts`](<../../src/app/(marketing)/_shared/marketing-cta.ts>)
+- Landing: [`Landing.tsx`](<../../src/app/(marketing)/landing/components/Landing.tsx>) — Hero → Drift → Route → Instruments → Questions → Polaris
+- Pricing: [`PricingShell`](<../../src/app/(marketing)/pricing/components/PricingShell.tsx>) + [`ClerkPricingTable`](<../../src/app/(marketing)/pricing/components/ClerkPricingTable.tsx>) (custom [`PricingCards`](<../../src/app/(marketing)/pricing/components/PricingCards.tsx>); native Clerk `<PricingTable />` only on billing load failure). When Clerk UI is off (`shouldUseClerkUi()` false), [`LocalPricingPreview`](<../../src/app/(marketing)/pricing/components/LocalPricingPreview.tsx>) renders the same card grid with checkout disabled. Feature bullets: [`pricing-plan-features.ts`](<../../src/app/(marketing)/pricing/pricing-plan-features.ts>).
+- Do not assume deleted wrappers: `MarketingHero`, `MarketingSection`, `MarketingCard`
 
 ### Light-mode mapping (reference)
 
-| Token                            | Typical light-mode role                                    |
-| -------------------------------- | ---------------------------------------------------------- |
-| `--background`                   | Page background                                            |
-| `--foreground`                   | Primary text                                               |
-| `--card` / `--card-foreground`   | Card fill and card text                                    |
-| `--primary`                      | Brand purple/blue (hue ~260° OKLCH)                        |
-| `--primary-foreground`           | Text on primary                                            |
-| `--secondary`                    | Subtle secondary surfaces                                  |
-| `--accent`                       | Complementary to primary (blue/purple range for gradients) |
-| `--accent-foreground`            | Text on accent                                             |
-| `--muted` / `--muted-foreground` | Disabled or subtle UI; secondary copy                      |
-| `--destructive`                  | Error / danger (warm hue)                                  |
-| `--border`                       | Dividers and borders                                       |
-| `--ring`                         | Focus rings                                                |
+| Token                            | Typical light-mode role                                             |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `--background`                   | Page background                                                     |
+| `--foreground`                   | Primary text                                                        |
+| `--card` / `--card-foreground`   | Card fill and card text                                             |
+| `--primary`                      | Peach/copper brand action; use `--primary-dark` for solid CTA fills |
+| `--primary-foreground`           | CTA accent ink on solid primary fills                               |
+| `--secondary`                    | Soft parchment / plum wash surfaces                                 |
+| `--accent`                       | Soft wash complementary to primary (gradients, tinted fills)        |
+| `--accent-foreground`            | Peach/copper text on accent washes                                  |
+| `--muted` / `--muted-foreground` | Note panels; secondary copy                                         |
+| `--destructive`                  | Error / danger (warm hue)                                           |
+| `--border`                       | Dividers and borders (line tokens)                                  |
+| `--ring`                         | Focus rings (accent)                                                |
 
-**Brand note:** Primary sits in a blue-violet family; accent stays in the blue/purple range so `from-primary to-accent` gradients read on-brand.
+**Brand note:** Primary is peach/copper; soft washes stay in the parchment/plum family so `from-primary to-accent` gradients read After Hours, not Progress Jam violet.
 
 ---
 
@@ -80,17 +95,19 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 
 ### Font stacks (runtime)
 
-| Layer                            | Family                                                | Notes                                                                                                    |
-| -------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **Body (default)**               | **Work Sans** (Next font on `<body>` in `layout.tsx`) | Default UI copy and elements that inherit without a heading rule.                                        |
-| **Theme / Tailwind `font-sans`** | **Geist** first in `--font-sans`                      | Components and utilities that use `font-sans`; marketing utilities that set heading families explicitly. |
-| **Serif**                        | `--font-serif` → Source Serif 4                       | Theme token; use sparingly.                                                                              |
-| **Mono**                         | `--font-mono` → JetBrains Mono                        | Code, IDs, technical strings.                                                                            |
-| **Clerk Auth UI**                | Clerk components inherit the root app fonts           | Keep auth pages under the shared auth layout and avoid provider-specific global CSS imports.             |
+| Layer                             | Family                                                     | Notes                                                                                     |
+| --------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Body (default)**                | **Work Sans** via `--font-family-base`                     | Loaded with `next/font` on `<html>`; applied on `<body>` in `layout.tsx`.                 |
+| **App headings (`h1`–`h6`)**      | **Work Sans** via `--font-family-heading` (weight **600**) | Product UI titles, settings cards, dashboard headings.                                    |
+| **Marketing display headings**    | **Sora** via `--font-family-display` (weight **600**)      | `font-serif`; brand voice on marketing pages only.                                        |
+| **Theme / Tailwind `font-sans`**  | `--font-family-base` (Work Sans stack)                     | `font-sans` utilities inherit the same UI stack.                                          |
+| **Theme / Tailwind `font-serif`** | `--font-family-display` (Sora stack)                       | Utility for Sora brand moments; use for intentional display, not product body.            |
+| **Mono**                          | `--font-mono` → JetBrains Mono                             | Optional for code/IDs only — not brand voice.                                             |
+| **Clerk Auth UI**                 | Clerk components inherit the root app fonts                | Keep auth pages under the shared auth layout; avoid provider-specific global CSS imports. |
 
-**Consistency:** For new screens, treat **Work Sans** as the default UI face and **Geist** (via `font-sans` or marketing classes) for display/marketing headlines. Avoid introducing a third sans unless the root layout is intentionally updated.
+**Consistency (live):** Use **Work Sans** for all product/app UI. Use **Sora** for marketing display headings. Do not add a third brand face unless `layout.tsx` and `globals.css` are updated together. Young Serif is retired.
 
-**Observation (dev audit):** On `/landing`, a `.marketing-h1` heading can compute to **Geist** at **49px** / **700** with tight tracking, while body text follows **Work Sans** from the root layout.
+**CSS variables (defined in `globals.css`):** `--font-family-base`, `--font-family-heading`, `--font-family-display`, `--font-weight-base` (400), `--font-weight-heading` (600). Next/font exposes `--font-work-sans` and `--font-sora` on `<html>`.
 
 ### App / dashboard base headings (`@layer base`)
 
@@ -105,20 +122,17 @@ Plain `<h1>`–`<h6>` in [`globals.css`](../../src/app/globals.css) use the head
 | `h5` | 14px (0.875rem) | 1.4         | 0              |                    |
 | `h6` | 12px (0.75rem)  | 1.5         | 0              | Uppercase          |
 
-All use `font-family: var(--font-family-heading)` (Geist) and `font-weight: var(--font-weight-heading)`.
+All use `font-family: var(--font-family-heading)` (Work Sans) and `font-weight: var(--font-weight-heading)`.
 
-### Marketing typography classes (`globals.css`)
+### Marketing typography
 
-| Class                 | Desktop | Mobile | Use                                                                                       |
-| --------------------- | ------- | ------ | ----------------------------------------------------------------------------------------- |
-| `.marketing-h1`       | 49px    | 39px   | Hero headlines                                                                            |
-| `.marketing-h2`       | 39px    | 31px   | Section headlines                                                                         |
-| `.marketing-h3`       | 31px    | 25px   | Feature titles                                                                            |
-| `.marketing-h4`       | 25px    | 20px   | Card titles                                                                               |
-| `.marketing-subtitle` | 20px    | 16px   | Subheadings                                                                               |
-| `.gradient-text`      | —       | —      | Full-line gradient headline (`primary` → `accent`); use sparingly vs keyword span pattern |
+Use responsive Sora via `font-serif`:
 
-**When to use Tailwind hero utilities vs `.marketing-*`:** Use responsive Tailwind utilities (e.g. `text-3xl sm:text-4xl lg:text-5xl`) for **interactive / product marketing pages** (e.g. Pricing, Create Plan). Use `.marketing-h1` / `.marketing-h2` for **static marketing pages** (e.g. Landing, About) where the CSS scale gives finer control.
+- Hero: roughly `text-[2.75rem]` → `sm:text-5xl` → `md:text-[3.25rem]`, `font-semibold`, tight tracking
+- Section headings: `text-3xl sm:text-4xl` is a common scale
+- **Default emphasis:** italic `text-primary` on the second hero line
+- **Section overlines:** uppercase Sora, wide tracking — see `SectionOverline` / hero overline in `HeroSection`
+- **`gradient-text`:** optional accent only (wordmark `variant="gradient"`, rare headlines) — not the default hero treatment
 
 ### Subtitle / helper text
 
@@ -131,38 +145,46 @@ All use `font-family: var(--font-family-heading)` (Geist) and `font-weight: var(
 
 ### Radius
 
-`--radius` is **2rem** at the root; `rounded-sm` / `md` / `lg` / `xl` derive from it in `@theme inline`.
+Product and marketing use **split radius tokens** (see `:root` in `globals.css`):
 
-| Token          | Derived from `--radius` | Typical use                     |
-| -------------- | ----------------------- | ------------------------------- |
-| `rounded-sm`   | `calc(2rem - 4px)`      | Small elements, badges          |
-| `rounded-md`   | `calc(2rem - 2px)`      | Buttons, inputs                 |
-| `rounded-lg`   | `2rem`                  | Cards, containers               |
-| `rounded-xl`   | `calc(2rem + 4px)`      | Large cards, hero elements      |
-| `rounded-2xl`  | ~1rem                   | Standard glass cards            |
-| `rounded-3xl`  | ~1.5rem                 | Feature cards, landing sections |
-| `rounded-full` | `9999px`                | Pills, circular elements        |
+| Token                | Value     | Scope                                                             |
+| -------------------- | --------- | ----------------------------------------------------------------- |
+| `--radius`           | `0.75rem` | Product/app: buttons, inputs, and token-derived `rounded-sm`–`xl` |
+| `--radius-marketing` | `2rem`    | Wired as `--radius-4xl` → `rounded-4xl` on marketing arched cards |
+
+**Decision (L-08):** Lowered product `--radius` from `2rem` because controls felt overly pill-shaped at ~28px `rounded-md`. Marketing keeps generous corners via explicit utilities, not the product token.
+
+| Token          | Derived from `--radius` (0.75rem) | Typical use                     |
+| -------------- | --------------------------------- | ------------------------------- |
+| `rounded-sm`   | `calc(0.75rem × 0.75)`            | Small elements, badges          |
+| `rounded-md`   | `calc(0.75rem × 0.875)`           | Buttons, inputs                 |
+| `rounded-lg`   | `0.75rem`                         | Compact containers              |
+| `rounded-xl`   | `calc(0.75rem × 1.25)`            | Larger product panels           |
+| `rounded-2xl`  | ~1rem (fixed scale)               | Product cards, standard panels  |
+| `rounded-3xl`  | ~1.5rem (fixed scale)             | Larger marketing surfaces       |
+| `rounded-4xl`  | `--radius-marketing` (`2rem`)     | Marketing arched cards / panels |
+| `rounded-full` | `9999px`                          | Marketing CTAs, badges, avatars |
 
 ### Spacing
 
 - Base scale: Tailwind defaults; `--spacing` in `:root` is **0.2rem** where the system defines tight rhythm.
 - **App pages:** often `px-6 py-8` with `max-w-7xl`.
-- **Hero sections:** often `gap-y-10`, `px-6 py-16`, `max-w-7xl`.
+- **Marketing sections:** often `px-6 py-16 md:py-24`; hairline dividers between major blocks.
 
 ### Shadow tokens
 
 Use Tailwind shadow utilities backed by custom properties:
 
-| Token        | Approx. size  | Typical use            |
-| ------------ | ------------- | ---------------------- |
-| `shadow-2xs` | 1px           | Subtle depth           |
-| `shadow-xs`  | 2px           | Small controls         |
-| `shadow-sm`  | 3px           | Buttons, small cards   |
-| `shadow`     | 4px (default) | Standard cards         |
-| `shadow-md`  | 6px           | Elevated cards         |
-| `shadow-lg`  | 15px          | Glass cards, dropdowns |
-| `shadow-xl`  | 25px          | Modals, hero emphasis  |
-| `shadow-2xl` | 50px          | Maximum elevation      |
+| Token        | Approx. size  | Typical use               |
+| ------------ | ------------- | ------------------------- |
+| `shadow-2xs` | 1px           | Subtle depth              |
+| `shadow-xs`  | 2px           | Small controls            |
+| `shadow-sm`  | 3px           | Buttons, small cards      |
+| `shadow`     | 4px (default) | Standard cards            |
+| `shadow-md`  | 6px           | Elevated cards            |
+| `shadow-lg`  | 15px          | Marketing CTAs, dropdowns |
+| `shadow-xl`  | 25px          | Modals, hero emphasis     |
+| `shadow-2xl` | 50px          | Maximum elevation         |
 
 **Hover:** Increase shadow on interactive surfaces for feedback, e.g. `transition hover:shadow-xl`.
 
@@ -172,116 +194,80 @@ Use Tailwind shadow utilities backed by custom properties:
 
 Defined in `@layer utilities` in [`globals.css`](../../src/app/globals.css). Prefer these over ad-hoc gradient strings.
 
-| Class                                       | Use                                                              |
-| ------------------------------------------- | ---------------------------------------------------------------- |
-| `gradient-brand`                            | Static brand strip (badges, decorative bars)                     |
-| `gradient-brand-interactive`                | Hover/focus-capable brand fills                                  |
-| `brand-fill` / `brand-fill-interactive`     | Solid primary + interaction states                               |
-| `gradient-glow`                             | Soft background orbs (often with `blur-3xl`, controlled opacity) |
-| `gradient-text` / `gradient-text-symmetric` | Headline gradient text; dark mode variants exist                 |
+| Class                                       | Use                                                                  |
+| ------------------------------------------- | -------------------------------------------------------------------- |
+| `gradient-brand`                            | Static brand strip (badges, decorative bars)                         |
+| `gradient-brand-interactive`                | Hover/focus-capable brand fills                                      |
+| `brand-fill` / `brand-fill-interactive`     | Solid primary + interaction states                                   |
+| `gradient-glow`                             | Soft background orbs (optional; live pages prefer explicit orb divs) |
+| `gradient-text` / `gradient-text-symmetric` | Optional headline gradient text; dark mode variants exist            |
 
-**Narrative gradient in hero titles:** Apply gradient to **one word or a short phrase**, not the entire heading line.
+**Hero emphasis (default):** italic primary line, not gradient keyword spans.
 
-Example keyword styling (also listed under [Hero / marketing pages](#1-hero--marketing-pages)):
-
-```txt
-from-primary via-accent to-primary bg-linear-to-r bg-clip-text text-transparent
+```tsx
+<span className='mt-1 block font-medium text-primary italic'>
+  the work that changes you.
+</span>
 ```
+
+Use `gradient-text` only when a short intentional accent is required.
 
 ---
 
-## Glassmorphism
+## Marketing depth & celestial backdrop
 
-Glassmorphism is a core visual language: depth through transparency, blur, and light borders. **Do not** mix opaque panels with glass in the same component group without intent.
+Marketing depth comes from: (1) celestial backdrop, (2) soft shadows, (3) hairline dividers, (4) optional inverted Polaris band. Panels stay mostly **opaque**. Liquid-glass is removed — do not rebuild it.
 
-### Intensity layers
+### Celestial backdrop recipe
 
-| Intensity | Background (light) | Border            | Blur                | Typical use       |
-| --------- | ------------------ | ----------------- | ------------------- | ----------------- |
-| Light     | `bg-white/30`      | `border-white/40` | `backdrop-blur-sm`  | Subtle overlays   |
-| Medium    | `bg-white/40-50`   | `border-white/50` | `backdrop-blur-md`  | Cards, containers |
-| Heavy     | `bg-white/60-80`   | `border-white/60` | `backdrop-blur-xl`  | Primary panels    |
-| Intense   | `bg-white/80-90`   | `border-white/70` | `backdrop-blur-2xl` | Modals, dropdowns |
-
-**Dark mode:** Use `dark:border-white/10`, `dark:bg-stone-900/30` or `dark:bg-card/40`–`/60` as appropriate; always verify contrast.
-
-### Reference patterns
-
-**Standard glass card**
+From `Landing.tsx` / `PricingShell.tsx`:
 
 ```tsx
-<div className='rounded-2xl border border-white/40 bg-white/30 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-stone-900/30'>
+<div
+  className='pointer-events-none absolute inset-0 overflow-hidden text-foreground'
+  aria-hidden='true'
+>
+  <div className='absolute -top-24 -right-16 size-136 rounded-full bg-primary/20 blur-3xl md:size-168' />
+  <div className='absolute top-[30%] -left-28 size-112 rounded-full bg-panel-muted/70 blur-3xl md:size-144' />
+  <div className='absolute right-[-6%] bottom-[12%] size-96 rounded-full bg-card/80 blur-3xl' />
+  <StarField />
+</div>
+```
+
+**Rules:**
+
+- Orbs use **semantic token alphas** only (`bg-primary/*`, `bg-panel-muted/*`, `bg-card/*`) — never cyan/blue/cold Progress Jam orbs.
+- Parent: `pointer-events-none absolute inset-0 overflow-hidden`.
+- Reuse shared [`StarField`](<../../src/app/(marketing)/_shared/StarField.tsx>); do not invent a second star system.
+
+### Panel recipes
+
+**Opaque marketing panel**
+
+```tsx
+<div className='rounded-4xl border border-border/50 bg-card p-8 shadow-sm'>
   {/* Content */}
 </div>
 ```
 
-**Interactive glass card**
+**Polaris inverted band**
 
 ```tsx
-className =
-  'rounded-2xl border border-white/40 bg-white/30 p-6 shadow-lg backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl hover:border-primary/30 dark:border-white/10 dark:bg-stone-900/30';
+<section className='rounded-4xl bg-foreground text-background'>
+  <StarField /> {/* inherits currentColor */}
+  {/* CTA copy */}
+</section>
 ```
 
-**Marketing / feature card (interactive)**
+**Screenshot placeholder (only routine blur use)**
 
 ```tsx
-className =
-  'dark:bg-card/40 relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10';
+<figure className='rounded-4xl border border-dashed border-panel-border/80 bg-card/60 backdrop-blur-sm'>
+  {/* Placeholder */}
+</figure>
 ```
 
-Used for rich marketing sections (e.g. Team, Values, Mission, integrations). For pricing and conditional layouts, prefer `Card` from `@/components/ui/card` with `className` overrides.
-
-**Navigation bar**
-
-```tsx
-className =
-  'rounded-2xl border border-white/40 bg-white/30 px-6 py-3 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-card/50';
-```
-
-**Input containers**
-
-```tsx
-className =
-  'rounded-3xl border border-white/50 bg-white/60 px-6 py-5 shadow-2xl backdrop-blur-xl';
-```
-
-**Completed / success tint**
-
-```tsx
-className =
-  'border-green-200/50 bg-green-50/30 backdrop-blur-sm dark:border-green-800/30 dark:bg-green-950/20';
-```
-
-**Badge on dark or gradient background**
-
-```tsx
-className =
-  'rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm';
-```
-
----
-
-## Decorative background orbs
-
-Hero sections use 2–3 blurred gradient orbs for depth. Rules:
-
-- Use `blur-3xl` (or `blur-2xl`) for soft edges.
-- Opacity: roughly **30–60%** in light mode; **15–30%** or `dark:opacity-20` / `dark:opacity-30` in dark mode.
-- Position with `absolute` and negative offsets so shapes bleed past the container; parent should use `overflow-hidden` where needed.
-- Prefer `gradient-glow` or brand-aligned gradients (`from-primary/30 to-accent/20`, etc.).
-
-Example pair:
-
-```tsx
-<div className="from-primary/30 to-accent/20 absolute -top-20 -left-32 h-96 w-96 rounded-full bg-linear-to-br opacity-40 blur-3xl dark:opacity-20" />
-<div className="absolute top-40 -right-32 h-80 w-80 rounded-full bg-linear-to-br from-cyan-200 to-blue-200 opacity-40 blur-3xl dark:opacity-15" />
-```
-
-Warm accent orb (optional third):
-
-```tsx
-<div className='absolute bottom-20 left-1/3 h-72 w-72 rounded-full bg-linear-to-br from-rose-200 to-orange-100 opacity-60 blur-3xl' />
-```
+**Retired:** liquid-glass module, `HeaderLiquidGlassShell`, `marketing-glass-surface`, glass nav bar recipes, glass intensity ladders.
 
 ---
 
@@ -289,62 +275,45 @@ Warm accent orb (optional third):
 
 ### 1. Hero / marketing pages
 
-**Examples:** Pricing, Create Plan, About, Landing.
+**Examples:** Landing, Pricing. (`/about` redirects to `/landing`.)
 
-#### Heading (`h1`)
+#### Overline + heading
 
 ```tsx
-<h1 className='mb-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl'>
-  Invest in your{' '}
-  <span className='bg-linear-to-r from-primary via-accent to-primary bg-clip-text text-transparent'>
-    growth
+<p className='font-serif text-[0.6875rem] font-medium tracking-[0.22em] text-muted-foreground uppercase sm:text-xs'>
+  The After-Hours Edition
+</p>
+
+<h1 className='mt-6 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground sm:text-5xl md:text-[3.25rem]'>
+  <span className='block'>Make space for</span>
+  <span className='mt-1 block font-medium text-primary italic'>
+    the work that changes you.
   </span>
 </h1>
 ```
 
-| Property       | Value                                                                      |
-| -------------- | -------------------------------------------------------------------------- |
-| Font size      | `text-3xl` → `sm:text-4xl` → `lg:text-5xl`                                 |
-| Weight         | `font-bold`                                                                |
-| Tracking       | `tracking-tight`                                                           |
-| Color          | `text-foreground`; gradient on keyword via `bg-clip-text text-transparent` |
-| Bottom spacing | `mb-2`                                                                     |
-
 #### Subtitle
 
 ```tsx
-<p className='mx-auto max-w-md text-base text-muted-foreground sm:max-w-xl sm:text-lg'>
-  Description text here.
+<p className='mx-auto mt-6 max-w-xl font-sans text-base text-muted-foreground sm:text-lg'>
+  Plans, tasks, and analytics for the quiet hours.
 </p>
 ```
 
-| Property  | Value                               |
-| --------- | ----------------------------------- |
-| Font size | `text-base` → `sm:text-lg`          |
-| Color     | `text-muted-foreground`             |
-| Max width | `max-w-md` → `sm:max-w-xl`          |
-| Centering | `mx-auto` with parent `text-center` |
+#### CTAs
 
-#### Header container
+Prefer `marketingPrimaryCtaClassName` / `marketingSecondaryCtaClassName` from `marketing-cta.ts` (pill + Sora).
+
+#### Page shell
 
 ```tsx
-<div className='relative z-10 mb-5 text-center sm:mb-6'>
-  {/* h1 + subtitle */}
-</div>
+<MarketingPageShell>
+  <CelestialBackdrop />
+  <div className='relative z-10'>{/* Hairline + sections */}</div>
+</MarketingPageShell>
 ```
 
-#### Page container (hero)
-
-```tsx
-<div className="relative mx-auto flex min-h-screen max-w-7xl flex-col items-center justify-start gap-y-10 overflow-hidden px-6 py-16">
-```
-
-| Property    | Value                                      |
-| ----------- | ------------------------------------------ |
-| Max width   | `max-w-7xl`                                |
-| Padding     | `px-6 py-16`                               |
-| Section gap | `gap-y-10`                                 |
-| Layout      | `flex flex-col items-center justify-start` |
+Section rhythm: hairlines (`bg-border/35`) between major blocks; section padding roughly `py-16 md:py-24`.
 
 ---
 
@@ -402,11 +371,11 @@ Use a plain `<h1>` for the main title—**do not** add `text-xl` or other size o
 ```txt
 Is this a hero/landing/marketing section?
 ├── YES → Hero/marketing pattern
-│   ├── Heading: text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight
-│   ├── Subtitle: text-base sm:text-lg, text-muted-foreground, max-w-md sm:max-w-xl
-│   ├── Layout: centered (text-center, items-center, mx-auto)
-│   ├── Container: px-6 py-16, gap-y-10
-│   └── Decorative: gradient orbs; gradient keyword in heading
+│   ├── Overline + Sora responsive display type
+│   ├── Emphasis: italic text-primary (not gradient by default)
+│   ├── CTAs: marketing-cta.ts pills
+│   ├── Layout: MarketingPageShell + centered sections
+│   └── Decorative: celestial backdrop (semantic orbs + StarField); opaque rounded-4xl panels
 │
 └── NO → Content/app pattern
     ├── Heading: plain <h1> (24px base) or text-xl font-semibold for subsections
@@ -424,32 +393,34 @@ Is this a hero/landing/marketing section?
 
 [`src/components/ui/button.tsx`](../../src/components/ui/button.tsx)
 
-| Variant             | When                                                    |
-| ------------------- | ------------------------------------------------------- |
-| `default`           | Primary actions (`bg-primary`)                          |
-| `secondary`         | Secondary actions                                       |
-| `outline` / `ghost` | Tertiary actions, toolbars                              |
-| `destructive`       | Delete / irreversible                                   |
-| `link`              | Text styled as a button                                 |
-| `cta`               | Prominent marketing CTAs (strong shadow, lift on hover) |
+| Variant             | When                                                   |
+| ------------------- | ------------------------------------------------------ |
+| `default`           | Primary actions (`bg-primary`)                         |
+| `secondary`         | Secondary actions                                      |
+| `outline` / `ghost` | Tertiary actions, toolbars                             |
+| `destructive`       | Delete / irreversible                                  |
+| `link`              | Text styled as a button                                |
+| `cta`               | Prominent product/marketing CTAs when `Button` is used |
 
 Sizes include `default` (h-9), `sm`, `lg`, `icon*`. Keep focus visible: `ring-ring/50`, `border-ring` patterns as implemented.
+
+On marketing heroes/final CTAs, prefer `marketing-cta.ts` class names over inventing new pill styles.
 
 ### Card
 
 - Use `Card` from `@/components/ui/card` for product UI.
-- Glass-style marketing cards: follow [Glassmorphism](#glassmorphism).
+- Marketing panels: opaque `bg-card` + `rounded-4xl`; see [Marketing depth](#marketing-depth--celestial-backdrop).
 
 ---
 
 ## Global shell
 
-| Element    | Pattern                                                                            |
-| ---------- | ---------------------------------------------------------------------------------- |
-| **Root**   | `next-themes` with `class` on `<html>` (`light` / `dark`)                          |
-| **Body**   | Work Sans + Young Serif CSS variables, `antialiased`, `flex min-h-screen flex-col` |
-| **Header** | Site header; main content offset with `pt-16` in layout                            |
-| **Footer** | Brand, footer navigation (e.g. About, Pricing), copyright                          |
+| Element    | Pattern                                                                     |
+| ---------- | --------------------------------------------------------------------------- |
+| **Root**   | `next-themes` with `class` on `<html>` (`light` / `dark`)                   |
+| **Body**   | Work Sans + Sora CSS variables, `antialiased`, `flex min-h-screen flex-col` |
+| **Header** | Flat `SiteHeaderChrome`; main content offset with `pt-16` in layout         |
+| **Footer** | Brand and copyright                                                         |
 
 Each page should expose a proper `main` landmark where applicable.
 
@@ -457,7 +428,7 @@ Each page should expose a proper `main` landmark where applicable.
 
 ## Interactive states
 
-**Hover (glass cards):** e.g. `transition hover:-translate-y-1 hover:shadow-xl`.
+**Hover (elevated cards):** e.g. `transition hover:-translate-y-1 hover:shadow-xl`.
 
 **Hover (borders):** e.g. `hover:border-primary/30 dark:hover:border-primary/50`.
 
@@ -471,7 +442,7 @@ Each page should expose a proper `main` landmark where applicable.
 
 - **Landmarks:** Use `main`, and consistent header/footer patterns on marketing pages.
 - **Theme:** Respect system default; keep the header theme control reachable.
-- **Motion:** Buttons and `cta` use subtle translate/shadow transitions; avoid heavy parallax unless specified.
+- **Motion:** Prefer subtle translate/shadow transitions; honor `prefers-reduced-motion` (landing uses `motion-reduce:animate-none` on entrance). Avoid heavy parallax unless specified.
 
 Verify **contrast** on `background`, `card`, and `border` in both themes for new surfaces.
 
@@ -482,56 +453,58 @@ Verify **contrast** on `background`, `card`, and `border` in both themes for new
 ### Do
 
 - Use semantic color tokens (`bg-primary`, `text-muted-foreground`, …).
-- Apply glassmorphism with consistent blur and transparent backgrounds.
-- Use global gradient utilities (`.gradient-brand`, `.gradient-text`, …).
+- Reuse `StarField` + semantic orbs for marketing backdrops.
+- Use `marketing-cta.ts` / `marketing-header-classes.ts` for marketing actions.
+- Use global gradient utilities when a gradient is intentional (`.gradient-brand`, optional `.gradient-text`).
 - Keep border radius consistent within component families.
 - Test **light and dark** modes.
 
 ### Don’t
 
 - Hard-code hex/rgb for product chrome.
-- Mix glass and opaque treatments in the same component group without a deliberate pattern.
-- Use inconsistent blur steps—prefer `backdrop-blur-sm`, `-md`, `-xl`, `-2xl` intentionally.
-- Ship glass without dark-mode border/background adjustments.
-- Over-use gradient text (headlines and emphasis only).
+- Reintroduce liquid-glass, glass nav shells, or glass intensity ladders.
+- Use cyan/cold orb palettes or Progress Jam violet.
+- Assume shared `MarketingHero` / `MarketingSection` / `MarketingCard` wrappers.
+- Over-use gradient text (optional accents only — default hero emphasis is italic primary).
 
 ---
 
 ## Implementation checklist (PRs)
 
 - [ ] Colors use semantic tokens, not one-off hex.
-- [ ] Headings follow **app base** (`<h1>`–`<h6>`) or **marketing** (documented utilities / `.marketing-*`), not ad-hoc font sizes.
+- [ ] Headings follow **app base** (`<h1>`–`<h6>`) or **marketing** (responsive `font-serif` + `SectionOverline` pattern) — no retired `.marketing-h*` classes.
 - [ ] Hero/marketing vs app layout matches the [decision tree](#quick-decision-tree-hero-vs-app).
-- [ ] Spacing aligns with established containers (`max-w-7xl`, `px-6`, `py-8` app / `py-16` hero).
-- [ ] Primary actions use `Button` variants; marketing emphasis uses `cta` or documented gradients.
+- [ ] Spacing aligns with established containers (`max-w-7xl`, `px-6`, `py-8` app / `py-16` marketing sections).
+- [ ] Primary product actions use `Button` variants; marketing CTAs reuse `marketing-cta.ts`.
 - [ ] Dark mode: contrast checked on `background`, `card`, `border`.
 
 ---
 
-## Appendix: design audit snapshot (Chrome DevTools)
+## Appendix: live visual anchors
 
-|                     |                                                   |
-| ------------------- | ------------------------------------------------- |
-| **When**            | 2026-03-30                                        |
-| **Environment**     | Local dev (`pnpm dev`), `http://localhost:3000`   |
-| **Routes reviewed** | `/dashboard`, `/landing`, `/pricing`, `/about`    |
-| **Themes**          | Dark (default session) and Light (header control) |
+Prefer these files over historical audit snapshots:
 
-**Checks performed:** Navigation with browser tooling; accessibility tree landmarks (`banner`, `main`, `contentinfo`); computed styles for body font, sample `h1`, theme class on `<html>`, CSS variables resolving in DevTools.
+| Route / surface | Anchor file                                                                           |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Landing         | [`Landing.tsx`](<../../src/app/(marketing)/landing/components/Landing.tsx>)           |
+| Pricing         | [`PricingShell.tsx`](<../../src/app/(marketing)/pricing/components/PricingShell.tsx>) |
+| Header          | [`SiteHeaderChrome.tsx`](../../src/components/shared/nav/SiteHeaderChrome.tsx)        |
+| Agent entry     | [`DESIGN.md`](../../DESIGN.md) Layout section                                         |
 
-**Follow-ups noted in pass**
-
-- About hero heading had missing space before “AI” in copy—fix in content, not tokens.
-- Landing “Features” used emoji bullets; for stricter branding, consider icon components or monochrome marks.
-
-_Refresh this appendix after major visual releases or when validating production URLs._
+Refresh this appendix after major visual releases or when validating production URLs.
 
 ---
 
 ## Related source files
 
-| File                                                                 | Role                         |
-| -------------------------------------------------------------------- | ---------------------------- |
-| [`src/app/globals.css`](../../src/app/globals.css)                   | Tokens, base type, utilities |
-| [`src/app/layout.tsx`](../../src/app/layout.tsx)                     | Root fonts and shell         |
-| [`src/components/ui/button.tsx`](../../src/components/ui/button.tsx) | Button variants              |
+| File                                                                                         | Role                         |
+| -------------------------------------------------------------------------------------------- | ---------------------------- |
+| [`src/app/globals.css`](../../src/app/globals.css)                                           | Tokens, base type, utilities |
+| [`src/app/layout.tsx`](../../src/app/layout.tsx)                                             | Root fonts and shell         |
+| [`src/components/ui/button.tsx`](../../src/components/ui/button.tsx)                         | Button variants              |
+| [`Landing.tsx`](<../../src/app/(marketing)/landing/components/Landing.tsx>)                  | Live landing composition     |
+| [`PricingShell.tsx`](<../../src/app/(marketing)/pricing/components/PricingShell.tsx>)        | Pricing chrome               |
+| [`marketing-cta.ts`](<../../src/app/(marketing)/_shared/marketing-cta.ts>)                   | Pill CTA classes             |
+| [`marketing-header-classes.ts`](../../src/components/shared/nav/marketing-header-classes.ts) | Header nav + CTA             |
+| [`SiteHeaderChrome.tsx`](../../src/components/shared/nav/SiteHeaderChrome.tsx)               | Flat header shell            |
+| [`DESIGN.md`](../../DESIGN.md)                                                               | Agent-facing design entry    |

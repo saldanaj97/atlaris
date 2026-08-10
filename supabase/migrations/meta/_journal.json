@@ -253,6 +253,153 @@
       "when": 1779489548000,
       "tag": "20260522223908_schedule_retention_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1782430837257,
+      "tag": "0036_add_learning_activity_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1782437094261,
+      "tag": "0037_add_user_analytics_timezone",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783120787000,
+      "tag": "20260703181947_create_user_preferences_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783368722000,
+      "tag": "20260706201202_create_clerk_billing_webhook_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783376417000,
+      "tag": "20260706222017_remove_legacy_stripe_entitlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783723200000,
+      "tag": "20260801120000_drop_user_preference_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1783723210000,
+      "tag": "20260809190000_create_email_notification_deliveries",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1783723210001,
+      "tag": "20260710151930_create_email_notification_delivery_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1783723210002,
+      "tag": "20260810120000_create_clerk_webhook_event_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1783723210003,
+      "tag": "20260810120100_restore_clerk_webhook_claim_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1785859200000,
+      "tag": "20260804160000_revoke_task_progress_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786442400000,
+      "tag": "20260811100000_clear_module_lesson_generation_errors",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1786442460000,
+      "tag": "20260811100100_add_clerk_user_identity_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1786442520000,
+      "tag": "20260811100200_enforce_resolved_email_delivery_payload_minimization",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786442580000,
+      "tag": "20260811100300_scrub_resolved_email_delivery_payloads",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786442640000,
+      "tag": "20260811100400_revoke_users_authenticated_insert",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786442700000,
+      "tag": "20260811100500_revoke_users_authenticated_insert",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1786442760000,
+      "tag": "20260811100600_drop_task_progress_delete_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786442820000,
+      "tag": "20260811100700_revoke_anon_unsafe_table_privileges",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1786442880000,
+      "tag": "20260811100800_revoke_security_definer_execute",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1786442940000,
+      "tag": "20260811100900_restrict_task_progress_update_columns",
+      "breakpoints": true
     }
   ]
 }

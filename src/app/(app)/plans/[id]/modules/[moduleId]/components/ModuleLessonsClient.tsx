@@ -5,7 +5,6 @@ import type {
   ModuleDetailTask,
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
-import type { JSX } from 'react';
 
 import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
@@ -14,7 +13,6 @@ import { useModuleLessonGeneration } from '@/app/(app)/plans/[id]/modules/[modul
 import { Accordion } from '@/components/ui/accordion';
 import { Surface } from '@/components/ui/surface';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
-import { useMemo } from 'react';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -36,7 +34,7 @@ export function ModuleLessonsClient({
   previousModulesComplete,
   statuses,
   onStatusChange,
-}: ModuleLessonsClientProps): JSX.Element {
+}: ModuleLessonsClientProps) {
   const { generateLessons, generationTakingLong, isPending, quotaMessage } =
     useModuleLessonGeneration({
       planId,
@@ -45,33 +43,24 @@ export function ModuleLessonsClient({
       previousModulesComplete,
     });
 
-  const { completedLessons, totalLessons, isModuleComplete } = useMemo(() => {
-    const total = lessons.length;
-    let completed = 0;
-    for (const lesson of lessons) {
-      if ((statuses[lesson.id] ?? lesson.status) === 'completed') {
-        completed++;
-      }
-    }
+  const totalLessons = lessons.length;
+  const completedLessons = lessons.filter(
+    (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
+  ).length;
+  const isModuleComplete =
+    totalLessons > 0 && completedLessons === totalLessons;
 
-    return {
-      completedLessons: completed,
-      totalLessons: total,
-      isModuleComplete: total > 0 && completed === total,
-    };
-  }, [lessons, statuses]);
-
-  const { locks: lessonLocks, firstUnlockedIncompleteLessonId } = useMemo(
-    () => deriveLessonState(lessons, statuses, previousModulesComplete),
-    [lessons, previousModulesComplete, statuses],
-  );
+  const { locks: lessonLocks, firstUnlockedIncompleteLessonId } =
+    deriveLessonState(lessons, statuses, previousModulesComplete);
 
   return (
     <>
       <section>
-        <div className='mb-6 flex items-center justify-between'>
-          <h2 className='text-2xl font-semibold text-foreground'>Lessons</h2>
-          <span className='text-sm text-muted-foreground'>
+        <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
+          <h2 className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+            Lessons
+          </h2>
+          <span className='text-xs text-muted-foreground tabular-nums'>
             {completedLessons}/{totalLessons} completed
           </span>
         </div>

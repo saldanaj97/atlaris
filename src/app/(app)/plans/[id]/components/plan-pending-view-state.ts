@@ -1,9 +1,6 @@
 import type { ClientPlanDetail, PlanStatus } from '@/shared/types/client.types';
 
-import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/constants';
 import { PLAN_STATUSES } from '@/shared/types/client';
-
-export const MAX_RETRY_ATTEMPTS = DEFAULT_ATTEMPT_CAP;
 
 const ORIGIN_LABELS: Record<'ai' | 'manual' | 'template', string> = {
   ai: 'AI',
@@ -29,6 +26,7 @@ export interface PlanPendingViewState {
   status: PlanStatus | string;
   panelKind: PlanPendingPanelKind;
   attempts: number;
+  attemptCap: number;
   displayError: string | null;
   failedPlanMessage: string | null;
   hasExhaustedRetries: boolean;
@@ -84,6 +82,7 @@ export function buildPlanPendingViewState(params: {
   status: string;
   retryStatus: string;
   attempts: number;
+  attemptCap: number;
   error: string | null;
   pollingError: string | null;
   retryError: string | null;
@@ -114,9 +113,10 @@ export function buildPlanPendingViewState(params: {
     status,
     panelKind,
     attempts: params.attempts,
+    attemptCap: params.attemptCap,
     displayError,
     failedPlanMessage,
-    hasExhaustedRetries: params.attempts >= MAX_RETRY_ATTEMPTS,
+    hasExhaustedRetries: params.attempts >= params.attemptCap,
     isRetrying,
     retryInterrupted,
   };

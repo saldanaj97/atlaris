@@ -5,6 +5,7 @@ import {
   planSchedules,
 } from './tables/plans';
 import {
+  learningActivityEvents,
   modules,
   resources,
   taskProgress,
@@ -12,15 +13,30 @@ import {
   tasks,
 } from './tables/tasks';
 import { aiUsageEvents, usageMetrics } from './tables/usage';
+import {
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
+} from './tables/user-preferences';
 import { users } from './tables/users';
 import { relations } from 'drizzle-orm';
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  userPreferences: one(userPreferences, {
+    fields: [users.id],
+    references: [userPreferences.userId],
+  }),
+  userEmailNotificationSettings: one(userEmailNotificationSettings, {
+    fields: [users.id],
+    references: [userEmailNotificationSettings.userId],
+  }),
+  userEmailNotificationPreferences: many(userEmailNotificationPreferences),
   learningPlans: many(learningPlans),
   usageMetrics: many(usageMetrics),
   aiUsageEvents: many(aiUsageEvents),
   jobQueue: many(jobQueue),
   taskProgress: many(taskProgress),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const learningPlansRelations = relations(
@@ -34,6 +50,7 @@ export const learningPlansRelations = relations(
     planSchedules: one(planSchedules),
     generationAttempts: many(generationAttempts),
     jobQueue: many(jobQueue),
+    learningActivityEvents: many(learningActivityEvents),
   }),
 );
 
@@ -60,6 +77,7 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
     references: [learningPlans.id],
   }),
   tasks: many(tasks),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -69,6 +87,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   taskResources: many(taskResources),
   taskProgress: many(taskProgress),
+  learningActivityEvents: many(learningActivityEvents),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -97,6 +116,28 @@ export const taskProgressRelations = relations(taskProgress, ({ one }) => ({
   }),
 }));
 
+export const learningActivityEventsRelations = relations(
+  learningActivityEvents,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [learningActivityEvents.userId],
+      references: [users.id],
+    }),
+    plan: one(learningPlans, {
+      fields: [learningActivityEvents.planId],
+      references: [learningPlans.id],
+    }),
+    module: one(modules, {
+      fields: [learningActivityEvents.moduleId],
+      references: [modules.id],
+    }),
+    task: one(tasks, {
+      fields: [learningActivityEvents.taskId],
+      references: [tasks.id],
+    }),
+  }),
+);
+
 export const usageMetricsRelations = relations(usageMetrics, ({ one }) => ({
   user: one(users, {
     fields: [usageMetrics.userId],
@@ -121,3 +162,33 @@ export const jobQueueRelations = relations(jobQueue, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const userPreferencesRelations = relations(
+  userPreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userPreferences.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userEmailNotificationSettingsRelations = relations(
+  userEmailNotificationSettings,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userEmailNotificationSettings.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userEmailNotificationPreferencesRelations = relations(
+  userEmailNotificationPreferences,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userEmailNotificationPreferences.userId],
+      references: [users.id],
+    }),
+  }),
+);

@@ -1,4 +1,4 @@
-import type { DbUser } from '@/lib/db/queries/types/users.types';
+import type { ActorUser } from '@/lib/db/queries/types/users.types';
 
 export type RouteParams = Record<string, string | string[] | undefined>;
 
@@ -14,7 +14,7 @@ export type PlainHandler = (
 export type AuthHandlerContext = {
   req: Request;
   userId: string;
-  user: DbUser;
+  user: ActorUser;
   params: RouteParams;
 };
 

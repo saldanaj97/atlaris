@@ -8,8 +8,7 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
 
-import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { hashSha256 } from '@/lib/crypto/hash';
+import { getAttemptCap } from '@/lib/config/env';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
@@ -39,6 +38,7 @@ import {
 } from '@/shared/constants/generation';
 import { generationAttempts } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 
 /**
  * Server-owned generation persistence: requires explicit dbClient (AttemptsDbClient)
@@ -76,9 +76,11 @@ export async function reserveAttemptSlot(
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
-  const promptHash = hashSha256(
-    JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
-  );
+  const promptHash = createHash('sha256')
+    .update(
+      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
+    )
+    .digest('hex');
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
@@ -160,7 +162,7 @@ export async function reserveAttemptSlot(
     const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
     const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
 
-    if (existingAttempts >= getGenerationAttemptCap()) {
+    if (existingAttempts >= getAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
 
@@ -306,7 +308,7 @@ export async function persistFailedAttemptInTx(
  * Finalizes a previously reserved attempt as failed.
  * Updates only the in-progress attempt row.
  * Plan-level failure transitions are handled separately by lifecycle helpers
- * such as markPlanGenerationFailure() in features/plans/lifecycle/adapters/plan-persistence-store.ts.
+ * such as markPlanGenerationFailure() in features/plans/lifecycle/plan-persistence-store.ts.
  */
 export async function finalizeAttemptFailure({
   attemptId,

@@ -1,14 +1,16 @@
 import {
+  clerkWebhookEventClaims,
+  clerkWebhookEvents,
   jobQueue,
   learningPlans,
   oauthStateTokens,
-  stripeWebhookEvents,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
+import { and, eq, inArray } from 'drizzle-orm';
 
 export const JOB_QUEUE_RETENTION_DAYS = 30;
-export const STRIPE_WEBHOOK_EVENT_RETENTION_DAYS = 45;
+export const CLERK_WEBHOOK_EVENT_RETENTION_DAYS = 45;
 
 export function retentionDaysBefore(now: Date, days: number): Date {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -29,12 +31,28 @@ export type SeedRetentionCleanupRowsResult = {
     expiredHash: string;
     futureHash: string;
   };
-  stripe: {
+  clerk: {
     oldEventId: string;
     recentEventId: string;
+    expiredClaimEventId: string;
+    recentClaimEventId: string;
   };
   jobRowIds: string[];
 };
+
+export async function selectRetentionJobRows(
+  fixture: Pick<SeedRetentionCleanupRowsResult, 'userId' | 'jobRowIds'>,
+) {
+  return db
+    .select({ id: jobQueue.id, status: jobQueue.status })
+    .from(jobQueue)
+    .where(
+      and(
+        eq(jobQueue.userId, fixture.userId),
+        inArray(jobQueue.id, fixture.jobRowIds),
+      ),
+    );
+}
 
 export async function seedRetentionCleanupRows(
   options: SeedRetentionCleanupRowsOptions,
@@ -42,8 +60,10 @@ export async function seedRetentionCleanupRows(
   const { now, key, extendedJobCoverage = false } = options;
   const expiredHash = `${key}-expired-oauth-state`;
   const futureHash = `${key}-future-oauth-state`;
-  const oldEventId = `evt_${key}_old`;
-  const recentEventId = `evt_${key}_recent`;
+  const oldClerkEventId = `clerk_${key}_old`;
+  const recentClerkEventId = `clerk_${key}_recent`;
+  const expiredClaimEventId = `clerk_${key}_claim_expired`;
+  const recentClaimEventId = `clerk_${key}_claim_recent`;
 
   await db.insert(oauthStateTokens).values([
     {
@@ -58,24 +78,35 @@ export async function seedRetentionCleanupRows(
     },
   ]);
 
-  await db.insert(stripeWebhookEvents).values([
+  await db.insert(clerkWebhookEvents).values([
     {
-      eventId: oldEventId,
-      livemode: false,
-      type: 'customer.subscription.updated',
+      eventId: oldClerkEventId,
+      type: 'subscription.updated',
       createdAt: retentionDaysBefore(
         now,
-        STRIPE_WEBHOOK_EVENT_RETENTION_DAYS + 1,
+        CLERK_WEBHOOK_EVENT_RETENTION_DAYS + 1,
       ),
     },
     {
-      eventId: recentEventId,
-      livemode: false,
-      type: 'customer.subscription.updated',
+      eventId: recentClerkEventId,
+      type: 'subscription.updated',
       createdAt: retentionDaysBefore(
         now,
-        STRIPE_WEBHOOK_EVENT_RETENTION_DAYS - 1,
+        CLERK_WEBHOOK_EVENT_RETENTION_DAYS - 1,
       ),
+    },
+  ]);
+
+  await db.insert(clerkWebhookEventClaims).values([
+    {
+      eventId: expiredClaimEventId,
+      claimToken: '00000000-0000-4000-8000-000000000001',
+      claimExpiresAt: retentionDaysBefore(now, 2),
+    },
+    {
+      eventId: recentClaimEventId,
+      claimToken: '00000000-0000-4000-8000-000000000002',
+      claimExpiresAt: new Date(now.getTime() + 10 * 60 * 1000),
     },
   ]);
 
@@ -167,9 +198,11 @@ export async function seedRetentionCleanupRows(
       expiredHash,
       futureHash,
     },
-    stripe: {
-      oldEventId,
-      recentEventId,
+    clerk: {
+      oldEventId: oldClerkEventId,
+      recentEventId: recentClerkEventId,
+      expiredClaimEventId,
+      recentClaimEventId,
     },
     jobRowIds: rows.map((row) => row.id),
   };

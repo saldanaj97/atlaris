@@ -1,5 +1,4 @@
 import { onboardingFormSchema } from '@/features/plans/validation/learningPlans';
-import { format } from 'date-fns';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const FIXED_NOW = new Date('2026-03-09T12:00:00.000Z');
@@ -15,7 +14,10 @@ function baseInput() {
 }
 
 function yyyyMmDd(date: Date) {
-  return format(date, 'yyyy-MM-dd');
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function expectFieldError(

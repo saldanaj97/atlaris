@@ -12,11 +12,14 @@ import {
   createSupabasePublicEnv,
   EnvValidationError,
   assertHostedDeployForbiddenFlags,
+  assertMixedDevAuthIdentity,
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
+  readWorkflowCallbackTokenConfig,
   regenerationQueueEnv,
   requireEnv,
+  sentryEnv,
   toBoolean,
   workflowEnv,
 } from '@/lib/config/env';
@@ -65,6 +68,17 @@ describe('Environment Configuration', () => {
       expect(app.url).toBe('http://localhost:3000');
     });
 
+    it('uses PORTLESS_URL when APP_URL is unset outside production', () => {
+      const env = {
+        NODE_ENV: 'development',
+        PORTLESS_URL: 'https://atlaris.localhost/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('https://atlaris.localhost');
+    });
+
     it('requires https APP_URL in production', () => {
       const env = {
         NODE_ENV: 'production',
@@ -106,27 +120,161 @@ describe('Environment Configuration', () => {
         assertHostedDeployForbiddenFlags({
           NODE_ENV: 'production',
           LOCAL_PRODUCT_TESTING: 'true',
-          STRIPE_LOCAL_MODE: 'true',
         }),
       ).not.toThrow();
     });
 
-    it('rejects local-only flags in hosted deploy environments', () => {
-      expect(() =>
-        assertHostedDeployForbiddenFlags({
-          NODE_ENV: 'production',
+    it.each([
+      {
+        label: 'missing NODE_ENV',
+        env: { VERCEL: '1' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'blank NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: ' ' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'development NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: 'development' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'test NODE_ENV',
+        env: { VERCEL: '1', NODE_ENV: 'test' },
+        envKey: 'NODE_ENV',
+      },
+      {
+        label: 'Vitest worker marker',
+        env: {
           VERCEL: '1',
+          NODE_ENV: 'production',
+          VITEST_WORKER_ID: '1',
+        },
+        envKey: 'VITEST_WORKER_ID',
+      },
+      {
+        label: 'development auth identity override',
+        env: {
+          VERCEL: '1',
+          NODE_ENV: 'production',
+          DEV_AUTH_USER_ID: 'user_test',
+        },
+        envKey: 'DEV_AUTH_USER_ID',
+      },
+      {
+        label: 'local product-testing flag',
+        env: {
+          VERCEL: '1',
+          NODE_ENV: 'production',
           LOCAL_PRODUCT_TESTING: 'true',
+        },
+        envKey: 'LOCAL_PRODUCT_TESTING',
+      },
+    ])('rejects $label in hosted deploy environments', ({ env, envKey }) => {
+      expect(() => assertHostedDeployForbiddenFlags(env)).toThrow(
+        EnvValidationError,
+      );
+      try {
+        assertHostedDeployForbiddenFlags(env);
+      } catch (error) {
+        expect(error).toMatchObject({ envKey });
+      }
+    });
+
+    it.each([
+      {
+        VERCEL: '1',
+        NODE_ENV: 'production',
+      },
+      {
+        VERCEL: '1',
+        NODE_ENV: 'production',
+        VITEST_WORKER_ID: ' ',
+        DEV_AUTH_USER_ID: '',
+        LOCAL_PRODUCT_TESTING: '0',
+      },
+    ])('allows production-only hosted runtime inputs', (env) => {
+      expect(() => assertHostedDeployForbiddenFlags(env)).not.toThrow();
+    });
+  });
+
+  describe('mixed development auth identity', () => {
+    const seedAuthUserId = '00000000-0000-4000-8000-000000000001';
+
+    it.each([
+      {
+        label: 'fixture mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'true',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'real Clerk checkout mode',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: '',
+        },
+      },
+      {
+        label: 'real Clerk checkout with unset override',
+        env: {
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+        },
+      },
+      {
+        label: 'production ignores mixed combo',
+        env: {
+          NODE_ENV: 'production',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+      {
+        label: 'test ignores mixed combo',
+        env: {
+          NODE_ENV: 'test',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        },
+      },
+    ])('allows $label', ({ env }) => {
+      expect(() => assertMixedDevAuthIdentity(env)).not.toThrow();
+    });
+
+    it('rejects Clerk UI enabled with DEV_AUTH_USER_ID override in development', () => {
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
         }),
-      ).toThrow(/LOCAL_PRODUCT_TESTING cannot be enabled in production/);
+      ).toThrow(/Mixed development identity is not allowed/);
 
       expect(() =>
-        assertHostedDeployForbiddenFlags({
-          NODE_ENV: 'production',
-          VERCEL: '1',
-          STRIPE_LOCAL_MODE: 'true',
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
         }),
-      ).toThrow(/STRIPE_LOCAL_MODE cannot be enabled in production/);
+      ).toThrow(
+        /Fixture mode: LOCAL_PRODUCT_TESTING=true with DEV_AUTH_USER_ID set/,
+      );
+
+      expect(() =>
+        assertMixedDevAuthIdentity({
+          NODE_ENV: 'development',
+          LOCAL_PRODUCT_TESTING: 'false',
+          DEV_AUTH_USER_ID: seedAuthUserId,
+        }),
+      ).toThrow(
+        /Real Clerk checkout mode: LOCAL_PRODUCT_TESTING=false with DEV_AUTH_USER_ID unset\/empty/,
+      );
     });
   });
 
@@ -160,37 +308,6 @@ describe('Environment Configuration', () => {
       const { attemptsEnv } = createAiEnvFacets(access);
 
       expect(attemptsEnv.cap).toBe(5);
-    });
-
-    it('coerces AI_USE_MOCK to booleans', () => {
-      const env = { AI_USE_MOCK: '0' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(false);
-    });
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['false', false],
-      ['0', false],
-    ] as const)('strictly parses AI_USE_MOCK=%s', (value, expected) => {
-      const env = { AI_USE_MOCK: value } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(aiEnv.useMock).toBe(expected);
-    });
-
-    it('rejects malformed AI_USE_MOCK values', () => {
-      const env = { AI_USE_MOCK: 'maybe' } as const;
-      const access = createServerEnvAccess(() => env);
-      const { aiEnv } = createAiEnvFacets(access);
-
-      expect(() => aiEnv.useMock).toThrow(
-        /AI_USE_MOCK must be one of: true, false, 1, 0/,
-      );
     });
 
     it('derives the timeout threshold from the same base logic', () => {
@@ -478,6 +595,81 @@ describe('Environment Configuration', () => {
     });
   });
 
+  describe('sentryEnv', () => {
+    it('defaults sendDefaultPii to false when unset', () => {
+      expect(sentryEnv.sendDefaultPii).toBe(false);
+    });
+
+    it.each([
+      ['true', true],
+      ['TRUE', true],
+      ['1', true],
+      ['false', false],
+      ['0', false],
+    ] as const)('parses SENTRY_SEND_DEFAULT_PII=%s', (value, expected) => {
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', value);
+      expect(sentryEnv.sendDefaultPii).toBe(expected);
+    });
+  });
+
+  describe('Sentry init config modules', () => {
+    it('server and edge default sendDefaultPii to false when unset', async () => {
+      vi.resetModules();
+      vi.unstubAllEnvs();
+      const initOptions: Array<Record<string, unknown>> = [];
+      vi.doMock('@sentry/nextjs', () => ({
+        init: (options: Record<string, unknown>) => {
+          initOptions.push(options);
+        },
+        pinoIntegration: () => ({}),
+        vercelAIIntegration: () => ({}),
+      }));
+      vi.doMock('@/lib/observability/sampling', () => ({
+        shouldEnableLogs: () => false,
+        tracesSampler: () => 0,
+      }));
+      vi.doMock('@/lib/observability/sentry-filters', () => ({
+        beforeSendSentryEvent: (event: unknown) => event,
+      }));
+
+      await import('../../../sentry.server.config');
+      await import('../../../sentry.edge.config');
+
+      expect(initOptions).toHaveLength(2);
+      expect(initOptions.every((opts) => opts.sendDefaultPii === false)).toBe(
+        true,
+      );
+    });
+
+    it('server and edge enable sendDefaultPii when SENTRY_SEND_DEFAULT_PII is truthy', async () => {
+      vi.resetModules();
+      vi.stubEnv('SENTRY_SEND_DEFAULT_PII', 'true');
+      const initOptions: Array<Record<string, unknown>> = [];
+      vi.doMock('@sentry/nextjs', () => ({
+        init: (options: Record<string, unknown>) => {
+          initOptions.push(options);
+        },
+        pinoIntegration: () => ({}),
+        vercelAIIntegration: () => ({}),
+      }));
+      vi.doMock('@/lib/observability/sampling', () => ({
+        shouldEnableLogs: () => false,
+        tracesSampler: () => 0,
+      }));
+      vi.doMock('@/lib/observability/sentry-filters', () => ({
+        beforeSendSentryEvent: (event: unknown) => event,
+      }));
+
+      await import('../../../sentry.server.config');
+      await import('../../../sentry.edge.config');
+
+      expect(initOptions).toHaveLength(2);
+      expect(initOptions.every((opts) => opts.sendDefaultPii === true)).toBe(
+        true,
+      );
+    });
+  });
+
   describe('aiEnv', () => {
     describe('defaultModel', () => {
       const validModelId = AVAILABLE_MODELS[0]?.id ?? AI_DEFAULT_MODEL;
@@ -538,35 +730,29 @@ describe('Environment Configuration', () => {
         expect(() => aiEnv.provider).toThrow(/AI_PROVIDER must be one of/);
       });
     });
-
-    describe('useMock', () => {
-      it('should return true when AI_USE_MOCK is truthy', () => {
-        vi.stubEnv('AI_USE_MOCK', 'true');
-
-        expect(aiEnv.useMock).toBe(true);
-      });
-
-      it('should return false when AI_USE_MOCK is falsey', () => {
-        vi.stubEnv('AI_USE_MOCK', '0');
-
-        expect(aiEnv.useMock).toBe(false);
-      });
-
-      it('should return undefined when not set', () => {
-        expect(aiEnv.useMock).toBeUndefined();
-      });
-
-      it('should throw when AI_USE_MOCK is malformed', () => {
-        vi.stubEnv('AI_USE_MOCK', 'sometimes');
-
-        expect(() => aiEnv.useMock).toThrow(
-          /AI_USE_MOCK must be one of: true, false, 1, 0/,
-        );
-      });
-    });
   });
 
   describe('regenerationQueueEnv', () => {
+    it.each([
+      ['development', undefined, true],
+      ['test', undefined, true],
+      ['production', undefined, false],
+      ['production', 'production', false],
+      ['production', 'preview', true],
+    ] as const)(
+      'defaults queue enabled with NODE_ENV=%s and VERCEL_ENV=%s to %s',
+      (nodeEnv, vercelEnv, expected) => {
+        vi.stubGlobal('window', undefined);
+        vi.stubEnv('NODE_ENV', nodeEnv);
+        if (vercelEnv) {
+          vi.stubEnv('VERCEL_ENV', vercelEnv);
+        }
+        vi.stubEnv('REGENERATION_QUEUE_ENABLED', '');
+
+        expect(regenerationQueueEnv.enabled).toBe(expected);
+      },
+    );
+
     it('keeps a minimum of 1 for positive fractional drain counts', () => {
       vi.stubEnv('REGENERATION_MAX_JOBS_PER_DRAIN', '0.5');
 
@@ -581,26 +767,68 @@ describe('Environment Configuration', () => {
   });
 
   describe('maintenanceEnv', () => {
-    it('does not require a worker token when manual retention cleanup is disabled in production', () => {
+    it('requires a worker token in production independently of route toggles', () => {
       vi.stubGlobal('window', undefined);
       const maintenance = createMaintenanceEnvForTests({
         NODE_ENV: 'production',
         RETENTION_CLEANUP_ENABLED: 'false',
+        PLAN_CLEANUP_ENABLED: 'false',
+        CLERK_BILLING_RECONCILIATION_ENABLED: 'false',
       });
 
       expect(maintenance.retentionCleanupEnabled).toBe(false);
-      expect(maintenance.workerToken).toBeUndefined();
+      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
     });
 
-    it('requires a worker token when manual retention cleanup is enabled in production', () => {
+    it('exposes a configured worker token in production', () => {
       vi.stubGlobal('window', undefined);
       const maintenance = createMaintenanceEnvForTests({
         NODE_ENV: 'production',
-        RETENTION_CLEANUP_ENABLED: 'true',
+        MAINTENANCE_WORKER_TOKEN: 'maintenance-secret',
       });
 
-      expect(maintenance.retentionCleanupEnabled).toBe(true);
-      expect(() => maintenance.workerToken).toThrow(EnvValidationError);
+      expect(maintenance.workerToken).toBe('maintenance-secret');
+    });
+
+    it('requires a cron secret in production and keeps it separate from the worker token', () => {
+      vi.stubGlobal('window', undefined);
+      const missing = createMaintenanceEnvForTests({ NODE_ENV: 'production' });
+      const configured = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+        CRON_SECRET: 'cron-secret',
+        MAINTENANCE_WORKER_TOKEN: 'maintenance-secret',
+      });
+
+      expect(() => missing.cronSecret).toThrow(EnvValidationError);
+      expect(configured.cronSecret).toBe('cron-secret');
+      expect(configured.workerToken).toBe('maintenance-secret');
+    });
+
+    it('allows an optional worker token outside production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'test',
+      });
+
+      expect(maintenance.workerToken).toBeUndefined();
+    });
+
+    it('requires a worker health token in production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'production',
+      });
+
+      expect(() => maintenance.workerHealthToken).toThrow(EnvValidationError);
+    });
+
+    it('allows an optional worker health token outside production', () => {
+      vi.stubGlobal('window', undefined);
+      const maintenance = createMaintenanceEnvForTests({
+        NODE_ENV: 'test',
+      });
+
+      expect(maintenance.workerHealthToken).toBeUndefined();
     });
   });
 
@@ -724,6 +952,81 @@ describe('Environment Configuration', () => {
         () => createWorkflowEnvForTests(access).planGenerationWorkflowEnabled,
       ).toThrow(EnvValidationError);
     });
+
+    it('reads WORKFLOW_CALLBACK_TOKEN when configured', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: 'prod-secret',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
+        'prod-secret',
+      );
+    });
+
+    it('trims WORKFLOW_CALLBACK_TOKEN when configured', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '  prod-secret  ',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
+        'prod-secret',
+      );
+    });
+
+    it('throws EnvValidationError for whitespace-only WORKFLOW_CALLBACK_TOKEN', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '   ',
+      }));
+
+      expect(() => createWorkflowEnvForTests(access).callbackToken).toThrow(
+        EnvValidationError,
+      );
+    });
+
+    it('readWorkflowCallbackTokenConfig returns invalid for whitespace-only token', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '   ',
+      }));
+
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'invalid',
+      });
+    });
+
+    it('treats empty WORKFLOW_CALLBACK_TOKEN as unset', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+        WORKFLOW_CALLBACK_TOKEN: '',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
+
+    it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'development',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
+
+    it('does not require WORKFLOW_CALLBACK_TOKEN in production env reads', () => {
+      vi.stubGlobal('window', undefined);
+      const access = createServerEnvAccess(() => ({
+        NODE_ENV: 'production',
+      }));
+
+      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+    });
   });
 
   describe('barrel surface', () => {
@@ -732,7 +1035,6 @@ describe('Environment Configuration', () => {
 
       expect(env.appEnv).toBeDefined();
       expect(env.databaseEnv).toBeDefined();
-      expect(env.stripeEnv).toBeDefined();
       expect(env.aiEnv).toBeDefined();
       expect(env.workflowEnv).toBeDefined();
       expect(env.getAttemptCap).toBeTypeOf('function');

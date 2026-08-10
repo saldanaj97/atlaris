@@ -60,4 +60,17 @@ describe('IntegrationCard', () => {
     expect(button).toBeDisabled();
     await user.click(button);
   });
+
+  it('does not duplicate coming soon status as a disabled action', () => {
+    render(<IntegrationCard {...baseProps} status='coming_soon' />);
+
+    const card = screen.getByRole('region', { name: 'Google Calendar' });
+
+    expect(
+      within(card).getByRole('status', { name: 'Coming Soon' }),
+    ).toBeInTheDocument();
+    expect(
+      within(card).queryByRole('button', { name: 'Coming Soon' }),
+    ).not.toBeInTheDocument();
+  });
 });

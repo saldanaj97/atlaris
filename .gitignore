@@ -14,7 +14,6 @@
 /coverage
 /.workflow-data/
 /.workflow-vitest/
-.testcontainers-env.json
 /tests/.testcontainers-env.*.json
 /tests/test-results/*
 /tests/results/
@@ -42,8 +41,8 @@ yarn-error.log*
 .env*
 !.env.example
 !.env.local.example
-!.env.staging.example
-!.env.prod.example
+!.env.preview.example
+!.env.production.example
 !.env.agents.example
 
 # vercel
@@ -68,5 +67,7 @@ screenshots/
 .fallow/
 .daily-recap/
 .agents/recaps/**
-.agents/plans/
 .codex/environments/
+
+# clerk configuration (can include secrets)
+/.clerk/

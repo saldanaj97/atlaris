@@ -4,10 +4,15 @@ import { z } from 'zod';
 const profileSchema = z.object({
   id: z.string(),
   name: z.string().nullable(),
-  email: z.string(),
+  email: z.string().nullable(),
   subscriptionTier: z.string(),
   subscriptionStatus: z.string().nullable(),
   createdAt: z.string(),
+  analyticsTimezone: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value ?? 'UTC'),
 });
 
 export type ProfileData = z.infer<typeof profileSchema>;

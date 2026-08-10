@@ -19,7 +19,7 @@ function PageHeader({
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
-  /** Use `h2` for nested pages under a parent title (e.g. settings sub-routes). */
+  /** Use `h2` for nested pages under a parent title. */
   titleAs?: 'h1' | 'h2';
   align?: 'start' | 'center';
 }) {
@@ -37,7 +37,9 @@ function PageHeader({
       {...props}
     >
       <div className={cn('min-w-0 flex-1', isCentered && 'w-full')}>
-        <TitleTag className='text-foreground'>{title}</TitleTag>
+        <TitleTag className='font-heading text-balance text-foreground'>
+          {title}
+        </TitleTag>
         {subtitle != null ? (
           typeof subtitle === 'string' ? (
             <p className={PAGE_HEADER_SUBTITLE_CLASS}>{subtitle}</p>

@@ -1,7 +1,7 @@
 /**
  * Factory for creating a fully-wired PlanLifecycleService instance.
  *
- * Creates a PlanLifecycleService with all adapters wired to a single DB connection.
+ * Creates a PlanLifecycleService with all collaborators wired to a single DB connection.
  *
  * Design: All lifecycle operations (plan creation, generation, generation finalization)
  * use the same database connection. This prevents the "closed connection" bug where
@@ -17,19 +17,49 @@
 
 import type { DbClient } from '@/lib/db/types';
 
-import { GenerationAdapter } from './adapters/generation-adapter';
-import { PlanPersistenceAdapter } from './adapters/plan-persistence-adapter';
-import { QuotaAdapter } from './adapters/quota-adapter';
-import { GenerationFinalizationAdapter } from './generation-finalization/adapter';
+import { createPlanLifecycleGeneration } from './generation';
+import {
+  commitPlanGenerationFailure,
+  commitPlanGenerationSuccess,
+} from './generation-finalization/store';
+import {
+  atomicCheckAndInsertPlan,
+  findCappedPlanWithoutModules,
+  markPlanGenerationFailure,
+  markPlanGenerationSuccess,
+} from './plan-persistence-store';
 import { PlanLifecycleService } from './service';
+import { resolveUserTier } from '@/features/billing/tier';
+import {
+  checkPlanDurationCap,
+  normalizePlanDurationForTier,
+} from '@/features/plans/policy/duration';
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;
 }): PlanLifecycleService {
+  const { dbClient } = params;
+
   return new PlanLifecycleService({
-    planPersistence: new PlanPersistenceAdapter(params.dbClient),
-    quota: new QuotaAdapter(params.dbClient),
-    generation: new GenerationAdapter(params.dbClient),
-    generationFinalization: new GenerationFinalizationAdapter(params.dbClient),
+    planPersistence: {
+      atomicInsertPlan: (userId, planData) =>
+        atomicCheckAndInsertPlan(userId, planData, dbClient),
+      findCappedPlanWithoutModules: (userId) =>
+        findCappedPlanWithoutModules(userId, dbClient),
+      markGenerationSuccess: (planId) =>
+        markPlanGenerationSuccess(planId, dbClient),
+      markGenerationFailure: (planId) =>
+        markPlanGenerationFailure(planId, dbClient),
+    },
+    quota: {
+      resolveUserTier: (userId) => resolveUserTier(userId, dbClient),
+      checkDurationCap: checkPlanDurationCap,
+      normalizePlanDuration: normalizePlanDurationForTier,
+    },
+    generation: createPlanLifecycleGeneration(dbClient),
+    generationFinalization: {
+      finalizeSuccess: (input) => commitPlanGenerationSuccess(dbClient, input),
+      finalizeFailure: (input) => commitPlanGenerationFailure(dbClient, input),
+    },
   });
 }

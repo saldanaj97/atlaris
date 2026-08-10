@@ -1,8 +1,12 @@
-import type { JSX } from 'react';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
 
 type IntegrationStatus = 'available' | 'coming_soon' | 'connected';
@@ -64,7 +68,7 @@ function ActionButton({
         <Button variant='default' onClick={onConnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 size-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
               Connecting…
             </>
           ) : (
@@ -73,17 +77,13 @@ function ActionButton({
         </Button>
       );
     case 'coming_soon':
-      return (
-        <Button variant='outline' disabled>
-          Coming Soon
-        </Button>
-      );
+      return null;
     case 'connected':
       return (
         <Button variant='outline' onClick={onDisconnect} disabled={isDisabled}>
           {loading ? (
             <>
-              <Loader2 className='mr-2 size-4 animate-spin' />
+              <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
               Disconnecting…
             </>
           ) : (
@@ -103,47 +103,46 @@ export function IntegrationCard({
   onConnect,
   onDisconnect,
   loading,
-}: IntegrationCardProps): JSX.Element {
+}: IntegrationCardProps) {
   return (
     <Card
       role='region'
       aria-label={name}
-      className='relative overflow-hidden rounded-3xl border border-white/50 bg-white/40 p-8 shadow-xl backdrop-blur-sm transition hover:-translate-y-1 hover:shadow-2xl dark:border-white/10 dark:bg-card/40'
+      className='flex flex-col gap-4 border-border bg-card py-5 shadow-sm sm:gap-6 sm:py-6'
     >
-      <div className='gradient-glow absolute -top-12 -right-12 size-32 opacity-30' />
-
-      <div className='relative flex flex-col gap-5'>
-        {/* Header */}
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-4'>
-            <div className='brand-fill-interactive inline-flex size-14 items-center justify-center rounded-2xl text-2xl shadow-lg'>
-              {icon}
-            </div>
-            <h3 className='text-lg font-semibold'>{name}</h3>
+      <CardHeader className='px-5 sm:px-6'>
+        <div className='flex items-center gap-3 sm:gap-4'>
+          <div
+            className='inline-flex size-11 items-center justify-center rounded-lg bg-primary/10 text-xl text-primary sm:size-14 sm:rounded-xl sm:text-2xl'
+            aria-hidden='true'
+          >
+            {icon}
           </div>
-          <StatusBadge status={status} />
+          <CardTitle className='text-lg'>{name}</CardTitle>
         </div>
+        <CardAction>
+          <StatusBadge status={status} />
+        </CardAction>
+      </CardHeader>
 
-        {/* Description */}
+      <CardContent className='flex flex-1 flex-col gap-4 px-5 sm:px-6'>
         <p className='text-sm leading-relaxed text-muted-foreground'>
           {description}
         </p>
 
-        {/* Features */}
-        <ul className='grid grid-cols-2 gap-2'>
+        <ul className='grid gap-x-3 gap-y-2 sm:grid-cols-2'>
           {features.map((feature) => (
             <li
               key={feature}
               className='flex items-center gap-2 text-sm text-muted-foreground'
             >
-              <Check className='size-4 shrink-0 text-success' />
+              <Check className='size-4 shrink-0 text-success' aria-hidden />
               {feature}
             </li>
           ))}
         </ul>
 
-        {/* Action */}
-        <div className='pt-2'>
+        <div className='mt-auto pt-1'>
           <ActionButton
             status={status}
             onConnect={onConnect}
@@ -151,7 +150,7 @@ export function IntegrationCard({
             loading={loading}
           />
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }

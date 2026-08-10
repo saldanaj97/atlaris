@@ -1,14 +1,16 @@
 import {
-  LEARNING_STYLE_ENUM,
   NOTES_MAX_LENGTH,
-  SKILL_LEVEL_ENUM,
   TOPIC_MAX_LENGTH,
-  weeklyHoursSchema,
-} from './shared';
+} from '@/shared/constants/learning-plans';
 import {
   createLearningPlanNotesSchema,
   topicSchema,
 } from '@/shared/schemas/learning-plans.schemas';
+import {
+  LEARNING_STYLE_ENUM,
+  SKILL_LEVEL_ENUM,
+  weeklyHoursSchema,
+} from '@/shared/schemas/plan-validation.schemas';
 import { z } from 'zod';
 
 const planNotesOverrideSchema = z
@@ -47,17 +49,15 @@ const planDeadlineDateOverrideSchema = z
   )
   .transform((value) => (value ? value : null));
 
-export const planRegenerationOverridesSchema = z
-  .object({
-    topic: planTopicOverrideSchema.optional(),
-    notes: planNotesOverrideSchema.optional().nullable(),
-    skillLevel: SKILL_LEVEL_ENUM.optional(),
-    weeklyHours: weeklyHoursSchema.optional(),
-    learningStyle: LEARNING_STYLE_ENUM.optional(),
-    startDate: planStartDateOverrideSchema.optional().nullable(),
-    deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
-  })
-  .strict();
+export const planRegenerationOverridesSchema = z.strictObject({
+  topic: planTopicOverrideSchema.optional(),
+  notes: planNotesOverrideSchema.optional().nullable(),
+  skillLevel: SKILL_LEVEL_ENUM.optional(),
+  weeklyHours: weeklyHoursSchema.optional(),
+  learningStyle: LEARNING_STYLE_ENUM.optional(),
+  startDate: planStartDateOverrideSchema.optional().nullable(),
+  deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
+});
 
 export const onboardingFormObject = z.object({
   topic: topicSchema,

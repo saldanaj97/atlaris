@@ -4,11 +4,12 @@
  * unique/randomized test data per run (e.g. tenant scoping tests).
  */
 
+import type { ActorUser } from '@/lib/db/queries/types/users.types';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 
 type UserRow = InferSelectModel<typeof users>;
 type UserInsert = InferInsertModel<typeof users>;
@@ -23,6 +24,8 @@ const DEFAULT_SUBSCRIPTION_LIFECYCLE: SubscriptionLifecycleFields = {
   subscriptionPeriodEnd: null,
   cancelAtPeriodEnd: false,
 };
+
+const randomSuffix = () => randomUUID().replaceAll('-', '').slice(0, 12);
 
 function resolveSubscriptionLifecycle(
   overrides: Partial<SubscriptionLifecycleFields> = {},
@@ -48,7 +51,7 @@ type CreateTestUserParams = Partial<
 >;
 
 /**
- * Inserts a user with unique authUserId and email (using nanoid).
+ * Inserts a user with unique authUserId and email.
  * Accepts overrides for deterministic tests.
  *
  * @param overrides - Optional overrides (e.g. authUserId, email) for deterministic tests
@@ -57,8 +60,8 @@ type CreateTestUserParams = Partial<
 export async function createTestUser(
   overrides: CreateTestUserParams = {},
 ): Promise<UserRow> {
-  const baseAuthUserId = `auth_test_${nanoid(12)}`;
-  const baseEmail = `test-${nanoid(12)}@example.test`;
+  const baseAuthUserId = `auth_test_${randomSuffix()}`;
+  const baseEmail = `test-${randomSuffix()}@example.test`;
 
   const [row] = await db
     .insert(users)
@@ -79,10 +82,11 @@ export async function createTestUser(
 }
 
 /**
- * Builds an in-memory user fixture without database IO.
- * Useful for unit tests that need a full DbUser shape.
+ * Builds an in-memory actor fixture without database IO.
  */
-export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
+export function buildUserFixture(
+  overrides: Partial<ActorUser> = {},
+): ActorUser {
   const now = new Date();
   const {
     subscriptionStatus,
@@ -92,13 +96,13 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
   } = overrides;
 
   return {
-    id: `user_${nanoid(12)}`,
-    authUserId: `auth_test_${nanoid(12)}`,
-    email: `test-${nanoid(12)}@example.test`,
+    id: `user_${randomSuffix()}`,
+    authUserId: `auth_test_${randomSuffix()}`,
+    email: `test-${randomSuffix()}@example.test`,
+    clerkUserUpdatedAt: null,
+    clerkDeletedAt: null,
     name: null,
     subscriptionTier: 'free',
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
     ...resolveSubscriptionLifecycle({
       subscriptionStatus,
       subscriptionPeriodEnd,
@@ -106,6 +110,7 @@ export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
     }),
     monthlyExportCount: 0,
     preferredAiModel: null,
+    analyticsTimezone: 'UTC',
     createdAt: now,
     updatedAt: now,
     ...userOverrides,

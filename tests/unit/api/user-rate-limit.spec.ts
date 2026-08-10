@@ -214,11 +214,11 @@ describe('User Rate Limiting', () => {
     });
 
     it('applies different limits for different categories', () => {
-      const billingConfig = USER_RATE_LIMIT_CONFIGS.billing;
-      for (let i = 0; i < billingConfig.maxRequests; i++) {
-        checkUserRateLimit('user_123', 'billing');
+      const aiGenerationConfig = USER_RATE_LIMIT_CONFIGS.aiGeneration;
+      for (let i = 0; i < aiGenerationConfig.maxRequests; i++) {
+        checkUserRateLimit('user_123', 'aiGeneration');
       }
-      expect(() => checkUserRateLimit('user_123', 'billing')).toThrow(
+      expect(() => checkUserRateLimit('user_123', 'aiGeneration')).toThrow(
         RateLimitError,
       );
 
@@ -226,13 +226,13 @@ describe('User Rate Limiting', () => {
     });
 
     it('tracks same user across different categories independently', () => {
-      const billingConfig = USER_RATE_LIMIT_CONFIGS.billing;
+      const aiGenerationConfig = USER_RATE_LIMIT_CONFIGS.aiGeneration;
 
-      for (let i = 0; i < billingConfig.maxRequests; i++) {
-        checkUserRateLimit('user_123', 'billing');
+      for (let i = 0; i < aiGenerationConfig.maxRequests; i++) {
+        checkUserRateLimit('user_123', 'aiGeneration');
       }
 
-      expect(() => checkUserRateLimit('user_123', 'billing')).toThrow(
+      expect(() => checkUserRateLimit('user_123', 'aiGeneration')).toThrow(
         RateLimitError,
       );
       expect(() => checkUserRateLimit('user_123', 'mutation')).not.toThrow();
@@ -324,7 +324,6 @@ describe('User Rate Limiting', () => {
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('integration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('mutation');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('read');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('billing');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('oauth');
     });
 
@@ -362,9 +361,6 @@ describe('User Rate Limiting', () => {
       );
       expect(readLimit).toBeGreaterThan(
         USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
-      );
-      expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.billing.maxRequests,
       );
     });
 

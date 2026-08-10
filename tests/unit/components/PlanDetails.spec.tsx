@@ -52,6 +52,8 @@ function createMockPlan(status: ClientPlanDetail['status']): ClientPlanDetail {
     totalMinutes: 0,
     completedMinutes: 0,
     completedModules: 0,
+    attempts: 0,
+    attemptCap: 3,
     modules: [],
   };
 }
@@ -66,7 +68,7 @@ describe('PlanDetails', () => {
     cleanup();
   });
 
-  it.each(['pending', 'processing'] as const)(
+  it.each(['pending', 'processing', 'failed'] as const)(
     'renders pending state for %s plans',
     async (status) => {
       await renderPlanDetails(createMockPlan(status));

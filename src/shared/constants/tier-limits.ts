@@ -1,5 +1,7 @@
 import type { TierLimits } from '@/shared/types/billing.types';
 
+export const MAX_SELECTABLE_PLAN_WEEKS = 24;
+
 export const TIER_LIMITS: TierLimits = {
   free: {
     maxActivePlans: 3,

@@ -1,12 +1,14 @@
 // Sentry browser SDK init (Next.js client instrumentation entry).
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
+import { toBoolean } from '@/lib/config/env/shared';
 import {
   getReplayErrorSampleRate,
   getReplaySessionSampleRate,
   shouldEnableLogs,
   tracesSampler,
 } from '@/lib/observability/sampling';
+import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
 
 // NOTE: We read `process.env` directly here instead of importing from
@@ -14,9 +16,10 @@ import * as Sentry from '@sentry/nextjs';
 // secrets (CLERK_SECRET_KEY, POSTGRES_URL, etc.) at import time, which would
 // throw in this client-side instrumentation bundle. NEXT_PUBLIC_* vars
 // are also not exposed through the server env config.
-const sendDefaultPii =
-  process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII?.trim().toLowerCase() ===
-  'true';
+const sendDefaultPii = toBoolean(
+  process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII,
+  false,
+);
 const isSentryEnabled =
   process.env.NEXT_PUBLIC_ENABLE_SENTRY?.trim().toLowerCase() !== 'false';
 
@@ -29,6 +32,8 @@ if (isSentryEnabled) {
 
     // Context-aware trace sampling (replaces flat tracesSampleRate).
     tracesSampler,
+
+    beforeSend: beforeSendSentryEvent,
 
     // SDK log shipping — disabled in production to reduce ingest volume.
     enableLogs: shouldEnableLogs(),

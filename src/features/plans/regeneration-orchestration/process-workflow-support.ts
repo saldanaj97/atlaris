@@ -4,10 +4,10 @@ import type { ProcessPlanRegenerationJobResult } from './types';
 import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { PlanRegenerationWorkflowTerminalResult } from '@/features/plans/workflows/plan-regeneration.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 import { planRegenerationJobPayloadSchema } from './schema';
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
-import { buildPlanGenerationInputFields } from '@/features/plans/generation-input';
 import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { learningPlans } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
@@ -49,10 +49,10 @@ function buildSanitizedGenerationFailureMessage(
 export function buildRegenerationGenerationInput(
   payload: PlanRegenerationJobPayload,
   plan: RegenerationPlanRow,
-) {
+): GenerationInput {
   const overrides = payload.overrides;
 
-  return buildPlanGenerationInputFields({
+  return {
     topic: overrides?.topic ?? plan.topic,
     notes: resolveRegenerationNotes(overrides),
     skillLevel: overrides?.skillLevel ?? plan.skillLevel,
@@ -63,7 +63,7 @@ export function buildRegenerationGenerationInput(
       overrides?.deadlineDate,
       plan.deadlineDate,
     ),
-  });
+  };
 }
 
 function summarizeSuccessfulGeneration(
@@ -248,15 +248,6 @@ export async function applyRegenerationGenerationResult(
     default:
       assertNever(result);
   }
-}
-
-export async function failRegenerationJobForInvalidPayload(
-  jobId: string,
-  deps: RegenerationOrchestrationDeps,
-): Promise<void> {
-  await deps.queue.failJob(jobId, INVALID_JOB_PAYLOAD_MESSAGE, {
-    retryable: false,
-  });
 }
 
 export async function failRegenerationJobForMissingPlanInWorkflow(

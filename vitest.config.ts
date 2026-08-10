@@ -1,15 +1,21 @@
-import { config } from 'dotenv';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
 import { defineConfig } from 'vitest/config';
 
 // In CI, rely on env vars injected by the workflow.
 // Locally, prefer .env.test; otherwise fall back to .env.
 // Use override: true to force .env.test values even if env vars are already set in shell
 if (!process.env.CI) {
-  if (process.env.NODE_ENV === 'test')
-    config({ path: '.env.test', override: true });
-  else config({ path: '.env' });
+  const envPath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+  if (existsSync(envPath)) {
+    if (process.env.NODE_ENV === 'test') {
+      Object.assign(process.env, parseEnv(readFileSync(envPath, 'utf8')));
+    } else {
+      process.loadEnvFile(envPath);
+    }
+  }
 }
 
 // Shared alias configuration for test projects

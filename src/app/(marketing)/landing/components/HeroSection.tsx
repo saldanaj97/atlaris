@@ -1,75 +1,85 @@
-import type { JSX } from 'react';
-
-import { marketingPrimaryCtaClassName } from './marketing-cta';
-import { Badge } from '@/components/ui/badge';
+import {
+  marketingPrimaryCtaClassName,
+  marketingSecondaryCtaClassName,
+} from '@/app/(marketing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, LayoutDashboard } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useId } from 'react';
 
-/**
- * Hero section with glassmorphism design, headline, and CTA.
- */
-export function HeroSection(): JSX.Element {
-  const headingId = useId();
+const landingEnterClassName =
+  'animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-700 motion-reduce:animate-none';
 
+const copy = {
+  overline: 'The After-Hours Edition',
+  headlineLead: 'Make space for',
+  headlineEmphasis: 'the work that changes you.',
+  subheadline: 'Plans, tasks, and analytics for the quiet hours.',
+  primaryCta: 'Begin tonight',
+  secondaryCta: 'See pricing',
+} as const;
+
+export function HeroSection() {
   return (
-    <section className='relative' aria-labelledby={headingId}>
-      <div className='relative z-10 mx-auto flex flex-col items-center px-6 pt-6 pb-48 text-center sm:pt-8 lg:min-h-screen lg:justify-center lg:pt-16'>
-        {/* Heading Text Section - positioned in upper portion with balanced spacing */}
-        <div className='flex flex-col items-center space-y-6 lg:flex-1 lg:justify-center'>
-          <Badge variant='glassmorphic' className='px-4 py-2'>
-            <span className='mr-2 size-2 rounded-full bg-linear-to-r from-primary to-accent'></span>
-            Now with AI-powered insights
-          </Badge>
+    <section
+      className='mx-auto flex max-w-4xl flex-col items-center px-6 pt-16 pb-12 text-center sm:pt-20 sm:pb-14 md:px-8'
+      aria-labelledby='landing-hero-heading'
+    >
+      <p
+        className={cn(
+          landingEnterClassName,
+          'font-serif text-[0.6875rem] font-medium tracking-[0.22em] text-muted-foreground uppercase sm:text-xs',
+        )}
+      >
+        {copy.overline}
+      </p>
 
-          <h1 id={headingId} className='marketing-h1 max-w-4xl text-foreground'>
-            Learn with
-            <span className='gradient-text'> crystal clarity</span>
-          </h1>
+      <h1
+        id='landing-hero-heading'
+        className={cn(
+          landingEnterClassName,
+          'mt-6 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground text-balance delay-150 sm:text-5xl md:text-[3.25rem]',
+        )}
+      >
+        <span className='block'>{copy.headlineLead}</span>
+        <span className='mt-1 block font-medium text-primary italic'>
+          {copy.headlineEmphasis}
+        </span>
+      </h1>
 
-          <p className='marketing-subtitle max-w-lg md:max-w-2xl'>
-            Experience learning through a beautifully crafted interface
-            that&apos;s as clear as glass and as powerful as the technology
-            behind it.
-          </p>
+      <p
+        className={cn(
+          landingEnterClassName,
+          'mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground delay-300 sm:text-lg',
+        )}
+      >
+        {copy.subheadline}
+      </p>
 
-          <Button
-            asChild
-            variant='default'
-            className={marketingPrimaryCtaClassName}
-          >
-            <Link href='/plans/new'>
-              Get started free
-              <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
-            </Link>
-          </Button>
-        </div>
-
-        {/* Glassmorphism card preview - positioned halfway down the viewport */}
-        {/* Negative margins pull the card down to overlap into the next section */}
-        <div className='relative mt-12 -mb-32 w-full max-w-7xl md:mt-6 md:-mb-40 lg:mt-0 lg:-mb-48'>
-          {/* Background glow */}
-          <div className='absolute -inset-4 rounded-3xl bg-linear-to-r from-primary/30 to-accent/30 blur-xl'></div>
-
-          <div className='relative rounded-3xl border border-white/40 bg-white/30 p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-card/30'>
-            <div className='rounded-2xl bg-linear-to-br from-white/80 to-white/40 p-6 dark:from-card/60 dark:to-card/40'>
-              <div className='flex aspect-video items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-accent/20'>
-                <div className='text-center'>
-                  <div className='brand-fill mx-auto mb-4 flex size-16 items-center justify-center rounded-full shadow-lg'>
-                    <LayoutDashboard
-                      className='size-8 text-white'
-                      aria-hidden='true'
-                    />
-                  </div>
-                  <p className='text-muted-foreground'>
-                    Your personalized learning dashboard
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div
+        className={cn(
+          landingEnterClassName,
+          'mt-9 flex w-full max-w-md flex-col justify-center gap-3 delay-500 sm:max-w-none sm:flex-row sm:items-center',
+        )}
+      >
+        <Button asChild className={marketingPrimaryCtaClassName}>
+          <Link href='/plans/new'>
+            {copy.primaryCta}
+            <ArrowRight
+              className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+              aria-hidden='true'
+            />
+          </Link>
+        </Button>
+        <Link
+          href='/pricing'
+          className={cn(
+            marketingSecondaryCtaClassName,
+            'h-auto px-8 py-4 text-base',
+          )}
+        >
+          {copy.secondaryCta}
+        </Link>
       </div>
     </section>
   );

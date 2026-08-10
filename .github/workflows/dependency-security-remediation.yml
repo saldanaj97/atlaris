@@ -1,0 +1,441 @@
+name: Dependency security remediation
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dependency-security-remediation-develop
+  cancel-in-progress: false
+
+env:
+  EXPECTED_REPOSITORY: saldanaj97/atlaris
+  BOT_BRANCH: automation/dependency-security-develop
+  BASE_BRANCH: develop
+
+jobs:
+  plan:
+    name: Plan dependency remediation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.plan.outputs.publish }}
+      status: ${{ steps.plan.outputs.status }}
+    steps:
+      - name: Check out the default branch workflow
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Assert the trusted repository and default branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          test "$GITHUB_REF_NAME" = "$DEFAULT_BRANCH"
+
+      - name: Preserve trusted remediation logic
+        run: |
+          mkdir -p "$RUNNER_TEMP/dependency-remediation"
+          cp .github/scripts/dependency-remediation.mjs "$RUNNER_TEMP/dependency-remediation.mjs"
+          cp -R .github/scripts/dependency-remediation/. "$RUNNER_TEMP/dependency-remediation/"
+
+      - name: Fetch the exact develop base
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            "refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" \
+            --depth=1
+          base_sha="$(git rev-parse "refs/remotes/origin/$BASE_BRANCH")"
+          git checkout --detach "$base_sha"
+          echo "BASE_SHA=$base_sha" >> "$GITHUB_ENV"
+
+      - name: Install pnpm 11.9.0
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 11.9.0
+
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install frozen dependencies without scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Capture base audit and resolved versions
+        id: base
+        run: |
+          set -euo pipefail
+          git show "$BASE_SHA:pnpm-workspace.yaml" > before-workspace.yaml
+          pnpm list --prod --depth 100 --json > before-versions.json
+
+          if ! bash "$RUNNER_TEMP/dependency-remediation/run-audit.sh" "$RUNNER_TEMP/dependency-remediation.mjs" before-audit.json; then
+            echo 'Dependency audit failed closed after three registry/infrastructure attempts.' >> "$GITHUB_STEP_SUMMARY"
+            cat before-audit.json.stderr >&2 || true
+            exit 1
+          fi
+          before_result="$(cat before-audit.json.result)"
+          echo "before_result=$before_result" >> "$GITHUB_OUTPUT"
+          echo "BEFORE_AUDIT_RESULT=$before_result" >> "$GITHUB_ENV"
+          if [ "$before_result" = registry-error ]; then
+            cat before-audit.json.stderr >&2 || true
+            exit 1
+          fi
+
+      - name: Plan, fix, and post-verify the remediation
+        id: plan
+        run: |
+          set -euo pipefail
+          mkdir -p remediation-artifact
+
+          if [ "$BEFORE_AUDIT_RESULT" = clean ]; then
+            cp before-audit.json after-audit.json
+            cp before-workspace.yaml after-workspace.yaml
+            cp before-versions.json after-versions.json
+            : > changed-files.txt
+            : > remediation.patch
+          else
+            set +e
+            pnpm audit --prod --audit-level=high --fix=update
+            fix_status=$?
+            set -e
+            echo "audit_fix_exit=$fix_status" >> "$GITHUB_STEP_SUMMARY"
+            pnpm install --frozen-lockfile --ignore-scripts
+            pnpm list --prod --depth 100 --json > after-versions.json
+            cp pnpm-workspace.yaml after-workspace.yaml
+            git diff --name-only "$BASE_SHA" > changed-files.txt
+            git diff --binary "$BASE_SHA" -- pnpm-lock.yaml pnpm-workspace.yaml > remediation.patch
+            if ! bash "$RUNNER_TEMP/dependency-remediation/run-audit.sh" "$RUNNER_TEMP/dependency-remediation.mjs" after-audit.json; then
+              echo 'Post-remediation audit failed closed after three registry/infrastructure attempts.' >> "$GITHUB_STEP_SUMMARY"
+              cat after-audit.json.stderr >&2 || true
+              exit 1
+            fi
+            if [ "$(cat after-audit.json.result)" = registry-error ]; then
+              cat after-audit.json.stderr >&2 || true
+              exit 1
+            fi
+          fi
+
+          set +e
+          node "$RUNNER_TEMP/dependency-remediation.mjs" plan \
+            --base-sha "$BASE_SHA" \
+            --before-audit before-audit.json \
+            --after-audit after-audit.json \
+            --versions-before before-versions.json \
+            --versions-after after-versions.json \
+            --changed-files changed-files.txt \
+            --workspace-before before-workspace.yaml \
+            --workspace-after after-workspace.yaml \
+            --patch-file remediation.patch \
+            --out-dir remediation-artifact
+          plan_status=$?
+          set -e
+          cat remediation-artifact/summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$plan_status" -ne 0 ]; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+            echo 'status=rejected' >> "$GITHUB_OUTPUT"
+            exit "$plan_status"
+          fi
+          plan_status_value="$(jq -r .status remediation-artifact/plan.json)"
+          if [ "$plan_status_value" = noop ]; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          fi
+          echo "status=$plan_status_value" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the validated plan artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dependency-remediation-plan-${{ github.run_id }}
+          path: remediation-artifact
+          if-no-files-found: error
+
+  cleanup:
+    name: Close stale remediation PR after a clean audit
+    needs: plan
+    if: needs.plan.result == 'success' && needs.plan.outputs.status == 'noop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out develop without installing dependencies
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: develop
+          path: worktree
+          fetch-depth: 0
+
+      - name: Disable auto-merge and close only a verified bot PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          git fetch --no-tags origin \
+            "refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" \
+            --depth=1
+          develop_sha="$(git rev-parse "refs/remotes/origin/$BASE_BRANCH")"
+          prs="$(gh pr list --repo "$EXPECTED_REPOSITORY" --head "$BOT_BRANCH" --base "$BASE_BRANCH" --state open --json number,author,headRefOid,baseRefName,headRefName)"
+          count="$(jq length <<<"$prs")"
+          test "$count" -le 1
+          remote_ref="$(git ls-remote origin "refs/heads/$BOT_BRANCH")"
+          if [ -z "$remote_ref" ]; then
+            test "$count" -eq 0
+            exit 0
+          fi
+          remote_sha="${remote_ref%%$'\t'*}"
+          test -n "$remote_sha"
+          if [ "$count" -eq 1 ]; then
+            pr_number="$(jq -r '.[0].number' <<<"$prs")"
+            test "$(jq -r '.[0].author.login' <<<"$prs")" = 'github-actions[bot]'
+            test "$(jq -r '.[0].headRefOid' <<<"$prs")" = "$remote_sha"
+            test "$(jq -r '.[0].baseRefName' <<<"$prs")" = "$BASE_BRANCH"
+            test "$(jq -r '.[0].headRefName' <<<"$prs")" = "$BOT_BRANCH"
+          fi
+          git fetch --no-tags origin \
+            "refs/heads/$BOT_BRANCH:refs/remotes/origin/$BOT_BRANCH"
+          read -r -a parents <<< "$(git show -s --format='%P' "$remote_sha")"
+          test "${#parents[@]}" -eq 1
+          branch_parent="${parents[0]}"
+          test "$(git merge-base "$develop_sha" "$branch_parent")" = "$branch_parent"
+          test "$(git rev-list --count "$branch_parent..$remote_sha")" -eq 1
+          commits="$(git log --format='%an%x09%ae%x09%cn%x09%ce%x09%s' "$branch_parent..$remote_sha")"
+          test -n "$commits"
+          while IFS=$'\t' read -r author author_email committer committer_email subject; do
+            test "$author" = 'github-actions[bot]'
+            [[ "$author_email" =~ ^(41898282\+)?github-actions\[bot\]@users\.noreply\.github\.com$ ]]
+            test "$committer" = 'github-actions[bot]'
+            [[ "$committer_email" =~ ^(41898282\+)?github-actions\[bot\]@users\.noreply\.github\.com$ ]]
+            test "$subject" = 'fix(deps): remediate production audit findings'
+          done <<< "$commits"
+          identity="$(gh api "repos/$EXPECTED_REPOSITORY/commits/$remote_sha" --jq '[.author.login, .committer.login] | @tsv')"
+          test "$identity" = $'github-actions[bot]\tgithub-actions[bot]'
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              pnpm-lock.yaml|pnpm-workspace.yaml) ;;
+              *) echo "untrusted bot branch file: $file" >&2; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$branch_parent..$remote_sha")
+          if [ "$count" -eq 1 ]; then
+            test "$(gh pr view "$pr_number" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$remote_sha"
+            if [ "$(gh pr view "$pr_number" --repo "$EXPECTED_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+              gh pr merge "$pr_number" --repo "$EXPECTED_REPOSITORY" --disable-auto
+            fi
+            gh pr close "$pr_number" --repo "$EXPECTED_REPOSITORY"
+          fi
+          git push origin ":refs/heads/$BOT_BRANCH" \
+            --force-with-lease="refs/heads/$BOT_BRANCH:$remote_sha"
+
+  publish:
+    name: Publish dependency remediation PR
+    needs: plan
+    if: needs.plan.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - name: Download the validated plan
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: dependency-remediation-plan-${{ github.run_id }}
+          path: remediation-artifact
+
+      - name: Check out the trusted workflow source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: trusted
+          fetch-depth: 0
+
+      - name: Check out develop without installing dependencies
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: develop
+          path: worktree
+          fetch-depth: 0
+
+      - name: Prove base SHA and existing bot branch ownership
+        id: ownership
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPOSITORY"
+          base_sha="$(jq -r .baseSha ../remediation-artifact/plan.json)"
+          test "$base_sha" != null
+          git fetch --no-tags origin \
+            "refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" \
+            --depth=1
+          test "$(git rev-parse "refs/remotes/origin/$BASE_BRANCH")" = "$base_sha"
+          git checkout --detach "$base_sha"
+
+          previous_remote_sha=''
+          if git ls-remote --exit-code origin "refs/heads/$BOT_BRANCH" > bot-branch-ref.txt; then
+            previous_remote_sha="$(awk '{print $1}' bot-branch-ref.txt)"
+            git fetch --no-tags origin \
+              "refs/heads/$BOT_BRANCH:refs/remotes/origin/$BOT_BRANCH"
+            test "$(git rev-parse "refs/remotes/origin/$BOT_BRANCH")" = "$previous_remote_sha"
+            prs="$(gh pr list --repo "$EXPECTED_REPOSITORY" --head "$BOT_BRANCH" --base "$BASE_BRANCH" --state open --json number,author,headRefOid,baseRefName,headRefName)"
+            pr_count="$(jq length <<<"$prs")"
+            test "$pr_count" -le 1
+            if [ "$pr_count" -eq 1 ]; then
+              test "$(jq -r '.[0].author.login' <<<"$prs")" = 'github-actions[bot]'
+              test "$(jq -r '.[0].headRefOid' <<<"$prs")" = "$previous_remote_sha"
+              test "$(jq -r '.[0].baseRefName' <<<"$prs")" = "$BASE_BRANCH"
+              test "$(jq -r '.[0].headRefName' <<<"$prs")" = "$BOT_BRANCH"
+            fi
+            read -r -a parents <<< "$(git show -s --format='%P' "$previous_remote_sha")"
+            test "${#parents[@]}" -eq 1
+            branch_parent="${parents[0]}"
+            test "$(git merge-base "$base_sha" "$branch_parent")" = "$branch_parent"
+            test "$(git rev-list --count "$branch_parent..$previous_remote_sha")" -eq 1
+            commits="$(git log --format='%an%x09%ae%x09%cn%x09%ce%x09%s' "$branch_parent..$previous_remote_sha")"
+            test -n "$commits"
+            while IFS=$'\t' read -r author email committer committer_email subject; do
+              test "$author" = 'github-actions[bot]'
+              [[ "$email" =~ ^(41898282\+)?github-actions\[bot\]@users\.noreply\.github\.com$ ]]
+              test "$committer" = 'github-actions[bot]'
+              [[ "$committer_email" =~ ^(41898282\+)?github-actions\[bot\]@users\.noreply\.github\.com$ ]]
+              test "$subject" = 'fix(deps): remediate production audit findings'
+            done <<< "$commits"
+            identity="$(gh api "repos/$EXPECTED_REPOSITORY/commits/$previous_remote_sha" --jq '[.author.login, .committer.login] | @tsv')"
+            test "$identity" = $'github-actions[bot]\tgithub-actions[bot]'
+            existing_files="$(git diff --name-only "$branch_parent..$previous_remote_sha")"
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              case "$file" in
+                pnpm-lock.yaml|pnpm-workspace.yaml) ;;
+                *) echo "untrusted bot branch file: $file" >&2; exit 1 ;;
+              esac
+            done <<< "$existing_files"
+          fi
+          echo "previous_remote_sha=$previous_remote_sha" >> "$GITHUB_OUTPUT"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Apply and revalidate the allowlisted patch
+        env:
+          BASE_SHA: ${{ steps.ownership.outputs.base_sha }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          git apply --binary ../remediation-artifact/remediation.patch
+          test "$(jq -r .status ../remediation-artifact/plan.json)" = ready
+          git diff --check
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              pnpm-lock.yaml|pnpm-workspace.yaml) ;;
+              *) echo "unexpected worktree file: $file" >&2; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA")
+          if ! git diff --quiet "$BASE_SHA" -- package.json; then
+            echo 'package.json must never be changed by remediation' >&2
+            exit 1
+          fi
+          node ../trusted/.github/scripts/dependency-remediation.mjs verify-worktree \
+            --plan ../remediation-artifact/plan.json \
+            --base-sha "$BASE_SHA"
+
+      - name: Commit and push the stable bot branch
+        env:
+          PREVIOUS_REMOTE_SHA: ${{ steps.ownership.outputs.previous_remote_sha }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- pnpm-lock.yaml pnpm-workspace.yaml
+          git diff --cached --quiet && { echo 'validated remediation patch is empty' >&2; exit 1; }
+          git commit -m 'fix(deps): remediate production audit findings'
+          if [ -n "$PREVIOUS_REMOTE_SHA" ]; then
+            git push origin "HEAD:$BOT_BRANCH" --force-with-lease="refs/heads/$BOT_BRANCH:$PREVIOUS_REMOTE_SHA"
+          else
+            git push origin "HEAD:$BOT_BRANCH" --force-with-lease="refs/heads/$BOT_BRANCH:"
+          fi
+          echo "FINAL_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Upsert and label the remediation PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          prs="$(gh pr list --repo "$EXPECTED_REPOSITORY" --head "$BOT_BRANCH" --base "$BASE_BRANCH" --state open --json number,headRefOid,baseRefName,headRefName)"
+          count="$(jq length <<<"$prs")"
+          if [ "$count" -gt 1 ]; then
+            echo 'more than one open remediation PR exists' >&2
+            exit 1
+          fi
+          if [ "$count" -eq 1 ]; then
+            pr_number="$(jq -r '.[0].number' <<<"$prs")"
+            test "$(jq -r '.[0].headRefOid' <<<"$prs")" = "$FINAL_SHA"
+          else
+            pr_url="$(gh pr create --repo "$EXPECTED_REPOSITORY" --base "$BASE_BRANCH" --head "$BOT_BRANCH" --title 'fix(deps): remediate production audit findings' --body-file ../remediation-artifact/pr-body.md --label dependencies --label security)"
+            pr_number="$(gh pr view "$pr_url" --repo "$EXPECTED_REPOSITORY" --json number,headRefName,baseRefName --jq .number)"
+            test "$(gh pr view "$pr_url" --repo "$EXPECTED_REPOSITORY" --json headRefName --jq .headRefName)" = "$BOT_BRANCH"
+            test "$(gh pr view "$pr_url" --repo "$EXPECTED_REPOSITORY" --json baseRefName --jq .baseRefName)" = "$BASE_BRANCH"
+          fi
+          gh pr edit "$pr_number" --repo "$EXPECTED_REPOSITORY" \
+            --title 'fix(deps): remediate production audit findings' \
+            --body-file ../remediation-artifact/pr-body.md \
+            --add-label dependencies,security
+          if gh label list --repo "$EXPECTED_REPOSITORY" --json name --jq '.[] | select(.name == "security-exception") | .name' | grep -Fxq security-exception; then
+            if jq -e '.releaseAgeExceptions | length > 0' ../remediation-artifact/plan.json > /dev/null; then
+              gh pr edit "$pr_number" --repo "$EXPECTED_REPOSITORY" --add-label security-exception
+            else
+              gh pr edit "$pr_number" --repo "$EXPECTED_REPOSITORY" --remove-label security-exception || true
+            fi
+          fi
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch PR CI for the final bot SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          gh workflow run ci-pr.yml --repo "$EXPECTED_REPOSITORY" --ref "$BOT_BRANCH" -f base_ref="$BASE_BRANCH"
+          run_id=''
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            run_id="$(gh run list --repo "$EXPECTED_REPOSITORY" --workflow ci-pr.yml --branch "$BOT_BRANCH" --event workflow_dispatch --limit 10 --json databaseId,headSha --jq '.[] | select(.headSha == "'"$FINAL_SHA"'") | .databaseId' | head -n 1)"
+            [ -n "$run_id" ] && break
+            sleep "$((attempt < 5 ? attempt : 5))"
+          done
+          test -n "$run_id"
+          gh run watch "$run_id" --repo "$EXPECTED_REPOSITORY" --exit-status
+          test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
+          gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --required --watch
+          all_checks="$(gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json name,state --jq '.[] | select(.name == "All Checks Passed (PR)" and .state == "SUCCESS")')"
+          test -n "$all_checks"
+
+      - name: Queue auto-merge only for strict stable patches
+        if: needs.plan.outputs.status == 'ready'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        working-directory: worktree
+        run: |
+          set -euo pipefail
+          if jq -e '.classification == "patch-auto-merge" and .mergeEligible == true' ../remediation-artifact/plan.json > /dev/null; then
+            gh pr merge "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --auto --squash
+          fi

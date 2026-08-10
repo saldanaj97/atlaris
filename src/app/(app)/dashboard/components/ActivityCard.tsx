@@ -1,102 +1,73 @@
 import type { ActivityItem } from '../types';
-import type React from 'react';
 
 import { cn } from '@/lib/utils';
-import { Clock, Target, TrendingUp, Trophy } from 'lucide-react';
+import { ArrowUpRight, Check, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
-const typeConfig: Record<
-  ActivityItem['type'],
-  {
-    icon: React.ComponentType<{ className?: string }>;
-    color: string;
-    borderColor: string;
-  }
-> = {
-  milestone: {
-    icon: Trophy,
-    color: 'bg-amber-100 text-amber-600',
-    borderColor: 'border-l-amber-400',
+const activityPresentation = {
+  generated: {
+    icon: Sparkles,
+    label: 'Plan generated',
+    className: 'border-primary/30 bg-primary/10 text-primary',
   },
   progress: {
-    icon: TrendingUp,
-    color: 'bg-cyan-100 text-cyan-600',
-    borderColor: 'border-l-cyan-400',
+    icon: ArrowUpRight,
+    label: 'Progress made',
+    className: 'border-chart-3/30 bg-chart-3/10 text-chart-3',
   },
-};
+  completed: {
+    icon: Check,
+    label: 'Plan completed',
+    className: 'border-success/30 bg-success/10 text-success',
+  },
+} as const;
 
-function ActivityCardMetadata({
-  metadata,
+/**
+ * Dashboard activity event with an explicit event label and timestamp.
+ */
+export function ActivityCard({
+  activity,
+  index = 0,
 }: {
-  metadata: NonNullable<ActivityItem['metadata']>;
+  activity: ActivityItem;
+  index?: number;
 }) {
-  return (
-    <div className='flex flex-wrap items-center gap-3'>
-      {metadata.duration && (
-        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Clock className='size-3' />
-          {metadata.duration}
-        </span>
-      )}
-      {metadata.progress !== undefined && (
-        <span className='flex items-center gap-1 text-xs text-muted-foreground'>
-          <Target className='size-3' />
-          {metadata.progress}% complete
-        </span>
-      )}
-    </div>
-  );
-}
-
-export function ActivityCard({ activity }: { activity: ActivityItem }) {
-  const config = typeConfig[activity.type];
-  const Icon = config.icon;
+  const presentation = activityPresentation[activity.kind];
+  const Icon = presentation.icon;
 
   return (
-    <article
-      className={cn(
-        'group relative overflow-hidden rounded-2xl border border-l-4 border-panel-border bg-panel p-5 shadow-sm transition hover:shadow-md',
-        config.borderColor,
-      )}
+    <Link
+      href={`/plans/${activity.planId}`}
+      className='group animate-dashboard-ledger-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 transition-colors duration-500 hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:animate-none sm:px-6'
+      style={{ animationDelay: `${360 + Math.min(index, 8) * 55}ms` }}
     >
-      <div className='flex gap-4'>
-        {/* Icon */}
-        <div
-          className={cn(
-            'flex size-10 flex-shrink-0 items-center justify-center rounded-xl',
-            config.color,
-          )}
-        >
-          <Icon className='size-5' />
-        </div>
+      <span
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-full border',
+          presentation.className,
+        )}
+        aria-hidden='true'
+      >
+        <Icon className='size-4' />
+      </span>
 
-        {/* Content */}
-        <div className='min-w-0 flex-1'>
-          <div className='mb-1 flex items-start justify-between gap-2'>
-            <div>
-              <span className='text-xs font-medium text-muted-foreground'>
-                {activity.planTitle}
-              </span>
-              <h4 className='font-semibold text-foreground'>
-                {activity.title}
-              </h4>
-            </div>
-            <span className='flex-shrink-0 text-xs text-muted-foreground'>
-              {activity.timestamp}
-            </span>
-          </div>
-
-          {activity.description && (
-            <p className='mb-3 text-sm text-muted-foreground'>
-              {activity.description}
-            </p>
-          )}
-
-          {/* Metadata */}
-          {activity.metadata && (
-            <ActivityCardMetadata metadata={activity.metadata} />
-          )}
-        </div>
+      <div className='min-w-0'>
+        <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+          {presentation.label}
+        </p>
+        <p className='mt-0.5 truncate text-sm font-medium text-foreground'>
+          {activity.title}
+        </p>
       </div>
-    </article>
+
+      <div className='text-right'>
+        <time
+          dateTime={activity.occurredAt}
+          className='text-xs text-muted-foreground tabular-nums'
+        >
+          {activity.timestamp}
+        </time>
+      </div>
+    </Link>
   );
 }

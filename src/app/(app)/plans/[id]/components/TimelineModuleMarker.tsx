@@ -9,7 +9,7 @@ export function TimelineModuleMarker({ status }: { status: ModuleStatus }) {
   return (
     <div
       className={cn(
-        'z-10 flex size-6 items-center justify-center rounded-full border-[3px] bg-panel transition-all duration-500 ease-out',
+        'z-10 flex size-6 items-center justify-center rounded-full border-[3px] bg-panel transition-[border-color,background-color,box-shadow] duration-500 ease-out',
         getTimelineMarkerClassName(status),
       )}
     >
@@ -17,7 +17,7 @@ export function TimelineModuleMarker({ status }: { status: ModuleStatus }) {
         <CheckCircle2 size={14} className='fill-success/10' />
       )}
       {status === 'active' && (
-        <div className='size-2 animate-pulse rounded-full bg-primary' />
+        <div className='size-2 animate-pulse rounded-full bg-primary motion-reduce:animate-none' />
       )}
       {status === 'locked' && <Lock size={10} />}
     </div>
