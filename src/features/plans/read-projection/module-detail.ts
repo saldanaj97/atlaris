@@ -145,7 +145,7 @@ export function buildModuleDetailReadModel(
       startedAt: rows.module.lessonGenerationStartedAt,
       completedAt: rows.module.lessonGenerationCompletedAt,
       failedAt: rows.module.lessonGenerationFailedAt,
-      error: rows.module.lessonGenerationError,
+      error: null,
     },
     tasks,
   };

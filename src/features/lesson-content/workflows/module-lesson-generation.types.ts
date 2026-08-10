@@ -33,10 +33,7 @@ export type ModuleLessonWorkflowResult =
       readonly kind: 'success';
       readonly durationMs: number;
     })
-  | (ModuleLessonWorkflowRunResultBase & {
-      readonly kind: 'failed';
-      readonly message: string;
-    })
+  | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'failed' })
   | (ModuleLessonWorkflowRunResultBase & {
       readonly kind: 'quota_denied';
       readonly currentCount: number;

@@ -47,7 +47,8 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 
 - **Primary keys:** UUID on all user-facing tables
 - **User identity:** `users.auth_user_id` is unique and maps the Clerk auth identity to the internal `users.id`
-- **Email uniqueness:** `users.email` is unique
+- **Email uniqueness:** `users.email` is nullable and unique when present; it stores only Clerk's verified primary address
+- **Clerk identity projection:** `users.clerk_user_updated_at` rejects stale lifecycle updates; `users.clerk_deleted_at` tombstones a signed Clerk deletion without cascading user data
 - **Ownership integrity:** foreign keys generally cascade on delete
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
 - **Preferences:** `user_preferences.user_id` and `user_email_notification_settings.user_id` are 1:1 with `users`; category prefs use `unique(user_id, category)`

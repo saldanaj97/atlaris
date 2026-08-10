@@ -292,7 +292,9 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
       </LedgerRow>
 
       <LedgerRow label='Email' hint='Managed by your sign-in provider.'>
-        <span className='text-foreground'>{state.profile.email}</span>
+        <span className='text-foreground'>
+          {state.profile.email ?? 'Unavailable'}
+        </span>
       </LedgerRow>
 
       <LedgerRow label='Member since'>

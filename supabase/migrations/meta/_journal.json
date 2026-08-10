@@ -330,6 +330,27 @@
       "when": 1785859200000,
       "tag": "20260804160000_revoke_task_progress_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786442400000,
+      "tag": "20260811100000_clear_module_lesson_generation_errors",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1786442460000,
+      "tag": "20260811100100_add_clerk_user_identity_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1786442520000,
+      "tag": "20260811100200_enforce_resolved_email_delivery_payload_minimization",
+      "breakpoints": true
     }
   ]
 }

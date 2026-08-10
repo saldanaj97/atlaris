@@ -14,6 +14,8 @@ import { logger } from '@/lib/logging/logger';
 import { ModuleLessonGenerationApiResponseSchema } from '@/shared/schemas/lesson-content.schemas';
 
 type StartModuleLessonGeneration = typeof startModuleLessonGeneration;
+const LESSON_GENERATION_FAILURE_MESSAGE =
+  'Lesson generation failed. Please try again.';
 
 /**
  * Factory for the module lesson content generate POST handler.
@@ -102,7 +104,7 @@ function mapModuleLessonGenerationResult(
           state: 'provider_failure',
           planId,
           moduleId,
-          message: result.message,
+          message: LESSON_GENERATION_FAILURE_MESSAGE,
         }),
         { status: 502 },
       );

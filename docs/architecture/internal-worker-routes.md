@@ -43,7 +43,7 @@ The Vercel Cron email route accepts only `Authorization: Bearer $CRON_SECRET`; i
 ### Production vs non-production
 
 - **Production:** enabled routes require a worker token or return `503`. Disabled routes return `503` before token validation.
-- **Non-production:** enabled routes without a token allow unauthenticated access (local/staging convenience only).
+- **Local non-production:** enabled routes without a token allow unauthenticated access. Hosted Preview and Staging deployments use the production runtime profile and therefore require worker tokens.
 
 ## Middleware
 

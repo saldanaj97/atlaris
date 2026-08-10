@@ -209,6 +209,7 @@ describe('module-detail read projection', () => {
         lessonGenerationStatus: 'ready',
         lessonGenerationStartedAt: BASE,
         lessonGenerationCompletedAt: updatedAt,
+        lessonGenerationError: 'legacy provider diagnostic',
       },
       taskRows: [
         {
@@ -229,6 +230,7 @@ describe('module-detail read projection', () => {
       failedAt: null,
       error: null,
     });
+    expect(JSON.stringify(model)).not.toContain('legacy provider diagnostic');
     expect(model!.module.tasks[0].lessonContent).toEqual(lessonContent);
     expect(model!.module.tasks[0].lessonContentUpdatedAt).toBe(updatedAt);
   });

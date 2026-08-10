@@ -192,7 +192,7 @@ This path is **not** the streamed plan creator. It fills structured lesson conte
 3. Build batch prompts from `src/features/lesson-content/module-lesson-prompts.ts`.
 4. Inside quota boundary: resolve provider (`resolveModelForTier` unless tests inject a provider), call `generateModuleLessonBatchWithInstrumentation`, parse stream via `parseModuleLessonBatchFromStream`.
 5. **Persist** in one transaction path: `commitModuleLessonBatchSuccess` writes per-task `lesson_content`, sets module to `ready`, records AI usage metadata, increments `usage_metrics.lesson_modules_generated` for the calendar month (via `src/features/billing/metered-reservation.ts` / `usage-metrics.ts`).
-6. On parser/provider failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` with a truncated error string; quota work returns `revert` so the meter reservation is compensated.
+6. On parser/provider failure after claim: `commitModuleLessonGenerationFailure` sets the module to `failed` with `lesson_generation_error` left `NULL`; raw diagnostic details stay in server logs. Quota work returns `revert` so the meter reservation is compensated.
 
 ### API response shape
 

@@ -392,7 +392,13 @@ describe('module lesson generation boundary (integration)', () => {
       .from(modules)
       .where(eq(modules.id, mod.id));
     expect(modRow?.lessonGenerationStatus).toBe('failed');
-    expect(modRow?.lessonGenerationError).toMatch(/valid JSON/i);
+    expect(modRow?.lessonGenerationError).toBeNull();
+
+    const [ownerVisibleModule] = await rlsDb
+      .select({ lessonGenerationError: modules.lessonGenerationError })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(ownerVisibleModule?.lessonGenerationError).toBeNull();
 
     const [taskRow] = await db
       .select({ lessonContent: tasks.lessonContent })
@@ -465,10 +471,7 @@ describe('module lesson generation boundary (integration)', () => {
       { provider: driftingProvider },
     );
 
-    expect(result.kind).toBe('failed');
-    expect(result.kind === 'failed' ? result.message : '').toMatch(
-      /coverage drifted/i,
-    );
+    expect(result).toEqual({ kind: 'failed' });
 
     const [modRow] = await db
       .select()
@@ -721,7 +724,7 @@ describe('module lesson generation boundary (integration)', () => {
       },
     );
 
-    expect(result.kind).toBe('failed');
+    expect(result).toEqual({ kind: 'failed' });
     expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
 
     const [modRow] = await db

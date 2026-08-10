@@ -46,7 +46,7 @@ function hasCoreIdentityFields(maybeUser: Partial<ActorUser>): boolean {
   return (
     typeof maybeUser.id === 'string' &&
     typeof maybeUser.authUserId === 'string' &&
-    typeof maybeUser.email === 'string'
+    (typeof maybeUser.email === 'string' || maybeUser.email === null)
   );
 }
 
@@ -190,6 +190,7 @@ export async function createUser(
     authUserId: userData.authUserId,
     email: userData.email,
     name: userData.name,
+    clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
   };
 
   const result = await client.insert(users).values(insertData).returning();
@@ -212,6 +213,7 @@ export async function getOrCreateUser(
       authUserId: userData.authUserId,
       email: userData.email,
       name: userData.name,
+      clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
     })
     .onConflictDoNothing({ target: users.authUserId })
     .returning();
