@@ -114,6 +114,9 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '20260811100700_revoke_anon_unsafe_table_privileges.sql',
     );
+    expect(script).toContain(
+      '20260811100800_revoke_security_definer_execute.sql',
+    );
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -143,6 +146,29 @@ describe('Supabase migration workflows', () => {
       'ALTER DEFAULT PRIVILEGES IN SCHEMA public\n  REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES\n  FROM PUBLIC, anon;',
     );
     expect(migration).not.toMatch(/REVOKE SELECT/i);
+  });
+
+  it('revokes browser execution of security-definer functions only', () => {
+    const migration = readFileSync(
+      join(
+        MIGRATIONS_DIR,
+        '20260811100800_revoke_security_definer_execute.sql',
+      ),
+      'utf8',
+    );
+
+    expect(migration).toContain('procedure.prosecdef');
+    expect(migration).toContain("namespace.nspname IN ('public', 'private')");
+    expect(migration).toContain(
+      "'REVOKE ALL PRIVILEGES ON FUNCTION %s FROM PUBLIC, anon, authenticated'",
+    );
+    expect(migration).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres\n  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;',
+    );
+    expect(migration).toContain(
+      'ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public\n  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;',
+    );
+    expect(migration).not.toMatch(/ON ALL FUNCTIONS/i);
   });
 
   it('attests effective privileges after each successful migration phase', () => {
@@ -266,7 +292,7 @@ describe('Supabase migration workflows', () => {
     const targetEntries = journal.entries.filter((entry) =>
       entry.tag.startsWith('20260811100'),
     );
-    expect(targetEntries.slice(-4)).toEqual([
+    expect(targetEntries.slice(-5)).toEqual([
       {
         idx: 51,
         version: '7',
@@ -295,8 +321,15 @@ describe('Supabase migration workflows', () => {
         tag: '20260811100700_revoke_anon_unsafe_table_privileges',
         breakpoints: true,
       },
+      {
+        idx: 55,
+        version: '7',
+        when: 1786442880000,
+        tag: '20260811100800_revoke_security_definer_execute',
+        breakpoints: true,
+      },
     ]);
-    for (const entry of targetEntries.slice(-4)) {
+    for (const entry of targetEntries.slice(-5)) {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
 
