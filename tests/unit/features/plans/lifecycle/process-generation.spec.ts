@@ -57,7 +57,7 @@ function createMockPorts(
         metadata: {
           provider: 'openai',
           model: 'gpt-4o',
-          usage: { inputTokens: 100, outputTokens: 200 },
+          usage: { promptTokens: 100, completionTokens: 200 },
         },
         usage: makeCanonicalUsage(),
         durationMs: 1500,
@@ -269,7 +269,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
             metadata: {
               provider: 'openai',
               model: 'gpt-4o',
-              usage: { inputTokens: 50, outputTokens: 0 },
+              usage: { promptTokens: 50, completionTokens: 0 },
             },
             usage: makeCanonicalUsage({
               inputTokens: 50,
@@ -345,7 +345,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
           metadata: {
             provider: 'anthropic',
             model: 'claude-3',
-            usage: { inputTokens: 80, outputTokens: 10 },
+            usage: { promptTokens: 80, completionTokens: 10 },
           },
           usage,
           durationMs: 150,

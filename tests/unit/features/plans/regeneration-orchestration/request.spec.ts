@@ -721,6 +721,51 @@ describe('requestPlanRegeneration', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('logs when quota reconciliation remains required after workflow attachment is canceled', async () => {
+      const persistError = new Error('runId persist failed');
+      const updateRegenerationJobPayload = vi.fn(async () => {
+        throw persistError;
+      });
+      const failJob = vi.fn(async () => null);
+      const runReserved = vi.fn(async (args) => {
+        const workResult = await args.work();
+        return {
+          ok: true as const,
+          consumed: false as const,
+          value: workResult.value,
+          reconciliationRequired: true as const,
+        };
+      });
+      const deps = buildDeps({
+        queue: { failJob, updateRegenerationJobPayload },
+        quota: { runReserved },
+      });
+
+      const result = await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          inlineProcessingEnabled: false,
+        },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'workflow-start-failed',
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        retryable: false,
+      });
+      expect(deps.logger.error).toHaveBeenCalledWith(
+        {
+          jobId: 'job-1',
+          planId: ownedPlan.id,
+          reconciliationRequired: true,
+        },
+        'Regeneration quota revert requires reconciliation after workflow attach cancellation',
+      );
+    });
+
     it('returns a structured persist failure when job terminalization fails', async () => {
       const persistError = new Error('runId persist failed');
       const updateRegenerationJobPayload = vi.fn(async () => {

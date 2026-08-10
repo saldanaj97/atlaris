@@ -6,7 +6,7 @@ Guidelines for environment variables and logging in this project.
 
 ### Core Rule
 
-**All env access must go through `@/lib/config/env`.** Do **not** read `process.env` directly outside that module.
+**All env access must go through a module under `@/lib/config/env`.** Do **not** read `process.env` directly outside that directory. Import stable shared exports from `@/lib/config/env`; import a facet directly when it is intentionally not part of that compatibility barrel.
 
 ### Hosted runtime profile
 
@@ -24,11 +24,11 @@ Prefer the exported grouped configs instead of raw keys:
 - `openRouterEnv` - OpenRouter transport configuration
 - `devAuthEnv` - Development auth overrides
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
-- `attemptsEnv` - Attempt cap overrides
+- `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
-- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
-- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; implemented in `src/lib/config/env/lesson-content.ts`)
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). Import from `@/lib/config/env/email`. `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
+- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; import from `@/lib/config/env/lesson-content`)
 - `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
 
@@ -58,9 +58,9 @@ Hosted templates list `FLAGS` / `FLAGS_SECRET` in `.env.preview.example` and `.e
 
 If you need a new variable:
 
-1. Add it to `src/lib/config/env.ts`
+1. Add it to the owning facet under `src/lib/config/env/`.
 2. Include proper validation (using Zod)
-3. Export it through the appropriate grouped config
+3. Re-export it from `src/lib/config/env.ts` only when it is a stable shared config; otherwise keep the direct facet import and document it here.
 
 ### Auth Variables
 
@@ -306,7 +306,7 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 - `docs/third-party-services/1password-agents-setup.md` - Cloud agent env bootstrap from 1Password
 - `docs/architecture/email-notification-delivery-runbook.md` - Email delivery ops + preference model
 - `src/flags.ts` - Vercel Flags declarations
-- `src/lib/config/env.ts` - Environment variable definitions and validation
+- `src/lib/config/env.ts` - Stable environment-config compatibility barrel; facet modules under `src/lib/config/env/` own definitions and validation
 - `src/lib/logging/logger.ts` - Server-side Pino structured logging
 - `src/lib/logging/client.ts` - Client-side console wrapper
 - `src/lib/logging/request-context.ts` - Request context helpers for API routes

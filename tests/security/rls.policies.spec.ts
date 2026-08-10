@@ -123,6 +123,21 @@ describe('RLS Policy Verification', () => {
         expect(roles.size).toBeGreaterThan(0);
       }
     });
+
+    it('does not retain a task-progress DELETE policy', async () => {
+      const result = await db.execute(sql`
+        SELECT policyname
+        FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = 'task_progress'
+          AND cmd = 'DELETE'
+      `);
+      const rows = Array.isArray(result)
+        ? result
+        : (result as { rows: unknown[] }).rows;
+
+      expect(rows).toEqual([]);
+    });
   });
 
   describe('Service Role Access (RLS Bypass)', () => {

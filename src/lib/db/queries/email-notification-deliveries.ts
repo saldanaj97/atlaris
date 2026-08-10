@@ -31,7 +31,7 @@ export type EmailDeliveryClaimResult =
       status: 'sent' | 'skipped' | 'manual_review';
     }
   | { outcome: 'in_flight'; status: 'pending' }
-  | { outcome: 'manual_review'; deliveryId: string };
+  | { outcome: 'manual_review'; deliveryId: string; failureClass: string };
 
 export class EmailDeliveryLostLeaseError extends Error {
   constructor(message = 'Email delivery lease was lost before finalization') {
@@ -122,32 +122,76 @@ export async function countEmailNotificationDeliveryManualReviews(
     .manualReview;
 }
 
-function asProviderRequest(value: unknown): PersistedProviderRequest | null {
-  if (!value || typeof value !== 'object') {
+const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const hasForbiddenHeaderValue = (value: string) =>
+  [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 8 || (code >= 10 && code <= 31) || code === 127;
+  });
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function asHeaders(value: unknown): Record<string, string> | null | undefined {
+  if (value === undefined) return undefined;
+  if (!isPlainObject(value)) {
     return null;
   }
-  const record = value as Partial<PersistedProviderRequest>;
+
+  const headers = Object.entries(value);
   if (
-    typeof record.from !== 'string' ||
-    typeof record.to !== 'string' ||
-    typeof record.subject !== 'string' ||
-    typeof record.html !== 'string' ||
-    typeof record.text !== 'string' ||
-    typeof record.idempotencyKey !== 'string'
+    headers.some(
+      ([name, headerValue]) =>
+        !HEADER_NAME.test(name) ||
+        typeof headerValue !== 'string' ||
+        hasForbiddenHeaderValue(headerValue),
+    )
+  ) {
+    return null;
+  }
+
+  return Object.fromEntries(headers) as Record<string, string>;
+}
+
+function asProviderRequest(value: unknown): PersistedProviderRequest | null {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+  const headers = asHeaders(value.headers);
+  const replyTo =
+    value.replyTo === undefined
+      ? undefined
+      : typeof value.replyTo === 'string' &&
+          !hasForbiddenHeaderValue(value.replyTo)
+        ? value.replyTo
+        : null;
+  if (
+    typeof value.from !== 'string' ||
+    typeof value.to !== 'string' ||
+    typeof value.subject !== 'string' ||
+    typeof value.html !== 'string' ||
+    typeof value.text !== 'string' ||
+    typeof value.idempotencyKey !== 'string' ||
+    headers === null ||
+    replyTo === null
   ) {
     return null;
   }
   return {
-    from: record.from,
-    to: record.to,
-    subject: record.subject,
-    html: record.html,
-    text: record.text,
-    idempotencyKey: record.idempotencyKey,
-    ...(typeof record.replyTo === 'string' ? { replyTo: record.replyTo } : {}),
-    ...(record.headers && typeof record.headers === 'object'
-      ? { headers: record.headers as Record<string, string> }
-      : {}),
+    from: value.from,
+    to: value.to,
+    subject: value.subject,
+    html: value.html,
+    text: value.text,
+    idempotencyKey: value.idempotencyKey,
+    ...(replyTo === undefined ? {} : { replyTo }),
+    ...(headers === undefined ? {} : { headers }),
   };
 }
 
@@ -201,6 +245,10 @@ export async function claimEmailNotificationDelivery(
   dbClient: DeliveryDb,
 ): Promise<EmailDeliveryClaimResult> {
   const now = args.now ?? new Date();
+  const providerRequest = asProviderRequest(args.providerRequest);
+  if (!providerRequest) {
+    throw new Error('Invalid provider request');
+  }
   const claimToken = randomUUID();
   const claimExpiresAt = leaseExpiry(now);
 
@@ -213,7 +261,7 @@ export async function claimEmailNotificationDelivery(
       status: 'pending',
       claimToken,
       claimExpiresAt,
-      providerRequest: args.providerRequest,
+      providerRequest,
       attemptCount: 1,
       // Keep ledger timestamps aligned with the injected delivery clock so
       // ambiguity-window checks stay consistent in tests and scheduled runs.
@@ -285,11 +333,12 @@ export async function claimEmailNotificationDelivery(
     const useRecomputedRequest = shouldUseRecomputedRequest(
       existing.failureClass,
       previousRequest,
-      args.providerRequest,
+      providerRequest,
     );
-    const requestForRetry = useRecomputedRequest
-      ? args.providerRequest
-      : previousRequest;
+    const requestForRetry =
+      useRecomputedRequest || previousRequest === null
+        ? providerRequest
+        : previousRequest;
     if (!requestForRetry) {
       throw new Error('Failed delivery missing provider request');
     }
@@ -329,7 +378,8 @@ export async function claimEmailNotificationDelivery(
         deliveryId: reclaimed[0].id,
         claimToken: reclaimed[0].claimToken,
         providerRequest: stored,
-        reusedProviderRequest: !useRecomputedRequest,
+        reusedProviderRequest:
+          previousRequest !== null && !useRecomputedRequest,
         reclaimedExpiredPending: false,
       };
     }
@@ -344,22 +394,24 @@ export async function claimEmailNotificationDelivery(
     }
 
     const storedRequest = asProviderRequest(existing.providerRequest);
-    if (!storedRequest) {
-      throw new Error('Expired pending delivery missing provider request');
-    }
 
     // Measure ambiguity from first claim time; reclaim must not reset the window.
     const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
-    const recipientChanged = storedRequest.to !== args.providerRequest.to;
-    if (recipientChanged || ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS) {
+    const failureClass =
+      storedRequest === null
+        ? 'persisted_provider_request_invalid'
+        : storedRequest.to !== providerRequest.to
+          ? 'recipient_changed_since_claim'
+          : ageMs > EMAIL_PROVIDER_IDEMPOTENCY_WINDOW_MS
+            ? 'provider_acceptance_ambiguous'
+            : null;
+    if (failureClass) {
       const reviewed = await dbClient
         .update(emailNotificationDeliveries)
         .set({
           status: 'manual_review',
-          failureClass: recipientChanged
-            ? EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim
-            : 'provider_acceptance_ambiguous',
+          failureClass,
           claimToken: null,
           claimExpiresAt: null,
           updatedAt: now,
@@ -374,9 +426,17 @@ export async function claimEmailNotificationDelivery(
         .returning({ id: emailNotificationDeliveries.id });
 
       if (reviewed[0]) {
-        return { outcome: 'manual_review', deliveryId: reviewed[0].id };
+        return {
+          outcome: 'manual_review',
+          deliveryId: reviewed[0].id,
+          failureClass,
+        };
       }
       return readCurrentClaimResult(existing.id, dbClient);
+    }
+
+    if (!storedRequest) {
+      throw new Error('Expired pending delivery missing provider request');
     }
 
     const reclaimed = await dbClient

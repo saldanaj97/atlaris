@@ -26,7 +26,7 @@ export type FinalizeGenerationSuccessInput = {
   readonly attemptId: string;
   readonly preparation: AttemptReservation;
   readonly modules: readonly ParsedModule[];
-  readonly providerMetadata: Record<string, unknown>;
+  readonly providerMetadata: ProviderMetadata;
   readonly usage: CanonicalAIUsage;
   readonly durationMs: number;
   readonly extendedTimeout: boolean;

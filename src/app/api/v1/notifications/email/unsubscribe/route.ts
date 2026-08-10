@@ -7,6 +7,12 @@ const NO_STORE_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
 } as const;
 
+const ONE_CLICK_MAX_BYTES = 64 * 1024;
+const ONE_CLICK_MEDIA_TYPES = new Set([
+  'application/x-www-form-urlencoded',
+  'multipart/form-data',
+]);
+
 function confirmationHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -69,6 +75,70 @@ function htmlResponse(body: string, status = 200): Response {
   });
 }
 
+function mediaType(request: Request): string | null {
+  const contentType = request.headers.get('content-type');
+  if (!contentType) return null;
+  return contentType.split(';', 1)[0]?.trim().toLowerCase() || null;
+}
+
+async function readBodyCapped(request: Request): Promise<Uint8Array | null> {
+  if (!request.body) return new Uint8Array();
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    length += value.byteLength;
+    if (length > ONE_CLICK_MAX_BYTES) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+async function parseOneClickForm(
+  request: Request,
+): Promise<{ form: FormData } | { status: 400 | 413 | 415 }> {
+  const contentType = request.headers.get('content-type');
+  if (!contentType || !ONE_CLICK_MEDIA_TYPES.has(mediaType(request) ?? '')) {
+    return { status: 415 };
+  }
+
+  const declaredLength = Number(request.headers.get('content-length'));
+  if (Number.isFinite(declaredLength) && declaredLength > ONE_CLICK_MAX_BYTES) {
+    return { status: 413 };
+  }
+
+  const body = await readBodyCapped(request);
+  if (body === null) return { status: 413 };
+  const parsedBody = new ArrayBuffer(body.byteLength);
+  new Uint8Array(parsedBody).set(body);
+
+  try {
+    const form = await new Request(request.url, {
+      method: request.method,
+      headers: { 'content-type': contentType },
+      body: parsedBody,
+    }).formData();
+    return { form };
+  } catch {
+    return { status: 400 };
+  }
+}
+
 async function handleGet(): Promise<Response> {
   // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
@@ -80,20 +150,16 @@ async function handlePost(request: Request): Promise<Response> {
     return htmlResponse(failureHtml(), 400);
   }
 
-  let form: FormData;
-  try {
-    form = await request.formData();
-  } catch {
-    return htmlResponse(failureHtml(), 400);
+  const parsed = await parseOneClickForm(request);
+  if ('status' in parsed) {
+    return htmlResponse(failureHtml(), parsed.status);
   }
 
-  const listUnsubscribeValues = form
-    .getAll('List-Unsubscribe')
-    .filter((value): value is string => typeof value === 'string');
-
+  const entries = [...parsed.form.entries()];
   if (
-    listUnsubscribeValues.length !== 1 ||
-    listUnsubscribeValues[0] !== 'One-Click'
+    entries.length !== 1 ||
+    entries[0]?.[0] !== 'List-Unsubscribe' ||
+    entries[0][1] !== 'One-Click'
   ) {
     return htmlResponse(failureHtml(), 400);
   }

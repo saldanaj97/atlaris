@@ -529,6 +529,7 @@ describe('email notification deliveries ledger', () => {
       headers: {
         'List-Unsubscribe': '<https://example.com/unsub>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Trace': 'trace\tvalue',
       },
     });
     const first = await claimEmailNotificationDelivery(
@@ -563,6 +564,7 @@ describe('email notification deliveries ledger', () => {
           headers: {
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
             'List-Unsubscribe': '<https://example.com/unsub>',
+            'X-Trace': 'trace\tvalue',
           },
         }),
       },
@@ -576,6 +578,65 @@ describe('email notification deliveries ledger', () => {
     );
     expect(second.reusedProviderRequest).toBe(true);
     expect(second.reclaimedExpiredPending).toBe(false);
+  });
+
+  it('recomputes failed deliveries with malformed persisted headers', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-malformed-failed');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: providerRequest({
+          idempotencyKey: 'malformed-failed:daily:2026-07-10',
+        }),
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    await markEmailNotificationDeliveryFailed(
+      {
+        deliveryId: first.deliveryId,
+        claimToken: first.claimToken,
+        failureClass: 'provider_rate_limited',
+      },
+      db,
+    );
+    await db
+      .update(emailNotificationDeliveries)
+      .set({
+        providerRequest: providerRequest({
+          headers: { 'List-Unsubscribe\nInjected': 'value' },
+          idempotencyKey: 'malformed-failed:daily:2026-07-10',
+        }),
+      })
+      .where(eq(emailNotificationDeliveries.id, first.deliveryId));
+
+    const recomputed = providerRequest({
+      subject: 'Recomputed subject',
+      idempotencyKey: 'malformed-failed:daily:2026-07-10',
+    });
+    const retried = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'daily_reminder',
+        deliveryKey: '2026-07-10',
+        providerRequest: recomputed,
+      },
+      db,
+    );
+
+    expect(retried).toMatchObject({
+      outcome: 'claimed',
+      providerRequest: recomputed,
+      reusedProviderRequest: false,
+    });
   });
 
   it('does not steal a fresh pending lease and reclaims an expired one with the original request', async () => {
@@ -743,6 +804,7 @@ describe('email notification deliveries ledger', () => {
     expect(result).toEqual({
       outcome: 'manual_review',
       deliveryId: first.deliveryId,
+      failureClass: 'recipient_changed_since_claim',
     });
     const [row] = await db
       .select()
@@ -752,6 +814,69 @@ describe('email notification deliveries ledger', () => {
       status: 'manual_review',
       failureClass: 'recipient_changed_since_claim',
       providerRequest: original,
+      claimToken: null,
+      claimExpiresAt: null,
+    });
+  });
+
+  it('moves an expired pending delivery with malformed headers to manual review', async () => {
+    const authUserId = buildTestAuthUserId('email-ledger-malformed-pending');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+    const claimedAt = new Date('2026-07-01T12:00:00.000Z');
+    const first = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'weekly_summary',
+        deliveryKey: '2026-06-30',
+        providerRequest: providerRequest({
+          idempotencyKey: 'malformed-pending:weekly:2026-06-30',
+        }),
+        now: claimedAt,
+      },
+      db,
+    );
+    expect(first.outcome).toBe('claimed');
+    if (first.outcome !== 'claimed') return;
+
+    await db
+      .update(emailNotificationDeliveries)
+      .set({
+        claimExpiresAt: claimedAt,
+        providerRequest: providerRequest({
+          headers: { 'List-Unsubscribe': 'value\r\ninjected: true' },
+          idempotencyKey: 'malformed-pending:weekly:2026-06-30',
+        }),
+      })
+      .where(eq(emailNotificationDeliveries.id, first.deliveryId));
+
+    const result = await claimEmailNotificationDelivery(
+      {
+        userId,
+        category: 'weekly_summary',
+        deliveryKey: '2026-06-30',
+        providerRequest: providerRequest({
+          idempotencyKey: 'malformed-pending:weekly:2026-06-30',
+        }),
+        now: new Date(claimedAt.getTime() + EMAIL_DELIVERY_LEASE_MS + 1),
+      },
+      db,
+    );
+
+    expect(result).toEqual({
+      outcome: 'manual_review',
+      deliveryId: first.deliveryId,
+      failureClass: 'persisted_provider_request_invalid',
+    });
+    const [row] = await db
+      .select()
+      .from(emailNotificationDeliveries)
+      .where(eq(emailNotificationDeliveries.id, first.deliveryId));
+    expect(row).toMatchObject({
+      status: 'manual_review',
+      failureClass: 'persisted_provider_request_invalid',
       claimToken: null,
       claimExpiresAt: null,
     });

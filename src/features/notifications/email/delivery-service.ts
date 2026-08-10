@@ -248,7 +248,7 @@ function handleUnclaimedDelivery(
   countMetric('atlaris.email.notification.manual_review', 1, {
     attributes: {
       category: content.category,
-      reason: 'provider_acceptance_ambiguous',
+      reason: claim.failureClass,
     },
   });
   logger?.warn(
@@ -256,7 +256,7 @@ function handleUnclaimedDelivery(
       source: 'email_notifications',
       event: 'manual_review',
       category: content.category,
-      failureClass: 'provider_acceptance_ambiguous',
+      failureClass: claim.failureClass,
     },
     'Email notification delivery requires manual review',
   );

@@ -3,8 +3,24 @@ import {
   parseAudit,
   renderPlan,
 } from './dependency-remediation.mjs';
+import * as remediation from './dependency-remediation.mjs';
+import { runCli } from './dependency-remediation/cli.mjs';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import {
+  chmodSync,
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 const cleanAudit = {
   auditReportVersion: 2,
@@ -48,6 +64,117 @@ const baseInput = (overrides = {}) => ({
   ...overrides,
 });
 
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const helperPath = join(
+  scriptDirectory,
+  'dependency-remediation',
+  'run-audit.sh',
+);
+const facadePath = join(scriptDirectory, 'dependency-remediation.mjs');
+
+const writeExecutable = (file, source) => {
+  writeFileSync(file, source);
+  chmodSync(file, 0o755);
+};
+
+const runAuditHelper = ({ auditBody, auditStatus }) => {
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-'));
+  try {
+    const bin = join(directory, 'bin');
+    const attempts = join(directory, 'attempts');
+    const output = join(directory, 'audit.json');
+    mkdirSync(bin);
+    writeExecutable(
+      join(bin, 'pnpm'),
+      '#!/usr/bin/env bash\nprintf \'x\\n\' >> "$AUDIT_ATTEMPTS"\nprintf \'%s\\n\' "$AUDIT_BODY"\nexit "$AUDIT_STATUS"\n',
+    );
+    writeExecutable(
+      join(bin, 'timeout'),
+      '#!/usr/bin/env bash\nshift\nexec "$@"\n',
+    );
+    writeExecutable(join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n');
+    const result = spawnSync('bash', [helperPath, facadePath, output], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        AUDIT_ATTEMPTS: attempts,
+        AUDIT_BODY: auditBody,
+        AUDIT_STATUS: String(auditStatus),
+        PATH: `${bin}:${process.env.PATH ?? ''}`,
+      },
+    });
+    return {
+      ...result,
+      attempts: readFileSync(attempts, 'utf8').trim().split('\n').length,
+      outcome: readFileSync(`${output}.result`, 'utf8').trim(),
+    };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+};
+
+test('the facade preserves the remediation public API', () => {
+  assert.deepEqual(Object.keys(remediation).sort(), [
+    'buildPlan',
+    'classifyPlan',
+    'classifyRemediation',
+    'compareResolvedVersions',
+    'inspectWorkspaceDiff',
+    'normalizeResolvedVersions',
+    'normalizeVersions',
+    'parseAudit',
+    'parseAuditJson',
+    'parseStableSemver',
+    'parseStableVersion',
+    'renderPlan',
+    'renderPrBody',
+    'renderRemediationPlan',
+    'renderSummary',
+    'validateWorkspaceDiff',
+  ]);
+});
+
+test('a trusted facade copy retains its runtime closure', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-copy-'));
+  try {
+    const copiedFacade = join(directory, 'dependency-remediation.mjs');
+    const auditFile = join(directory, 'audit.json');
+    cpSync(facadePath, copiedFacade);
+    cpSync(
+      join(scriptDirectory, 'dependency-remediation'),
+      join(directory, 'dependency-remediation'),
+      { recursive: true },
+    );
+    writeFileSync(auditFile, JSON.stringify(cleanAudit));
+
+    const result = spawnSync(
+      process.execPath,
+      [realpathSync(copiedFacade), 'audit-status', '--file', auditFile],
+      { encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout, 'clean\n');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('the checked-in audit helper accepts matched results and retries parser mismatches', () => {
+  const clean = runAuditHelper({
+    auditBody: JSON.stringify(cleanAudit),
+    auditStatus: 0,
+  });
+  assert.equal(clean.status, 0);
+  assert.equal(clean.attempts, 1);
+  assert.equal(clean.outcome, 'clean');
+
+  const invalid = runAuditHelper({ auditBody: '{', auditStatus: 1 });
+  assert.equal(invalid.status, 1);
+  assert.equal(invalid.attempts, 3);
+  assert.equal(invalid.outcome, 'registry-error');
+});
+
 test('clean audit produces a deterministic no-op plan', () => {
   const plan = classifyRemediation({
     ...baseInput(),
@@ -59,6 +186,26 @@ test('clean audit produces a deterministic no-op plan', () => {
   assert.equal(plan.status, 'noop');
   assert.equal(plan.classification, 'none');
   assert.deepEqual(plan.advisoryIds, []);
+});
+
+test('requires independent after-audit evidence', () => {
+  assert.throws(
+    () => classifyRemediation(baseInput({ afterAudit: undefined })),
+    /afterAudit is required/,
+  );
+
+  const directory = mkdtempSync(join(tmpdir(), 'dependency-remediation-'));
+  try {
+    const beforeAuditPath = join(directory, 'before-audit.json');
+    writeFileSync(beforeAuditPath, JSON.stringify(vulnerableAudit));
+
+    assert.throws(
+      () => runCli(['plan', '--before-audit', beforeAuditPath]),
+      /missing --after-audit/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('malformed or unknown audit JSON is rejected instead of treated as clean', () => {
@@ -215,6 +362,46 @@ test('residual high or critical findings are rejected', () => {
 
   assert.equal(plan.status, 'rejected');
   assert.match(plan.reasons.join('\n'), /residual/i);
+});
+
+test('rejects multiple high or critical findings that map to one package', () => {
+  const plan = classifyRemediation(
+    baseInput({
+      beforeAudit: {
+        ...vulnerableAudit,
+        vulnerabilities: {
+          ...vulnerableAudit.vulnerabilities,
+          'example-package-second-advisory': {
+            ...vulnerableAudit.vulnerabilities['example-package'],
+            name: 'example-package',
+            via: [
+              {
+                source: 'GHSA-example-second',
+                severity: 'high',
+                range: '<1.2.3',
+                title: 'Second example advisory',
+              },
+            ],
+          },
+        },
+        metadata: {
+          vulnerabilities: {
+            info: 0,
+            low: 0,
+            moderate: 0,
+            high: 2,
+            critical: 0,
+          },
+        },
+      },
+    }),
+  );
+
+  assert.equal(plan.status, 'rejected');
+  assert.match(
+    plan.reasons.join('\n'),
+    /multiple high\/critical findings to the same package ambiguously/i,
+  );
 });
 
 test('registry failures and non-JSON audit responses fail closed', () => {

@@ -7,7 +7,6 @@ import type {
   AttemptsDbClient,
   GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
-import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 import {
   canonicalUsageToRecordParams,
@@ -34,10 +33,6 @@ import {
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 
-function asProviderMetadata(value: Record<string, unknown>): ProviderMetadata {
-  return value as ProviderMetadata;
-}
-
 export async function commitPlanGenerationSuccess(
   dbClient: AttemptsDbClient,
   input: FinalizeGenerationSuccessInput,
@@ -59,7 +54,7 @@ export async function commitPlanGenerationSuccess(
 
   const metadata = buildMetadata({
     sanitized: input.preparation.sanitized,
-    providerMetadata: asProviderMetadata(input.providerMetadata),
+    providerMetadata: input.providerMetadata,
     workflowMetadata: input.workflowMetadata,
     modulesClamped: normalizationFlags.modulesClamped,
     tasksClamped: normalizationFlags.tasksClamped,
