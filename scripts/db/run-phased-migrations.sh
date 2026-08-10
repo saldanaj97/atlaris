@@ -18,6 +18,7 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20260810120000_create_clerk_webhook_event_claims.sql
   supabase/migrations/20260811100100_add_clerk_user_identity_projection.sql
   supabase/migrations/20260811100200_enforce_resolved_email_delivery_payload_minimization.sql
+  supabase/migrations/20260811100700_revoke_anon_unsafe_table_privileges.sql
 )
 
 # Keep the users INSERT revoke contract-only until service-role provisioning is live.

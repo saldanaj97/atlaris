@@ -86,6 +86,24 @@ describe('effective database privilege attestation', () => {
     await expect(db.execute(sql.raw(attestationSql()))).resolves.toBeDefined();
   });
 
+  it('rejects anon table privileges inherited from PUBLIC', async () => {
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        GRANT TRUNCATE ON TABLE "modules" TO PUBLIC;
+      `);
+
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /anon has TRUNCATE on public\.modules/,
+            ),
+          }),
+        },
+      );
+    });
+  });
+
   it('rejects a service-only column grant when table-level privileges are absent', async () => {
     await runInRolledBackTransaction(async (tx) => {
       await tx.execute(sql`
