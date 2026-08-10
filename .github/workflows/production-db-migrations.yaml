@@ -26,7 +26,7 @@ jobs:
       - name: 'Checkout frozen PR #428 release'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: f701907509915d6acb0fdd6fc1e09bfb4e704dbf
+          ref: 2e942c977c69a3d6d759d24a1849ed444bdef764
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
