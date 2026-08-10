@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:17"
+      timezone: America/Chicago
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      patch-updates:
+        patterns:
+          - "*"
+        update-types:
+          - patch
+      minor-updates:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
