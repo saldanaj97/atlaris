@@ -70,6 +70,9 @@ describe('effective database privilege attestation', () => {
       "namespace.nspname IN ('public', 'private')",
     );
     expect(ATTESTATION_SQL).toContain(
+      'default_acl.defaclrole = current_user::regrole',
+    );
+    expect(ATTESTATION_SQL).toContain(
       sqlArray(USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS),
     );
     expect(ATTESTATION_SQL).toContain(

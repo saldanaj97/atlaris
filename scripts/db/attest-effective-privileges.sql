@@ -497,6 +497,7 @@ BEGIN
       ON namespace.oid = default_acl.defaclnamespace
     CROSS JOIN LATERAL aclexplode(default_acl.defaclacl) AS privilege
     WHERE default_acl.defaclobjtype = 'r'
+      AND default_acl.defaclrole = current_user::regrole
       AND (default_acl.defaclnamespace = 0 OR namespace.nspname = 'public')
   )
   SELECT format(
