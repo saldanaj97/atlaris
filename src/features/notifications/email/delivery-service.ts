@@ -561,6 +561,7 @@ export async function runEmailNotificationDelivery(
   const { recipients, nextCursor } = await listEmailDeliveryRecipients({
     batchSize,
     cursorUserId: request.cursorUserId,
+    categories: request.categories,
     dbClient: db,
   });
   counts.nextCursor = nextCursor;

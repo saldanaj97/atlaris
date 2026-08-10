@@ -58,6 +58,7 @@ After deploying a release that includes new Supabase migrations:
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
    - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
 4. Verify plan cleanup scheduler and alerting when `PLAN_CLEANUP_ENABLED=true`:
+   - Set the GitHub Actions repository variable `PLAN_CLEANUP_ENABLED=true`; scheduled workflow runs are skipped until this variable is enabled, while manual dispatch remains available for checks.
    - Set the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
    - Confirm `.github/workflows/plan-cleanup-scheduler.yml` runs every 15 minutes and returns `200` with `ok: true`.
    - Confirm Sentry monitor `plan-cleanup-maintenance` receives successful check-ins; GitHub workflow failures identify `401`, `503`, and `500` responses.
@@ -93,7 +94,7 @@ The email scheduler must have exactly one active owner. This release removes the
 
 1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies both `20260710151930_create_email_notification_delivery_runs` and the future-dated delivery ledger without opening the contract gate.
 2. Set a new `CRON_SECRET` in the target Vercel environment. Keep it distinct from `MAINTENANCE_WORKER_TOKEN`.
-3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` and `30 14 * * 1` for `/api/cron/notifications/email`.
+3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` for `/api/cron/notifications/email?runKind=daily` and `30 14 * * 1` for `/api/cron/notifications/email?runKind=weekly`.
 4. Leave the `email-notification-delivery` Vercel Flag disabled and verify both authenticated cron paths return the intentional `disabled` outcome without creating a run.
 5. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Workflow SDK run, Sentry monitor, and delivery ledger before enabling broader delivery.
 

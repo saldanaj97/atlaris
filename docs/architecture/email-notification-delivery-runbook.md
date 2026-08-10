@@ -68,7 +68,7 @@ Only one email scheduler may be active. The GitHub workflow `.github/workflows/e
 
 ## Inspect a run
 
-1. In Vercel, inspect the Cron invocation for `GET /api/cron/notifications/email` and record the response's `runId` and `workflowRunId`.
+1. In Vercel, inspect the Cron invocation for `GET /api/cron/notifications/email?runKind=daily` or `?runKind=weekly` and record the response's `runId` and `workflowRunId`.
 2. Inspect the Workflow SDK run by `workflowRunId` to find the current durable step or retry.
 3. Inspect the matching Sentry monitor. A check-in begins when the workflow claims the run and closes only on `completed`, `failed`, or `needs_review`.
 4. Inspect the service-role delivery run and ledger without selecting recipient addresses or provider payloads:

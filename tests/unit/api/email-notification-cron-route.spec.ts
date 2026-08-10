@@ -183,6 +183,34 @@ describe('email notification delivery cron route', () => {
     });
   });
 
+  it('maps the Vercel cron URL run kind when the schedule header is absent', async () => {
+    resolveDeliveryEnabled.mockResolvedValue(true);
+    startWorkflow.mockResolvedValue({
+      outcome: 'started',
+      runId: 'run-query',
+      workflowRunId: 'workflow-query',
+    });
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+      now: () => new Date('2026-07-10T14:01:00.000Z'),
+    });
+
+    const response = await GET(
+      new Request(`${URL}?runKind=daily`, {
+        headers: { authorization: 'Bearer cron-secret' },
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(startWorkflow).toHaveBeenCalledWith({
+      runKind: 'daily',
+      schedulerDateUtc: '2026-07-10',
+      action: 'start',
+    });
+  });
+
   it('returns an existing weekly run without treating it as a new workflow', async () => {
     resolveDeliveryEnabled.mockResolvedValue(true);
     startWorkflow.mockResolvedValue({
