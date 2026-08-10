@@ -120,22 +120,22 @@ For a true emergency that cannot wait for the normal `develop` promotion, open t
 
 ### GitHub environment gates
 
-Create protected GitHub environments named `staging` and `production`.
+Create protected GitHub environments named `staging` and `Production – atlaris`.
 
-| Environment  | Deployment branch rule | Required reviewers |
-| ------------ | ---------------------- | ------------------ |
-| `staging`    | `develop`              | Yes                |
-| `production` | `main`                 | Yes                |
+| Environment            | Deployment branch rule | Required reviewers |
+| ---------------------- | ---------------------- | ------------------ |
+| `staging`              | `develop`              | Yes                |
+| `Production – atlaris` | `main`                 | Yes                |
 
 Store the Supabase migration secrets below as environment secrets on the matching environment, not as broad repository secrets.
 
 ### GitHub environment secrets
 
-- `SUPABASE_ACCESS_TOKEN` (set separately on `staging` and `production`)
+- `SUPABASE_ACCESS_TOKEN` (set separately on `staging` and `Production – atlaris`)
 - `STAGING_PROJECT_ID` (set on `staging`)
 - `STAGING_DB_PASSWORD` (set on `staging`)
-- `PRODUCTION_PROJECT_ID` (set on `production`)
-- `PRODUCTION_DB_PASSWORD` (set on `production`)
+- `PRODUCTION_PROJECT_ID` (set on `Production – atlaris`)
+- `PRODUCTION_DB_PASSWORD` (set on `Production – atlaris`)
 
 ### GitHub repository secrets
 

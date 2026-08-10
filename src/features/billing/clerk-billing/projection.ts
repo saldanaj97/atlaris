@@ -77,10 +77,7 @@ const PAID_TIER_RANK: Record<SubscriptionTier, number> = {
   pro: 2,
 };
 
-const ACTIVE_ITEM_STATUSES = new Set<ClerkSubscriptionItemStatus>([
-  'active',
-  'past_due',
-]);
+const ACTIVE_ITEM_STATUSES = new Set<ClerkSubscriptionItemStatus>(['active']);
 
 const TERMINAL_STATUSES = new Set<ClerkSubscriptionStatus>([
   'abandoned',
@@ -299,9 +296,12 @@ export function projectClerkBillingSource(
 
   if (
     source.paymentAttemptStatus === 'failed' ||
-    source.subscriptionStatus === 'past_due'
+    source.subscriptionStatus === 'past_due' ||
+    source.items.some(
+      (item) => isPaidTier(item.tier) && item.status === 'past_due',
+    )
   ) {
-    // Failed initial checkouts can include active paid items; never promote free users.
+    // Failed payments can include paid items; never use them to promote a tier.
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
     }

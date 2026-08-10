@@ -254,6 +254,39 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  it('does not promote a past-due paid item when reconciliation remains active', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          subscriptionStatus: 'active',
+          items: [item({ status: 'past_due', tier: 'pro' })],
+        }),
+        currentFreeState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps the existing paid tier when reconciliation includes a past-due upgrade', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          subscriptionStatus: 'active',
+          items: [item({ status: 'past_due', tier: 'pro' })],
+        }),
+        currentStarterState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
   it('maps Clerk webhook item timestamps and trial state from the payload', () => {
     const sourceFromWebhook = clerkBillingSourceFromWebhook({
       type: 'subscriptionItem.active',
