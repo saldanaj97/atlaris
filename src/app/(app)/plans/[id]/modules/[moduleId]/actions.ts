@@ -10,7 +10,10 @@
 
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { batchUpdateTaskProgressCore } from '@/features/plans/task-progress/batch-action-core';
+import {
+  batchUpdateTaskProgressCore,
+  type BatchUpdateTaskProgressCoreResult,
+} from '@/features/plans/task-progress/batch-action-core';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
 interface BatchUpdateModuleTaskProgressInput {
@@ -23,15 +26,11 @@ interface BatchUpdateModuleTaskProgressInput {
  * Server action to batch update multiple task progress records from the module detail page.
  * Delegates validation, scope checks, persistence, and path selection to `batchUpdateTaskProgressCore`.
  */
-export type BatchUpdateModuleTaskProgressResult = {
-  readonly revalidateFailed: boolean;
-};
-
 export async function batchUpdateModuleTaskProgressAction({
   planId,
   moduleId,
   updates,
-}: BatchUpdateModuleTaskProgressInput): Promise<BatchUpdateModuleTaskProgressResult | void> {
+}: BatchUpdateModuleTaskProgressInput): Promise<BatchUpdateTaskProgressCoreResult | void> {
   if (updates.length === 0) return;
 
   const result = await requestBoundary.action(async ({ actor, db }) =>

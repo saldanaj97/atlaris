@@ -125,7 +125,6 @@ function emptyCounts(): EmailDeliveryRunResult {
     recipientErrors: 0,
     nextCursor: null,
     pageFailure: null,
-    needsReview: false,
   };
 }
 
@@ -151,23 +150,17 @@ async function getEffectiveEmailPreferences(
   );
 }
 
-async function buildRecipientEmailContents(args: {
-  recipient: EmailDeliveryRecipient;
-  requested: ReadonlySet<EmailNotificationCategory>;
-  request: EmailDeliveryRunRequest;
-  db: DeliveryDb;
-  appUrl: string;
-  secret: string;
-  now: Date;
-  deliveryNow: Date;
-}): Promise<BuiltEmailContent[]> {
+async function buildRecipientEmailContents(
+  recipient: EmailDeliveryRecipient,
+  context: EmailDeliveryPassContext,
+): Promise<BuiltEmailContent[]> {
   const effective = await getEffectiveEmailPreferences(
-    args.recipient.userId,
-    args.db,
+    recipient.userId,
+    context.db,
   );
   const enabledCategories = new Set(
     (Object.keys(effective) as Array<keyof typeof effective>).filter(
-      (category) => effective[category] && args.requested.has(category),
+      (category) => effective[category] && context.requested.has(category),
     ),
   );
 
@@ -175,42 +168,40 @@ async function buildRecipientEmailContents(args: {
     return [];
   }
 
-  const userPrefs = await getUserPreferences(args.recipient.userId, args.db);
+  const userPrefs = await getUserPreferences(recipient.userId, context.db);
   const timeZone = normalizeTimeZone(userPrefs.analyticsTimezone);
-  const todayLocalKey = dateKeyInTimeZone(args.now, timeZone);
+  const todayLocalKey = dateKeyInTimeZone(context.now, timeZone);
   const dateWindow = requiredActivityDateWindow({
     todayLocalKey,
     enabledCategories,
   });
   const activityDayKeys = dateWindow
     ? await listEmailActivityDayKeysForUser({
-        userId: args.recipient.userId,
+        userId: recipient.userId,
         timeZone,
         startDateKeyInclusive: dateWindow.startDateKeyInclusive,
         endDateKeyExclusive: dateWindow.endDateKeyExclusive,
-        dbClient: args.db,
+        dbClient: context.db,
       })
     : [];
   const incompletePlan = enabledCategories.has('daily_reminder')
-    ? await findEmailDailyReminderPlanForUser(args.recipient.userId, args.db)
+    ? await findEmailDailyReminderPlanForUser(recipient.userId, context.db)
     : null;
   const unsubscribeToken = createUnsubscribeToken({
-    userId: args.recipient.userId,
-    secret: args.secret,
-    nowMs: args.deliveryNow.getTime(),
+    userId: recipient.userId,
+    secret: context.secret,
+    nowMs: context.deliveryNow.getTime(),
   });
 
   return buildEmailContents(
     {
-      userId: args.recipient.userId,
-      email: args.recipient.email,
       analyticsTimezone: userPrefs.analyticsTimezone,
-      schedulerDateUtc: args.request.schedulerDateUtc,
-      referenceDate: args.now,
+      schedulerDateUtc: context.request.schedulerDateUtc,
+      referenceDate: context.now,
       activityDayKeys,
       incompletePlan,
-      appUrl: args.appUrl,
-      unsubscribeUrl: `${args.appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`,
+      appUrl: context.appUrl,
+      unsubscribeUrl: `${context.appUrl}/api/v1/notifications/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`,
     },
     enabledCategories,
   );
@@ -244,7 +235,6 @@ function handleUnclaimedDelivery(
   }
 
   counts.manualReview += 1;
-  counts.needsReview = true;
   countMetric('atlaris.email.notification.manual_review', 1, {
     attributes: {
       category: content.category,
@@ -312,7 +302,6 @@ async function handleProviderFailure(args: {
         ),
       );
       counts.manualReview += 1;
-      counts.needsReview = true;
       countMetric('atlaris.email.notification.manual_review', 1, {
         attributes: { category, reason: failure.failureClass },
       });
@@ -543,7 +532,6 @@ async function processEmailContent(args: {
         ),
       );
       context.counts.manualReview += 1;
-      context.counts.needsReview = true;
       countMetric('atlaris.email.notification.manual_review', 1, {
         attributes: {
           category: content.category,
@@ -614,7 +602,6 @@ async function processEmailContent(args: {
         ),
       );
       context.counts.manualReview += 1;
-      context.counts.needsReview = true;
       countMetric('atlaris.email.notification.manual_review', 1, {
         attributes: {
           category: content.category,
@@ -757,16 +744,7 @@ export async function runEmailNotificationDelivery(
   recipients: for (const recipient of recipients) {
     counts.examined += 1;
     try {
-      const contents = await buildRecipientEmailContents({
-        recipient,
-        requested: context.requested,
-        request: context.request,
-        db: context.db,
-        appUrl: context.appUrl,
-        secret: context.secret,
-        now: context.now,
-        deliveryNow: context.deliveryNow,
-      });
+      const contents = await buildRecipientEmailContents(recipient, context);
       let streakSentThisPass = false;
 
       for (const content of contents) {
@@ -790,7 +768,6 @@ export async function runEmailNotificationDelivery(
       }
       recordDeliveryFailure(counts, 'recipient_processing_error');
       counts.recipientErrors += 1;
-      counts.needsReview = true;
       deps.logger?.error(
         {
           source: 'email_notifications',

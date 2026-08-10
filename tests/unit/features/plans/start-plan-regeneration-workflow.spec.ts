@@ -1,4 +1,7 @@
-import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
+import {
+  markPlanRegenerationRunIntentionallyCancelled,
+  resetPlanRegenerationCancellationMarkersForTests,
+} from '@/features/plans/cancel-plan-regeneration-workflow';
 import { startPlanRegenerationWorkflow } from '@/features/plans/start-plan-regeneration-workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
 import { createId } from '@tests/fixtures/ids';
@@ -149,8 +152,6 @@ describe('startPlanRegenerationWorkflow', () => {
       returnValue: Promise.reject(rejection),
     });
 
-    const { markPlanRegenerationRunIntentionallyCancelled } =
-      await import('@/features/plans/cancel-plan-regeneration-workflow');
     markPlanRegenerationRunIntentionallyCancelled('wrun_regen');
 
     const result = await startPlanRegenerationWorkflow(input, {

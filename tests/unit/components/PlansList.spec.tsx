@@ -8,7 +8,7 @@ import type React from 'react';
 
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
 import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -342,7 +342,7 @@ describe('PlansList', () => {
     ).toBeInTheDocument();
   });
 
-  it('refreshes and clears selection after a successful bulk delete', async () => {
+  it('accepts zero and positive integer counts after a successful bulk delete', async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockResolvedValue(
       new Response(
@@ -421,6 +421,153 @@ describe('PlansList', () => {
       screen.getByRole('group', { name: 'Bulk plan actions' }),
     ).toBeInTheDocument();
     expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('rejects a malformed bulk delete success response', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          deletedCount: 2,
+          failedCount: 0,
+          results: null,
+        }),
+        { status: 200 },
+      ),
+    );
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(toast.error).toHaveBeenCalledWith(
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+    );
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['deletedCount', -1, 0],
+    ['deletedCount', 0.5, 0],
+    ['failedCount', 0, -1],
+    ['failedCount', 0, 0.5],
+  ])(
+    'rejects a %s value that is not a non-negative integer',
+    async (_field, deletedCount, failedCount) => {
+      const user = userEvent.setup();
+      vi.mocked(fetch).mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            success: true,
+            deletedCount,
+            failedCount,
+            results: [],
+          }),
+          { status: 200 },
+        ),
+      );
+      renderPlansList();
+
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+      );
+      await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+      await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+      await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+      expect(toast.error).toHaveBeenCalledWith(
+        'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+      );
+      expect(
+        screen.queryByText('Delete selected plans'),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('reconciles bulk delete after an unknown transport failure', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockRejectedValue(new Error('Network unavailable'));
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(toast.error).toHaveBeenCalledWith(
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+    );
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
+  });
+
+  it('keeps bulk delete retryable after a definitive server error', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json(
+        { error: 'Plans cannot be deleted right now.', code: 'CONFLICT' },
+        { status: 409 },
+      ),
+    );
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Delete 2 plans' }),
+    ).toBeEnabled();
+    expect(toast.error).toHaveBeenCalledWith(
+      'Plans cannot be deleted right now.',
+    );
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a timed-out bulk delete before another deletion can be opened', async () => {
+    const user = userEvent.setup();
+    const timeoutController = new AbortController();
+    const timeoutSpy = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(timeoutController.signal);
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          timeoutController.signal.addEventListener(
+            'abort',
+            () => reject(timeoutController.signal.reason),
+            { once: true },
+          );
+        }),
+    );
+    renderPlansList();
+
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete selected' }));
+    await user.click(screen.getByRole('button', { name: 'Delete 2 plans' }));
+
+    expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+    timeoutController.abort(new DOMException('Timed out', 'TimeoutError'));
+
+    await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('Delete selected plans')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Delete selected' }),
+    ).not.toBeInTheDocument();
+    expect(toast.error).toHaveBeenCalledWith(
+      'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+    );
+    timeoutSpy.mockRestore();
   });
 
   it('renders stable server pagination links', () => {

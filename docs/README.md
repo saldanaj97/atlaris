@@ -106,7 +106,6 @@ Test standards, smoke tests, and UI baselines.
 
 | File | Description |
 |------|-------------|
-| [browser-smoke-testing.md](./testing/browser-smoke-testing.md) | Historical smoke reference (superseded) |
 | [db-test-patterns.md](./testing/db-test-patterns.md) | Drizzle query helper test patterns |
 | [playwright-local-smoke.md](./testing/playwright-local-smoke.md) | Current Playwright local smoke lane |
 | [smoke-test-results-2026-04-01.md](./testing/smoke-test-results-2026-04-01.md) | Smoke results snapshot (2026-04-01) |
@@ -168,7 +167,6 @@ docs/
 │   ├── after-hours-direction.md
 │   └── style-guide.md
 ├── testing/
-│   ├── browser-smoke-testing.md
 │   ├── db-test-patterns.md
 │   ├── playwright-local-smoke.md
 │   ├── smoke-test-results-2026-04-01.md

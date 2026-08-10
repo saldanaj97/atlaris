@@ -5,7 +5,6 @@ import { getEnvironment } from '@/lib/observability/sampling';
 type WrappedBuildError = Error & { innerError: unknown };
 
 const DEV_COMPILATION_ERROR_PATTERNS: RegExp[] = [
-  /Parsing ecmascript source code failed/i,
   /Parsing .* source code failed/i,
   /Module not found/i,
   /Failed to compile/i,

@@ -1,6 +1,7 @@
 import type { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 
 import { createModuleLessonContentGenerateHandler } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler';
+import { GET } from '@/app/api/v1/plans/[planId]/status/route';
 import {
   clearAllUserRateLimiters,
   USER_RATE_LIMIT_CONFIGS,
@@ -84,7 +85,6 @@ describe('plans API route boundary (integration)', () => {
     clearTestUser();
     serverAuth.getSession.mockResolvedValue({ data: { user: null } });
 
-    const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${ownerPlanId}/status`,
       { method: 'GET' },
@@ -103,7 +103,6 @@ describe('plans API route boundary (integration)', () => {
   });
 
   it('GET /status includes read rate-limit headers for authenticated requests', async () => {
-    const { GET } = await import('@/app/api/v1/plans/[planId]/status/route');
     const request = new NextRequest(
       `http://localhost:3000/api/v1/plans/${ownerPlanId}/status`,
       { method: 'GET' },

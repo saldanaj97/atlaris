@@ -1,4 +1,3 @@
-import { updateEmailNotificationPreferencesSchema } from '@/app/api/v1/user/preferences/notifications/validation';
 import { ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -7,6 +6,7 @@ import { saveEmailNotificationPreferences } from '@/lib/db/queries/user-preferen
 import {
   emailNotificationPreferenceFormValuesFromPreferences,
   emailNotificationPreferencesFromFormValues,
+  emailNotificationPreferenceFormValuesSchema,
 } from '@/shared/notifications/email-preferences';
 import { z } from 'zod';
 
@@ -18,7 +18,7 @@ export const PATCH = requestBoundary.route(
       onMalformedJson: () =>
         new ValidationError('Invalid JSON in request body'),
     });
-    const parsed = updateEmailNotificationPreferencesSchema.safeParse(body);
+    const parsed = emailNotificationPreferenceFormValuesSchema.safeParse(body);
 
     if (!parsed.success) {
       const errors = z.flattenError(parsed.error);

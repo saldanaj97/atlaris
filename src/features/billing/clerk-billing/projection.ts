@@ -297,22 +297,11 @@ export function projectClerkBillingSource(
     return null;
   }
 
-  if (source.paymentAttemptStatus === 'failed') {
+  if (
+    source.paymentAttemptStatus === 'failed' ||
+    source.subscriptionStatus === 'past_due'
+  ) {
     // Failed initial checkouts can include active paid items; never promote free users.
-    if (!isPaidTier(current.subscriptionTier)) {
-      return null;
-    }
-
-    return {
-      subscriptionTier: current.subscriptionTier,
-      subscriptionStatus: 'past_due',
-      subscriptionPeriodEnd:
-        latestPeriodEnd(source.items) ?? current.subscriptionPeriodEnd,
-      cancelAtPeriodEnd: current.cancelAtPeriodEnd,
-    };
-  }
-
-  if (source.subscriptionStatus === 'past_due') {
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
     }

@@ -14,7 +14,6 @@
 /coverage
 /.workflow-data/
 /.workflow-vitest/
-.testcontainers-env.json
 /tests/.testcontainers-env.*.json
 /tests/test-results/*
 /tests/results/

@@ -41,15 +41,8 @@ export function buildPlanSummaries(params: {
   moduleRows: Module[];
   taskRows: PlanSummaryTaskRow[];
   progressRows: PlanProgressStatusRow[];
-  attemptCountsByPlanId?: ReadonlyMap<string, number>;
 }): PlanSummary[] {
-  const {
-    planRows,
-    moduleRows,
-    taskRows,
-    progressRows,
-    attemptCountsByPlanId,
-  } = params;
+  const { planRows, moduleRows, taskRows, progressRows } = params;
 
   const tasksByPlan = new Map<string, PlanSummaryTaskRow[]>();
   const tasksByModule = new Map<string, PlanSummaryTaskRow[]>();
@@ -98,7 +91,6 @@ export function buildPlanSummaries(params: {
       totalMinutes,
       completedMinutes,
       completedModules,
-      attemptsCount: attemptCountsByPlanId?.get(plan.id),
     } satisfies PlanSummary;
   });
 }

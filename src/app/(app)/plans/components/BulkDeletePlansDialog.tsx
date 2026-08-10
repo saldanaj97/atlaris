@@ -1,8 +1,8 @@
 'use client';
 
 import type { PlanListItem } from '@/features/plans/read-projection/types';
-import type { BulkRemovePlanResult } from '@/features/plans/write-service';
 
+import { requestJson } from '@/app/_shared/client-api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,101 +13,52 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { parseApiErrorResponse } from '@/lib/api/error-response';
-import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
-export type BulkDeletePlansResult = {
-  success: boolean;
-  deletedCount: number;
-  failedCount: number;
-  results: BulkRemovePlanResult[];
-};
+const bulkRemovePlanResultSchema = z.discriminatedUnion('success', [
+  z.object({
+    planId: z.string(),
+    success: z.literal(true),
+  }),
+  z.object({
+    planId: z.string(),
+    success: z.literal(false),
+    reason: z.enum(['not_found', 'currently_generating']),
+    message: z.string(),
+  }),
+]);
+
+const bulkDeletePlansResultSchema = z.object({
+  success: z.boolean(),
+  deletedCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
+  results: z.array(bulkRemovePlanResultSchema),
+});
+
+const BULK_DELETE_REQUEST_TIMEOUT_MS = 30_000;
+
+export type BulkDeletePlansResult = z.infer<typeof bulkDeletePlansResultSchema>;
 
 type BulkDeletePlansDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   plans: Pick<PlanListItem, 'id' | 'topic' | 'status'>[];
   onDeleted: (result: BulkDeletePlansResult) => void;
+  onOutcomeUnknown: () => void;
 };
 
 type BulkDeleteRequestResult =
   | { kind: 'success'; result: BulkDeletePlansResult }
   | { kind: 'aborted' }
-  | { kind: 'error'; message: string; error: unknown };
-
-function startBulkDeleteRequest(abortControllerRef: {
-  current: AbortController | null;
-}): AbortController {
-  abortControllerRef.current?.abort();
-  const controller = new AbortController();
-  abortControllerRef.current = controller;
-  return controller;
-}
-
-async function requestBulkPlanDeletion(
-  planIds: string[],
-  signal: AbortSignal,
-): Promise<BulkDeleteRequestResult> {
-  try {
-    const res = await fetch('/api/v1/plans/bulk-delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planIds }),
-      signal,
-    });
-
-    if (!res.ok) {
-      const parsed = await parseApiErrorResponse(
-        res,
-        'Failed to delete selected plans',
-      );
-      return {
-        kind: 'error',
-        message: parsed.error,
-        error: new Error(parsed.error),
-      };
-    }
-
-    return {
-      kind: 'success',
-      result: (await res.json()) as BulkDeletePlansResult,
+  | {
+      kind: 'error';
+      message: string;
+      error: unknown;
+      outcomeUnknown?: true;
     };
-  } catch (error: unknown) {
-    if (isAbortError(error)) {
-      return { kind: 'aborted' };
-    }
-
-    return {
-      kind: 'error',
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete selected plans',
-      error,
-    };
-  }
-}
-
-function finalizeBulkDeleteRequest({
-  controller,
-  abortControllerRef,
-  setDeleting,
-}: {
-  controller: AbortController;
-  abortControllerRef: { current: AbortController | null };
-  setDeleting: (value: boolean) => void;
-}): boolean {
-  if (abortControllerRef.current !== controller) {
-    return false;
-  }
-
-  abortControllerRef.current = null;
-  setDeleting(false);
-  return true;
-}
 
 function formatPlanTopicList(plans: Pick<PlanListItem, 'topic'>[]): string {
   const preview = plans.slice(0, 5).map((plan) => plan.topic);
@@ -125,6 +76,7 @@ export function BulkDeletePlansDialog({
   onOpenChange,
   plans,
   onDeleted,
+  onOutcomeUnknown,
 }: BulkDeletePlansDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -142,46 +94,72 @@ export function BulkDeletePlansDialog({
       return;
     }
 
-    const controller = startBulkDeleteRequest(abortControllerRef);
+    const planIds = plans.map((plan) => plan.id);
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setDeleting(true);
-    const result = await requestBulkPlanDeletion(
-      plans.map((plan) => plan.id),
-      controller.signal,
-    );
 
-    switch (result.kind) {
-      case 'success':
-        if (!finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        })) {
-          return;
-        }
+    let result: BulkDeleteRequestResult;
+    let isCurrentRequest = false;
+    try {
+      const response = await requestJson({
+        url: '/api/v1/plans/bulk-delete',
+        init: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planIds }),
+          signal: controller.signal,
+        },
+        schema: bulkDeletePlansResultSchema,
+        fallbackMessage: 'Failed to delete selected plans',
+        timeoutMs: BULK_DELETE_REQUEST_TIMEOUT_MS,
+      });
+      result =
+        response.kind === 'success'
+          ? { kind: 'success', result: response.data }
+          : response;
+    } catch (error: unknown) {
+      result = {
+        kind: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete selected plans',
+        error,
+      };
+    } finally {
+      isCurrentRequest = abortControllerRef.current === controller;
+      if (isCurrentRequest) {
+        abortControllerRef.current = null;
+        setDeleting(false);
+      }
+    }
+
+    if (!isCurrentRequest) return;
+
+    if (result.kind === 'success') {
+      onOpenChange(false);
+      onDeleted(result.result);
+      return;
+    }
+
+    if (result.kind === 'error') {
+      clientLogger.error('Bulk plan deletion failed', {
+        planIds,
+        error: result.error,
+      });
+
+      if (result.outcomeUnknown) {
         onOpenChange(false);
-        onDeleted(result.result);
+        onOutcomeUnknown();
+        toast.error(
+          'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
+        );
         return;
-      case 'aborted':
-        finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        });
-        return;
-      case 'error':
-        if (!finalizeBulkDeleteRequest({
-          controller,
-          abortControllerRef,
-          setDeleting,
-        })) {
-          return;
-        }
-        clientLogger.error('Bulk plan deletion failed', {
-          planIds: plans.map((plan) => plan.id),
-          error: result.error,
-        });
-        toast.error(result.message);
-        return;
+      }
+
+      toast.error(result.message);
     }
   };
 

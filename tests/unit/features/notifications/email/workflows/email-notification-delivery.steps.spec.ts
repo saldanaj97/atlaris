@@ -107,7 +107,6 @@ describe('email notification delivery workflow steps', () => {
       manualReview: 0,
       recipientErrors: 0,
       nextCursor: 'user-1',
-      needsReview: false,
       pageFailure: {
         kind: 'retryable',
         failureClass: 'provider_rate_limited',
@@ -210,7 +209,6 @@ describe('email notification delivery workflow steps', () => {
       manualReview: 0,
       recipientErrors: 0,
       nextCursor: 'user-1',
-      needsReview: false,
       pageFailure: {
         kind: 'retryable',
         failureClass: 'provider_rate_limited',
@@ -315,7 +313,6 @@ describe('email notification delivery workflow steps', () => {
       manualReview: 0,
       recipientErrors: 0,
       nextCursor: 'user-2',
-      needsReview: false,
     });
     mocks.advance.mockResolvedValue({ outcome: 'stale' });
     mocks.loadRun.mockResolvedValueOnce(runningRun).mockResolvedValueOnce({
@@ -357,7 +354,6 @@ describe('email notification delivery workflow steps', () => {
       manualReview: 0,
       recipientErrors: 0,
       nextCursor: 'user-1',
-      needsReview: false,
       pageFailure: {
         kind: 'retryable',
         failureClass: 'provider_rate_limited',

@@ -1,5 +1,6 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
+import { GET, PUT } from '@/app/api/v1/user/profile/route';
 import { USER_PROFILE_NAME_MAX_LENGTH } from '@/app/api/v1/user/profile/validation';
 import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -46,7 +47,6 @@ describe('GET /api/v1/user/profile', () => {
   });
 
   it('returns safe profile fields for the authenticated user', async () => {
-    const { GET } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -100,7 +100,6 @@ describe('PUT /api/v1/user/profile', () => {
     });
     expect(before).toBeDefined();
 
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -132,7 +131,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('allows setting name to null', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -154,7 +152,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('updates analytics timezone without requiring a name change', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -183,7 +180,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('updates name and analytics timezone atomically in one request', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest('http://localhost/api/v1/user/profile', {
       method: 'PUT',
       body: JSON.stringify({
@@ -214,7 +210,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('returns 400 when PUT body is not valid JSON', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -234,7 +229,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('rejects payloads with unknown fields', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -255,7 +249,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('rejects invalid analytics timezones', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {
@@ -272,7 +265,6 @@ describe('PUT /api/v1/user/profile', () => {
   });
 
   it('rejects names longer than 100 characters', async () => {
-    const { PUT } = await import('@/app/api/v1/user/profile/route');
     const request = new NextRequest(
       'http://localhost:3000/api/v1/user/profile',
       {

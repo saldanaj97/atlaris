@@ -27,8 +27,7 @@ export type PlanPollEvent =
     }
   | { type: 'transient_failure'; message: string }
   | { type: 'fatal_failure'; message: string }
-  | { type: 'revalidate' }
-  | { type: 'plan_changed'; planId: string; initialStatus: PlanStatus };
+  | { type: 'revalidate' };
 
 function isTerminalStatus(status: PlanStatus): boolean {
   return status === 'ready' || status === 'failed';
@@ -75,9 +74,6 @@ export function transitionPlanPollState(
   randomFn: () => number = Math.random,
 ): PlanPollState {
   switch (event.type) {
-    case 'plan_changed':
-      return createInitialPlanPollState(event.planId, event.initialStatus);
-
     case 'revalidate':
       if (state.phase === 'terminal') {
         return state;

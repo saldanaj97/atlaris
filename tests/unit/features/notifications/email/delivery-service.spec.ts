@@ -327,7 +327,6 @@ describe('runEmailNotificationDelivery', () => {
       sent: 1,
       failed: 1,
       recipientErrors: 1,
-      needsReview: true,
       pageFailure: null,
       nextCursor: 'u2',
     });
@@ -502,7 +501,6 @@ describe('runEmailNotificationDelivery', () => {
     expect(result).toMatchObject({
       claimed: 1,
       manualReview: 1,
-      needsReview: true,
       skipped: 0,
       sent: 0,
     });

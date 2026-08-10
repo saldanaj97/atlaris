@@ -47,7 +47,6 @@ type PlanSummaryRows = {
   moduleRows: Module[];
   taskRows: PlanSummaryTaskRow[];
   progressRows: PlanProgressStatusRow[];
-  attemptCountsByPlanId: Map<string, number>;
 };
 
 type LightweightPlanSummaryRows = {
@@ -178,26 +177,6 @@ async function fetchUserPlanListRows(
   return await planQuery;
 }
 
-async function getPlanAttemptCounts(
-  client: DbClient,
-  planIds: string[],
-): Promise<Map<string, number>> {
-  if (planIds.length === 0) {
-    return new Map();
-  }
-
-  const rows = await client
-    .select({
-      planId: generationAttempts.planId,
-      attemptsCount: sql<number>`count(*)::int`,
-    })
-    .from(generationAttempts)
-    .where(inArray(generationAttempts.planId, planIds))
-    .groupBy(generationAttempts.planId);
-
-  return new Map(rows.map((row) => [row.planId, row.attemptsCount]));
-}
-
 function isDeletablePlanStatus(
   status: PlanGenerationStatus,
 ): status is (typeof DELETABLE_PLAN_STATUSES)[number] {
@@ -221,13 +200,12 @@ export async function getPlanSummaryRowsForUser(
       moduleRows: [],
       taskRows: [],
       progressRows: [],
-      attemptCountsByPlanId: new Map(),
     };
   }
 
   const planIds = planRows.map((plan) => plan.id);
 
-  const [moduleRows, taskRows, attemptCountsByPlanId] = await Promise.all([
+  const [moduleRows, taskRows] = await Promise.all([
     client
       .select()
       .from(modules)
@@ -243,7 +221,6 @@ export async function getPlanSummaryRowsForUser(
       .from(tasks)
       .innerJoin(modules, eq(tasks.moduleId, modules.id))
       .where(inArray(modules.planId, planIds)),
-    getPlanAttemptCounts(client, planIds),
   ]);
 
   const taskIds = taskRows.map((task) => task.id);
@@ -259,7 +236,6 @@ export async function getPlanSummaryRowsForUser(
     moduleRows,
     taskRows,
     progressRows,
-    attemptCountsByPlanId,
   };
 }
 

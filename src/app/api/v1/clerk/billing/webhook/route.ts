@@ -43,104 +43,100 @@ async function readUtf8BodyCapped(req: Request): Promise<string | null> {
   }
 }
 
-function createClerkBillingWebhookHandler(): PlainHandler {
-  return withErrorBoundary(async (req: Request) => {
-    const { requestId, logger } = createLoggingRequestContext(req, {
-      route: 'clerk_billing_webhook',
-    });
-    const respond = (body: BodyInit | null, init?: ResponseInit) =>
-      attachRequestIdHeader(new Response(body, init), requestId);
-
-    try {
-      checkIpRateLimit(req, 'webhook');
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        logger.warn(
-          { event: 'clerk_billing_webhook_rate_limited', requestId },
-          'Clerk Billing webhook rate limited',
-        );
-        return respond('rate limited', { status: 429 });
-      }
-      throw error;
-    }
-
-    const eventId = req.headers.get('svix-id');
-    if (!eventId) {
-      logger.warn('Clerk Billing webhook missing svix-id');
-      return respond('missing webhook id', { status: 400 });
-    }
-
-    const contentLengthHeader = req.headers.get('content-length');
-    const contentLengthParsed =
-      contentLengthHeader !== null ? Number(contentLengthHeader) : Number.NaN;
-    const contentLength =
-      Number.isFinite(contentLengthParsed) && contentLengthParsed >= 0
-        ? contentLengthParsed
-        : null;
-
-    if (contentLength !== null && contentLength > WEBHOOK_MAX_BYTES) {
-      logger.warn(
-        { contentLength, maxBytes: WEBHOOK_MAX_BYTES },
-        'Clerk Billing webhook payload too large (content-length)',
-      );
-      return respond('payload too large', { status: 413 });
-    }
-
-    const rawBody = await readUtf8BodyCapped(req);
-    if (rawBody === null) {
-      logger.warn(
-        { maxBytes: WEBHOOK_MAX_BYTES },
-        'Clerk Billing webhook payload too large while streaming',
-      );
-      return respond('payload too large', { status: 413 });
-    }
-
-    let event: WebhookEvent;
-    try {
-      // Body was read separately for size capping; rebuild a Request for verifyWebhook.
-      const verificationRequest = new Request(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: rawBody,
-      });
-      // RequestLike's type omits the Web Request API; verifyWebhook accepts it at runtime.
-      event = await verifyWebhook(
-        verificationRequest as Parameters<typeof verifyWebhook>[0],
-        {
-          signingSecret: clerkAuthEnv.webhookSigningSecret,
-        },
-      );
-    } catch (error) {
-      logger.warn({ error }, 'Clerk Billing webhook verification failed');
-      return respond('webhook verification failed', { status: 400 });
-    }
-
-    const result = await applyVerifiedClerkBillingEvent(event, eventId, {
-      logger,
-    });
-
-    if (result.status === 'in_flight') {
-      return respond(
-        JSON.stringify({
-          error: 'Webhook event is already processing',
-          code: 'CLERK_WEBHOOK_IN_FLIGHT',
-          retryAfter: result.retryAfterSeconds,
-        }),
-        {
-          status: 503,
-          headers: {
-            'content-type': 'application/json',
-            'retry-after': String(result.retryAfterSeconds),
-          },
-        },
-      );
-    }
-
-    return respond(JSON.stringify({ ok: true, ...result }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    });
+export const POST: PlainHandler = withErrorBoundary(async (req: Request) => {
+  const { requestId, logger } = createLoggingRequestContext(req, {
+    route: 'clerk_billing_webhook',
   });
-}
+  const respond = (body: BodyInit | null, init?: ResponseInit) =>
+    attachRequestIdHeader(new Response(body, init), requestId);
 
-export const POST = createClerkBillingWebhookHandler();
+  try {
+    checkIpRateLimit(req, 'webhook');
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      logger.warn(
+        { event: 'clerk_billing_webhook_rate_limited', requestId },
+        'Clerk Billing webhook rate limited',
+      );
+      return respond('rate limited', { status: 429 });
+    }
+    throw error;
+  }
+
+  const eventId = req.headers.get('svix-id');
+  if (!eventId) {
+    logger.warn('Clerk Billing webhook missing svix-id');
+    return respond('missing webhook id', { status: 400 });
+  }
+
+  const contentLengthHeader = req.headers.get('content-length');
+  const contentLengthParsed =
+    contentLengthHeader !== null ? Number(contentLengthHeader) : Number.NaN;
+  const contentLength =
+    Number.isFinite(contentLengthParsed) && contentLengthParsed >= 0
+      ? contentLengthParsed
+      : null;
+
+  if (contentLength !== null && contentLength > WEBHOOK_MAX_BYTES) {
+    logger.warn(
+      { contentLength, maxBytes: WEBHOOK_MAX_BYTES },
+      'Clerk Billing webhook payload too large (content-length)',
+    );
+    return respond('payload too large', { status: 413 });
+  }
+
+  const rawBody = await readUtf8BodyCapped(req);
+  if (rawBody === null) {
+    logger.warn(
+      { maxBytes: WEBHOOK_MAX_BYTES },
+      'Clerk Billing webhook payload too large while streaming',
+    );
+    return respond('payload too large', { status: 413 });
+  }
+
+  let event: WebhookEvent;
+  try {
+    // Body was read separately for size capping; rebuild a Request for verifyWebhook.
+    const verificationRequest = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: rawBody,
+    });
+    // RequestLike's type omits the Web Request API; verifyWebhook accepts it at runtime.
+    event = await verifyWebhook(
+      verificationRequest as Parameters<typeof verifyWebhook>[0],
+      {
+        signingSecret: clerkAuthEnv.webhookSigningSecret,
+      },
+    );
+  } catch (error) {
+    logger.warn({ error }, 'Clerk Billing webhook verification failed');
+    return respond('webhook verification failed', { status: 400 });
+  }
+
+  const result = await applyVerifiedClerkBillingEvent(event, eventId, {
+    logger,
+  });
+
+  if (result.status === 'in_flight') {
+    return respond(
+      JSON.stringify({
+        error: 'Webhook event is already processing',
+        code: 'CLERK_WEBHOOK_IN_FLIGHT',
+        retryAfter: result.retryAfterSeconds,
+      }),
+      {
+        status: 503,
+        headers: {
+          'content-type': 'application/json',
+          'retry-after': String(result.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
+  return respond(JSON.stringify({ ok: true, ...result }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
+});

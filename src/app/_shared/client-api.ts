@@ -14,10 +14,26 @@ function isTimeoutAbortError(error: unknown): error is DOMException {
   return error instanceof DOMException && error.name === 'TimeoutError';
 }
 
+function isTimedOut(
+  error: unknown,
+  timeoutSignal: AbortSignal | null,
+): boolean {
+  return (
+    isTimeoutAbortError(error) ||
+    (timeoutSignal?.reason instanceof DOMException &&
+      timeoutSignal.reason.name === 'TimeoutError')
+  );
+}
+
 type JsonRequestResult<T> =
   | { kind: 'success'; data: T }
   | { kind: 'aborted' }
-  | { kind: 'error'; message: string; error: unknown };
+  | {
+      kind: 'error';
+      message: string;
+      error: unknown;
+      outcomeUnknown?: true;
+    };
 
 export async function requestJson<T>(params: {
   url: string;
@@ -46,16 +62,12 @@ export async function requestJson<T>(params: {
     response = await fetch(params.url, init);
   } catch (error: unknown) {
     if (isAbortError(error) || isTimeoutAbortError(error)) {
-      const timedOut =
-        isTimeoutAbortError(error) ||
-        (timeoutSignal?.reason instanceof DOMException &&
-          timeoutSignal.reason.name === 'TimeoutError');
-
-      if (timedOut) {
+      if (isTimedOut(error, timeoutSignal)) {
         return {
           kind: 'error',
           message: 'Request timed out — please try again',
           error,
+          outcomeUnknown: true,
         };
       }
 
@@ -66,6 +78,7 @@ export async function requestJson<T>(params: {
       kind: 'error',
       message: getClientErrorMessage(error, params.fallbackMessage),
       error,
+      outcomeUnknown: true,
     };
   }
 
@@ -86,7 +99,16 @@ export async function requestJson<T>(params: {
   try {
     rawBody = await response.json();
   } catch (error: unknown) {
-    if (isAbortError(error)) {
+    if (isAbortError(error) || isTimeoutAbortError(error)) {
+      if (isTimedOut(error, timeoutSignal)) {
+        return {
+          kind: 'error',
+          message: 'Request timed out — please try again',
+          error,
+          outcomeUnknown: true,
+        };
+      }
+
       return { kind: 'aborted' };
     }
 
@@ -94,6 +116,7 @@ export async function requestJson<T>(params: {
       kind: 'error',
       message: params.fallbackMessage,
       error,
+      outcomeUnknown: true,
     };
   }
 
@@ -103,6 +126,7 @@ export async function requestJson<T>(params: {
       kind: 'error',
       message: parsedData.error.issues[0]?.message ?? params.fallbackMessage,
       error: parsedData.error,
+      outcomeUnknown: true,
     };
   }
 

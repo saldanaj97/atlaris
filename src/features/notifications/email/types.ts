@@ -48,5 +48,4 @@ export type EmailDeliveryPageFailure =
 export type EmailDeliveryRunResult = EmailDeliveryRunCounts & {
   nextCursor: string | null;
   pageFailure: EmailDeliveryPageFailure | null;
-  needsReview: boolean;
 };

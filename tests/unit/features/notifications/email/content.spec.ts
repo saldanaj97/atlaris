@@ -91,8 +91,6 @@ describe('email content eligibility', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(
       {
-        userId: 'u1',
-        email: 'u@example.com',
         analyticsTimezone: 'UTC',
         schedulerDateUtc: today,
         referenceDate: day(today),
@@ -129,8 +127,6 @@ describe('email content eligibility', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(
       {
-        userId: 'u1',
-        email: 'u@example.com',
         analyticsTimezone: 'UTC',
         schedulerDateUtc: today,
         referenceDate: day(today),
@@ -158,8 +154,6 @@ describe('email content eligibility', () => {
     const unsubscribeUrl = 'https://atlaris.app/unsub?next="><img>&a=1';
     const contents = buildEmailContents(
       {
-        userId: 'u1',
-        email: 'u@example.com',
         analyticsTimezone: 'UTC',
         schedulerDateUtc: today,
         referenceDate: day(today),
@@ -187,8 +181,6 @@ describe('email content eligibility', () => {
     const today = '2026-07-09';
     const contents = buildEmailContents(
       {
-        userId: 'u1',
-        email: 'u@example.com',
         analyticsTimezone: 'UTC',
         schedulerDateUtc: today,
         referenceDate: day(today),

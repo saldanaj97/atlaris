@@ -34,23 +34,11 @@ export type UsageAnalyticsWeekRow = {
 export type UsageAnalyticsPlanRow = {
   id: string;
   topic: string;
-  completedTasks: number;
-  totalTasks: number;
-  taskCompletionPercent: number;
-  completedModules: number;
-  totalModules: number;
-  completedMinutes: number;
-  totalMinutes: number;
-  currentStreakDays: number;
-  activeDaysThisWeek: number;
-  completedEventsThisWeek: number;
-  estimatedCompletionAddedThisWeek: number;
   weeklyTrends: UsageAnalyticsWeekRow[];
 };
 
 export type UsageAnalyticsModel = {
   plans: UsageAnalyticsPlanRow[];
-  planCount: number;
   completedTasks: number;
   totalTasks: number;
   taskCompletionPercent: number;
@@ -81,10 +69,6 @@ type MutableWeekRow = Omit<UsageAnalyticsWeekRow, 'activeDays'> & {
 };
 
 type MutablePlanHistory = {
-  dayKeys: Set<string>;
-  activeDaysThisWeek: Set<string>;
-  completedEventsThisWeek: number;
-  estimatedCompletionAddedThisWeek: number;
   weekRows: MutableWeekRow[];
   weekRowsByStart: Map<string, MutableWeekRow>;
 };
@@ -166,10 +150,6 @@ export function buildUsageAnalyticsModel(
   for (const summary of summaries) {
     const planWeekRows = buildWeekRows(currentWeekStart);
     planHistoryById.set(summary.id, {
-      dayKeys: new Set<string>(),
-      activeDaysThisWeek: new Set<string>(),
-      completedEventsThisWeek: 0,
-      estimatedCompletionAddedThisWeek: 0,
       weekRows: planWeekRows,
       weekRowsByStart: new Map(
         planWeekRows.map((row) => [row.weekStartDate, row]),
@@ -197,7 +177,6 @@ export function buildUsageAnalyticsModel(
     const planHistory = planHistoryById.get(event.planId);
     if (!planHistory) continue;
 
-    planHistory.dayKeys.add(dayKey);
     const planWeekRow = planHistory.weekRowsByStart.get(eventWeekStart);
     if (planWeekRow) {
       planWeekRow.activeDayKeys.add(dayKey);
@@ -205,15 +184,6 @@ export function buildUsageAnalyticsModel(
       if (isCompletedEvent) {
         planWeekRow.completedEvents += 1;
         planWeekRow.estimatedCompletionAddedMinutes +=
-          event.taskEstimatedMinutes;
-      }
-    }
-
-    if (eventWeekStart === currentWeekStart) {
-      planHistory.activeDaysThisWeek.add(dayKey);
-      if (isCompletedEvent) {
-        planHistory.completedEventsThisWeek += 1;
-        planHistory.estimatedCompletionAddedThisWeek +=
           event.taskEstimatedMinutes;
       }
     }
@@ -225,33 +195,18 @@ export function buildUsageAnalyticsModel(
     return {
       id: summary.id,
       topic: summary.topic,
-      completedTasks: summary.completedTasks,
-      totalTasks: summary.totalTasks,
-      taskCompletionPercent: completionPercent(
-        summary.completedTasks,
-        summary.totalTasks,
-      ),
-      completedModules: summary.completedModules,
-      totalModules: summary.moduleCount,
-      completedMinutes: summary.completedMinutes,
-      totalMinutes: summary.totalMinutes,
-      currentStreakDays: currentStreakDays(planHistory.dayKeys, todayKey),
-      activeDaysThisWeek: planHistory.activeDaysThisWeek.size,
-      completedEventsThisWeek: planHistory.completedEventsThisWeek,
-      estimatedCompletionAddedThisWeek:
-        planHistory.estimatedCompletionAddedThisWeek,
       weeklyTrends: planHistory.weekRows.map(toWeekRow),
     };
   });
 
-  const totals = plans.reduce(
-    (acc, plan) => {
-      acc.completedTasks += plan.completedTasks;
-      acc.totalTasks += plan.totalTasks;
-      acc.completedModules += plan.completedModules;
-      acc.totalModules += plan.totalModules;
-      acc.completedMinutes += plan.completedMinutes;
-      acc.totalMinutes += plan.totalMinutes;
+  const totals = summaries.reduce(
+    (acc, summary) => {
+      acc.completedTasks += summary.completedTasks;
+      acc.totalTasks += summary.totalTasks;
+      acc.completedModules += summary.completedModules;
+      acc.totalModules += summary.moduleCount;
+      acc.completedMinutes += summary.completedMinutes;
+      acc.totalMinutes += summary.totalMinutes;
       return acc;
     },
     {
@@ -273,7 +228,6 @@ export function buildUsageAnalyticsModel(
 
   return {
     plans,
-    planCount: plans.length,
     completedTasks: totals.completedTasks,
     totalTasks: totals.totalTasks,
     taskCompletionPercent: completionPercent(

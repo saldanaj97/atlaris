@@ -1,7 +1,7 @@
 import { parseAudit } from './audit.mjs';
 import { isObject } from './shared.mjs';
 import {
-  compareResolvedVersions,
+  compareResolvedVersionMaps,
   parseStableVersion,
   versionsFor,
 } from './versions.mjs';
@@ -175,7 +175,7 @@ export function classifyRemediation(input = {}) {
   const beforeVersions = {};
   const afterVersions = {};
   const versionIssues = [];
-  const resolvedMaps = compareResolvedVersions(
+  const resolvedMaps = compareResolvedVersionMaps(
     versionsBeforeInput,
     versionsAfterInput,
   );

@@ -26,17 +26,6 @@ function restoreEnvVar(name: keyof typeof ORIGINAL_ENV): void {
   process.env[name] = originalValue;
 }
 
-async function createRegenerateRequest(planId: string, body: unknown) {
-  return {
-    request: new Request(`http://localhost/api/v1/plans/${planId}/regenerate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }),
-    context: { params: Promise.resolve({ planId }) },
-  };
-}
-
 describe('POST /api/internal/jobs/regeneration/process', () => {
   afterEach(() => {
     const envKeys: Array<keyof typeof ORIGINAL_ENV> = [
@@ -66,10 +55,14 @@ describe('POST /api/internal/jobs/regeneration/process', () => {
 
     const plan = await createPlan(userId);
 
-    const { request, context } = await createRegenerateRequest(plan.id, {
-      overrides: { topic: 'worker drain topic' },
-    });
-    const enqueueResponse = await POST_REGENERATE(request, context);
+    const enqueueResponse = await POST_REGENERATE(
+      new Request(`http://localhost/api/v1/plans/${plan.id}/regenerate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ overrides: { topic: 'worker drain topic' } }),
+      }),
+      { params: Promise.resolve({ planId: plan.id }) },
+    );
     expect(enqueueResponse.status).toBe(202);
 
     const drainResponse = await POST_DRAIN(

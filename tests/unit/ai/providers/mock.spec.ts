@@ -3,7 +3,7 @@ import { parseGenerationStream } from '@/features/ai/parser';
 import { getGenerationProvider } from '@/features/ai/providers/factory';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const SAMPLE_INPUT = createGenerationInput({
   topic: 'Machine Learning',
@@ -28,20 +28,13 @@ async function collectStream(
 }
 
 describe('Phase 2: Mock AI Provider Tests', () => {
-  let originalEnv: NodeJS.ProcessEnv;
-
-  beforeEach(() => {
-    originalEnv = { ...process.env };
-  });
-
   afterEach(() => {
     vi.unstubAllEnvs();
-    process.env = originalEnv;
   });
 
   describe('T020: Provider selection test', () => {
     it('returns MockGenerationProvider when AI_PROVIDER=mock', () => {
-      process.env.AI_PROVIDER = 'mock';
+      vi.stubEnv('AI_PROVIDER', 'mock');
       const provider = getGenerationProvider();
 
       expect(provider).toBeInstanceOf(MockGenerationProvider);
@@ -49,7 +42,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
 
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
       vi.stubEnv('NODE_ENV', 'development');
-      delete process.env.AI_PROVIDER;
+      vi.stubEnv('AI_PROVIDER', undefined);
 
       const provider = getGenerationProvider();
 
@@ -57,7 +50,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('returns Router provider when AI_PROVIDER=router', () => {
-      process.env.AI_PROVIDER = 'router';
+      vi.stubEnv('AI_PROVIDER', 'router');
       const provider = getGenerationProvider();
 
       // RouterGenerationProvider is the only non-mock implementation today.
@@ -65,7 +58,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('handles case-insensitive AI_PROVIDER values', () => {
-      process.env.AI_PROVIDER = 'MOCK';
+      vi.stubEnv('AI_PROVIDER', 'MOCK');
       const provider = getGenerationProvider();
 
       expect(provider).toBeInstanceOf(MockGenerationProvider);
@@ -193,7 +186,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
 
     it('respects MOCK_GENERATION_FAILURE_RATE environment variable', async () => {
-      process.env.MOCK_GENERATION_FAILURE_RATE = '1';
+      vi.stubEnv('MOCK_GENERATION_FAILURE_RATE', '1');
       const provider = new MockGenerationProvider({ delayMs: 0 });
 
       await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow();

@@ -49,9 +49,7 @@ export async function SettingsLedgerPage(): Promise<ReactElement> {
           label='Plan & billing'
           description='Subscription, renewal, and payment details.'
         >
-          <Suspense fallback={null}>
-            <CheckoutSubscriptionSyncHost />
-          </Suspense>
+          <CheckoutSubscriptionSyncHost />
           <Suspense fallback={<BillingPlanSkeleton />}>
             <BillingPlanRows locale={locale} />
           </Suspense>
