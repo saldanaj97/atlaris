@@ -144,6 +144,21 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 
 Before checkout, `/pricing` adds the signed-in user's current billing signature to Clerk's `/settings?checkout=1&checkoutBaseline=...#billing` return URL. Settings compares that short-lived UI-only baseline with the DB-backed subscription API, shows a bounded “Updating your subscription…” state while the webhook projection catches up, then removes both query markers and refreshes the rows. Settings remains the DB-backed account and entitlement surface.
 
+### Settings ledger deep links
+
+Account settings is a single ledger page at `/settings` (not nested `/settings/<section>` routes). Section DOM ids and hash targets come from `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`:
+
+| Hash | Section |
+| ---- | ------- |
+| `/settings#profile` | Profile |
+| `/settings#billing` | Billing (also used by checkout sync query params) |
+| `/settings#usage` | Usage |
+| `/settings#ai` | AI model preference |
+| `/settings#integrations` | Integrations placeholder |
+| `/settings#notifications` | Email notification opt-ins |
+
+`SettingsScrollTarget` smooth-scrolls to `document.getElementById(sectionId)` on load and `hashchange`. Prefer `/settings#…` in smoke tests and docs; do not revive per-section routes.
+
 #### Manual real-checkout verification (opt-in; not default CI)
 
 Reuse this checklist for Preview/staging or a tunneled local run. Do not put real payment tests in the default CI suite. Complements the Clerk Billing deployment smoke intent (JCS-37); do not maintain a second competing checklist elsewhere.

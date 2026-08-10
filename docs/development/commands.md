@@ -4,10 +4,11 @@ Quick reference for all common development commands.
 
 See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migration deploys.
 
-## Package manager
+## Toolchain
 
-- CI pins **pnpm 11.9.0** (see `.github/workflows/ci-pr.yml`).
-- Supply-chain release-age policy (`minimumReleaseAge`) is configured in `pnpm-workspace.yaml`; see [supply-chain policy](../security/supply-chain-policy.md).
+- **Node:** `>=24 <25` (`package.json` `engines.node`)
+- **pnpm:** `>=11 <12`; CI pins **pnpm 11.9.0** (see `.github/workflows/ci-pr.yml`)
+- Supply-chain release-age policy (`minimumReleaseAge`) is configured in `pnpm-workspace.yaml`; see [supply-chain policy](../security/supply-chain-policy.md)
 
 ## Development Server
 
@@ -17,6 +18,16 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 pnpm dev              # Next.js dev server (Turbopack enabled)
 pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
+```
+
+### Local billing fixtures (Clerk projection)
+
+These scripts start the local DB, seed the product-testing user, apply a Clerk Billing entitlement fixture, then run `pnpm dev`. They do **not** exercise Clerk checkout or webhooks. Env contract details: [environment.md](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
+
+```bash
+pnpm dev:local:starter   # Seed + fixture starter tier, then dev server
+pnpm dev:local:pro       # Seed + fixture pro tier, then dev server
+pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
 ```
 
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.

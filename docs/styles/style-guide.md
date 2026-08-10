@@ -347,6 +347,10 @@ Use a plain `<h1>` for the main title—**do not** add `text-xl` or other size o
 </div>
 ```
 
+#### Settings ledger layout
+
+Product settings render as one ledger page (`SettingsLedgerPage` on `/settings` and `/settings/[...user-profile]`). Sections use `LedgerSectionBlock` with stable DOM `id`s from `SETTINGS_SECTIONS` (`profile`, `billing`, `usage`, `ai`, `integrations`, `notifications`). Deep links are `/settings#<id>` (client scroll via `SettingsScrollTarget` with `scroll-mt-24` on each section). Do not introduce nested `/settings/<section>` pages for these blocks. Checkout return URLs that need the billing block keep `#billing` (see [environment.md](../development/environment.md#settings-ledger-deep-links)).
+
 #### Card grids
 
 ```tsx
