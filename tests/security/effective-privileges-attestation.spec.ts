@@ -1,4 +1,5 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '@supabase/privileges/authenticated-table-privileges';
+import { TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS } from '@supabase/privileges/task-progress-authenticated-update-columns';
 import {
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS,
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS,
@@ -64,6 +65,9 @@ describe('effective database privilege attestation', () => {
     );
     expect(ATTESTATION_SQL).toContain(
       sqlArray(USERS_AUTHENTICATED_UPDATE_COLUMNS),
+    );
+    expect(ATTESTATION_SQL).toContain(
+      sqlArray(TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS),
     );
     expect(ATTESTATION_SQL).toContain('authenticated has INSERT on public.%I');
     expect(ATTESTATION_SQL).toContain(
