@@ -19,6 +19,15 @@ const ATTESTATION_SQL = readFileSync(
   join(REPO_ROOT, 'scripts', 'db', 'attest-effective-privileges.sql'),
   'utf8',
 );
+const SECURITY_DEFINER_EXECUTE_REPAIR_SQL = readFileSync(
+  join(
+    REPO_ROOT,
+    'supabase',
+    'migrations',
+    '20260811100800_revoke_security_definer_execute.sql',
+  ),
+  'utf8',
+);
 
 function attestationSql(phase: 'expand' | 'contract' = 'contract'): string {
   return `SELECT set_config('app.atlaris_migration_phase', '${phase}', true);\n${ATTESTATION_SQL}`;
@@ -101,6 +110,44 @@ describe('effective database privilege attestation', () => {
           }),
         },
       );
+    });
+  });
+
+  it('repairs browser execution inherited by security-definer functions', async () => {
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        GRANT EXECUTE ON FUNCTION private.cleanup_retained_db_rows(timestamptz)
+        TO PUBLIC, anon, authenticated;
+      `);
+
+      await expect(tx.execute(sql.raw(attestationSql()))).rejects.toMatchObject(
+        {
+          cause: expect.objectContaining({
+            message: expect.stringMatching(
+              /can execute security-definer function private\.cleanup_retained_db_rows/,
+            ),
+          }),
+        },
+      );
+
+      await tx.execute(sql.raw(SECURITY_DEFINER_EXECUTE_REPAIR_SQL));
+
+      const privilegeRows = (await tx.execute(sql`
+        SELECT role_name,
+          has_function_privilege(
+            role_name,
+            'private.cleanup_retained_db_rows(timestamptz)',
+            'EXECUTE'
+          ) AS can_execute
+        FROM unnest(ARRAY['anon', 'authenticated']) AS role_name
+      `)) as Array<{ role_name: string; can_execute: boolean }>;
+      expect(privilegeRows).toEqual([
+        { role_name: 'anon', can_execute: false },
+        { role_name: 'authenticated', can_execute: false },
+      ]);
+      await expect(
+        tx.execute(sql.raw(attestationSql())),
+      ).resolves.toBeDefined();
     });
   });
 
