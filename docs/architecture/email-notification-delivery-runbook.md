@@ -2,6 +2,57 @@
 
 Use this runbook for the optional email notification scheduler only. It does not apply to push, SMS, in-app, campaigns, or user-local-time scheduling.
 
+## Preference model (developer)
+
+Delivery is **opt-in per category**. Defaults are all categories off (`DEFAULT_EMAIL_NOTIFICATION_PREFERENCES` in `src/shared/notifications/email-preferences.ts`).
+
+| Layer | Location |
+| --- | --- |
+| Master switch + categories | `user_email_notification_settings` / `user_email_notification_preferences` (`supabase/schema/tables/user-preferences.ts`) |
+| Settings UI | `/settings#notifications` → `NotificationsSection` / `NotificationPreferencesForm` |
+| Save API | `PATCH /api/v1/user/preferences/notifications` (`mutation` rate limit) |
+| Effective prefs | `resolveEffectiveEmailPreferences()` — when `unsubscribeAllOptionalEmails` is true, every category is treated as off |
+| Scheduler send path | `src/features/notifications/email/delivery-service.ts` reads prefs via `getEmailNotificationPreferences` |
+
+### PATCH body (strict)
+
+```json
+{
+  "unsubscribeAllOptionalEmails": false,
+  "weeklySummary": true,
+  "dailyReminder": false,
+  "streakReminder": true
+}
+```
+
+Schema: `emailNotificationPreferenceFormValuesSchema` (camelCase form fields map to DB categories `weekly_summary`, `daily_reminder`, `streak_reminder`).
+
+### Public unsubscribe
+
+Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email/unsubscribe?token=…`:
+
+- Tokens from `createUnsubscribeToken()` (`src/features/notifications/email/unsubscribe-token.ts`); default TTL **90 days**; secret `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
+- `GET` is confirmation-only (no mutation). `POST` applies unsubscribe.
+- A one-click `POST` must use `Content-Type: application/x-www-form-urlencoded` with exactly one body field: `List-Unsubscribe=One-Click`.
+- Route bypasses Clerk auth; authenticates via HMAC token. Still reachable during maintenance (`middleware-policy.ts`).
+
+### Send nuances
+
+- Global kill switch: Vercel Flag `email-notification-delivery` (fail-closed). See [Vercel Flags](../development/environment.md#vercel-flags).
+- Live sends require `RESEND_API_KEY`, `RESEND_FROM`, a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (unpadded base64url encoding of at least 32 random bytes), and production HTTPS `APP_URL` for deeplinks/unsubscribe URLs.
+- In a daily pass, a `streak_reminder` can suppress `daily_reminder` for the same user (`suppressed_by_streak_reminder` in `delivery-service.ts`).
+
+### “Why didn’t this user get email?” checklist
+
+1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
+2. Flag `email-notification-delivery` on; `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
+3. Recipient has a non-empty email and qualifies for the requested category:
+   - Daily reminder: no activity today in the user's local time zone and an incomplete plan.
+   - Streak reminder: no activity today and activity on each of the prior three local days.
+   - Weekly summary: a Monday run and activity on at least one day in the prior week.
+4. Logical run claimed and not stuck (`email_notification_delivery_runs`); ledger row not already terminal (`email_notification_deliveries`).
+5. Not suppressed by streak reminder in the same daily pass.
+
 ## Schedule and ownership
 
 Vercel Cron owns email invocation through one path:
@@ -72,6 +123,6 @@ This action resets the run cursor but retains the logical date and domain delive
 
 ## Deployment checks
 
-Before enabling delivery, apply the run-table migration, deploy the application and `vercel.json`, configure a distinct `CRON_SECRET`, confirm exactly two Vercel email Cron entries, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.
+Before enabling delivery, apply the run-table migration, deploy the application and `vercel.json`, configure a distinct `CRON_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and production HTTPS `APP_URL`, confirm exactly two Vercel email Cron entries, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.
 
 `20260710151930_create_email_notification_delivery_runs` deliberately retains its Supabase CLI-generated version even though the prerequisite delivery-ledger migration is future-dated. The staging and production migration workflows run `supabase db push --include-all`, which applies this otherwise historical missing version after the ledger migration has already reached the remote project. Confirm the workflow logs list the run-table migration before enabling the application path.

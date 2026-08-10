@@ -117,6 +117,7 @@ External tool and CLI references used in local/dev workflows.
 
 | File | Description |
 |------|-------------|
+| [1password-agents-setup.md](./third-party-services/1password-agents-setup.md) | 1Password Environments bootstrap for cloud agents |
 | [clerk-cli-docs.md](./third-party-services/clerk-cli-docs.md) | Clerk CLI install and usage |
 | [portless-commands.md](./third-party-services/portless-commands.md) | Portless CLI commands |
 | [portless-overview.md](./third-party-services/portless-overview.md) | Portless overview (named `.localhost` URLs) |
@@ -170,6 +171,7 @@ docs/
 │   ├── test-standards.md
 │   └── ui-baseline-capture.md
 └── third-party-services/
+    ├── 1password-agents-setup.md
     ├── clerk-cli-docs.md
     ├── portless-commands.md
     └── portless-overview.md
