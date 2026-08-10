@@ -129,7 +129,13 @@ describe('effective database privilege attestation', () => {
           }),
         },
       );
+    });
 
+    await runInRolledBackTransaction(async (tx) => {
+      await tx.execute(sql`
+        GRANT EXECUTE ON FUNCTION private.cleanup_retained_db_rows(timestamptz)
+        TO PUBLIC, anon, authenticated;
+      `);
       await tx.execute(sql.raw(SECURITY_DEFINER_EXECUTE_REPAIR_SQL));
 
       const privilegeRows = (await tx.execute(sql`
