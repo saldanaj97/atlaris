@@ -294,14 +294,21 @@ export function projectClerkBillingSource(
     return null;
   }
 
+  const paidItems = source.items.filter((item) => isPaidTier(item.tier));
+  const activePaidItem = chooseHighestTierItem(
+    paidItems.filter((item) => ACTIVE_ITEM_STATUSES.has(item.status)),
+  );
+  const hasPastDuePaidItemWithoutActive =
+    paidItems.some((item) => item.status === 'past_due') &&
+    activePaidItem === null;
+
   if (
     source.paymentAttemptStatus === 'failed' ||
     source.subscriptionStatus === 'past_due' ||
-    source.items.some(
-      (item) => isPaidTier(item.tier) && item.status === 'past_due',
-    )
+    hasPastDuePaidItemWithoutActive
   ) {
-    // Failed payments can include paid items; never use them to promote a tier.
+    // Failed/past-due payloads must not promote free users. Item-level past_due
+    // alone is included only when no active paid item exists to project.
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
     }
@@ -314,11 +321,6 @@ export function projectClerkBillingSource(
       cancelAtPeriodEnd: current.cancelAtPeriodEnd,
     };
   }
-
-  const paidItems = source.items.filter((item) => isPaidTier(item.tier));
-  const activePaidItem = chooseHighestTierItem(
-    paidItems.filter((item) => ACTIVE_ITEM_STATUSES.has(item.status)),
-  );
 
   if (activePaidItem?.tier) {
     return {

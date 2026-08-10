@@ -287,6 +287,38 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  it('projects an active paid item when a separate past-due upgrade item is present', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          subscriptionStatus: 'active',
+          items: [
+            item({
+              id: 'item_starter',
+              status: 'active',
+              tier: 'starter',
+              planSlug: 'starter_plan',
+              amountInCents: 1_000,
+            }),
+            item({
+              id: 'item_pro_past_due',
+              status: 'past_due',
+              tier: 'pro',
+            }),
+          ],
+        }),
+        currentFreeState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
   it('maps Clerk webhook item timestamps and trial state from the payload', () => {
     const sourceFromWebhook = clerkBillingSourceFromWebhook({
       type: 'subscriptionItem.active',
