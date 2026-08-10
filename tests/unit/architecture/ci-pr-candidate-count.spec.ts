@@ -22,4 +22,10 @@ describe('PR CI candidate file counting', () => {
     expect(CI_PR_WORKFLOW.split(CANDIDATE_COUNT)).toHaveLength(3);
     expect(CI_PR_WORKFLOW).not.toContain('echo "${FILES}" | wc -l');
   });
+
+  it('allows related mode to pass when no integration tests match', () => {
+    const relatedMode = CI_PR_WORKFLOW.match(/related\)([\s\S]*?)\n\s*;;/)?.[1];
+
+    expect(relatedMode).toContain('--passWithNoTests');
+  });
 });

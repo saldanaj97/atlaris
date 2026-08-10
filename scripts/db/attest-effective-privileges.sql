@@ -4,6 +4,7 @@ DECLARE
   violation text;
   migration_phase text := current_setting('app.atlaris_migration_phase', true);
   users_update_columns text[] := ARRAY['name', 'updated_at'];
+  task_progress_update_columns text[] := ARRAY['status', 'completed_at', 'updated_at'];
 BEGIN
   IF migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract') THEN
     RAISE EXCEPTION 'attestation phase must be expand or contract';
@@ -352,7 +353,7 @@ BEGIN
   END IF;
 
   WITH required_privileges AS (
-    SELECT unnest(ARRAY['SELECT', 'INSERT', 'UPDATE']) AS privilege_type
+    SELECT unnest(ARRAY['SELECT', 'INSERT']) AS privilege_type
   )
   SELECT format('authenticated lacks %s on public.task_progress', privilege_type)
     INTO violation
@@ -390,6 +391,7 @@ BEGIN
     SELECT *
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
+      ('task_progress', 'UPDATE', task_progress_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
@@ -421,6 +423,7 @@ BEGIN
     SELECT *
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
+      ('task_progress', 'UPDATE', task_progress_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
