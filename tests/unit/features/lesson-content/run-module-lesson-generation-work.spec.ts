@@ -36,6 +36,7 @@ describe('runModuleLessonGenerationWork', () => {
     const planId = createId('plan');
     const moduleId = createId('module');
     const serverDbClient = {} as DbClient;
+    const workflowRunId = 'wrun_disabled';
 
     await expect(
       runModuleLessonGenerationWork(
@@ -45,6 +46,13 @@ describe('runModuleLessonGenerationWork', () => {
           planId,
           moduleId,
           userTier: 'free',
+          generationMetadata: {
+            version: 1,
+            workflow: {
+              provider: 'workflow-sdk',
+              runId: workflowRunId,
+            },
+          },
         },
         { serverDbClient },
       ),
@@ -55,6 +63,7 @@ describe('runModuleLessonGenerationWork', () => {
       userId,
       planId,
       moduleId,
+      workflowRunId,
     });
   });
 });

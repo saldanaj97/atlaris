@@ -202,8 +202,13 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     readonly userId: string;
     readonly planId: string;
     readonly moduleId: string;
+    readonly workflowRunId?: string;
   },
 ): Promise<void> {
+  const matchingWorkflowRun = args.workflowRunId
+    ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
+    : undefined;
+
   await dbClient
     .update(modules)
     .set({
@@ -212,6 +217,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
       lessonGenerationCompletedAt: null,
       lessonGenerationFailedAt: null,
       lessonGenerationError: null,
+      lessonGenerationMetadata: null,
     })
     .where(
       and(
@@ -219,6 +225,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
         eq(modules.planId, args.planId),
         eq(modules.lessonGenerationStatus, 'generating'),
         moduleOwnedByUser(args.userId),
+        matchingWorkflowRun,
       ),
     );
 }

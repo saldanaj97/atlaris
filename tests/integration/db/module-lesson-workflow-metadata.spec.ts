@@ -1,4 +1,7 @@
-import { claimModuleLessonGenerationOrDescribe } from '@/lib/db/queries/module-lesson-generation';
+import {
+  claimModuleLessonGenerationOrDescribe,
+  revertModuleLessonGeneratingToNotGenerated,
+} from '@/lib/db/queries/module-lesson-generation';
 import { modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestModule } from '@tests/fixtures/modules';
@@ -101,5 +104,63 @@ describe('module lesson workflow metadata (integration)', () => {
       .from(modules)
       .where(eq(modules.id, mod.id));
     expect(unchanged?.metadata?.workflow?.runId).toBe(runId);
+  });
+
+  it('does not release a newer workflow claim from a stale cleanup', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-stale-cleanup');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Stale cleanup' });
+    const mod = await createTestModule({ planId: plan.id });
+    const runA = `wrun_${authUserId}_a`;
+    const runB = `wrun_${authUserId}_b`;
+
+    const claimA = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { workflow: { runId: runA, startedAt: new Date().toISOString() } },
+    );
+    expect(claimA.kind).toBe('claimed');
+
+    await revertModuleLessonGeneratingToNotGenerated(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      workflowRunId: runA,
+    });
+
+    const claimB = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { workflow: { runId: runB, startedAt: new Date().toISOString() } },
+    );
+    expect(claimB.kind).toBe('claimed');
+
+    await revertModuleLessonGeneratingToNotGenerated(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      workflowRunId: runA,
+    });
+
+    const [row] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+
+    expect(row).toMatchObject({
+      status: 'generating',
+      metadata: { workflow: { runId: runB } },
+    });
   });
 });

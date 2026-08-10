@@ -44,12 +44,14 @@ export async function runModuleLessonGenerationWork(
   deps: GenerateModuleLessonsDeps = {},
 ): Promise<ModuleLessonGenerationWorkResult> {
   const serverDbClient = deps.serverDbClient ?? serviceRoleDb;
+  const workflowRunId = params.generationMetadata?.workflow?.runId;
 
   if (!lessonContentEnv.generationEnabled) {
     await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
       userId: params.userId,
       planId: params.planId,
       moduleId: params.moduleId,
+      workflowRunId,
     });
     return { kind: 'disabled' };
   }
@@ -217,6 +219,7 @@ export async function runModuleLessonGenerationWork(
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
+        workflowRunId,
       });
     } catch (revertErr) {
       logger.error(
@@ -245,6 +248,7 @@ export async function runModuleLessonGenerationWork(
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
+        workflowRunId,
       });
     } catch (revertErr) {
       logger.error(
