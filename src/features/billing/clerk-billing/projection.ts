@@ -77,11 +77,6 @@ const PAID_TIER_RANK: Record<SubscriptionTier, number> = {
   pro: 2,
 };
 
-const ACTIVE_ITEM_STATUSES = new Set<ClerkSubscriptionItemStatus>([
-  'active',
-  'past_due',
-]);
-
 const TERMINAL_STATUSES = new Set<ClerkSubscriptionStatus>([
   'abandoned',
   'canceled',
@@ -297,11 +292,39 @@ export function projectClerkBillingSource(
     return null;
   }
 
-  if (
-    source.paymentAttemptStatus === 'failed' ||
-    source.subscriptionStatus === 'past_due'
-  ) {
-    // Failed initial checkouts can include active paid items; never promote free users.
+  const paidItems = source.items.filter((item) => isPaidTier(item.tier));
+
+  if (source.paymentAttemptStatus === 'failed') {
+    // Failed attempts can include active-looking items; never use them to promote a tier.
+    if (!isPaidTier(current.subscriptionTier)) {
+      return null;
+    }
+
+    return {
+      subscriptionTier: current.subscriptionTier,
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: current.subscriptionPeriodEnd,
+      cancelAtPeriodEnd: current.cancelAtPeriodEnd,
+    };
+  }
+
+  const activePaidItem = chooseHighestTierItem(
+    paidItems.filter((item) => item.status === 'active'),
+  );
+
+  if (activePaidItem?.tier) {
+    return {
+      subscriptionTier: activePaidItem.tier,
+      subscriptionStatus: activePaidItem.isFreeTrial ? 'trialing' : 'active',
+      subscriptionPeriodEnd: activePaidItem.periodEnd,
+      cancelAtPeriodEnd: false,
+    };
+  }
+
+  const pastDuePaidItems = paidItems.filter(
+    (item) => item.status === 'past_due',
+  );
+  if (source.subscriptionStatus === 'past_due' || pastDuePaidItems.length > 0) {
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
     }
@@ -310,27 +333,12 @@ export function projectClerkBillingSource(
       subscriptionTier: current.subscriptionTier,
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd:
-        latestPeriodEnd(source.items) ?? current.subscriptionPeriodEnd,
+        latestPeriodEnd(
+          pastDuePaidItems.filter(
+            (item) => item.tier === current.subscriptionTier,
+          ),
+        ) ?? current.subscriptionPeriodEnd,
       cancelAtPeriodEnd: current.cancelAtPeriodEnd,
-    };
-  }
-
-  const paidItems = source.items.filter((item) => isPaidTier(item.tier));
-  const activePaidItem = chooseHighestTierItem(
-    paidItems.filter((item) => ACTIVE_ITEM_STATUSES.has(item.status)),
-  );
-
-  if (activePaidItem?.tier) {
-    return {
-      subscriptionTier: activePaidItem.tier,
-      subscriptionStatus:
-        activePaidItem.status === 'past_due'
-          ? 'past_due'
-          : activePaidItem.isFreeTrial
-            ? 'trialing'
-            : 'active',
-      subscriptionPeriodEnd: activePaidItem.periodEnd,
-      cancelAtPeriodEnd: false,
     };
   }
 
@@ -361,13 +369,12 @@ export function projectClerkBillingSource(
   }
 
   const activeFreeItem = source.items.find(
-    (item) => item.tier === 'free' && ACTIVE_ITEM_STATUSES.has(item.status),
+    (item) => item.tier === 'free' && item.status === 'active',
   );
   if (activeFreeItem) {
     return {
       subscriptionTier: 'free',
-      subscriptionStatus:
-        activeFreeItem.status === 'past_due' ? 'past_due' : 'active',
+      subscriptionStatus: 'active',
       subscriptionPeriodEnd: activeFreeItem.periodEnd,
       cancelAtPeriodEnd: false,
     };

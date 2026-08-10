@@ -26,7 +26,7 @@ const migrationWorkflows = [
     protectedBranch: 'develop',
   },
   {
-    environment: 'production',
+    environment: 'Production – atlaris',
     fileName: 'production-db-migrations.yaml',
     protectedBranch: 'main',
   },
