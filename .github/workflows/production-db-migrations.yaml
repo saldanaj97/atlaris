@@ -1,4 +1,4 @@
-name: Deploy PR #428 EXPAND Migrations to Production
+name: 'Deploy PR #428 EXPAND Migrations to Production'
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
 
     steps:
-      - name: Checkout frozen PR #428 release
+      - name: 'Checkout frozen PR #428 release'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: f701907509915d6acb0fdd6fc1e09bfb4e704dbf
