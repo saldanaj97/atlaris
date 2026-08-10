@@ -329,6 +329,10 @@ expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute(
 - Use `findBy*` for async rendering.
 - Use `waitFor` only when you cannot wait on a specific element state.
 
+### Hydration
+
+For SSR/hydration-sensitive client components, render server markup with `renderToString` while `window` is absent, then `hydrateRoot` the markup and assert no `onRecoverableError`; unmount the root and remove its container in `finally`. Use normal RTL `render` otherwise.
+
 ### Assertions
 
 - Assert the smallest meaningful thing.

@@ -19,7 +19,8 @@ interface RegenerationQueueEnv {
 const defaultQueueAccess = createServerEnvAccess(getProcessEnvSource);
 
 function isQueueProductionRuntime(): boolean {
-  return isProdRuntimeEnv(getProcessEnvSource());
+  const env = getProcessEnvSource();
+  return isProdRuntimeEnv(env) && env.VERCEL_ENV !== 'preview';
 }
 
 export const regenerationQueueEnv: RegenerationQueueEnv = {

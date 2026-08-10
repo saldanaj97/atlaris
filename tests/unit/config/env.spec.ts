@@ -734,16 +734,24 @@ describe('Environment Configuration', () => {
 
   describe('regenerationQueueEnv', () => {
     it.each([
-      ['development', true],
-      ['test', true],
-      ['production', false],
-    ] as const)('defaults queue enabled in %s to %s', (nodeEnv, expected) => {
-      vi.stubGlobal('window', undefined);
-      vi.stubEnv('NODE_ENV', nodeEnv);
-      vi.stubEnv('REGENERATION_QUEUE_ENABLED', '');
+      ['development', undefined, true],
+      ['test', undefined, true],
+      ['production', undefined, false],
+      ['production', 'production', false],
+      ['production', 'preview', true],
+    ] as const)(
+      'defaults queue enabled with NODE_ENV=%s and VERCEL_ENV=%s to %s',
+      (nodeEnv, vercelEnv, expected) => {
+        vi.stubGlobal('window', undefined);
+        vi.stubEnv('NODE_ENV', nodeEnv);
+        if (vercelEnv) {
+          vi.stubEnv('VERCEL_ENV', vercelEnv);
+        }
+        vi.stubEnv('REGENERATION_QUEUE_ENABLED', '');
 
-      expect(regenerationQueueEnv.enabled).toBe(expected);
-    });
+        expect(regenerationQueueEnv.enabled).toBe(expected);
+      },
+    );
 
     it('keeps a minimum of 1 for positive fractional drain counts', () => {
       vi.stubEnv('REGENERATION_MAX_JOBS_PER_DRAIN', '0.5');

@@ -21,6 +21,8 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 | `REGENERATION_INLINE_PROCESSING`     | Inline processing fallback from enqueue route                          | `false` in production       |
 | `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default)           |
 
+The queue and inline fallback default on in development, test, and Vercel Preview. Both default off in Production until a worker trigger is configured and verified.
+
 ## Workflow-backed regeneration
 
 When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
