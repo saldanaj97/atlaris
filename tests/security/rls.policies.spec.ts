@@ -1523,6 +1523,21 @@ describe('RLS Policy Verification', () => {
 
       expect(updated).toHaveLength(1);
       expect(updated[0]?.status).toBe('in_progress');
+
+      await expectRlsBlocked(() =>
+        authDb
+          .update(taskProgress)
+          .set({ taskId: task.id })
+          .where(eq(taskProgress.taskId, task.id))
+          .returning(),
+      );
+      await expectRlsBlocked(() =>
+        authDb
+          .update(taskProgress)
+          .set({ userId: user.id })
+          .where(eq(taskProgress.taskId, task.id))
+          .returning(),
+      );
     });
   });
 

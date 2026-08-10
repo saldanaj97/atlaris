@@ -6,7 +6,9 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { cloneElement, isValidElement, type ReactElement } from 'react';
+import { act, cloneElement, isValidElement, type ReactElement } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -216,6 +218,65 @@ describe('ClerkPricingTable', () => {
       'annual',
     );
     expect(screen.getByText('$8')).toBeVisible();
+  });
+
+  it('hydrates monthly server markup before applying a validated annual checkout URL', async () => {
+    const { ClerkPricingTable } =
+      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
+
+    vi.stubGlobal('window', undefined);
+    let markup: string;
+    try {
+      markup = renderToString(
+        <ClerkPricingTable
+          appearance={{}}
+          newSubscriptionRedirectUrl='/settings#billing'
+        />,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+    );
+    const container = document.createElement('div');
+    container.innerHTML = markup;
+    document.body.append(container);
+
+    expect(
+      within(container).getByRole('button', { name: 'Monthly' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    const onRecoverableError = vi.fn();
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    try {
+      await act(async () => {
+        root = hydrateRoot(
+          container,
+          <ClerkPricingTable
+            appearance={{}}
+            newSubscriptionRedirectUrl='/settings#billing'
+          />,
+          { onRecoverableError },
+        );
+      });
+
+      await waitFor(() =>
+        expect(
+          within(container).getByRole('button', { name: 'Yearly' }),
+        ).toHaveAttribute('aria-pressed', 'true'),
+      );
+      expect(within(container).getByText('$8')).toBeVisible();
+      expect(onRecoverableError).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root?.unmount());
+      container.remove();
+    }
   });
 
   it("preserves a signed-out visitor's selected plan and period through sign-in", async () => {

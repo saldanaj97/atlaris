@@ -29,7 +29,7 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
   get enabled(): boolean {
     return toBoolean(
       defaultQueueAccess.getServerOptional('REGENERATION_QUEUE_ENABLED'),
-      true,
+      !isQueueProductionRuntime(),
     );
   },
   /**

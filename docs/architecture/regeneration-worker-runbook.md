@@ -15,7 +15,7 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 
 | Variable                             | Purpose                                                                | Production expectation      |
 | ------------------------------------ | ---------------------------------------------------------------------- | --------------------------- |
-| `REGENERATION_QUEUE_ENABLED`         | Master switch for enqueue/drain behavior                               | `true`                      |
+| `REGENERATION_QUEUE_ENABLED`         | Master switch for enqueue/drain behavior                               | Explicitly `true` after the worker trigger is configured; otherwise defaults `false` |
 | `REGENERATION_MAX_JOBS_PER_DRAIN`    | Max jobs processed per drain call                                      | Set to a safe bounded value |
 | `REGENERATION_WORKER_TOKEN`          | Shared bearer token for internal drain auth                            | Required                    |
 | `REGENERATION_INLINE_PROCESSING`     | Inline processing fallback from enqueue route                          | `false` in production       |
@@ -33,6 +33,8 @@ When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Env flags: [environment variables](../development/environment.md#workflow-sdk). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
 
 ## Triggering the Worker
+
+Configure and verify a recurring worker trigger before setting `REGENERATION_QUEUE_ENABLED=true` in production.
 
 Use a scheduler (Cron, GitHub Actions, Vercel cron, etc.) to call:
 

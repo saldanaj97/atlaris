@@ -470,6 +470,7 @@ jobs:
           case "${MODE}" in
             related)
               pnpm vitest related --project integration --run --coverage \
+                --passWithNoTests \
                 --reporter=default \
                 --reporter=json \
                 --outputFile=test-results.json \

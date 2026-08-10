@@ -117,6 +117,9 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '20260811100800_revoke_security_definer_execute.sql',
     );
+    expect(script).toContain(
+      '20260811100900_restrict_task_progress_update_columns.sql',
+    );
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -244,6 +247,22 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(dropPolicyMigration);
   });
 
+  it('restricts authenticated task-progress updates to mutable progress fields', () => {
+    const migrationName =
+      '20260811100900_restrict_task_progress_update_columns.sql';
+    const migration = readFileSync(join(MIGRATIONS_DIR, migrationName), 'utf8');
+
+    expect(migration).toContain(
+      'REVOKE UPDATE ON TABLE "task_progress" FROM authenticated;',
+    );
+    expect(migration).toContain(
+      'GRANT UPDATE ("status", "completed_at", "updated_at") ON TABLE "task_progress" TO authenticated;',
+    );
+    expect(readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8')).toContain(
+      migrationName,
+    );
+  });
+
   it('keeps published migration versions unique and maps the retained ledger identities', () => {
     const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((fileName) =>
       fileName.endsWith('.sql'),
@@ -292,7 +311,7 @@ describe('Supabase migration workflows', () => {
     const targetEntries = journal.entries.filter((entry) =>
       entry.tag.startsWith('20260811100'),
     );
-    expect(targetEntries.slice(-5)).toEqual([
+    expect(targetEntries.slice(-6)).toEqual([
       {
         idx: 51,
         version: '7',
@@ -328,8 +347,15 @@ describe('Supabase migration workflows', () => {
         tag: '20260811100800_revoke_security_definer_execute',
         breakpoints: true,
       },
+      {
+        idx: 56,
+        version: '7',
+        when: 1786442940000,
+        tag: '20260811100900_restrict_task_progress_update_columns',
+        breakpoints: true,
+      },
     ]);
-    for (const entry of targetEntries.slice(-5)) {
+    for (const entry of targetEntries.slice(-6)) {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
 

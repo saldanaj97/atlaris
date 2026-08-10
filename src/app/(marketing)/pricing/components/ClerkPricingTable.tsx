@@ -66,14 +66,6 @@ const PLAN_RANK: Record<string, number> = {
   [CLERK_BILLING_PLAN_SLUGS.pro]: 2,
 };
 
-function readCheckoutPeriodFromUrl(): BillingPeriod {
-  if (typeof window === 'undefined') return 'month';
-  const requestedPeriod = new URL(window.location.href).searchParams.get(
-    CHECKOUT_PERIOD_PARAM,
-  );
-  return requestedPeriod === 'annual' ? 'annual' : 'month';
-}
-
 function buildCheckoutSignInRedirect(
   planId: string,
   planSlug: string,
@@ -152,7 +144,7 @@ export function ClerkPricingTable({
   const { billing, loaded } = useClerk();
   const { isLoaded, userId } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [period, setPeriod] = useState<BillingPeriod>(readCheckoutPeriodFromUrl);
+  const [period, setPeriod] = useState<BillingPeriod>('month');
   const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
     null,
   );
