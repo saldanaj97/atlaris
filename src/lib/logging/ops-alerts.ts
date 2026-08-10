@@ -20,8 +20,9 @@ type RegenerationWorkflowAttachUncertainContext = {
   jobId: string;
   planId: string;
   userId: string;
-  workflowRunId: string;
-  cancellationSucceeded: boolean;
+  correlationId?: string;
+  workflowRunId?: string;
+  cancellationSucceeded?: boolean;
 };
 
 export function recordRegenerationWorkflowAttachUncertain(
@@ -35,8 +36,15 @@ export function recordRegenerationWorkflowAttachUncertain(
     if (sentryEnv.sendDefaultPii) {
       scope.setExtra('userId', context.userId);
     }
-    scope.setExtra('workflowRunId', context.workflowRunId);
-    scope.setExtra('cancellationSucceeded', context.cancellationSucceeded);
+    if (context.correlationId !== undefined) {
+      scope.setExtra('correlationId', context.correlationId);
+    }
+    if (context.workflowRunId !== undefined) {
+      scope.setExtra('workflowRunId', context.workflowRunId);
+    }
+    if (context.cancellationSucceeded !== undefined) {
+      scope.setExtra('cancellationSucceeded', context.cancellationSucceeded);
+    }
     const err = error instanceof Error ? error : new Error(String(error));
     Sentry.captureException(err);
   });

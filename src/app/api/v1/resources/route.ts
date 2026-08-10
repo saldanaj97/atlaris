@@ -2,7 +2,6 @@ import { resourceType } from '../../../../../supabase/enums';
 import { ValidationError } from '@/lib/api/errors';
 import { parseListPaginationParams } from '@/lib/api/pagination';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { getRequestSearchParams } from '@/lib/api/request-url';
 import { json } from '@/lib/api/response';
 import { PAGINATION_MAX_LIMIT } from '@/shared/constants/pagination';
 import { resources } from '@supabase/schema';
@@ -19,7 +18,7 @@ const resourcesTypeQuerySchema = z.object({
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ req, db }) => {
-    const searchParams = getRequestSearchParams(req);
+    const searchParams = new URL(req.url).searchParams;
 
     const parsedTypeQuery = resourcesTypeQuerySchema.safeParse({
       type: searchParams.get('type') ?? undefined,

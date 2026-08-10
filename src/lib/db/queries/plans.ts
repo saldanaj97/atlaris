@@ -81,6 +81,7 @@ const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
 type PlanListOrdering = 'createdAt' | 'updatedAt';
 type PlanListOptions = PaginationOptions & {
   orderBy?: PlanListOrdering;
+  planIds?: string[];
 };
 type PlanGenerationStatus =
   (typeof learningPlans.$inferSelect)['generationStatus'];
@@ -139,7 +140,14 @@ function applyPlanListOrderingAndPagination(
   }
 }
 
-function userPlanListWhere(userId: string) {
+function userPlanListWhere(userId: string, planIds?: string[]) {
+  if (planIds) {
+    return and(
+      eq(learningPlans.userId, userId),
+      inArray(learningPlans.id, planIds),
+    );
+  }
+
   return eq(learningPlans.userId, userId);
 }
 
@@ -162,7 +170,7 @@ async function fetchUserPlanListRows(
 ): Promise<LearningPlan[] | LightweightPlanListRow[]> {
   const planQuery = (selection ? client.select(selection) : client.select())
     .from(learningPlans)
-    .where(userPlanListWhere(userId))
+    .where(userPlanListWhere(userId, options?.planIds))
     .$dynamic();
 
   applyPlanListOrderingAndPagination(planQuery, options);

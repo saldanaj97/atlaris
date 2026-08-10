@@ -1,13 +1,12 @@
 import type { Config } from 'drizzle-kit';
 
-import dotenv from 'dotenv';
+import { existsSync } from 'node:fs';
 
 // Load local env files only outside CI. CI relies on preset env vars.
 // TODO: Find a way to load the staging and prod db urls for migrations using { path: ['.env.local', '.env'] }
 if (!process.env.CI) {
-  dotenv.config({
-    path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env.local',
-  });
+  const envPath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env.local';
+  if (existsSync(envPath)) process.loadEnvFile(envPath);
 }
 
 // Prefer direct connection URLs for migrations (avoids connection pooler issues with DDL),

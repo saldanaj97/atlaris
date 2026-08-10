@@ -4,7 +4,7 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/selectors';
 import { getPlansPageForRead } from '@/features/plans/read-projection/service';
 import { generationAttempts, taskProgress } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -223,6 +223,7 @@ describe('aggregate plans page query', () => {
       taskId: pausedTask.id,
       userId,
       status: 'completed',
+      updatedAt: new Date('2026-05-01T18:00:00.000Z'),
     });
     statusFixtures.push({
       expectedFilter: 'inactive',
@@ -357,6 +358,42 @@ describe('aggregate plans page query', () => {
     });
   });
 
+  it('uses the latest task progress timestamp for partial-plan activity', async () => {
+    const userId = await createUser('latest-progress-activity');
+    const plan = await createTestPlan({
+      userId,
+      topic: 'Recently resumed plan',
+      generationStatus: 'ready',
+      updatedAt: new Date('2026-05-01T18:00:00.000Z'),
+    });
+    const module = await createTestModule({ planId: plan.id });
+    const completedTask = await createTestTask({ moduleId: module.id });
+    await createTestTask({ moduleId: module.id, order: 2 });
+    const progressUpdatedAt = new Date('2026-06-22T17:30:00.000Z');
+
+    await db.insert(taskProgress).values({
+      taskId: completedTask.id,
+      userId,
+      status: 'completed',
+      updatedAt: progressUpdatedAt,
+    });
+
+    const page = await getPlansPageForRead({
+      userId,
+      dbClient: db,
+      query: query({ status: 'all' }),
+      referenceTimestamp: REFERENCE_TIMESTAMP,
+    });
+
+    expect(page.items).toEqual([
+      expect.objectContaining({
+        id: plan.id,
+        status: 'active',
+        updatedAt: progressUpdatedAt.toISOString(),
+      }),
+    ]);
+  });
+
   it('keeps non-ready plans with modules out of the not-started bucket', async () => {
     const userId = await createUser('non-ready-modules');
     const generatingPlan = await createTestPlan({
@@ -439,6 +476,7 @@ describe('aggregate plans page query', () => {
         taskId: task.id,
         userId,
         status: 'completed' as const,
+        updatedAt: new Date('2026-06-19T12:00:00.000Z'),
       })),
     );
 
@@ -464,6 +502,7 @@ describe('aggregate plans page query', () => {
       taskId: activeTask.id,
       userId,
       status: 'completed',
+      updatedAt: new Date('2026-06-18T12:00:00.000Z'),
     });
 
     const topicsFor = async (sort: PlanListSort): Promise<string[]> => {

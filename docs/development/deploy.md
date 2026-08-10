@@ -9,7 +9,7 @@ Required order:
 1. Deploy the application release that no longer reads or writes PDF plan artifacts.
 2. Wait for the rollout to finish across all pods/instances.
 3. Verify the new release is healthy.
-4. Run the Supabase migration workflow for the target environment (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`), which applies committed migrations with `supabase db push`.
+4. After rollout health is verified, manually dispatch the target environment's migration workflow with phase `contract` and confirmation `post-deploy-health-verified`.
 
 Do not reverse the order. Running the migration first can break rolling deploys or failovers against still-old binaries.
 
@@ -19,27 +19,46 @@ The `user_preferences` rollout is split into expand and contract phases. The exp
 
 Required order:
 
-1. Run the Supabase migration workflow so `20260703181947_create_user_preferences_foundation` is applied to the target environment (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
+1. Manually dispatch the target environment's migration workflow with phase `expand`. Confirm `20260703181947_create_user_preferences_foundation` succeeds before continuing.
 2. Deploy the application release that reads and writes `user_preferences`.
 3. Wait for the rollout to finish across all pods/instances and verify the new release is healthy.
-4. Run the Supabase migration workflow again to apply the contract migration `20260801120000_drop_user_preference_columns`, which removes legacy preference columns from `users`.
+4. Dispatch the workflow with phase `contract` and confirmation `post-deploy-health-verified`. This applies `20260801120000_drop_user_preference_columns`, which removes legacy preference columns from `users`.
 
 Do not deploy the application release before the expand migration is applied. Authenticated requests load actor records via a `user_preferences` join and will fail with a missing-table error until that migration completes.
 
 Do not run the contract migration before the new application release is fully rolled out. Older binaries may still read or write the legacy `users` preference columns during rolling deploys.
 
+## Legacy Stripe entitlement archive
+
+The expand phase runs `20260706221000_archive_legacy_stripe_entitlements` before the contract phase can drop the legacy Stripe columns. Before contract dispatch, verify every legacy Stripe identity was archived:
+
+```sql
+SELECT
+  count(*) AS legacy_identities,
+  count(archive.user_id) AS archived_identities
+FROM users
+LEFT JOIN legacy_stripe_entitlement_archive AS archive
+  ON archive.user_id = users.id
+WHERE users.stripe_customer_id IS NOT NULL
+   OR users.stripe_subscription_id IS NOT NULL;
+```
+
+The counts must match. Export the archive to the approved operator location and verify each paid identity is owned by the expected Clerk user before entering the contract confirmation. The archive retains `user_id`, `auth_user_id`, both Stripe IDs, and the subscription projection fields; it does not restore Stripe commerce paths.
+
+The phased migration runner refuses to continue when the drop version is already recorded but the archive version is missing. That state cannot be repaired from the current `users` table. Restore a pre-drop backup into an isolated database, export and verify the legacy identities, import them into `legacy_stripe_entitlement_archive` on the target, and only then repair version `20260706221000` as applied. Do not run the contract phase until the archive is present and verified.
+
 ## Database migrations and internal workers
 
 After deploying a release that includes new Supabase migrations:
 
-1. Run the environment workflow (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
-2. If the CLI reports out-of-order local migrations, use `supabase db push --include-all` against the target project (see `docs/architecture/retention-cleanup-runbook.md`).
+1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
+2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
 3. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
    - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
 4. Verify plan cleanup scheduler and alerting when `PLAN_CLEANUP_ENABLED=true`:
-   - Set the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions repository secret.
+   - Set the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
    - Confirm `.github/workflows/plan-cleanup-scheduler.yml` runs every 15 minutes and returns `200` with `ok: true`.
    - Confirm Sentry monitor `plan-cleanup-maintenance` receives successful check-ins; GitHub workflow failures identify `401`, `503`, and `500` responses.
 5. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
@@ -72,7 +91,7 @@ See also:
 
 The email scheduler must have exactly one active owner. This release removes the GitHub email scheduler and adds the two Vercel Cron entries together.
 
-1. Apply `20260710151930_create_email_notification_delivery_runs` before deploying code that starts email workflows. Its Supabase CLI-generated version precedes the existing future-dated delivery-ledger migration, so the staging and production migration workflows use `supabase db push --include-all` to apply it when the ledger migration is already recorded remotely.
+1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies both `20260710151930_create_email_notification_delivery_runs` and the future-dated delivery ledger without opening the contract gate.
 2. Set a new `CRON_SECRET` in the target Vercel environment. Keep it distinct from `MAINTENANCE_WORKER_TOKEN`.
 3. Deploy the application with `vercel.json`; confirm Vercel lists only `0 14 * * *` and `30 14 * * 1` for `/api/cron/notifications/email`.
 4. Leave the `email-notification-delivery` Vercel Flag disabled and verify both authenticated cron paths return the intentional `disabled` outcome without creating a run.

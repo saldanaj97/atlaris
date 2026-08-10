@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 const MODULE_LESSON_GENERATION_POLL_MS = 2500;
 const MODULE_LESSON_GENERATION_MAX_POLLS = 20;
+const MODULE_LESSON_GENERATION_MAX_POLL_MS = 60_000;
+const MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS = 10_000;
 
 type LongGenerationKey = {
   planId: string;
@@ -97,13 +99,27 @@ export function useModuleLessonGeneration({
       return;
     }
 
+    generationPollCountRef.current = 0;
+
     let cancelled = false;
     let timeoutId: number | undefined;
+    const abortController = new AbortController();
     const statusUrl = buildModuleLessonStatusUrl(planId, moduleId);
 
-    const pollStatus = async (): Promise<'continue' | 'terminal' | 'error'> => {
+    const pollStatus = async (): Promise<
+      'continue' | 'terminal' | 'error' | 'aborted'
+    > => {
+      const requestTimeoutSignal = AbortSignal.timeout(
+        MODULE_LESSON_GENERATION_STATUS_TIMEOUT_MS,
+      );
       try {
-        const response = await fetch(statusUrl, { cache: 'no-store' });
+        const response = await fetch(statusUrl, {
+          cache: 'no-store',
+          signal: AbortSignal.any([
+            abortController.signal,
+            requestTimeoutSignal,
+          ]),
+        });
 
         if (!response.ok) {
           clientLogger.error('Module lesson generation status request failed', {
@@ -152,11 +168,15 @@ export function useModuleLessonGeneration({
           return 'continue';
         }
 
-        refresh();
         return 'terminal';
       } catch (error) {
+        if (abortController.signal.aborted) {
+          return 'aborted';
+        }
+
         clientLogger.error('Module lesson generation status request failed', {
           error,
+          timedOut: requestTimeoutSignal.aborted,
           moduleId,
           planId,
         });
@@ -165,40 +185,57 @@ export function useModuleLessonGeneration({
     };
 
     const schedule = (): void => {
-      timeoutId = window.setTimeout(() => {
-        void (async () => {
-          if (cancelled) return;
+      timeoutId = window.setTimeout(
+        () => {
+          void (async () => {
+            if (cancelled) return;
 
-          generationPollCountRef.current += 1;
-          if (
-            generationPollCountRef.current > MODULE_LESSON_GENERATION_MAX_POLLS
-          ) {
-            setLongGenerationKey({ planId, moduleId });
-            return;
-          }
+            generationPollCountRef.current += 1;
+            if (
+              generationPollCountRef.current ===
+              MODULE_LESSON_GENERATION_MAX_POLLS + 1
+            ) {
+              setLongGenerationKey({ planId, moduleId });
+            }
 
-          const outcome = await pollStatus();
-          if (cancelled) {
-            return;
-          }
-          if (outcome === 'error') {
-            refresh();
+            const outcome = await pollStatus();
+            if (cancelled) {
+              return;
+            }
+            if (outcome === 'error') {
+              refresh();
+              schedule();
+              return;
+            }
+            if (outcome === 'terminal') {
+              refresh();
+              return;
+            }
+            if (outcome !== 'continue') {
+              return;
+            }
+
             schedule();
-            return;
-          }
-          if (outcome !== 'continue') {
-            return;
-          }
-
-          schedule();
-        })();
-      }, MODULE_LESSON_GENERATION_POLL_MS);
+          })();
+        },
+        Math.min(
+          MODULE_LESSON_GENERATION_POLL_MS *
+            2 **
+              Math.max(
+                0,
+                generationPollCountRef.current -
+                  MODULE_LESSON_GENERATION_MAX_POLLS,
+              ),
+          MODULE_LESSON_GENERATION_MAX_POLL_MS,
+        ),
+      );
     };
 
     schedule();
 
     return () => {
       cancelled = true;
+      abortController.abort();
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);
       }
@@ -211,6 +248,7 @@ export function useModuleLessonGeneration({
     }
 
     setQuotaMessage(null);
+    setLongGenerationKey(null);
     startTransition(async () => {
       try {
         const response = await fetch(

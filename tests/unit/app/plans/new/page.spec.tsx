@@ -1,11 +1,10 @@
 // IMPORTANT: Mock imports must come first, before any component imports
 // that use the mocked modules (sonner, client-logger, next/navigation).
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type {
   PlanGenerationResult,
-  StreamingPlanState,
-  UseStreamingPlanGenerationResult,
-} from '@/hooks/useStreamingPlanGeneration';
+  PlanGenerationSessionState,
+  UsePlanGenerationSessionResult,
+} from '@/features/plans/session/usePlanGenerationSession';
 
 import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
 import { clientLogger } from '@/lib/logging/client';
@@ -25,28 +24,23 @@ vi.mock('next/navigation', () => ({
 }));
 
 const mockStartGeneration =
-  vi.fn<
-    (
-      input: CreateLearningPlanInput,
-      options?: { onPlanIdReady?: (planId: string) => void },
-    ) => Promise<PlanGenerationResult>
-  >();
+  vi.fn<UsePlanGenerationSessionResult['startSession']>();
 const mockCancel = vi.fn<() => void>();
-const mockUseStreamingPlanGeneration =
-  vi.fn<() => UseStreamingPlanGenerationResult>();
+const mockUsePlanGenerationSession =
+  vi.fn<() => UsePlanGenerationSessionResult>();
 
-vi.mock('@/hooks/useStreamingPlanGeneration', async () => {
+vi.mock('@/features/plans/session/usePlanGenerationSession', async () => {
   const actual = await vi.importActual<
-    typeof import('@/hooks/useStreamingPlanGeneration')
-  >('@/hooks/useStreamingPlanGeneration');
+    typeof import('@/features/plans/session/usePlanGenerationSession')
+  >('@/features/plans/session/usePlanGenerationSession');
 
   return {
     ...actual,
-    useStreamingPlanGeneration: () => mockUseStreamingPlanGeneration(),
+    usePlanGenerationSession: () => mockUsePlanGenerationSession(),
   };
 });
 
-const mockState: StreamingPlanState = {
+const mockState: PlanGenerationSessionState = {
   status: 'idle',
   modules: [],
   planId: undefined,
@@ -67,9 +61,9 @@ describe('AiPlanGenerationPanel', () => {
       progress: undefined,
       error: undefined,
     });
-    mockUseStreamingPlanGeneration.mockReturnValue({
+    mockUsePlanGenerationSession.mockReturnValue({
       state: mockState,
-      startGeneration: mockStartGeneration,
+      startSession: mockStartGeneration,
       cancel: mockCancel,
     });
   });
@@ -193,7 +187,10 @@ describe('AiPlanGenerationPanel', () => {
       });
 
       const callArgs = mockStartGeneration.mock.calls[0]?.[0];
-      expect(callArgs).toMatchObject({
+      if (callArgs?.kind !== 'create') {
+        throw new Error('Expected a create session request');
+      }
+      expect(callArgs.input).toMatchObject({
         topic: 'Test Topic',
         skillLevel: 'beginner',
         weeklyHours: 5,
@@ -201,8 +198,8 @@ describe('AiPlanGenerationPanel', () => {
         visibility: 'private',
         origin: 'ai',
       });
-      expect(callArgs?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(callArgs?.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(
@@ -236,7 +233,10 @@ describe('AiPlanGenerationPanel', () => {
       });
 
       const callArgs = mockStartGeneration.mock.calls[0]?.[0];
-      expect(callArgs).toMatchObject({
+      if (callArgs?.kind !== 'create') {
+        throw new Error('Expected a create session request');
+      }
+      expect(callArgs.input).toMatchObject({
         topic: 'Learn Rust',
         skillLevel: 'advanced',
         weeklyHours: 15,
@@ -244,8 +244,8 @@ describe('AiPlanGenerationPanel', () => {
         visibility: 'private',
         origin: 'ai',
       });
-      expect(callArgs?.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(callArgs?.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(callArgs.input.deadlineDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 
@@ -264,6 +264,24 @@ describe('AiPlanGenerationPanel', () => {
       await waitFor(() => {
         expect(mockStartGeneration).toHaveBeenCalledTimes(1);
       });
+
+      await waitFor(() => {
+        expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
+      });
+
+      expect(pushMock).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).not.toHaveBeenCalled();
+    });
+
+    it('shows the cancellation toast when generation resolves as cancelled', async () => {
+      mockStartGeneration.mockResolvedValue({ status: 'cancelled' });
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Cancelled result topic');
+      await chooseDefaultPreferences();
+      await submitForm();
 
       await waitFor(() => {
         expect(toast.info).toHaveBeenCalledWith('Generation cancelled');
@@ -387,8 +405,40 @@ describe('AiPlanGenerationPanel', () => {
       );
     });
 
+    it('shows a normalized object error message', async () => {
+      mockStartGeneration.mockRejectedValue({
+        message: 'Gateway unavailable',
+      });
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Object error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith('Gateway unavailable');
+      });
+    });
+
+    it('falls back when the normalized message exceeds the safe limit', async () => {
+      mockStartGeneration.mockRejectedValue(new Error('x'.repeat(201)));
+
+      render(<AiPlanGenerationPanel />);
+
+      await fillTopic('Long error topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          'We could not create your learning plan. Please try again.',
+        );
+      });
+    });
+
     it('falls back to the generic error toast when the thrown value has no message', async () => {
-      mockStartGeneration.mockRejectedValue({ status: 500 });
+      mockStartGeneration.mockRejectedValue({ message: '' });
 
       render(<AiPlanGenerationPanel />);
 

@@ -124,4 +124,33 @@ describe('Clerk billing webhook POST', () => {
       { logger: mocks.logger },
     );
   });
+
+  it('returns 503 with Retry-After while another delivery owns the claim', async () => {
+    mocks.verifyWebhook.mockResolvedValue({ type: 'event' });
+    mocks.applyVerifiedClerkBillingEvent.mockResolvedValue({
+      status: 'in_flight',
+      retryAfterSeconds: 42,
+    });
+
+    const response = await POST(request({ 'svix-id': 'evt_in_flight' }));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-correlation-id')).toBe('req_webhook_test');
+    await expect(response.json()).resolves.toEqual({
+      error: 'Webhook event is already processing',
+      code: 'CLERK_WEBHOOK_IN_FLIGHT',
+      retryAfter: 42,
+    });
+  });
+
+  it('returns 500 so Clerk retries transient processing failures', async () => {
+    mocks.applyVerifiedClerkBillingEvent.mockRejectedValue(
+      new Error('local user not provisioned'),
+    );
+
+    const response = await POST(request({ 'svix-id': 'evt_1' }));
+
+    expect(response.status).toBe(500);
+  });
 });

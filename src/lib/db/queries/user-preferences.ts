@@ -50,21 +50,23 @@ export async function getEmailNotificationPreferences(
   userId: string,
   dbClient: Pick<DbClient, 'select'>,
 ): Promise<EmailNotificationPreferenceValues> {
-  const [settingsRow] = await dbClient
-    .select({
-      unsubscribeAllOptionalEmails:
-        userEmailNotificationSettings.unsubscribeAllOptionalEmails,
-    })
-    .from(userEmailNotificationSettings)
-    .where(eq(userEmailNotificationSettings.userId, userId));
-
-  const categoryRows = await dbClient
-    .select({
-      category: userEmailNotificationPreferences.category,
-      enabled: userEmailNotificationPreferences.enabled,
-    })
-    .from(userEmailNotificationPreferences)
-    .where(eq(userEmailNotificationPreferences.userId, userId));
+  const [settingsRows, categoryRows] = await Promise.all([
+    dbClient
+      .select({
+        unsubscribeAllOptionalEmails:
+          userEmailNotificationSettings.unsubscribeAllOptionalEmails,
+      })
+      .from(userEmailNotificationSettings)
+      .where(eq(userEmailNotificationSettings.userId, userId)),
+    dbClient
+      .select({
+        category: userEmailNotificationPreferences.category,
+        enabled: userEmailNotificationPreferences.enabled,
+      })
+      .from(userEmailNotificationPreferences)
+      .where(eq(userEmailNotificationPreferences.userId, userId)),
+  ]);
+  const [settingsRow] = settingsRows;
 
   const categories = {
     ...DEFAULT_EMAIL_NOTIFICATION_PREFERENCES.categories,

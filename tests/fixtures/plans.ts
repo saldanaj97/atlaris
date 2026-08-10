@@ -8,7 +8,7 @@ import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { nanoid } from 'nanoid';
+import { randomUUID } from 'node:crypto';
 
 type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type LearningPlanInsert = InferInsertModel<typeof learningPlans>;
@@ -141,12 +141,12 @@ export async function createTestPlan(
 export function createTestPlanDetail(
   overrides: Partial<ClientPlanDetail> = {},
 ): ClientPlanDetail {
-  const moduleId = nanoid();
-  const taskOneId = nanoid();
-  const taskTwoId = nanoid();
+  const moduleId = randomUUID();
+  const taskOneId = randomUUID();
+  const taskTwoId = randomUUID();
 
   return {
-    id: nanoid(),
+    id: randomUUID(),
     topic: 'TypeScript',
     skillLevel: 'beginner',
     weeklyHours: 5,

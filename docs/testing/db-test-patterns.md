@@ -33,9 +33,7 @@ const mockDb = { insert } as unknown as ReturnType<typeof getDb>;
 
 ```typescript
 // UPDATE
-const returning = vi
-  .fn()
-  .mockResolvedValue([{ id: 'user-1', name: 'Alice' }]);
+const returning = vi.fn().mockResolvedValue([{ id: 'user-1', name: 'Alice' }]);
 const where = vi.fn().mockReturnValue({ returning });
 const set = vi.fn().mockReturnValue({ where });
 const update = vi.fn().mockReturnValue({ set });
@@ -289,12 +287,16 @@ const testAliases = {
 #### User Fixture (`tests/fixtures/users.ts`)
 
 ```typescript
+import { randomUUID } from 'node:crypto';
+
+const randomSuffix = () => randomUUID().replaceAll('-', '').slice(0, 12);
+
 export function buildUserFixture(overrides: Partial<UserRow> = {}): UserRow {
   const now = new Date();
   return {
-    id: `user_${nanoid(12)}`,
-    authUserId: `auth_test_${nanoid(12)}`,
-    email: `test-${nanoid(12)}@example.test`,
+    id: `user_${randomSuffix()}`,
+    authUserId: `auth_test_${randomSuffix()}`,
+    email: `test-${randomSuffix()}@example.test`,
     name: null,
     subscriptionTier: 'free',
     subscriptionStatus: null,
@@ -339,8 +341,10 @@ export function createTestPlan(
 #### ID Generation (`tests/fixtures/ids.ts`)
 
 ```typescript
+import { randomUUID } from 'node:crypto';
+
 export function createId(prefix: string): string {
-  return `${prefix}-${nanoid(8)}`;
+  return `${prefix}-${randomUUID().slice(0, 8)}`;
 }
 ```
 

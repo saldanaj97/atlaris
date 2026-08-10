@@ -8,4 +8,4 @@ export type DropdownOption<TValue extends string = string> = {
   description?: string;
 };
 
-export type { PlanFormData } from '@/features/plans/plan-form.types';
+export type { PlanFormData } from '@/features/plans/plan-form-payload';

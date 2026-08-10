@@ -1,10 +1,19 @@
 name: Deploy Migrations to Production
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      phase:
+        description: Migration phase to apply
+        required: true
+        type: choice
+        options:
+          - expand
+          - contract
+      confirm_contract:
+        description: Type post-deploy-health-verified for the contract phase
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -42,5 +51,9 @@ jobs:
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
-      - name: Push database migrations, including historical missing versions
-        run: supabase db push --include-all
+      - name: Apply selected migration phase
+        env:
+          MIGRATION_PHASE: ${{ inputs.phase }}
+          CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}
+        shell: bash
+        run: bash scripts/db/run-phased-migrations.sh

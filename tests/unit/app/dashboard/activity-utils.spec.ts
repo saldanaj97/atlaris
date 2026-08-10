@@ -1,7 +1,6 @@
 import type { GenerationStatus } from '@/shared/types/db.types';
 
 import {
-  findActivePlan,
   generateActivities,
   getDashboardGreeting,
 } from '@/app/(app)/dashboard/components/activity-utils';
@@ -118,25 +117,6 @@ describe('generateActivities', () => {
       );
     },
   );
-});
-
-describe('findActivePlan', () => {
-  it('keeps not-started plans eligible for the dashboard resume slot', () => {
-    const notStarted = planSummary({
-      id: 'plan-not-started',
-      topic: 'Not started',
-      updatedAt: '2026-06-21T00:00:00.000Z',
-    });
-    const generating = planSummary({
-      id: 'plan-generating',
-      topic: 'Generating',
-      generationStatus: 'generating',
-      moduleCount: 0,
-      updatedAt: '2026-06-22T00:00:00.000Z',
-    });
-
-    expect(findActivePlan([generating, notStarted])).toBe(notStarted);
-  });
 });
 
 describe('getDashboardGreeting', () => {

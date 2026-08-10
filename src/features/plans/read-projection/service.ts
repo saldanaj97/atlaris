@@ -1,11 +1,9 @@
-import type {
-  ModuleDetailReadModel,
-  PlanDbClient,
-} from '@/features/plans/read-projection/types';
+import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 import type {
   PlanListPage,
   PlanListQuery,
 } from '@/features/plans/read-projection/types';
+import type { DbClient } from '@/lib/db/types';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
   ClientGenerationAttempt,
@@ -48,8 +46,11 @@ import { logger } from '@/lib/logging/logger';
 
 async function listPlanSummaries(params: {
   userId: string;
-  dbClient?: PlanDbClient;
-  options?: PaginationOptions & { orderBy?: 'createdAt' | 'updatedAt' };
+  dbClient?: DbClient;
+  options?: PaginationOptions & {
+    orderBy?: 'createdAt' | 'updatedAt';
+    planIds?: string[];
+  };
 }): Promise<PlanSummary[]> {
   const rows = await getPlanSummaryRowsForUser(
     params.userId,
@@ -66,7 +67,7 @@ const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
 
 export async function listDashboardPlanSummaries(params: {
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<PlanSummary[]> {
   return listPlanSummaries({
     userId: params.userId,
@@ -78,9 +79,55 @@ export async function listDashboardPlanSummaries(params: {
   });
 }
 
+export async function getDashboardPlanData(params: {
+  userId: string;
+  dbClient?: DbClient;
+}): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
+  const [summaries, candidatePage] = await Promise.all([
+    listDashboardPlanSummaries(params),
+    getPlanListPageRowsForUser({
+      userId: params.userId,
+      dbClient: params.dbClient,
+      query: {
+        page: 1,
+        search: '',
+        status: 'all',
+        sort: 'recommended',
+      },
+      referenceTimestamp: new Date().toISOString(),
+      pageSize: 1,
+    }),
+  ]);
+  const candidate = candidatePage.items[0];
+
+  if (
+    !candidate ||
+    (candidate.status !== 'active' &&
+      candidate.status !== 'not_started' &&
+      candidate.status !== 'generating')
+  ) {
+    return { summaries, resumePlan: undefined };
+  }
+
+  const listedCandidate = summaries.find(
+    (summary) => summary.plan.id === candidate.id,
+  );
+  if (listedCandidate) {
+    return { summaries, resumePlan: listedCandidate };
+  }
+
+  const [resumePlan] = await listPlanSummaries({
+    userId: params.userId,
+    dbClient: params.dbClient,
+    options: { planIds: [candidate.id] },
+  });
+
+  return { summaries, resumePlan };
+}
+
 export async function getPlansPageForRead(params: {
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
   query: PlanListQuery;
   referenceTimestamp?: string;
 }): Promise<PlanListPage> {
@@ -102,7 +149,7 @@ export async function getPlansPageForRead(params: {
 
 export async function listLightweightPlansForApi(params: {
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
   options?: PaginationOptions;
 }): Promise<LightweightPlanSummary[]> {
   const rows = await getLightweightPlanSummaryRowsForUser(
@@ -116,14 +163,14 @@ export async function listLightweightPlansForApi(params: {
 
 export async function listUsageAnalyticsPlanSummaries(params: {
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<LightweightPlanSummary[]> {
   return listLightweightPlansForApi(params);
 }
 
 export async function getPlanListTotalCount(params: {
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<number> {
   return getPlanSummaryCount(params.userId, params.dbClient);
 }
@@ -131,7 +178,7 @@ export async function getPlanListTotalCount(params: {
 export async function getPlanDetailForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<ClientPlanDetail | null> {
   const rows = await getLearningPlanDetailRows(
     params.planId,
@@ -164,7 +211,7 @@ export async function getPlanDetailForRead(params: {
 export async function getPlanGenerationStatusSnapshot(params: {
   planId: string;
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<PlanDetailStatusSnapshot | null> {
   const rows = await getPlanStatusRowsForUser(
     params.planId,
@@ -183,7 +230,7 @@ export async function getModuleLessonGenerationStatusForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<{
   planId: string;
   moduleId: string;
@@ -210,7 +257,7 @@ export async function getModuleLessonGenerationStatusForRead(params: {
 export async function getPlanGenerationAttemptsForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<ClientGenerationAttempt[] | null> {
   const attempts = await getPlanAttemptsForUser(
     params.planId,
@@ -229,7 +276,7 @@ export async function getModuleDetailForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: PlanDbClient;
+  dbClient?: DbClient;
 }): Promise<ModuleDetailReadModel | null> {
   const rows = await getModuleDetailRows(
     params.planId,

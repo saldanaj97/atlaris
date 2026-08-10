@@ -3,6 +3,7 @@ import {
   isLocalPostgresHostname,
 } from './local-postgres-host';
 import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-product-testing';
+import { existsSync } from 'node:fs';
 /**
  * Seed the Supabase local database with deterministic product-testing data.
  * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
@@ -10,7 +11,6 @@ import { seedLocalProductTestingUser } from '@tests/helpers/db/seed-local-produc
  * `supabase db reset` also applies `supabase/seed.sql`; this helper exists for
  * explicit reseeding via `pnpm db:dev:seed`.
  */
-import dotenv from 'dotenv';
 import postgres from 'postgres';
 
 const DEFAULT_LOCAL_SUPABASE_URL =
@@ -55,9 +55,8 @@ async function assertConnection(connectionUrl: string): Promise<void> {
 
 /** Loads env, validates localhost, and seeds local product-testing data. */
 async function main(): Promise<void> {
-  if (!process.env.CI) {
-    dotenv.config({ path: '.env.local' });
-  }
+  if (!process.env.CI && existsSync('.env.local'))
+    process.loadEnvFile('.env.local');
 
   const databaseUrl = resolveDatabaseUrl();
   assertLocalhostOnly(databaseUrl);

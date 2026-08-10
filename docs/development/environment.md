@@ -66,16 +66,16 @@ The application uses Clerk Auth for UI, route protection, and server session rea
 
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                                                               | Required |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
-| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                    | Yes when Clerk Billing webhooks are enabled |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No       |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout. | No       |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
-| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation) |
+| Variable                            | Purpose                                                                                                                                                                                                                                                         | Required                                    |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                                                                              | Yes                                         |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                                                                         | Yes                                         |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                                                                                                                                              | Yes when Clerk Billing webhooks are enabled |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow).                                                 | No                                          |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout.                                                                                  | No                                          |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                                                                 | No                                          |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                                                                  | No                                          |
+| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation)       |
 
 ### Workflow SDK
 
@@ -85,11 +85,11 @@ Key auth-related server variables include:
 
 Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off** when unset or empty. These opt into durable workflow paths; they are not production defaults.
 
-| Variable                             | Purpose                                                                                               | Required |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------- | -------- |
-| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)       | No       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                               | No       |
-| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged | No       |
+| Variable                             | Purpose                                                                                                                                                              | Required                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)                                                                      | No                            |
+| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                                                                                              | No                            |
+| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged                                                                | No                            |
 | `WORKFLOW_CALLBACK_TOKEN`            | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
 
 **Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
@@ -106,19 +106,19 @@ Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK arc
 
 Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`. See `docs/architecture/internal-worker-routes.md`.
 
-| Variable                    | Purpose                                                            | Required in production                         |
-| --------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- |
-| `REGENERATION_WORKER_TOKEN` | Auth for `POST /api/internal/jobs/regeneration/process`            | Yes                                            |
-| `RETENTION_CLEANUP_ENABLED` | Master switch for the **manual** retention cleanup HTTP route only | Set `true` only when enabling the manual route |
-| `PLAN_CLEANUP_ENABLED`      | Master switch for the plan cleanup HTTP route                        | Set `true` when scheduled cleanup is enabled |
-| `CLERK_BILLING_RECONCILIATION_ENABLED` | Master switch for the manual Clerk Billing reconciliation route | Set `true` only when enabling manual reconciliation |
-| `MAINTENANCE_WORKER_TOKEN`  | Auth for maintenance cleanup routes and the plan cleanup scheduler   | Yes when any maintenance route is enabled |
-| `CRON_SECRET`               | Bearer auth for Vercel `GET /api/cron/notifications/email`; keep distinct from the maintenance token | Yes when email Vercel Cron is enabled |
-| `WORKER_HEALTH_TOKEN`       | Auth for `GET /api/health/worker` operator metrics                   | Yes                                            |
+| Variable                               | Purpose                                                                                              | Required in production                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `REGENERATION_WORKER_TOKEN`            | Auth for `POST /api/internal/jobs/regeneration/process`                                              | Yes                                                 |
+| `RETENTION_CLEANUP_ENABLED`            | Master switch for the **manual** retention cleanup HTTP route only                                   | Set `true` only when enabling the manual route      |
+| `PLAN_CLEANUP_ENABLED`                 | Master switch for the plan cleanup HTTP route                                                        | Set `true` when scheduled cleanup is enabled        |
+| `CLERK_BILLING_RECONCILIATION_ENABLED` | Master switch for the manual Clerk Billing reconciliation route                                      | Set `true` only when enabling manual reconciliation |
+| `MAINTENANCE_WORKER_TOKEN`             | Auth for maintenance cleanup routes and the plan cleanup scheduler                                   | Yes when any maintenance route is enabled           |
+| `CRON_SECRET`                          | Bearer auth for Vercel `GET /api/cron/notifications/email`; keep distinct from the maintenance token | Yes when email Vercel Cron is enabled               |
+| `WORKER_HEALTH_TOKEN`                  | Auth for `GET /api/health/worker` operator metrics                                                   | Yes                                                 |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 
-Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions repository secret.
+Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
 
 Email notification delivery uses Vercel Cron and a durable Workflow SDK run. Set a separate `CRON_SECRET` in the Vercel environment; Vercel supplies it as the Bearer token for the cron GET route. Do not reuse `MAINTENANCE_WORKER_TOKEN`. The manual recovery route remains protected by `MAINTENANCE_WORKER_TOKEN`; see [the email delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
@@ -143,10 +143,10 @@ Atlaris keeps a single entitlement source: the Postgres `users` projection updat
 
 Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER_ID` is also set (`LOCAL_PRODUCT_TESTING=false` + non-empty `DEV_AUTH_USER_ID`). Choose exactly one mode:
 
-| Mode | Env contract | What it proves |
-| ---- | ------------ | -------------- |
-| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id` | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
-| **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota. |
+| Mode                                | Env contract                                                                                                                                                      | What it proves                                                                                                                                               |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
+| **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota.                                                                                              |
 
 **Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders After Hours plan cards through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
 
@@ -175,7 +175,7 @@ Reuse this checklist for Preview/staging or a tunneled local run. Do not put rea
 3. A decline path (for example `4000 0000 0000 0002`) shows a recoverable error.
 4. Abandoning checkout leaves the current entitlement unchanged.
 5. Clerk Dashboard shows the subscription/payment attempt and webhook delivery.
-6. `POST /api/v1/clerk/billing/webhook` acknowledges the event and does not retry endlessly.
+6. `POST /api/v1/clerk/billing/webhook` acknowledges completed events. A concurrent delivery may receive a temporary `503` with `Retry-After` while another request owns the two-minute processing claim; Clerk should retry that delivery, and completed duplicates return `200` without another Clerk refresh.
 7. The correct `users.auth_user_id` receives updated `subscription_tier`, `subscription_status`, `subscription_period_end`, and `cancel_at_period_end`.
 8. Settings (`?checkout=1` sync UI, then settled rows) and at least one quota/feature boundary reflect the upgraded tier.
 9. Cancellation or cancel-at-period-end behavior is verified in Clerk and in the Postgres projection.

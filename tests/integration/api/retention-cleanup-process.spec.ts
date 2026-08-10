@@ -1,5 +1,9 @@
 import { POST as POST_RETENTION_CLEANUP } from '@/app/api/internal/maintenance/retention/cleanup/route';
-import { clerkWebhookEvents, oauthStateTokens } from '@supabase/schema';
+import {
+  clerkWebhookEventClaims,
+  clerkWebhookEvents,
+  oauthStateTokens,
+} from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import {
   seedRetentionCleanupRows,
@@ -73,11 +77,13 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
     const body = (await response.json()) as {
       ok: boolean;
       expiredOauthStateTokens: number;
+      expiredClerkWebhookEventClaims: number;
       oldClerkWebhookEvents: number;
       oldJobQueueRows: number;
     };
     expect(body.ok).toBe(true);
     expect(body.expiredOauthStateTokens).toBeGreaterThanOrEqual(1);
+    expect(body.expiredClerkWebhookEventClaims).toBeGreaterThanOrEqual(1);
     expect(body.oldClerkWebhookEvents).toBeGreaterThanOrEqual(1);
     expect(body.oldJobQueueRows).toBeGreaterThanOrEqual(1);
 
@@ -102,6 +108,19 @@ describe('POST /api/internal/maintenance/retention/cleanup', () => {
         ]),
       );
     expect(remainingClerk).toEqual([{ eventId: fixture.clerk.recentEventId }]);
+
+    const remainingClaims = await db
+      .select({ eventId: clerkWebhookEventClaims.eventId })
+      .from(clerkWebhookEventClaims)
+      .where(
+        inArray(clerkWebhookEventClaims.eventId, [
+          fixture.clerk.expiredClaimEventId,
+          fixture.clerk.recentClaimEventId,
+        ]),
+      );
+    expect(remainingClaims).toEqual([
+      { eventId: fixture.clerk.recentClaimEventId },
+    ]);
 
     const remainingJobs = await selectRetentionJobRows(fixture);
     expect(remainingJobs).toEqual(

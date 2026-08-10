@@ -33,3 +33,32 @@ export const clerkWebhookEvents = pgTable(
     }),
   ],
 ).enableRLS();
+
+/**
+ * Short-lived service-owned claims that prevent concurrent webhook deliveries
+ * from refreshing the same Clerk subscription at the same time.
+ *
+ * The completed event ledger intentionally remains a separate table so older
+ * application instances can continue to process events safely during a
+ * rolling deploy or rollback.
+ */
+export const clerkWebhookEventClaims = pgTable(
+  'clerk_webhook_event_claims',
+  {
+    eventId: text('event_id').primaryKey(),
+    claimToken: uuid('claim_token').notNull(),
+    claimExpiresAt: timestamp('claim_expires_at', {
+      withTimezone: true,
+    }).notNull(),
+  },
+  (table) => [
+    index('idx_clerk_webhook_event_claims_expires_at').on(table.claimExpiresAt),
+    pgPolicy('clerk_webhook_event_claims_deny_all', {
+      as: 'restrictive',
+      for: 'all',
+      to: 'public',
+      using: sql`false`,
+      withCheck: sql`false`,
+    }),
+  ],
+).enableRLS();

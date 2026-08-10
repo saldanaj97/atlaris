@@ -2,7 +2,7 @@ import type { PlanReadStatus } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/client';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/selectors';
 import { deriveCanonicalPlanSummaryStatus } from '@/features/plans/read-projection/summary-status';
 import { createId } from '@tests/fixtures/ids';
 import {
