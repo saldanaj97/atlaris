@@ -3,6 +3,7 @@ import {
   removePlansForWrite,
 } from '@/features/plans/write-service';
 import { deletePlan } from '@/lib/db/queries/plans';
+import { db as serviceRoleDb } from '@supabase/service-role';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,6 +12,7 @@ vi.mock('@/lib/db/queries/plans', () => ({
 }));
 
 const mockDeletePlan = vi.mocked(deletePlan);
+const mockTransaction = vi.mocked(serviceRoleDb.transaction);
 
 describe('removePlanForWrite', () => {
   const planId = createId('plan');
@@ -18,6 +20,7 @@ describe('removePlanForWrite', () => {
 
   beforeEach(() => {
     mockDeletePlan.mockReset();
+    mockTransaction.mockClear();
   });
 
   it('delegates to deletePlan with ownership context only', async () => {
@@ -50,11 +53,12 @@ describe('removePlanForWrite', () => {
 
 describe('removePlansForWrite', () => {
   const userId = createId('user');
-  const firstPlanId = createId('plan');
-  const secondPlanId = createId('plan');
+  const firstPlanId = '00000000-0000-4000-8000-000000000001';
+  const secondPlanId = '00000000-0000-4000-8000-000000000002';
 
   beforeEach(() => {
     mockDeletePlan.mockReset();
+    mockTransaction.mockClear();
   });
 
   it('returns all successes when every plan deletes', async () => {
@@ -69,6 +73,19 @@ describe('removePlansForWrite', () => {
       { planId: firstPlanId, success: true },
       { planId: secondPlanId, success: true },
     ]);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
   });
 
   it('returns per-plan success and failure results without throwing', async () => {
@@ -81,8 +98,19 @@ describe('removePlansForWrite', () => {
       userId,
     });
 
-    expect(mockDeletePlan).toHaveBeenNthCalledWith(1, firstPlanId, userId);
-    expect(mockDeletePlan).toHaveBeenNthCalledWith(2, secondPlanId, userId);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
     expect(results).toEqual([
       { planId: firstPlanId, success: true },
       {
@@ -91,6 +119,41 @@ describe('removePlansForWrite', () => {
         reason: 'not_found',
         message: 'Learning plan not found.',
       },
+    ]);
+  });
+
+  it('acquires plan locks in canonical UUID order while preserving result order', async () => {
+    const laterPlanId = 'f0000000-0000-4000-8000-000000000000';
+    const earlierPlanId = 'A0000000-0000-4000-8000-000000000000';
+    mockDeletePlan
+      .mockResolvedValueOnce({ success: true })
+      .mockResolvedValueOnce({ success: false, reason: 'not_found' });
+
+    const results = await removePlansForWrite({
+      planIds: [laterPlanId, earlierPlanId],
+      userId,
+    });
+
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      earlierPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      laterPlanId,
+      userId,
+      serviceRoleDb,
+    );
+    expect(results).toEqual([
+      {
+        planId: laterPlanId,
+        success: false,
+        reason: 'not_found',
+        message: 'Learning plan not found.',
+      },
+      { planId: earlierPlanId, success: true },
     ]);
   });
 
@@ -115,25 +178,42 @@ describe('removePlansForWrite', () => {
     ]);
   });
 
-  it('returns per-plan unknown failures when deletePlan throws', async () => {
+  it('propagates unexpected delete errors instead of converting them to conflicts', async () => {
+    const error = new Error('database unavailable');
+    mockDeletePlan.mockRejectedValueOnce(error);
+
+    await expect(
+      removePlansForWrite({
+        planIds: [firstPlanId, secondPlanId],
+        userId,
+      }),
+    ).rejects.toBe(error);
+  });
+
+  it('propagates a later unexpected delete error from the shared transaction', async () => {
+    const error = new Error('database unavailable');
     mockDeletePlan
-      .mockRejectedValueOnce(new Error('database unavailable'))
-      .mockResolvedValueOnce({ success: true });
+      .mockResolvedValueOnce({ success: true })
+      .mockRejectedValueOnce(error);
 
-    const results = await removePlansForWrite({
-      planIds: [firstPlanId, secondPlanId],
+    await expect(
+      removePlansForWrite({
+        planIds: [firstPlanId, secondPlanId],
+        userId,
+      }),
+    ).rejects.toBe(error);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      1,
+      firstPlanId,
       userId,
-    });
-
-    expect(mockDeletePlan).toHaveBeenCalledTimes(2);
-    expect(results).toEqual([
-      {
-        planId: firstPlanId,
-        success: false,
-        reason: 'unknown',
-        message: 'Cannot delete learning plan in its current state.',
-      },
-      { planId: secondPlanId, success: true },
-    ]);
+      serviceRoleDb,
+    );
+    expect(mockDeletePlan).toHaveBeenNthCalledWith(
+      2,
+      secondPlanId,
+      userId,
+      serviceRoleDb,
+    );
   });
 });

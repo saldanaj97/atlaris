@@ -6,7 +6,7 @@ import {
   userEmailNotificationSettings,
   users,
 } from '@supabase/schema';
-import { and, eq, gt, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 
 export type EmailDeliveryRecipient = {
   userId: string;
@@ -60,6 +60,7 @@ export async function listEmailDeliveryRecipients(args: {
       and(
         isNotNull(users.email),
         ne(users.email, ''),
+        isNull(users.clerkDeletedAt),
         categoryFilter,
         unsubscribeFilter,
         args.cursorUserId ? gt(users.id, args.cursorUserId) : sql`true`,
@@ -73,9 +74,43 @@ export async function listEmailDeliveryRecipients(args: {
     rows.length > batchSize ? (page[page.length - 1]?.userId ?? null) : null;
 
   return {
-    recipients: page.flatMap((row) =>
-      row.email === null ? [] : [{ userId: row.userId, email: row.email }],
-    ),
+    recipients: page.flatMap((row) => {
+      if (row.email === null) {
+        return [];
+      }
+
+      return [
+        {
+          userId: row.userId,
+          email: row.email,
+        },
+      ];
+    }),
     nextCursor,
   };
+}
+
+/**
+ * Fences a scheduled send against the current local delivery identity.
+ */
+export async function isEmailDeliveryRecipientCurrent(args: {
+  userId: string;
+  email: string;
+  dbClient: Pick<DbClient, 'select'>;
+}): Promise<boolean> {
+  const rows = await args.dbClient
+    .select({ userId: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, args.userId),
+        eq(users.email, args.email),
+        isNotNull(users.email),
+        ne(users.email, ''),
+        isNull(users.clerkDeletedAt),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
 }

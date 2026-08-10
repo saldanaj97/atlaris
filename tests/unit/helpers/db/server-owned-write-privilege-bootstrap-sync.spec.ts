@@ -63,4 +63,28 @@ describe('server-owned write privilege bootstrap sync', () => {
       /REVOKE INSERT, UPDATE, DELETE ON[\s\S]*AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL[\s\S]*FROM authenticated/,
     );
   });
+
+  it('mirrors the production default-write revoke in both bootstraps', () => {
+    const defaultWriteRevoke =
+      /ALTER DEFAULT PRIVILEGES IN SCHEMA public\s+REVOKE INSERT, UPDATE, DELETE ON TABLES FROM authenticated/;
+    const migration = readFileSync(
+      resolve(
+        REPO_ROOT,
+        'supabase/migrations/20260520194501_harden_authenticated_server_owned_writes.sql',
+      ),
+      'utf8',
+    );
+    const bootstrap = readFileSync(
+      resolve(TEST_DIR, '../../../helpers/db/bootstrap.ts'),
+      'utf8',
+    );
+    const rlsBootstrap = readFileSync(
+      resolve(TEST_DIR, '../../../helpers/db/rls-bootstrap.ts'),
+      'utf8',
+    );
+
+    expect(migration).toMatch(defaultWriteRevoke);
+    expect(bootstrap).toMatch(defaultWriteRevoke);
+    expect(rlsBootstrap).toMatch(defaultWriteRevoke);
+  });
 });

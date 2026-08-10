@@ -84,7 +84,7 @@ Webhook applies refresh from Clerk Billing API (`refreshFromClerk: true`) before
 
 The identity projection is intentionally narrow. `user.created` and `user.updated` use only Clerk's **exact** primary email when its verification status is `verified`; there is no fallback to another address. A missing or unverified primary address stores `NULL`. The provider's `updated_at` timestamp prevents stale deliveries from replacing newer data. A `user.deleted` event clears the email and sets `clerk_deleted_at`; later lifecycle updates cannot resurrect that row.
 
-The event ledger acknowledges lifecycle events for users that do not yet have an Atlaris row as `skipped_no_user`. On the first authenticated use, Atlaris provisions the current Clerk identity instead. A unique-email conflict never transfers an address between local users; the transaction rolls back and Clerk retries the delivery.
+The event ledger acknowledges no-row `user.created` and `user.updated` events as `skipped_no_user`. A no-row `user.deleted` event is left unacknowledged so Clerk can retry it if provisioning races the deletion. On first authenticated use, Atlaris provisions the current Clerk identity instead. A unique-email conflict never transfers an address between local users; the transaction rolls back and Clerk retries the delivery.
 
 For a deliberate one-shot repair after enabling lifecycle subscriptions, the command is dry-run by default:
 

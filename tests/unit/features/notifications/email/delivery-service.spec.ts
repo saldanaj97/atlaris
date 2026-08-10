@@ -10,6 +10,7 @@ import { countMetric } from '@/lib/observability/metrics';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listRecipients = vi.hoisted(() => vi.fn());
+const isRecipientCurrent = vi.hoisted(() => vi.fn());
 const getPrefs = vi.hoisted(() => vi.fn());
 const getUserPrefs = vi.hoisted(() => vi.fn());
 const listDayKeys = vi.hoisted(() => vi.fn());
@@ -22,6 +23,7 @@ const markManualReview = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/db/queries/email-delivery-recipients', () => ({
   listEmailDeliveryRecipients: listRecipients,
+  isEmailDeliveryRecipientCurrent: isRecipientCurrent,
 }));
 
 vi.mock('@/lib/db/queries/user-preferences', () => ({
@@ -46,6 +48,14 @@ vi.mock('@/lib/db/queries/email-notification-deliveries', () => ({
       super(message);
       this.name = 'EmailDeliveryLostLeaseError';
     }
+  },
+  EMAIL_DELIVERY_FAILURE_CLASS: {
+    recipientIdentityChangedBeforeDelivery: 'recipient_identity_changed',
+    recipientIdentityChangedAfterAmbiguousClaim:
+      'recipient_changed_since_claim',
+    preferencesDisabledBeforeDelivery: 'preference_disabled_before_delivery',
+    preferencesDisabledAfterAmbiguousClaim:
+      'preferences_disabled_after_ambiguous_claim',
   },
 }));
 
@@ -74,9 +84,15 @@ describe('runEmailNotificationDelivery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listRecipients.mockResolvedValue({
-      recipients: [{ userId: 'u1', email: 'u@example.com' }],
+      recipients: [
+        {
+          userId: 'u1',
+          email: 'u@example.com',
+        },
+      ],
       nextCursor: null,
     });
+    isRecipientCurrent.mockResolvedValue(true);
     getPrefs.mockResolvedValue({
       unsubscribeAllOptionalEmails: false,
       categories: {
@@ -109,13 +125,19 @@ describe('runEmailNotificationDelivery', () => {
         idempotencyKey: 'u1:streak_reminder:2026-07-09',
       },
       reusedProviderRequest: false,
+      reclaimedExpiredPending: false,
     });
     markSent.mockResolvedValue(undefined);
   });
 
   it('passes cursorUserId to recipients and preserves nextCursor', async () => {
     listRecipients.mockResolvedValue({
-      recipients: [{ userId: 'u1', email: 'u@example.com' }],
+      recipients: [
+        {
+          userId: 'u1',
+          email: 'u@example.com',
+        },
+      ],
       nextCursor: 'u1',
     });
     const sender = createSender();
@@ -263,11 +285,25 @@ describe('runEmailNotificationDelivery', () => {
     const logger = { error: vi.fn(), info: vi.fn() };
     listRecipients.mockResolvedValue({
       recipients: [
-        { userId: 'u1', email: 'u1@example.com' },
-        { userId: 'u2', email: 'u2@example.com' },
+        {
+          userId: 'u1',
+          email: 'u1@example.com',
+        },
+        {
+          userId: 'u2',
+          email: 'u2@example.com',
+        },
       ],
       nextCursor: 'u2',
     });
+    claim.mockImplementation(async ({ providerRequest }) => ({
+      outcome: 'claimed',
+      deliveryId: 'd1',
+      claimToken: 'claim-1',
+      providerRequest,
+      reusedProviderRequest: false,
+      reclaimedExpiredPending: false,
+    }));
     getPrefs.mockRejectedValueOnce(error);
     const sender = createSender();
 
@@ -383,6 +419,7 @@ describe('runEmailNotificationDelivery', () => {
           idempotencyKey: 'u1:daily_reminder:2026-07-09',
         },
         reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
       });
     const sender = createSender();
 
@@ -415,6 +452,62 @@ describe('runEmailNotificationDelivery', () => {
     );
   });
 
+  it('preserves a reclaimed pending daily delivery for review when streak was already sent', async () => {
+    claim
+      .mockResolvedValueOnce({
+        outcome: 'already_terminal',
+        status: 'sent',
+      })
+      .mockResolvedValueOnce({
+        outcome: 'claimed',
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        providerRequest: {
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: "A quick nudge for today's learning",
+          html: '<p>daily</p>',
+          text: 'daily',
+          idempotencyKey: 'u1:daily_reminder:2026-07-09',
+        },
+        reusedProviderRequest: true,
+        reclaimedExpiredPending: true,
+      });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder', 'streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markSkipped).not.toHaveBeenCalled();
+    expect(markManualReview).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        failureClass: 'provider_acceptance_ambiguous',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      manualReview: 1,
+      needsReview: true,
+      skipped: 0,
+      sent: 0,
+    });
+  });
+
   it('sends daily when streak is already terminal for a non-sent status', async () => {
     claim
       .mockResolvedValueOnce({
@@ -434,6 +527,7 @@ describe('runEmailNotificationDelivery', () => {
           idempotencyKey: 'u1:daily_reminder:2026-07-09',
         },
         reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
       });
     const sender = createSender();
 
@@ -476,6 +570,7 @@ describe('runEmailNotificationDelivery', () => {
           idempotencyKey: 'u1:streak_reminder:2026-07-09',
         },
         reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
       })
       .mockResolvedValueOnce({
         outcome: 'claimed',
@@ -490,6 +585,7 @@ describe('runEmailNotificationDelivery', () => {
           idempotencyKey: 'u1:daily_reminder:2026-07-09',
         },
         reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
       });
     const sender = createSender();
 
@@ -627,11 +723,25 @@ describe('runEmailNotificationDelivery', () => {
   it('continues after a recipient-specific provider rejection', async () => {
     listRecipients.mockResolvedValue({
       recipients: [
-        { userId: 'u1', email: 'invalid@example.com' },
-        { userId: 'u2', email: 'valid@example.com' },
+        {
+          userId: 'u1',
+          email: 'invalid@example.com',
+        },
+        {
+          userId: 'u2',
+          email: 'valid@example.com',
+        },
       ],
       nextCursor: 'u2',
     });
+    claim.mockImplementation(async ({ providerRequest }) => ({
+      outcome: 'claimed',
+      deliveryId: 'd1',
+      claimToken: 'claim-1',
+      providerRequest,
+      reusedProviderRequest: false,
+      reclaimedExpiredPending: false,
+    }));
     const sendResolved = vi
       .fn()
       .mockRejectedValueOnce(
@@ -785,5 +895,421 @@ describe('runEmailNotificationDelivery', () => {
     expect(sender.sendResolved).not.toHaveBeenCalled();
     expect(result.examined).toBe(1);
     expect(result.sent).toBe(0);
+  });
+
+  it('skips a newly claimed delivery when the recipient identity changes before send', async () => {
+    isRecipientCurrent.mockResolvedValue(false);
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markSkipped).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_identity_changed',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({ claimed: 1, skipped: 1, sent: 0 });
+  });
+
+  it('finalizes a fresh claim when the pre-send identity check fails', async () => {
+    isRecipientCurrent.mockRejectedValue(new Error('identity unavailable'));
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markFailed).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_processing_error',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      failed: 1,
+      recipientErrors: 0,
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'recipient_processing_error',
+        retryAfterMs: 60_000,
+      },
+    });
+  });
+
+  it('finalizes a fresh claim when the final preference check fails', async () => {
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: false,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      })
+      .mockRejectedValueOnce(new Error('preferences unavailable'));
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markFailed).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_processing_error',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({
+      claimed: 1,
+      failed: 1,
+      recipientErrors: 0,
+      pageFailure: {
+        kind: 'retryable',
+        failureClass: 'recipient_processing_error',
+        retryAfterMs: 60_000,
+      },
+    });
+  });
+
+  it('requires manual review when an expired pending request no longer matches the recipient', async () => {
+    claim.mockResolvedValue({
+      outcome: 'claimed',
+      deliveryId: 'd1',
+      claimToken: 'claim-1',
+      providerRequest: {
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+        to: 'stale@example.com',
+        subject: 'Keep your learning streak alive',
+        html: '<p>streak</p>',
+        text: 'streak',
+        idempotencyKey: 'u1:streak_reminder:2026-07-09',
+      },
+      reusedProviderRequest: true,
+      reclaimedExpiredPending: true,
+    });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markManualReview).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'recipient_changed_since_claim',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({ claimed: 1, manualReview: 1, sent: 0 });
+  });
+
+  it('rechecks preferences immediately before provider delivery', async () => {
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: false,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: true,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: true,
+        },
+      });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markSkipped).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'preference_disabled_before_delivery',
+      },
+      expect.anything(),
+    );
+    expect(getPrefs).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ claimed: 1, skipped: 1, sent: 0 });
+  });
+
+  it('rechecks preferences before every claimed category delivery', async () => {
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: true,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: true,
+        },
+      });
+    listDayKeys.mockResolvedValue(['2026-07-07']);
+    claim
+      .mockResolvedValueOnce({
+        outcome: 'claimed',
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        providerRequest: {
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: "A quick nudge for today's learning",
+          html: '<p>daily</p>',
+          text: 'daily',
+          idempotencyKey: 'u1:daily_reminder:2026-07-13',
+        },
+        reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
+      })
+      .mockResolvedValueOnce({
+        outcome: 'claimed',
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        providerRequest: {
+          from: 'Atlaris <notifications@mail.atlaris.app>',
+          to: 'u@example.com',
+          subject: 'Your weekly learning summary',
+          html: '<p>weekly</p>',
+          text: 'weekly',
+          idempotencyKey: 'u1:weekly_summary:2026-07-06',
+        },
+        reusedProviderRequest: false,
+        reclaimedExpiredPending: false,
+      });
+
+    const sender = createSender();
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['daily_reminder', 'weekly_summary'],
+        schedulerDateUtc: '2026-07-13',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-13T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).toHaveBeenCalledTimes(1);
+    expect(markSkipped).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd2',
+        claimToken: 'claim-2',
+        failureClass: 'preference_disabled_before_delivery',
+      },
+      expect.anything(),
+    );
+    expect(getPrefs).toHaveBeenCalledTimes(3);
+    expect(result).toMatchObject({ claimed: 2, skipped: 1, sent: 1 });
+  });
+
+  it('skips a confirmed failed retry when preferences change before delivery', async () => {
+    claim.mockResolvedValue({
+      outcome: 'claimed',
+      deliveryId: 'd1',
+      claimToken: 'claim-1',
+      providerRequest: {
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+        to: 'u@example.com',
+        subject: 'Keep your learning streak alive',
+        html: '<p>streak</p>',
+        text: 'streak',
+        idempotencyKey: 'u1:streak_reminder:2026-07-09',
+      },
+      reusedProviderRequest: true,
+      reclaimedExpiredPending: false,
+    });
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: false,
+          daily_reminder: false,
+          streak_reminder: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: true,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: true,
+        },
+      });
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender: createSender(),
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(markSkipped).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'preference_disabled_before_delivery',
+      },
+      expect.anything(),
+    );
+    expect(markManualReview).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ claimed: 1, skipped: 1, sent: 0 });
+  });
+
+  it('preserves an expired pending request for review when preferences change', async () => {
+    claim.mockResolvedValue({
+      outcome: 'claimed',
+      deliveryId: 'd1',
+      claimToken: 'claim-1',
+      providerRequest: {
+        from: 'Atlaris <notifications@mail.atlaris.app>',
+        to: 'u@example.com',
+        subject: 'Keep your learning streak alive',
+        html: '<p>streak</p>',
+        text: 'streak',
+        idempotencyKey: 'u1:streak_reminder:2026-07-09',
+      },
+      reusedProviderRequest: true,
+      reclaimedExpiredPending: true,
+    });
+    getPrefs
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: false,
+        categories: {
+          weekly_summary: false,
+          daily_reminder: false,
+          streak_reminder: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        unsubscribeAllOptionalEmails: true,
+        categories: {
+          weekly_summary: true,
+          daily_reminder: true,
+          streak_reminder: true,
+        },
+      });
+    const sender = createSender();
+
+    const result = await runEmailNotificationDelivery(
+      {
+        categories: ['streak_reminder'],
+        schedulerDateUtc: '2026-07-09',
+      },
+      {
+        db: {} as never,
+        sender,
+        unsubscribeSecret: 'secret',
+        appUrl: 'https://atlaris.app',
+        now: new Date('2026-07-09T15:00:00.000Z'),
+      },
+    );
+
+    expect(sender.sendResolved).not.toHaveBeenCalled();
+    expect(markManualReview).toHaveBeenCalledWith(
+      {
+        deliveryId: 'd1',
+        claimToken: 'claim-1',
+        failureClass: 'preferences_disabled_after_ambiguous_claim',
+      },
+      expect.anything(),
+    );
+    expect(result).toMatchObject({ claimed: 1, manualReview: 1, sent: 0 });
   });
 });

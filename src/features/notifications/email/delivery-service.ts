@@ -19,11 +19,13 @@ import {
   listEmailActivityDayKeysForUser,
 } from '@/lib/db/queries/email-delivery-content';
 import {
+  isEmailDeliveryRecipientCurrent,
   listEmailDeliveryRecipients,
   type EmailDeliveryRecipient,
 } from '@/lib/db/queries/email-delivery-recipients';
 import {
   claimEmailNotificationDelivery,
+  EMAIL_DELIVERY_FAILURE_CLASS,
   EMAIL_DELIVERY_LEASE_MS,
   type EmailDeliveryClaimResult,
   EmailDeliveryLostLeaseError,
@@ -66,6 +68,9 @@ const RETRYABLE_DATABASE_ERROR_CODES = new Set([
 ]);
 
 type DeliveryDb = DbClient;
+type EffectiveEmailPreferences = ReturnType<
+  typeof resolveEffectiveEmailPreferences
+>;
 
 function isRetryableDatabaseError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -137,6 +142,15 @@ function recordDeliveryFailure(
   });
 }
 
+async function getEffectiveEmailPreferences(
+  userId: string,
+  db: DeliveryDb,
+): Promise<EffectiveEmailPreferences> {
+  return resolveEffectiveEmailPreferences(
+    await getEmailNotificationPreferences(userId, db),
+  );
+}
+
 async function buildRecipientEmailContents(args: {
   recipient: EmailDeliveryRecipient;
   requested: ReadonlySet<EmailNotificationCategory>;
@@ -147,11 +161,10 @@ async function buildRecipientEmailContents(args: {
   now: Date;
   deliveryNow: Date;
 }): Promise<BuiltEmailContent[]> {
-  const preferences = await getEmailNotificationPreferences(
+  const effective = await getEffectiveEmailPreferences(
     args.recipient.userId,
     args.db,
   );
-  const effective = resolveEffectiveEmailPreferences(preferences);
   const enabledCategories = new Set(
     (Object.keys(effective) as Array<keyof typeof effective>).filter(
       (category) => effective[category] && args.requested.has(category),
@@ -452,6 +465,22 @@ async function processEmailContent(args: {
 
   context.counts.claimed += 1;
   if (content.category === 'daily_reminder' && args.streakSentThisPass) {
+    if (claim.reclaimedExpiredPending) {
+      return {
+        action: await handleProviderFailure({
+          failure: {
+            kind: 'manual_review',
+            failureClass: 'provider_acceptance_ambiguous',
+          },
+          claim,
+          category: content.category,
+          db: context.db,
+          counts: context.counts,
+          logger: context.logger,
+        }),
+        streakSentThisPass: args.streakSentThisPass,
+      };
+    }
     await persistDeliveryState(() =>
       markEmailNotificationDeliverySkipped(
         {
@@ -469,6 +498,151 @@ async function processEmailContent(args: {
         reason: 'suppressed_by_streak_reminder',
       },
     });
+    return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
+  }
+
+  let recipientIdentityCurrent: boolean;
+  try {
+    recipientIdentityCurrent =
+      claim.providerRequest.to === recipient.email &&
+      (await isEmailDeliveryRecipientCurrent({
+        userId: recipient.userId,
+        email: claim.providerRequest.to,
+        dbClient: context.db,
+      }));
+  } catch (error) {
+    if (claim.reclaimedExpiredPending) {
+      throw error;
+    }
+    return {
+      action: await handleProviderFailure({
+        failure: {
+          kind: 'retryable',
+          failureClass: 'recipient_processing_error',
+        },
+        claim,
+        category: content.category,
+        db: context.db,
+        counts: context.counts,
+        logger: context.logger,
+      }),
+      streakSentThisPass: args.streakSentThisPass,
+    };
+  }
+  if (!recipientIdentityCurrent) {
+    if (claim.reclaimedExpiredPending) {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryManualReview(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim,
+          },
+          context.db,
+        ),
+      );
+      context.counts.manualReview += 1;
+      context.counts.needsReview = true;
+      countMetric('atlaris.email.notification.manual_review', 1, {
+        attributes: {
+          category: content.category,
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedAfterAmbiguousClaim,
+        },
+      });
+    } else {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliverySkipped(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedBeforeDelivery,
+          },
+          context.db,
+        ),
+      );
+      context.counts.skipped += 1;
+      countMetric('atlaris.email.notification.skipped', 1, {
+        attributes: {
+          category: content.category,
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.recipientIdentityChangedBeforeDelivery,
+        },
+      });
+    }
+    return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
+  }
+
+  let finalPreferences: EffectiveEmailPreferences;
+  try {
+    finalPreferences = await getEffectiveEmailPreferences(
+      recipient.userId,
+      context.db,
+    );
+  } catch (error) {
+    if (claim.reclaimedExpiredPending) {
+      throw error;
+    }
+    return {
+      action: await handleProviderFailure({
+        failure: {
+          kind: 'retryable',
+          failureClass: 'recipient_processing_error',
+        },
+        claim,
+        category: content.category,
+        db: context.db,
+        counts: context.counts,
+        logger: context.logger,
+      }),
+      streakSentThisPass: args.streakSentThisPass,
+    };
+  }
+  if (!finalPreferences[content.category]) {
+    if (claim.reclaimedExpiredPending) {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliveryManualReview(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledAfterAmbiguousClaim,
+          },
+          context.db,
+        ),
+      );
+      context.counts.manualReview += 1;
+      context.counts.needsReview = true;
+      countMetric('atlaris.email.notification.manual_review', 1, {
+        attributes: {
+          category: content.category,
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledAfterAmbiguousClaim,
+        },
+      });
+    } else {
+      await persistDeliveryState(() =>
+        markEmailNotificationDeliverySkipped(
+          {
+            deliveryId: claim.deliveryId,
+            claimToken: claim.claimToken,
+            failureClass:
+              EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledBeforeDelivery,
+          },
+          context.db,
+        ),
+      );
+      context.counts.skipped += 1;
+      countMetric('atlaris.email.notification.skipped', 1, {
+        attributes: {
+          category: content.category,
+          reason:
+            EMAIL_DELIVERY_FAILURE_CLASS.preferencesDisabledBeforeDelivery,
+        },
+      });
+    }
     return { action: 'continue', streakSentThisPass: args.streakSentThisPass };
   }
 

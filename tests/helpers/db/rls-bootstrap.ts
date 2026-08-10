@@ -67,6 +67,7 @@ export async function ensureRlsRolesAndPermissions() {
   // Matches the final migration grant and users-authenticated-update-columns.
   // Harden `job_queue` to match 0028: no role writes from clients (service role for workers only).
   await db.execute(sql`
+    REVOKE INSERT ON "users" FROM authenticated;
     REVOKE UPDATE ON "users" FROM authenticated;
     GRANT UPDATE (${sql.raw(USERS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "users" TO authenticated;
     REVOKE DELETE ON "users" FROM authenticated;
@@ -79,8 +80,8 @@ export async function ensureRlsRolesAndPermissions() {
     REVOKE INSERT, UPDATE, DELETE ON "user_email_notification_preferences" FROM authenticated;
     GRANT INSERT (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
     GRANT UPDATE (${sql.raw(USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "user_email_notification_preferences" TO authenticated;
-    REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences", "email_notification_delivery_runs" FROM anon;
-    REVOKE ALL ON "email_notification_delivery_runs" FROM authenticated;
+    REVOKE ALL ON "user_preferences", "user_email_notification_settings", "user_email_notification_preferences", "clerk_webhook_events", "clerk_webhook_event_claims", "email_notification_delivery_runs", "email_notification_deliveries" FROM anon;
+    REVOKE ALL ON "clerk_webhook_events", "clerk_webhook_event_claims", "email_notification_delivery_runs", "email_notification_deliveries" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM authenticated;
     REVOKE INSERT, UPDATE, DELETE ON "job_queue" FROM anon;
     REVOKE INSERT, UPDATE, DELETE ON ${sql.raw(
@@ -96,6 +97,11 @@ export async function ensureRlsRolesAndPermissions() {
   `);
 
   // Grant default permissions for future tables
+  await db.execute(sql`
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    REVOKE INSERT, UPDATE, DELETE ON TABLES FROM authenticated;
+  `);
+
   await db.execute(sql`
     ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT SELECT ON TABLES TO authenticated;

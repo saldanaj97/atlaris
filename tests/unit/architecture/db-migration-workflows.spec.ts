@@ -11,6 +11,12 @@ const PHASED_MIGRATION_SCRIPT = join(
   'db',
   'run-phased-migrations.sh',
 );
+const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
+  REPO_ROOT,
+  'scripts',
+  'db',
+  'attest-effective-privileges.sh',
+);
 
 const migrationWorkflows = [
   {
@@ -83,6 +89,14 @@ describe('Supabase migration workflows', () => {
 
   it('applies each expand migration and its history record atomically', () => {
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    const expandMigrations = script.match(
+      /readonly -a EXPAND_MIGRATIONS=\(([\s\S]*?)\n\)/,
+    )?.[1];
+
+    expect(expandMigrations).toBeDefined();
+    expect(expandMigrations).not.toContain(
+      '20260811100400_revoke_users_authenticated_insert.sql',
+    );
 
     expect(script).toContain(
       '20260706221000_archive_legacy_stripe_entitlements.sql',
@@ -104,6 +118,36 @@ describe('Supabase migration workflows', () => {
     );
     expect(script).not.toContain('supabase migration repair');
     expect(script).not.toContain('db query --linked --file');
+  });
+
+  it('attests effective privileges after each successful migration phase', () => {
+    const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
+    const attestation = readFileSync(
+      EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT,
+      'utf8',
+    );
+
+    expect(script).toMatch(
+      /expand\)[\s\S]*apply_expand_migrations[\s\S]*attest_effective_privileges expand/,
+    );
+    expect(script).toMatch(
+      /contract\)[\s\S]*apply_contract_migrations[\s\S]*attest_effective_privileges contract/,
+    );
+    expect(attestation).toContain('supabase db query --linked');
+    expect(attestation).toContain('--file "$ATTESTATION_SQL_FILE"');
+    expect(attestation).toContain("ATTESTATION_PHASE='contract'");
+    expect(attestation).toContain('expand|contract)');
+    expect(attestation).toContain(
+      "set_config('app.atlaris_migration_phase', '%s', false)",
+    );
+    expect(
+      readFileSync(
+        join(REPO_ROOT, 'scripts', 'db', 'attest-effective-privileges.sql'),
+        'utf8',
+      ),
+    ).toContain(
+      "migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract')",
+    );
   });
 
   it('keeps authenticated task-progress deletion revoked after the broad grant', () => {

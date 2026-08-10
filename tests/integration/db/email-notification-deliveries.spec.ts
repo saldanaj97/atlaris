@@ -259,6 +259,16 @@ describe('email notification deliveries ledger', () => {
     },
   );
 
+  it('validates the resolved-payload constraint after scrubbing legacy rows', async () => {
+    const constraints = (await db.execute(sql`
+      select convalidated
+      from pg_constraint
+      where conname = 'email_notification_deliveries_resolved_provider_request_null'
+    `)) as Array<{ convalidated: boolean }>;
+
+    expect(constraints).toEqual([{ convalidated: true }]);
+  });
+
   it('allows only one concurrent owner for the same delivery key', async () => {
     const authUserId = buildTestAuthUserId('email-ledger-race');
     const userId = await ensureUser({
@@ -565,6 +575,7 @@ describe('email notification deliveries ledger', () => {
       firstRequest.idempotencyKey,
     );
     expect(second.reusedProviderRequest).toBe(true);
+    expect(second.reclaimedExpiredPending).toBe(false);
   });
 
   it('does not steal a fresh pending lease and reclaims an expired one with the original request', async () => {
@@ -629,6 +640,7 @@ describe('email notification deliveries ledger', () => {
     if (reclaimed.outcome !== 'claimed') return;
     expect(reclaimed.providerRequest).toMatchObject(original);
     expect(reclaimed.reusedProviderRequest).toBe(true);
+    expect(reclaimed.reclaimedExpiredPending).toBe(true);
   });
 
   it('moves ambiguous pending older than the provider window to manual_review', async () => {

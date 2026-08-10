@@ -28,6 +28,18 @@ Do not deploy the application release before the expand migration is applied. Au
 
 Do not run the contract migration before the new application release is fully rolled out. Older binaries may still read or write the legacy `users` preference columns during rolling deploys.
 
+## Authenticated users INSERT revoke cutover
+
+Migration `20260811100400_revoke_users_authenticated_insert` is intentionally contract-only. The expand runner applies the explicit predeploy set; the confirmed contract phase runs `supabase db push --include-all` after the application rollout. Older binaries provision a first user through the authenticated database role and still need table-level `INSERT`; the new release provisions through the service-role boundary.
+
+Required order:
+
+1. Dispatch the target environment's migration workflow with phase `expand`. The users `INSERT` revoke must not be applied yet.
+2. Deploy the release that uses service-role user provisioning, wait for all old instances to drain, and verify the new release is healthy.
+3. Dispatch phase `contract` with confirmation `post-deploy-health-verified`. This applies the users `INSERT` revoke after the old binary path is no longer serving traffic.
+
+Rolling back before the contract phase preserves the old binary's provisioning path. After the revoke is applied, do not roll back to a binary that provisions through `authenticated`; its first-user insert will fail with a permission error. Roll forward the service-role provisioner instead of restoring the broad grant as an ad hoc rollback step.
+
 ## Legacy Stripe entitlement archive
 
 The expand phase runs `20260706221000_archive_legacy_stripe_entitlements` before the contract phase can drop the legacy Stripe columns. Before contract dispatch, verify every legacy Stripe identity was archived:
@@ -53,21 +65,13 @@ After deploying a release that includes new Supabase migrations:
 
 1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
-3. After the expand workflow, attest that authenticated users cannot delete task progress:
+3. Each successful phase runs the read-only effective-privilege attestation automatically. To re-run it against the linked target, use:
 
-```sql
-SELECT version::text
-FROM supabase_migrations.schema_migrations
-WHERE version::text = '20260804160000';
-
-SELECT
-  has_table_privilege('authenticated', 'public.task_progress', 'SELECT') AS can_select,
-  has_table_privilege('authenticated', 'public.task_progress', 'INSERT') AS can_insert,
-  has_table_privilege('authenticated', 'public.task_progress', 'UPDATE') AS can_update,
-  has_table_privilege('authenticated', 'public.task_progress', 'DELETE') AS can_delete;
+```bash
+bash scripts/db/attest-effective-privileges.sh
 ```
 
-The expected result is migration version `20260804160000`, `can_select`, `can_insert`, and `can_update` true, and `can_delete` false.
+It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants.
 4. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
@@ -93,7 +97,7 @@ If the migration applied but no cron job exists, enable `pg_cron` in Supabase an
 8. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
-   - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization`, then run the non-PII inventory in the email delivery runbook. Do not validate the new check until the inventory reports no historical violations or remediation is approved.
+   - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.
    - Enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
    - Confirm Vercel Cron and `CRON_SECRET` are configured for production; keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 

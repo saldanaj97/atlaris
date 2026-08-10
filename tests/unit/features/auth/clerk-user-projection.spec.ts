@@ -1,6 +1,8 @@
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
+  applyClerkUserProjectionSource,
+  clerkUserProjectionSourceFromBackendUser,
   clerkUserProjectionSourceFromWebhook,
   reconcileClerkUserIdentities,
 } from '@/features/auth/clerk-user-projection';
@@ -13,12 +15,13 @@ function userUpdatedEvent(
     verification: { status: string };
   }[],
   primaryEmailAddressId: string | null,
+  updatedAt = new Date('2026-08-11T10:00:00.000Z').getTime(),
 ): WebhookEvent {
   return {
     type: 'user.updated',
     data: {
       id: 'user_identity_fixture',
-      updated_at: new Date('2026-08-11T10:00:00.000Z').getTime(),
+      updated_at: updatedAt,
       primary_email_address_id: primaryEmailAddressId,
       email_addresses: emailAddresses,
     },
@@ -29,6 +32,7 @@ function dryRunDb(
   localUsers: readonly {
     id: string;
     authUserId: string;
+    email: string | null;
     clerkUserUpdatedAt: Date | null;
     clerkDeletedAt: Date | null;
   }[],
@@ -41,6 +45,30 @@ function dryRunDb(
   return {
     select: vi.fn().mockReturnValue({ from }),
     update: vi.fn(),
+  };
+}
+
+function applyDb(localUser: {
+  id: string;
+  authUserId: string;
+  email: string | null;
+  clerkUserUpdatedAt: Date | null;
+  clerkDeletedAt: Date | null;
+}) {
+  const selectLimit = vi.fn().mockResolvedValue([localUser]);
+  const selectWhere = vi.fn().mockReturnValue({ limit: selectLimit });
+  const selectFrom = vi.fn().mockReturnValue({ where: selectWhere });
+  const updateReturning = vi.fn().mockResolvedValue([{ id: localUser.id }]);
+  const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
+  const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+
+  return {
+    db: {
+      select: vi.fn().mockReturnValue({ from: selectFrom }),
+      update: vi.fn().mockReturnValue({ set: updateSet }),
+    },
+    updateSet,
+    updateWhere,
   };
 }
 
@@ -66,6 +94,7 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
 
     expect(source).toEqual({
       kind: 'upsert',
+      origin: 'webhook',
       type: 'user.updated',
       authUserId: 'user_identity_fixture',
       email: null,
@@ -96,12 +125,14 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
       {
         id: 'local_user',
         authUserId: 'user_current',
+        email: null,
         clerkUserUpdatedAt: null,
         clerkDeletedAt: null,
       },
       {
         id: 'local_deleted_user',
         authUserId: 'user_missing_in_clerk',
+        email: null,
         clerkUserUpdatedAt: null,
         clerkDeletedAt: null,
       },
@@ -143,5 +174,235 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
       nextCursor: null,
     });
     expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('ignores an equal Clerk watermark when the projected email already matches', async () => {
+    const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+    const localUser = {
+      id: 'local_user',
+      authUserId: 'user_current',
+      email: 'current@example.com',
+      clerkUserUpdatedAt,
+      clerkDeletedAt: null,
+    };
+    const db = dryRunDb([localUser]);
+    const getUser = vi.fn().mockResolvedValue({
+      id: localUser.authUserId,
+      updatedAt: clerkUserUpdatedAt.getTime(),
+      primaryEmailAddressId: 'primary',
+      emailAddresses: [
+        {
+          id: 'primary',
+          emailAddress: localUser.email,
+          verification: { status: 'verified' },
+        },
+      ],
+    });
+
+    await expect(
+      reconcileClerkUserIdentities({
+        apply: false,
+        clerkClient: { users: { getUser } },
+        db: db as never,
+        logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+      }),
+    ).resolves.toEqual({
+      checked: 1,
+      updated: 0,
+      tombstoned: 0,
+      wouldUpdate: 0,
+      wouldTombstone: 0,
+      skipped: 0,
+      ignored: 1,
+      failed: 0,
+      nextCursor: null,
+    });
+
+    const limit = vi.fn().mockResolvedValue([localUser]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const applyDb = {
+      select: vi.fn().mockReturnValue({ from }),
+      update: vi.fn(),
+    };
+    await expect(
+      applyClerkUserProjectionSource(
+        {
+          kind: 'upsert',
+          origin: 'reconciliation',
+          type: 'user.updated',
+          authUserId: localUser.authUserId,
+          email: localUser.email,
+          clerkUserUpdatedAt,
+        },
+        {
+          db: applyDb as never,
+          logger: { info: vi.fn(), warn: vi.fn() },
+        },
+      ),
+    ).resolves.toBe('ignored');
+    expect(applyDb.update).not.toHaveBeenCalled();
+  });
+});
+
+function webhookSource(email: string, updatedAt: Date) {
+  const source = clerkUserProjectionSourceFromWebhook(
+    userUpdatedEvent(
+      [
+        {
+          id: 'primary',
+          email_address: email,
+          verification: { status: 'verified' },
+        },
+      ],
+      'primary',
+      updatedAt.getTime(),
+    ),
+  );
+  if (source === null || source.kind !== 'upsert') {
+    throw new Error('Expected a webhook upsert source');
+  }
+  return source;
+}
+
+describe('source-aware equal-watermark projection', () => {
+  it('reports and repairs authoritative equal-watermark email drift', async () => {
+    const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+    const localUser = {
+      id: 'local_user',
+      authUserId: 'user_current',
+      email: 'stale@example.com',
+      clerkUserUpdatedAt,
+      clerkDeletedAt: null,
+    };
+    const backendUser = {
+      id: localUser.authUserId,
+      updatedAt: clerkUserUpdatedAt.getTime(),
+      primaryEmailAddressId: 'primary',
+      emailAddresses: [
+        {
+          id: 'primary',
+          emailAddress: 'current@example.com',
+          verification: { status: 'verified' },
+        },
+      ],
+    };
+    const dryRun = dryRunDb([localUser]);
+
+    await expect(
+      reconcileClerkUserIdentities({
+        apply: false,
+        clerkClient: {
+          users: { getUser: vi.fn().mockResolvedValue(backendUser) },
+        },
+        db: dryRun as never,
+        logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+      }),
+    ).resolves.toMatchObject({
+      checked: 1,
+      wouldUpdate: 1,
+      ignored: 0,
+    });
+
+    const applied = applyDb(localUser);
+    await expect(
+      applyClerkUserProjectionSource(
+        clerkUserProjectionSourceFromBackendUser(backendUser),
+        {
+          db: applied.db as never,
+          logger: { info: vi.fn(), warn: vi.fn() },
+        },
+      ),
+    ).resolves.toBe('updated');
+    expect(applied.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'current@example.com',
+        clerkUserUpdatedAt,
+      }),
+    );
+  });
+
+  it('ignores an equal-watermark webhook email change', async () => {
+    const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+    const localUser = {
+      id: 'local_user',
+      authUserId: 'user_current',
+      email: 'current@example.com',
+      clerkUserUpdatedAt,
+      clerkDeletedAt: null,
+    };
+    const applied = applyDb(localUser);
+
+    await expect(
+      applyClerkUserProjectionSource(
+        webhookSource('drifted@example.com', clerkUserUpdatedAt),
+        {
+          db: applied.db as never,
+          logger: { info: vi.fn(), warn: vi.fn() },
+        },
+      ),
+    ).resolves.toBe('ignored');
+    expect(applied.db.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['first@example.com', 'second@example.com'],
+    ['second@example.com', 'first@example.com'],
+  ])(
+    'rejects equal-watermark webhook payloads in either arrival order',
+    async (firstEmail, secondEmail) => {
+      const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+      const localUser = {
+        id: 'local_user',
+        authUserId: 'user_current',
+        email: 'authoritative@example.com',
+        clerkUserUpdatedAt,
+        clerkDeletedAt: null,
+      };
+      const applied = applyDb(localUser);
+
+      for (const email of [firstEmail, secondEmail]) {
+        await expect(
+          applyClerkUserProjectionSource(
+            webhookSource(email, clerkUserUpdatedAt),
+            {
+              db: applied.db as never,
+              logger: { info: vi.fn(), warn: vi.fn() },
+            },
+          ),
+        ).resolves.toBe('ignored');
+      }
+
+      expect(applied.db.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('allows a strictly newer webhook email update', async () => {
+    const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
+    const newerUpdatedAt = new Date(clerkUserUpdatedAt.getTime() + 1);
+    const localUser = {
+      id: 'local_user',
+      authUserId: 'user_current',
+      email: 'current@example.com',
+      clerkUserUpdatedAt,
+      clerkDeletedAt: null,
+    };
+    const applied = applyDb(localUser);
+
+    await expect(
+      applyClerkUserProjectionSource(
+        webhookSource('newer@example.com', newerUpdatedAt),
+        {
+          db: applied.db as never,
+          logger: { info: vi.fn(), warn: vi.fn() },
+        },
+      ),
+    ).resolves.toBe('updated');
+    expect(applied.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'newer@example.com',
+        clerkUserUpdatedAt: newerUpdatedAt,
+      }),
+    );
   });
 });

@@ -19,6 +19,8 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20260811100200_enforce_resolved_email_delivery_payload_minimization.sql
 )
 
+# Keep the users INSERT revoke contract-only until service-role provisioning is live.
+
 declare -A APPLIED_VERSIONS=()
 
 load_applied_versions() {
@@ -49,6 +51,12 @@ require_archive_recovery_if_drop_already_ran() {
       'then import the archive and repair version 20260706221000 before retrying.' >&2
     exit 1
   fi
+}
+
+attest_effective_privileges() {
+  local phase="$1"
+
+  bash scripts/db/attest-effective-privileges.sh "$phase"
 }
 
 apply_expand_migrations() {
@@ -108,9 +116,11 @@ apply_contract_migrations() {
 case "${MIGRATION_PHASE:-}" in
   expand)
     apply_expand_migrations
+    attest_effective_privileges expand
     ;;
   contract)
     apply_contract_migrations
+    attest_effective_privileges contract
     ;;
   *)
     printf 'MIGRATION_PHASE must be expand or contract.\n' >&2

@@ -51,6 +51,17 @@ function userUpdatedEvent(
   } as unknown as WebhookEvent;
 }
 
+function userCreatedEvent(
+  authUserId: string,
+  email: string,
+  updatedAt: Date,
+): WebhookEvent {
+  return {
+    ...userUpdatedEvent(authUserId, email, updatedAt),
+    type: 'user.created',
+  } as unknown as WebhookEvent;
+}
+
 function userDeletedEvent(authUserId: string): WebhookEvent {
   return {
     type: 'user.deleted',
@@ -278,13 +289,13 @@ describe('Clerk billing webhook claims', () => {
     ).resolves.toEqual([]);
   });
 
-  it('acknowledges a lifecycle event that arrives before local provisioning', async () => {
+  it('acknowledges user.created before local provisioning', async () => {
     const authUserId = buildTestAuthUserId('clerk-identity-missing');
     const eventId = `evt_identity_missing_${authUserId}`;
 
     await expect(
       applyVerifiedClerkBillingEvent(
-        userUpdatedEvent(
+        userCreatedEvent(
           authUserId,
           buildTestEmail(authUserId),
           new Date('2026-08-11T10:03:00.000Z'),
@@ -293,6 +304,120 @@ describe('Clerk billing webhook claims', () => {
         { db, logger: logger() },
       ),
     ).resolves.toEqual({ status: 'inserted', result: 'skipped_no_user' });
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([{ eventId }]);
+  });
+
+  it('replays a missing user.updated event after local provisioning', async () => {
+    const authUserId = buildTestAuthUserId('clerk-identity-updated-missing');
+    const eventId = `evt_identity_updated_missing_${authUserId}`;
+    const staleEmail = buildTestEmail(`stale-${authUserId}`);
+    const projectedEmail = buildTestEmail(`projected-${authUserId}`);
+    const clerkUpdatedAt = new Date('2026-08-11T10:03:00.000Z');
+    const event = userUpdatedEvent(authUserId, projectedEmail, clerkUpdatedAt);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(event, eventId, {
+        db,
+        logger: logger(),
+      }),
+    ).rejects.toThrow('No local user found for Clerk update event');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([]);
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEventClaims.eventId })
+        .from(clerkWebhookEventClaims)
+        .where(eq(clerkWebhookEventClaims.eventId, eventId)),
+    ).resolves.toEqual([]);
+
+    const staleUpdatedAt = new Date(clerkUpdatedAt.getTime() - 1_000);
+    await ensureUser({ authUserId, email: staleEmail });
+    await db
+      .update(users)
+      .set({ email: staleEmail, clerkUserUpdatedAt: staleUpdatedAt })
+      .where(eq(users.authUserId, authUserId));
+
+    await expect(
+      applyVerifiedClerkBillingEvent(event, eventId, {
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+    await expect(
+      db
+        .select({
+          email: users.email,
+          clerkUserUpdatedAt: users.clerkUserUpdatedAt,
+        })
+        .from(users)
+        .where(eq(users.authUserId, authUserId)),
+    ).resolves.toEqual([
+      { email: projectedEmail, clerkUserUpdatedAt: clerkUpdatedAt },
+    ]);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(event, eventId, {
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'duplicate' });
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([{ eventId }]);
+  });
+
+  it('replays a missing user deletion after local provisioning', async () => {
+    const authUserId = buildTestAuthUserId('clerk-deletion-missing');
+    const eventId = `evt_deletion_missing_${authUserId}`;
+    const event = userDeletedEvent(authUserId);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(event, eventId, {
+        db,
+        logger: logger(),
+      }),
+    ).rejects.toThrow('No local user found for Clerk deletion event');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([]);
+
+    await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+    });
+
+    await expect(
+      applyVerifiedClerkBillingEvent(event, eventId, {
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+    await expect(
+      db
+        .select({
+          email: users.email,
+          clerkDeletedAt: users.clerkDeletedAt,
+        })
+        .from(users)
+        .where(eq(users.authUserId, authUserId)),
+    ).resolves.toMatchObject([
+      { email: null, clerkDeletedAt: expect.any(Date) },
+    ]);
     await expect(
       db
         .select({ eventId: clerkWebhookEvents.eventId })
