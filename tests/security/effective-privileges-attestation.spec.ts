@@ -71,6 +71,9 @@ describe('effective database privilege attestation', () => {
     );
     expect(ATTESTATION_SQL).toContain('authenticated has INSERT on public.%I');
     expect(ATTESTATION_SQL).toContain(
+      "has_column_privilege(\n      'authenticated',\n      class.oid,\n      attribute.attnum,\n      'INSERT'",
+    );
+    expect(ATTESTATION_SQL).toContain(
       "namespace.nspname IN ('public', 'private')",
     );
     expect(ATTESTATION_SQL).toContain(
@@ -323,7 +326,7 @@ describe('effective database privilege attestation', () => {
         ).rejects.toMatchObject({
           cause: expect.objectContaining({
             message: expect.stringMatching(
-              /authenticated has INSERT column privilege on public\.users\./,
+              /authenticated has INSERT column privilege on public\.users\.auth_user_id/,
             ),
           }),
         });
