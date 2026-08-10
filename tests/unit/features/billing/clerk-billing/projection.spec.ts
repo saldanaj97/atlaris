@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const now = new Date('2026-07-06T12:00:00.000Z');
 const futurePeriodEnd = new Date('2026-08-06T12:00:00.000Z');
+const laterFreePeriodEnd = new Date('2026-09-06T12:00:00.000Z');
 const pastPeriodEnd = new Date('2026-06-06T12:00:00.000Z');
 
 const currentPaidState: CurrentBillingState = {
@@ -275,6 +276,65 @@ describe('projectClerkBillingSource', () => {
           type: 'reconciliation.subscription',
           subscriptionStatus: 'active',
           items: [item({ status: 'past_due', tier: 'pro' })],
+        }),
+        currentStarterState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('projects an active paid item while ignoring a separate past-due upgrade', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          subscriptionStatus: 'active',
+          items: [
+            item({
+              id: 'item_starter_active',
+              status: 'active',
+              tier: 'starter',
+              planSlug: 'starter_plan',
+            }),
+            item({
+              id: 'item_pro_past_due',
+              status: 'past_due',
+              tier: 'pro',
+            }),
+          ],
+        }),
+        currentFreeState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('does not extend a paid tier from an upcoming free item after a failed upgrade', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          subscriptionStatus: 'active',
+          items: [
+            item({ status: 'past_due', tier: 'pro' }),
+            item({
+              id: 'item_free_upcoming',
+              status: 'upcoming',
+              tier: 'free',
+              planSlug: 'free_user',
+              periodEnd: laterFreePeriodEnd,
+            }),
+          ],
         }),
         currentStarterState,
         now,
