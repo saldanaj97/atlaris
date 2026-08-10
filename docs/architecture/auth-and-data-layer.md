@@ -2,7 +2,7 @@
 
 How authentication, authorization, and database access work together to enforce tenant isolation.
 
-**Last Updated:** July 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -91,7 +91,20 @@ There are two user IDs in the system:
 | `authUserId` | External | Clerk Auth    | `user_...` (Clerk user id)   | RLS claims, session identity |
 | `user.id`    | Internal | `users` table | `a1b2c3d4-...` (app DB UUID) | Foreign keys, ownership      |
 
-**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` is the full `DbUser`. In server actions/components, the callback receives the full `DbUser`.
+**Critical**: Ownership queries must use `user.id` (internal), not `authUserId` (external). In API routes, `ctx.userId` is the external auth user id while `ctx.user` / `actor` is the resolved actor record. In server actions/components, the callback receives that same actor.
+
+### ActorUser preference join
+
+`ensureUserRecord` returns an `ActorUser`, not a bare `users` row. `getUserByAuthId` left-joins `user_preferences` and `toActorUser` merges:
+
+| Field | Source when preference row exists | Default when missing |
+| ----- | --------------------------------- | -------------------- |
+| `preferredAiModel` | `user_preferences.preferred_ai_model` | `null` (`DEFAULT_USER_PREFERENCES`) |
+| `analyticsTimezone` | `user_preferences.analytics_timezone` | `'UTC'` |
+
+Profile display fields (`name`, etc.) still live on `users`. Authenticated column-level UPDATE grants on `users` are limited to `name` / `updated_at`; preference writes go to `user_preferences` (see [technical-debt.md](../technical-debt.md#users-table-column-level-update-grant) and [deploy.md](../development/deploy.md) for the expand migration cutover).
+
+Email notification opt-ins are **not** on `ActorUser`. They live in `user_email_notification_settings` + `user_email_notification_preferences` and are loaded via `getEmailNotificationPreferences` / `PATCH /api/v1/user/preferences/notifications`.
 
 ### How auth user ID is obtained
 
@@ -125,7 +138,7 @@ withAuth / requestBoundary (or withServerActionContext / withServerComponentCont
     │
     ├── withRequestContext({ db: rlsDb })   ← getDb() now returns this client
     │
-    ├── ensureUserRecord(authUserId)        ← get or create DB user record
+    ├── ensureUserRecord(authUserId)        ← get or create ActorUser (users + user_preferences join)
     │
     ├── fn(user, rlsDb)                     ← your code runs here
     │
@@ -193,6 +206,8 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 | Auth + legacy shims   | `src/lib/api/auth.ts`             |
 | Request boundary      | `src/lib/api/request-boundary.ts` |
 | Request context       | `src/lib/api/context.ts`          |
+| ActorUser + auth lookup | `src/lib/db/queries/users.ts`, `src/lib/db/queries/types/users.types.ts` |
+| User preferences queries | `src/lib/db/queries/user-preferences.ts` |
 | RLS client factory    | `supabase/rls.ts`                 |
 | DB client resolver    | `supabase/runtime.ts`             |
 | Service-role client   | `supabase/service-role.ts`        |

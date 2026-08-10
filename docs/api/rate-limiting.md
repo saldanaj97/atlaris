@@ -144,6 +144,7 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 
 - `DELETE /api/v1/plans/[planId]`
 - `PATCH /api/v1/user/preferences`
+- `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`
 
 ### Read (`read`)
@@ -157,6 +158,16 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`
 - `GET /api/v1/resources`
+
+### User preferences payloads
+
+| Route | Body / response notes |
+| ----- | --------------------- |
+| `GET /api/v1/user/preferences` | `{ preferredAiModel, availableModels }` |
+| `PATCH /api/v1/user/preferences` | Body `{ preferredAiModel: PreferredAiModel \| null }`; `null` clears the saved model. Response includes `{ message, preferredAiModel }`. |
+| `PATCH /api/v1/user/preferences/notifications` | Body `{ unsubscribeAllOptionalEmails, weeklySummary, dailyReminder, streakReminder }` (booleans). Response echoes `{ message, preferences }` in the same form shape. Category DB keys are `weekly_summary`, `daily_reminder`, `streak_reminder`. |
+
+Form ↔ storage mapping lives in `src/shared/notifications/email-preferences.ts`. Errors follow [error-contract.md](./error-contract.md).
 
 ### Integration / OAuth (`integration`, `oauth`)
 

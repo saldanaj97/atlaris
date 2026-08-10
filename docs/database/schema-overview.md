@@ -3,18 +3,35 @@
 ## Core entities and relationships
 
 ```text
+users 1—1 user_preferences
+users 1—1 user_email_notification_settings
+users 1—* user_email_notification_preferences   (PK: user_id + category)
 users 1—* learning_plans, usage_metrics, ai_usage_events, job_queue, task_progress
+users 1—* email_notification_deliveries         (service-owned delivery ledger)
 learning_plans 1—* modules, generation_attempts
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
 task_resources —* resources
 users 1—* oauth_state_tokens
 clerk_webhook_events  (service-owned idempotency ledger)
+email_notification_delivery_runs  (service-owned scheduler checkpoints; no user FK)
 ```
+
+### Preferences and optional email notifications
+
+| Table | Role |
+| ----- | ---- |
+| `user_preferences` | Per-user AI model preference and analytics timezone (`users.id` PK / FK) |
+| `user_email_notification_settings` | Global optional-email kill switch (`unsubscribe_all_optional_emails`) |
+| `user_email_notification_preferences` | Per-category opt-in (`enabled`, optional `unsubscribed_at`) |
+| `email_notification_deliveries` | Idempotent send ledger keyed by `(user_id, category, delivery_key)`; deny-all for authenticated |
+| `email_notification_delivery_runs` | Durable `(run_kind, scheduler_date_utc)` checkpoints for the email cron / workflow |
+
+Auth loads actors with a `user_preferences` left join (see [auth-and-data-layer.md](../architecture/auth-and-data-layer.md)). Delivery eligibility uses settings + category rows through `resolveEffectiveEmailPreferences` (see [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md)). Deploy cutover for the preferences foundation is in [deploy.md](../development/deploy.md).
 
 ## Enums
 
-Defined in `supabase/enums.ts`:
+Defined in `supabase/enums.ts` (delivery-status enums also appear next to their tables under `supabase/schema/tables/`):
 
 | Enum                       | Values                                                                                                    |
 | -------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -29,6 +46,10 @@ Defined in `supabase/enums.ts`:
 | `subscription_tier`        | `free`, `starter`, `pro`                                                                                  |
 | `subscription_status`      | `active`, `canceled`, `past_due`, `trialing`                                                              |
 | `plan_origin`              | `ai`, `template`, `manual`                                                                                |
+| `email_notification_category` | `weekly_summary`, `daily_reminder`, `streak_reminder`                                                  |
+| `email_notification_delivery_status` | `pending`, `sent`, `skipped`, `failed`, `manual_review`                                         |
+| `email_notification_delivery_run_kind` | `daily`, `weekly`                                                                              |
+| `email_notification_delivery_run_status` | `queued`, `running`, `paused`, `completed`, `failed`, `needs_review`                          |
 
 ## Key constraints
 
@@ -61,6 +82,11 @@ RLS is enforced through request-scoped Postgres session state:
 | `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
 | `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
 | `clerk_webhook_events` | `(event_id)` unique, `(created_at)`                                                                         |
+| `user_preferences`   | PK `user_id`                                                                                                  |
+| `user_email_notification_settings` | PK `user_id`                                                                                      |
+| `user_email_notification_preferences` | PK `(user_id, category)`                                                                       |
+| `email_notification_deliveries` | unique `(user_id, category, delivery_key)`; status / claim indexes                               |
+| `email_notification_delivery_runs` | unique `(run_kind, scheduler_date_utc)`; unique partial index on `workflow_run_id`             |
 
 ## Ownership and retention
 
@@ -69,6 +95,8 @@ RLS is enforced through request-scoped Postgres session state:
 - `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `private.cleanup_retained_db_rows()` via Supabase Cron.
 - `clerk_webhook_events` keeps Clerk/Svix delivery IDs for 45 days before `private.cleanup_retained_db_rows()` prunes old idempotency rows.
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
+- `user_preferences`, `user_email_notification_settings`, and `user_email_notification_preferences` cascade with the owning `users` row; they are not pruned by retention cleanup.
+- `email_notification_deliveries` and `email_notification_delivery_runs` are service-role operational ledgers. Treat them as delivery/idempotency state, not generic logs; do not truncate while investigating a run.
 
 Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).
 
@@ -81,6 +109,9 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 | Relations                | `supabase/schema/relations.ts`                   |
 | Query modules            | `src/lib/db/queries/`                            |
 | Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts` |
+| User preferences + email prefs | `src/lib/db/queries/user-preferences.ts`   |
+| Actor user join          | `src/lib/db/queries/users.ts` (`toActorUser`)    |
+| Email preference form mapping | `src/shared/notifications/email-preferences.ts` |
 | Usage tracking           | `supabase/usage.ts`                              |
 | Migrations               | `supabase/migrations/`                           |
 | Request DB               | `supabase/runtime.ts`                            |
@@ -94,3 +125,5 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 - Plan scheduling and task progress tracking
 - Monthly usage and billing-related usage accounting (including `lesson_modules_generated` on `usage_metrics`)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)
+- User preferences (`preferred_ai_model`, `analytics_timezone`) and optional email notification opt-ins
+- Optional email delivery ledger + durable scheduler runs (see `docs/architecture/email-notification-delivery-runbook.md`)

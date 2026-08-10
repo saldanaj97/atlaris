@@ -15,6 +15,18 @@ Vercel Cron can be delayed, missed, or invoked more than once. Hobby precision i
 
 Only one email scheduler may be active. The GitHub workflow `.github/workflows/email-notification-delivery-scheduler.yml` must stay absent while the Vercel Cron entries are enabled.
 
+## Preference eligibility (opt-in)
+
+Delivery is opt-in per category. The workflow loads preferences through `getEmailNotificationPreferences` and applies `resolveEffectiveEmailPreferences` (`src/shared/notifications/email-preferences.ts`):
+
+| Storage | Effect |
+| ------- | ------ |
+| `user_email_notification_settings.unsubscribe_all_optional_emails = true` | All categories treated as disabled |
+| `user_email_notification_preferences.enabled` for `weekly_summary` / `daily_reminder` / `streak_reminder` | Category must be `true` to send |
+| Missing preference row | Category defaults to off |
+
+Settings UI and `PATCH /api/v1/user/preferences/notifications` use camelCase form fields (`weeklySummary`, `dailyReminder`, `streakReminder`, `unsubscribeAllOptionalEmails`). Analytics timezone for activity windows comes from `user_preferences.analytics_timezone` (default `UTC`). Schema overview: [schema-overview.md](../database/schema-overview.md).
+
 ## Inspect a run
 
 1. In Vercel, inspect the Cron invocation for `GET /api/cron/notifications/email` and record the response's `runId` and `workflowRunId`.
