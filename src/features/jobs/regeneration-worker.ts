@@ -3,14 +3,6 @@ import type { ProcessPlanRegenerationJobResult } from '@/features/plans/regenera
 import { processNextPlanRegenerationJob } from '@/features/plans/regeneration-orchestration/process';
 import { assertNever } from '@/lib/errors';
 
-export {
-  _resetInlineDrainStateForTesting,
-  isInlineDrainFree,
-  registerInlineDrain,
-  tryRegisterInlineDrain,
-  waitForInlineRegenerationDrains,
-} from '@/features/jobs/regeneration-inline-drain';
-
 type ProcessRegenerationJobResult = {
   processed: boolean;
   jobId?: string;

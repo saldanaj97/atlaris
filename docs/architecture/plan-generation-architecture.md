@@ -159,11 +159,11 @@ The generation pipeline uses stable classifications including:
 
 These classifications drive logging, user messaging, and retry decisions.
 
-## Durable workflows (optional)
+## Durable workflows
 
-When `PLAN_GENERATION_WORKFLOW_ENABLED=true`, the session boundary (`plan-generation-session.ts`) still reserves the attempt and emits `plan_start` on the SSE connection, then runs provider work and lifecycle finalization inside `planGenerationWorkflow`. The client protocol is unchanged; only backend durability changes.
+The session boundary (`plan-generation-session.ts`) still reserves the attempt and emits `plan_start` on the SSE connection, then runs provider work and lifecycle finalization inside `planGenerationWorkflow`. The client protocol is unchanged; only backend durability changes.
 
-Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For flags and file layout, see [Workflow SDK](./workflow-sdk.md).
+Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For file layout and correlation, see [Workflow SDK](./workflow-sdk.md).
 
 ## Module lesson generation (separate pipeline)
 
@@ -181,7 +181,6 @@ This path is **not** the streamed plan creator. It fills structured lesson conte
 - **Unlock rule:** `loadModuleLessonGenerationContext` in `src/lib/db/queries/module-lesson-generation.ts` marks the module unlocked only when every **earlier** module (by plan order) has all tasks completed; otherwise generation returns `locked` (HTTP 409).
 - **Claimable states:** module `lesson_generation_status` must be `not_generated` or `failed` to move to `generating` via compare-and-set; `ready` short-circuits as `already_ready`; concurrent `generating` returns `in_flight` (HTTP 202).
 - **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed: missing/failed evaluation and disabled both return `disabled` (HTTP 503) with no workflow, provider, or quota work.
-- **Workflow flag:** `MODULE_LESSON_WORKFLOW_ENABLED` routes generation through `moduleLessonGenerationWorkflow` (HTTP 202 while in flight). See [Workflow SDK](./workflow-sdk.md).
 - **Rate limit:** `requestBoundary.route` uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user, in-memory limiter).
 - **Monthly meter:** `runLessonGenerationQuotaReserved` in `src/features/billing/lesson-generation-quota-boundary.ts` reserves the `lessonGeneration` meter **after** a successful DB claim and **before** provider work. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` in `src/shared/constants/tier-limits.ts` (free: 3, starter: 25, pro: unlimited). On quota denial the module row is reverted from `generating` to `not_generated` and the API returns 429 with counts.
 

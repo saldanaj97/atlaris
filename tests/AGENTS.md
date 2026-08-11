@@ -117,8 +117,6 @@ Integration Vitest workers default to **4** (`vitest.config.ts`); override with 
 
 CI honors the same env var. Both `ci-pr.yml :: integration-light` and `ci-trunk.yml :: integration-tests` resolve `INTEGRATION_MAX_WORKERS` as: `workflow_dispatch` input `integration_workers` ⟶ repo variable `INTEGRATION_MAX_WORKERS` ⟶ default `'4'`. To globally drop CI to a 2-worker fallback without code edits, set the **repo variable** `INTEGRATION_MAX_WORKERS=2` (Settings → Variables → Actions). For a one-off rerun, dispatch the workflow with `integration_workers=2`. The dispatch input `test_db_debug=true` enables `[Test DB] worker N -> atlaris_test_wN` logging via `shouldLogTestDbDebug()` for that run.
 
-Unless set in the environment, `tests/setup/test-env.ts` sets `REGENERATION_INLINE_PROCESSING=false` so specs opt in explicitly when they need inline queue drains.
-
 ## Do's and Don'ts
 
 ### Do

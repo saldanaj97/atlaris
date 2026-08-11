@@ -10,7 +10,16 @@ import { setTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { desc, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const workflowStartMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    runId: 'wrun_regeneration',
+    returnValue: Promise.resolve({ kind: 'completed' }),
+  })),
+);
+
+vi.mock('workflow/api', () => ({ start: workflowStartMock }));
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
