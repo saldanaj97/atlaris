@@ -1,7 +1,7 @@
 # Plan Generation Architecture
 
 **Audience:** Developers onboarding to the plan generation pipeline  
-**Last Updated:** May 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -58,6 +58,8 @@ This separation between external auth identity and internal app user row is not 
 | `src/app/api/v1/plans/[planId]/retry/route.ts`                                      | Retry a failed or pending-retry generation |
 | `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                 | Regenerate an existing plan                |
 | `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation       |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`   | Poll module lesson generation status       |
+| `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook    |
 
 ### AI layer
 
@@ -198,6 +200,16 @@ This path is **not** the streamed plan creator. It fills structured lesson conte
 
 JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/schemas/lesson-content.schemas.ts`). HTTP status varies by `GenerateModuleLessonsResult`: e.g. 200 for `success` / `already_ready`, 202 `in_flight`, 429 `quota_denied`, 502 `failed` (`provider_failure`), 503 `disabled`, 404 `not_found`, 409 `locked`.
 
+### Client polling (status route)
+
+Workflow-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.
+
+- **Status endpoint:** `GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status` (`rateLimit: 'read'`).
+- **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202 enqueue, before the DB row is claimed).
+- **Pre-claim vs post-claim:** `hasObservedGeneratingRef` records whether status (or props) ever showed `generating`. Terminal `not_generated` / `failed` before that observation is treated as queue latency (keep polling); the same terminal states after observation stop polling so claim rollbacks / failures surface correctly.
+- **Refresh:** successful terminal polls call `refresh()` so RSC/module props catch up to `ready` or `failed`.
+
+Do not gate polling solely on prop `status === 'generating'` — workflow enqueue can return 202 before the claim is visible to the client.
 ## Database tables involved
 
 The main persistence path touches:

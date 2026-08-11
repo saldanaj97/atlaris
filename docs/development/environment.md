@@ -132,18 +132,9 @@ Clerk Billing sends signed events to `POST /api/v1/clerk/billing/webhook` using 
 
 ### Vercel Flags (`src/flags.ts`)
 
-Flags use the Flags SDK with `vercelAdapter()` when `FLAGS` is set; otherwise a local fallback returns each flag's `defaultValue` (or `false`).
-
-| Key | Export | Default / fallback | Effect |
-| --- | ------ | ------------------ | ------ |
-| `email-notification-delivery` | `emailNotificationDelivery` | `false` (fail-closed) | Cron, manual recovery, and in-flight workflow pages must not send when off |
-| `maintenance-mode` | `maintenanceMode` | fallback `false` | Proxy routes app traffic to the maintenance page when on |
-| `module-lesson-generation` | `moduleLessonGeneration` | `false` (fail-closed) | Synchronous and workflow-backed module lesson generation must not start when off |
-
-Local product testing typically has no `FLAGS` env, so email delivery stays disabled until you enable the flag in a Vercel environment. Preference tables and Settings opt-ins are separate from this kill switch — see [user-preferences.md](../architecture/user-preferences.md).
+Canonical table (env vars, fail-open/closed behavior, and local fallback): [Vercel Flags](#vercel-flags) above. Preference Settings are separate from these kill switches — see [user-preferences.md](../architecture/user-preferences.md).
 
 ### Local product testing (development / test)
-
 | Variable                | Purpose                                                                           |
 | ----------------------- | --------------------------------------------------------------------------------- |
 | `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |

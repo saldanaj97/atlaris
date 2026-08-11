@@ -74,6 +74,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
   - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
+  - After each successful phase, `scripts/db/run-phased-migrations.sh` runs read-only privilege attestation for that phase (`bash scripts/db/attest-effective-privileges.sh <expand|contract>`). Failures block the workflow. Details: [client-usage.md](../database/client-usage.md#privilege-model-and-attestation) and [deploy.md](../development/deploy.md).
 
 ### 6) `.github/workflows/production-db-migrations.yaml`
 
@@ -85,7 +86,7 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
   - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
-
+  - Same post-phase privilege attestation as staging (phase-scoped script + fail-closed).
 ---
 
 ## End-to-end flow: PR lifecycle

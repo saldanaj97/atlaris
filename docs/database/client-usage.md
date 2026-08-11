@@ -94,8 +94,58 @@ Do not import `@supabase/service-role` from request-layer paths (see `supabase/s
 - `src/lib/api/**`
 - `src/lib/integrations/**`
 
+## Privilege model and attestation
+
+RLS policies are necessary but not sufficient: browser roles (`anon`, `authenticated`) must also have **effective** table/column/function privileges that match the allowlists. After each phased migration (`expand` or `contract`), CI runs a read-only attestation gate.
+
+### Canonical allowlists
+
+TypeScript modules under `supabase/privileges/` are the app-side source of expected client grants. Keep them aligned with migration SQL and with `scripts/db/attest-effective-privileges.sql`:
+
+| Module | Purpose |
+| ------ | ------- |
+| `authenticated-table-privileges.ts` | Server-owned write tables that `authenticated` must **not** INSERT/UPDATE/DELETE |
+| `users-authenticated-update-columns.ts` | Allowed `users` UPDATE columns |
+| `task-progress-authenticated-update-columns.ts` | Allowed `task_progress` UPDATE columns |
+| `user-preferences-authenticated-columns.ts` | Preference / email settings INSERT+UPDATE columns |
+
+Security tests in `tests/security/effective-privileges-attestation.spec.ts` assert the SQL gate still references these lists.
+
+### Running attestation
+
+```bash
+# Default phase is contract (post-cutover posture)
+bash scripts/db/attest-effective-privileges.sh
+
+# Match the migration phase you just applied
+bash scripts/db/attest-effective-privileges.sh expand
+bash scripts/db/attest-effective-privileges.sh contract
+```
+
+`scripts/db/run-phased-migrations.sh` calls the script with the current phase after a successful expand or contract. Manual re-runs need a linked Supabase CLI target (`supabase db query --linked`).
+
+### What the gate checks
+
+`scripts/db/attest-effective-privileges.sql` fails closed when any check finds a violation (first match raises). High-level checks:
+
+1. `anon` / `authenticated` exist and do **not** bypass RLS.
+2. No permissive policies target `PUBLIC` or `anon` on app data.
+3. Every public application table has RLS enabled.
+4. `anon` has no table/column DML privileges on public app tables.
+5. `authenticated` cannot write server-owned tables listed in `AUTHENTICATED_SERVER_OWNED_WRITE_TABLES`.
+6. Service-only tables (`clerk_webhook_events`, `clerk_webhook_event_claims`, `email_notification_delivery_runs`, `email_notification_deliveries`, and `legacy_stripe_entitlement_archive` when present) have no client grants.
+7. Column grants on `users`, `task_progress`, and preference tables match allowlists (expand may temporarily allow legacy preference columns on `users` until contract).
+8. **Contract phase only:** `authenticated` must not have `INSERT` (table or column) on `public.users`.
+9. Client roles cannot `EXECUTE` security-definer functions in `public` / `private`, and cannot `USAGE` the `private` schema.
+10. Default ACLs must not grant client INSERT/UPDATE/DELETE on public tables.
+
+Privilege lookups bind to table **oid** (not name alone) so rename/recreate edge cases still fail correctly. Repair migrations such as `20260811100700_revoke_anon_unsafe_table_privileges.sql` and `20260811100800_revoke_security_definer_execute.sql` exist to bring environments back in line when attestation fails.
+
+Operator deploy notes: [deploy.md](../development/deploy.md). Pipeline wiring: [pipeline-and-deployment-strategy.md](../ci-cd/pipeline-and-deployment-strategy.md).
+
 ## Related Documentation
 
 - `supabase/service-role.ts` - Detailed usage documentation in comments
 - `supabase/rls.ts` - RLS client factory documentation
-- [docs/testing/testing.md](../testing/testing.md) - Testing with different clients
+- [test-standards.md](../testing/test-standards.md) - Test pyramid and client guidance
+- [db-test-patterns.md](../testing/db-test-patterns.md) - Drizzle / RLS test patterns

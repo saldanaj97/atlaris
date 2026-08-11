@@ -65,13 +65,15 @@ After deploying a release that includes new Supabase migrations:
 
 1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
-3. Each successful phase runs the read-only effective-privilege attestation automatically. To re-run it against the linked target, use:
+3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 
 ```bash
-bash scripts/db/attest-effective-privileges.sh
+bash scripts/db/attest-effective-privileges.sh          # defaults to contract
+bash scripts/db/attest-effective-privileges.sh expand
+bash scripts/db/attest-effective-privileges.sh contract
 ```
 
-It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants.
+It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants. Full checklist and allowlist paths: [client-usage.md — Privilege model and attestation](../database/client-usage.md#privilege-model-and-attestation).
 4. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
