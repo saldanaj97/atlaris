@@ -1,5 +1,20 @@
 # Deployment Notes
 
+## Staged Production release lane
+
+For releasing the Production **application** binary without immediately moving public domains, use the guarded staged Production lane:
+
+1. Preflight an exact clean `main` SHA.
+2. `vercel --prod --skip-domain`
+3. Narrow smoke on the protected generated URL.
+4. Explicit human `vercel promote <deployment-id-or-url>` after verification.
+
+Full safety model, Deployment Checks decision (manual-only v1), abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+
+**Unpromoted does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
+
+Feature cutovers below still define migration expand/contract ordering relative to that app release.
+
 ## PDF Removal Cutover
 
 Migration `0027_windy_agent_zero` is not safe to run against an older app binary that still writes `origin='pdf'` or expects legacy PDF columns.

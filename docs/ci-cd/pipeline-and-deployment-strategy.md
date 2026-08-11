@@ -5,9 +5,9 @@
 
 ## Why this exists
 
-This document explains how code moves from a feature branch to preview, staging, and production.
+This document explains how code moves from a feature branch to preview, staging, staged Production, and live Production.
 
-The pipeline intentionally favors safety on production DB changes: migrations run before production deploy.
+The pipeline intentionally favors safety on production DB changes: expand migrations run before the Production app binary is exercised; contract migrations wait until after promote and health verification.
 
 ---
 
@@ -18,20 +18,21 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 - PRs run CI checks.
 - Vercel handles preview deployments natively for non-`main` branches.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
-- Merging to `develop` runs Supabase CLI migrations against staging.
-- Merging to `main` runs Supabase CLI migrations against production.
+- Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
+- Merging to `main` enables Production migration workflows; the Production **app** release uses a guarded staged Production lane (`vercel --prod --skip-domain`), then explicit `vercel promote` after verification.
 - Dependency automation is defined on `main`, evaluates `develop`, and opens dependency PRs only against `develop`.
 
 ---
 
 ## Environments and ownership
 
-| Environment | Source              | Owner                      | Notes                                                      |
-| ----------- | ------------------- | -------------------------- | ---------------------------------------------------------- |
-| Local       | Your feature branch | You                        | `pnpm dev`                                                 |
-| Preview     | PR branch           | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration             |
-| Staging     | `develop`           | GitHub Actions + Vercel    | Supabase migrations target the staging Supabase project    |
-| Production  | `main`              | GitHub Actions + Vercel    | Supabase migrations target the production Supabase project |
+| Environment | Source | Owner | Notes |
+| ----------- | ------ | ----- | ----- |
+| Local / Local Preview | Your feature branch | You | Fast local iteration (`pnpm dev`, local product testing; 1Password Local Preview lane in JCS-50) |
+| Preview | PR branch | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration |
+| Staging | `develop` | GitHub Actions + Vercel | Hosted non-Production services; Supabase migrations target the staging project |
+| Staged Production | Exact `main` SHA | Operator + Vercel CLI | Production-targeted build **without** assigning public domains (`--skip-domain`). Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
+| Live Production | Promoted staged deployment | Operator + Vercel | Same verified artifact after `vercel promote`; public Production domains move |
 
 ---
 
@@ -47,7 +48,9 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 - Trigger: push to `develop` or `main` (plus merge queue)
 - Runs: full integration and RLS security checks on trunk branches
+- Workflow-level `paths-ignore` skips the entire workflow for documentation-only pushes (`docs/**`, `**/*.md`, and related text paths), so `All Checks Passed (trunk)` is not emitted for every trunk SHA
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
+- Because trunk checks are not always emitted, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
 
 ### 3) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -107,12 +110,18 @@ The pipeline intentionally favors safety on production DB changes: migrations ru
 
 ### Merge to `main`
 
-- Runs `ci-trunk.yml`
-- Requires an operator to run `production-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
+- Runs `ci-trunk.yml` when the push is not documentation-only
+- Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
+- Production app release uses the staged Production lane:
+  1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
+  2. `vercel --prod --skip-domain` (does not move public Production domains)
+  3. Narrow smoke on the protected generated URL
+  4. Explicit human `vercel promote <deployment-id-or-url>` of that same artifact
+  5. Alias verification, observation, drain, then `contract` migrations if needed
 
 ### Urgent production hotfix
 
-For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and production deployment gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
+For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and staged Production promotion gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
 
 ---
 
@@ -139,15 +148,19 @@ Store the Supabase migration secrets below as environment secrets on the matchin
 
 ### GitHub repository secrets
 
-- `VERCEL_TOKEN` (used by production deploy workflow)
-- `VERCEL_ORG_ID` (used by production deploy workflow)
-- `VERCEL_PROJECT_ID` (used by production deploy workflow)
+Optional Vercel CLI / automation credentials when an operator or future workflow authenticates non-interactively:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+There is no GitHub Actions workflow in this repository that automatically deploys or promotes Production. Production app release is the operator-driven staged Production lane in [staged-production-deployment.md](./staged-production-deployment.md).
 
 ### Vercel settings
 
 Set preview deployment behavior so non-`main` branches get preview deployments.
 
-If production is deployed by GitHub Actions workflow, disable direct auto-production deploy from Vercel git push to avoid race conditions.
+Prefer the staged Production CLI path (`--skip-domain` then explicit promote) over unattended auto-production domain assignment on every `main` push. If Git integration would race with a staged promote, disable automatic Production domain assignment for git pushes and keep promotion operator-owned.
 
 ---
 
@@ -163,9 +176,10 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ### Production deploy blocked
 
-- Check `production-db-migrations.yaml`
+- Confirm staged Production preflight (clean `main` SHA, Staging acceptance, expand migrations) in [staged-production-deployment.md](./staged-production-deployment.md)
+- Check `production-db-migrations.yaml` if schema expand/contract is part of the release
 - If migrations ran, inspect the `supabase db push` logs
-- Verify Vercel secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) for deployment stage
+- For CLI auth issues, verify local `vercel` login / link or optional `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`
 
 ### Dependency remediation did not publish a PR
 
@@ -190,7 +204,9 @@ If production is deployed by GitHub Actions workflow, disable direct auto-produc
 
 ## Related docs
 
+- `docs/ci-cd/staged-production-deployment.md`
 - `docs/ci/branching-strategy.md`
+- `docs/development/deploy.md`
 - `.github/workflows/ci-pr.yml`
 - `.github/workflows/ci-trunk.yml`
 - `.github/workflows/staging-db-migrations.yaml`

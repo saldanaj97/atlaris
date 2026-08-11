@@ -1,7 +1,7 @@
 # CI/CD & Branching Strategy
 
 **Audience:** New contributors and junior developers  
-**Last Updated:** February 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -62,19 +62,21 @@ We use two protected branches that serve as anchors for all development:
 
 ## Environments
 
-| Environment    | Branch Source | URL              | Purpose             |
-| -------------- | ------------- | ---------------- | ------------------- |
-| **Local**      | Your branch   | `localhost:3000` | Development         |
-| **Preview**    | PR branch     | Vercel preview   | PR-level testing    |
-| **Staging**    | `develop`     | Vercel preview   | Integration testing |
-| **Production** | `main`        | Production URL   | Live users          |
+| Environment | Branch Source | URL | Purpose |
+| ----------- | ------------- | --- | ------- |
+| **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
+| **Preview** | PR branch | Vercel preview | PR-level testing |
+| **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
+| **Staged Production** | Exact `main` SHA | Protected generated Vercel URL | Production build + Production config **without** moving public domains |
+| **Live Production** | Promoted staged deployment | Production URL | Live users after explicit promote |
 
 ### Deployment Mechanism
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases.
-- **Production**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand and contract phases.
+- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases; Vercel hosts the staging app.
+- **Staged Production**: operators create a Production-targeted deployment with `vercel --prod --skip-domain`, verify the protected generated URL, then promote with `vercel promote`. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after promote + health) phases.
 
 ---
 
