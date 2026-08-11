@@ -92,8 +92,20 @@ WHERE jobname = 'retention-cleanup';
 If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
 
 6. Enable module lesson generation when the hosted environment should serve it:
+   - Register the boolean flag before the first smoke test if it does not already exist:
+
+```bash
+vercel flags create module-lesson-generation \
+  --description "Allow synchronous and workflow-backed module lesson generation" \
+  --scope <team>
+vercel flags disable module-lesson-generation --environment development --scope <team>
+vercel flags disable module-lesson-generation --environment preview --scope <team>
+vercel flags disable module-lesson-generation --environment production --scope <team>
+```
+
+   - Confirm `vercel flags inspect module-lesson-generation --scope <team>` reports `Off` for Development, Preview, and Production before the first smoke.
    - Leave the Vercel Flag `module-lesson-generation` disabled until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
-   - Enable the flag in Development, Preview, and Production only after that check. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
+   - Enable only the environment being validated after that check; restore it to `Off` after controlled Preview verification. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
    - After enablement, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md`.
 7. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
