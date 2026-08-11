@@ -73,6 +73,7 @@ describe('effective database privilege attestation', () => {
     expect(ATTESTATION_SQL).toContain(
       "has_column_privilege(\n      'authenticated',\n      class.oid,\n      attribute.attnum,\n      'INSERT'",
     );
+    expect(ATTESTATION_SQL).toContain('ORDER BY attribute.attnum\n  LIMIT 1;');
     expect(ATTESTATION_SQL).toContain(
       "namespace.nspname IN ('public', 'private')",
     );
