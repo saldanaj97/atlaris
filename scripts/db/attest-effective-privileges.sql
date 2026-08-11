@@ -334,19 +334,24 @@ BEGIN
 
   SELECT format(
       'authenticated has INSERT column privilege on public.users.%I',
-      column_info.column_name
+      attribute.attname
     )
     INTO violation
-  FROM information_schema.columns AS column_info
-  WHERE column_info.table_schema = 'public'
-    AND column_info.table_name = 'users'
-    AND NOT has_table_privilege('authenticated', 'public.users', 'INSERT')
+  FROM pg_class AS class
+  JOIN pg_attribute AS attribute
+    ON attribute.attrelid = class.oid
+   AND attribute.attnum > 0
+   AND NOT attribute.attisdropped
+  WHERE class.relname = 'users'
+    AND class.relnamespace = 'public'::regnamespace
+    AND NOT has_table_privilege('authenticated', class.oid, 'INSERT')
     AND has_column_privilege(
       'authenticated',
-      'public.users',
-      column_info.column_name,
+      class.oid,
+      attribute.attnum,
       'INSERT'
     )
+  ORDER BY attribute.attnum
   LIMIT 1;
   IF violation IS NOT NULL THEN
     RAISE EXCEPTION '%', violation;
