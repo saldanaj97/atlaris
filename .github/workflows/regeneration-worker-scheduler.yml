@@ -1,0 +1,79 @@
+name: Regeneration Worker Scheduler
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: regeneration-worker-scheduler
+  cancel-in-progress: false
+
+jobs:
+  process:
+    name: Trigger production regeneration drain
+    if: github.event_name == 'workflow_dispatch' || vars.REGENERATION_QUEUE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: Production – atlaris
+    timeout-minutes: 7
+
+    steps:
+      - name: Trigger bounded regeneration drain
+        env:
+          REGENERATION_WORKER_TOKEN: ${{ secrets.REGENERATION_WORKER_TOKEN }}
+          REGENERATION_WORKER_URL: https://atlaris.app/api/internal/jobs/regeneration/process
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${REGENERATION_WORKER_TOKEN}" ]]; then
+            echo "::error title=Regeneration worker scheduler misconfigured::REGENERATION_WORKER_TOKEN is not configured in the Production – atlaris environment."
+            exit 1
+          fi
+
+          echo "::add-mask::${REGENERATION_WORKER_TOKEN}"
+
+          response_file="$(mktemp)"
+          trap 'rm -f "${response_file}"' EXIT
+
+          status_code="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --max-time 300 \
+              --header "Authorization: Bearer ${REGENERATION_WORKER_TOKEN}" \
+              --header 'User-Agent: atlaris-regeneration-worker-scheduler' \
+              "${REGENERATION_WORKER_URL}"
+          )"
+
+          case "${status_code}" in
+            200)
+              if ! jq -e '.ok == true' "${response_file}" >/dev/null; then
+                echo "::error title=Regeneration worker invalid response::Endpoint returned 200 without ok=true."
+                exit 1
+              fi
+              ;;
+            401)
+              echo "::error title=Regeneration worker unauthorized (401)::Production and GitHub worker tokens do not match."
+              exit 1
+              ;;
+            500)
+              echo "::error title=Regeneration worker failed (500)::Inspect Vercel and Sentry logs."
+              exit 1
+              ;;
+            503)
+              echo "::error title=Regeneration worker unavailable (503)::REGENERATION_QUEUE_ENABLED is false or the production worker token is missing."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Regeneration worker unexpected response::Endpoint returned HTTP ${status_code}."
+              exit 1
+              ;;
+          esac
+
+          jq -c '{ok, processedCount, completedCount, failedCount}' "${response_file}"
