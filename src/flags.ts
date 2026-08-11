@@ -31,3 +31,19 @@ export const emailNotificationDelivery = flag<boolean>({
     { value: true, label: 'Enabled' },
   ],
 });
+
+/**
+ * Durable operational kill switch for module lesson generation (sync + workflow).
+ * Fail-closed: missing/unavailable evaluation must not start generation.
+ */
+export const moduleLessonGeneration = flag<boolean>({
+  key: 'module-lesson-generation',
+  defaultValue: false,
+  adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
+  description:
+    'Allow synchronous and workflow-backed module lesson generation.',
+  options: [
+    { value: false, label: 'Disabled' },
+    { value: true, label: 'Enabled' },
+  ],
+});
