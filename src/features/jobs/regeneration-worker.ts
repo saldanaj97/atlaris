@@ -43,7 +43,7 @@ function mapBoundaryResultToDrain(
         status: 'failed',
       };
     case 'workflow-in-flight':
-      return { processed: false };
+      return { processed: true, jobId: result.jobId };
     default:
       assertNever(result);
   }

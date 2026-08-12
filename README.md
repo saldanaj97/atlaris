@@ -120,7 +120,7 @@ Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and corr
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, `workflowEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation

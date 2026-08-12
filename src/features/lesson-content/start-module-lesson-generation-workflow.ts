@@ -9,6 +9,7 @@ import {
   loadModuleLessonGenerationContext,
   type ModuleLessonGenerationContext,
 } from '@/lib/db/queries/module-lesson-generation';
+import { logger } from '@/lib/logging/logger';
 import { start } from 'workflow/api';
 
 export type StartModuleLessonGenerationParams = {
@@ -83,7 +84,16 @@ export async function startModuleLessonGeneration(
     ]);
 
     return { kind: 'workflow_started', runId: run.runId };
-  } catch {
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        planId: params.planId,
+        moduleId: params.moduleId,
+        correlationId: params.correlationId,
+      },
+      'Failed to start module lesson generation workflow',
+    );
     return {
       kind: 'workflow_start_failed',
       message: 'Module lesson generation could not be started.',

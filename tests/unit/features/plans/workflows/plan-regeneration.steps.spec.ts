@@ -7,13 +7,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   claimJob: vi.fn(),
   loadJob: vi.fn(),
+  updateJobPayload: vi.fn(),
   getWorkflowMetadata: vi.fn(),
 }));
 
 vi.mock('@/features/jobs/queue', () => ({
   claimRegenerationJob: mocks.claimJob,
   loadJobById: mocks.loadJob,
-  updateJobPayload: vi.fn(),
+  updateJobPayload: mocks.updateJobPayload,
 }));
 
 vi.mock('workflow', async (importOriginal) => {
@@ -67,7 +68,53 @@ describe('claimPlanRegenerationJobStep', () => {
   beforeEach(() => {
     mocks.claimJob.mockReset();
     mocks.loadJob.mockReset();
+    mocks.updateJobPayload.mockReset();
     mocks.getWorkflowMetadata.mockReturnValue({ workflowRunId: 'wrun_same' });
+  });
+
+  it('adopts a processing job without workflow metadata', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing'));
+    mocks.updateJobPayload.mockResolvedValue(job('processing', 'wrun_same'));
+
+    await expect(claimPlanRegenerationJobStep(input)).resolves.toEqual({
+      kind: 'claimed',
+      runId: 'wrun_same',
+    });
+
+    expect(mocks.updateJobPayload).toHaveBeenCalledWith(
+      input.jobId,
+      expect.objectContaining({
+        workflow: expect.objectContaining({
+          provider: 'workflow-sdk',
+          runId: 'wrun_same',
+        }),
+      }),
+    );
+    expect(mocks.claimJob).not.toHaveBeenCalled();
+  });
+
+  it('does not claim when adoption finds the job already completed', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing'));
+    mocks.updateJobPayload.mockResolvedValue(job('completed'));
+
+    await expect(claimPlanRegenerationJobStep(input)).resolves.toEqual({
+      kind: 'already-completed',
+      jobId: input.jobId,
+    });
+
+    expect(mocks.claimJob).not.toHaveBeenCalled();
+  });
+
+  it('does not claim when adoption no longer finds the job', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing'));
+    mocks.updateJobPayload.mockResolvedValue(null);
+
+    await expect(claimPlanRegenerationJobStep(input)).resolves.toEqual({
+      kind: 'job-not-found',
+      jobId: input.jobId,
+    });
+
+    expect(mocks.claimJob).not.toHaveBeenCalled();
   });
 
   it('continues when a concurrent same-run claim wins the CAS', async () => {
