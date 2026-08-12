@@ -48,10 +48,11 @@ Quickstart:
 
 ```bash
 pnpm install
-pnpm dev              # Turbopack app only
-pnpm dev:full        # local DB + app
-pnpm check:full      # lint + type-check (runs check:lint + check:type)
-pnpm test            # lightweight changed unit + integration-class bundle
+pnpm dev              # Webpack + Workflow SDK (plan/lesson/regen capable)
+pnpm dev:turbopack    # Turbopack UI-only (no local workflow callbacks)
+pnpm dev:full         # local DB + pnpm dev
+pnpm check:full       # lint + type-check (runs check:lint + check:type)
+pnpm test             # lightweight changed unit + integration-class bundle
 ```
 
 Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).

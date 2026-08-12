@@ -77,3 +77,9 @@ jobs:
           esac
 
           jq -c '{ok, processedCount, completedCount, failedCount}' "${response_file}"
+
+          failed_count="$(jq -r '.failedCount // 0' "${response_file}")"
+          if [[ "${failed_count}" -gt 0 ]]; then
+            echo "::error title=Regeneration drain reported failures::failedCount=${failed_count} (runbook: alert on failedCount > 0)."
+            exit 1
+          fi

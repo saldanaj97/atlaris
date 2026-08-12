@@ -77,7 +77,9 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 ## Operational Checks
 
 - Monitor job backlog in `job_queue` for growing `pending` rows.
-- Alert on repeated `failedCount > 0` drains.
+- Alert on repeated `failedCount > 0` drains. The GitHub Action
+  `regeneration-worker-scheduler.yml` fails the run when `failedCount > 0`
+  after a successful `ok: true` drain response.
 - Alert on `401` responses from the internal drain endpoint (token mismatch/absence).
 - Alert on `503` responses (`REGENERATION_QUEUE_ENABLED=false` or missing worker token in production).
 
