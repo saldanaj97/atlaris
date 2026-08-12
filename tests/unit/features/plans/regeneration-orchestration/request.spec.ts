@@ -316,7 +316,22 @@ describe('requestPlanRegeneration', () => {
     afterEach(() => {});
 
     it('starts workflow once, persists runId, and skips inline drain', async () => {
-      const updateRegenerationJobPayload = vi.fn(async () => null);
+      const updateRegenerationJobPayload = vi.fn(
+        async (
+          _jobId: string,
+          payload: Parameters<
+            RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
+          >[1],
+        ) =>
+          ({
+            id: 'job-1',
+            data: payload,
+          }) as Awaited<
+            ReturnType<
+              RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
+            >
+          >,
+      );
       const deps = buildDeps({
         queue: { updateRegenerationJobPayload },
       });

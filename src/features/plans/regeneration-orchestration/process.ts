@@ -82,7 +82,7 @@ export async function processPlanRegenerationJob(
       await d.queue.failJob(
         job.id,
         PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
-        { retryable: false },
+        { retryable: true },
       );
       return {
         kind: 'permanent-failure',

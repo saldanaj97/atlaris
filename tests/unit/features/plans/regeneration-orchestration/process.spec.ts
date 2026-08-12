@@ -175,7 +175,17 @@ describe('processPlanRegenerationJob', () => {
       runId: 'wrun_drain',
       returnValue: Promise.resolve({ kind: 'completed' }),
     });
-    const updateRegenerationJobPayload = vi.fn(async () => null);
+    const updateRegenerationJobPayload = vi.fn(
+      async (_jobId: string, payload: Job['data']) =>
+        ({
+          id: job.id,
+          data: payload,
+        }) as Awaited<
+          ReturnType<
+            RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
+          >
+        >,
+    );
     const deps = buildProcessDeps({
       queue: { updateRegenerationJobPayload },
     });
@@ -195,7 +205,7 @@ describe('processPlanRegenerationJob', () => {
     );
   });
 
-  it('terminalizes a workflow startup failure', async () => {
+  it('keeps drain workflow startup failures retryable', async () => {
     workflowStartMock.mockRejectedValue(new Error('sdk-start-fail'));
     const failJob = vi.fn(async () => null);
     const deps = buildProcessDeps({ queue: { failJob } });
@@ -209,7 +219,7 @@ describe('processPlanRegenerationJob', () => {
     expect(failJob).toHaveBeenCalledWith(
       job.id,
       'Queued plan regeneration failed.',
-      { retryable: false },
+      { retryable: true },
     );
   });
 
