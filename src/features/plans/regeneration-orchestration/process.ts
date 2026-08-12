@@ -79,15 +79,17 @@ export async function processPlanRegenerationJob(
     }
 
     if (attachResult.kind === 'start-failed') {
-      await d.queue.failJob(
+      // Match enqueue-time start-failed: keep the job pending for retry.
+      const failedJob = await d.queue.failJob(
         job.id,
         PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
         { retryable: true },
       );
       return {
-        kind: 'permanent-failure',
+        kind: 'retryable-failure',
         jobId: job.id,
         planId: payload.planId,
+        willRetry: failedJob?.status === 'pending',
       };
     }
 
