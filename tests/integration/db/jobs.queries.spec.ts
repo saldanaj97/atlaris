@@ -9,6 +9,7 @@ import {
   getFailedJobs,
   getJobStats,
   insertJobRecord,
+  updateRegenerationJobPayloadIfRunIdMissing,
 } from '@/lib/db/queries/jobs';
 import { jobQueue, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -112,6 +113,52 @@ describe('Job Queries', () => {
       db,
     );
     expect(competing).toBeNull();
+  });
+
+  it('does not overwrite an existing workflow run id during adoption', async () => {
+    const processing = await createJob({
+      status: 'processing',
+      startedAt: new Date('2026-06-22T18:00:00.000Z'),
+      payload: { planId },
+    });
+    const firstPayload = {
+      planId,
+      workflow: {
+        provider: 'workflow-sdk' as const,
+        runId: 'wrun_first_adopter',
+        startedAt: '2026-06-22T18:00:00.000Z',
+      },
+    };
+    const rivalPayload = {
+      planId,
+      workflow: {
+        provider: 'workflow-sdk' as const,
+        runId: 'wrun_rival_adopter',
+        startedAt: '2026-06-22T18:00:01.000Z',
+      },
+    };
+
+    const adopted = await updateRegenerationJobPayloadIfRunIdMissing(
+      processing.id,
+      firstPayload,
+      db,
+    );
+    expect(adopted).toMatchObject({
+      id: processing.id,
+      status: 'processing',
+      data: firstPayload,
+    });
+
+    const rival = await updateRegenerationJobPayloadIfRunIdMissing(
+      processing.id,
+      rivalPayload,
+      db,
+    );
+    expect(rival).toMatchObject({
+      id: processing.id,
+      status: 'processing',
+      data: firstPayload,
+    });
   });
 
   describe('getFailedJobs', () => {

@@ -11,7 +11,7 @@ import {
   enqueueJobWithResult,
   failJob,
   getNextJob,
-  updateJobPayload,
+  updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
@@ -31,7 +31,11 @@ export interface RegenerationOrchestrationDeps {
     getNextJob: typeof getNextJob;
     completeJob: typeof completeJob;
     failJob: typeof failJob;
-    updateRegenerationJobPayload: typeof updateJobPayload;
+    /**
+     * First-writer runId claim used by attach. Must be the CAS variant that
+     * refuses to overwrite an existing workflow.runId.
+     */
+    updateRegenerationJobPayload: typeof updateJobPayloadIfRunIdMissing;
   };
   quota: {
     runReserved: typeof runRegenerationQuotaReserved;
@@ -82,7 +86,7 @@ export function createDefaultRegenerationOrchestrationDeps(
       getNextJob,
       completeJob,
       failJob,
-      updateRegenerationJobPayload: updateJobPayload,
+      updateRegenerationJobPayload: updateJobPayloadIfRunIdMissing,
     },
     quota: {
       runReserved: runRegenerationQuotaReserved,

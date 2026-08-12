@@ -74,7 +74,36 @@ export async function attachPlanRegenerationWorkflow(
           input.payload.workflow?.startedAt ?? new Date().toISOString(),
       },
     });
-    await deps.updateRegenerationJobPayload(input.jobId, launchedPayload);
+    // CAS writer: must not overwrite a rival runId. Production deps wire
+    // updateJobPayloadIfRunIdMissing here.
+    const persisted = await deps.updateRegenerationJobPayload(
+      input.jobId,
+      launchedPayload,
+    );
+    const persistedRunId = persisted?.data.workflow?.runId;
+    if (persistedRunId === workflowStart.runId) {
+      return { kind: 'attached', runId: workflowStart.runId };
+    }
+
+    // Lost the claim race (or job became unavailable). Cancel the orphan so
+    // only the winning runId remains executable.
+    let cancellationSucceeded = false;
+    try {
+      cancellationSucceeded = await cancelWorkflow(workflowStart.runId);
+    } catch {
+      // Cancellation is best-effort; preserve deterministic attach outcomes.
+    }
+    if (persistedRunId) {
+      return { kind: 'already-attached' };
+    }
+    return {
+      kind: 'persist-failed',
+      runId: workflowStart.runId,
+      persistError: new Error(
+        'Failed to persist workflow run id (CAS lost or job unavailable)',
+      ),
+      cancellation: { requested: true, succeeded: cancellationSucceeded },
+    };
   } catch (persistError) {
     // Run started but runId could not be persisted. Cancel the orphan so a retry
     // re-attaches exactly once instead of starting a duplicate run.
@@ -91,6 +120,4 @@ export async function attachPlanRegenerationWorkflow(
       cancellation: { requested: true, succeeded: cancellationSucceeded },
     };
   }
-
-  return { kind: 'attached', runId: workflowStart.runId };
 }

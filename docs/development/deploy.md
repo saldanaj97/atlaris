@@ -95,7 +95,7 @@ If the migration applied but no cron job exists, enable `pg_cron` in Supabase an
    - Register the boolean flag before the first smoke test if it does not already exist:
 
 ```bash
-vercel flags create module-lesson-generation \
+vercel flags add module-lesson-generation --kind boolean \
   --description "Allow synchronous and workflow-backed module lesson generation" \
   --scope <team>
 vercel flags disable module-lesson-generation --environment development --scope <team>

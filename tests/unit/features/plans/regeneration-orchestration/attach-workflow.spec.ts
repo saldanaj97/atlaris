@@ -79,7 +79,17 @@ describe('attachPlanRegenerationWorkflow', () => {
   });
 
   it('persists runId and returns attached on the happy path', async () => {
-    const updateRegenerationJobPayload = vi.fn(async () => null);
+    const updateRegenerationJobPayload = vi.fn(
+      async (_jobId: string, payload: PlanRegenerationJobPayload) =>
+        ({
+          id: jobId,
+          data: payload,
+        }) as Awaited<
+          ReturnType<
+            RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
+          >
+        >,
+    );
     const cancelWorkflow = vi.fn(async () => true);
     const deps = makeDeps({ updateRegenerationJobPayload });
 
@@ -103,6 +113,38 @@ describe('attachPlanRegenerationWorkflow', () => {
       }),
     );
     expect(cancelWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('cancels the orphan and returns already-attached when a rival runId won CAS', async () => {
+    const updateRegenerationJobPayload = vi.fn(
+      async () =>
+        ({
+          id: jobId,
+          data: {
+            planId,
+            workflow: {
+              provider: 'workflow-sdk' as const,
+              runId: 'wrun_rival',
+              startedAt: '2026-06-22T18:00:00.000Z',
+            },
+          },
+        }) as Awaited<
+          ReturnType<
+            RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
+          >
+        >,
+    );
+    const cancelWorkflow = vi.fn(async () => true);
+    const deps = makeDeps({ updateRegenerationJobPayload });
+
+    const result = await attachPlanRegenerationWorkflow(
+      { jobId, planId, userId, payload: basePayload, correlationId },
+      deps,
+      { cancelWorkflow },
+    );
+
+    expect(result).toEqual({ kind: 'already-attached' });
+    expect(cancelWorkflow).toHaveBeenCalledWith('wrun_attach');
   });
 
   it('returns persist-failed with cancellation outcome when persist fails after start', async () => {
