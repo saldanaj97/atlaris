@@ -59,7 +59,8 @@ Pipeline and deployment strategy.
 
 | File | Description |
 |------|-------------|
-| [pipeline-and-deployment-strategy.md](./ci-cd/pipeline-and-deployment-strategy.md) | Preview / staging / production pipeline |
+| [pipeline-and-deployment-strategy.md](./ci-cd/pipeline-and-deployment-strategy.md) | Preview / staging / staged Production / live Production pipeline |
+| [staged-production-deployment.md](./ci-cd/staged-production-deployment.md) | Guarded staged Production lane (`--skip-domain` → promote) |
 
 ## `database/`
 
@@ -77,7 +78,7 @@ Local development, env, deploy, and logging.
 | File | Description |
 |------|-------------|
 | [commands.md](./development/commands.md) | Common `pnpm` and dev commands |
-| [deploy.md](./development/deploy.md) | Deployment / migration cutover notes |
+| [deploy.md](./development/deploy.md) | Staged Production pointer + migration cutover notes |
 | [environment.md](./development/environment.md) | Environment variables and logging guidelines |
 | [local-database.md](./development/local-database.md) | Local Supabase CLI stack setup |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
@@ -150,7 +151,8 @@ docs/
 ├── ci/
 │   └── branching-strategy.md
 ├── ci-cd/
-│   └── pipeline-and-deployment-strategy.md
+│   ├── pipeline-and-deployment-strategy.md
+│   └── staged-production-deployment.md
 ├── database/
 │   ├── client-usage.md
 │   └── schema-overview.md
