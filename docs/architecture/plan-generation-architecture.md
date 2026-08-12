@@ -57,7 +57,7 @@ This separation between external auth identity and internal app user row is not 
 | `src/app/api/v1/plans/[planId]/attempts/route.ts`                                   | Return attempt history                     |
 | `src/app/api/v1/plans/[planId]/retry/route.ts`                                      | Retry a failed or pending-retry generation |
 | `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                 | Regenerate an existing plan                |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson batch generation       |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson workflow (async)       |
 | `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`   | Poll module lesson generation status       |
 | `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook    |
 
@@ -171,44 +171,71 @@ Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For file
 
 This path is **not** the streamed plan creator. It fills structured lesson content for **one module** in a single provider batch (all tasks in that module), after the plan exists and tasks are laid out.
 
-### Entry point
+Production uses a **durable workflow**: the POST handler starts the run and returns quickly; claim, quota, provider work, and persist happen inside workflow steps. The client polls a status endpoint until the module leaves `generating`.
 
-- `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate`
+### Entry points
+
+| Method | Path | Role |
+| ------ | ---- | ---- |
+| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, start workflow |
+| `GET` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/status` | Ownership-scoped poll for status + optional `workflowRunId` |
+
 - Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts`
-- Core orchestration: `generateModuleLessons` in `src/features/lesson-content/generate-module-lessons.ts`
+- Start orchestration: `startModuleLessonGeneration` in `src/features/lesson-content/start-module-lesson-generation-workflow.ts`
+- Workflow: `moduleLessonGenerationWorkflow` → `claimModuleLessonGenerationStep` → `runModuleLessonGenerationStep` (`src/features/lesson-content/workflows/`)
+- Post-claim work: `runModuleLessonGenerationWork` in `src/features/lesson-content/run-module-lesson-generation-work.ts`
+- Client poll: `useModuleLessonGeneration` in `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` (≈2.5s interval, backoff after 20 polls, max interval 60s)
+
+`generateModuleLessons` in `src/features/lesson-content/generate-module-lessons.ts` remains a **sync/legacy helper** (claim + work inline) used by tests; the POST handler does **not** call it.
 
 ### Preconditions and guards
 
-- **Ownership:** route calls `requireOwnedPlanById` before generation.
+- **Ownership:** generate and status routes call `requireOwnedPlanById` before work.
 - **Unlock rule:** `loadModuleLessonGenerationContext` in `src/lib/db/queries/module-lesson-generation.ts` marks the module unlocked only when every **earlier** module (by plan order) has all tasks completed; otherwise generation returns `locked` (HTTP 409).
-- **Claimable states:** module `lesson_generation_status` must be `not_generated` or `failed` to move to `generating` via compare-and-set; `ready` short-circuits as `already_ready`; concurrent `generating` returns `in_flight` (HTTP 202).
-- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed: missing/failed evaluation and disabled both return `disabled` (HTTP 503) with no workflow, provider, or quota work.
-- **Rate limit:** `requestBoundary.route` uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user, in-memory limiter).
-- **Monthly meter:** `runLessonGenerationQuotaReserved` in `src/features/billing/lesson-generation-quota-boundary.ts` reserves the `lessonGeneration` meter **after** a successful DB claim and **before** provider work. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` in `src/shared/constants/tier-limits.ts` (free: 3, starter: 25, pro: unlimited). On quota denial the module row is reverted from `generating` to `not_generated` and the API returns 429 with counts.
+- **Preflight on POST (no DB claim yet):** `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` / `already_ready` / `in_flight` / `eligible` using the request RLS client. Eligible requests start the workflow without claiming.
+- **Claimable states (inside workflow):** `claimModuleLessonGenerationOrDescribe` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `modules.lessonGenerationMetadata.workflow.runId`. Concurrent `generating` → `in_flight`; `ready` → `already_ready`.
+- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider/quota work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
+- **Rate limit:** generate uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user). Status uses the `read` limiter.
+- **Monthly meter:** `runLessonGenerationQuotaReserved` runs **inside the workflow after a successful claim**, not on the POST. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` (`src/shared/constants/tier-limits.ts`: free 3, starter 25, pro unlimited). On quota denial the module reverts to `not_generated` while keeping workflow metadata so polling can terminate cleanly; clients learn denial via status/`failed` transitions, not a synchronous POST 429.
 
 ### Execution flow (happy path)
 
-1. Load plan + module + ordered tasks; verify unlock.
-2. **Claim** module row to `generating` (or return already ready / in flight / not found).
-3. Build batch prompts from `src/features/lesson-content/module-lesson-prompts.ts`.
-4. Inside quota boundary: resolve provider (`resolveModelForTier` unless tests inject a provider), call `generateModuleLessonBatchWithInstrumentation`, parse stream via `parseModuleLessonBatchFromStream`.
-5. **Persist** in one transaction path: `commitModuleLessonBatchSuccess` writes per-task `lesson_content`, sets module to `ready`, records AI usage metadata, increments `usage_metrics.lesson_modules_generated` for the calendar month (via `src/features/billing/metered-reservation.ts` / `usage-metrics.ts`).
-6. On parser/provider failure after claim: `commitModuleLessonGenerationFailure` sets the module to `failed` with `lesson_generation_error` left `NULL`; raw diagnostic details stay in server logs. Quota work returns `revert` so the meter reservation is compensated.
+1. POST: ownership + flag + `loadModuleLessonGenerationContext` + preflight.
+2. POST: `workflow/api.start(moduleLessonGenerationWorkflow, …)` → return **202** `generating` with `workflowRunId` (or short-circuit `already_ready` / `in_flight` without starting).
+3. Workflow claim step (service-role): load context again → `claimModuleLessonGenerationOrDescribe` with the workflow run ID.
+4. Workflow run step: re-check flag → reserve lesson-generation quota → build prompts (`module-lesson-prompts.ts`) → provider batch + parse → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata, `usage_metrics.lesson_modules_generated`).
+5. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs) and reverts the meter reservation.
+6. Client polls GET status until `ready` / `failed` / `not_generated` (after observed generating or matching `workflowRunId`), matching the POST `workflowRunId` before treating a pre-claim rollback as terminal.
 
 ### API response shape
 
-JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/schemas/lesson-content.schemas.ts`). HTTP status varies by `GenerateModuleLessonsResult`: e.g. 200 for `success` / `already_ready`, 202 `in_flight`, 429 `quota_denied`, 502 `failed` (`provider_failure`), 503 `disabled`, 404 `not_found`, 409 `locked`.
+Generate JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/schemas/lesson-content.schemas.ts`). Typical HTTP mapping from the start path:
+
+| Result | HTTP | Notes |
+| ------ | ---- | ----- |
+| `workflow_started` | **202** | `state: generating` + `workflowRunId` |
+| `in_flight` | **202** | `state: generating` (no new run) |
+| `already_ready` | **200** | `state: ready` |
+| `workflow_start_failed` / provider failure mapping | **502** | `provider_failure` |
+| `disabled` | **503** | flag off / evaluation failed |
+| `not_found` | **404** | |
+| `locked` | **409** | earlier modules incomplete |
+
+Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId? }` with `Cache-Control: no-store`.
+
+For correlation and step layout, see [Workflow SDK](./workflow-sdk.md).
 
 ### Client polling (status route)
 
 Workflow-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.
 
 - **Status endpoint:** `GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status` (`rateLimit: 'read'`).
-- **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202 enqueue, before the DB row is claimed).
+- **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202 enqueue, before the DB row is claimed). Interval starts at ≈2.5s, backs off after 20 polls, max 60s.
 - **Pre-claim vs post-claim:** `hasObservedGeneratingRef` records whether status (or props) ever showed `generating`. Terminal `not_generated` / `failed` before that observation is treated as queue latency (keep polling); the same terminal states after observation stop polling so claim rollbacks / failures surface correctly.
 - **Refresh:** successful terminal polls call `refresh()` so RSC/module props catch up to `ready` or `failed`.
 
 Do not gate polling solely on prop `status === 'generating'` — workflow enqueue can return 202 before the claim is visible to the client.
+
 ## Database tables involved
 
 The main persistence path touches:

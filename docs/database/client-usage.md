@@ -21,7 +21,7 @@ import { getDb } from '@supabase/runtime';
 import { db } from '@supabase/service-role';
 ```
 
-- **Use in**: Tests, internal operations, migrations, seeding
+- **Use in**: Tests, internal operations, migrations, seeding, **first-user provisioning**, workflow steps, regeneration drain, and other feature-owned server write boundaries after auth checks
 - **Behavior**: Bypasses RLS completely
 - **Location**: `supabase/service-role.ts`
 
@@ -59,6 +59,12 @@ export async function GET() {
   // ...
 }
 ```
+
+### First-user provisioning
+
+Authenticated browser roles **cannot INSERT into `users`** after the contract-phase privilege cutover. `ensureUserRecord` still resolves existing rows through the RLS client; missing rows are created only through `provisionUserFromVerifiedAuthSession` (service-role). See [auth-and-data-layer.md](../architecture/auth-and-data-layer.md#first-user-provisioning) and the [deploy cutover](../development/deploy.md).
+
+Do not "fix" local first-login by granting `authenticated` INSERT on `users` — that fails the effective-privilege attestation gate.
 
 ### Tests
 
@@ -149,3 +155,5 @@ Operator deploy notes: [deploy.md](../development/deploy.md). Pipeline wiring: [
 - `supabase/rls.ts` - RLS client factory documentation
 - [test-standards.md](../testing/test-standards.md) - Test pyramid and client guidance
 - [db-test-patterns.md](../testing/db-test-patterns.md) - Drizzle / RLS test patterns
+- [auth-and-data-layer.md](../architecture/auth-and-data-layer.md) - Auth boundary and provisioning
+- [deploy.md](../development/deploy.md) - Migration phases and attestation
