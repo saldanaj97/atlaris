@@ -18,6 +18,7 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
 const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/health/worker',
   '/api/cron/notifications/email',
+  '/api/internal/jobs/regeneration/process',
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
 

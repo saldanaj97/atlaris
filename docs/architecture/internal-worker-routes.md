@@ -47,7 +47,7 @@ The Vercel Cron email route accepts only `Authorization: Bearer $CRON_SECRET`; i
 
 ## Middleware
 
-`isProtectedRoute()` in `src/lib/proxy/middleware-policy.ts` skips Clerk for all `/api/internal/` paths and for the exact email Vercel Cron path. Token validation happens inside each route handler. The cron path is also exempt from maintenance redirects so Vercel can invoke it; its handler still checks `CRON_SECRET` before evaluating flags or reserving a run.
+`isProtectedRoute()` in `src/lib/proxy/middleware-policy.ts` skips Clerk for all `/api/internal/` paths and for the exact email Vercel Cron path. Token validation happens inside each route handler. The cron path is also exempt from maintenance redirects so Vercel can invoke it; its handler still checks `CRON_SECRET` before evaluating flags or reserving a run. The exact regeneration drain path is allowed through the maintenance redirect layer so the Production scheduler can invoke it, while route-level `REGENERATION_WORKER_TOKEN` authentication, queue enablement, and bounded drain controls still apply. Other internal maintenance routes remain covered by maintenance redirects unless separately and explicitly documented.
 
 ## Email delivery recovery
 
