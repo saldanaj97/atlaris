@@ -23,8 +23,9 @@ At runtime, the pipeline combines:
 ```text
 User submits create form
   → POST /api/v1/plans/stream
-  → auth + rate limit + durable generation-window checks
+  → auth + aiGeneration rate limit
   → validate and normalize input
+  → durable generation-window checks
   → create learning_plans row
   → return planId
   → reserve attempt slot
@@ -66,15 +67,16 @@ This separation between external auth identity and internal app user row is not 
 | File                                                    | Responsibility                            |
 | ------------------------------------------------------- | ----------------------------------------- |
 | `src/features/ai/orchestrator.ts`                       | Main generation control plane             |
-| `src/lib/ai/provider-factory.ts`                        | Provider and model selection              |
-| `src/lib/ai/providers/openrouter.ts`                    | OpenRouter transport adapter              |
-| `src/lib/ai/providers/router.ts`                        | Provider routing and retry behavior       |
-| `src/lib/ai/providers/mock.ts`                          | Deterministic mock provider               |
-| `src/lib/ai/parser.ts`                                  | Stream parsing and validation             |
-| `src/lib/ai/pacing.ts`                                  | Adjust output to available schedule hours |
-| `src/lib/ai/classification.ts`                          | Failure classification                    |
-| `src/lib/ai/timeout.ts`                                 | Adaptive timeout policy                   |
-| `src/lib/ai/generation-policy.ts`                       | Durable generation-window enforcement     |
+| `src/features/ai/providers/factory.ts`                  | Provider and model selection              |
+| `src/features/ai/providers/openrouter.ts`               | OpenRouter transport adapter              |
+| `src/features/ai/providers/router.ts`                   | Provider routing and retry behavior       |
+| `src/features/ai/providers/mock.ts`                     | Deterministic mock provider               |
+| `src/features/ai/parser.ts`                             | Stream parsing and validation             |
+| `src/features/ai/pacing.ts`                             | Adjust output to available schedule hours |
+| `src/features/ai/classification.ts`                     | Failure classification                    |
+| `src/features/ai/timeout.ts`                            | Adaptive timeout policy                   |
+| `src/shared/constants/generation.ts`                    | Durable generation-window constants       |
+| `src/features/ai/generation-policy.ts`                  | Attempt-cap helpers; re-exports limits    |
 | `src/features/plans/lifecycle/generation-finalization/` | Durable settlement after provider run     |
 
 ### Database layer
@@ -91,16 +93,15 @@ This separation between external auth identity and internal app user row is not 
 
 ### 1) Start the stream
 
-`POST /api/v1/plans/stream` performs:
+`POST /api/v1/plans/stream` creates a new plan (it does not take a plan id). The route performs:
 
-1. plan ownership verification
-2. authenticated user rate limiting for `aiGeneration`
-3. durable generation-window checks from `generation-policy.ts`
-4. request validation and normalization
-5. attempt-cap and status validation
-6. plan-row creation
-7. SSE response initialization
-8. orchestration of provider execution and persistence
+1. authenticated user rate limiting for `aiGeneration` (`requestBoundary.route`)
+2. request validation and normalization (`createLearningPlanSchema`)
+3. durable generation-window checks (`checkPlanGenerationRateLimit` using `src/shared/constants/generation.ts`)
+4. plan-row creation (`lifecycleService.createPlan`)
+5. SSE response initialization and session orchestration (attempt reserve, provider run, finalization)
+
+Ownership checks and attempt-cap / status validation apply to retry and other plan-scoped routes, not to create-stream.
 
 The stream route must not couple the plan’s lifecycle to a fragile client connection. Early navigation is common; silent partial failure is worse.
 
@@ -272,5 +273,4 @@ If someone imports the service-role DB into a request handler, they are not bein
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/api/rate-limiting.md`
 - `docs/database/schema-overview.md`
-- `src/lib/ai/AGENTS.md`
 - `supabase/AGENTS.md`
