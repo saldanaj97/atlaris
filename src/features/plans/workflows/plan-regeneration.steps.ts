@@ -8,6 +8,7 @@ import {
   claimRegenerationJob,
   loadJobById,
   updateJobPayload,
+  updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
@@ -66,7 +67,7 @@ export async function claimPlanRegenerationJobStep(
   });
 
   if (job.status === 'processing' && !existingRunId) {
-    const adopted = await updateJobPayload(job.id, payload);
+    const adopted = await updateJobPayloadIfRunIdMissing(job.id, payload);
     if (adopted?.status === 'completed') {
       return { kind: 'already-completed', jobId: job.id };
     }
