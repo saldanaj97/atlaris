@@ -1,7 +1,7 @@
 # Regeneration Worker Runbook
 
 **Audience:** Developers and operators running queued plan regeneration.  
-**Last Updated:** May 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -23,12 +23,38 @@ The queue defaults on in development, test, and Vercel Preview. It remains off i
 
 ## Workflow-backed regeneration
 
-- Both enqueue and drain launch via `startPlanRegenerationWorkflow()` (fire-and-forget after the run is created).
-- The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
+Enqueue (`requestPlanRegeneration`) and drain (`processPlanRegenerationJob`) both go through **`attachPlanRegenerationWorkflow`** (`src/features/plans/regeneration-orchestration/attach-workflow.ts`), which:
+
+1. Starts `planRegenerationWorkflow` (via `startPlanRegenerationWorkflow`).
+2. CAS-persists `job_queue.payload.workflow.runId` with `updateJobPayloadIfRunIdMissing` / `updateRegenerationJobPayloadIfRunIdMissing` (first writer wins; a rival runId is never overwritten).
+3. On CAS loss, cancels the orphan workflow run when possible.
+4. Emits `recordRegenerationWorkflowAttachUncertain` when persist fails and cancel is ambiguous.
+
+### Attach outcomes
+
+| Result | Meaning |
+| ------ | ------- |
+| `already-attached` | Payload already has a `runId` (rival won or prior attach). |
+| `attached` | This run started and persisted its `runId`. |
+| `start-failed` | Workflow runtime failed to create a run. |
+| `persist-failed` | Run started but CAS persist lost / failed (includes cancel success flag). |
+
+### Drain vs enqueue failure semantics
+
+| Attach result | Drain (`process.ts`) | Enqueue (`request.ts`) |
+| ------------- | -------------------- | ---------------------- |
+| `already-attached` / `attached` | Return `workflow-in-flight` | Continue as success / in-flight |
+| `start-failed` | `failJob(..., { retryable: true })` → `retryable-failure` (job stays pending when retries remain) | Same retryable terminalize; API `workflow-start-failed` with `retryable: true` |
+| `persist-failed` | `failJob(..., { retryable: false })` → `permanent-failure` | Terminalize non-retryable; if cancel succeeds, quota **reverts** (`workflow-attach-canceled`); if cancel/terminalize fails, quota stays consumed |
+
+Also:
+
+- The drain endpoint may return `workflow-in-flight` while `job_queue.payload.workflow.runId` is set (Job type exposes this as `data.workflow`).
 - Rejected workflow runs are terminalized via `failJob(..., { retryable: false })` when `run.returnValue` rejects, even if finalization never runs.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
+- The workflow claim step (`claimPlanRegenerationJobStep`) can adopt a processing job that still lacks a `runId` via the same CAS writer.
 
-Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
+Correlate failures using `job_queue.payload.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
 
 ## Triggering the Worker
 
