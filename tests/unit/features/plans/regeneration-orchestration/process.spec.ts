@@ -207,14 +207,20 @@ describe('processPlanRegenerationJob', () => {
 
   it('keeps drain workflow startup failures retryable', async () => {
     workflowStartMock.mockRejectedValue(new Error('sdk-start-fail'));
-    const failJob = vi.fn(async () => null);
+    const failedQueueRow = makeJob({
+      status: 'pending',
+      attempts: 1,
+      maxAttempts: 3,
+    });
+    const failJob = vi.fn(async () => failedQueueRow);
     const deps = buildProcessDeps({ queue: { failJob } });
     const job = makeJob();
 
     await expect(processPlanRegenerationJob(job, deps)).resolves.toEqual({
-      kind: 'permanent-failure',
+      kind: 'retryable-failure',
       jobId: job.id,
       planId: planRow.id,
+      willRetry: true,
     });
     expect(failJob).toHaveBeenCalledWith(
       job.id,
