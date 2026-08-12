@@ -417,6 +417,38 @@ describe('Job queue service', () => {
     expect(terminal?.completedAt).toBeInstanceOf(Date);
   });
 
+  it('preserves error history and clears workflow metadata for a scheduled retry', async () => {
+    const { plan, userId } = await createPlanFixture('retry-workflow');
+    const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, {
+      ...buildPlanRegenerationPayload(plan),
+      workflow: {
+        provider: 'workflow-sdk',
+        runId: 'wrun_retry',
+        startedAt: '2026-08-11T12:00:00.000Z',
+      },
+    });
+
+    await getNextJob([JOB_TYPE]);
+    await failJob(jobId, 'transient error');
+
+    const retryRow = await db.query.jobQueue.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, jobId),
+    });
+
+    expect(retryRow?.status).toBe('pending');
+    expect(retryRow?.payload).toMatchObject({
+      planId: plan.id,
+      errorHistory: [
+        {
+          attempt: 1,
+          error: 'transient error',
+          timestamp: expect.any(String),
+        },
+      ],
+    });
+    expect(retryRow?.payload).not.toHaveProperty('workflow');
+  });
+
   it('fails terminal on first failure when retryable is false', async () => {
     const { plan, userId } = await createPlanFixture('no-retry');
     const jobId = await enqueueJob(

@@ -6,11 +6,9 @@ import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = {
-  isWorkflowEnabled: vi.fn(() => false),
   isGenerationEnabled: vi.fn(() => true),
   loadContext: vi.fn(),
   workflowStart: vi.fn(),
-  generateFn: vi.fn(),
 };
 
 const params = {
@@ -23,39 +21,20 @@ const params = {
 };
 
 const deps = {
-  isWorkflowEnabled: mocks.isWorkflowEnabled,
   isGenerationEnabled: mocks.isGenerationEnabled,
   loadContext: mocks.loadContext,
   workflowStart: mocks.workflowStart,
-  generateFn: mocks.generateFn,
 };
 
 describe('startModuleLessonGeneration', () => {
   beforeEach(() => {
-    mocks.isWorkflowEnabled.mockReset();
-    mocks.isWorkflowEnabled.mockReturnValue(false);
     mocks.isGenerationEnabled.mockReset();
     mocks.isGenerationEnabled.mockReturnValue(true);
     mocks.loadContext.mockReset();
     mocks.workflowStart.mockReset();
-    mocks.generateFn.mockReset();
-  });
-
-  it('uses synchronous generation when workflow flag is off', async () => {
-    mocks.generateFn.mockResolvedValue({
-      kind: 'success',
-      durationMs: 1,
-    });
-
-    const result = await startModuleLessonGeneration(params, deps);
-
-    expect(mocks.generateFn).toHaveBeenCalled();
-    expect(mocks.workflowStart).not.toHaveBeenCalled();
-    expect(result).toEqual({ kind: 'success', durationMs: 1 });
   });
 
   it('returns disabled before starting workflow when lesson generation is off', async () => {
-    mocks.isWorkflowEnabled.mockReturnValue(true);
     mocks.isGenerationEnabled.mockReturnValue(false);
 
     const result = await startModuleLessonGeneration(params, deps);
@@ -65,7 +44,6 @@ describe('startModuleLessonGeneration', () => {
   });
 
   it('starts workflow when preflight passes', async () => {
-    mocks.isWorkflowEnabled.mockReturnValue(true);
     mocks.loadContext.mockResolvedValue({
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,
@@ -90,7 +68,6 @@ describe('startModuleLessonGeneration', () => {
   });
 
   it('returns workflow_start_failed when workflow startup throws', async () => {
-    mocks.isWorkflowEnabled.mockReturnValue(true);
     mocks.loadContext.mockResolvedValue({
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,

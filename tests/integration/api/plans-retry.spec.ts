@@ -1,3 +1,5 @@
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
@@ -13,7 +15,25 @@ import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { desc, eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+const workflowProcessFactory = vi.hoisted(() =>
+  vi.fn((lifecycleService: PlanLifecycleService) =>
+    lifecycleService.processGenerationAttempt.bind(lifecycleService),
+  ),
+);
+
+vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
+  createWorkflowBackedProcessGeneration: workflowProcessFactory,
+}));
 
 type RetryAttemptOverrides = Partial<
   Omit<typeof generationAttempts.$inferInsert, 'planId'>
@@ -85,6 +105,10 @@ beforeAll(() => {
   vi.stubEnv('MOCK_GENERATION_DELAY_MS', '25');
 });
 
+beforeEach(() => {
+  workflowProcessFactory.mockClear();
+});
+
 afterAll(() => {
   vi.unstubAllEnvs();
 });
@@ -112,6 +136,11 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     const { request, context } = createRetryInvocation(plan.id);
     const response = await POST(request, context);
     expect(response.status).toBe(200);
+    expect(workflowProcessFactory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.any(String),
+    );
 
     const events = await readStreamingResponse(response);
     const { planId } = expectPlanStartEvent(events, 2);

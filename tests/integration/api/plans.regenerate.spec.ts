@@ -61,7 +61,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       jobId: 'job-1',
       planId,
       status: 'pending',
-      inlineDrainScheduled: false,
       planGenerationRateLimit: {
         remaining: 9,
         limit: 10,
@@ -88,7 +87,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         userId,
         planId,
         overrides: { topic: 'interview prep' },
-        inlineProcessingEnabled: expect.any(Boolean),
       }),
     );
   });

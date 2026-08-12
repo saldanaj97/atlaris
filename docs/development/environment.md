@@ -29,12 +29,12 @@ Prefer the exported grouped configs instead of raw keys:
 - `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
 - `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
 - Module lesson generation kill-switch is the Vercel Flag `module-lesson-generation` (fail-closed; declared in `src/flags.ts`, resolved via `src/features/lesson-content/generation-flag.ts`).
-- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
+- Workflow SDK product paths are permanently enabled; `WORKFLOW_CALLBACK_TOKEN` remains the only app configuration for self-hosted callback access.
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
 
 ### Vercel Flags
 
-Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are **not** the Workflow SDK product toggles in `workflowEnv`.
+Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are distinct from the permanently enabled Workflow SDK product paths.
 
 | Variable | Purpose | Required |
 | -------- | ------- | -------- |
@@ -85,20 +85,13 @@ Module lesson generation enablement is the Vercel Flag `module-lesson-generation
 
 ### Workflow SDK
 
-**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
+Module lesson generation still uses the separate fail-closed Vercel Flag `module-lesson-generation`. Its durable workflow, plan regeneration, and plan create/retry are permanently enabled. Use `pnpm deploy:preview` to exercise them remotely.
 
-#### App-parsed product flags (`workflowEnv`)
+#### App configuration
 
-Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off** when unset or empty. These opt into durable workflow paths; they are not production defaults.
-
-| Variable                             | Purpose                                                                                                                                                              | Required                      |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)                                                                      | No                            |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                                                                                              | No                            |
-| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged                                                                | No                            |
-| `WORKFLOW_CALLBACK_TOKEN`            | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
-
-**Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
+| Variable | Purpose | Required |
+| -------- | ------- | -------- |
+| `WORKFLOW_CALLBACK_TOKEN` | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
 
 #### SDK-read variables (not parsed in app code)
 
@@ -106,7 +99,7 @@ Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off*
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
 
-Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
+Runtime behavior and correlation fields: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 
 ### Internal worker routes
 
@@ -123,6 +116,8 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 | `WORKER_HEALTH_TOKEN`                  | Auth for `GET /api/health/worker` operator metrics                                                   | Yes                                                 |
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
+
+Scheduled plan regeneration runs from `.github/workflows/regeneration-worker-scheduler.yml` every 15 minutes when its `REGENERATION_QUEUE_ENABLED` repository variable is `true`. Configure the same `REGENERATION_WORKER_TOKEN` value in the production deployment and the GitHub Actions `Production – atlaris` environment secret; manual dispatch bypasses the repository-variable gate.
 
 Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
 

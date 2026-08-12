@@ -7,10 +7,17 @@ import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.sc
  */
 import { z } from 'zod';
 
+const jobErrorHistoryEntrySchema = z.strictObject({
+  attempt: z.number(),
+  error: z.string(),
+  timestamp: z.string(),
+});
+
 export const planRegenerationJobPayloadSchema = z.strictObject({
   planId: z.uuid(),
   workflow: WorkflowSdkMetadataSchema.optional(),
   overrides: planRegenerationOverridesSchema.optional(),
+  errorHistory: z.array(jobErrorHistoryEntrySchema).optional(),
 });
 
 export type PlanRegenerationJobPayload = z.infer<

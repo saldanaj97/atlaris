@@ -5,7 +5,7 @@
 
 ## Overview
 
-Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe orchestration behind feature flags. Postgres remains the source of truth for user-visible status; workflow run IDs are stored for correlation only.
+Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe orchestration. Postgres remains the source of truth for user-visible status; workflow run IDs are stored for correlation only.
 
 Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin in `tsconfig.json`, and `/.well-known/workflow/` handled by an early proxy auth branch (see [Callback security](#callback-security)).
 
@@ -16,22 +16,22 @@ Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK 
 | Deployment | Protection |
 | ---------- | ---------- |
 | **Vercel (production/preview)** | Workflow SDK registers handlers with `experimentalTriggers` so only [Vercel Queue](https://vercel.com/docs/queues) can invoke them. Proxy allows these routes through without an app token. |
-| **Local dev** | Workflow feature flags stay off. Local UI work does not expose workflow callback routes. |
+| **Local dev** | Local product work may start workflows, but does not expose workflow callback routes. |
 | **Self-hosted / non-Vercel production** | Proxy requires `WORKFLOW_CALLBACK_TOKEN` via `Authorization: Bearer` or `x-workflow-callback-token`. Missing token configuration returns `503`. |
 
 Webhook resume routes (`/.well-known/workflow/v1/webhook/:token`) keep the SDK's URL-token auth and bypass the callback token gate.
 
 Implementation: `resolveWorkflowCallbackAccess()` in `src/lib/proxy/workflow-callback-auth.ts`, invoked from `src/proxy.ts` before Clerk, maintenance mode, and CSP decoration. The proxy matcher includes `/.well-known/workflow/*`; maintenance bypass for that prefix remains in `middleware-policy.ts`.
 
-## Feature flags (`workflowEnv`)
+## Product workflows
 
-Flag names, accepted values (`true`/`false`/`1`/`0`), and default-off behavior: [environment variables](../development/environment.md#workflow-sdk) (`workflowEnv` in [`src/lib/config/env/workflow.ts`](../../src/lib/config/env/workflow.ts)).
+All three product paths use durable workflows:
 
-| Env variable                         | Behavior when `true`                                                                                                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MODULE_LESSON_WORKFLOW_ENABLED`     | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202` while work continues.                                                        |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Enqueue path and worker drain start `planRegenerationWorkflow`; drain may return `workflow-in-flight` while a run is active.                                              |
-| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Create/retry SSE sessions reserve the attempt in-process, then run provider/finalization in `planGenerationWorkflow` (`await run.returnValue` — SSE transport unchanged). |
+| Path | Behavior |
+| ---- | -------- |
+| Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202` while work continues. |
+| Plan regeneration | Enqueue and worker drain start `planRegenerationWorkflow`; drain may return `workflow-in-flight` while a run is active. |
+| Plan create/retry | SSE sessions reserve the attempt in-process, then run provider/finalization in `planGenerationWorkflow` (`await run.returnValue` — SSE transport unchanged). |
 
 Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
 
@@ -61,13 +61,9 @@ To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow 
 - Plan regeneration workflow claims the job once in `claimPlanRegenerationJobStep`; generation uses normal lifecycle finalization.
 - `already_finalized` from `GenerationAdapter` short-circuits provider work when a plan is already `ready` with `finalizedAt` set.
 
-## Disabling workflows
-
-Set the relevant env flag to `false` (or unset). The app falls back to the pre-workflow code paths (inline generation, queue drain without workflow, or synchronous SSE generation).
-
 ## Preview testing
 
-Workflow behavior is tested in Vercel Preview rather than through a local workflow runtime. Set the relevant feature flag in Vercel's Preview environment, then run:
+Workflow behavior is tested in Vercel Preview rather than through a local workflow runtime. Deploy the current worktree, then run:
 
 ```bash
 pnpm deploy:preview
@@ -95,9 +91,9 @@ Orchestration for product workflows is covered in `tests/unit/features/**/workfl
 
 ## Related docs
 
-- [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows-optional)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
-- [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and workflow-backed drain
-- [Environment variables](../development/environment.md#workflow-sdk) — feature flags and `workflowEnv`
+- [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
+- [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and durable drain
+- [Environment variables](../development/environment.md#workflow-sdk) — Workflow SDK callback configuration
 - [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands
 - [Test guidance](../../tests/AGENTS.md#workflow-sdk-tests) — Workflow SDK Vitest harness and changed-test workflow phase
 - [README testing](../../README.md#testing) — default changed bundle includes the workflow test phase

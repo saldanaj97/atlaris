@@ -1,3 +1,5 @@
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import {
@@ -13,7 +15,25 @@ import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+const workflowProcessFactory = vi.hoisted(() =>
+  vi.fn((lifecycleService: PlanLifecycleService) =>
+    lifecycleService.processGenerationAttempt.bind(lifecycleService),
+  ),
+);
+
+vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
+  createWorkflowBackedProcessGeneration: workflowProcessFactory,
+}));
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
@@ -76,6 +96,10 @@ async function getPlanGenerationStatus(planId: string) {
 beforeAll(() => {
   vi.stubEnv('AI_PROVIDER', 'mock');
   vi.stubEnv('MOCK_GENERATION_DELAY_MS', '10');
+});
+
+beforeEach(() => {
+  workflowProcessFactory.mockClear();
 });
 
 afterAll(() => {
@@ -236,6 +260,11 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
 
     const response = await POST(request);
     expect(response.status).toBe(200);
+    expect(workflowProcessFactory).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.any(String),
+    );
 
     const rateLimitHeaders = [
       'X-RateLimit-Limit',

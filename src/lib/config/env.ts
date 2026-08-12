@@ -19,11 +19,7 @@ export {
   maintenanceEnv,
 } from '@/lib/config/env/maintenance';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
-export {
-  createWorkflowEnvForTests,
-  readWorkflowCallbackTokenConfig,
-  workflowEnv,
-} from '@/lib/config/env/workflow';
+export { readWorkflowCallbackTokenConfig } from '@/lib/config/env/workflow';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,

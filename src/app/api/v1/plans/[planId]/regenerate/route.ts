@@ -14,7 +14,6 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { regenerationQueueEnv } from '@/lib/config/env';
 import { ZodError } from 'zod';
 
 /**
@@ -54,7 +53,6 @@ export const POST: PlainHandler = requestBoundary.route(
       userId: actor.id,
       planId,
       overrides,
-      inlineProcessingEnabled: regenerationQueueEnv.inlineProcessingEnabled,
     });
 
     switch (result.kind) {

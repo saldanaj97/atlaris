@@ -29,11 +29,6 @@ if (!process.env.OAUTH_ENCRYPTION_KEY) {
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
 }
 
-// Avoid fire-and-forget inline regeneration drains racing DB-backed tests unless a spec opts in.
-if (process.env.REGENERATION_INLINE_PROCESSING === undefined) {
-  process.env.REGENERATION_INLINE_PROCESSING = 'false';
-}
-
 async function setupWorkerDatabaseEnv(): Promise<void> {
   const runtimeState = readTestDbRuntimeState();
   if (!runtimeState) {

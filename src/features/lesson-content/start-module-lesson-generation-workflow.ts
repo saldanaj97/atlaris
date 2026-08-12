@@ -2,15 +2,14 @@ import type { GenerateModuleLessonsResult } from '@/features/lesson-content/gene
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
-import { workflowEnv } from '@/lib/config/env/workflow';
 import {
   loadModuleLessonGenerationContext,
   type ModuleLessonGenerationContext,
 } from '@/lib/db/queries/module-lesson-generation';
+import { logger } from '@/lib/logging/logger';
 import { start } from 'workflow/api';
 
 export type StartModuleLessonGenerationParams = {
@@ -30,7 +29,6 @@ export type StartModuleLessonGenerationResult =
   | { readonly kind: 'workflow_start_failed'; readonly message: string };
 
 export type StartModuleLessonGenerationDeps = {
-  readonly isWorkflowEnabled?: () => boolean;
   readonly isGenerationEnabled?: () => boolean | Promise<boolean>;
   readonly loadContext?: (
     dbClient: DbClient,
@@ -38,40 +36,24 @@ export type StartModuleLessonGenerationDeps = {
     moduleId: string,
     userId: string,
   ) => Promise<ModuleLessonGenerationContext | null>;
-  readonly generateFn?: typeof generateModuleLessons;
   readonly workflowStart?: typeof start;
   readonly workflowFn?: typeof moduleLessonGenerationWorkflow;
 };
 
 /**
- * Starts module lesson generation synchronously or via Workflow SDK based on
- * `MODULE_LESSON_WORKFLOW_ENABLED`. The `module-lesson-generation` Vercel Flag
- * must be enabled before a workflow run is created (fail-closed).
+ * Starts module lesson generation through Workflow SDK. The
+ * `module-lesson-generation` Vercel Flag must be enabled before a workflow run
+ * is created (fail-closed).
  */
 export async function startModuleLessonGeneration(
   params: StartModuleLessonGenerationParams,
   deps: StartModuleLessonGenerationDeps = {},
 ): Promise<StartModuleLessonGenerationResult> {
-  const isWorkflowEnabled =
-    deps.isWorkflowEnabled ?? (() => workflowEnv.moduleLessonWorkflowEnabled);
   const isGenerationEnabled =
     deps.isGenerationEnabled ?? resolveModuleLessonGenerationEnabled;
   const loadContext = deps.loadContext ?? loadModuleLessonGenerationContext;
-  const generateFn = deps.generateFn ?? generateModuleLessons;
   const workflowStart = deps.workflowStart ?? start;
   const workflowFn = deps.workflowFn ?? moduleLessonGenerationWorkflow;
-
-  if (!isWorkflowEnabled()) {
-    return generateFn({
-      dbClient: params.dbClient,
-      userId: params.userId,
-      planId: params.planId,
-      moduleId: params.moduleId,
-      userTier: params.userTier,
-      modelOverride: params.modelOverride,
-      signal: params.signal,
-    });
-  }
 
   if (!(await isGenerationEnabled())) {
     return { kind: 'disabled' };
@@ -102,7 +84,16 @@ export async function startModuleLessonGeneration(
     ]);
 
     return { kind: 'workflow_started', runId: run.runId };
-  } catch {
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        planId: params.planId,
+        moduleId: params.moduleId,
+        correlationId: params.correlationId,
+      },
+      'Failed to start module lesson generation workflow',
+    );
     return {
       kind: 'workflow_start_failed',
       message: 'Module lesson generation could not be started.',

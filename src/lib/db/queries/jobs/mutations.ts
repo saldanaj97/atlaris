@@ -279,6 +279,8 @@ export async function failJobRecord(
       error,
       timestamp: now.toISOString(),
     });
+    const payloadForRetry = { ...payloadWithHistory };
+    delete payloadForRetry.workflow;
 
     const updatePayload = decision.shouldRetry
       ? {
@@ -290,7 +292,7 @@ export async function failJobRecord(
           startedAt: null,
           scheduledFor: new Date(now.getTime() + decision.delayMs),
           updatedAt: now,
-          payload: payloadWithHistory,
+          payload: payloadForRetry,
         }
       : {
           attempts: nextAttempts,
