@@ -55,7 +55,7 @@ Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=..
 
 | Method | Path | Body / response |
 | ------ | ---- | --------------- |
-| `GET` | `/api/v1/user/preferences` | `{ preferredAiModel, availableModels }` — tier-validated; does not return timezone or email prefs |
+| `GET` | `/api/v1/user/preferences` | `{ preferredAiModel, availableModels }` — tier-validated; when the DB value is `null` or invalid for the tier, `preferredAiModel` is the tier default (not raw null). Does not return timezone or email prefs |
 | `PATCH` | `/api/v1/user/preferences` | `{ preferredAiModel: PreferredAiModel \| null }` — `null` clears to tier default |
 
 UI: Settings `#ai` → `ModelPreferencesSelector` → `useModelPreferenceSave` → PATCH, then `router.refresh()`.

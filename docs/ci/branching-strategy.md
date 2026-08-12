@@ -42,7 +42,10 @@ We use two protected branches that serve as anchors for all development:
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
-    │   Merge to main ─────> Full CI ──> DB migrations ──> Prod    │
+    │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
+    │        ──> Staged Production (`vercel --prod --skip-domain`) │
+    │        ──> verify protected URL ──> `vercel promote` (live)  │
+    │        ──> DB migrations (contract)                          │
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
 ```
@@ -178,9 +181,10 @@ git commit -m "feat: ..."
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
-2. Full CI runs
-3. An operator dispatches `production-db-migrations.yaml` phase `expand`
-4. Production app deploy runs; after health verification and archive checks, the operator dispatches phase `contract`
+2. Full CI runs (skipped for docs-only pushes via `paths-ignore`)
+3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
+4. An operator runs the **Staged Production** lane (`vercel --prod --skip-domain` → verify protected URL → `vercel promote`). See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md). There is no automatic Production app deploy on merge to `main`.
+5. After promote + health/archive checks, the operator dispatches phase `contract`
 
 ---
 
@@ -190,7 +194,7 @@ git commit -m "feat: ..."
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
 | **Staging**    | Operator dispatches `expand`, deploys, verifies health, then dispatches confirmed `contract` on `develop` |
-| **Production** | Operator dispatches `expand`, deploys, verifies health/archive, then dispatches confirmed `contract` on `main` |
+| **Production** | Operator dispatches `expand`, runs Staged Production (`--skip-domain` → verify → promote), then dispatches confirmed `contract` on `main` |
 
 Migration-related changes include:
 

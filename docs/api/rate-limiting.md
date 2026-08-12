@@ -8,10 +8,10 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 | Category           | Limit        | Window   | Use Case                                         |
 | ------------------ | ------------ | -------- | ------------------------------------------------ |
-| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation, regeneration, enhancement       |
+| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                 |
 | `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate meter)  |
 | `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints        |
-| `mutation`         | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes               |
+| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences    |
 | `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences        |
 | `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation             |
 
@@ -21,7 +21,7 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | ----------------------------------------------- | --------------------------------------------------- | ------------------------------ |
 | `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user (generation_attempts) |
 
-Source of truth for durable generation limits is `src/lib/ai/generation-policy.ts`. Avoid hardcoding numeric values in docs/tests.
+Source of truth for durable generation limits is `src/shared/constants/generation.ts` (enforced in `src/lib/api/rate-limit.ts`). Avoid hardcoding numeric values in docs/tests.
 
 ## Architecture
 
@@ -72,10 +72,10 @@ export const POST = requestBoundary.route(
 
 | Endpoint Type                                   | Category           |
 | ----------------------------------------------- | ------------------ |
-| Plan generation, regeneration, enhancement      | `aiGeneration`     |
+| Plan generation, regeneration                   | `aiGeneration`     |
 | Module lesson batch generation                  | `lessonGeneration` |
 | Future third-party integration writes           | `integration`      |
-| Create/update/delete plans, tasks, etc.         | `mutation`         |
+| Plan delete/bulk-delete, profile, preferences   | `mutation`         |
 | GET endpoints for data retrieval / status polls | `read`             |
 | Future OAuth initiation (not callbacks)         | `oauth`            |
 

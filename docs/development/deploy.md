@@ -108,7 +108,7 @@ WHERE jobname = 'retention-cleanup';
 
 If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
 
-6. Enable module lesson generation when the hosted environment should serve it:
+7. Enable module lesson generation when the hosted environment should serve it:
    - Register the boolean flag before the first smoke test if it does not already exist:
 
 ```bash
