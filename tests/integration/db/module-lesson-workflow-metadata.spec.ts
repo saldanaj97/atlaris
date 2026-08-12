@@ -125,6 +125,18 @@ describe('module lesson workflow metadata (integration)', () => {
       workflowRunId: runA,
     });
 
+    const [reverted] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(reverted).toMatchObject({
+      status: 'not_generated',
+      metadata: { workflow: { runId: runA } },
+    });
+
     const claimB = await claimModuleLessonGenerationOrDescribe(
       db,
       plan.id,

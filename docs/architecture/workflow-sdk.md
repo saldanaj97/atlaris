@@ -16,7 +16,7 @@ Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK 
 | Deployment | Protection |
 | ---------- | ---------- |
 | **Vercel (production/preview)** | Workflow SDK registers handlers with `experimentalTriggers` so only [Vercel Queue](https://vercel.com/docs/queues) can invoke them. Proxy allows these routes through without an app token. |
-| **Local dev** | Local product work may start workflows, but does not expose workflow callback routes. |
+| **Local dev (`pnpm dev` / `dev:full` / `dev:local:*`)** | Webpack + `withWorkflow()` so create/retry and related paths can run. Prefer Preview (`pnpm deploy:preview`) when you need Vercel Queue callback semantics. Use `pnpm dev:turbopack` only for UI-only work (no workflow runtime). |
 | **Self-hosted / non-Vercel production** | Proxy requires `WORKFLOW_CALLBACK_TOKEN` via `Authorization: Bearer` or `x-workflow-callback-token`. Missing token configuration returns `503`. |
 
 Webhook resume routes (`/.well-known/workflow/v1/webhook/:token`) keep the SDK's URL-token auth and bypass the callback token gate.

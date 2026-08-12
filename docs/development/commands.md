@@ -14,8 +14,10 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 > **Note**: Do not auto-run these commands; listed for reference only.
 
 ```bash
-pnpm dev              # Next.js dev server (Turbopack enabled)
-pnpm dev:full         # Start Supabase local stack, then run the Next.js dev server
+pnpm dev              # Next.js + Workflow SDK (webpack; required for plan/lesson/regen locally)
+pnpm dev:turbopack    # Turbopack UI-only (does not run Workflow SDK callbacks)
+pnpm dev:workflow     # Alias of pnpm dev (webpack + Workflow SDK)
+pnpm dev:full         # Start Supabase local stack, then run pnpm dev
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
 ```
 
