@@ -18,27 +18,23 @@ This endpoint drains up to `REGENERATION_MAX_JOBS_PER_DRAIN` jobs by calling `dr
 | `REGENERATION_QUEUE_ENABLED`         | Master switch for enqueue/drain behavior                               | Explicitly `true` after the worker trigger is configured; otherwise defaults `false` |
 | `REGENERATION_MAX_JOBS_PER_DRAIN`    | Max jobs processed per drain call                                      | Set to a safe bounded value |
 | `REGENERATION_WORKER_TOKEN`          | Shared bearer token for internal drain auth                            | Required                    |
-| `REGENERATION_INLINE_PROCESSING`     | Inline processing fallback from enqueue route                          | `false` in production       |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes drain/enqueue through Workflow SDK (`planRegenerationWorkflow`) | `false` (default)           |
 
-The queue and inline fallback default on in development, test, and Vercel Preview. Both default off in Production until a worker trigger is configured and verified.
+The queue defaults on in development, test, and Vercel Preview. It remains off in Production until the GitHub scheduler is configured and verified.
 
 ## Workflow-backed regeneration
-
-When `PLAN_REGENERATION_WORKFLOW_ENABLED=true`:
 
 - Both enqueue and drain launch via `startPlanRegenerationWorkflow()` (fire-and-forget after the run is created).
 - The drain endpoint may start a workflow per job and return `workflow-in-flight` while `job_queue.data.workflow.runId` is set.
 - Rejected workflow runs are terminalized via `failJob(..., { retryable: false })` when `run.returnValue` rejects, even if finalization never runs.
 - Terminal queue outcomes are still written by workflow finalization steps (`completed`, `retryable-failure`, `permanent-failure`, `already-finalized`).
 
-Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Env flags: [environment variables](../development/environment.md#workflow-sdk). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
+Correlate failures using `job_queue.data.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
 
 ## Triggering the Worker
 
-Configure and verify a recurring worker trigger before setting `REGENERATION_QUEUE_ENABLED=true` in production.
+The GitHub Actions [regeneration worker scheduler](../../.github/workflows/regeneration-worker-scheduler.yml) runs every 15 minutes and supports manual dispatch. Scheduled runs execute only when the repository variable `REGENERATION_QUEUE_ENABLED` is `true`; manual dispatch bypasses that gate.
 
-Use a scheduler (Cron, GitHub Actions, Vercel cron, etc.) to call:
+Configure the same `REGENERATION_WORKER_TOKEN` value in the production deployment and the GitHub Actions `Production – atlaris` environment secret. The scheduler calls:
 
 ```bash
 curl -X POST "https://<app-host>/api/internal/jobs/regeneration/process" \
@@ -81,7 +77,9 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 ## Operational Checks
 
 - Monitor job backlog in `job_queue` for growing `pending` rows.
-- Alert on repeated `failedCount > 0` drains.
+- Alert on repeated `failedCount > 0` drains. The GitHub Action
+  `regeneration-worker-scheduler.yml` fails the run when `failedCount > 0`
+  after a successful `ok: true` drain response.
 - Alert on `401` responses from the internal drain endpoint (token mismatch/absence).
 - Alert on `503` responses (`REGENERATION_QUEUE_ENABLED=false` or missing worker token in production).
 
@@ -94,7 +92,7 @@ The endpoint now uses the canonical API error contract (see `docs/api/error-cont
 
 ## Related docs
 
-- [Workflow SDK](./workflow-sdk.md) — `PLAN_REGENERATION_WORKFLOW_ENABLED`, run correlation, and Preview testing
+- [Workflow SDK](./workflow-sdk.md) — run correlation and Preview testing
 - [Plan generation architecture](./plan-generation-architecture.md) — create/retry and module lesson pipelines (separate from queued regeneration)
 - [Environment variables](../development/environment.md#workflow-sdk) — workflow and regeneration queue env vars
 - [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands

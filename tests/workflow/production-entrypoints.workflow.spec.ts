@@ -123,7 +123,7 @@ describe('production Workflow SDK entrypoints', () => {
     expect(job?.status).toBe('completed');
   });
 
-  it('runs module lesson generation to a persisted successful terminal state', async () => {
+  it('fails closed for module lesson generation and releases the claim', async () => {
     const userId = await createWorkflowUser('module-lessons');
     const plan = await createTestPlan({ userId, generationStatus: 'ready' });
     const module = await createTestModule({ planId: plan.id });
@@ -140,14 +140,14 @@ describe('production Workflow SDK entrypoints', () => {
     ]);
 
     const result = await run.returnValue;
-    expect(result.kind).toBe('success');
+    expect(result.kind).toBe('disabled');
     expect(await run.status).toBe('completed');
 
     const [persistedModule] = await db
       .select({ status: modules.lessonGenerationStatus })
       .from(modules)
       .where(eq(modules.id, module.id));
-    expect(persistedModule?.status).toBe('ready');
+    expect(persistedModule?.status).toBe('not_generated');
   });
 
   it('runs email delivery through its production entrypoint without provider calls while disabled', async () => {

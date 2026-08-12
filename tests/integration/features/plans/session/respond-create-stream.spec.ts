@@ -18,7 +18,17 @@ import {
   readStreamingResponse,
 } from '@tests/helpers/streaming';
 import { buildTestAuthUserId } from '@tests/helpers/testIds';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const workflowProcessFactory = vi.hoisted(() =>
+  vi.fn((lifecycleService: PlanLifecycleService) =>
+    lifecycleService.processGenerationAttempt.bind(lifecycleService),
+  ),
+);
+
+vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
+  createWorkflowBackedProcessGeneration: workflowProcessFactory,
+}));
 
 const VALID_PRO_MODEL = AVAILABLE_MODELS.find(({ tier }) => tier === 'pro')?.id;
 
@@ -27,6 +37,10 @@ if (!VALID_PRO_MODEL) {
 }
 
 describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
+  beforeEach(() => {
+    workflowProcessFactory.mockClear();
+  });
+
   it('emits plan_start, module_summary, progress, then complete on success', async () => {
     const fake = buildMockCreateLifecycle({
       createResult: SUCCESS_CREATE_RESULT,
@@ -48,6 +62,11 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     expect(createLifecycleService).toHaveBeenCalledTimes(1);
     expect(fake.createPlan).toHaveBeenCalledTimes(1);
     expect(fake.processGenerationAttempt).toHaveBeenCalledTimes(1);
+    expect(workflowProcessFactory).toHaveBeenCalledWith(
+      fake.service,
+      expect.anything(),
+      `plan-gen-${SUCCESS_CREATE_RESULT.planId}`,
+    );
 
     const events = await readStreamingResponse(response);
     const types = events.map((event) => event.type);

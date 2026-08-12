@@ -8,6 +8,7 @@ import {
   claimRegenerationJob,
   loadJobById,
   updateJobPayload,
+  updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
@@ -64,6 +65,26 @@ export async function claimPlanRegenerationJobStep(
       startedAt: new Date().toISOString(),
     },
   });
+
+  if (job.status === 'processing' && !existingRunId) {
+    const adopted = await updateJobPayloadIfRunIdMissing(job.id, payload);
+    if (adopted?.status === 'completed') {
+      return { kind: 'already-completed', jobId: job.id };
+    }
+    if (adopted?.status === 'failed') {
+      return { kind: 'already-failed', jobId: job.id };
+    }
+    if (adopted?.status === 'processing') {
+      const adoptedRunId = adopted.data.workflow?.runId;
+      if (adoptedRunId === runId) {
+        return { kind: 'claimed', runId };
+      }
+      if (adoptedRunId) {
+        return { kind: 'in-flight', jobId: job.id, runId: adoptedRunId };
+      }
+    }
+    return { kind: 'job-not-found', jobId: input.jobId };
+  }
 
   const claimed = await claimRegenerationJob(
     job.id,

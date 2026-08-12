@@ -48,10 +48,11 @@ Quickstart:
 
 ```bash
 pnpm install
-pnpm dev              # Turbopack app only
-pnpm dev:full        # local DB + app
-pnpm check:full      # lint + type-check (runs check:lint + check:type)
-pnpm test            # lightweight changed unit + integration-class bundle
+pnpm dev              # Webpack + Workflow SDK (plan/lesson/regen capable)
+pnpm dev:turbopack    # Turbopack UI-only (no local workflow callbacks)
+pnpm dev:full         # local DB + pnpm dev
+pnpm check:full       # lint + type-check (runs check:lint + check:type)
+pnpm test             # lightweight changed unit + integration-class bundle
 ```
 
 Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
@@ -120,7 +121,7 @@ Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and corr
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
-- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, `workflowEnv`, and `loggingEnv`
+- Use grouped config exports such as `databaseEnv`, `clerkAuthEnv`, `aiEnv`, `openRouterEnv`, and `loggingEnv`
 - Do not use `console.*` in application code — use the logging utilities in `src/lib/logging/`
 
 ## Related documentation

@@ -31,7 +31,6 @@ export default defineConfig({
       MOCK_GENERATION_FAILURE_RATE: '0',
       MOCK_GENERATION_SEED: '20260622',
       MOCK_AI_SCENARIO: 'success',
-      LESSON_GENERATION_ENABLED: 'true',
       ENABLE_SENTRY: 'false',
       NEXT_PUBLIC_ENABLE_SENTRY: 'false',
     },

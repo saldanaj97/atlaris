@@ -225,6 +225,43 @@ export async function updateRegenerationJobPayload(
 }
 
 /**
+ * Writes regeneration payload only when the locked row still has no workflow
+ * run id. Returns the current row unchanged when a rival claim already won,
+ * so callers can treat the existing run id as in-flight ownership.
+ */
+export async function updateRegenerationJobPayloadIfRunIdMissing(
+  jobId: string,
+  payload: JobPayload,
+  dbClient?: JobsDbClient,
+): Promise<Job | null> {
+  const client = dbClient ?? getDb();
+
+  return runJobMutationIfEditable(client, jobId, async (tx, row) => {
+    const existingRunId = (row.payload as JobPayload).workflow?.runId;
+    if (existingRunId) {
+      return mapRowToJob(row);
+    }
+
+    const updatedAt = new Date();
+    const [updated] = await tx
+      .update(jobQueue)
+      .set({
+        payload,
+        updatedAt,
+      })
+      .where(
+        and(
+          eq(jobQueue.id, jobId),
+          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
+        ),
+      )
+      .returning(jobQueueSelect);
+
+    return updated ? mapRowToJob(updated) : null;
+  });
+}
+
+/**
  * Marks a job as completed and stores the result. Idempotent: if the job is already
  * completed or failed, returns the current row without updating.
  */
@@ -279,6 +316,8 @@ export async function failJobRecord(
       error,
       timestamp: now.toISOString(),
     });
+    const payloadForRetry = { ...payloadWithHistory };
+    delete payloadForRetry.workflow;
 
     const updatePayload = decision.shouldRetry
       ? {
@@ -290,7 +329,7 @@ export async function failJobRecord(
           startedAt: null,
           scheduledFor: new Date(now.getTime() + decision.delayMs),
           updatedAt: now,
-          payload: payloadWithHistory,
+          payload: payloadForRetry,
         }
       : {
           attempts: nextAttempts,

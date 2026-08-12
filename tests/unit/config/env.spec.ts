@@ -5,9 +5,7 @@ import {
   createClerkAuthEnv,
   createAiEnvFacets,
   createAppEnv,
-  createLessonContentEnvForTests,
   createMaintenanceEnvForTests,
-  createWorkflowEnvForTests,
   createServerEnvAccess,
   createSupabasePublicEnv,
   EnvValidationError,
@@ -21,7 +19,6 @@ import {
   requireEnv,
   sentryEnv,
   toBoolean,
-  workflowEnv,
 } from '@/lib/config/env';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -317,68 +314,6 @@ describe('Environment Configuration', () => {
 
       expect(aiTimeoutEnv.baseMs).toBe(7000);
       expect(aiTimeoutEnv.extensionThresholdMs).toBe(2000);
-    });
-  });
-
-  describe('createLessonContentEnvForTests (pure)', () => {
-    it.each([
-      ['development', undefined, true],
-      ['development', '', true],
-      ['production', undefined, false],
-      ['production', '', false],
-    ] as const)(
-      'defaults generationEnabled to %s when LESSON_GENERATION_ENABLED is %s',
-      (nodeEnv, value, expected) => {
-        vi.stubEnv('NODE_ENV', nodeEnv);
-        if (nodeEnv === 'production') {
-          vi.stubGlobal('window', undefined);
-        }
-        const env = {
-          NODE_ENV: nodeEnv,
-          LESSON_GENERATION_ENABLED: value,
-        } as const;
-        const access = createServerEnvAccess(() => env);
-        const lesson = createLessonContentEnvForTests(access);
-
-        expect(lesson.generationEnabled).toBe(expected);
-      },
-    );
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['false', false],
-      ['0', false],
-    ] as const)('parses LESSON_GENERATION_ENABLED=%s', (value, expected) => {
-      vi.stubEnv('NODE_ENV', 'production');
-      const env = {
-        LESSON_GENERATION_ENABLED: value,
-      } as const;
-      const access = createServerEnvAccess(() => env);
-      const lesson = createLessonContentEnvForTests(access);
-
-      expect(lesson.generationEnabled).toBe(expected);
-    });
-
-    it('rejects invalid LESSON_GENERATION_ENABLED with envKey', () => {
-      vi.stubEnv('NODE_ENV', 'production');
-      const env = {
-        LESSON_GENERATION_ENABLED: 'maybe',
-      } as const;
-      const access = createServerEnvAccess(() => env);
-      const lesson = createLessonContentEnvForTests(access);
-
-      let caughtError: unknown;
-      try {
-        void lesson.generationEnabled;
-      } catch (error) {
-        caughtError = error;
-      }
-
-      expect(caughtError).toBeInstanceOf(EnvValidationError);
-      expect((caughtError as EnvValidationError).envKey).toBe(
-        'LESSON_GENERATION_ENABLED',
-      );
     });
   });
 
@@ -891,68 +826,7 @@ describe('Environment Configuration', () => {
     });
   });
 
-  describe('workflowEnv', () => {
-    it('defaults module lesson workflow flag to false', () => {
-      vi.stubEnv('MODULE_LESSON_WORKFLOW_ENABLED', undefined);
-      expect(workflowEnv.moduleLessonWorkflowEnabled).toBe(false);
-    });
-
-    it('parses MODULE_LESSON_WORKFLOW_ENABLED as boolean', () => {
-      const access = createServerEnvAccess(() => ({
-        MODULE_LESSON_WORKFLOW_ENABLED: 'true',
-      }));
-      expect(
-        createWorkflowEnvForTests(access).moduleLessonWorkflowEnabled,
-      ).toBe(true);
-    });
-
-    it('defaults plan regeneration and plan generation workflow flags to false', () => {
-      vi.stubEnv('PLAN_REGENERATION_WORKFLOW_ENABLED', undefined);
-      vi.stubEnv('PLAN_GENERATION_WORKFLOW_ENABLED', undefined);
-      expect(workflowEnv.planRegenerationWorkflowEnabled).toBe(false);
-      expect(workflowEnv.planGenerationWorkflowEnabled).toBe(false);
-    });
-
-    it('parses plan workflow flags as booleans', () => {
-      const access = createServerEnvAccess(() => ({
-        PLAN_REGENERATION_WORKFLOW_ENABLED: 'true',
-        PLAN_GENERATION_WORKFLOW_ENABLED: '1',
-      }));
-      const env = createWorkflowEnvForTests(access);
-      expect(env.planRegenerationWorkflowEnabled).toBe(true);
-      expect(env.planGenerationWorkflowEnabled).toBe(true);
-    });
-
-    it('throws EnvValidationError for invalid workflow flag values', () => {
-      const access = createServerEnvAccess(() => ({
-        MODULE_LESSON_WORKFLOW_ENABLED: 'maybe',
-      }));
-
-      expect(
-        () => createWorkflowEnvForTests(access).moduleLessonWorkflowEnabled,
-      ).toThrow(EnvValidationError);
-    });
-
-    it('throws EnvValidationError for invalid plan regeneration workflow flag values', () => {
-      const access = createServerEnvAccess(() => ({
-        PLAN_REGENERATION_WORKFLOW_ENABLED: 'maybe',
-      }));
-
-      expect(
-        () => createWorkflowEnvForTests(access).planRegenerationWorkflowEnabled,
-      ).toThrow(EnvValidationError);
-    });
-
-    it('throws EnvValidationError for invalid plan generation workflow flag values', () => {
-      const access = createServerEnvAccess(() => ({
-        PLAN_GENERATION_WORKFLOW_ENABLED: 'maybe',
-      }));
-
-      expect(
-        () => createWorkflowEnvForTests(access).planGenerationWorkflowEnabled,
-      ).toThrow(EnvValidationError);
-    });
-
+  describe('workflow callback token configuration', () => {
     it('reads WORKFLOW_CALLBACK_TOKEN when configured', () => {
       vi.stubGlobal('window', undefined);
       const access = createServerEnvAccess(() => ({
@@ -960,9 +834,10 @@ describe('Environment Configuration', () => {
         WORKFLOW_CALLBACK_TOKEN: 'prod-secret',
       }));
 
-      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
-        'prod-secret',
-      );
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'valid',
+        token: 'prod-secret',
+      });
     });
 
     it('trims WORKFLOW_CALLBACK_TOKEN when configured', () => {
@@ -972,24 +847,13 @@ describe('Environment Configuration', () => {
         WORKFLOW_CALLBACK_TOKEN: '  prod-secret  ',
       }));
 
-      expect(createWorkflowEnvForTests(access).callbackToken).toBe(
-        'prod-secret',
-      );
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'valid',
+        token: 'prod-secret',
+      });
     });
 
-    it('throws EnvValidationError for whitespace-only WORKFLOW_CALLBACK_TOKEN', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-        WORKFLOW_CALLBACK_TOKEN: '   ',
-      }));
-
-      expect(() => createWorkflowEnvForTests(access).callbackToken).toThrow(
-        EnvValidationError,
-      );
-    });
-
-    it('readWorkflowCallbackTokenConfig returns invalid for whitespace-only token', () => {
+    it('marks whitespace-only WORKFLOW_CALLBACK_TOKEN as invalid', () => {
       vi.stubGlobal('window', undefined);
       const access = createServerEnvAccess(() => ({
         NODE_ENV: 'production',
@@ -1008,7 +872,10 @@ describe('Environment Configuration', () => {
         WORKFLOW_CALLBACK_TOKEN: '',
       }));
 
-      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'valid',
+        token: undefined,
+      });
     });
 
     it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
@@ -1016,7 +883,10 @@ describe('Environment Configuration', () => {
         NODE_ENV: 'development',
       }));
 
-      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'valid',
+        token: undefined,
+      });
     });
 
     it('does not require WORKFLOW_CALLBACK_TOKEN in production env reads', () => {
@@ -1025,7 +895,10 @@ describe('Environment Configuration', () => {
         NODE_ENV: 'production',
       }));
 
-      expect(createWorkflowEnvForTests(access).callbackToken).toBeUndefined();
+      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
+        status: 'valid',
+        token: undefined,
+      });
     });
   });
 
@@ -1036,7 +909,6 @@ describe('Environment Configuration', () => {
       expect(env.appEnv).toBeDefined();
       expect(env.databaseEnv).toBeDefined();
       expect(env.aiEnv).toBeDefined();
-      expect(env.workflowEnv).toBeDefined();
       expect(env.getAttemptCap).toBeTypeOf('function');
       expect(env.setDevAuthUserIdForTests).toBeTypeOf('function');
       expect(env.clearDevAuthUserIdForTests).toBeTypeOf('function');

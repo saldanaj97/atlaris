@@ -27,14 +27,14 @@ Prefer the exported grouped configs instead of raw keys:
 - `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)
 - `regenerationQueueEnv` - Worker queue toggles and shared token
 - `maintenanceEnv` - Manual maintenance controls and worker tokens, including the separate Vercel Cron `CRON_SECRET`
-- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). Import from `@/lib/config/env/email`. `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
-- `lessonContentEnv` - Module lesson generation kill-switch (`LESSON_GENERATION_ENABLED`; import from `@/lib/config/env/lesson-content`)
-- `workflowEnv` - Workflow SDK product flags (`MODULE_LESSON_WORKFLOW_ENABLED`, `PLAN_REGENERATION_WORKFLOW_ENABLED`, `PLAN_GENERATION_WORKFLOW_ENABLED`; implemented in `src/lib/config/env/workflow.ts`)
+- `emailEnv` - Opted-in Resend delivery secrets (`RESEND_API_KEY`, `RESEND_FROM`, optional `RESEND_REPLY_TO`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`). `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` must be unpadded base64url encoding of at least 32 random bytes. Send enablement is the Vercel Flag `email-notification-delivery` (fail-closed). Keep the secret configured for the unsubscribe token lifetime even while delivery is disabled. Live delivery also requires production `APP_URL` (https) via `appEnv.url` for signed unsubscribe links and body deeplinks — set it before enabling the flag.
+- Module lesson generation kill-switch is the Vercel Flag `module-lesson-generation` (fail-closed; declared in `src/flags.ts`, resolved via `src/features/lesson-content/generation-flag.ts`).
+- Workflow SDK product paths are permanently enabled; `WORKFLOW_CALLBACK_TOKEN` remains the only app configuration for self-hosted callback access.
 - `loggingEnv` - Logging, Sentry, and telemetry configuration
 
 ### Vercel Flags
 
-Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are **not** the Workflow SDK product toggles in `workflowEnv`.
+Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are distinct from the permanently enabled Workflow SDK product paths.
 
 | Variable | Purpose | Required |
 | -------- | ------- | -------- |
@@ -47,8 +47,9 @@ Declared flags:
 | -------- | ----------- | ---------------------- | ------------- |
 | `maintenance-mode` | `maintenanceMode` | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
 | `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts` | Resend + production `APP_URL` (see `emailEnv`) |
+| `module-lesson-generation` | `moduleLessonGeneration` | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts` | Synchronous and Workflow SDK module lesson generation |
 
-**Local without `FLAGS`:** both flags resolve to their fallback (`defaultValue ?? false`), so email delivery stays off and maintenance stays off unless `MAINTENANCE_MODE=true`.
+**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery and lesson generation stay off; maintenance stays off unless `MAINTENANCE_MODE=true`.
 
 **Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
@@ -70,33 +71,27 @@ The application uses Clerk Auth for UI, route protection, and server session rea
 
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                                                                                                                                                                                         | Required                                    |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                                                                              | Yes                                         |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                                                                         | Yes                                         |
-| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook` (Billing and user lifecycle events)                                                                                                                                                        | Yes when Clerk webhooks are enabled |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow).                                                 | No                                          |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout and every hosted deployment.                                                       | No                                          |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                                                                 | No                                          |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                                                                  | No                                          |
-| `LESSON_GENERATION_ENABLED`         | `true`/`false`/`1`/`0`; when unset, defaults to **on** in development and **off** in other `NODE_ENV` values (see `lessonContentEnv`). Set `true` in hosted production/staging when module lesson generation should be live — see `docs/development/deploy.md`. | No (yes for hosted lesson generation)       |
+| Variable                            | Purpose                                                                                                                               | Required |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                    | Yes when Clerk Billing webhooks are enabled |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No       |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout. | No       |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
+
+Module lesson generation enablement is the Vercel Flag `module-lesson-generation` (fail-closed / default disabled). See `docs/development/deploy.md`.
 
 ### Workflow SDK
 
-**Source of truth for workflow env vars.** Configure feature flags in Vercel's Preview environment and use `pnpm deploy:preview` to exercise them remotely. Local UI development should leave workflow flags unset.
+Module lesson generation still uses the separate fail-closed Vercel Flag `module-lesson-generation`. Its durable workflow, plan regeneration, and plan create/retry are permanently enabled. Use `pnpm deploy:preview` to exercise them remotely.
 
-#### App-parsed product flags (`workflowEnv`)
+#### App configuration
 
-Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off** when unset or empty. These opt into durable workflow paths; they are not production defaults.
-
-| Variable                             | Purpose                                                                                                                                                              | Required                      |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `MODULE_LESSON_WORKFLOW_ENABLED`     | Routes `POST .../lesson-content/generate` through a durable workflow (HTTP 202 while in flight)                                                                      | No                            |
-| `PLAN_REGENERATION_WORKFLOW_ENABLED` | Routes regeneration enqueue and worker drain through a durable workflow                                                                                              | No                            |
-| `PLAN_GENERATION_WORKFLOW_ENABLED`   | Runs plan create/retry provider/finalization in a workflow after reservation; SSE transport unchanged                                                                | No                            |
-| `WORKFLOW_CALLBACK_TOKEN`            | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
-
-**Accepted values:** `true`, `false`, `1`, or `0` (case-insensitive). Any other value throws `EnvValidationError` at startup.
+| Variable | Purpose | Required |
+| -------- | ------- | -------- |
+| `WORKFLOW_CALLBACK_TOKEN` | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
 
 #### SDK-read variables (not parsed in app code)
 
@@ -104,7 +99,7 @@ Parsed in `src/lib/config/env/workflow.ts` via `workflowEnv`. All default **off*
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `WORKFLOW_SOURCEMAP` | Optional Workflow SDK source map mode (`inline`, `linked`, `external`, `both`, `false`, `0`, `1`). Read by Workflow SDK at build/runtime — do not parse in app code. | No       |
 
-Runtime behavior, correlation fields, and disabling workflows: [Workflow SDK architecture](../architecture/workflow-sdk.md).
+Runtime behavior and correlation fields: [Workflow SDK architecture](../architecture/workflow-sdk.md).
 
 ### Internal worker routes
 
@@ -122,6 +117,8 @@ Shared bearer tokens for scheduler-triggered POST routes under `/api/internal/`.
 
 Scheduled retention cleanup runs via Supabase Cron (`private.cleanup_retained_db_rows()`) and does not use these HTTP env vars. See `docs/architecture/retention-cleanup-runbook.md`.
 
+Scheduled plan regeneration runs from `.github/workflows/regeneration-worker-scheduler.yml` every 15 minutes when its `REGENERATION_QUEUE_ENABLED` repository variable is `true`. Configure the same `REGENERATION_WORKER_TOKEN` value in the production deployment and the GitHub Actions `Production – atlaris` environment secret; manual dispatch bypasses the repository-variable gate.
+
 Scheduled plan cleanup runs from `.github/workflows/plan-cleanup-scheduler.yml`. Configure the same `MAINTENANCE_WORKER_TOKEN` value in Vercel Production and the GitHub Actions `Production – atlaris` environment secret.
 
 Email notification delivery uses Vercel Cron and a durable Workflow SDK run. Set a separate `CRON_SECRET` in the Vercel environment; Vercel supplies it as the Bearer token for the cron GET route. Do not reuse `MAINTENANCE_WORKER_TOKEN`. The manual recovery route remains protected by `MAINTENANCE_WORKER_TOKEN`; see [the email delivery runbook](../architecture/email-notification-delivery-runbook.md).
@@ -136,6 +133,7 @@ Flags use the Flags SDK with `vercelAdapter()` when `FLAGS` is set; otherwise a 
 | --- | ------ | ------------------ | ------ |
 | `email-notification-delivery` | `emailNotificationDelivery` | `false` (fail-closed) | Cron, manual recovery, and in-flight workflow pages must not send when off |
 | `maintenance-mode` | `maintenanceMode` | fallback `false` | Proxy routes app traffic to the maintenance page when on |
+| `module-lesson-generation` | `moduleLessonGeneration` | `false` (fail-closed) | Synchronous and workflow-backed module lesson generation must not start when off |
 
 Local product testing typically has no `FLAGS` env, so email delivery stays disabled until you enable the flag in a Vercel environment. Preference tables and Settings opt-ins are separate from this kill switch — see [user-preferences.md](../architecture/user-preferences.md).
 

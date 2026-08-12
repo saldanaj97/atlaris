@@ -312,9 +312,12 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByTestId('sign-in-checkout')).toHaveAttribute(
-      'data-redirect',
-      '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+    // Plans paint with default month first; URL hydration flips to annual after.
+    await waitFor(() =>
+      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
+        'data-redirect',
+        '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=annual',
+      ),
     );
     expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute(
       'aria-pressed',

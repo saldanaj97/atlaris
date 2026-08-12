@@ -17,13 +17,13 @@ import {
   type LessonGenerationQuotaWorkResult,
   runLessonGenerationQuotaReserved,
 } from '@/features/billing/lesson-generation-quota-boundary';
+import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import {
   buildModuleLessonBatchSystemPrompt,
   buildModuleLessonBatchUserPrompt,
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
 import { parseModuleLessonBatchFromStream } from '@/features/lesson-content/parse-module-lesson-batch';
-import { lessonContentEnv } from '@/lib/config/env/lesson-content';
 import {
   commitModuleLessonBatchSuccess,
   commitModuleLessonGenerationFailure,
@@ -45,8 +45,10 @@ export async function runModuleLessonGenerationWork(
 ): Promise<ModuleLessonGenerationWorkResult> {
   const serverDbClient = deps.serverDbClient ?? serviceRoleDb;
   const workflowRunId = params.generationMetadata?.workflow?.runId;
+  const resolveGenerationEnabled =
+    deps.resolveGenerationEnabled ?? resolveModuleLessonGenerationEnabled;
 
-  if (!lessonContentEnv.generationEnabled) {
+  if (!(await resolveGenerationEnabled())) {
     await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
       userId: params.userId,
       planId: params.planId,

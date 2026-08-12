@@ -55,10 +55,6 @@ export function makeRegenerationOrchestrationDeps(
     lifecycle: {
       service: makeLifecycleServiceMock(),
     },
-    inlineDrain: {
-      tryRegister: vi.fn(),
-      drain: vi.fn(async () => undefined),
-    },
     rateLimit: {
       check: vi.fn(async () => ({
         remaining: 4,
@@ -83,7 +79,6 @@ export function makeRegenerationOrchestrationDeps(
     tier: { ...base.tier, ...overrides.tier },
     priority: { ...base.priority, ...overrides.priority },
     lifecycle: { ...base.lifecycle, ...overrides.lifecycle },
-    inlineDrain: { ...base.inlineDrain, ...overrides.inlineDrain },
     rateLimit: { ...base.rateLimit, ...overrides.rateLimit },
     logger: { ...base.logger, ...overrides.logger },
   };

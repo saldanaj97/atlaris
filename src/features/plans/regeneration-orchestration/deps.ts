@@ -11,9 +11,8 @@ import {
   enqueueJobWithResult,
   failJob,
   getNextJob,
-  updateJobPayload,
+  updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
-import { tryRegisterInlineDrain } from '@/features/jobs/regeneration-inline-drain';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { regenerationQueueEnv } from '@/lib/config/env';
@@ -32,7 +31,11 @@ export interface RegenerationOrchestrationDeps {
     getNextJob: typeof getNextJob;
     completeJob: typeof completeJob;
     failJob: typeof failJob;
-    updateRegenerationJobPayload: typeof updateJobPayload;
+    /**
+     * First-writer runId claim used by attach. Must be the CAS variant that
+     * refuses to overwrite an existing workflow.runId.
+     */
+    updateRegenerationJobPayload: typeof updateJobPayloadIfRunIdMissing;
   };
   quota: {
     runReserved: typeof runRegenerationQuotaReserved;
@@ -59,10 +62,6 @@ export interface RegenerationOrchestrationDeps {
   lifecycle: {
     service: PlanLifecycleService;
   };
-  inlineDrain: {
-    tryRegister: typeof tryRegisterInlineDrain;
-    drain: () => Promise<void>;
-  };
   /**
    * Invoked after active-job dedupe passes and before quota reserve + enqueue.
    * Must match {@link checkPlanGenerationRateLimit} semantics (throws RateLimitError when exceeded).
@@ -76,19 +75,8 @@ export interface RegenerationOrchestrationDeps {
   logger: Pick<typeof logger, 'debug' | 'info' | 'error' | 'warn'>;
 }
 
-type DefaultRegenerationOrchestrationDepsOptions = {
-  /**
-   * Runs after successful enqueue when inline processing registers.
-   * App boundary (e.g. `request.ts`) must pass real drain; `process.ts` uses no-op default.
-   */
-  inlineDrain?: () => Promise<void>;
-};
-
-async function noopInlineDrain(): Promise<void> {}
-
 export function createDefaultRegenerationOrchestrationDeps(
   dbClient: DbClient,
-  options: DefaultRegenerationOrchestrationDepsOptions = {},
 ): RegenerationOrchestrationDeps {
   return {
     dbClient,
@@ -98,7 +86,7 @@ export function createDefaultRegenerationOrchestrationDeps(
       getNextJob,
       completeJob,
       failJob,
-      updateRegenerationJobPayload: updateJobPayload,
+      updateRegenerationJobPayload: updateJobPayloadIfRunIdMissing,
     },
     quota: {
       runReserved: runRegenerationQuotaReserved,
@@ -118,10 +106,6 @@ export function createDefaultRegenerationOrchestrationDeps(
     priority: { computeJobPriority, isPriorityTopic },
     lifecycle: {
       service: createPlanLifecycleService({ dbClient: serviceRoleDb }),
-    },
-    inlineDrain: {
-      tryRegister: tryRegisterInlineDrain,
-      drain: options.inlineDrain ?? noopInlineDrain,
     },
     rateLimit: { check: checkPlanGenerationRateLimit },
     logger,

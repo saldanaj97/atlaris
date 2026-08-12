@@ -1,15 +1,11 @@
 import { failJob } from '@/features/jobs/queue';
 import { consumeIntentionalPlanRegenerationCancellation } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
-import { workflowEnv } from '@/lib/config/env/workflow';
 import { logger } from '@/lib/logging/logger';
 import { start } from 'workflow/api';
 
 export const PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE =
   'Queued plan regeneration failed.';
-
-export const PLAN_REGENERATION_SYNC_FAILURE_MESSAGE =
-  'Failed while processing queued plan regeneration job.';
 
 export type StartPlanRegenerationWorkflowInput = {
   readonly jobId: string;
@@ -23,7 +19,6 @@ export type StartPlanRegenerationWorkflowResult =
   | { readonly started: true; readonly runId: string };
 
 export type StartPlanRegenerationWorkflowDeps = {
-  readonly isEnabled?: () => boolean;
   readonly workflowStart?: typeof start;
   readonly failJob?: typeof failJob;
   readonly log?: Pick<typeof logger, 'info' | 'error'>;
@@ -37,12 +32,6 @@ export async function startPlanRegenerationWorkflow(
   input: StartPlanRegenerationWorkflowInput,
   deps: StartPlanRegenerationWorkflowDeps = {},
 ): Promise<StartPlanRegenerationWorkflowResult> {
-  const isEnabled =
-    deps.isEnabled ?? (() => workflowEnv.planRegenerationWorkflowEnabled);
-  if (!isEnabled()) {
-    return { started: false };
-  }
-
   const workflowStart = deps.workflowStart ?? start;
   const queueFailJob = deps.failJob ?? failJob;
   const log = deps.log ?? logger;

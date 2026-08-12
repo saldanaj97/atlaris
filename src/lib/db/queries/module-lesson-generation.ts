@@ -194,7 +194,8 @@ function assertParsedTasksMatchCurrentTaskRows(
 
 /**
  * After `generating` claim, returns row to `not_generated` when work never ran
- * (e.g. monthly quota denial). Clears in-flight timestamps and error fields.
+ * (e.g. flag/quota kill switch). Clears in-flight timestamps and error fields.
+ * Keeps lessonGenerationMetadata so status polls can match workflowRunId and stop.
  */
 export async function revertModuleLessonGeneratingToNotGenerated(
   dbClient: GenerationDb,
@@ -217,7 +218,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
       lessonGenerationCompletedAt: null,
       lessonGenerationFailedAt: null,
       lessonGenerationError: null,
-      lessonGenerationMetadata: null,
+      // Keep lessonGenerationMetadata (workflow.runId) so status polls can terminate.
     })
     .where(
       and(

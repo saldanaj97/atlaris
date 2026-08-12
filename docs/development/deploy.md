@@ -91,10 +91,23 @@ WHERE jobname = 'retention-cleanup';
 
 If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
 
-7. Enable module lesson generation when the hosted environment should serve it:
-   - Set `LESSON_GENERATION_ENABLED=true` in production/staging. When unset outside development, the flag defaults to **off** and `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled`.
-   - After deploy, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md` (`LESSON_GENERATION_ENABLED`).
-8. Enable opted-in email notification delivery only after the env and ledger are ready:
+6. Enable module lesson generation when the hosted environment should serve it:
+   - Register the boolean flag before the first smoke test if it does not already exist:
+
+```bash
+vercel flags add module-lesson-generation --kind boolean \
+  --description "Allow synchronous and workflow-backed module lesson generation" \
+  --scope <team>
+vercel flags disable module-lesson-generation --environment development --scope <team>
+vercel flags disable module-lesson-generation --environment preview --scope <team>
+vercel flags disable module-lesson-generation --environment production --scope <team>
+```
+
+   - Confirm `vercel flags inspect module-lesson-generation --scope <team>` reports `Off` for Development, Preview, and Production before the first smoke.
+   - Leave the Vercel Flag `module-lesson-generation` disabled until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
+   - Enable only the environment being validated after that check; restore it to `Off` after controlled Preview verification. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
+   - After enablement, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md`.
+7. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
    - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.

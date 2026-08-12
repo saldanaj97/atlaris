@@ -20,6 +20,26 @@ describe('drainRegenerationQueue', () => {
     });
   });
 
+  it('counts an attached workflow as processed and continues draining', async () => {
+    const spy = vi
+      .spyOn(regenerationProcess, 'processNextPlanRegenerationJob')
+      .mockResolvedValueOnce({
+        kind: 'workflow-in-flight',
+        jobId: 'job-1',
+        planId: 'plan-1',
+      })
+      .mockResolvedValueOnce({ kind: 'no-job' });
+
+    const result = await drainRegenerationQueue({ maxJobs: 3 });
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      processedCount: 1,
+      completedCount: 0,
+      failedCount: 0,
+    });
+  });
+
   it('does no work when maxJobs is 0 (no-op)', async () => {
     const processNextJob = vi.fn();
     const result = await drainRegenerationQueue({ maxJobs: 0, processNextJob });

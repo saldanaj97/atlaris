@@ -14,17 +14,12 @@ export {
 export { databaseEnv } from '@/lib/config/env/database';
 export { localProductTestingEnv } from '@/lib/config/env/local-testing';
 export { loggingEnv, sentryEnv } from '@/lib/config/env/observability';
-export { createLessonContentEnvForTests } from '@/lib/config/env/lesson-content';
 export {
   createMaintenanceEnvForTests,
   maintenanceEnv,
 } from '@/lib/config/env/maintenance';
 export { regenerationQueueEnv } from '@/lib/config/env/queue';
-export {
-  createWorkflowEnvForTests,
-  readWorkflowCallbackTokenConfig,
-  workflowEnv,
-} from '@/lib/config/env/workflow';
+export { readWorkflowCallbackTokenConfig } from '@/lib/config/env/workflow';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,

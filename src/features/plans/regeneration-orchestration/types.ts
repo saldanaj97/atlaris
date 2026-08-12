@@ -19,8 +19,6 @@ export type RequestPlanRegenerationArgs = {
   userId: string;
   planId: string;
   overrides?: PlanRegenerationOverrides;
-  /** Set by the route. When true the boundary may schedule an inline drain on successful enqueue. */
-  inlineProcessingEnabled: boolean;
 };
 
 type PlanGenerationRateLimitSnapshot = {
@@ -37,8 +35,6 @@ export type RequestPlanRegenerationResult =
       jobId: string;
       planId: string;
       status: 'pending';
-      /** True if the boundary scheduled an inline drain. Route uses this only for response headers/telemetry; drain is already scheduled. */
-      inlineDrainScheduled: boolean;
       planGenerationRateLimit: PlanGenerationRateLimitSnapshot;
     }
   | { kind: 'plan-not-found' }

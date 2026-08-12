@@ -11,7 +11,6 @@ import {
  */
 interface RegenerationQueueEnv {
   readonly enabled: boolean;
-  readonly inlineProcessingEnabled: boolean;
   readonly maxJobsPerDrain: number;
   readonly workerToken: string | undefined;
 }
@@ -30,16 +29,6 @@ export const regenerationQueueEnv: RegenerationQueueEnv = {
   get enabled(): boolean {
     return toBoolean(
       defaultQueueAccess.getServerOptional('REGENERATION_QUEUE_ENABLED'),
-      !isQueueProductionRuntime(),
-    );
-  },
-  /**
-   * Optional inline processing mode for local/test environments.
-   * In production this should remain disabled and be replaced by a dedicated worker trigger.
-   */
-  get inlineProcessingEnabled(): boolean {
-    return toBoolean(
-      defaultQueueAccess.getServerOptional('REGENERATION_INLINE_PROCESSING'),
       !isQueueProductionRuntime(),
     );
   },

@@ -11,14 +11,6 @@ const mocks = vi.hoisted(() => ({
   revertClaim: vi.fn(),
 }));
 
-vi.mock('@/lib/config/env/lesson-content', () => ({
-  lessonContentEnv: {
-    get generationEnabled() {
-      return false;
-    },
-  },
-}));
-
 vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
   commitModuleLessonBatchSuccess: mocks.commitSuccess,
   commitModuleLessonGenerationFailure: mocks.commitFailure,
@@ -54,7 +46,10 @@ describe('runModuleLessonGenerationWork', () => {
             },
           },
         },
-        { serverDbClient },
+        {
+          serverDbClient,
+          resolveGenerationEnabled: async () => false,
+        },
       ),
     ).resolves.toEqual({ kind: 'disabled' });
 

@@ -9,9 +9,7 @@ import {
   createDefaultRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDeps,
 } from './deps';
-import { drainRegenerationQueue } from '@/features/jobs/regeneration-worker';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
-import { workflowEnv } from '@/lib/config/env/workflow';
 import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { getDb } from '@supabase/runtime';
 
@@ -34,8 +32,6 @@ type AdmittedRegeneration = {
   readonly planId: string;
   readonly payload: PlanRegenerationJobData;
   readonly priority: number;
-  readonly workflowEnabled: boolean;
-  readonly inlineProcessingEnabled: boolean;
   readonly planGenerationRateLimit: {
     readonly remaining: number;
     readonly limit: number;
@@ -73,7 +69,7 @@ async function admitPlanRegeneration(
   args: RequestPlanRegenerationArgs,
   d: RegenerationOrchestrationDeps,
 ): Promise<RegenerationAdmission> {
-  const { userId, planId, overrides, inlineProcessingEnabled } = args;
+  const { userId, planId, overrides } = args;
 
   if (!d.queue.enabled()) {
     return { kind: 'rejected', result: { kind: 'queue-disabled' } };
@@ -116,8 +112,6 @@ async function admitPlanRegeneration(
           overrides?.topic ?? plan.topic,
         ),
       }),
-      workflowEnabled: workflowEnv.planRegenerationWorkflowEnabled,
-      inlineProcessingEnabled,
       planGenerationRateLimit,
     },
   };
@@ -132,7 +126,7 @@ async function runReservedRegenerationAdmission(
     RevertedRegenerationWorkValue
   >
 > {
-  const { userId, planId, payload, priority, workflowEnabled } = admission;
+  const { userId, planId, payload, priority } = admission;
   const enqueueResult = await d.queue.enqueueWithResult(
     JOB_TYPES.PLAN_REGENERATION,
     planId,
@@ -155,13 +149,6 @@ async function runReservedRegenerationAdmission(
   }
 
   const acceptedJobId = enqueueResult.id;
-  if (!workflowEnabled) {
-    return {
-      disposition: 'consumed',
-      value: { kind: 'enqueued', jobId: acceptedJobId },
-    };
-  }
-
   const correlationId = `regen-${acceptedJobId}`;
   try {
     const attachResult = await attachPlanRegenerationWorkflow(
@@ -384,45 +371,11 @@ function mapReservedRegenerationAdmission(
   return { kind: 'accepted', jobId: boundaryResult.value.jobId };
 }
 
-function scheduleInlineDrain(
-  admission: AdmittedRegeneration,
-  d: RegenerationOrchestrationDeps,
-): boolean {
-  if (admission.workflowEnabled || !admission.inlineProcessingEnabled) {
-    return false;
-  }
-
-  return d.inlineDrain.tryRegister(() => {
-    return (async () => {
-      try {
-        await d.inlineDrain.drain();
-      } catch (error: unknown) {
-        d.logger.error(
-          {
-            planId: admission.planId,
-            userId: admission.userId,
-            error,
-            inlineProcessingEnabled: admission.inlineProcessingEnabled,
-            drainFn: 'drainRegenerationQueue',
-          },
-          'Inline regeneration queue drain failed',
-        );
-      }
-    })();
-  });
-}
-
 export async function requestPlanRegeneration(
   args: RequestPlanRegenerationArgs,
   deps?: RegenerationOrchestrationDeps,
 ): Promise<RequestPlanRegenerationResult> {
-  const d =
-    deps ??
-    createDefaultRegenerationOrchestrationDeps(getDb(), {
-      inlineDrain: async () => {
-        await drainRegenerationQueue({ maxJobs: 1 });
-      },
-    });
+  const d = deps ?? createDefaultRegenerationOrchestrationDeps(getDb());
 
   const admission = await admitPlanRegeneration(args, d);
   if (admission.kind === 'rejected') {
@@ -451,7 +404,6 @@ export async function requestPlanRegeneration(
     jobId: settled.jobId,
     planId: admission.value.planId,
     status: 'pending',
-    inlineDrainScheduled: scheduleInlineDrain(admission.value, d),
     planGenerationRateLimit: {
       remaining: admission.value.planGenerationRateLimit.remaining,
       limit: admission.value.planGenerationRateLimit.limit,

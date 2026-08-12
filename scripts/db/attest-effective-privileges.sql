@@ -351,6 +351,7 @@ BEGIN
       attribute.attnum,
       'INSERT'
     )
+  ORDER BY attribute.attnum
   LIMIT 1;
   IF violation IS NOT NULL THEN
     RAISE EXCEPTION '%', violation;

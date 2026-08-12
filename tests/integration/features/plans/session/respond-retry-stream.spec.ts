@@ -1,3 +1,4 @@
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 
 import {
@@ -18,9 +19,23 @@ import {
   findStreamingEvent,
   readStreamingResponse,
 } from '@tests/helpers/streaming';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const workflowProcessFactory = vi.hoisted(() =>
+  vi.fn((lifecycleService: PlanLifecycleService) =>
+    lifecycleService.processGenerationAttempt.bind(lifecycleService),
+  ),
+);
+
+vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
+  createWorkflowBackedProcessGeneration: workflowProcessFactory,
+}));
 
 describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
+  beforeEach(() => {
+    workflowProcessFactory.mockClear();
+  });
+
   it('emits plan_start with retry attempt number then complete on success', async () => {
     const fake = buildMockProcessLifecycle(
       async () => SUCCESS_RETRY_ATTEMPT_RESULT,
@@ -50,6 +65,11 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(response.status).toBe(200);
     expect(createLifecycleService).toHaveBeenCalledTimes(1);
     expect(fake.processGenerationAttempt).toHaveBeenCalledTimes(1);
+    expect(workflowProcessFactory).toHaveBeenCalledWith(
+      fake.service,
+      expect.anything(),
+      'plan-gen-plan_retry_success',
+    );
 
     const events = await readStreamingResponse(response);
     const planStart = findStreamingEvent(events, 'plan_start');

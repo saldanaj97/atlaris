@@ -8,7 +8,6 @@ import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = {
-  isEnabled: vi.fn(() => false),
   workflowStart: vi.fn(),
   failJob: vi.fn(async () => null),
   log: {
@@ -27,8 +26,6 @@ describe('startPlanRegenerationWorkflow', () => {
 
   beforeEach(() => {
     resetPlanRegenerationCancellationMarkersForTests();
-    mocks.isEnabled.mockReset();
-    mocks.isEnabled.mockReturnValue(false);
     mocks.workflowStart.mockReset();
     mocks.failJob.mockReset();
     mocks.failJob.mockResolvedValue(null);
@@ -36,20 +33,7 @@ describe('startPlanRegenerationWorkflow', () => {
     mocks.log.error.mockReset();
   });
 
-  it('no-ops when regeneration workflow flag is off', async () => {
-    const result = await startPlanRegenerationWorkflow(input, {
-      isEnabled: mocks.isEnabled,
-      workflowStart: mocks.workflowStart,
-      failJob: mocks.failJob,
-      log: mocks.log,
-    });
-
-    expect(result).toEqual({ started: false });
-    expect(mocks.workflowStart).not.toHaveBeenCalled();
-  });
-
-  it('starts workflow when flag is on', async () => {
-    mocks.isEnabled.mockReturnValue(true);
+  it('starts workflow', async () => {
     mocks.workflowStart.mockResolvedValue({
       runId: 'wrun_regen',
       returnValue: Promise.resolve({
@@ -60,7 +44,6 @@ describe('startPlanRegenerationWorkflow', () => {
     });
 
     const result = await startPlanRegenerationWorkflow(input, {
-      isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
       failJob: mocks.failJob,
       log: mocks.log,
@@ -86,12 +69,10 @@ describe('startPlanRegenerationWorkflow', () => {
 
   it('logs workflow startup failures without throwing', async () => {
     const error = new Error('start-failed');
-    mocks.isEnabled.mockReturnValue(true);
     mocks.workflowStart.mockRejectedValue(error);
 
     await expect(
       startPlanRegenerationWorkflow(input, {
-        isEnabled: mocks.isEnabled,
         workflowStart: mocks.workflowStart,
         failJob: mocks.failJob,
         log: mocks.log,
@@ -114,14 +95,12 @@ describe('startPlanRegenerationWorkflow', () => {
 
   it('terminalizes the job when returnValue rejects', async () => {
     const rejection = new Error('workflow-fatal');
-    mocks.isEnabled.mockReturnValue(true);
     mocks.workflowStart.mockResolvedValue({
       runId: 'wrun_regen',
       returnValue: Promise.reject(rejection),
     });
 
     const result = await startPlanRegenerationWorkflow(input, {
-      isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
       failJob: mocks.failJob,
       log: mocks.log,
@@ -146,7 +125,6 @@ describe('startPlanRegenerationWorkflow', () => {
 
   it('does not terminalize the job when returnValue rejects after intentional cancellation', async () => {
     const rejection = new Error('workflow-cancelled');
-    mocks.isEnabled.mockReturnValue(true);
     mocks.workflowStart.mockResolvedValue({
       runId: 'wrun_regen',
       returnValue: Promise.reject(rejection),
@@ -155,7 +133,6 @@ describe('startPlanRegenerationWorkflow', () => {
     markPlanRegenerationRunIntentionallyCancelled('wrun_regen');
 
     const result = await startPlanRegenerationWorkflow(input, {
-      isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
       failJob: mocks.failJob,
       log: mocks.log,
@@ -176,7 +153,6 @@ describe('startPlanRegenerationWorkflow', () => {
   });
 
   it('does not fail the job when returnValue resolves in-flight', async () => {
-    mocks.isEnabled.mockReturnValue(true);
     mocks.workflowStart.mockResolvedValue({
       runId: 'wrun_regen',
       returnValue: Promise.resolve({
@@ -187,7 +163,6 @@ describe('startPlanRegenerationWorkflow', () => {
     });
 
     const result = await startPlanRegenerationWorkflow(input, {
-      isEnabled: mocks.isEnabled,
       workflowStart: mocks.workflowStart,
       failJob: mocks.failJob,
       log: mocks.log,
