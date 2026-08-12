@@ -69,6 +69,27 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
   });
 
+  it('allows the exact regeneration drain through maintenance redirects', () => {
+    expect(
+      resolveMaintenanceRedirectPath(
+        true,
+        '/api/internal/jobs/regeneration/process',
+      ),
+    ).toBe(null);
+  });
+
+  it.each([
+    '/api/internal/maintenance/retention/cleanup',
+    '/api/internal/maintenance/plans/cleanup',
+    '/api/internal/maintenance/billing/reconcile-clerk',
+    '/api/internal/maintenance/notifications/email',
+    '/api/internal/jobs/regeneration/process/',
+    '/api/internal/jobs/regeneration/process/extra',
+    '/api/internal/jobs/regeneration/process-other',
+  ])('redirects maintenance-mode non-bypass path %s', (pathname) => {
+    expect(resolveMaintenanceRedirectPath(true, pathname)).toBe('/maintenance');
+  });
+
   it('shouldBypassClerkMiddleware', () => {
     expect(
       shouldBypassClerkMiddleware({
