@@ -68,6 +68,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
     "flags": "^4.2.4",
+    "framer-motion": "12.43.0",
     "lru-cache": "^11.5.2",
     "lucide-react": "^0.577.0",
     "next": "16.3.0",

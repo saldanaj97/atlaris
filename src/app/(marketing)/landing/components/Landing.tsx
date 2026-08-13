@@ -1,3 +1,4 @@
+import { CinematicAtlasHero } from './CinematicAtlasHero';
 import { DriftSection } from './DriftSection';
 import { HeroSection } from './HeroSection';
 import { InstrumentsSection } from './InstrumentsSection';
@@ -21,6 +22,8 @@ export function Landing() {
         <InstrumentsSection />
         <QuestionsSection />
         <PolarisSection />
+        <Hairline />
+        <CinematicAtlasHero />
       </div>
     </MarketingPageShell>
   );

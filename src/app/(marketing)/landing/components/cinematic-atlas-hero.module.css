@@ -1,0 +1,54 @@
+/* Scoped to CinematicAtlasHero — no global html/body/font resets. */
+
+.capsule {
+  border: 1px solid color-mix(in oklab, var(--border) 80%, transparent);
+  outline: 1px solid color-mix(in oklab, var(--border) 40%, transparent);
+  outline-offset: 3px;
+}
+
+.skyFilm {
+  position: absolute;
+  inset: -10%;
+  animation: cinematicPan 50s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  will-change: transform;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklab, var(--foreground) 50%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 3px 3px;
+}
+
+.waveChar {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+@keyframes cinematicPan {
+  0% {
+    transform: scale(1.01) translate3d(0, 0, 0);
+  }
+
+  40% {
+    transform: scale(1.045) translate3d(-1.2%, 0.8%, 0);
+  }
+
+  100% {
+    transform: scale(1.01) translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skyFilm {
+    animation: none;
+  }
+}

@@ -43,6 +43,7 @@ export default function SiteHeaderChrome({
   const isMarketing =
     pathname === ROUTES.HOME ||
     pathname === ROUTES.LANDING ||
+    pathname.startsWith(ROUTES.LANDING + '/') ||
     pathname === ROUTES.PRICING;
   const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
   return (
