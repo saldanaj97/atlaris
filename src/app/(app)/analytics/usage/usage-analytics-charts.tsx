@@ -562,73 +562,73 @@ export function WeeklyLineChart({
               XAxis,
               YAxis,
             }) => (
-              <ResponsiveChartContainer
-                ResponsiveContainer={ResponsiveContainer}
+              <figure
+                className='m-0 h-80 w-full overflow-visible'
                 aria-describedby={describedBy}
                 aria-labelledby={labelledBy}
-                config={chartConfig}
-                className='h-80 w-full overflow-visible'
-                role='img'
               >
-                <LineChart
-                  accessibilityLayer
-                  data={chartData}
-                  margin={{ top: 28, right: 18, bottom: 28, left: 0 }}
+                <ResponsiveChartContainer
+                  ResponsiveContainer={ResponsiveContainer}
+                  config={chartConfig}
+                  className='h-80 w-full overflow-visible'
                 >
-                  <CartesianGrid vertical={false} strokeDasharray='4 6' />
-                  <XAxis
-                    dataKey='week'
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={10}
-                    label={{
-                      value: 'Week',
-                      position: 'insideBottom',
-                      offset: -16,
-                    }}
-                  />
-                  <YAxis
-                    allowDecimals={false}
-                    axisLine={false}
-                    domain={[0, maxValue]}
-                    tickLine={false}
-                    tickMargin={10}
-                    ticks={yAxisTicks}
-                    width={34}
-                  />
-                  <Tooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator='line' />}
-                  />
-                  {series.map(({ plan }) => (
-                    <Line
-                      key={plan.id}
-                      className='analytics-plan-line'
-                      data-testid='plan-series'
-                      dataKey={plan.id}
-                      name={plan.topic}
-                      type='linear'
-                      stroke={`var(--color-${plan.id})`}
-                      strokeWidth={4}
-                      dot={false}
-                      activeDot={false}
-                      isAnimationActive
-                      animationDuration={LINE_ENTER_ANIMATION_MS}
-                      animationEasing='ease-out'
-                    >
-                      <LabelList
+                  <LineChart
+                    accessibilityLayer
+                    data={chartData}
+                    margin={{ top: 28, right: 18, bottom: 28, left: 0 }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray='4 6' />
+                    <XAxis
+                      dataKey='week'
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={10}
+                      label={{
+                        value: 'Week',
+                        position: 'insideBottom',
+                        offset: -16,
+                      }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      domain={[0, maxValue]}
+                      tickLine={false}
+                      tickMargin={10}
+                      ticks={yAxisTicks}
+                      width={34}
+                    />
+                    <Tooltip
+                      cursor={false}
+                      content={<ChartTooltipContent indicator='line' />}
+                    />
+                    {series.map(({ plan }) => (
+                      <Line
+                        key={plan.id}
+                        className='analytics-plan-line'
+                        data-testid='plan-series'
                         dataKey={plan.id}
-                        content={(labelProps: PointLabelProps) => (
-                          <AnimatedPointLabel
-                            {...labelProps}
-                            pointCount={weeks.length}
-                          />
-                        )}
-                      />
-                    </Line>
-                  ))}
-                </LineChart>
-              </ResponsiveChartContainer>
+                        name={plan.topic}
+                        type='linear'
+                        stroke={`var(--color-${plan.id})`}
+                        strokeWidth={4}
+                        dot={false}
+                        activeDot={false}
+                        isAnimationActive
+                        animationDuration={LINE_ENTER_ANIMATION_MS}
+                        animationEasing='ease-out'
+                      >
+                        <LabelList
+                          dataKey={plan.id}
+                          content={
+                            <AnimatedPointLabel pointCount={weeks.length} />
+                          }
+                        />
+                      </Line>
+                    ))}
+                  </LineChart>
+                </ResponsiveChartContainer>
+              </figure>
             )}
           </WithRecharts>
         </div>

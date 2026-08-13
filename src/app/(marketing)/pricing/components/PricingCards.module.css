@@ -19,6 +19,8 @@
   align-items: center;
   justify-content: center;
   height: 2.75rem;
+  margin: 0;
+  min-inline-size: 0;
   padding: 0.3rem;
   border-radius: 999px;
   border: 1px solid color-mix(in oklab, var(--border) 78%, transparent);

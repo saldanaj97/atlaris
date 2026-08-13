@@ -490,7 +490,11 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
       },
     );
     const patchResponse = await PATCH(patchRequest);
-    expect(patchResponse.status).toBe(200);
+    if (patchResponse.status !== 200) {
+      throw new Error(
+        `Failed to seed preferred model, status ${patchResponse.status}`,
+      );
+    }
 
     await db
       .update(users)

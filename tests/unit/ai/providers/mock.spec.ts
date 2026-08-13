@@ -189,7 +189,9 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       vi.stubEnv('MOCK_GENERATION_FAILURE_RATE', '1');
       const provider = new MockGenerationProvider({ delayMs: 0 });
 
-      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow();
+      await expect(provider.generate(SAMPLE_INPUT)).rejects.toThrow(
+        /simulated failure/,
+      );
     });
 
     it('probabilistic failures occur at expected rate (0.5)', async () => {

@@ -26,21 +26,23 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
   switch (status) {
     case 'available':
       return (
-        <Badge variant='secondary' role='status' aria-label='Available'>
-          Available
+        <Badge asChild variant='secondary'>
+          <output aria-label='Available'>Available</output>
         </Badge>
       );
     case 'coming_soon':
       return (
-        <Badge variant='outline' role='status' aria-label='Coming Soon'>
-          Coming Soon
+        <Badge asChild variant='outline'>
+          <output aria-label='Coming Soon'>Coming Soon</output>
         </Badge>
       );
     case 'connected':
       return (
-        <Badge variant='default' role='status' aria-label='Connected'>
-          <span className='mr-1 inline-block size-2 rounded-full bg-success' />
-          Connected
+        <Badge asChild variant='default'>
+          <output aria-label='Connected'>
+            <span className='mr-1 inline-block size-2 rounded-full bg-success' />
+            Connected
+          </output>
         </Badge>
       );
   }
@@ -106,7 +108,7 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   return (
     <Card
-      role='region'
+      as='section'
       aria-label={name}
       className='flex flex-col gap-4 border-border bg-card py-5 shadow-sm sm:gap-6 sm:py-6'
     >

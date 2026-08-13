@@ -1,5 +1,6 @@
 import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 describe('WorkflowSdkMetadataSchema', () => {
   it('accepts workflow SDK run metadata', () => {
@@ -18,13 +19,13 @@ describe('WorkflowSdkMetadataSchema', () => {
         provider: 'other',
         runId: 'wrun_test',
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
     expect(() =>
       WorkflowSdkMetadataSchema.parse({
         provider: 'workflow-sdk',
         runId: 'wrun_test',
         extra: true,
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 });

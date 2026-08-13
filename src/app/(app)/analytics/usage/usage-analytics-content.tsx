@@ -254,7 +254,7 @@ function MetricTile({
           {label}
         </p>
         {status ? (
-          <span role='img' aria-label={status.label} className='inline-flex'>
+          <span aria-label={status.label} className='inline-flex'>
             <TrendStatusIcon kind={status.icon} />
           </span>
         ) : null}

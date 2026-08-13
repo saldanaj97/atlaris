@@ -14,6 +14,7 @@ import {
 } from '@supabase/schema/constants';
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 const sampleBlock = { type: 'heading' as const, text: 'Intro' };
 
@@ -44,13 +45,13 @@ describe('lesson content Zod contracts', () => {
         version: 1,
         blocks: [{ type: 'bogus', text: 'x' }],
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects extra top-level fields on lesson content', () => {
     expect(() =>
       LessonContentSchema.parse({ ...sampleContent, extra: true }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects extra fields on a block', () => {
@@ -59,13 +60,13 @@ describe('lesson content Zod contracts', () => {
         version: 1,
         blocks: [{ ...sampleBlock, foo: 1 }],
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects empty blocks array', () => {
-    expect(() =>
-      LessonContentSchema.parse({ version: 1, blocks: [] }),
-    ).toThrow();
+    expect(() => LessonContentSchema.parse({ version: 1, blocks: [] })).toThrow(
+      z.ZodError,
+    );
   });
 
   it('rejects paragraph text over cap', () => {
@@ -79,7 +80,7 @@ describe('lesson content Zod contracts', () => {
           },
         ],
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects list item string over cap', () => {
@@ -93,7 +94,7 @@ describe('lesson content Zod contracts', () => {
           },
         ],
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects too many list items', () => {
@@ -103,7 +104,7 @@ describe('lesson content Zod contracts', () => {
         version: 1,
         blocks: [{ type: 'takeaways', items }],
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects too many blocks', () => {
@@ -114,7 +115,9 @@ describe('lesson content Zod contracts', () => {
         text: 'h',
       }),
     );
-    expect(() => LessonContentSchema.parse({ version: 1, blocks })).toThrow();
+    expect(() => LessonContentSchema.parse({ version: 1, blocks })).toThrow(
+      z.ZodError,
+    );
   });
 
   it('accepts valid batch provider output', () => {
@@ -137,7 +140,7 @@ describe('lesson content Zod contracts', () => {
     );
     expect(() =>
       ModuleLessonBatchProviderOutputSchema.parse({ version: 1, tasks }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('accepts metadata v1 and rejects extra keys', () => {
@@ -157,7 +160,7 @@ describe('lesson content Zod contracts', () => {
     ).not.toThrow();
     expect(() =>
       ModuleLessonGenerationMetadataSchema.parse({ version: 1, x: 1 }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('accepts workflow metadata in ModuleLessonGenerationMetadataSchema', () => {
@@ -249,7 +252,7 @@ describe('lesson content Zod contracts', () => {
         currentCount: 1,
         limit: 1.5,
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('rejects legacy disabled encoding on failed + reason', () => {
@@ -262,7 +265,7 @@ describe('lesson content Zod contracts', () => {
         moduleId,
         reason: 'disabled',
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 });
 
@@ -294,7 +297,7 @@ describe('module lesson generation status response schema', () => {
         moduleId: randomUUID(),
         status: 'processing',
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 
   it('accepts a workflow run ID with a persisted status', () => {
@@ -318,6 +321,6 @@ describe('module lesson generation status response schema', () => {
         moduleId: randomUUID(),
         status: 'ready',
       }),
-    ).toThrow();
+    ).toThrow(z.ZodError);
   });
 });
