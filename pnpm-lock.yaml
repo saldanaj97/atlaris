@@ -42,8 +42,8 @@ importers:
         specifier: 7.6.4
         version: 7.6.4(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@flags-sdk/vercel':
-        specifier: ^1.3.0
-        version: 1.3.0(@aws-sdk/credential-provider-web-identity@3.972.13)(flags@4.0.6(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+        specifier: ^1.4.6
+        version: 1.4.6(@aws-sdk/credential-provider-web-identity@3.972.13)(flags@4.2.4(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
       '@openrouter/sdk':
         specifier: ^0.2.11
         version: 0.2.11
@@ -102,8 +102,8 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@neondatabase/serverless@1.1.0)(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(postgres@3.4.9)
       flags:
-        specifier: ^4.0.6
-        version: 4.0.6(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^4.2.4
+        version: 4.2.4(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       lru-cache:
         specifier: ^11.5.2
         version: 11.5.2
@@ -873,8 +873,8 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@flags-sdk/vercel@1.3.0':
-    resolution: {integrity: sha512-IGwC8ye94+CnOYDxIdic1f2wZLbJQ67zXacD3J1/UWErcPdjtfp44RG23Qb9WujJ2VJbB8bzLdZ6R89nALtDeg==}
+  '@flags-sdk/vercel@1.4.6':
+    resolution: {integrity: sha512-S0hkhjdzFmOTvpfI5kQMF6fyTNkx3V0dov3DOi3C6M/EdXlieZhGeMv21npW7zzj5IyUYUmYHihextWLe7ib5Q==}
     peerDependencies:
       flags: '*'
 
@@ -2978,8 +2978,8 @@ packages:
   '@vercel/cli-auth@0.0.1':
     resolution: {integrity: sha512-CnqiuMlZ4pjs2LCPYiR6aLKPPd3Xb8SBI1Y7eotXKgpx6qgrGNY+E7EIyUt5ErGHJGIrCZyGG5WEo4bHtVmz2Q==}
 
-  '@vercel/flags-core@1.4.0':
-    resolution: {integrity: sha512-VeWaNAMZoBmOC5B0POjYXkuP+Llt9MtMDg0DFJObBRLKQ/zTtc9lY4hVVcOIx1JjJmO3JKMZDv43WtX/1jDbmg==}
+  '@vercel/flags-core@1.7.1':
+    resolution: {integrity: sha512-Fzm/+ubwxjEjhdGC8RXp+maQzjRFCNCPbXuxHd75v1tKllya45+gYRhc71HHqIVuteVWkdaYAdRdi+ytwaShiQ==}
     peerDependencies:
       '@openfeature/server-sdk': 1.18.0
       next: '*'
@@ -3004,6 +3004,10 @@ packages:
 
   '@vercel/oidc@3.4.0':
     resolution: {integrity: sha512-p0sKfHkfRmMaqqDwNL4tjnX9TgRrLMlEtUjIxfrEns8pOxz1R9ztqOVI+ehqiq93/2/HnfPe/UBZkfAZwnx0UA==}
+    engines: {node: '>= 20'}
+
+  '@vercel/oidc@3.5.0':
+    resolution: {integrity: sha512-jo7GgeJx2YMkjg9A28pFM5p88n5SnSHvDeNlf9898bRWiG9jPxwedj/gn/2XTw4UOTyQ50uHlrTGSlf/XU5tgw==}
     engines: {node: '>= 20'}
 
   '@vercel/queue@0.1.7':
@@ -4309,18 +4313,15 @@ packages:
     resolution: {integrity: sha512-2kCCtc+JvcZ86IGAz3Z2Y0A1baIz9fL31pH/0S1IqZr9Iwnjq8izfPtrCyQKO6TLMPELLsQMre7VDqeIKCsHkA==}
     engines: {node: '>=18'}
 
-  flags@4.0.6:
-    resolution: {integrity: sha512-8Rz/5L8Gkl2+LmlV2gOXx3iJNTYDooa8eGvshFev9nrXtrcvsXa5z/DXdtElHvN15psnSHg+r51lYHge2rCASw==}
+  flags@4.2.4:
+    resolution: {integrity: sha512-PzNTHW6y6RV4AANlmc7wGzYjTMIZ1Jpa29zeEYwXM9qqxc4XC1tfcjOLvae3KyZMWocgvoud86vSzc2zOa14nQ==}
     peerDependencies:
       '@opentelemetry/api': ^1.7.0
-      '@sveltejs/kit': '*'
       next: '*'
       react: '*'
       react-dom: '*'
     peerDependenciesMeta:
       '@opentelemetry/api':
-        optional: true
-      '@sveltejs/kit':
         optional: true
       next:
         optional: true
@@ -7089,10 +7090,10 @@ snapshots:
     optionalDependencies:
       '@noble/hashes': 2.2.0
 
-  '@flags-sdk/vercel@1.3.0(@aws-sdk/credential-provider-web-identity@3.972.13)(flags@4.0.6(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
+  '@flags-sdk/vercel@1.4.6(@aws-sdk/credential-provider-web-identity@3.972.13)(flags@4.2.4(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
     dependencies:
-      '@vercel/flags-core': 1.4.0(@aws-sdk/credential-provider-web-identity@3.972.13)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
-      flags: 4.0.6(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@vercel/flags-core': 1.7.1(@aws-sdk/credential-provider-web-identity@3.972.13)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))
+      flags: 4.2.4(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     transitivePeerDependencies:
       - '@aws-sdk/credential-provider-web-identity'
       - '@openfeature/server-sdk'
@@ -8906,9 +8907,10 @@ snapshots:
       xdg-app-paths: 5.1.0
       zod: 4.1.11
 
-  '@vercel/flags-core@1.4.0(@aws-sdk/credential-provider-web-identity@3.972.13)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
+  '@vercel/flags-core@1.7.1(@aws-sdk/credential-provider-web-identity@3.972.13)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))':
     dependencies:
       '@vercel/functions': 3.5.0(@aws-sdk/credential-provider-web-identity@3.972.13)
+      '@vercel/oidc': 3.5.0
       jose: 5.2.1
       js-xxhash: 4.0.0
     optionalDependencies:
@@ -8925,6 +8927,8 @@ snapshots:
   '@vercel/oidc@3.2.0': {}
 
   '@vercel/oidc@3.4.0': {}
+
+  '@vercel/oidc@3.5.0': {}
 
   '@vercel/queue@0.1.7':
     dependencies:
@@ -10434,7 +10438,7 @@ snapshots:
       semver-regex: 4.0.5
       super-regex: 1.1.0
 
-  flags@4.0.6(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  flags@4.2.4(@opentelemetry/api@1.9.1)(next@16.2.11(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@edge-runtime/cookies': 5.0.2
       jose: 5.10.0
