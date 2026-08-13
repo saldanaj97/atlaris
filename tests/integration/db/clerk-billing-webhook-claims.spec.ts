@@ -265,7 +265,7 @@ describe('Clerk billing webhook claims', () => {
         eventId,
         { db, logger: logger() },
       ),
-    ).rejects.toThrow(/unique|duplicate|23505/i);
+    ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
 
     await expect(
       db

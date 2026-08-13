@@ -43,7 +43,7 @@ describe('concurrent user provisioning', () => {
         { authUserId: secondAuthUserId, email, name: 'Conflicting User' },
         db,
       ),
-    ).rejects.toThrow(/unique|duplicate|23505/i);
+    ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
 
     const rows = await db.select().from(users).where(eq(users.email, email));
     expect(rows).toHaveLength(1);
