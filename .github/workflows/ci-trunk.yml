@@ -39,8 +39,8 @@ jobs:
       integration: ${{ steps.filter.outputs.integration }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: filter
         with:
           filters: |
@@ -75,36 +75,19 @@ jobs:
       TEST_DB_DEBUG: ${{ github.event.inputs.test_db_debug || 'false' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
         with:
           version: 11.9.0
-      - name: Setup pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Restore Vitest cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        id: restore-vitest-cache
-        with:
-          path: |
-            node_modules/.vite
-            node_modules/.vitest
-          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run integration tests (shard ${{ matrix.shard }}/${{ matrix.total }})
         env:
           NODE_ENV: 'test'
@@ -166,20 +149,12 @@ jobs:
           fi
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-integration-${{ matrix.shard }}
           path: coverage/
           retention-days: 7
           if-no-files-found: ignore
-      - name: Save Vitest cache
-        if: always()
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            node_modules/.vite
-            node_modules/.vitest
-          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   security-tests:
     name: Security (RLS)
@@ -189,36 +164,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install pnpm
-        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
         with:
           version: 11.9.0
-      - name: Setup pnpm store cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: ~/.local/share/pnpm/store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Restore Vitest cache
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        id: restore-vitest-cache
-        with:
-          path: |
-            node_modules/.vite
-            node_modules/.vitest
-          key: ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-vitest-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Run RLS security tests
         env:
           NODE_ENV: 'test'
@@ -243,14 +201,6 @@ jobs:
             echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
             echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
           fi
-      - name: Save Vitest cache
-        if: always()
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            node_modules/.vite
-            node_modules/.vitest
-          key: ${{ steps.restore-vitest-cache.outputs.cache-primary-key || format('{0}-vitest-{1}-{2}', runner.os, hashFiles('pnpm-lock.yaml'), github.sha) }}
 
   all-checks-trunk:
     name: All Checks Passed (trunk)
