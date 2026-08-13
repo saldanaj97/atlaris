@@ -42,6 +42,18 @@
     "nextjs/no-assign-module-variable": "off",
     "oxc/no-map-spread": "off",
     "react/react-in-jsx-scope": "off",
+    "vitest/expect-expect": [
+      "error",
+      {
+        "assertFunctionNames": [
+          "expect",
+          "expectTypeOf",
+          "assert",
+          "assertType",
+          "expect*"
+        ]
+      }
+    ],
     "vitest/no-conditional-expect": "off",
     "vitest/require-mock-type-parameters": "off",
     "vitest/valid-expect": "off"

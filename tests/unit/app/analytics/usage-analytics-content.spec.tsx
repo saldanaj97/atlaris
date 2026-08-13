@@ -165,7 +165,7 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
     expect(
-      screen.getByRole('img', { name: 'Eight-week pulse' }),
+      screen.getByRole('figure', { name: 'Eight-week pulse' }),
     ).toHaveAccessibleDescription(
       /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
     );

@@ -191,14 +191,13 @@ export function CheckoutSubscriptionSync({
   }
 
   return (
-    <div
-      className='mb-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'
-      role='status'
+    <output
+      className='mb-3 block rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'
       aria-live='polite'
     >
       {phase === 'updating'
         ? CHECKOUT_SYNC_UPDATING_MESSAGE
         : CHECKOUT_SYNC_TIMEOUT_MESSAGE}
-    </div>
+    </output>
   );
 }

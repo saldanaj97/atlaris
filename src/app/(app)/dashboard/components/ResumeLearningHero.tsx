@@ -62,13 +62,15 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         </div>
 
         <div className='mt-8'>
+          <progress
+            className='sr-only'
+            aria-label={`${plan.plan.topic} progress`}
+            value={progressPercent}
+            max={100}
+          />
           <div
             className='h-1.5 overflow-hidden rounded-full bg-muted'
-            role='progressbar'
-            aria-label={`${plan.plan.topic} progress`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progressPercent}
+            aria-hidden='true'
           >
             <div
               className='h-full origin-left rounded-full bg-primary animate-dashboard-trace [animation-delay:260ms] motion-reduce:animate-none'
