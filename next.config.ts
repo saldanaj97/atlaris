@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next';
 
 import { withSentryConfig } from '@sentry/nextjs';
+import path from 'node:path';
 import { withWorkflow } from 'workflow/next';
+
+const vercelFlagsDefinitionsShim = path.join(
+  process.cwd(),
+  'src/lib/flags/vercel-flags-definitions-shim.ts',
+);
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -38,6 +44,30 @@ const nextConfig: NextConfig = {
     'thread-stream',
     'sonic-boom',
   ],
+  // flags-core optional-imports a Vercel-build-only package. Turbopack still
+  // overlays "Can't resolve '@vercel/flags-definitions'" (vercel/flags#384).
+  turbopack: {
+    resolveAlias: {
+      '@vercel/flags-definitions':
+        './src/lib/flags/vercel-flags-definitions-shim.ts',
+    },
+  },
+  webpack: (config) => {
+    config.resolve ??= {};
+    const existing = config.resolve.alias;
+    if (Array.isArray(existing)) {
+      existing.push({
+        name: '@vercel/flags-definitions',
+        alias: vercelFlagsDefinitionsShim,
+      });
+    } else {
+      config.resolve.alias = {
+        ...existing,
+        '@vercel/flags-definitions': vercelFlagsDefinitionsShim,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {
