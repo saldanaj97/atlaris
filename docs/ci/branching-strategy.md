@@ -1,7 +1,7 @@
 # CI/CD & Branching Strategy
 
 **Audience:** New contributors and junior developers  
-**Last Updated:** February 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -42,7 +42,10 @@ We use two protected branches that serve as anchors for all development:
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
-    │   Merge to main ─────> Full CI ──> DB migrations ──> Prod    │
+    │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
+    │        ──> Staged Production (`vercel --prod --skip-domain`) │
+    │        ──> verify protected URL ──> `vercel promote` (live)  │
+    │        ──> DB migrations (contract)                          │
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
 ```
@@ -62,19 +65,21 @@ We use two protected branches that serve as anchors for all development:
 
 ## Environments
 
-| Environment    | Branch Source | URL              | Purpose             |
-| -------------- | ------------- | ---------------- | ------------------- |
-| **Local**      | Your branch   | `localhost:3000` | Development         |
-| **Preview**    | PR branch     | Vercel preview   | PR-level testing    |
-| **Staging**    | `develop`     | Vercel preview   | Integration testing |
-| **Production** | `main`        | Production URL   | Live users          |
+| Environment | Branch Source | URL | Purpose |
+| ----------- | ------------- | --- | ------- |
+| **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
+| **Preview** | PR branch | Vercel preview | PR-level testing |
+| **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
+| **Staged Production** | Exact `main` SHA | Protected generated Vercel URL | Production build + Production config **without** moving public domains |
+| **Live Production** | Promoted staged deployment | Production URL | Live users after explicit promote |
 
 ### Deployment Mechanism
 
 - **Preview**: Vercel native preview deployments on non-`main` branches.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases.
-- **Production**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand and contract phases.
+- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases; Vercel hosts the staging app.
+- **Staged Production**: operators create a Production-targeted deployment with `vercel --prod --skip-domain`, verify the protected generated URL, then promote with `vercel promote`. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after promote + health) phases.
 
 ---
 
@@ -176,9 +181,10 @@ git commit -m "feat: ..."
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
-2. Full CI runs
-3. An operator dispatches `production-db-migrations.yaml` phase `expand`
-4. Production app deploy runs; after health verification and archive checks, the operator dispatches phase `contract`
+2. Full CI runs (skipped for docs-only pushes via `paths-ignore`)
+3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
+4. An operator runs the **Staged Production** lane (`vercel --prod --skip-domain` → verify protected URL → `vercel promote`). See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md). There is no automatic Production app deploy on merge to `main`.
+5. After promote + health/archive checks, the operator dispatches phase `contract`
 
 ---
 
@@ -188,7 +194,7 @@ git commit -m "feat: ..."
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
 | **Staging**    | Operator dispatches `expand`, deploys, verifies health, then dispatches confirmed `contract` on `develop` |
-| **Production** | Operator dispatches `expand`, deploys, verifies health/archive, then dispatches confirmed `contract` on `main` |
+| **Production** | Operator dispatches `expand`, runs Staged Production (`--skip-domain` → verify → promote), then dispatches confirmed `contract` on `main` |
 
 Migration-related changes include:
 

@@ -55,7 +55,7 @@ Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=..
 
 | Method | Path | Body / response |
 | ------ | ---- | --------------- |
-| `GET` | `/api/v1/user/preferences` | `{ preferredAiModel, availableModels }` — tier-validated; does not return timezone or email prefs |
+| `GET` | `/api/v1/user/preferences` | `{ preferredAiModel, availableModels }` — tier-validated; when the DB value is `null` or invalid for the tier, `preferredAiModel` is the tier default (not raw null). Does not return timezone or email prefs |
 | `PATCH` | `/api/v1/user/preferences` | `{ preferredAiModel: PreferredAiModel \| null }` — `null` clears to tier default |
 
 UI: Settings `#ai` → `ModelPreferencesSelector` → `useModelPreferenceSave` → PATCH, then `router.refresh()`.
@@ -88,15 +88,15 @@ Token: HMAC payload with purpose `email_unsubscribe_all` (`src/features/notifica
 
 ## Feature flags (related)
 
-Declared in `src/flags.ts`:
+Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags — see [environment.md](../development/environment.md#vercel-flags) for the full Flags SDK table (including `module-lesson-generation`).
 
 | Flag key | Default | Role |
 | -------- | ------- | ---- |
 | `email-notification-delivery` | `false` (fail-closed) | Cron / maintenance / workflow must not send when off |
 | `maintenance-mode` | fallback `false` | Proxy routes app traffic to maintenance |
+| `module-lesson-generation` | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle |
 
-Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback — email delivery stays off until enabled in a Vercel environment with Flags configured.
-
+Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback — email delivery and lesson generation stay off until enabled in a Vercel environment with Flags configured.
 ## Pitfalls
 
 1. Do not write preference columns on `users` — they were dropped; use `user_preferences`.

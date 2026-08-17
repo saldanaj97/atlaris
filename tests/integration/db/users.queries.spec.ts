@@ -161,7 +161,7 @@ describe('User Queries', () => {
           authUserId: uniqueAuthId,
           email: 'second@example.com',
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
     });
 
     it('should enforce email format constraints', async () => {

@@ -1,5 +1,20 @@
 # Deployment Notes
 
+## Staged Production release lane
+
+For releasing the Production **application** binary without immediately moving public domains, use the guarded staged Production lane:
+
+1. Preflight an exact clean `main` SHA.
+2. `vercel --prod --skip-domain`
+3. Narrow smoke on the protected generated URL.
+4. Explicit human `vercel promote <deployment-id-or-url>` after verification.
+
+Full safety model, Deployment Checks decision (manual-only v1), abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+
+**Unpromoted does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
+
+Feature cutovers below still define migration expand/contract ordering relative to that app release.
+
 ## PDF Removal Cutover
 
 Migration `0027_windy_agent_zero` is not safe to run against an older app binary that still writes `origin='pdf'` or expects legacy PDF columns.
@@ -65,13 +80,15 @@ After deploying a release that includes new Supabase migrations:
 
 1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
-3. Each successful phase runs the read-only effective-privilege attestation automatically. To re-run it against the linked target, use:
+3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 
 ```bash
-bash scripts/db/attest-effective-privileges.sh
+bash scripts/db/attest-effective-privileges.sh          # defaults to contract
+bash scripts/db/attest-effective-privileges.sh expand
+bash scripts/db/attest-effective-privileges.sh contract
 ```
 
-It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants.
+It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants. Full checklist and allowlist paths: [client-usage.md — Privilege model and attestation](../database/client-usage.md#privilege-model-and-attestation).
 4. Set worker tokens in the target environment for enabled internal routes:
    - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
@@ -91,11 +108,11 @@ WHERE jobname = 'retention-cleanup';
 
 If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
 
-6. Enable module lesson generation when the hosted environment should serve it:
+7. Enable module lesson generation when the hosted environment should serve it:
    - Register the boolean flag before the first smoke test if it does not already exist:
 
 ```bash
-vercel flags add module-lesson-generation --kind boolean \
+vercel flags create module-lesson-generation \
   --description "Allow synchronous and workflow-backed module lesson generation" \
   --scope <team>
 vercel flags disable module-lesson-generation --environment development --scope <team>

@@ -47,11 +47,7 @@ export function PricingCards({
   return (
     <div className={styles.stack}>
       <div className={styles.periodDock}>
-        <div
-          aria-label='Billing period'
-          className={styles.periodList}
-          role='group'
-        >
+        <fieldset aria-label='Billing period' className={styles.periodList}>
           {(['month', 'annual'] as const).map((value) => (
             <button
               aria-pressed={period === value}
@@ -69,7 +65,7 @@ export function PricingCards({
                   : 'Yearly · Soon'}
             </button>
           ))}
-        </div>
+        </fieldset>
       </div>
 
       <div ref={rootRef} className={styles.cards}>

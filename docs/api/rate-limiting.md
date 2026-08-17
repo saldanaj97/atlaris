@@ -6,13 +6,14 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category       | Limit        | Window   | Use Case                                  |
-| -------------- | ------------ | -------- | ----------------------------------------- |
-| `aiGeneration` | 10 requests  | 1 hour   | AI generation, regeneration, enhancement  |
-| `integration`  | 30 requests  | 1 hour   | Reserved for future third-party endpoints |
-| `mutation`     | 60 requests  | 1 minute | Plan CRUD, task updates, DB writes        |
-| `read`         | 120 requests | 1 minute | Status checks, profile reads, preferences |
-| `oauth`        | 20 requests  | 1 hour   | Reserved for future OAuth initiation      |
+| Category           | Limit        | Window   | Use Case                                         |
+| ------------------ | ------------ | -------- | ------------------------------------------------ |
+| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                 |
+| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate meter)  |
+| `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints        |
+| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences    |
+| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences        |
+| `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation             |
 
 ### Plan Generation Rate Limit
 
@@ -20,7 +21,7 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | ----------------------------------------------- | --------------------------------------------------- | ------------------------------ |
 | `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user (generation_attempts) |
 
-Source of truth for durable generation limits is `src/lib/ai/generation-policy.ts`. Avoid hardcoding numeric values in docs/tests.
+Source of truth for durable generation limits is `src/shared/constants/generation.ts` (enforced in `src/lib/api/rate-limit.ts`). Avoid hardcoding numeric values in docs/tests.
 
 ## Architecture
 
@@ -69,13 +70,14 @@ export const POST = requestBoundary.route(
 
 ### Category Selection Guide
 
-| Endpoint Type                            | Category       |
-| ---------------------------------------- | -------------- |
-| AI generation, regeneration, enhancement | `aiGeneration` |
-| Future third-party integration writes    | `integration`  |
-| Create/update/delete plans, tasks, etc.  | `mutation`     |
-| GET endpoints for data retrieval         | `read`         |
-| Future OAuth initiation (not callbacks)  | `oauth`        |
+| Endpoint Type                                   | Category           |
+| ----------------------------------------------- | ------------------ |
+| Plan generation, regeneration                   | `aiGeneration`     |
+| Module lesson batch generation                  | `lessonGeneration` |
+| Future third-party integration writes           | `integration`      |
+| Plan delete/bulk-delete, profile, preferences   | `mutation`         |
+| GET endpoints for data retrieval / status polls | `read`             |
+| Future OAuth initiation (not callbacks)         | `oauth`            |
 
 ### Plan Generation (Special Case)
 
@@ -140,9 +142,18 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
 
+### Lesson Generation (`lessonGeneration`)
+
+Separate from `aiGeneration` so plan-create flows are not starved by module lesson batches.
+
+- `POST /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate`
+
+Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-limit.ts` (5 requests / rolling hour per user, in-memory). Monthly billing meter `lessonGeneration` is separate — see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline).
+
 ### Mutation (`mutation`)
 
 - `DELETE /api/v1/plans/[planId]`
+- `POST /api/v1/plans/bulk-delete`
 - `PATCH /api/v1/user/preferences`
 - `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`
@@ -154,6 +165,7 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 - `GET /api/v1/plans/[planId]/status`
 - `GET /api/v1/plans/[planId]/attempts`
 - `GET /api/v1/plans/[planId]/tasks`
+- `GET /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status`
 - `GET /api/v1/user/preferences`
 - `GET /api/v1/user/subscription`
 - `GET /api/v1/user/profile`

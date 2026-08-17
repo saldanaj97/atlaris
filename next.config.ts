@@ -48,11 +48,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-const workflowNextConfig = withWorkflow(nextConfig, {
-  workflows: {
-    lazyDiscovery: true,
-  },
-});
+// workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).
+const workflowNextConfig = withWorkflow(nextConfig);
 
 export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:

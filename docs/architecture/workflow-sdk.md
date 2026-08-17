@@ -1,7 +1,7 @@
 # Workflow SDK (durable execution)
 
 **Audience:** Developers operating or extending workflow-backed generation.
-**Last Updated:** May 2026
+**Last Updated:** August 2026
 
 ## Overview
 
@@ -29,8 +29,8 @@ All three product paths use durable workflows:
 
 | Path | Behavior |
 | ---- | -------- |
-| Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202` while work continues. |
-| Plan regeneration | Enqueue and worker drain start `planRegenerationWorkflow`; drain may return `workflow-in-flight` while a run is active. |
+| Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202`; clients poll `GET .../lesson-content/status`. |
+| Plan regeneration | Enqueue and worker drain call `attachPlanRegenerationWorkflow` (start + CAS persist `job_queue` runId); drain may return `workflow-in-flight`. |
 | Plan create/retry | SSE sessions reserve the attempt in-process, then run provider/finalization in `planGenerationWorkflow` (`await run.returnValue` — SSE transport unchanged). |
 
 Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
@@ -47,11 +47,11 @@ DB, AI, and queue side effects live in `"use step"` functions. Request routes au
 
 ## Correlation metadata
 
-| Surface                  | Where run ID is stored                                                          |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| Module lesson generation | `modules` lesson-generation metadata (`persistModuleLessonWorkflowRunMetadata`) |
-| Plan regeneration        | `job_queue.data.workflow` on the regeneration job payload                       |
-| Plan create/retry        | `generation_attempts.metadata.workflow`                                         |
+| Surface                  | Where run ID is stored                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| Module lesson generation | `modules.lessonGenerationMetadata.workflow.runId` (written by `claimModuleLessonGenerationOrDescribe` during CAS claim) |
+| Plan regeneration        | `job_queue.payload.workflow.runId` (CAS via `updateJobPayloadIfRunIdMissing` / attach layer) |
+| Plan create/retry        | `generation_attempts.metadata.workflow`                                                |
 
 To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow UI for the `runId`.
 

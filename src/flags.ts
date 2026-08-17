@@ -1,9 +1,10 @@
 import { vercelAdapter } from '@flags-sdk/vercel';
+import type { Adapter } from 'flags';
 import { flag } from 'flags/next';
 
-const fallbackAdapter = () => ({
-  decide: ({ defaultValue }: { defaultValue?: boolean }) =>
-    defaultValue ?? false,
+const fallbackAdapter = (): Adapter<boolean, unknown> => ({
+  decide: ({ defaultValue }) =>
+    typeof defaultValue === 'boolean' ? defaultValue : false,
 });
 
 export const maintenanceMode = flag<boolean>({

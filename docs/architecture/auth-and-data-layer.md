@@ -37,6 +37,14 @@ If any layer fails, access is denied. The system is **fail-closed** — missing 
 3. Calls `ensureUserRecord(authUserId)` to resolve or provision the DB user
 4. Guarantees cleanup of the RLS connection in a `finally` block
 
+### First-user provisioning
+
+`ensureUserRecord` **reads** the `users` row through the request RLS client. When no row exists, it calls `provisionUserFromVerifiedAuthSession` (`src/features/auth/user-provisioning.ts`), which inserts via the **service-role** client (`getOrCreateUser(..., serviceRoleDb)`).
+
+This matches the contract-phase revoke of `authenticated` **INSERT on `users`** (see [deploy cutover](../development/deploy.md) and effective-privilege attestation). Request handlers still must not import `@supabase/service-role` directly — provisioning is a feature-owned boundary outside the route layer.
+
+Local product testing that expects a first-login auto-create without a seeded `users` row will fail closed after the revoke; seed the row or exercise the real provisioning path.
+
 ### When to use which
 
 ```typescript
@@ -149,8 +157,9 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
 | Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
 | Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
+| First-user provisioning      | `provisionUserFromVerifiedAuthSession` (service-role) | Authenticated role cannot INSERT `users` after contract cutover |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
-| Workers / background jobs    | `db` from `@supabase/service-role` | No user session exists                                 |
+| Workers / background jobs / workflow steps | `db` from `@supabase/service-role` | No user session; server-owned writes after prior auth checks |
 | Clerk webhooks               | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
 
 ### Fail-closed design
