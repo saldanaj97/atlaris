@@ -65,14 +65,14 @@ describe('MobileNavigation', () => {
     ).toHaveAttribute('href', '/plans/new');
   });
 
-  it('uses Get started CTA on marketing sheets when signed out', async () => {
+  it('uses Begin tonight CTA on marketing sheets when signed out', async () => {
     const user = userEvent.setup();
 
     renderMobileNavigation();
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
       'href',
       '/auth/sign-in',
     );

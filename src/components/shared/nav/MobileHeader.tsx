@@ -48,7 +48,7 @@ export default function MobileHeader({
   const primaryCtaHref = isAuthenticated
     ? ROUTES.PLANS.NEW
     : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
+  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Begin tonight';
 
   return (
     <div className='relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden'>

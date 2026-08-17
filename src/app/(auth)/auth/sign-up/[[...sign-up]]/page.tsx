@@ -6,7 +6,7 @@ import { SignUp } from '@clerk/nextjs';
 export const metadata: Metadata = {
   title: 'Create Account | Atlaris',
   description:
-    'Create your Atlaris account to turn learning goals into structured schedules.',
+    'Create your Atlaris account to chart a course for the quiet hours.',
 };
 
 export default function SignUpPage() {

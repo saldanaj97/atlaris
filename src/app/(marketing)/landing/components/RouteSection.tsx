@@ -1,4 +1,7 @@
+import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from './SectionOverline';
+
+import styles from './landing.module.css';
 
 const ROUTE_STOPS = [
   {
@@ -18,45 +21,58 @@ const ROUTE_STOPS = [
   },
 ] as const;
 
+const ROUTE_STOP_DELAYS = [
+  styles.delay3,
+  styles.delay4,
+  styles.delay5,
+] as const;
+
 export function RouteSection() {
   return (
     <section
       className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
       aria-labelledby='landing-route-heading'
     >
-      <div className='text-center'>
-        <SectionOverline>The route</SectionOverline>
-        <h2
-          id='landing-route-heading'
-          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
-        >
-          Three moves. One steady course.
-        </h2>
-      </div>
-
-      <div className='relative mt-14'>
-        <ConstellationRoute />
-        <div className='relative grid gap-10 md:grid-cols-3 md:gap-6 md:pt-28'>
-          {ROUTE_STOPS.map((stop, index) => (
-            <article key={stop.title} className='text-center md:text-left'>
-              <p className='font-serif text-sm font-semibold tracking-[0.2em] text-primary'>
-                {stop.numeral}
-              </p>
-              <h3 className='mt-3 font-serif text-xl font-semibold tracking-[-0.015em] text-foreground'>
-                {stop.title}
-              </h3>
-              <p className='mx-auto mt-3 max-w-[18rem] font-sans text-sm leading-relaxed text-muted-foreground md:mx-0'>
-                {stop.copy}
-              </p>
-              {index === 0 ? (
-                <p className='mt-3 font-sans text-xs tracking-[0.08em] text-primary/80 uppercase'>
-                  ~2 minutes
-                </p>
-              ) : null}
-            </article>
-          ))}
+      <RevealAnimation>
+        <div className='text-center'>
+          <SectionOverline>The route</SectionOverline>
+          <h2
+            id='landing-route-heading'
+            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+          >
+            Three moves. One steady course.
+          </h2>
         </div>
-      </div>
+      </RevealAnimation>
+
+      <RevealAnimation>
+        <div className='relative mt-14'>
+          <ConstellationRoute />
+          <div className='relative grid gap-10 md:grid-cols-3 md:gap-6 md:pt-28'>
+            {ROUTE_STOPS.map((stop, index) => (
+              <article
+                key={stop.title}
+                className={`text-center md:text-left ${styles.revealItem} ${ROUTE_STOP_DELAYS[index]}`}
+              >
+                <p className='font-serif text-sm font-semibold tracking-[0.2em] text-primary'>
+                  {stop.numeral}
+                </p>
+                <h3 className='mt-3 font-serif text-xl font-semibold tracking-[-0.015em] text-foreground'>
+                  {stop.title}
+                </h3>
+                <p className='mx-auto mt-3 max-w-[18rem] font-sans text-sm leading-relaxed text-muted-foreground md:mx-0'>
+                  {stop.copy}
+                </p>
+                {index === 0 ? (
+                  <p className='mt-3 font-sans text-xs tracking-[0.08em] text-primary/80 uppercase'>
+                    ~2 minutes
+                  </p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+      </RevealAnimation>
     </section>
   );
 }
@@ -71,6 +87,7 @@ function ConstellationRoute() {
       aria-hidden='true'
     >
       <path
+        className={styles.routePath}
         d='M 60 90 C 250 20, 420 100, 500 60 C 580 20, 760 100, 940 40'
         stroke='var(--primary)'
         strokeOpacity='0.45'
@@ -78,9 +95,27 @@ function ConstellationRoute() {
         strokeDasharray='1'
         pathLength={1}
       />
-      <circle cx='60' cy='90' r='5' fill='var(--primary)' />
-      <circle cx='500' cy='60' r='5' fill='var(--primary)' />
-      <circle cx='940' cy='40' r='5' fill='var(--primary)' />
+      <circle
+        className={styles.routeDot}
+        cx='60'
+        cy='90'
+        r='5'
+        fill='var(--primary)'
+      />
+      <circle
+        className={styles.routeDot}
+        cx='500'
+        cy='60'
+        r='5'
+        fill='var(--primary)'
+      />
+      <circle
+        className={styles.routeDot}
+        cx='940'
+        cy='40'
+        r='5'
+        fill='var(--primary)'
+      />
     </svg>
   );
 }

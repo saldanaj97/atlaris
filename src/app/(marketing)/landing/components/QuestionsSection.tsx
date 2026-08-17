@@ -1,25 +1,28 @@
+import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from './SectionOverline';
+
+import styles from './landing.module.css';
 
 const QUESTIONS = [
   {
-    question: 'How long does setup take?',
+    question: 'How long before I have a plan?',
     answer:
-      'About two minutes. You give Atlaris a goal, your current level, and your weekly hours — it drafts the full plan from there.',
+      'About two minutes. Name the goal, your level, and the hours you actually have. Atlaris charts the route from there. You still have tonight for the work.',
   },
   {
-    question: 'What if my week falls apart?',
+    question: 'What if I fall off again?',
     answer:
-      'The plan waits. Nothing expires, nothing punishes you. When you come back, the route is exactly where you left it — pick up the next task and keep moving.',
+      'The plan waits. Nothing expires. Nothing punishes you. Come back and pick up the next task — the route is exactly where you left it.',
   },
   {
-    question: 'Do I need to know what to study?',
+    question: 'What if I only know the goal?',
     answer:
-      'No. Bring the destination — “learn TypeScript,” “pass the exam,” “ship the app.” Atlaris charts the modules, the order, and the resources for each step.',
+      'That is enough. Bring the destination — “learn TypeScript,” “pass the exam,” “ship the app.” Atlaris charts the modules, the order, and the resources. You open the next task, not a blank page.',
   },
   {
-    question: 'Can I try it before paying?',
+    question: 'Can I begin tonight without paying?',
     answer:
-      'Yes. Create your first plan free, and see the pricing page for where each tier picks up.',
+      'Yes. Create a plan free. See pricing when you want more plans or a route that runs longer.',
   },
 ] as const;
 
@@ -29,34 +32,43 @@ export function QuestionsSection() {
       className='mx-auto max-w-3xl px-6 py-16 md:px-8 md:py-24'
       aria-labelledby='landing-questions-heading'
     >
-      <div className='text-center'>
-        <SectionOverline>Quiet questions</SectionOverline>
-        <h2
-          id='landing-questions-heading'
-          className='mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl'
-        >
-          Asked at 11pm, answered here.
-        </h2>
-      </div>
+      <RevealAnimation>
+        <div className='text-center'>
+          <SectionOverline>Quiet questions</SectionOverline>
+          <h2
+            id='landing-questions-heading'
+            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+          >
+            Asked at 11pm, answered here.
+          </h2>
+        </div>
+      </RevealAnimation>
 
-      <div className='mt-10 divide-y divide-border/50 border-y border-border/50'>
-        {QUESTIONS.map((item) => (
-          <details key={item.question} className='group py-5'>
-            <summary className='flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-base font-semibold text-foreground transition-colors hover:text-primary [&::-webkit-details-marker]:hidden'>
-              {item.question}
-              <span
-                aria-hidden='true'
-                className='text-primary transition-transform duration-300 group-open:rotate-45 motion-reduce:transition-none'
+      <RevealAnimation>
+        <div className='mt-10 divide-y divide-border/50 border-y border-border/50'>
+          {QUESTIONS.map((item) => (
+            <details
+              key={item.question}
+              className={`group py-5 ${styles.questionRow}`}
+            >
+              <summary className='flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm font-serif text-base font-semibold text-foreground transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden'>
+                {item.question}
+                <span
+                  aria-hidden='true'
+                  className='text-primary transition-transform duration-300 group-open:rotate-45 motion-reduce:transition-none'
+                >
+                  +
+                </span>
+              </summary>
+              <p
+                className={`mt-3 max-w-prose font-sans text-sm leading-relaxed text-muted-foreground ${styles.faqAnswer}`}
               >
-                +
-              </span>
-            </summary>
-            <p className='mt-3 max-w-prose font-sans text-sm leading-relaxed text-muted-foreground'>
-              {item.answer}
-            </p>
-          </details>
-        ))}
-      </div>
+                {item.answer}
+              </p>
+            </details>
+          ))}
+        </div>
+      </RevealAnimation>
     </section>
   );
 }

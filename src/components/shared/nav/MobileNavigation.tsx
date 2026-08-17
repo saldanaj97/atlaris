@@ -43,7 +43,7 @@ export default function MobileNavigation({
   const primaryCtaHref = isAuthenticated
     ? ROUTES.PLANS.NEW
     : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
+  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Begin tonight';
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

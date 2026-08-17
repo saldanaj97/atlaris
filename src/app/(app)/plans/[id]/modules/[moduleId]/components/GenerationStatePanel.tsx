@@ -108,7 +108,7 @@ function GenerationAction({
         <span className='animate-spin motion-reduce:animate-none'>
           <Loader2 className='size-4' />
         </span>
-        Generating lessons...
+        Generating lessons…
       </div>
     );
   }
@@ -121,7 +121,7 @@ function GenerationAction({
   return (
     <Button onClick={onGenerate} disabled={isPending}>
       {isPending
-        ? 'Generating...'
+        ? 'Generating…'
         : status === 'failed'
           ? 'Retry lesson generation'
           : 'Generate lessons'}

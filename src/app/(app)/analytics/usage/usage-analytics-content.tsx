@@ -11,7 +11,6 @@ import {
   StreakStepLineChart,
   WeeklyLineChart,
 } from './usage-analytics-charts';
-import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
 import { PageHeader } from '@/components/ui/page-header';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
@@ -178,7 +177,7 @@ export function UsageAnalyticsContent({
       <Surface
         aria-label='Eight-week pulse analytics design'
         padding='none'
-        className={cn(ledgerGlassSurface, 'w-full px-5 pt-5 shadow-none')}
+        className='w-full px-5 pt-5'
       >
         <div className='min-w-0'>
           <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -242,12 +241,9 @@ function MetricTile({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        'flex min-h-72 flex-col p-4',
-        ledgerGlassSurface,
-        className,
-      )}
+    <Surface
+      padding='none'
+      className={cn('flex min-h-72 flex-col p-4', className)}
     >
       <div className='flex items-start justify-between gap-3'>
         <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
@@ -269,7 +265,7 @@ function MetricTile({
 
       <div className='mt-4 min-h-36 overflow-visible'>{chart}</div>
       <p className='mt-auto pt-3 text-sm text-muted-foreground'>{comparison}</p>
-    </div>
+    </Surface>
   );
 }
 
