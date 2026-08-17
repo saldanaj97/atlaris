@@ -62,6 +62,35 @@ describe('requestBoundary', () => {
     expect(scope).not.toBeNull();
   });
 
+  it('does not emit the withServerComponentContext deprecation warning', async () => {
+    const user = buildUserFixture({
+      id: 'user_1',
+      authUserId: 'auth_1',
+      email: 'component@example.test',
+      name: 'Component User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await expect(requestBoundary.component(async () => 'ok')).resolves.toBe(
+      'ok',
+    );
+
+    expect(
+      warn.mock.calls.some((args) =>
+        args.some(
+          (arg) =>
+            typeof arg === 'string' &&
+            arg.includes('withServerComponentContext() is deprecated'),
+        ),
+      ),
+    ).toBe(false);
+    warn.mockRestore();
+  });
+
   it('returns null for optional component and action callers when unauthenticated', async () => {
     await expect(
       requestBoundary.component(async () => 'unreachable'),
