@@ -6,6 +6,7 @@ import type {
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/features/ai/types/provider.types';
+import type { ChatRequest } from '@openrouter/sdk/models';
 
 import { getOutputTokenCeiling } from '@/features/ai/cost';
 import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
@@ -36,7 +37,10 @@ import * as Sentry from '@sentry/nextjs';
 
 export type OpenRouterClient = {
   chat: {
-    send: import('@openrouter/sdk').OpenRouter['chat']['send'];
+    send: (
+      request: ChatRequest,
+      options?: { signal?: AbortSignal; timeoutMs?: number },
+    ) => Promise<unknown>;
   };
 };
 
@@ -325,11 +329,17 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       }
       const siteUrl = cfg.siteUrl ?? openRouterEnv.siteUrl;
       const appName = cfg.appName ?? openRouterEnv.appName;
-      this.client = new OpenRouter({
+      const client = new OpenRouter({
         apiKey,
-        ...(siteUrl && { siteUrl }),
-        ...(appName && { appName }),
-      }) as OpenRouterClient;
+        ...(siteUrl && { httpReferer: siteUrl }),
+        ...(appName && { appTitle: appName }),
+      });
+      this.client = {
+        chat: {
+          send: (request, options) =>
+            client.chat.send({ chatRequest: request }, options),
+        },
+      };
     }
   }
 
