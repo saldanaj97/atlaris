@@ -38,24 +38,26 @@ function ModuleSwitcherMenuItem({
     );
   }
 
-  const linkClassName = cn(
-    'flex items-center gap-2',
-    isCurrent && 'bg-primary/20 text-primary',
-  );
-
   return (
     <DropdownMenuItem asChild>
       <Link
         href={`/plans/${planId}/modules/${item.id}`}
-        className={linkClassName}
+        className={cn(
+          'flex items-center gap-2',
+          isCurrent && 'bg-primary/20 text-primary',
+        )}
+        aria-label={item.isComplete ? `${item.title}, completed` : undefined}
       >
         <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary'>
           {item.order}
         </span>
         <span className='truncate'>{item.title}</span>
-        {isCurrent && (
-          <CheckCircle2 className='ml-auto size-4 shrink-0 text-primary' />
-        )}
+        {item.isComplete ? (
+          <CheckCircle2
+            className='ml-auto size-4 shrink-0 text-success'
+            aria-hidden
+          />
+        ) : null}
       </Link>
     </DropdownMenuItem>
   );
@@ -67,12 +69,14 @@ export function ModuleBreadcrumbNav({
   moduleId,
   moduleOrder,
   allModules,
+  isComplete,
 }: {
   planId: string;
   planTopic: string;
   moduleId: string;
   moduleOrder: number;
   allModules: ModuleDetailNavItem[];
+  isComplete: boolean;
 }) {
   return (
     <nav className='mb-6'>
@@ -91,7 +95,22 @@ export function ModuleBreadcrumbNav({
         </li>
         <li>
           <DropdownMenu>
-            <DropdownMenuTrigger className='inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1.5 font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30'>
+            <DropdownMenuTrigger
+              aria-label={
+                isComplete
+                  ? `Module ${moduleOrder}, completed`
+                  : `Module ${moduleOrder}`
+              }
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                isComplete
+                  ? 'bg-success/15 text-success hover:bg-success/25 dark:bg-success/25 dark:text-success-foreground dark:hover:bg-success/30'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
+              )}
+            >
+              {isComplete ? (
+                <CheckCircle2 className='size-3.5' aria-hidden />
+              ) : null}
               Module {moduleOrder}
               <ChevronDown className='size-3.5' />
             </DropdownMenuTrigger>
@@ -104,7 +123,7 @@ export function ModuleBreadcrumbNav({
                   key={item.id}
                   planId={planId}
                   moduleId={moduleId}
-                  item={item}
+                  item={item.id === moduleId ? { ...item, isComplete } : item}
                 />
               ))}
             </DropdownMenuContent>

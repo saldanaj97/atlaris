@@ -47,7 +47,7 @@ export function TimelineModuleCard({
         value={module.id}
         disabled={isLocked}
         className={cn(
-          'group/accordion flex flex-1 flex-col rounded-2xl border transition-[border-color,background-color,box-shadow] duration-300',
+          'group/accordion flex flex-1 flex-col rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
           getTimelineCardClassName(module.status),
         )}
       >
@@ -116,6 +116,7 @@ export function TimelineModuleCard({
         >
           <div className='border-t border-border pt-4'>
             <TimelineTaskList
+              planId={planId}
               module={module}
               statuses={statuses}
               onTaskStatusChange={onTaskStatusChange}

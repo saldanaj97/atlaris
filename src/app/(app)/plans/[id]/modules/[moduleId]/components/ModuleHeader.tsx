@@ -4,10 +4,8 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
 import { ModuleRoundNavLink } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleRoundNavLink';
-import { ModuleStatsGrid } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleStatsGrid';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import { CheckCircle2, Lock } from 'lucide-react';
 
@@ -23,7 +21,7 @@ interface ModuleHeaderProps {
   allModules: ModuleDetailNavItem[];
 }
 
-/** Module detail hero: title on the left, bearing on the right, stats strip below. */
+/** Module detail hero: title on the left, bearing on the right. */
 export function ModuleHeader({
   module,
   planId,
@@ -36,11 +34,11 @@ export function ModuleHeader({
   allModules,
 }: ModuleHeaderProps) {
   const {
-    totalTasks,
     completedTasks,
-    totalMinutes,
+    totalTasks,
     completionPercent: completion,
   } = deriveModuleCompletionSummary(module, statuses);
+  const isModuleComplete = totalTasks > 0 && completedTasks === totalTasks;
 
   return (
     <article className='mb-8'>
@@ -50,9 +48,10 @@ export function ModuleHeader({
         moduleId={module.id}
         moduleOrder={module.order}
         allModules={allModules}
+        isComplete={isModuleComplete}
       />
 
-      <GradientProgressHeroFrame completion={completion}>
+      <div className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
         <div className='flex flex-col gap-6 sm:flex-row sm:items-stretch sm:justify-between'>
           <div className='min-w-0'>
             <div className='flex items-center justify-between gap-4'>
@@ -80,7 +79,7 @@ export function ModuleHeader({
               {!previousModulesComplete && (
                 <Lock className='size-5 text-muted-foreground md:size-6' />
               )}
-              {completion === 100 && (
+              {isModuleComplete && (
                 <CheckCircle2 className='size-5 text-success md:size-6' />
               )}
             </h1>
@@ -123,15 +122,7 @@ export function ModuleHeader({
             </div>
           </div>
         </div>
-      </GradientProgressHeroFrame>
-
-      <ModuleStatsGrid
-        completedTasks={completedTasks}
-        totalTasks={totalTasks}
-        totalMinutes={totalMinutes}
-        estimatedMinutes={module.estimatedMinutes}
-        completion={completion}
-      />
+      </div>
     </article>
   );
 }

@@ -90,6 +90,28 @@ describe('PlanTimeline', () => {
     ).toBeInTheDocument();
   });
 
+  it('links each task card to the parent module page', () => {
+    const planId = createId('plan');
+    const moduleOneId = createId('module');
+    const modules = [
+      createModule(1, 'Foundations', [createTask(1, 'Intro')], moduleOneId),
+      createModule(2, 'Advanced', [createTask(1, 'Deep dive')]),
+    ];
+
+    render(
+      <PlanTimeline
+        planId={planId}
+        modules={modules}
+        onStatusChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('link', { name: 'Intro' })).toHaveAttribute(
+      'href',
+      `/plans/${planId}/modules/${moduleOneId}`,
+    );
+  });
+
   it('disables locked module toggles', () => {
     const modules = [
       createModule(1, 'Foundations', [createTask(1, 'Intro')]),
