@@ -16,7 +16,6 @@ export function Landing() {
     <MarketingPageShell>
       <CelestialBackdrop />
       <div className='relative z-10'>
-        <Hairline />
         <HeroSection />
         <Hairline />
         <DriftSection />

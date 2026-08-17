@@ -1,3 +1,4 @@
+import { ROUTES } from '@/features/navigation';
 import Link from 'next/link';
 
 interface BrandLogoProps {
@@ -12,6 +13,7 @@ interface BrandLogoProps {
 /**
  * Shared brand logo component used across desktop and mobile headers.
  * Wordmark uses display face (Sora via `font-serif`); chrome stays on product tokens.
+ * Always links to the marketing landing page — `/` redirects signed-in users to dashboard.
  */
 export default function BrandLogo({
   size = 'md',
@@ -22,7 +24,7 @@ export default function BrandLogo({
 
   return (
     <Link
-      href='/'
+      href={ROUTES.LANDING}
       onClick={onClick}
       className='flex items-center'
       aria-label='Atlaris - Go to homepage'

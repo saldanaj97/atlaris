@@ -61,8 +61,40 @@ describe('MobileNavigation', () => {
       '/dashboard',
     );
     expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
+    expect(
       screen.getByRole('link', { name: 'Create New Plan' }),
     ).toHaveAttribute('href', '/plans/new');
+  });
+
+  it('uses Dashboard CTA on marketing sheets when signed in', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TooltipProvider>
+        <MobileNavigation
+          isMarketing
+          pathname='/landing'
+          navItems={[{ href: '/landing', label: 'Home' }]}
+          isAuthenticated
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
+      'href',
+      '/landing',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    );
   });
 
   it('uses Begin tonight CTA on marketing sheets when signed out', async () => {

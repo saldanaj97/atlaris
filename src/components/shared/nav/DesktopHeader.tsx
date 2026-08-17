@@ -41,9 +41,9 @@ export default function DesktopHeader({
   userImageUrl,
 }: DesktopHeaderProps) {
   const primaryCtaHref = isAuthenticated
-    ? ROUTES.PLANS.NEW
+    ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Begin tonight';
+  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
 
   return (
     <div className='relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid'>
