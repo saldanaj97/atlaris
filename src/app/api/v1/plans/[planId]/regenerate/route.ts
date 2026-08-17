@@ -14,6 +14,7 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { getPostHogClient } from '@/lib/posthog-server';
 import { ZodError } from 'zod';
 
 /**
@@ -103,7 +104,20 @@ export const POST: PlainHandler = requestBoundary.route(
             retryable: result.retryable,
           },
         });
-      case 'enqueued':
+      case 'enqueued': {
+        const posthog = getPostHogClient();
+        if (posthog) {
+          posthog.capture({
+            distinctId: actor.id,
+            event: 'plan_regeneration_requested',
+            properties: {
+              plan_id: planId,
+              job_id: result.jobId,
+              has_overrides: overrides !== undefined,
+            },
+          });
+          await posthog.flush();
+        }
         return json(
           {
             planId,
@@ -117,6 +131,7 @@ export const POST: PlainHandler = requestBoundary.route(
             ),
           },
         );
+      }
       default: {
         const _exhaustive: never = result;
         return _exhaustive;

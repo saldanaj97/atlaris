@@ -5,6 +5,7 @@ import { NotFoundError } from '@/lib/api/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
+import { getPostHogClient } from '@/lib/posthog-server';
 
 /**
  * GET /api/v1/plans/:planId
@@ -54,6 +55,16 @@ export const DELETE = requestBoundary.route(
     await removePlanForWrite({ planId, userId: actor.id });
 
     logger.info({ planId, userId: actor.id }, 'Learning plan deleted');
+
+    const posthog = getPostHogClient();
+    if (posthog) {
+      posthog.capture({
+        distinctId: actor.id,
+        event: 'plan_deleted',
+        properties: { plan_id: planId },
+      });
+      await posthog.flush();
+    }
 
     return json({ success: true });
   },

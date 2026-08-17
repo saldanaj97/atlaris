@@ -10,6 +10,7 @@ import {
 } from '@/lib/observability/sampling';
 import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import * as Sentry from '@sentry/nextjs';
+import posthog from 'posthog-js';
 
 // NOTE: We read `process.env` directly here instead of importing from
 // `@/lib/config/env` because that module eagerly validates server-only
@@ -51,6 +52,28 @@ if (isSentryEnabled) {
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
     sendDefaultPii,
   });
+}
+
+// PostHog client-side init — runs once when the browser loads the app.
+const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+
+if (posthogToken && posthogHost) {
+  posthog.init(posthogToken, {
+    api_host: '/ingest',
+    ui_host: posthogHost,
+    // Required baseline defaults
+    defaults: '2026-01-30',
+    // Capture unhandled exceptions via PostHog Error Tracking
+    capture_exceptions: true,
+    // Debug logging in development
+    debug: process.env.NODE_ENV === 'development',
+  });
+} else if (process.env.NODE_ENV !== 'production') {
+  // Warn in non-production so misconfiguration is visible during development.
+  console.warn(
+    'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN or NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once both variables are configured',
+  );
 }
 
 export const onRouterTransitionStart: typeof Sentry.captureRouterTransitionStart =

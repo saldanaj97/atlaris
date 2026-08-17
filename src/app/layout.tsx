@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
+import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
@@ -133,6 +134,7 @@ export default function RootLayout({
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
           >
+            <PostHogUserIdentifier />
             {appContent}
           </ClerkProvider>
         ) : (

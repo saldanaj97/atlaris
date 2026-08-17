@@ -76,6 +76,25 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // PostHog reverse proxy — routes ingestion through the app to avoid ad-blockers.
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/array/:path*',
+        destination: 'https://us-assets.i.posthog.com/array/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
+      },
+    ];
+  },
+  // Required to support PostHog trailing-slash API requests.
+  skipTrailingSlashRedirect: true,
 };
 
 // workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).
