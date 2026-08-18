@@ -19,7 +19,10 @@ export const metadata: Metadata = {
 
 export default function MaintenancePage() {
   return (
-    <div className='flex min-h-screen items-center justify-center bg-background p-4 sm:p-6'>
+    <main
+      id='main-content'
+      className='flex min-h-screen items-center justify-center bg-background p-4 sm:p-6'
+    >
       <Card className='w-full max-w-lg gap-5 py-5 text-center sm:py-6'>
         <CardContent className='space-y-5 px-5 sm:px-6'>
           <div className='flex justify-center'>
@@ -82,6 +85,6 @@ export default function MaintenancePage() {
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </main>
   );
 }

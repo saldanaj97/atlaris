@@ -9,6 +9,7 @@ import {
   tracesSampler,
 } from '@/lib/observability/sampling';
 import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
+import { normalizePostHogSdkHost } from '@/lib/posthog-rewrite-destinations';
 import * as Sentry from '@sentry/nextjs';
 import posthog from 'posthog-js';
 
@@ -56,7 +57,9 @@ if (isSentryEnabled) {
 
 // PostHog client-side init — runs once when the browser loads the app.
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
+  ? normalizePostHogSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST)
+  : null;
 
 if (posthogToken && posthogHost) {
   posthog.init(posthogToken, {

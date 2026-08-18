@@ -1,4 +1,7 @@
-import { resolvePostHogRewriteDestinations } from '@/lib/posthog-rewrite-destinations';
+import {
+  normalizePostHogSdkHost,
+  resolvePostHogRewriteDestinations,
+} from '@/lib/posthog-rewrite-destinations';
 import { describe, expect, it } from 'vitest';
 
 const US = {
@@ -53,5 +56,17 @@ describe('resolvePostHogRewriteDestinations', () => {
     expect(() => resolvePostHogRewriteDestinations('not a host')).toThrow(
       'NEXT_PUBLIC_POSTHOG_HOST must be a valid HTTP(S) host',
     );
+  });
+});
+
+describe('normalizePostHogSdkHost', () => {
+  it('prepends https for schemeless Cloud hosts', () => {
+    expect(normalizePostHogSdkHost('eu.i.posthog.com')).toBe(
+      'https://eu.i.posthog.com',
+    );
+  });
+
+  it('returns null for malformed hosts', () => {
+    expect(normalizePostHogSdkHost('not a host')).toBeNull();
   });
 });

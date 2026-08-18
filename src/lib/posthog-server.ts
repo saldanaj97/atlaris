@@ -1,3 +1,4 @@
+import { normalizePostHogSdkHost } from '@/lib/posthog-rewrite-destinations';
 import { after } from 'next/server';
 import { PostHog } from 'posthog-node';
 
@@ -15,7 +16,9 @@ let posthogClient: PostHog | null = null;
  */
 export function getPostHogClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ? normalizePostHogSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST)
+    : null;
 
   if (!token || !host) {
     if (process.env.NODE_ENV !== 'production') {

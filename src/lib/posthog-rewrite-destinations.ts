@@ -47,6 +47,12 @@ function configuredOrigin(url: URL): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
 }
 
+/** Absolute host for PostHog SDKs. Accepts schemeless values like `eu.i.posthog.com`. */
+export function normalizePostHogSdkHost(host: string): string | null {
+  const url = parseHost(host);
+  return url === null ? null : configuredOrigin(url);
+}
+
 /** Map `NEXT_PUBLIC_POSTHOG_HOST` to PostHog ingest/asset origins. */
 export function resolvePostHogRewriteDestinations(
   host?: string | null,

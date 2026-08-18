@@ -4,6 +4,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import DesktopHeader from './DesktopHeader';
 import MobileHeader from './MobileHeader';
+import { normalizeNavPathname } from './nav-active';
 import {
   APP_SHELL_COLUMN,
   APP_SHELL_GUTTER,
@@ -39,7 +40,7 @@ export default function SiteHeaderChrome({
   userName,
   userImageUrl,
 }: SiteHeaderChromeProps) {
-  const pathname = usePathname();
+  const pathname = normalizeNavPathname(usePathname());
   const isMarketing =
     pathname === ROUTES.HOME ||
     pathname === ROUTES.LANDING ||
