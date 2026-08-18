@@ -50,10 +50,16 @@ export function captureAfterResponse(
   properties?: Record<string, unknown>,
 ): void {
   const distinctId = actor.authUserId;
-  after(async () => {
+  const send = async () => {
     const posthog = getPostHogClient();
     if (!posthog) return;
     posthog.capture({ distinctId, event, properties });
     await posthog.flush();
-  });
+  };
+
+  try {
+    after(send);
+  } catch {
+    // ponytail: Vitest calls route handlers outside Next after() scope; drop the event rather than 500
+  }
 }

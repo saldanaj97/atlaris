@@ -96,7 +96,9 @@ describe('AiPlanGenerationPanel', () => {
   }
 
   async function submitForm(): Promise<void> {
-    await user.click(screen.getByRole('button', { name: /generate my plan/i }));
+    await user.click(
+      screen.getByRole('button', { name: /chart this course/i }),
+    );
   }
 
   describe('form validity', () => {
@@ -104,18 +106,18 @@ describe('AiPlanGenerationPanel', () => {
       render(<AiPlanGenerationPanel />);
 
       expect(
-        screen.getByRole('button', { name: /generate my plan/i }),
+        screen.getByRole('button', { name: /chart this course/i }),
       ).toBeDisabled();
 
       await fillTopic('Test Topic');
       expect(
-        screen.getByRole('button', { name: /generate my plan/i }),
+        screen.getByRole('button', { name: /chart this course/i }),
       ).toBeDisabled();
 
       await chooseDefaultPreferences();
 
       expect(
-        screen.getByRole('button', { name: /generate my plan/i }),
+        screen.getByRole('button', { name: /chart this course/i }),
       ).toBeEnabled();
     });
 
@@ -479,7 +481,7 @@ describe('AiPlanGenerationPanel', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: /generate my plan/i }),
+          screen.getByRole('button', { name: /chart this course/i }),
         ).toBeEnabled();
       });
     });

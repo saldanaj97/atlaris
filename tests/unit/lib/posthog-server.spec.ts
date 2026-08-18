@@ -45,4 +45,15 @@ describe('captureAfterResponse', () => {
     });
     expect(flushMock).toHaveBeenCalledTimes(1);
   });
+
+  it('does not throw when after() has no Next request scope', () => {
+    afterMock.mockImplementation(() => {
+      throw new Error('`after` was called outside a request scope');
+    });
+
+    expect(() =>
+      captureAfterResponse({ authUserId: 'user_clerk_abc' }, 'plan_deleted'),
+    ).not.toThrow();
+    expect(captureMock).not.toHaveBeenCalled();
+  });
 });
