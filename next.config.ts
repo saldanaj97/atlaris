@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
+import { resolvePostHogRewriteDestinations } from './src/lib/posthog-rewrite-destinations';
 import { withSentryConfig } from '@sentry/nextjs';
 import path from 'node:path';
 import { withWorkflow } from 'workflow/next';
@@ -77,19 +78,23 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    const { ingestOrigin, assetsOrigin } = resolvePostHogRewriteDestinations(
+      process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    );
+
     return [
       // PostHog reverse proxy — routes ingestion through the app to avoid ad-blockers.
       {
         source: '/ingest/static/:path*',
-        destination: 'https://us-assets.i.posthog.com/static/:path*',
+        destination: `${assetsOrigin}/static/:path*`,
       },
       {
         source: '/ingest/array/:path*',
-        destination: 'https://us-assets.i.posthog.com/array/:path*',
+        destination: `${assetsOrigin}/array/:path*`,
       },
       {
         source: '/ingest/:path*',
-        destination: 'https://us.i.posthog.com/:path*',
+        destination: `${ingestOrigin}/:path*`,
       },
     ];
   },
