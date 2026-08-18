@@ -32,6 +32,26 @@ describe('resolvePostHogRewriteDestinations', () => {
   it('does not treat a custom host as EU', () => {
     expect(
       resolvePostHogRewriteDestinations('https://posthog.example.com'),
-    ).toEqual(US);
+    ).toEqual({
+      ingestOrigin: 'https://posthog.example.com',
+      assetsOrigin: 'https://posthog.example.com',
+    });
+  });
+
+  it('preserves the base path for self-hosted PostHog', () => {
+    expect(
+      resolvePostHogRewriteDestinations(
+        'https://posthog.example.com/analytics/',
+      ),
+    ).toEqual({
+      ingestOrigin: 'https://posthog.example.com/analytics',
+      assetsOrigin: 'https://posthog.example.com/analytics',
+    });
+  });
+
+  it('rejects malformed configured hosts instead of silently routing to US Cloud', () => {
+    expect(() => resolvePostHogRewriteDestinations('not a host')).toThrow(
+      'NEXT_PUBLIC_POSTHOG_HOST must be a valid HTTP(S) host',
+    );
   });
 });
