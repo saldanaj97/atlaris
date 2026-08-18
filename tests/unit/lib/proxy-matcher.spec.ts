@@ -22,4 +22,11 @@ describe('proxy matcher', () => {
     expect(matchesProxyMatcher('/_next/static/chunk.js')).toBe(false);
     expect(matchesProxyMatcher('/favicon.ico')).toBe(false);
   });
+
+  it('only excludes the PostHog ingest path and its descendants', () => {
+    expect(matchesProxyMatcher('/ingest')).toBe(false);
+    expect(matchesProxyMatcher('/ingest/array')).toBe(false);
+    expect(matchesProxyMatcher('/ingestion')).toBe(true);
+    expect(matchesProxyMatcher('/ingest-api')).toBe(true);
+  });
 });
