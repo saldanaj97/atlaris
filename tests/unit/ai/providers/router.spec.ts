@@ -147,7 +147,9 @@ describe('RouterGenerationProvider', () => {
       expect(result.metadata.provider).toBe('openrouter');
       expect(mockSend.mock.calls[0][0]).toEqual(
         expect.objectContaining({
-          models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+          chatRequest: expect.objectContaining({
+            models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+          }),
         }),
       );
     });

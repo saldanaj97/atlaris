@@ -1,21 +1,9 @@
 import type { ReactElement, ReactNode } from 'react';
 
+import { Surface } from '@/components/ui/surface';
 import { cn } from '@/lib/utils';
 
-/** Frosted surface over the app background — glass fill, signed-in panel border token. */
-export const ledgerGlassSurface =
-  'rounded-2xl border border-panel-border bg-card/65 shadow-lg backdrop-blur-xl dark:bg-card/55';
-
-const ledgerGlassDivider = 'divide-border/40 dark:divide-border/30';
-
-function SettingsLedgerAmbient(): ReactElement {
-  return (
-    <div
-      aria-hidden='true'
-      className='pointer-events-none absolute -top-16 left-1/2 h-72 w-[36rem] -translate-x-1/2 rounded-full bg-linear-to-br from-primary/25 to-primary/5 blur-3xl'
-    />
-  );
-}
+const ledgerDivider = 'divide-border/40 dark:divide-border/30';
 
 export function SettingsLedgerPanel({
   children,
@@ -23,17 +11,10 @@ export function SettingsLedgerPanel({
   children: ReactNode;
 }): ReactElement {
   return (
-    <div className='relative mx-auto max-w-4xl'>
-      <SettingsLedgerAmbient />
-      <div
-        className={cn(
-          'relative divide-y',
-          ledgerGlassDivider,
-          ledgerGlassSurface,
-        )}
-      >
+    <div className='mx-auto max-w-4xl'>
+      <Surface padding='none' className={cn('divide-y', ledgerDivider)}>
         {children}
-      </div>
+      </Surface>
     </div>
   );
 }
@@ -60,9 +41,7 @@ export function LedgerSectionBlock({
           {description}
         </p>
       </div>
-      <div className={cn('min-w-0 divide-y', ledgerGlassDivider)}>
-        {children}
-      </div>
+      <div className={cn('min-w-0 divide-y', ledgerDivider)}>{children}</div>
     </section>
   );
 }

@@ -5,8 +5,7 @@ import { SignIn } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
   title: 'Sign In | Atlaris',
-  description:
-    'Sign in to Atlaris to continue building and managing your learning schedules.',
+  description: 'Sign in to Atlaris to pick up tonight’s route.',
 };
 
 export default function SignInPage() {

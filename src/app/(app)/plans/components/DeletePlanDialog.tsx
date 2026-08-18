@@ -15,6 +15,7 @@ import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -171,10 +172,12 @@ export function DeletePlanDialog({
 
     const controller = startDeleteRequest(abortControllerRef);
     setDeleting(true);
+
     const result = await requestPlanDeletion(planId, controller.signal);
 
     switch (result.kind) {
       case 'success':
+        posthog.capture('plan_deletion_confirmed', { plan_id: planId });
         finalizeDeleteRequest({
           controller,
           abortControllerRef,

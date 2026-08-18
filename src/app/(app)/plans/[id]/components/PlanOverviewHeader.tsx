@@ -1,7 +1,6 @@
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
-import { GradientProgressHeroFrame } from '@/app/(app)/plans/[id]/components/GradientProgressHeroFrame';
 import { StatCell } from '@/app/(app)/plans/[id]/components/StatCell';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 
@@ -25,7 +24,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
 
   return (
     <article>
-      <GradientProgressHeroFrame completion={completion}>
+      <div className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
         <div className='grid gap-6 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-8'>
           <div className='min-w-0'>
             <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
@@ -90,7 +89,7 @@ export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
             }
           />
         </dl>
-      </GradientProgressHeroFrame>
+      </div>
     </article>
   );
 }

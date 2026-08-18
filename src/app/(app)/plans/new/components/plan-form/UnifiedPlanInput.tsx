@@ -157,7 +157,7 @@ export function UnifiedPlanInput({
               </>
             ) : (
               <>
-                <span>Generate My Plan</span>
+                <span>Chart this course</span>
                 <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
               </>
             )}

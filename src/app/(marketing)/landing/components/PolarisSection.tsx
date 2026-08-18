@@ -3,7 +3,7 @@ import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketin
 import { StarField } from '@/app/(marketing)/_shared/StarField';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
@@ -12,31 +12,35 @@ export function PolarisSection() {
   return (
     <section className='px-6 pb-20 md:px-8 md:pb-28'>
       <RevealAnimation>
-        <div className='relative mx-auto max-w-5xl overflow-hidden rounded-4xl bg-foreground px-8 py-16 text-center text-background shadow-xl md:py-20'>
+        <div
+          className={`relative mx-auto max-w-5xl overflow-hidden rounded-4xl bg-foreground px-8 py-16 text-center text-background shadow-xl md:py-20 ${styles.revealScale}`}
+        >
           <StarField />
 
-          <div className='relative mx-auto flex justify-center'>
-            <Sparkles
-              className={cn('size-6 text-primary', styles.pulse)}
-              aria-hidden='true'
-            />
-          </div>
-
-          <h2 className='relative mt-6 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl'>
-            Polaris doesn&apos;t move.
+          <h2
+            className={`relative font-serif text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
+          >
+            Atlaris doesn&apos;t move.
             <span className='block font-medium italic opacity-80'>
               For one hour tonight, neither do you.
             </span>
           </h2>
 
-          <p className='relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed opacity-70'>
+          <p
+            className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed opacity-70 ${styles.revealItem}`}
+            style={{ ['--i' as string]: 2 }}
+          >
             Set the goal once. Let the quiet hours do the rest.
           </p>
 
-          <div className='relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row'>
+          <div
+            className={`relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row ${styles.revealItem}`}
+            style={{ ['--i' as string]: 3 }}
+          >
             <Button
               asChild
-              className={cn(marketingPrimaryCtaClassName, styles.drift)}
+              className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
             >
               <Link href='/plans/new'>
                 Begin tonight
@@ -48,7 +52,10 @@ export function PolarisSection() {
             </Button>
             <Link
               href='/pricing'
-              className='font-serif text-sm font-medium underline-offset-4 opacity-80 transition-opacity hover:underline hover:opacity-100'
+              className={cn(
+                'inline-flex font-serif text-sm font-medium underline-offset-4 opacity-80 transition-[opacity,transform] hover:underline hover:opacity-100',
+                styles.ctaMotion,
+              )}
             >
               See pricing first
             </Link>

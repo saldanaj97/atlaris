@@ -1,7 +1,15 @@
 import type { NextConfig } from 'next';
 
+import { isHostedDeployEnv } from './src/lib/config/env/shared';
+import { resolvePostHogRewriteDestinations } from './src/lib/posthog-rewrite-destinations';
 import { withSentryConfig } from '@sentry/nextjs';
+import path from 'node:path';
 import { withWorkflow } from 'workflow/next';
+
+const vercelFlagsDefinitionsShim = path.join(
+  process.cwd(),
+  'src/lib/flags/vercel-flags-definitions-shim.ts',
+);
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -16,6 +24,7 @@ const securityHeaders = [
 
 const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
 const isSmokeRun = Boolean(smokeDistDir && smokeDistDir.length > 0);
+const useLocalFlagsDefinitionsShim = !isHostedDeployEnv(process.env);
 const allowedDevOrigins = ['127.0.0.1', 'localhost'];
 
 const nextConfig: NextConfig = {
@@ -38,6 +47,39 @@ const nextConfig: NextConfig = {
     'thread-stream',
     'sonic-boom',
   ],
+  // flags-core optional-imports a Vercel-build-only package. Turbopack still
+  // overlays "Can't resolve '@vercel/flags-definitions'" (vercel/flags#384).
+  // Hosted Vercel builds must resolve the real package for flag evaluation.
+  ...(useLocalFlagsDefinitionsShim
+    ? {
+        turbopack: {
+          resolveAlias: {
+            '@vercel/flags-definitions':
+              './src/lib/flags/vercel-flags-definitions-shim.ts',
+          },
+        },
+      }
+    : {}),
+  webpack: (config) => {
+    if (!useLocalFlagsDefinitionsShim) {
+      return config;
+    }
+
+    config.resolve ??= {};
+    const existing = config.resolve.alias;
+    if (Array.isArray(existing)) {
+      existing.push({
+        name: '@vercel/flags-definitions',
+        alias: vercelFlagsDefinitionsShim,
+      });
+    } else {
+      config.resolve.alias = {
+        ...existing,
+        '@vercel/flags-definitions': vercelFlagsDefinitionsShim,
+      };
+    }
+    return config;
+  },
   async headers() {
     return [
       {
@@ -46,6 +88,30 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    const { ingestOrigin, assetsOrigin } = resolvePostHogRewriteDestinations(
+      process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    );
+
+    return [
+      // PostHog reverse proxy — routes ingestion through the app to avoid ad-blockers.
+      {
+        source: '/ingest/static/:path*',
+        destination: `${assetsOrigin}/static/:path*`,
+      },
+      {
+        source: '/ingest/array/:path*',
+        destination: `${assetsOrigin}/array/:path*`,
+      },
+      {
+        source: '/ingest/:path*',
+        destination: `${ingestOrigin}/:path*`,
+      },
+    ];
+  },
+  // Required to support PostHog trailing-slash API requests (global; Next cannot scope this to /ingest).
+  // Proxy exact-path policies in middleware-policy.ts slash-normalize pathnames.
+  skipTrailingSlashRedirect: true,
 };
 
 // workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).

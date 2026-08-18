@@ -8,9 +8,9 @@ import type { ActorUser } from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
 import {
+  runServerComponentContext,
   withAuth,
   withServerActionContext,
-  withServerComponentContext,
 } from '@/lib/api/auth';
 import { getCorrelationId } from '@/lib/api/context';
 import { withErrorBoundary, withRateLimit } from '@/lib/api/route-wrappers';
@@ -108,7 +108,7 @@ export function createRequestBoundary(): RequestBoundary {
   return {
     route,
     component<T>(run: RequestBoundaryWork<T>): Promise<T | null> {
-      return withServerComponentContext(async (actor) =>
+      return runServerComponentContext(async (actor) =>
         run({
           ...buildScope(actor, getDb()),
         }),

@@ -2,7 +2,7 @@ import type { FilterStatus } from '@/features/plans/read-projection/types';
 
 import { Button } from '@/components/ui/button';
 import { RouteEmptyState } from '@/components/ui/route-empty-state';
-import { FileText, Plus, Sparkles } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface EmptyPlansListProps {
@@ -19,15 +19,14 @@ export function EmptyPlansList({
   const hasFilters = Boolean(searchQuery) || filterStatus !== 'all';
   const title = isFirstRun ? 'No learning plans yet' : 'No plans found';
   const description = isFirstRun
-    ? "Start by describing what you want to learn and we'll create a personalized learning plan with resources and milestones."
+    ? 'Name a goal. Atlaris charts the modules, tasks, and resources.'
     : hasFilters
       ? 'No plans match your search or filters. Try adjusting your criteria.'
-      : "You haven't created any plans yet. Create your first plan to get started.";
-  const Icon = isFirstRun ? Sparkles : FileText;
+      : 'Create a plan and pick up when the night is quiet.';
 
   return (
     <RouteEmptyState
-      icon={Icon}
+      icon={FileText}
       title={title}
       description={description}
       className='flex min-h-72 animate-in flex-col items-center justify-center rounded-xl border border-dashed border-border bg-panel/40 px-6 py-12 text-center animation-duration-500 fill-mode-both fade-in motion-reduce:animate-none'
