@@ -5,7 +5,6 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, CircleDashed } from 'lucide-react';
-import posthog from 'posthog-js';
 
 interface TaskCompletionButtonProps {
   taskId: string;
@@ -31,11 +30,6 @@ export function TaskCompletionButton({
       ? 'not_started'
       : 'completed';
     onStatusChange(taskId, nextStatus);
-    posthog.capture('task_status_changed', {
-      task_id: taskId,
-      new_status: nextStatus,
-      variant,
-    });
   };
 
   const IncompleteIcon = variant === 'timeline' ? CircleDashed : Circle;
