@@ -9,7 +9,8 @@ import { useEffect } from 'react';
  * the auth state changes. Must be rendered inside ClerkProvider.
  *
  * PII (email, name) goes into PostHog person properties via identify(), not
- * into capture() event properties.
+ * into capture() event properties. Signed-out (loaded) calls reset() so the
+ * persisted distinct ID is not reused across accounts.
  */
 export function PostHogUserIdentifier() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -22,7 +23,10 @@ export function PostHogUserIdentifier() {
         email: user.primaryEmailAddress?.emailAddress,
         name: user.fullName ?? undefined,
       });
+      return;
     }
+
+    posthog.reset();
   }, [isLoaded, isSignedIn, user]);
 
   return null;

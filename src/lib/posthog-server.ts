@@ -1,3 +1,4 @@
+import { after } from 'next/server';
 import { PostHog } from 'posthog-node';
 
 let posthogClient: PostHog | null = null;
@@ -5,10 +6,9 @@ let posthogClient: PostHog | null = null;
 /**
  * Returns a singleton PostHog server-side client.
  *
- * Uses flushAt=1 and flushInterval=0 so that events are sent immediately —
- * Next.js route handlers and server actions are short-lived and may be torn
- * down before an async batch flush can run. Always call `await posthog.flush()`
- * before returning from a handler.
+ * Uses flushAt=1 and flushInterval=0 so events send promptly. Route handlers
+ * are still short-lived — call `captureAfterResponse` so capture+flush run
+ * in `after()` and do not block the mutation response.
  *
  * Guards against missing env vars: returns null when not configured so that
  * callers can skip capture without breaking the request.
@@ -29,11 +29,31 @@ export function getPostHogClient(): PostHog | null {
   if (!posthogClient) {
     posthogClient = new PostHog(token, {
       host,
-      // Flush immediately — route handlers / server actions are torn down per request.
+      // Flush immediately — after() still needs flush() before the runtime tears down.
       flushAt: 1,
       flushInterval: 0,
     });
   }
 
   return posthogClient;
+}
+
+/**
+ * Capture a server event after the HTTP response is sent.
+ *
+ * `distinctId` is always Clerk `authUserId` so it matches
+ * `posthog.identify(user.id)` in PostHogUserIdentifier.
+ */
+export function captureAfterResponse(
+  actor: { authUserId: string },
+  event: string,
+  properties?: Record<string, unknown>,
+): void {
+  const distinctId = actor.authUserId;
+  after(async () => {
+    const posthog = getPostHogClient();
+    if (!posthog) return;
+    posthog.capture({ distinctId, event, properties });
+    await posthog.flush();
+  });
 }
