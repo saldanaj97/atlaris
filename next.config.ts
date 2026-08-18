@@ -93,7 +93,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  // Required to support PostHog trailing-slash API requests.
+  // Required to support PostHog trailing-slash API requests (global; Next cannot scope this to /ingest).
+  // Proxy exact-path policies in middleware-policy.ts slash-normalize pathnames.
   skipTrailingSlashRedirect: true,
 };
 

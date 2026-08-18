@@ -30,6 +30,13 @@ const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
 const PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH =
   '/api/v1/notifications/email/unsubscribe' as const;
 
+/** Strip a trailing slash except for `/`. Next skipTrailingSlashRedirect is global. */
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 && pathname.endsWith('/')
+    ? pathname.slice(0, -1)
+    : pathname;
+}
+
 export function isProviderWebhookRoute(pathname: string): boolean {
   return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
@@ -41,12 +48,13 @@ function isSignedEmailUnsubscribeRoute(pathname: string): boolean {
 }
 
 export function isProtectedRoute(pathname: string): boolean {
+  const path = normalizePathname(pathname);
   // Payment/auth provider webhooks bypass Clerk; route-level signatures apply.
   if (isProviderWebhookRoute(pathname)) {
     return false;
   }
   // One-click unsubscribe authenticates via signed token, not Clerk.
-  if (isSignedEmailUnsubscribeRoute(pathname)) {
+  if (isSignedEmailUnsubscribeRoute(path)) {
     return false;
   }
   // Internal worker/maintenance routes bypass Clerk; each route must enforce
@@ -55,11 +63,11 @@ export function isProtectedRoute(pathname: string): boolean {
     return false;
   }
   // Worker health probes authenticate via route-level worker token, not Clerk.
-  if (pathname === '/api/health/worker') {
+  if (path === '/api/health/worker') {
     return false;
   }
   // Vercel Cron authenticates at the route boundary with CRON_SECRET.
-  if (pathname === '/api/cron/notifications/email') {
+  if (path === '/api/cron/notifications/email') {
     return false;
   }
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -70,19 +78,20 @@ export function resolveMaintenanceRedirectPath(
   maintenanceMode: boolean,
   pathname: string,
 ): '/maintenance' | '/' | null {
+  const path = normalizePathname(pathname);
   if (
     MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
       pathname.startsWith(prefix),
     ) ||
-    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(pathname)
+    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path)
   ) {
     return null;
   }
 
-  if (maintenanceMode && pathname !== '/maintenance') {
+  if (maintenanceMode && path !== '/maintenance') {
     return '/maintenance';
   }
-  if (!maintenanceMode && pathname === '/maintenance') {
+  if (!maintenanceMode && path === '/maintenance') {
     return '/';
   }
   return null;
