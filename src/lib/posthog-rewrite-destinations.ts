@@ -1,7 +1,9 @@
 const US_INGEST_ORIGIN = 'https://us.i.posthog.com';
 const US_ASSETS_ORIGIN = 'https://us-assets.i.posthog.com';
+const US_UI_ORIGIN = 'https://us.posthog.com';
 const EU_INGEST_ORIGIN = 'https://eu.i.posthog.com';
 const EU_ASSETS_ORIGIN = 'https://eu-assets.i.posthog.com';
+const EU_UI_ORIGIN = 'https://eu.posthog.com';
 
 const US_HOSTNAMES = new Set([
   'us.i.posthog.com',
@@ -47,10 +49,23 @@ function configuredOrigin(url: URL): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
 }
 
-/** Absolute host for PostHog SDKs. Accepts schemeless values like `eu.i.posthog.com`. */
+/** PostHog app origin for `ui_host`. Cloud ingest/assets hosts map to us/eu.posthog.com. */
 export function normalizePostHogSdkHost(host: string): string | null {
   const url = parseHost(host);
-  return url === null ? null : configuredOrigin(url);
+  if (url === null) {
+    return null;
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  const hasCustomPath = url.pathname !== '/';
+  if (!hasCustomPath && US_HOSTNAMES.has(hostname)) {
+    return US_UI_ORIGIN;
+  }
+  if (!hasCustomPath && EU_HOSTNAMES.has(hostname)) {
+    return EU_UI_ORIGIN;
+  }
+
+  return configuredOrigin(url);
 }
 
 /** Map `NEXT_PUBLIC_POSTHOG_HOST` to PostHog ingest/asset origins. */

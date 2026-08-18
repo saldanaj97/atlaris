@@ -60,19 +60,25 @@ describe('resolvePostHogRewriteDestinations', () => {
 });
 
 describe('normalizePostHogSdkHost', () => {
-  it('keeps eu.posthog.com as the UI origin while ingest maps to eu.i.posthog.com', () => {
+  it('maps Cloud ingest and UI hosts to the app origin', () => {
     expect(normalizePostHogSdkHost('eu.posthog.com')).toBe(
       'https://eu.posthog.com',
+    );
+    expect(normalizePostHogSdkHost('https://eu.i.posthog.com')).toBe(
+      'https://eu.posthog.com',
+    );
+    expect(normalizePostHogSdkHost('us.i.posthog.com')).toBe(
+      'https://us.posthog.com',
     );
     expect(
       resolvePostHogRewriteDestinations('eu.posthog.com').ingestOrigin,
     ).toBe('https://eu.i.posthog.com');
   });
 
-  it('prepends https for schemeless Cloud hosts', () => {
-    expect(normalizePostHogSdkHost('eu.i.posthog.com')).toBe(
-      'https://eu.i.posthog.com',
-    );
+  it('keeps self-hosted origins for toolbar links', () => {
+    expect(
+      normalizePostHogSdkHost('https://posthog.example.com/analytics/'),
+    ).toBe('https://posthog.example.com/analytics');
   });
 
   it('returns null for malformed hosts', () => {
