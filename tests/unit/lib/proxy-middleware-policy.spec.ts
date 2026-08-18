@@ -71,6 +71,14 @@ describe('middleware policy', () => {
         '/api/v1/notifications/email/unsubscribe/',
       ),
     ).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/ingest')).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/')).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e')).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e/')).toBe(null);
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/flags')).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(true, '/ingest/static/array.js'),
+    ).toBe(null);
     expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
       '/maintenance',
     );

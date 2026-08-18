@@ -12,6 +12,8 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
   '/.well-known/vercel/flags',
   /** Workflow SDK runtime callbacks; proxy applies callback auth before Clerk. */
   '/.well-known/workflow/',
+  /** PostHog reverse proxy; rewrites in next.config.ts must still run. */
+  '/ingest',
 ] as const;
 
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
