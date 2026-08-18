@@ -3,10 +3,10 @@ import { HeroSection } from './HeroSection';
 import { InstrumentsSection } from './InstrumentsSection';
 import { PolarisSection } from './PolarisSection';
 import { QuestionsSection } from './QuestionsSection';
-import { RevealAnimation } from './RevealAnimation';
 import { RouteSection } from './RouteSection';
 import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
 import { StarField } from '@/app/(marketing)/_shared/StarField';
+import { APP_SHELL_HEADER_TUCK } from '@/components/layout/app-shell-width';
 
 import styles from './landing.module.css';
 
@@ -31,7 +31,7 @@ export function Landing() {
 function CelestialBackdrop() {
   return (
     <div
-      className='pointer-events-none absolute inset-0 overflow-hidden text-foreground'
+      className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${APP_SHELL_HEADER_TUCK}`}
       aria-hidden='true'
     >
       <div
@@ -49,12 +49,5 @@ function CelestialBackdrop() {
 }
 
 function Hairline() {
-  return (
-    <RevealAnimation>
-      <div
-        className={`h-px w-full bg-border/35 ${styles.hairlineReveal}`}
-        aria-hidden='true'
-      />
-    </RevealAnimation>
-  );
+  return <div className='h-px w-full bg-border/35' aria-hidden='true' />;
 }

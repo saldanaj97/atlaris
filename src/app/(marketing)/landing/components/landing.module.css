@@ -8,10 +8,10 @@
 .questionRow,
 .progressFill,
 .analyticsBar,
-.routeDot,
-.hairlineReveal {
+.routeDot {
   opacity: 1;
   transform: none;
+  animation-delay: calc(var(--i, 0) * 90ms);
 }
 
 .reveal[data-reveal-state='observing']
@@ -38,32 +38,8 @@
 .reveal[data-reveal-state='visible']
   :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
   transition:
-    opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) var(--motion-delay, 0ms),
-    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) var(--motion-delay, 0ms);
-}
-
-.delay1 {
-  --motion-delay: 90ms;
-}
-
-.delay2 {
-  --motion-delay: 180ms;
-}
-
-.delay3 {
-  --motion-delay: 270ms;
-}
-
-.delay4 {
-  --motion-delay: 360ms;
-}
-
-.delay5 {
-  --motion-delay: 450ms;
-}
-
-.delay6 {
-  --motion-delay: 540ms;
+    opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
 }
 
 /* Hero load choreography */
@@ -148,21 +124,6 @@
   }
 }
 
-.hairlineReveal {
-  transform-origin: center;
-}
-
-.reveal[data-reveal-state='observing'] .hairlineReveal {
-  opacity: 0;
-  transform: scaleX(0);
-}
-
-.reveal[data-reveal-state='visible'] .hairlineReveal {
-  transition:
-    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
 /* Route line and fixed points */
 .routePath {
   stroke-dashoffset: 0;
@@ -196,20 +157,8 @@
 }
 
 .reveal[data-reveal-state='visible'] .routeDot {
-  animation: routeDotIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)
-    var(--route-delay) both;
-}
-
-.routeDot:nth-of-type(1) {
-  --route-delay: 0.65s;
-}
-
-.routeDot:nth-of-type(2) {
-  --route-delay: 1s;
-}
-
-.routeDot:nth-of-type(3) {
-  --route-delay: 1.35s;
+  animation: routeDotIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
 }
 
 @keyframes routeDotIn {
@@ -227,20 +176,8 @@
 
 .reveal[data-reveal-state='visible'] .planRow {
   transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1) var(--item-delay, 0s),
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) var(--item-delay, 0s);
-}
-
-.planRow:nth-child(1) {
-  --item-delay: 0.28s;
-}
-
-.planRow:nth-child(2) {
-  --item-delay: 0.38s;
-}
-
-.planRow:nth-child(3) {
-  --item-delay: 0.48s;
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
 }
 
 .progressFill {
@@ -266,40 +203,8 @@
 
 .reveal[data-reveal-state='visible'] .analyticsBar {
   transition:
-    opacity 0.45s ease-out var(--bar-delay, 0s),
-    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1) var(--bar-delay, 0s);
-}
-
-.analyticsBar:nth-child(1) {
-  --bar-delay: 0.2s;
-}
-
-.analyticsBar:nth-child(2) {
-  --bar-delay: 0.26s;
-}
-
-.analyticsBar:nth-child(3) {
-  --bar-delay: 0.32s;
-}
-
-.analyticsBar:nth-child(4) {
-  --bar-delay: 0.38s;
-}
-
-.analyticsBar:nth-child(5) {
-  --bar-delay: 0.44s;
-}
-
-.analyticsBar:nth-child(6) {
-  --bar-delay: 0.5s;
-}
-
-.analyticsBar:nth-child(7) {
-  --bar-delay: 0.56s;
-}
-
-.analyticsBar:nth-child(8) {
-  --bar-delay: 0.62s;
+    opacity 0.45s ease-out calc(var(--i, 0) * 90ms),
+    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
 }
 
 /* FAQ sequence and open-state feedback */
@@ -310,24 +215,8 @@
 
 .reveal[data-reveal-state='visible'] .questionRow {
   transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--question-delay, 0s),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--question-delay, 0s);
-}
-
-.questionRow:nth-child(1) {
-  --question-delay: 0.08s;
-}
-
-.questionRow:nth-child(2) {
-  --question-delay: 0.16s;
-}
-
-.questionRow:nth-child(3) {
-  --question-delay: 0.24s;
-}
-
-.questionRow:nth-child(4) {
-  --question-delay: 0.32s;
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
 }
 
 .questionRow[open] .faqAnswer {
@@ -376,8 +265,7 @@
       .questionRow,
       .progressFill,
       .analyticsBar,
-      .routeDot,
-      .hairlineReveal
+      .routeDot
     ) {
     opacity: 1;
     transform: none;

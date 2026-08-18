@@ -21,12 +21,6 @@ const ROUTE_STOPS = [
   },
 ] as const;
 
-const ROUTE_STOP_DELAYS = [
-  styles.delay3,
-  styles.delay4,
-  styles.delay5,
-] as const;
-
 export function RouteSection() {
   return (
     <section
@@ -38,7 +32,8 @@ export function RouteSection() {
           <SectionOverline>The route</SectionOverline>
           <h2
             id='landing-route-heading'
-            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
           >
             Three moves. One steady course.
           </h2>
@@ -52,7 +47,8 @@ export function RouteSection() {
             {ROUTE_STOPS.map((stop, index) => (
               <article
                 key={stop.title}
-                className={`text-center md:text-left ${styles.revealItem} ${ROUTE_STOP_DELAYS[index]}`}
+                className={`text-center md:text-left ${styles.revealItem}`}
+                style={{ ['--i' as string]: index }}
               >
                 <p className='font-serif text-sm font-semibold tracking-[0.2em] text-primary'>
                   {stop.numeral}
@@ -101,6 +97,7 @@ function ConstellationRoute() {
         cy='90'
         r='5'
         fill='var(--primary)'
+        style={{ ['--i' as string]: 0 }}
       />
       <circle
         className={styles.routeDot}
@@ -108,6 +105,7 @@ function ConstellationRoute() {
         cy='60'
         r='5'
         fill='var(--primary)'
+        style={{ ['--i' as string]: 1 }}
       />
       <circle
         className={styles.routeDot}
@@ -115,6 +113,7 @@ function ConstellationRoute() {
         cy='40'
         r='5'
         fill='var(--primary)'
+        style={{ ['--i' as string]: 2 }}
       />
     </svg>
   );

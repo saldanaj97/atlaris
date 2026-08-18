@@ -37,7 +37,8 @@ export function QuestionsSection() {
           <SectionOverline>Quiet questions</SectionOverline>
           <h2
             id='landing-questions-heading'
-            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
           >
             Asked at 11pm, answered here.
           </h2>
@@ -46,10 +47,11 @@ export function QuestionsSection() {
 
       <RevealAnimation>
         <div className='mt-10 divide-y divide-border/50 border-y border-border/50'>
-          {QUESTIONS.map((item) => (
+          {QUESTIONS.map((item, index) => (
             <details
               key={item.question}
               className={`group py-5 ${styles.questionRow}`}
+              style={{ ['--i' as string]: index }}
             >
               <summary className='flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm font-serif text-base font-semibold text-foreground transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden'>
                 {item.question}

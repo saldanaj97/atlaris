@@ -18,7 +18,8 @@ export function PolarisSection() {
           <StarField />
 
           <h2
-            className={`relative font-serif text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+            className={`relative font-serif text-3xl font-semibold tracking-[-0.025em] text-balance sm:text-4xl ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
           >
             Atlaris doesn&apos;t move.
             <span className='block font-medium italic opacity-80'>
@@ -27,13 +28,15 @@ export function PolarisSection() {
           </h2>
 
           <p
-            className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed opacity-70 ${styles.revealItem} ${styles.delay2}`}
+            className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed opacity-70 ${styles.revealItem}`}
+            style={{ ['--i' as string]: 2 }}
           >
             Set the goal once. Let the quiet hours do the rest.
           </p>
 
           <div
-            className={`relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row ${styles.revealItem} ${styles.delay3}`}
+            className={`relative mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row ${styles.revealItem}`}
+            style={{ ['--i' as string]: 3 }}
           >
             <Button
               asChild

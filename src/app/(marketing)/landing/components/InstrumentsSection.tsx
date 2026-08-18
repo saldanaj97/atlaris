@@ -31,7 +31,8 @@ export function InstrumentsSection() {
           <SectionOverline>The instruments</SectionOverline>
           <h2
             id='landing-instruments-heading'
-            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem} ${styles.delay1}`}
+            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
           >
             Built for the nights you show up.
           </h2>
@@ -60,7 +61,10 @@ export function InstrumentsSection() {
       <RevealAnimation>
         <div className='mt-16 grid items-center gap-10 md:grid-cols-2 md:gap-14'>
           <AnalyticsMock />
-          <div className={`${styles.revealFromRight} ${styles.delay1}`}>
+          <div
+            className={styles.revealFromRight}
+            style={{ ['--i' as string]: 1 }}
+          >
             <h3 className='font-serif text-2xl font-semibold tracking-[-0.02em] text-foreground'>
               Watch your sky fill in
             </h3>
@@ -82,7 +86,8 @@ export function InstrumentsSection() {
 function PlanDetailMock() {
   return (
     <figure
-      className={`overflow-hidden rounded-4xl border border-border/50 bg-card p-6 shadow-sm md:p-7 ${styles.revealFromRight} ${styles.delay1}`}
+      className={`overflow-hidden rounded-4xl border border-border/50 bg-card p-6 shadow-sm md:p-7 ${styles.revealFromRight}`}
+      style={{ ['--i' as string]: 1 }}
     >
       <div aria-hidden='true'>
         <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
@@ -95,10 +100,11 @@ function PlanDetailMock() {
           Next module · Generics in components
         </p>
         <ol className='mt-6 divide-y divide-border/50 border-y border-border/50'>
-          {PLAN_MODULES.map((module) => (
+          {PLAN_MODULES.map((module, index) => (
             <li
               key={module.title}
               className={`flex items-center justify-between gap-3 py-3 text-sm ${styles.planRow}`}
+              style={{ ['--i' as string]: index }}
             >
               <span className='text-foreground'>{module.title}</span>
               <span className='text-xs text-muted-foreground tabular-nums'>
@@ -136,10 +142,11 @@ function AnalyticsMock() {
           Completed this week
         </p>
         <div className='mt-6 flex h-24 items-end gap-2'>
-          {PULSE_BARS.map((height) => (
+          {PULSE_BARS.map((height, index) => (
             <div
               key={height}
               className={`flex-1 rounded-sm bg-primary/80 ${height} ${styles.analyticsBar}`}
+              style={{ ['--i' as string]: index }}
             />
           ))}
         </div>
