@@ -2,11 +2,14 @@ import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { useUserMock, identifyMock, resetMock } = vi.hoisted(() => ({
-  useUserMock: vi.fn(),
-  identifyMock: vi.fn(),
-  resetMock: vi.fn(),
-}));
+const { useUserMock, identifyMock, resetMock, getPropertyMock } = vi.hoisted(
+  () => ({
+    useUserMock: vi.fn(),
+    identifyMock: vi.fn(),
+    resetMock: vi.fn(),
+    getPropertyMock: vi.fn(),
+  }),
+);
 
 vi.mock('@clerk/nextjs', () => ({
   useUser: useUserMock,
@@ -16,6 +19,7 @@ vi.mock('posthog-js', () => ({
   default: {
     identify: identifyMock,
     reset: resetMock,
+    get_property: getPropertyMock,
   },
 }));
 
@@ -28,6 +32,7 @@ const signedInUser = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  getPropertyMock.mockReset();
 });
 
 describe('PostHogUserIdentifier', () => {
@@ -42,6 +47,19 @@ describe('PostHogUserIdentifier', () => {
 
     expect(resetMock).not.toHaveBeenCalled();
     expect(identifyMock).not.toHaveBeenCalled();
+  });
+
+  it('resets a persisted identified user on an initial signed-out load', () => {
+    getPropertyMock.mockReturnValue('user_clerk_abc');
+    useUserMock.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: false,
+      user: null,
+    });
+
+    render(<PostHogUserIdentifier />);
+
+    expect(resetMock).toHaveBeenCalledTimes(1);
   });
 
   it('identifies the Clerk user when signed in', () => {
@@ -69,6 +87,7 @@ describe('PostHogUserIdentifier', () => {
 
     const { rerender } = render(<PostHogUserIdentifier />);
     identifyMock.mockClear();
+    getPropertyMock.mockReturnValue('user_clerk_abc');
 
     useUserMock.mockReturnValue({
       isLoaded: true,
