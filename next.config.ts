@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
+import { isHostedDeployEnv } from './src/lib/config/env/shared';
 import { resolvePostHogRewriteDestinations } from './src/lib/posthog-rewrite-destinations';
 import { withSentryConfig } from '@sentry/nextjs';
 import path from 'node:path';
@@ -23,6 +24,7 @@ const securityHeaders = [
 
 const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
 const isSmokeRun = Boolean(smokeDistDir && smokeDistDir.length > 0);
+const useLocalFlagsDefinitionsShim = !isHostedDeployEnv(process.env);
 const allowedDevOrigins = ['127.0.0.1', 'localhost'];
 
 const nextConfig: NextConfig = {
@@ -47,13 +49,22 @@ const nextConfig: NextConfig = {
   ],
   // flags-core optional-imports a Vercel-build-only package. Turbopack still
   // overlays "Can't resolve '@vercel/flags-definitions'" (vercel/flags#384).
-  turbopack: {
-    resolveAlias: {
-      '@vercel/flags-definitions':
-        './src/lib/flags/vercel-flags-definitions-shim.ts',
-    },
-  },
+  // Hosted Vercel builds must resolve the real package for flag evaluation.
+  ...(useLocalFlagsDefinitionsShim
+    ? {
+        turbopack: {
+          resolveAlias: {
+            '@vercel/flags-definitions':
+              './src/lib/flags/vercel-flags-definitions-shim.ts',
+          },
+        },
+      }
+    : {}),
   webpack: (config) => {
+    if (!useLocalFlagsDefinitionsShim) {
+      return config;
+    }
+
     config.resolve ??= {};
     const existing = config.resolve.alias;
     if (Array.isArray(existing)) {
