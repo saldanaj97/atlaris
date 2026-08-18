@@ -1,8 +1,16 @@
-import { normalizePostHogSdkHost } from '@/lib/posthog-rewrite-destinations';
+import { resolvePostHogRewriteDestinations } from '@/lib/posthog-rewrite-destinations';
 import { after } from 'next/server';
 import { PostHog } from 'posthog-node';
 
 let posthogClient: PostHog | null = null;
+
+function resolvePostHogNodeSdkHost(rawHost: string | undefined): string {
+  try {
+    return resolvePostHogRewriteDestinations(rawHost).ingestOrigin;
+  } catch {
+    return resolvePostHogRewriteDestinations(null).ingestOrigin;
+  }
+}
 
 /**
  * Returns a singleton PostHog server-side client.
@@ -11,16 +19,13 @@ let posthogClient: PostHog | null = null;
  * are still short-lived — call `captureAfterResponse` so capture+flush run
  * in `after()` and do not block the mutation response.
  *
- * Guards against missing env vars: returns null when not configured so that
- * callers can skip capture without breaking the request.
+ * Returns null when the project token is missing so callers can skip capture
+ * without breaking the request. Host may be omitted; the Node SDK then uses
+ * the same US Cloud ingest origin as `/ingest` rewrites.
  */
 export function getPostHogClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
-    ? normalizePostHogSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST)
-    : null;
-
-  if (!token || !host) {
+  if (!token) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn(
         'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN or NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once both variables are configured',
@@ -28,6 +33,8 @@ export function getPostHogClient(): PostHog | null {
     }
     return null;
   }
+
+  const host = resolvePostHogNodeSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST);
 
   if (!posthogClient) {
     posthogClient = new PostHog(token, {

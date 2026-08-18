@@ -60,6 +60,15 @@ describe('resolvePostHogRewriteDestinations', () => {
 });
 
 describe('normalizePostHogSdkHost', () => {
+  it('keeps eu.posthog.com as the UI origin while ingest maps to eu.i.posthog.com', () => {
+    expect(normalizePostHogSdkHost('eu.posthog.com')).toBe(
+      'https://eu.posthog.com',
+    );
+    expect(
+      resolvePostHogRewriteDestinations('eu.posthog.com').ingestOrigin,
+    ).toBe('https://eu.i.posthog.com');
+  });
+
   it('prepends https for schemeless Cloud hosts', () => {
     expect(normalizePostHogSdkHost('eu.i.posthog.com')).toBe(
       'https://eu.i.posthog.com',

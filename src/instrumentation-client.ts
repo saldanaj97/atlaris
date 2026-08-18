@@ -57,14 +57,14 @@ if (isSentryEnabled) {
 
 // PostHog client-side init — runs once when the browser loads the app.
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
+const posthogUiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
   ? normalizePostHogSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST)
   : null;
 
-if (posthogToken && posthogHost) {
+if (posthogToken) {
   posthog.init(posthogToken, {
     api_host: '/ingest',
-    ui_host: posthogHost,
+    ui_host: posthogUiHost ?? 'https://us.posthog.com',
     // Required baseline defaults
     defaults: '2026-01-30',
     // Capture unhandled exceptions via PostHog Error Tracking

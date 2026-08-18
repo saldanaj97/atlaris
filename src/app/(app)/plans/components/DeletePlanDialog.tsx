@@ -173,12 +173,11 @@ export function DeletePlanDialog({
     const controller = startDeleteRequest(abortControllerRef);
     setDeleting(true);
 
-    posthog.capture('plan_deletion_confirmed', { plan_id: planId });
-
     const result = await requestPlanDeletion(planId, controller.signal);
 
     switch (result.kind) {
       case 'success':
+        posthog.capture('plan_deletion_confirmed', { plan_id: planId });
         finalizeDeleteRequest({
           controller,
           abortControllerRef,
