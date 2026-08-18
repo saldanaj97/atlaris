@@ -1,11 +1,8 @@
 import type { NavItem } from '@/features/navigation';
 
-/** Strip a trailing slash except for `/`. skipTrailingSlashRedirect is global. */
-export function normalizeNavPathname(pathname: string): string {
-  return pathname.length > 1 && pathname.endsWith('/')
-    ? pathname.slice(0, -1)
-    : pathname;
-}
+import { stripTrailingSlash } from '@/lib/path/strip-trailing-slash';
+
+export const normalizeNavPathname = stripTrailingSlash;
 
 export function isNavItemActive(pathname: string, item: NavItem): boolean {
   const path = normalizeNavPathname(pathname);

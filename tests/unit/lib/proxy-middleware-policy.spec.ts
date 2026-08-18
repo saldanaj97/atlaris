@@ -33,9 +33,11 @@ describe('middleware policy', () => {
     expect(isProtectedRoute(pathname)).toBe(false);
   });
 
-  it('isProtectedRoute protects non-internal api routes', () => {
+  it('isProtectedRoute protects non-internal api and dashboard routes', () => {
     expect(isProtectedRoute('/api/plans')).toBe(true);
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
+    expect(isProtectedRoute('/dashboard')).toBe(true);
+    expect(isProtectedRoute('/dashboard/')).toBe(true);
   });
 
   it('resolveMaintenanceRedirectPath', () => {
@@ -71,14 +73,25 @@ describe('middleware policy', () => {
         '/api/v1/notifications/email/unsubscribe/',
       ),
     ).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/ingest')).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/')).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/e')).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/e/')).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/flags')).toBe(null);
+    // Matcher excludes /ingest; policy is not the ingest gate.
+    expect(resolveMaintenanceRedirectPath(true, '/ingest')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e/')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/flags')).toBe(
+      '/maintenance',
+    );
     expect(
       resolveMaintenanceRedirectPath(true, '/ingest/static/array.js'),
-    ).toBe(null);
+    ).toBe('/maintenance');
     expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
       '/maintenance',
     );
