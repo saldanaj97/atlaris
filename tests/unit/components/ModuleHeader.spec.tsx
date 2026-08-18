@@ -34,7 +34,7 @@ function completedLesson(order: number): ModuleDetailModule['tasks'][number] {
 }
 
 describe('ModuleHeader', () => {
-  it('opens the picker and marks a fully completed sibling module', async () => {
+  it('keeps dropdown complete from projection while the open header stays live', async () => {
     const user = userEvent.setup();
     const currentId = createId('module');
     const siblingId = createId('module');
@@ -92,5 +92,11 @@ describe('ModuleHeader', () => {
         name: 'Interaction Capture, completed',
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: /Visual Review$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('menuitem', { name: 'Visual Review, completed' }),
+    ).not.toBeInTheDocument();
   });
 });

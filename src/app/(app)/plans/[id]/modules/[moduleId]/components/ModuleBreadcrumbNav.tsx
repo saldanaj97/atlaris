@@ -123,7 +123,7 @@ export function ModuleBreadcrumbNav({
                   key={item.id}
                   planId={planId}
                   moduleId={moduleId}
-                  item={item.id === moduleId ? { ...item, isComplete } : item}
+                  item={item}
                 />
               ))}
             </DropdownMenuContent>
