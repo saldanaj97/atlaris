@@ -1,0 +1,4 @@
+{
+  "install": "pnpm install --frozen-lockfile && ./scripts/agents/install-postgres-17.sh",
+  "start": "pnpm db:agent:up"
+}

@@ -4,6 +4,35 @@ Use the **Supabase CLI local stack** for long-lived local development. This keep
 
 Clerk Auth remains hosted. Supabase local replaces the database and local Supabase services only.
 
+## Database environments
+
+| Environment               | Database                                                                    |
+| ------------------------- | --------------------------------------------------------------------------- |
+| Local developer           | Full Supabase CLI stack through OrbStack                                    |
+| Cursor Cloud Agent        | Private PostgreSQL 17 on that agent VM's loopback interface                 |
+| Integration and RLS tests | Existing Testcontainers PostgreSQL 17                                       |
+| Staging                   | Hosted Supabase `atlaris-dev`, for integration and manual smoke checks only |
+| Production                | Hosted Supabase `atlaris-prod`                                              |
+
+### Cursor Cloud Agent database
+
+Cursor installs native PostgreSQL 17 while creating the environment Build, then runs `pnpm db:agent:up` each time an agent starts. The fixed target is `127.0.0.1:55432`, database and role `atlaris_agent`. Each Cloud Agent VM has an isolated loopback interface, so concurrent agents can use the same URL string without sharing data.
+
+The cloud lifecycle has no hosted database or Supabase credentials. It uses the repository-installed Supabase CLI with an explicit loopback `--db-url` to apply every committed SQL file in `supabase/migrations/`, including migrations that are absent from the Drizzle journal. It then reuses `supabase/seed.sql` and the existing RLS compatibility bootstrap. The retention migration already tolerates `pg_cron` being unavailable.
+
+`pnpm db:agent:up` creates a clearly marked `.env.local` only when the file is absent. If an existing file does not contain the exact managed loopback URLs, the command fails without overwriting it. The reset command has no arbitrary URL or hosted-target override.
+
+| Command                   | Behavior                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------- |
+| `pnpm db:agent:preflight` | Read-only Ubuntu, toolchain, port, credential-boundary, and target checks                |
+| `pnpm db:agent:up`        | Idempotently starts PostgreSQL, applies migrations and grants, seeds, and verifies state |
+| `pnpm db:agent:status`    | Read-only readiness, migration, role, extension, RLS shim, and seed report               |
+| `pnpm db:agent:reset`     | Drops and recreates only the exact managed loopback database, then fully reprovisions it |
+
+If status reports a missing binary, rerun the Cursor environment Build so `scripts/agents/install-postgres-17.sh` runs. A connection or readiness failure should be diagnosed with `pnpm db:agent:status`; do not add a hosted URL to make it pass.
+
+Vercel Preview cannot reach a database inside a Cloud Agent VM. A remotely reachable disposable database would be a separate future requirement, not part of this workflow.
+
 ## Local product testing
 
 `supabase db reset` applies committed migrations and then runs `supabase/seed.sql`, which inserts the deterministic local product-testing user. Set:
@@ -37,6 +66,7 @@ That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env
 | 54324  | Supabase email testing inbox | Local auth email monitor        |
 | 54330  | `docker-compose.test.yml`    | Manual / CI-style tests         |
 | random | Testcontainers PostgreSQL 17 | Automated integration/RLS tests |
+| 55432  | Cursor Cloud PostgreSQL 17   | Task-local agent development    |
 
 Automated integration/security tests still use isolated Testcontainers, not the long-lived Supabase local database.
 
@@ -99,12 +129,12 @@ supabase db reset
 
 ## Scripts
 
-| Script            | Command                 |
-| ----------------- | ----------------------- |
-| Start Supabase    | `pnpm db:dev:start`     |
-| Stop Supabase     | `pnpm db:dev:stop`      |
-| Reset DB + seed   | `pnpm db:dev:reset`     |
-| Re-run seed only  | `pnpm db:dev:seed`      |
+| Script                      | Command                                                                   |
+| --------------------------- | ------------------------------------------------------------------------- |
+| Start Supabase              | `pnpm db:dev:start`                                                       |
+| Stop Supabase               | `pnpm db:dev:stop`                                                        |
+| Reset DB + seed             | `pnpm db:dev:reset`                                                       |
+| Re-run seed only            | `pnpm db:dev:seed`                                                        |
 | Apply Clerk Billing fixture | `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` |
 
 `pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
