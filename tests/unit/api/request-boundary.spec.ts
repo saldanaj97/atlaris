@@ -1,7 +1,7 @@
 import { buildUserFixture } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { getRequestContext } from '@/lib/api/context';
-import { ConflictError } from '@/lib/api/errors';
+import { ConflictError, RateLimitError } from '@/lib/api/errors';
 import {
   createRequestBoundary,
   requestBoundary,
@@ -9,11 +9,22 @@ import {
 import {
   clearAllUserRateLimiters,
   USER_RATE_LIMIT_CONFIGS,
+  type UserRateLimitCategory,
 } from '@/lib/api/user-rate-limit';
 import { db as serviceDb } from '@supabase/service-role';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { getUserByAuthIdMock } = vi.hoisted(() => ({
+const {
+  actualCheckUserRateLimit,
+  checkUserRateLimitMock,
+  getUserByAuthIdMock,
+} = vi.hoisted(() => ({
+  actualCheckUserRateLimit: {
+    current: undefined as
+      | ((userId: string, category: UserRateLimitCategory) => void)
+      | undefined,
+  },
+  checkUserRateLimitMock: vi.fn(),
   getUserByAuthIdMock: vi.fn(),
 }));
 
@@ -21,10 +32,25 @@ vi.mock('@/lib/db/queries/users', () => ({
   getUserByAuthId: getUserByAuthIdMock,
 }));
 
+vi.mock('@/lib/api/user-rate-limit', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/api/user-rate-limit')>();
+  actualCheckUserRateLimit.current = actual.checkUserRateLimit;
+  checkUserRateLimitMock.mockImplementation(actual.checkUserRateLimit);
+  return {
+    ...actual,
+    checkUserRateLimit: checkUserRateLimitMock,
+  };
+});
+
 describe('requestBoundary', () => {
   afterEach(() => {
     clearTestUser();
     getUserByAuthIdMock.mockReset();
+    checkUserRateLimitMock.mockReset();
+    checkUserRateLimitMock.mockImplementation(
+      actualCheckUserRateLimit.current!,
+    );
     clearAllUserRateLimiters();
   });
 
@@ -352,5 +378,93 @@ describe('requestBoundary', () => {
       classification: 'rate_limit',
       retryAfter: expect.any(Number),
     });
+  });
+
+  it('runs optionless actions without checking a rate-limit category', async () => {
+    const user = buildUserFixture({
+      id: 'user_action',
+      authUserId: 'auth_action',
+      email: 'action@example.test',
+      name: 'Action User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const result = await requestBoundary.action(async (scope) => {
+      expect(scope.actor).toEqual(user);
+      expect(scope.owned.userId).toBe(user.id);
+      return 'ok';
+    });
+
+    expect(result).toBe('ok');
+    expect(checkUserRateLimitMock).not.toHaveBeenCalled();
+  });
+
+  it('checks the configured category then executes authenticated limited actions', async () => {
+    const user = buildUserFixture({
+      id: 'user_action_rl',
+      authUserId: 'auth_action_rl',
+      email: 'action-rl@example.test',
+      name: 'Action RL User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const run = vi.fn(async (scope) => {
+      expect(scope.actor).toEqual(user);
+      return 'limited-ok';
+    });
+
+    await expect(
+      requestBoundary.action({ rateLimit: 'mutation' }, run),
+    ).resolves.toBe('limited-ok');
+
+    expect(checkUserRateLimitMock).toHaveBeenCalledExactlyOnceWith(
+      user.id,
+      'mutation',
+    );
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it('returns null for unauthenticated limited actions without checking the limiter', async () => {
+    const run = vi.fn(async () => 'unreachable');
+
+    await expect(
+      requestBoundary.action({ rateLimit: 'read' }, run),
+    ).resolves.toBeNull();
+
+    expect(checkUserRateLimitMock).not.toHaveBeenCalled();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it('surfaces limiter failures without executing the action callback', async () => {
+    const user = buildUserFixture({
+      id: 'user_action_rl_fail',
+      authUserId: 'auth_action_rl_fail',
+      email: 'action-rl-fail@example.test',
+      name: 'Action RL Fail User',
+    });
+
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const limiterError = new RateLimitError('Too Many Requests');
+    checkUserRateLimitMock.mockImplementationOnce(() => {
+      throw limiterError;
+    });
+
+    const run = vi.fn(async () => 'unreachable');
+
+    await expect(
+      requestBoundary.action({ rateLimit: 'aiGeneration' }, run),
+    ).rejects.toBe(limiterError);
+
+    expect(checkUserRateLimitMock).toHaveBeenCalledExactlyOnceWith(
+      user.id,
+      'aiGeneration',
+    );
+    expect(run).not.toHaveBeenCalled();
   });
 });
