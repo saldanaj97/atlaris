@@ -131,8 +131,7 @@ async function parseOneClickForm(
   }
 }
 
-export const GET = withErrorBoundary(async (request: Request) => {
-  checkIpRateLimit(request, 'publicApi');
+export const GET = withErrorBoundary(async () => {
   // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
 });

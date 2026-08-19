@@ -62,13 +62,13 @@ describe('email unsubscribe route', () => {
     expect(await settingsFor(userId)).toBeNull();
   });
 
-  it('rate-limits GET confirmation with the publicApi IP bucket', async () => {
+  it('keeps scanner GET traffic from starving one-click POSTs', async () => {
     const { userId, token } = await seedUser();
     const headers = { 'x-forwarded-for': '198.51.100.42' };
 
     for (
       let index = 0;
-      index < IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests;
+      index <= IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests;
       index++
     ) {
       const response = await GET_UNSUBSCRIBE(
@@ -81,22 +81,7 @@ describe('email unsubscribe route', () => {
       expect(await response.text()).toContain('List-Unsubscribe');
     }
 
-    const limitedGet = await GET_UNSUBSCRIBE(
-      new Request(`${BASE_URL}?token=${encodeURIComponent(token)}`, {
-        headers,
-      }),
-    );
-    expect(limitedGet.status).toBe(429);
-    expect(limitedGet.headers.get('retry-after')).not.toBeNull();
-    expect(limitedGet.headers.get('x-ratelimit-limit')).toBe(
-      String(IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests),
-    );
-    await expect(limitedGet.json()).resolves.toMatchObject({
-      code: 'RATE_LIMITED',
-      classification: 'rate_limit',
-    });
-
-    const limitedPost = await POST_UNSUBSCRIBE(
+    const response = await POST_UNSUBSCRIBE(
       new Request(`${BASE_URL}?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: {
@@ -106,8 +91,11 @@ describe('email unsubscribe route', () => {
         body: 'List-Unsubscribe=One-Click',
       }),
     );
-    expect(limitedPost.status).toBe(429);
-    expect(await settingsFor(userId)).toBeNull();
+
+    expect(response.status).toBe(200);
+    expect((await settingsFor(userId))?.unsubscribeAllOptionalEmails).toBe(
+      true,
+    );
   });
 
   it('rate-limits signed one-click POSTs with the publicApi IP bucket before HMAC and body parsing', async () => {
