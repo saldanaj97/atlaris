@@ -1,4 +1,5 @@
 import { applySignedEmailUnsubscribe } from '@/features/notifications/email/unsubscribe';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 
 const NO_STORE_HEADERS = {
@@ -130,12 +131,15 @@ async function parseOneClickForm(
   }
 }
 
-export const GET = withErrorBoundary(async () => {
+export const GET = withErrorBoundary(async (request: Request) => {
+  checkIpRateLimit(request, 'publicApi');
   // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
 });
 
 async function handlePost(request: Request): Promise<Response> {
+  checkIpRateLimit(request, 'publicApi');
+
   const token = new URL(request.url).searchParams.get('token');
   if (!token) {
     return htmlResponse(failureHtml(), 400);
