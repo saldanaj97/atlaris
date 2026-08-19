@@ -7,9 +7,23 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('middleware policy', () => {
-  it('isProtectedRoute skips Clerk Billing webhook', () => {
-    expect(isProtectedRoute('/api/v1/clerk/billing/webhook')).toBe(false);
-    expect(isProviderWebhookRoute('/api/v1/clerk/billing/webhook')).toBe(true);
+  it.each([
+    '/api/v1/clerk/billing/webhook',
+    '/api/v1/clerk/billing/webhook/',
+    '/api/v1/clerk/billing/webhook/events',
+    '/api/v1/clerk/billing/webhook/events/',
+  ])('treats %s as a provider webhook and Clerk bypass', (pathname) => {
+    expect(isProviderWebhookRoute(pathname)).toBe(true);
+    expect(isProtectedRoute(pathname)).toBe(false);
+  });
+
+  it('does not treat sibling webhook-unrelated path as a provider webhook', () => {
+    expect(
+      isProviderWebhookRoute('/api/v1/clerk/billing/webhook-unrelated'),
+    ).toBe(false);
+    expect(isProtectedRoute('/api/v1/clerk/billing/webhook-unrelated')).toBe(
+      true,
+    );
   });
 
   it.each([
