@@ -47,7 +47,7 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 | ----------- | ------------ | -------- | ----------------------------------------------------- |
 | `health`    | 60 requests  | 1 minute | Worker health                                         |
 | `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                 |
-| `publicApi` | 30 requests  | 1 minute | Signed email unsubscribe                              |
+| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                     |
 | `auth`      | 10 requests  | 1 minute | Defined; no current route uses it                     |
 | `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)        |
 | `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs, notification cron |
@@ -174,7 +174,7 @@ For unauthenticated or machine-authenticated routes:
 ```typescript
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 
-checkIpRateLimit(request, 'publicApi'); // unsubscribe
+checkIpRateLimit(request, 'publicApi'); // unsubscribe POST
 checkIpRateLimit(request, 'internal'); // notification cron / workers
 ```
 
@@ -289,7 +289,9 @@ These categories remain available in the shared user-limiter configuration for f
 
 ### IP: Public API (`publicApi`)
 
-- `GET` / `POST /api/v1/notifications/email/unsubscribe`
+- `POST /api/v1/notifications/email/unsubscribe`
+
+`GET /api/v1/notifications/email/unsubscribe` is static confirmation-only and intentionally unmetered so scanners and prefetchers cannot starve legitimate opt-outs. Only the signed one-click POST uses `publicApi`.
 
 ### IP: Docs (`docs`)
 
