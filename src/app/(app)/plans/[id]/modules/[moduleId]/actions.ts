@@ -33,22 +33,24 @@ export async function batchUpdateModuleTaskProgressAction({
 }: BatchUpdateModuleTaskProgressInput): Promise<BatchUpdateTaskProgressCoreResult | void> {
   if (updates.length === 0) return;
 
-  const result = await requestBoundary.action(async ({ actor, db }) =>
-    batchUpdateTaskProgressCore({
-      planId,
-      moduleId,
-      updates,
-      userId: actor.id,
-      dbClient: db,
-      logContext: {
+  const result = await requestBoundary.action(
+    { rateLimit: 'mutation' },
+    async ({ actor, db }) =>
+      batchUpdateTaskProgressCore({
         planId,
         moduleId,
+        updates,
         userId: actor.id,
-        updateCount: updates.length,
-        taskIds: updates.map((update) => update.taskId),
-      },
-      logMessage: 'Failed to batch update module task progress',
-    }),
+        dbClient: db,
+        logContext: {
+          planId,
+          moduleId,
+          userId: actor.id,
+          updateCount: updates.length,
+          taskIds: updates.map((update) => update.taskId),
+        },
+        logMessage: 'Failed to batch update module task progress',
+      }),
   );
 
   if (result === null) {
