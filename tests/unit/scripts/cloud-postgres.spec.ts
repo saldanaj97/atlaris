@@ -144,5 +144,6 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_EMAIL');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_NAME');
+    expect(source).toContain("code !== 'EEXIST'");
   });
 });

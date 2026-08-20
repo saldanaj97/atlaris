@@ -271,11 +271,25 @@ async function writeAgentEnvFileIfAbsent(
     action === 'create'
       ? AGENT_ENV_FILE_CONTENT
       : mergeManagedDatabaseUrls(await readFile(ENV_FILE, 'utf8'));
-  await writeFile(ENV_FILE, content, {
-    encoding: 'utf8',
-    flag: action === 'create' ? 'wx' : 'w',
-    mode: 0o600,
-  });
+  try {
+    await writeFile(ENV_FILE, content, {
+      encoding: 'utf8',
+      flag: action === 'create' ? 'wx' : 'w',
+      mode: 0o600,
+    });
+  } catch (error) {
+    if (
+      action !== 'create' ||
+      (error as NodeJS.ErrnoException).code !== 'EEXIST'
+    ) {
+      throw error;
+    }
+    if (inspectAgentEnvFile(await readAgentEnvFile()) !== 'keep') {
+      fail('.env.local changed during startup; rerun the database command.');
+    }
+    log('Kept the concurrently created safe .env.local.');
+    return;
+  }
   log(
     `${action === 'create' ? 'Created' : 'Updated'} .env.local with the managed loopback database URLs.`,
   );
