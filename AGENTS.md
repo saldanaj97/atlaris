@@ -116,7 +116,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Cursor Cloud database
 
-- Run `pnpm db:agent:up` before database work and `pnpm db:agent:status` for diagnosis.
+- In Cursor Cloud Agents, run `pnpm db:agent:up` before database work and `pnpm db:agent:status` for diagnosis.
 - The agent database is PostgreSQL 17 on task-local loopback only. Never provide it a hosted URL or run `pnpm db:agent:reset` against staging or production.
 - Keep the ordinary local OrbStack/Supabase workflow unchanged. See `docs/development/local-database.md` for the environment boundaries and command contracts.
 

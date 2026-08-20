@@ -37,11 +37,25 @@ const DATA_DIR = join(DATA_ROOT, '17');
 const DATA_MARKER = join(DATA_ROOT, '.managed-by-atlaris');
 const LOG_FILE = join(DATA_ROOT, 'postgres.log');
 const ENV_FILE = resolve(process.cwd(), '.env.local');
+const SHADOWING_ENV_FILES = [
+  '.env',
+  '.env.development',
+  '.env.development.local',
+  '.env.production',
+  '.env.production.local',
+  '.env.test',
+  '.env.test.local',
+].map((file) => resolve(process.cwd(), file));
 const MIGRATIONS_DIR = resolve(process.cwd(), 'supabase', 'migrations');
 const MANAGED_MARKER = '# Managed by pnpm db:agent:up for Cursor Cloud Agents';
 
 export const AGENT_DATABASE_URL = `postgresql://${AGENT_ROLE}@${AGENT_HOST}:${AGENT_PORT}/${AGENT_DATABASE}?sslmode=disable`;
 export const AGENT_ENV_FILE_CONTENT = `${MANAGED_MARKER}\nPOSTGRES_URL=${AGENT_DATABASE_URL}\nPOSTGRES_URL_NON_POOLING=${AGENT_DATABASE_URL}\n`;
+export const RLS_ROLE_NORMALIZATION_SQL = `
+  ALTER ROLE anon NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  ALTER ROLE authenticated NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  ALTER ROLE service_role NOINHERIT NOLOGIN NOSUPERUSER NOBYPASSRLS;
+`;
 
 const ADMIN_DATABASE_URL = `postgresql://${POSTGRES_SUPERUSER}@${AGENT_HOST}:${AGENT_PORT}/${AGENT_DATABASE}`;
 const ADMIN_MAINTENANCE_URL = `postgresql://${POSTGRES_SUPERUSER}@${AGENT_HOST}:${AGENT_PORT}/postgres`;
@@ -64,6 +78,7 @@ type StatusReport = {
   appliedMigrationCount: number;
   archiveBeforeRemoval: boolean;
   missingMigrationCount: number;
+  unexpectedMigrationCount: number;
   missingJournalMigrationsPresent: boolean;
   requiredExtensionPresent: boolean;
   requiredFunctionPresent: boolean;
@@ -163,9 +178,7 @@ function dotenvValue(content: string, key: string): string | undefined {
   return undefined;
 }
 
-export function inspectAgentEnvFile(content: string | null): 'create' | 'keep' {
-  if (content === null) return 'create';
-
+function assertSafeEnvFileContent(content: string, file: string): void {
   const lower = content.toLowerCase();
   if (
     lower.includes('atlaris-dev') ||
@@ -173,7 +186,7 @@ export function inspectAgentEnvFile(content: string | null): 'create' | 'keep' {
     lower.includes('.supabase.co') ||
     lower.includes('.neon.tech')
   ) {
-    return fail('Refusing a .env.local that references a hosted database.');
+    fail(`Refusing ${file} because it references a hosted database.`);
   }
 
   const fileEnvironment = Object.fromEntries(
@@ -183,17 +196,36 @@ export function inspectAgentEnvFile(content: string | null): 'create' | 'keep' {
     ]),
   );
   assertSafeDatabaseEnvironment(fileEnvironment);
+}
+
+export function inspectAgentEnvFile(
+  content: string | null,
+): 'create' | 'merge' | 'keep' {
+  if (content === null) return 'create';
+
+  assertSafeEnvFileContent(content, '.env.local');
 
   const url = dotenvValue(content, 'POSTGRES_URL');
   const nonPoolingUrl = dotenvValue(content, 'POSTGRES_URL_NON_POOLING');
   if (!url || !nonPoolingUrl) {
-    return fail(
-      '.env.local already exists without both managed database URLs; will not overwrite it.',
-    );
+    return 'merge';
   }
   assertManagedAgentDatabaseUrl(url);
   assertManagedAgentDatabaseUrl(nonPoolingUrl);
   return 'keep';
+}
+
+export function mergeManagedDatabaseUrls(content: string): string {
+  const preserved = content
+    .split(/\r?\n/)
+    .filter(
+      (line) =>
+        !/^\s*(?:export\s+)?POSTGRES_URL(?:_NON_POOLING)?\s*=/.test(line),
+    )
+    .join('\n')
+    .trimEnd();
+
+  return `${preserved ? `${preserved}\n` : ''}POSTGRES_URL=${AGENT_DATABASE_URL}\nPOSTGRES_URL_NON_POOLING=${AGENT_DATABASE_URL}\n`;
 }
 
 async function readAgentEnvFile(): Promise<string | null> {
@@ -205,22 +237,35 @@ async function readAgentEnvFile(): Promise<string | null> {
   }
 }
 
-async function assertEnvironmentBoundary(): Promise<'create' | 'keep'> {
+async function assertEnvironmentBoundary(): Promise<
+  'create' | 'merge' | 'keep'
+> {
   assertSafeDatabaseEnvironment(process.env);
+  for (const file of SHADOWING_ENV_FILES) {
+    const content = await readFile(file, 'utf8').catch((error) => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+      throw error;
+    });
+    if (content !== null) assertSafeEnvFileContent(content, basename(file));
+  }
   return inspectAgentEnvFile(await readAgentEnvFile());
 }
 
 async function writeAgentEnvFileIfAbsent(
-  action: 'create' | 'keep',
+  action: 'create' | 'merge' | 'keep',
 ): Promise<void> {
   if (action === 'keep') return;
-  await writeFile(ENV_FILE, AGENT_ENV_FILE_CONTENT, {
+  const content =
+    action === 'create'
+      ? AGENT_ENV_FILE_CONTENT
+      : mergeManagedDatabaseUrls(await readFile(ENV_FILE, 'utf8'));
+  await writeFile(ENV_FILE, content, {
     encoding: 'utf8',
-    flag: 'wx',
+    flag: action === 'create' ? 'wx' : 'w',
     mode: 0o600,
   });
   log(
-    'Created cloud-owned .env.local with the managed loopback database URLs.',
+    `${action === 'create' ? 'Created' : 'Updated'} .env.local with the managed loopback database URLs.`,
   );
 }
 
@@ -428,6 +473,7 @@ async function bootstrapCompatibility(): Promise<void> {
   await bootstrapDatabase(ADMIN_DATABASE_URL);
   const sql = postgres(ADMIN_DATABASE_URL, { max: 1 });
   try {
+    await sql.unsafe(RLS_ROLE_NORMALIZATION_SQL);
     await sql.unsafe(
       `GRANT anon, authenticated, service_role TO ${AGENT_ROLE}`,
     );
@@ -472,6 +518,14 @@ export function migrationOrderIsSafe(versions: string[]): boolean {
   return archiveIndex >= 0 && removeIndex >= 0 && archiveIndex < removeIndex;
 }
 
+export function unexpectedMigrationVersions(
+  expected: string[],
+  applied: string[],
+): string[] {
+  const expectedVersions = new Set(expected);
+  return applied.filter((version) => !expectedVersions.has(version));
+}
+
 export function assertNoTargetArguments(args: string[]): void {
   if (args.length > 0) {
     fail('Database lifecycle commands do not accept URL or target arguments.');
@@ -493,6 +547,7 @@ async function collectStatus(): Promise<StatusReport> {
         count(*) filter (
           where rolname in ('anon', 'authenticated', 'service_role')
             and not rolcanlogin
+            and not rolsuper
             and not rolbypassrls
         ) = 3
         and count(*) filter (
@@ -519,6 +574,10 @@ async function collectStatus(): Promise<StatusReport> {
         exists(select 1 from users where id = ${SEED_USER_ID}::uuid) as seed
     `;
     const missing = expected.filter((version) => !appliedVersions.has(version));
+    const unexpected = unexpectedMigrationVersions(
+      expected,
+      applied.map((row) => row.version),
+    );
     const grants = await sql<{ safe: boolean }[]>`
       select
         not exists (
@@ -553,6 +612,7 @@ async function collectStatus(): Promise<StatusReport> {
         appliedVersions.has(ARCHIVE_MIGRATION) &&
         appliedVersions.has(REMOVE_MIGRATION),
       missingMigrationCount: missing.length,
+      unexpectedMigrationCount: unexpected.length,
       missingJournalMigrationsPresent:
         appliedVersions.has('20260520194501') &&
         appliedVersions.has(ARCHIVE_MIGRATION),
@@ -572,6 +632,7 @@ function statusPassed(report: StatusReport): boolean {
   return (
     report.archiveBeforeRemoval &&
     report.missingMigrationCount === 0 &&
+    report.unexpectedMigrationCount === 0 &&
     report.missingJournalMigrationsPresent &&
     report.requiredExtensionPresent &&
     report.requiredFunctionPresent &&
@@ -586,6 +647,7 @@ function printStatus(report: StatusReport): void {
   log(`managed database: ${AGENT_DATABASE} on ${AGENT_HOST}:${AGENT_PORT}`);
   log(`applied migrations: ${report.appliedMigrationCount}`);
   log(`pending migrations: ${report.missingMigrationCount}`);
+  log(`unexpected migrations: ${report.unexpectedMigrationCount}`);
   log(
     `Drizzle-journal-missing migrations: ${report.missingJournalMigrationsPresent ? 'present' : 'missing'}`,
   );

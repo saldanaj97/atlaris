@@ -2,13 +2,17 @@ import {
   AGENT_DATABASE_URL,
   AGENT_ENV_FILE_CONTENT,
   COMMANDS,
+  RLS_ROLE_NORMALIZATION_SQL,
   assertManagedAgentDatabaseUrl,
   assertNoTargetArguments,
   assertSafeDatabaseEnvironment,
   inspectAgentEnvFile,
   listCommittedMigrationVersions,
+  mergeManagedDatabaseUrls,
   migrationOrderIsSafe,
+  unexpectedMigrationVersions,
 } from '../../../scripts/agents/cloud-postgres';
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 describe('Cursor Cloud PostgreSQL safety boundary', () => {
@@ -52,12 +56,19 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     ).not.toThrow();
   });
 
-  it('creates an env file only when none exists', () => {
+  it('creates or merges the managed URLs without discarding agent env values', () => {
     expect(inspectAgentEnvFile(null)).toBe('create');
     expect(inspectAgentEnvFile(AGENT_ENV_FILE_CONTENT)).toBe('keep');
-    expect(() =>
-      inspectAgentEnvFile('NEXT_PUBLIC_APP_URL=http://localhost'),
-    ).toThrow(/will not overwrite/i);
+    expect(inspectAgentEnvFile('NEXT_PUBLIC_APP_URL=http://localhost')).toBe(
+      'merge',
+    );
+    expect(
+      mergeManagedDatabaseUrls(
+        'NEXT_PUBLIC_APP_URL=http://localhost\nPOSTGRES_URL=\nPOSTGRES_URL_NON_POOLING=\n',
+      ),
+    ).toBe(
+      `NEXT_PUBLIC_APP_URL=http://localhost\nPOSTGRES_URL=${AGENT_DATABASE_URL}\nPOSTGRES_URL_NON_POOLING=${AGENT_DATABASE_URL}\n`,
+    );
   });
 
   it('models status and preflight as read-only commands', () => {
@@ -92,5 +103,28 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     expect(migrationOrderIsSafe(['20260706222017', '20260706221000'])).toBe(
       false,
     );
+  });
+
+  it('reports applied migrations that are absent from the checkout', () => {
+    expect(unexpectedMigrationVersions(['001', '002'], ['001', '003'])).toEqual(
+      ['003'],
+    );
+  });
+
+  it('normalizes every RLS role away from superuser privileges', () => {
+    expect(RLS_ROLE_NORMALIZATION_SQL.match(/NOSUPERUSER/g)).toHaveLength(3);
+    expect(RLS_ROLE_NORMALIZATION_SQL).toContain('ALTER ROLE anon');
+    expect(RLS_ROLE_NORMALIZATION_SQL).toContain('ALTER ROLE authenticated');
+    expect(RLS_ROLE_NORMALIZATION_SQL).toContain('ALTER ROLE service_role');
+  });
+
+  it('selects Node 24 for Cursor install and startup commands', async () => {
+    const config = JSON.parse(
+      await readFile('.cursor/environment.json', 'utf8'),
+    ) as { install: string; start: string };
+
+    expect(config.install).toContain('nvm install 24');
+    expect(config.start).toContain('nvm use 24');
+    expect(config.start).toContain('codex-1password-env.sh');
   });
 });
