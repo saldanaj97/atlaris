@@ -140,10 +140,23 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     const source = await readFile('scripts/agents/cloud-postgres.ts', 'utf8');
 
     expect(source).toContain('has_column_privilege');
+    expect(source).toContain('has_table_privilege');
     expect(source).toContain('and not class.relrowsecurity');
+    expect(source).toContain("policy.permissive = 'PERMISSIVE'");
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_EMAIL');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_NAME');
     expect(source).toContain("code !== 'EEXIST'");
+  });
+
+  it('checks managed data-directory ownership before preflight readiness', async () => {
+    const source = await readFile('scripts/agents/cloud-postgres.ts', 'utf8');
+    const preflight = source.slice(
+      source.indexOf('async function runPreflight'),
+    );
+
+    expect(
+      preflight.indexOf('await assertManagedDataDirectory()'),
+    ).toBeLessThan(preflight.indexOf('if (await postgresReady())'));
   });
 });

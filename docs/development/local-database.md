@@ -20,7 +20,7 @@ Cursor installs native PostgreSQL 17 while creating the environment Build, then 
 
 The cloud lifecycle has no hosted database or Supabase credentials. It uses the repository-installed Supabase CLI with an explicit loopback `--db-url` to apply every committed SQL file in `supabase/migrations/`, including migrations that are absent from the Drizzle journal. It then reuses `supabase/seed.sql` and the existing RLS compatibility bootstrap. The retention migration already tolerates `pg_cron` being unavailable.
 
-`pnpm db:agent:up` creates a clearly marked `.env.local` only when the file is absent. If an existing file does not contain the exact managed loopback URLs, the command fails without overwriting it. The reset command has no arbitrary URL or hosted-target override.
+`pnpm db:agent:up` creates a clearly marked `.env.local` when the file is absent. For an existing safe file that is missing either managed database URL, it preserves the other values and adds the exact loopback URLs; hosted database references, hosted credentials, duplicate protected assignments, and unexpected database URLs still fail closed. The reset command has no arbitrary URL or hosted-target override.
 
 | Command                   | Behavior                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------- |

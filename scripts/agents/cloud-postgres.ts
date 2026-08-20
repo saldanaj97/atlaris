@@ -615,18 +615,34 @@ async function collectStatus(): Promise<StatusReport> {
       select
         not exists (
           select 1
-          from information_schema.table_privileges
-          where table_schema = 'public'
-            and grantee = 'authenticated'
-            and table_name = any(${AUTHENTICATED_SERVER_OWNED_WRITE_TABLES})
-            and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+          from pg_class class
+          join pg_namespace namespace on namespace.oid = class.relnamespace
+          cross join (values ('INSERT'), ('UPDATE'), ('DELETE')) p(privilege_type)
+          where namespace.nspname = 'public'
+            and class.relname = any(${AUTHENTICATED_SERVER_OWNED_WRITE_TABLES})
+            and has_table_privilege(
+              'authenticated',
+              class.oid,
+              p.privilege_type
+            )
         )
         and not exists (
           select 1
-          from information_schema.table_privileges
-          where table_schema = 'public'
-            and grantee = 'anon'
-            and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+          from pg_class class
+          join pg_namespace namespace on namespace.oid = class.relnamespace
+          cross join (
+            values ('INSERT'), ('UPDATE'), ('DELETE'), ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+          ) p(privilege_type)
+          where namespace.nspname = 'public'
+            and class.relkind in ('r', 'p')
+            and not exists (
+              select 1
+              from pg_depend dependency
+              where dependency.classid = 'pg_class'::regclass
+                and dependency.objid = class.oid
+                and dependency.deptype = 'e'
+            )
+            and has_table_privilege('anon', class.oid, p.privilege_type)
         )
         and not exists (
           select 1
@@ -681,6 +697,14 @@ async function collectStatus(): Promise<StatusReport> {
               and dependency.deptype = 'e'
           )
           and not class.relrowsecurity
+      )
+      and not exists (
+        select 1
+        from pg_policies policy
+        cross join lateral unnest(policy.roles) policy_role(role_name)
+        where policy.schemaname = 'public'
+          and policy.permissive = 'PERMISSIVE'
+          and lower(policy_role.role_name::text) in ('public', 'anon')
       ) as safe
     `;
 
@@ -796,8 +820,8 @@ async function runPreflight(): Promise<void> {
     `Node ${process.version}; pnpm ${pnpmVersion}; Supabase CLI ${supabaseVersion}.`,
   );
 
+  await assertManagedDataDirectory();
   if (await postgresReady()) {
-    await assertManagedDataDirectory();
     await assertRunningManagedCluster();
     log(`Managed PostgreSQL already owns loopback port ${AGENT_PORT}.`);
   } else if (await portInUse()) {
