@@ -64,6 +64,17 @@ function makeActionTestScope(): RequestScope {
   };
 }
 
+function invokeMockedAction<T>(
+  optionsOrRun: ((scope: RequestScope) => Promise<T>) | Record<string, unknown>,
+  maybeRun?: (scope: RequestScope) => Promise<T>,
+): Promise<T> {
+  const run = typeof optionsOrRun === 'function' ? optionsOrRun : maybeRun;
+  if (typeof run !== 'function') {
+    throw new TypeError('expected action callback');
+  }
+  return run(makeActionTestScope());
+}
+
 describe('batchUpdateTaskProgressAction', () => {
   afterEach(() => {
     vi.clearAllMocks();
@@ -89,10 +100,7 @@ describe('batchUpdateTaskProgressAction', () => {
   });
 
   it('rejects oversized update batches after auth', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      async (fn: (scope: RequestScope) => Promise<void>) =>
-        fn(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     const oversizedUpdates = Array.from({ length: 501 }, (_, index) => ({
       taskId: `task-${index}`,
       status: 'completed' as const,
@@ -125,10 +133,7 @@ describe('batchUpdateTaskProgressAction', () => {
   });
 
   it('revalidates paths returned by the boundary on success', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      async (fn: (scope: RequestScope) => Promise<void>) =>
-        fn(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     applyTaskProgressUpdatesMock.mockResolvedValueOnce({
       progress: [],
       revalidatePaths: ['/plans/plan-123', '/plans'],
@@ -151,13 +156,7 @@ describe('batchUpdateTaskProgressAction', () => {
   });
 
   it('succeeds when persistence succeeds but revalidatePath throws', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      async (
-        fn: (
-          scope: RequestScope,
-        ) => Promise<{ revalidateFailed: boolean } | void>,
-      ) => fn(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     applyTaskProgressUpdatesMock.mockResolvedValueOnce({
       progress: [],
       revalidatePaths: ['/plans/plan-123', '/plans'],
@@ -191,10 +190,7 @@ describe('batchUpdateTaskProgressAction', () => {
   });
 
   it('maps boundary persistence errors to generic user message', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      async (fn: (scope: RequestScope) => Promise<void>) =>
-        fn(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     const persistenceError = new Error('db exploded');
     applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
 

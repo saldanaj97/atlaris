@@ -58,10 +58,16 @@ function makeActionTestScope(): RequestScope {
   };
 }
 
-const mockRequestBoundaryAction =
-  (scope: RequestScope) =>
-  async <T>(fn: (scope: RequestScope) => Promise<T>): Promise<T> =>
-    fn(scope);
+function invokeMockedAction<T>(
+  optionsOrRun: ((scope: RequestScope) => Promise<T>) | Record<string, unknown>,
+  maybeRun?: (scope: RequestScope) => Promise<T>,
+): Promise<T> {
+  const run = typeof optionsOrRun === 'function' ? optionsOrRun : maybeRun;
+  if (typeof run !== 'function') {
+    throw new TypeError('expected action callback');
+  }
+  return run(makeActionTestScope());
+}
 
 describe('batchUpdateModuleTaskProgressAction', () => {
   afterEach(() => {
@@ -88,9 +94,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
   });
 
   it('rejects oversized batches after auth', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      mockRequestBoundaryAction(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     const updates = Array.from({ length: 501 }, (_, index) => ({
       taskId: `task-${index}`,
       status: 'completed' as const,
@@ -122,9 +126,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
   });
 
   it('revalidates module and plan paths on success', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      mockRequestBoundaryAction(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     applyTaskProgressUpdatesMock.mockResolvedValueOnce({
       progress: [],
       revalidatePaths: ['/plans/p1/modules/m1', '/plans/p1', '/plans'],
@@ -150,9 +152,7 @@ describe('batchUpdateModuleTaskProgressAction', () => {
   });
 
   it('maps boundary persistence errors to generic user message', async () => {
-    requestBoundaryActionMock.mockImplementationOnce(
-      mockRequestBoundaryAction(makeActionTestScope()),
-    );
+    requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     const persistenceError = new Error('db exploded');
     applyTaskProgressUpdatesMock.mockRejectedValueOnce(persistenceError);
 

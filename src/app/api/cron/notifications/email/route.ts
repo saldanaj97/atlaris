@@ -5,6 +5,7 @@ import {
   resolveEmailNotificationDeliveryRunKind,
 } from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import { tokensMatch } from '@/lib/api/internal/internal-worker-token';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { json, jsonError } from '@/lib/api/response';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 import { maintenanceEnv } from '@/lib/config/env';
@@ -87,6 +88,8 @@ export function createEmailNotificationDeliveryCronRoute(
       );
       return jsonError('Unauthorized cron trigger.', { status: 401 });
     }
+
+    checkIpRateLimit(request, 'internal');
 
     const runKind = resolveRunKind(request);
     if (!runKind) {

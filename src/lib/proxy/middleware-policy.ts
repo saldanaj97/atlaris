@@ -34,8 +34,8 @@ const PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH =
 
 export function isProviderWebhookRoute(pathname: string): boolean {
   const path = stripTrailingSlash(pathname);
-  return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some((prefix) =>
-    path.startsWith(prefix),
+  return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 

@@ -14,6 +14,7 @@ import {
 } from '@/lib/api/auth';
 import { getCorrelationId } from '@/lib/api/context';
 import { withErrorBoundary, withRateLimit } from '@/lib/api/route-wrappers';
+import { checkUserRateLimit } from '@/lib/api/user-rate-limit';
 import { getDb } from '@supabase/runtime';
 import { randomUUID } from 'node:crypto';
 
@@ -36,7 +37,7 @@ type RouteScope = RequestScope &
 type RequestBoundaryWork<T> = (scope: RequestScope) => Promise<T> | T;
 type RouteBoundaryWork = (scope: RouteScope) => Promise<Response> | Response;
 
-type RouteBoundaryOptions = Readonly<{
+type RateLimitBoundaryOptions = Readonly<{
   rateLimit?: UserRateLimitCategory;
 }>;
 
@@ -54,7 +55,15 @@ function buildScope(actor: ActorUser, db: DbClient): RequestScope {
 
 type RouteMethod = {
   (run: RouteBoundaryWork): PlainHandler;
-  (options: RouteBoundaryOptions, run: RouteBoundaryWork): PlainHandler;
+  (options: RateLimitBoundaryOptions, run: RouteBoundaryWork): PlainHandler;
+};
+
+type ActionMethod = {
+  <T>(run: RequestBoundaryWork<T>): Promise<T | null>;
+  <T>(
+    options: RateLimitBoundaryOptions,
+    run: RequestBoundaryWork<T>,
+  ): Promise<T | null>;
 };
 
 function wrapRouteBoundaryWork(run: RouteBoundaryWork): AuthHandler {
@@ -68,10 +77,10 @@ function wrapRouteBoundaryWork(run: RouteBoundaryWork): AuthHandler {
 
 function createRouteMethod(): RouteMethod {
   function route(
-    optionsOrRun: RouteBoundaryOptions | RouteBoundaryWork,
+    optionsOrRun: RateLimitBoundaryOptions | RouteBoundaryWork,
     maybeRun?: RouteBoundaryWork,
   ): PlainHandler {
-    let options: RouteBoundaryOptions | undefined;
+    let options: RateLimitBoundaryOptions | undefined;
     let run: RouteBoundaryWork;
 
     if (typeof optionsOrRun === 'function') {
@@ -97,14 +106,49 @@ function createRouteMethod(): RouteMethod {
   return route as RouteMethod;
 }
 
+function createActionMethod(): ActionMethod {
+  function action<T>(
+    optionsOrRun: RateLimitBoundaryOptions | RequestBoundaryWork<T>,
+    maybeRun?: RequestBoundaryWork<T>,
+  ): Promise<T | null> {
+    let options: RateLimitBoundaryOptions | undefined;
+    let run: RequestBoundaryWork<T>;
+
+    if (typeof optionsOrRun === 'function') {
+      run = optionsOrRun;
+    } else if (maybeRun === undefined) {
+      throw new TypeError(
+        'requestBoundary.action: handler required as second argument when passing options',
+      );
+    } else {
+      options = optionsOrRun;
+      run = maybeRun;
+    }
+
+    return withServerActionContext(async (actor) => {
+      if (options?.rateLimit !== undefined) {
+        // Match `withRateLimit` (`ctx.userId`): Clerk auth ID, not `users.id`.
+        checkUserRateLimit(actor.authUserId, options.rateLimit);
+      }
+
+      return run({
+        ...buildScope(actor, getDb()),
+      });
+    });
+  }
+
+  return action as ActionMethod;
+}
+
 interface RequestBoundary {
   route: RouteMethod;
   component<T>(run: RequestBoundaryWork<T>): Promise<T | null>;
-  action<T>(run: RequestBoundaryWork<T>): Promise<T | null>;
+  action: ActionMethod;
 }
 
 export function createRequestBoundary(): RequestBoundary {
   const route = createRouteMethod();
+  const action = createActionMethod();
   return {
     route,
     component<T>(run: RequestBoundaryWork<T>): Promise<T | null> {
@@ -114,13 +158,7 @@ export function createRequestBoundary(): RequestBoundary {
         }),
       );
     },
-    action<T>(run: RequestBoundaryWork<T>): Promise<T | null> {
-      return withServerActionContext(async (actor) =>
-        run({
-          ...buildScope(actor, getDb()),
-        }),
-      );
-    },
+    action,
   };
 }
 

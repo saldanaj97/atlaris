@@ -30,6 +30,7 @@ export const POST: PlainHandler = requestBoundary.route(
       mode: 'required',
       onMalformedJson: () =>
         new ValidationError('Invalid JSON in request body.'),
+      maxBytes: 1 * 1024 * 1024,
     });
 
     let overrides: PlanRegenerationOverridesInput | undefined;
