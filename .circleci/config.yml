@@ -1,34 +1,39 @@
-# This config was automatically generated from your source code
-# Stacks detected: cicd:github-actions:.github/workflows,deps:node:.
 version: 2.1
 orbs:
   node: circleci/node@5
+
 jobs:
   test-node:
-    # Install node dependencies and run tests
-    executor: node/default
+    executor:
+      name: node/default
+      tag: '24.19'
     steps:
       - checkout
+      - node/install-pnpm:
+          version: '11.9.0'
       - node/install-packages:
-          cache-path: ~/project/node_modules
-          override-ci-command: npm install
+          pkg-manager: pnpm
       - run:
-          name: Run tests
-          command: npm test --passWithNoTests
+          name: Run unit tests
+          command: pnpm test:unit
+          no_output_timeout: 20m
   build-node:
-    # Build node project
-    executor: node/default
+    executor:
+      name: node/default
+      tag: '24.19'
     steps:
       - checkout
+      - node/install-pnpm:
+          version: '11.9.0'
       - node/install-packages:
-          cache-path: ~/project/node_modules
-          override-ci-command: npm install
+          pkg-manager: pnpm
       - run:
-          command: npm run build
+          name: Build
+          command: pnpm build
+          no_output_timeout: 20m
       - run:
           name: Create the ~/artifacts directory if it doesn't exist
           command: mkdir -p ~/artifacts
-      # Copy output to artifacts dir
       - run:
           name: Copy artifacts
           command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
@@ -36,7 +41,6 @@ jobs:
           path: ~/artifacts
           destination: node-build
   deploy:
-    # This is an example deploy job, not actually used by the workflow
     docker:
       - image: cimg/base:stable
     steps:
@@ -47,13 +51,9 @@ jobs:
               --environment-name="default" \
               --component-name="deploy" \
               --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
-      # Replace this with steps to deploy to users
       - run:
           name: deploy
           command: '#e.g. ./deploy.sh'
-      - run:
-          name: found github actions config
-          command: ':'
       - run:
           name: Update deployment status to running
           command: circleci run release update deploy --status=RUNNING
@@ -65,6 +65,7 @@ jobs:
           name: Update deployment status to failed
           command: circleci run release update deploy --status=FAILED
           when: on_fail
+
 workflows:
   build-and-test:
     jobs:
