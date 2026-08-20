@@ -81,7 +81,7 @@ Located in `src/lib/api/ip-rate-limit.ts`. Shared sliding-window algorithm: `src
 Located in `src/lib/api/user-rate-limit.ts`. Same sliding-window core as the IP limiter.
 
 - **Storage**: In-memory LRU cache **per Node.js process**
-- **Key**: Authenticated user ID (not IP)
+- **Key**: Clerk auth user ID (`authUserId` / route `ctx.userId`), shared by routes and Server Actions. Not the internal `users.id`.
 - **Scope**: Per category, per user
 - **Opt-in**: `requestBoundary.route({ rateLimit })` or `requestBoundary.action({ rateLimit })`
 - **Multi-instance note**: Same per-process caveat as the IP limiter. Two concurrent instances can each admit a full window of requests for the same user.
