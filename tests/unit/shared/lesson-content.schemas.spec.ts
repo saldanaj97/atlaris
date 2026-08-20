@@ -161,6 +161,18 @@ describe('lesson content Zod contracts', () => {
     expect(() =>
       ModuleLessonGenerationMetadataSchema.parse({ version: 1, x: 1 }),
     ).toThrow(z.ZodError);
+    expect(() =>
+      ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+        providerStartedAt: '2026-08-20T18:00:00.000Z',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      ModuleLessonGenerationMetadataSchema.parse({
+        version: 1,
+        providerStartedAt: 'not-iso',
+      }),
+    ).toThrow(z.ZodError);
   });
 
   it('accepts workflow metadata in ModuleLessonGenerationMetadataSchema', () => {

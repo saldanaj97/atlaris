@@ -135,6 +135,7 @@ describe('POST /api/internal/maintenance/plans/cleanup', () => {
       userId: user.id,
       topic: 'Route stuck plan',
       generationStatus: 'generating',
+      isQuotaEligible: false,
     });
     const attemptPlan = await createTestPlan({
       userId: user.id,

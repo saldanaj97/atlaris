@@ -9,12 +9,15 @@ import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types'
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
 import { PlanCreationError } from '@/features/plans/errors';
-import { countPlansContributingToCap } from '@/features/plans/quota/check-plan-limit';
-import { PLAN_GENERATING_INSERT_DEFAULTS } from '@/lib/db/queries/helpers/plan-generation-status';
+import {
+  countPlansContributingToCap,
+  lockUserPlanAdmission,
+  PLAN_GENERATING_INSERT_DEFAULTS,
+} from '@/lib/db/queries/helpers/plan-generation-status';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
-import { and, count, eq, gte, inArray, notExists, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, notExists, or, sql } from 'drizzle-orm';
 
 /** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
@@ -27,6 +30,7 @@ async function updatePlanGenerationSuccess(
   planId: string,
   timestamp: Date,
 ): Promise<number> {
+  // Eligibility may flip false→true only when the plan already owns a cap slot.
   const updated = await dbClient
     .update(learningPlans)
     .set({
@@ -35,7 +39,15 @@ async function updatePlanGenerationSuccess(
       finalizedAt: timestamp,
       updatedAt: timestamp,
     })
-    .where(eq(learningPlans.id, planId))
+    .where(
+      and(
+        eq(learningPlans.id, planId),
+        or(
+          eq(learningPlans.isQuotaEligible, true),
+          eq(learningPlans.generationStatus, 'generating'),
+        ),
+      ),
+    )
     .returning({ id: learningPlans.id });
 
   return updated.length;
@@ -81,8 +93,14 @@ export async function markPlanGenerationFailureInTx(
   }
 }
 
-export async function markPlanGenerationFailuresInTx(
-  tx: PlanUpdateTx,
+/**
+ * Failure policy after reservation / generation:
+ * - Last-good (`isQuotaEligible=true`): restore `ready`, keep eligible, leave modules.
+ * - Never-usable (`isQuotaEligible=false`): mark `failed`, stay ineligible (releases
+ *   a generating reservation). Attempt/job rows record the failure separately.
+ */
+async function applyPlanGenerationFailureUpdate(
+  dbClient: PlanWriteClient | PlanUpdateTx,
   planIds: readonly string[],
   timestamp: Date,
 ): Promise<number> {
@@ -90,17 +108,24 @@ export async function markPlanGenerationFailuresInTx(
     return 0;
   }
 
-  const updated = await tx
+  const updated = await dbClient
     .update(learningPlans)
     .set({
-      generationStatus: 'failed',
-      isQuotaEligible: false,
+      generationStatus: sql`CASE WHEN ${learningPlans.isQuotaEligible} THEN 'ready'::generation_status ELSE 'failed'::generation_status END`,
       updatedAt: timestamp,
     })
     .where(inArray(learningPlans.id, planIds))
     .returning({ id: learningPlans.id });
 
   return updated.length;
+}
+
+export async function markPlanGenerationFailuresInTx(
+  tx: PlanUpdateTx,
+  planIds: readonly string[],
+  timestamp: Date,
+): Promise<number> {
+  return applyPlanGenerationFailureUpdate(tx, planIds, timestamp);
 }
 
 export async function atomicCheckAndInsertPlan(
@@ -112,6 +137,7 @@ export async function atomicCheckAndInsertPlan(
   dbClient: DbClient,
 ): Promise<AtomicInsertResult> {
   return dbClient.transaction(async (tx) => {
+    await lockUserPlanAdmission(tx, userId);
     const user = await selectUserSubscriptionTierForUpdate(tx, userId);
 
     const windowStart = new Date(
@@ -193,17 +219,13 @@ export async function markPlanGenerationFailure(
 ): Promise<void> {
   const timestamp = now();
 
-  const updated = await dbClient
-    .update(learningPlans)
-    .set({
-      generationStatus: 'failed',
-      isQuotaEligible: false,
-      updatedAt: timestamp,
-    })
-    .where(eq(learningPlans.id, planId))
-    .returning({ id: learningPlans.id });
+  const updatedCount = await applyPlanGenerationFailureUpdate(
+    dbClient,
+    [planId],
+    timestamp,
+  );
 
-  if (updated.length === 0) {
+  if (updatedCount === 0) {
     logger.warn(
       { planId },
       'markPlanGenerationFailure: no rows updated — plan may have been deleted',

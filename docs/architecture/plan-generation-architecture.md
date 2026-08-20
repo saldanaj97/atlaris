@@ -132,7 +132,18 @@ Production path: `GenerationAdapter` calls `runGenerationExecution(...)` in `src
 
 **Failure:**
 
-- mark attempt failure and plan `failed` (not quota-eligible)
+- Attempt/job rows record the failure.
+- Last-good plans (`is_quota_eligible = true`, including populated ready plans
+  mid-regeneration) stay `ready` and quota-eligible. Modules are not cleared.
+- Plans that never owned a cap slot (`is_quota_eligible = false`, including
+  first-time generating plans with no usable content) become `failed` and stay
+  ineligible, which releases a generating reservation.
+- Admission/reservation rejection uses the same plan-row rule (`plan_only`
+  finalization does not hide last-good plans from quota accounting).
+- Retry of an ineligible plan must reserve a generating slot under the same
+  per-user advisory lock as new-plan admission before provider work. Success
+  may set `is_quota_eligible = true` only if the plan already owns that slot
+  (`is_quota_eligible` or `generation_status = generating`).
 - **retryable:** no usage writes (same domain rule as before)
 - **permanent with usage:** usage event + metric increment in the same transaction
 

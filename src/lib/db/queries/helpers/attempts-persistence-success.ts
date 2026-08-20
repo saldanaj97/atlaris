@@ -8,6 +8,10 @@ import type {
 import type { DbTransaction } from '@/lib/db/types';
 
 import {
+  hasActiveChildModuleGeneration,
+  lockPlanLifecycle,
+} from '@/lib/db/queries/helpers/plan-lifecycle-lock';
+import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
@@ -63,6 +67,13 @@ export async function persistSuccessfulAttemptInTx(
     durationMs,
     metadata,
   } = params;
+
+  await lockPlanLifecycle(tx, planId);
+  if (await hasActiveChildModuleGeneration(tx, planId)) {
+    throw new Error(
+      `Cannot persist successful generation for plan ${planId}: active child module lesson generation is in progress.`,
+    );
+  }
 
   await tx.delete(modules).where(eq(modules.planId, planId));
 

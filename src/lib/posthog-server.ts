@@ -21,7 +21,7 @@ function resolvePostHogNodeSdkHost(rawHost: string | undefined): string {
  *
  * Returns null when the project token is missing so callers can skip capture
  * without breaking the request. Host may be omitted; the Node SDK then uses
- * the same US Cloud ingest origin as `/ingest` rewrites.
+ * the same US Cloud ingest origin as the `/ingest` proxy.
  */
 export function getPostHogClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;

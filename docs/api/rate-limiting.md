@@ -6,7 +6,7 @@ Atlaris rate limiting is five layers, not a single wrapper. Edge, IP, user, dura
 
 | Layer | Where | Scope | Consistency |
 | ----- | ----- | ----- | ----------- |
-| Vercel edge rate limit | Dashboard-managed Firewall Rate Limit on `/ingest/*` | Unauthenticated PostHog reverse-proxy traffic | Edge-wide (Vercel) |
+| Vercel edge rate limit | Dashboard-managed Firewall Rate Limit on `/ingest` | Unauthenticated PostHog ingest-proxy traffic | Edge-wide (Vercel) |
 | Application IP limiter | `src/lib/api/ip-rate-limit.ts` | Unauthenticated or machine routes keyed by client IP | Per process (in-memory LRU) |
 | Authenticated user limiter | `src/lib/api/user-rate-limit.ts` | Authenticated API routes and Server Actions keyed by user ID | Per process (in-memory LRU) |
 | Durable DB plan-generation limiter | `src/lib/api/rate-limit.ts` | Generation, retry, and regeneration attempts (`generation_attempts`) | Database-shared, fail-closed preflight (not atomic) |
@@ -19,14 +19,14 @@ Hobby/Pro projects have **1 Rate Limit slot** and **3 custom WAF slots**. The in
 | Capability | Allocation |
 | ---------- | ---------- |
 | Rate Limit | **1 / 1** — keep the dashboard-managed `/ingest` rule; it is the sole Rate Limit slot |
-| Custom WAF Rules | **0 / 3** — leave all three unused |
-| Optional `/ingest` method rule | **Do not add it** |
+| Custom WAF Rules | **1 / 3** — `/ingest` unsupported-method deny; leave the remaining two unused |
+| Optional `/ingest` method rule | Dashboard-managed method allowlist (GET, HEAD, POST, OPTIONS) as defense in depth |
 
 This dashboard rule is **not** represented in `vercel.json`. That file remains repository configuration for cron schedules only. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
 
-Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worker secrets, or broad `/.well-known` paths. Those surfaces are enforced in application code (user/IP limiters, cryptographic verification, worker tokens). Custom WAF slots stay unused on purpose so they remain available as emergency virtual patches.
+Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worker secrets, or broad `/.well-known` paths. Those surfaces are enforced in application code (user/IP limiters, cryptographic verification, worker tokens). Keep the remaining custom WAF slots unused so they remain available as emergency virtual patches.
 
-`/ingest/*` is the PostHog reverse-proxy rewrite in `next.config.ts`. Clerk proxy matching excludes that prefix so analytics ingest is not treated as an app route.
+`/ingest` is an application-owned constrained PostHog proxy (`src/app/ingest/[...path]/route.ts`), not a raw reverse-proxy rewrite. Clerk proxy matching excludes that prefix so analytics ingest stays public; the route itself enforces path, method, body, header, redirect, and timeout policy.
 
 ## Quick Reference
 
@@ -64,7 +64,7 @@ Source of truth for durable generation limits is `src/shared/constants/generatio
 
 ### Vercel edge (`/ingest/*`)
 
-Dashboard-managed Rate Limit on the PostHog ingest reverse-proxy path. This is the only Vercel Rate Limit slot. It is not encoded in application source or `vercel.json`.
+Dashboard-managed Rate Limit on the PostHog ingest proxy path (`^/ingest(?:/|$)`). This is the only Vercel Rate Limit slot. A separate dashboard method rule denies methods outside GET, HEAD, POST, and OPTIONS on the same path. Neither rule is encoded in application source or `vercel.json`.
 
 ### Application IP limiter
 

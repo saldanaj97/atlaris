@@ -1,7 +1,6 @@
 import type { NextConfig } from 'next';
 
 import { isHostedDeployEnv } from './src/lib/config/env/shared';
-import { resolvePostHogRewriteDestinations } from './src/lib/posthog-rewrite-destinations';
 import { withSentryConfig } from '@sentry/nextjs';
 import path from 'node:path';
 import { withWorkflow } from 'workflow/next';
@@ -88,29 +87,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    const { ingestOrigin, assetsOrigin } = resolvePostHogRewriteDestinations(
-      process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    );
-
-    return [
-      // PostHog reverse proxy — routes ingestion through the app to avoid ad-blockers.
-      {
-        source: '/ingest/static/:path*',
-        destination: `${assetsOrigin}/static/:path*`,
-      },
-      {
-        source: '/ingest/array/:path*',
-        destination: `${assetsOrigin}/array/:path*`,
-      },
-      {
-        source: '/ingest/:path*',
-        destination: `${ingestOrigin}/:path*`,
-      },
-    ];
-  },
-  // Required to support PostHog trailing-slash API requests (global; Next cannot scope this to /ingest).
-  // Proxy exact-path policies in middleware-policy.ts slash-normalize pathnames.
+  // Global; Next cannot scope this to /ingest. Required so PostHog's exact
+  // `/e/`, `/s/`, and `/flags/` endpoints are not redirected before the ingest proxy.
   skipTrailingSlashRedirect: true,
 };
 

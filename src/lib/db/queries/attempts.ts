@@ -25,8 +25,17 @@ import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
-import { setLearningPlanGenerating } from '@/lib/db/queries/helpers/plan-generation-status';
-import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
+import {
+  countPlansContributingToCap,
+  lockUserPlanAdmission,
+  planOwnsActiveCapSlot,
+  setLearningPlanGenerating,
+} from '@/lib/db/queries/helpers/plan-generation-status';
+import {
+  hasActiveChildModuleGeneration,
+  lockPlanLifecycle,
+} from '@/lib/db/queries/helpers/plan-lifecycle-lock';
+import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
@@ -36,7 +45,8 @@ import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { generationAttempts } from '@supabase/schema';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { generationAttempts, users } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
@@ -53,12 +63,15 @@ import { createHash } from 'node:crypto';
 /**
  * Atomically reserves an attempt slot for a plan within a single transaction.
  *
- * 1. Acquires a transaction-scoped advisory lock per user to serialize concurrent reservations.
- * 2. Reads the owned plan row and verifies ownership.
- * 3. Enforces durable per-user window limit.
- * 4. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 5. Inserts a placeholder attempt with status 'in_progress'.
- * 6. Sets the plan's generation_status to 'generating'.
+ * 1. Acquires namespace-1 per-user admission lock, then namespace-3 plan lifecycle lock.
+ * 2. Locks and re-reads the owned plan row.
+ * 3. Rejects when an owned module is still `lessonGenerationStatus = 'generating'`.
+ * 4. Enforces the active-plan cap when the target does not already own a slot.
+ * 5. Enforces durable per-user window limit.
+ * 6. Enforces per-plan attempt cap and rejects in-progress duplicates.
+ * 7. Inserts a placeholder attempt with status 'in_progress'.
+ * 8. Sets the plan's generation_status to 'generating' (durable cap reservation
+ *    when the plan was ineligible).
  *
  * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
  */
@@ -88,13 +101,10 @@ export async function reserveAttemptSlot(
     const startedAt = nowFn();
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
-    // Acquire per-user advisory lock to serialize concurrent reservations.
-    // Uses the two-int4 overload so namespace 1 is separated from the
-    // per-user key, avoiding cross-domain collisions that the single-bigint
-    // form (hashtext → bigint) would allow with only 32-bit entropy.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`);
+    await lockUserPlanAdmission(tx, userId);
+    await lockPlanLifecycle(tx, planId);
 
-    const plan = await selectOwnedPlanById({
+    const plan = await lockOwnedPlanById({
       planId,
       ownerUserId: userId,
       dbClient: tx,
@@ -124,6 +134,32 @@ export async function reserveAttemptSlot(
         reason: 'invalid_status',
         currentStatus: plan.generationStatus,
       } as const;
+    }
+
+    if (await hasActiveChildModuleGeneration(tx, planId)) {
+      return { reserved: false, reason: 'active_child_generation' } as const;
+    }
+
+    if (!planOwnsActiveCapSlot(plan)) {
+      const [user] = await tx
+        .select({ subscriptionTier: users.subscriptionTier })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (!user) {
+        throw new Error('Learning plan not found or inaccessible for user');
+      }
+      const tierConfig = TIER_LIMITS[user.subscriptionTier];
+      if (!tierConfig) {
+        throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
+      }
+      const limit = tierConfig.maxActivePlans;
+      if (limit !== Infinity) {
+        const currentCount = await countPlansContributingToCap(tx, userId);
+        if (currentCount >= limit) {
+          return { reserved: false, reason: 'plan_limit' } as const;
+        }
+      }
     }
 
     const windowStart = getPlanGenerationWindowStart(startedAt);
