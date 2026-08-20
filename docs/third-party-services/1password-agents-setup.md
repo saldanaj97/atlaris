@@ -21,6 +21,8 @@ From the repo root (or any git worktree):
 bash scripts/agents/codex-1password-env.sh
 ```
 
+Cursor Cloud startup runs this script automatically when either required 1Password secret is present, then adds the managed loopback database URLs without removing the generated environment values.
+
 What the script does:
 
 1. Installs the 1Password CLI (`op`) on Debian/Ubuntu containers when missing or when `op environment read` is unavailable.
