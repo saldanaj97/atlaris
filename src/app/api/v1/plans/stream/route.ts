@@ -112,6 +112,7 @@ export function createStreamHandler(deps?: {
             { reason: 'Malformed or invalid JSON payload.' },
             { authUserId, error: serializeErrorForLog(error) },
           ),
+        maxBytes: 1 * 1024 * 1024,
       });
 
       const payloadLogResult = tryBuildPayloadLog(parsedBody);
