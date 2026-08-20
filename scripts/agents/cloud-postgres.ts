@@ -1,3 +1,9 @@
+import {
+  LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID,
+  LOCAL_PRODUCT_TESTING_SEED_EMAIL,
+  LOCAL_PRODUCT_TESTING_SEED_NAME,
+  LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID,
+} from '../../src/lib/config/local-product-testing';
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../supabase/privileges/authenticated-table-privileges';
 import {
   bootstrapDatabase,
@@ -26,7 +32,6 @@ const AGENT_PORT = 55432;
 const AGENT_DATABASE = 'atlaris_agent';
 const AGENT_ROLE = 'atlaris_agent';
 const POSTGRES_SUPERUSER = 'postgres';
-const SEED_USER_ID = '11111111-1111-4111-8111-111111111111';
 const ARCHIVE_MIGRATION = '20260706221000';
 const REMOVE_MIGRATION = '20260706222017';
 const DATA_ROOT = resolve(
@@ -161,21 +166,28 @@ export function assertSafeDatabaseEnvironment(
 }
 
 function dotenvValue(content: string, key: string): string | undefined {
+  let found = false;
+  let result: string | undefined;
   for (const line of content.split(/\r?\n/)) {
     const match = line.match(
       new RegExp(`^\\s*(?:export\\s+)?${key}\\s*=\\s*(.*?)\\s*$`),
     );
     if (!match) continue;
+    if (found) {
+      fail(`Refusing ${redactKey(key)} because it is assigned more than once.`);
+    }
+    found = true;
     const value = match[1] ?? '';
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
     ) {
-      return value.slice(1, -1);
+      result = value.slice(1, -1);
+      continue;
     }
-    return value;
+    result = value;
   }
-  return undefined;
+  return result;
 }
 
 function assertSafeEnvFileContent(content: string, file: string): void {
@@ -571,7 +583,14 @@ async function collectStatus(): Promise<StatusReport> {
       select
         to_regprocedure('auth.jwt()') is not null as auth_jwt,
         exists(select 1 from pg_extension where extname = 'pgcrypto') as pgcrypto,
-        exists(select 1 from users where id = ${SEED_USER_ID}::uuid) as seed
+        exists(
+          select 1
+          from users
+          where id = ${LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID}::uuid
+            and auth_user_id = ${LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID}
+            and email = ${LOCAL_PRODUCT_TESTING_SEED_EMAIL}
+            and name = ${LOCAL_PRODUCT_TESTING_SEED_NAME}
+        ) as seed
     `;
     const missing = expected.filter((version) => !appliedVersions.has(version));
     const unexpected = unexpectedMigrationVersions(
@@ -594,15 +613,61 @@ async function collectStatus(): Promise<StatusReport> {
           where table_schema = 'public'
             and grantee = 'anon'
             and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+        )
+        and not exists (
+          select 1
+          from information_schema.columns c
+          cross join (values ('INSERT'), ('UPDATE'), ('REFERENCES')) p(privilege_type)
+          where c.table_schema = 'public'
+            and c.table_name = any(${AUTHENTICATED_SERVER_OWNED_WRITE_TABLES})
+            and has_column_privilege(
+              'authenticated',
+              format('public.%I', c.table_name),
+              c.column_name,
+              p.privilege_type
+            )
+        )
+        and not exists (
+          select 1
+          from pg_class class
+          join pg_namespace namespace on namespace.oid = class.relnamespace
+          join information_schema.columns c
+            on c.table_schema = namespace.nspname
+           and c.table_name = class.relname
+          cross join (values ('INSERT'), ('UPDATE'), ('REFERENCES')) p(privilege_type)
+          where namespace.nspname = 'public'
+            and class.relkind in ('r', 'p')
+            and not exists (
+              select 1
+              from pg_depend dependency
+              where dependency.classid = 'pg_class'::regclass
+                and dependency.objid = class.oid
+                and dependency.deptype = 'e'
+            )
+            and has_column_privilege(
+              'anon',
+              class.oid,
+              c.column_name,
+              p.privilege_type
+            )
         ) as safe
     `;
-    const rls = await sql<{ count: number }[]>`
-      select count(*)::int as count
-      from pg_class c
-      join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public'
-        and c.relname in ('users', 'learning_plans', 'task_progress')
-        and c.relrowsecurity
+    const rls = await sql<{ safe: boolean }[]>`
+      select not exists (
+        select 1
+        from pg_class class
+        join pg_namespace namespace on namespace.oid = class.relnamespace
+        where namespace.nspname = 'public'
+          and class.relkind in ('r', 'p')
+          and not exists (
+            select 1
+            from pg_depend dependency
+            where dependency.classid = 'pg_class'::regclass
+              and dependency.objid = class.oid
+              and dependency.deptype = 'e'
+          )
+          and not class.relrowsecurity
+      ) as safe
     `;
 
     return {
@@ -619,7 +684,7 @@ async function collectStatus(): Promise<StatusReport> {
       requiredExtensionPresent: compatibility[0]?.pgcrypto === true,
       requiredFunctionPresent: compatibility[0]?.auth_jwt === true,
       requiredGrantSafetyPresent: grants[0]?.safe === true,
-      requiredRlsPresent: rls[0]?.count === 3,
+      requiredRlsPresent: rls[0]?.safe === true,
       requiredRolesPresent: roles[0]?.safe === true,
       seedPresent: compatibility[0]?.seed === true,
     };

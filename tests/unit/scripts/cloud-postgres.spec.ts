@@ -71,6 +71,14 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     );
   });
 
+  it('rejects duplicate protected database assignments', () => {
+    expect(() =>
+      inspectAgentEnvFile(
+        `POSTGRES_URL=${AGENT_DATABASE_URL}\nPOSTGRES_URL=${AGENT_DATABASE_URL}\n`,
+      ),
+    ).toThrow(/assigned more than once/);
+  });
+
   it('models status and preflight as read-only commands', () => {
     expect(COMMANDS.status.readOnly).toBe(true);
     expect(COMMANDS.preflight.readOnly).toBe(true);
@@ -126,5 +134,15 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     expect(config.install).toContain('nvm install 24');
     expect(config.start).toContain('nvm use 24');
     expect(config.start).toContain('codex-1password-env.sh');
+  });
+
+  it('checks effective column grants, all application RLS, and canonical seed identity', async () => {
+    const source = await readFile('scripts/agents/cloud-postgres.ts', 'utf8');
+
+    expect(source).toContain('has_column_privilege');
+    expect(source).toContain('and not class.relrowsecurity');
+    expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID');
+    expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_EMAIL');
+    expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_NAME');
   });
 });
