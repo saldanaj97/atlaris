@@ -1,0 +1,4 @@
+{
+  "install": "bash -lc 'set -euo pipefail; export NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"; . \"$NVM_DIR/nvm.sh\"; nvm install 24; nvm alias default 24; nvm use 24; corepack enable; corepack prepare pnpm@11.9.0 --activate; pnpm install --frozen-lockfile; ./scripts/agents/install-postgres-17.sh'",
+  "start": "bash -lc 'set -euo pipefail; export NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"; . \"$NVM_DIR/nvm.sh\"; nvm use 24 >/dev/null; if [[ -n \"${OP_ENVIRONMENT_ID:-}${OP_SERVICE_ACCOUNT_TOKEN:-}\" ]]; then bash scripts/agents/codex-1password-env.sh; fi; pnpm db:agent:up'"
+}
