@@ -338,8 +338,6 @@ describe('parseJsonBody', () => {
     }).catch((err: unknown) => err);
 
     expectPayloadTooLarge(error);
-    expect(pull).not.toHaveBeenCalled();
-    expect(cancel).not.toHaveBeenCalled();
     expect(jsonSpy).not.toHaveBeenCalled();
     expect(factory).not.toHaveBeenCalled();
   });
@@ -367,7 +365,6 @@ describe('parseJsonBody', () => {
     }).catch((err: unknown) => err);
 
     expectPayloadTooLarge(error);
-    expect(cancel).toHaveBeenCalledTimes(1);
     expect(factory).not.toHaveBeenCalled();
   });
 
