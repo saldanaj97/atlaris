@@ -49,6 +49,7 @@ export function createEmailNotificationDeliveryPostRoute(
         mode: 'required',
         onMalformedJson: () =>
           new ValidationError('Invalid JSON in request body'),
+        maxBytes: 256 * 1024,
       });
       const parsed = emailDeliveryBodySchema.safeParse(body);
       if (!parsed.success) {

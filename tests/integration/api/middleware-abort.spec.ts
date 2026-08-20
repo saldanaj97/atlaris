@@ -20,18 +20,22 @@ describe('withErrorBoundary client abort (integration)', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns 499 when req.json rejects AbortError on PUT /api/v1/user/profile', async () => {
+  it('returns 499 when body read rejects AbortError on PUT /api/v1/user/profile', async () => {
     const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => {});
     const { PUT } = await import('@/app/api/v1/user/profile/route');
     const abort = new Error('aborted');
     abort.name = 'AbortError';
-    const request = new Request('http://localhost/api/v1/user/profile', {
+    const init: RequestInit & { duplex?: string } = {
       method: 'PUT',
       headers: new Headers({ 'Content-Type': 'application/json' }),
-    });
-    Object.defineProperty(request, 'json', {
-      value: () => Promise.reject(abort),
-    });
+      body: new ReadableStream<Uint8Array>({
+        pull() {
+          return Promise.reject(abort);
+        },
+      }),
+      duplex: 'half',
+    };
+    const request = new Request('http://localhost/api/v1/user/profile', init);
 
     const response = await PUT(request);
 

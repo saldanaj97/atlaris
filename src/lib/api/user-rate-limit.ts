@@ -155,7 +155,7 @@ function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
 /**
  * Checks user-based rate limit for a request.
  *
- * @param userId - Authenticated user ID
+ * @param userId - Clerk auth user ID (`authUserId` / route `ctx.userId`)
  * @param category - The cost category of the endpoint
  * @throws RateLimitError if rate limit exceeded
  */
@@ -170,7 +170,7 @@ export function checkUserRateLimit(
 /**
  * Gets rate limit headers for a response.
  *
- * @param userId - Authenticated user ID
+ * @param userId - Clerk auth user ID (`authUserId` / route `ctx.userId`)
  * @param category - The cost category of the endpoint
  * @returns Headers object with rate limit information
  */

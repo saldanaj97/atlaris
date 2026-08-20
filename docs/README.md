@@ -25,7 +25,7 @@ HTTP API contracts shared across routes.
 | File | Description |
 |------|-------------|
 | [error-contract.md](./api/error-contract.md) | Canonical API error response shape |
-| [rate-limiting.md](./api/rate-limiting.md) | User-based and job-based rate limiting |
+| [rate-limiting.md](./api/rate-limiting.md) | Five-layer rate limiting: Vercel /ingest, IP, user, durable generation, product quotas |
 
 ## `architecture/`
 

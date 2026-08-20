@@ -72,6 +72,7 @@ export const POST = requestBoundary.route(
         new ValidationError('Invalid bulk delete request.', {
           body: 'Request body must be valid JSON.',
         }),
+      maxBytes: 256 * 1024,
     })) as BulkDeleteRequestBody;
     const planIds = parseBulkDeletePlanIds(body);
 
