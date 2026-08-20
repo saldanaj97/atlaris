@@ -466,9 +466,10 @@ export async function listCommittedMigrationVersions(
 }
 
 export function migrationOrderIsSafe(versions: string[]): boolean {
-  return (
-    versions.indexOf(ARCHIVE_MIGRATION) < versions.indexOf(REMOVE_MIGRATION)
-  );
+  const archiveIndex = versions.indexOf(ARCHIVE_MIGRATION);
+  const removeIndex = versions.indexOf(REMOVE_MIGRATION);
+
+  return archiveIndex >= 0 && removeIndex >= 0 && archiveIndex < removeIndex;
 }
 
 export function assertNoTargetArguments(args: string[]): void {

@@ -85,4 +85,12 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     expect(versions).toContain('20260706222017');
     expect(migrationOrderIsSafe(versions)).toBe(true);
   });
+
+  it('rejects migration order checks with missing or reversed migrations', () => {
+    expect(migrationOrderIsSafe(['20260706222017'])).toBe(false);
+    expect(migrationOrderIsSafe(['20260706221000'])).toBe(false);
+    expect(migrationOrderIsSafe(['20260706222017', '20260706221000'])).toBe(
+      false,
+    );
+  });
 });
