@@ -192,53 +192,49 @@ export async function saveEmailNotificationPreferences(
 export async function upsertUserPreferredAiModel(
   userId: string,
   preferredAiModel: PreferredAiModel | null,
-  dbClient: Pick<DbClient, 'insert'>,
+  dbClient: Pick<DbClient, 'execute'>,
 ): Promise<UserPreferenceValues | undefined> {
-  const [row] = await dbClient
-    .insert(userPreferences)
-    .values({
-      userId,
-      preferredAiModel,
-      updatedAt: sql<Date>`now()`,
-    })
-    .onConflictDoUpdate({
-      target: userPreferences.userId,
-      set: {
-        preferredAiModel: sql`excluded.preferred_ai_model`,
-        updatedAt: sql`excluded.updated_at`,
-      },
-    })
-    .returning({
-      preferredAiModel: userPreferences.preferredAiModel,
-      analyticsTimezone: userPreferences.analyticsTimezone,
-    });
+  const [row] = (await dbClient.execute(sql`
+    INSERT INTO ${userPreferences} ("user_id", "preferred_ai_model", "updated_at")
+    VALUES (${userId}, ${preferredAiModel}, now())
+    ON CONFLICT ("user_id") DO UPDATE SET
+      "preferred_ai_model" = EXCLUDED."preferred_ai_model",
+      "updated_at" = EXCLUDED."updated_at"
+    RETURNING "preferred_ai_model", "analytics_timezone"
+  `)) as Array<{
+    preferred_ai_model: PreferredAiModel | null;
+    analytics_timezone: string;
+  }>;
 
-  return row;
+  return row
+    ? {
+        preferredAiModel: row.preferred_ai_model,
+        analyticsTimezone: row.analytics_timezone,
+      }
+    : undefined;
 }
 
 export async function upsertUserAnalyticsTimezone(
   userId: string,
   analyticsTimezone: string,
-  dbClient: Pick<DbClient, 'insert'>,
+  dbClient: Pick<DbClient, 'execute'>,
 ): Promise<UserPreferenceValues | undefined> {
-  const [row] = await dbClient
-    .insert(userPreferences)
-    .values({
-      userId,
-      analyticsTimezone,
-      updatedAt: sql<Date>`now()`,
-    })
-    .onConflictDoUpdate({
-      target: userPreferences.userId,
-      set: {
-        analyticsTimezone: sql`excluded.analytics_timezone`,
-        updatedAt: sql`excluded.updated_at`,
-      },
-    })
-    .returning({
-      preferredAiModel: userPreferences.preferredAiModel,
-      analyticsTimezone: userPreferences.analyticsTimezone,
-    });
+  const [row] = (await dbClient.execute(sql`
+    INSERT INTO ${userPreferences} ("user_id", "analytics_timezone", "updated_at")
+    VALUES (${userId}, ${analyticsTimezone}, now())
+    ON CONFLICT ("user_id") DO UPDATE SET
+      "analytics_timezone" = EXCLUDED."analytics_timezone",
+      "updated_at" = EXCLUDED."updated_at"
+    RETURNING "preferred_ai_model", "analytics_timezone"
+  `)) as Array<{
+    preferred_ai_model: PreferredAiModel | null;
+    analytics_timezone: string;
+  }>;
 
-  return row;
+  return row
+    ? {
+        preferredAiModel: row.preferred_ai_model,
+        analyticsTimezone: row.analytics_timezone,
+      }
+    : undefined;
 }

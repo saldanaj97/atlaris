@@ -155,18 +155,15 @@ describe('user preference queries', () => {
   });
 
   it('upserts preferred AI model on the user preference row', async () => {
-    const returning = vi.fn().mockResolvedValue([
+    const execute = vi.fn().mockResolvedValue([
       {
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
-        analyticsTimezone: 'UTC',
+        preferred_ai_model: 'google/gemini-2.0-flash-exp:free',
+        analytics_timezone: 'UTC',
       },
     ]);
-    const onConflictDoUpdate = vi.fn().mockReturnValue({ returning });
-    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
-    const insert = vi.fn().mockReturnValue({ values });
 
     const dbClient = makeDbClient({
-      insert: insert as unknown as DbClient['insert'],
+      execute: execute as unknown as DbClient['execute'],
     });
 
     const result = await upsertUserPreferredAiModel(
@@ -176,28 +173,24 @@ describe('user preference queries', () => {
     );
 
     expect(result?.preferredAiModel).toBe('google/gemini-2.0-flash-exp:free');
-    expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        preferredAiModel: 'google/gemini-2.0-flash-exp:free',
-      }),
-    );
-    expect(onConflictDoUpdate).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+
+    const query = new PgDialect().sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
+    expect(query.sql).toContain('"preferred_ai_model"');
+    expect(query.sql).toContain('ON CONFLICT');
+    expect(query.sql).not.toContain('"created_at"');
   });
 
   it('upserts analytics timezone on the user preference row', async () => {
-    const returning = vi.fn().mockResolvedValue([
+    const execute = vi.fn().mockResolvedValue([
       {
-        preferredAiModel: null,
-        analyticsTimezone: 'America/Chicago',
+        preferred_ai_model: null,
+        analytics_timezone: 'America/Chicago',
       },
     ]);
-    const onConflictDoUpdate = vi.fn().mockReturnValue({ returning });
-    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
-    const insert = vi.fn().mockReturnValue({ values });
 
     const dbClient = makeDbClient({
-      insert: insert as unknown as DbClient['insert'],
+      execute: execute as unknown as DbClient['execute'],
     });
 
     const result = await upsertUserAnalyticsTimezone(
@@ -207,12 +200,11 @@ describe('user preference queries', () => {
     );
 
     expect(result?.analyticsTimezone).toBe('America/Chicago');
-    expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 'user-1',
-        analyticsTimezone: 'America/Chicago',
-      }),
-    );
-    expect(onConflictDoUpdate).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledOnce();
+
+    const query = new PgDialect().sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
+    expect(query.sql).toContain('"analytics_timezone"');
+    expect(query.sql).toContain('ON CONFLICT');
+    expect(query.sql).not.toContain('"created_at"');
   });
 });
