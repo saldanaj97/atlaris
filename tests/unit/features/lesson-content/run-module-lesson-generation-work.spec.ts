@@ -377,6 +377,37 @@ describe('runModuleLessonGenerationWork', () => {
     },
   );
 
+  it('compensates and reverts when pre-provider failure persistence also fails', async () => {
+    mocks.markProviderStarted.mockRejectedValue(new Error('marker'));
+    mocks.commitFailure.mockRejectedValue(new Error('failure persist'));
+
+    const result = await runModuleLessonGenerationWork(
+      {
+        load: {
+          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
+          module: { title: 'm', description: null, order: 1 },
+          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
+          isUnlocked: true,
+        } as never,
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'free',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        runLessonQuotaReserved,
+        provider: { generateModuleLessonBatch: vi.fn() },
+      },
+    );
+
+    expect(result).toEqual({ kind: 'failed' });
+    expect(mocks.invokeProvider).not.toHaveBeenCalled();
+    expect(mocks.compensate).toHaveBeenCalledWith(baseToken, fakeDb);
+    expect(mocks.revertClaim).toHaveBeenCalledOnce();
+  });
+
   it('reserves again on a second retry after a consumed provider-started failure', async () => {
     mocks.invokeProvider.mockRejectedValue(new Error('provider'));
     const params = {

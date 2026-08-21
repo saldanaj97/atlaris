@@ -24,6 +24,10 @@ Hobby/Pro projects have **1 Rate Limit slot** and **3 custom WAF slots**. The in
 
 This dashboard rule is **not** represented in `vercel.json`. That file remains repository configuration for cron schedules only. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
 
+Live verification on 2026-08-21 confirmed the published configuration is active: the rate rule is a fixed window of 100 requests per 60 seconds per IP on `^/ingest(?:/|$)`, and the method rule denies methods outside GET, HEAD, POST, and OPTIONS. A fresh-window direct test against the public production domain sent 105 harmless HEAD requests in five seconds and received 100 application responses followed by 5 HTTP 429 responses. A direct PUT returned 403.
+
+Do not use `vercel curl` to verify custom WAF enforcement. It automatically supplies a Vercel automation-bypass token, and Vercel documents that this token bypasses ordinary Firewall blocks. It is appropriate for protected Preview application checks, but the WAF threshold must be tested through a non-bypassed public domain or another path that does not carry the automation token.
+
 Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worker secrets, or broad `/.well-known` paths. Those surfaces are enforced in application code (user/IP limiters, cryptographic verification, worker tokens). Keep the remaining custom WAF slots unused so they remain available as emergency virtual patches.
 
 `/ingest` is an application-owned constrained PostHog proxy (`src/app/ingest/[...path]/route.ts`), not a raw reverse-proxy rewrite. Clerk proxy matching excludes that prefix so analytics ingest stays public; the route itself enforces path, method, body, header, redirect, and timeout policy.

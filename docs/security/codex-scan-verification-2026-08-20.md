@@ -6,22 +6,46 @@
 - Sealed scan SHA: `ce21da6d24560abcd36f6ad6bfdab6538badf951`
 - Current develop SHA: `0a2a6a3cc23ff6b7f582a171a57de1766984a23e` (`HEAD` and `origin/develop` were identical at report draft; `0/0` divergence)
 - Verification branch: `security/codex-security-scan-fixes`
-- Date: 2026-08-20 (America/Chicago)
-- Test environment: Local working tree on the verification branch, started from the develop SHA above. Focused Vitest unit and integration runs recorded in worker handoffs. No preview or production deployment was authorized. Canonical scan artifacts (`report.md`, `findings.json`, `scan-manifest.json`, `coverage.json`) were not modified.
-- External controls inspected: Read-only. Vercel CLI 53.2.0 listed a published rate-limit rule on `^/ingest(?:/|$)` (100 requests / 60 seconds / IP, action `rate_limit`) and a published method-deny rule on the same path that rejects methods other than GET, HEAD, POST, and OPTIONS. No draft rules; `pendingChanges = 0`. The Firewall overview was unavailable because the CLI required an IP bypass; that limitation is recorded, not inferred. PostHog project `551450` settings were inspected without recording secrets; session replay and masking were enabled. This report records no token, session material, or credential value.
+- Last verified: 2026-08-21 (America/Chicago)
+- Test environment: Local working tree on PR #530 plus its Vercel Preview deployment `dpl_VqU1mXaMqYQS18iDmCHiw3N4MLwG`. Header-boundary proof used isolated Preview deployment `dpl_AUNXhCLZEXUPHEU8e86SLWbnD7d6`, built from the same clean PR source at `cff7097a3`, with only the public PostHog host overridden to a controlled HTTPS echo receiver. Canonical scan artifacts (`report.md`, `findings.json`, `scan-manifest.json`, `coverage.json`) were not modified.
+- External controls inspected: Read-only. Vercel CLI 53.2.0 listed a live fixed-window rate-limit rule on `^/ingest(?:/|$)` (100 requests / 60 seconds / IP, action `rate_limit`) and a live method-deny rule on the same path that rejects methods other than GET, HEAD, POST, and OPTIONS. Both rules were valid; no draft existed and `pendingChanges = 0`. Direct public-domain enforcement was exercised without an automation bypass. PostHog project `551450` settings were inspected without recording secrets; session replay and masking were enabled. This report records no token, session material, or credential value.
 
-This report does **not** declare the scan fully remediated. Local source fixes and automated tests exist for all six findings, and `pnpm test` plus `pnpm check:full` later exited 0 (see Full Validation). Hosted sentinel capture, live Vercel rate-threshold exercise, preview smoke tests, and firewall overview remain deferred without deployment authorization. The scan is not fully remediated until those hosted gates are proven.
+This report closes the material source and hosted acceptance gates for all six findings. It distinguishes the remaining non-material hosted gaps and accepted residual risks below; no finding is marked fixed solely from source inspection.
 
 ## Summary
 
-| Finding ID | Original severity | Final disposition | Current severity | Fix PR/commit | Evidence |
-|---|---:|---|---:|---|---|
-| `csf_fd68543d3520e162ac2643c4` | High | Confirmed — Fixed | Residual until hosted sentinel proof | Pending — local working tree only | Application-owned `/ingest` proxy; unit header-strip tests (33 passed in `ingest-proxy.spec.ts` last worker run). Hosted session-header capture not run. |
-| `csf_d96410ccc4c1e9180d9b2348` | Medium | Confirmed — Fixed | None (local automated) | Pending — local working tree only | `providerStartedAt` settlement + stale-marker cleanup + ns3 lifecycle lock. Unit 33 + 55; lesson boundary 19/19 after stale-assert fix; lifecycle lock integration 9/9; abandoned-marker cleanup integration 6/6. |
-| `csf_5a4d4ce1935028ded77c7665` | Medium | Confirmed — Fixed | Residual until live rate-threshold proof | Pending — local working tree only | Same `/ingest` proxy path/method/body allowlists; Vercel rule inspected read-only. Live threshold not crossed. |
-| `csf_c5b56b8805301b01be4acfa6` | Medium | Confirmed — Fixed | None (local automated) | Pending — local working tree only | Per-user admission lock + atomic last-good failure UPDATE. Quota-cap / persistence / cleanup integration: 22 passed. |
-| `csf_57cb64ce0282ad978f485c72` | Medium | Confirmed — Fixed | None (local automated) | Pending — local working tree only | Namespace-2 payer lock + bounded Clerk refresh. Unit 16; webhook-claims integration 17, including reverse-completion and hung-fetch cases. |
-| `csf_b2d5b3cb56a146e0ea1edbd5` | Low | Already Remediated After Scan | None | Production `maxBytes` already on develop; test-only local additions pending commit | All seven production `parseJsonBody` callers pass a finite cap. Focused run: 38 tests passed across `tests/unit/lib/api/parse-json-body.spec.ts` and `tests/unit/api/plans.bulk-delete-route.spec.ts`, including malformed, negative, overflow, and unsafe `Content-Length` bodies. |
+| Finding ID                     | Original severity | Final disposition             |                    Current severity | Fix PR/commit                                    | Evidence                                                                                                                                                   |
+| ------------------------------ | ----------------: | ----------------------------- | ----------------------------------: | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `csf_fd68543d3520e162ac2643c4` |              High | Confirmed — Fixed             |              Accepted residual only | PR #530                                          | Controlled hosted echo proved Cookie, session, and Authorization sentinels were absent upstream while allowlisted content headers and body were preserved. |
+| `csf_d96410ccc4c1e9180d9b2348` |            Medium | Confirmed — Fixed             |                                None | PR #530                                          | `providerStartedAt` settlement + stale-marker cleanup + ns3 lifecycle lock. Unit and deterministic database race coverage passed.                          |
+| `csf_5a4d4ce1935028ded77c7665` |            Medium | Confirmed — Fixed             |              Accepted residual only | PR #530                                          | Hosted path/method/body checks passed; published firewall configuration matched docs; live threshold returned 100 application responses then 5 edge 429s.  |
+| `csf_c5b56b8805301b01be4acfa6` |            Medium | Confirmed — Fixed             |                                None | PR #530                                          | Per-user admission lock + atomic last-good failure UPDATE. Quota-cap / persistence / cleanup integration: 22 passed.                                       |
+| `csf_57cb64ce0282ad978f485c72` |            Medium | Confirmed — Fixed             |                                None | PR #530                                          | Namespace-2 payer lock + bounded Clerk refresh. Unit 16; webhook-claims integration 17, including reverse-completion and hung-fetch cases.                 |
+| `csf_b2d5b3cb56a146e0ea1edbd5` |               Low | Already Remediated After Scan | Accepted parser allocation residual | PR #530 tests; production cap already on develop | All seven production `parseJsonBody` callers pass a finite cap. Focused parser/route coverage passed.                                                      |
+
+## Hosted Acceptance Evidence (2026-08-21)
+
+### Verified
+
+- PR deployment identity: PR #530 head `cff7097a3` deployed ready as `dpl_VqU1mXaMqYQS18iDmCHiw3N4MLwG` before the final test/report-only delta.
+- Credential boundary: a controlled echo upstream received the request body plus `content-type` / `content-encoding`, but did not receive the sentinel `Authorization`, `Cookie` (including `__session`), or `X-Session-Id` headers.
+- Browser ingestion: a real browser reload requested PostHog config and SDK assets plus `/ingest/e/` and `/ingest/flags/?v=2&compression=base64`; every observed response was 200. A browser-shaped capture using the Preview environment's public project token also returned `200 {"status":"Ok"}`.
+- Normal application smoke: `/` redirected to `/landing`; the landing page rendered meaningful content with no Next.js error overlay and no browser console errors.
+- Hosted proxy policy: valid capture returned 200; capture over 1 MiB returned 413; unknown path returned 404; unsupported route method returned 405; invalid content type returned 400; the edge method rule returned 403 for PUT.
+- Firewall state: live rules matched `docs/api/rate-limiting.md` exactly, with no draft or pending changes. A direct public-domain fresh-window test sent 105 harmless HEAD requests in five seconds and received 100 application responses followed by 5 HTTP 429 responses.
+
+### Still Unverified
+
+- No real Clerk billing transition, plan mutation, or paid lesson-provider invocation was performed on Preview. Those paths retain deterministic unit/integration coverage and were excluded to avoid changing shared billing/user data or incurring provider cost.
+- Redirect rejection was verified in the proxy unit suite (`redirect: 'manual'`, 3xx mapped to 502 with no `Location`/`Set-Cookie`), but the controlled hosted receiver used for header proof did not expose a safe prefix-wide redirect endpoint.
+- Vercel's Firewall overview endpoint was unavailable on this plan; live rule listing, zero-draft diff, direct method enforcement, and direct threshold enforcement supplied the operational evidence instead.
+
+### Accepted Residual Risk
+
+- Accepted PostHog payloads can pollute analytics below 100 requests per minute per IP; the application allowlist and PostHog project controls reduce but do not eliminate that product-integrity risk.
+- Vercel automation-bypass tokens intentionally bypass ordinary custom firewall blocks. Such tokens remain privileged project credentials and cannot be used to prove WAF enforcement; the threshold test therefore used the public production domain without a bypass.
+- PostHog sees the Vercel function IP/user agent rather than the browser identity, by design.
+- `loadSiteApp` arbitrary API URLs are not routed through `/ingest`.
 
 ## Finding 1: PostHog Credential Forwarding
 
@@ -40,17 +64,17 @@ Origins come from `resolvePostHogRewriteDestinations` only. HTTPS is required ex
 
 ### Reproduction Method
 
-Local unit tests in `tests/unit/lib/posthog/ingest-proxy.spec.ts` send mocked requests that include session, identity, Clerk-prefixed, and forwarding headers, then assert those names are absent from the upstream `fetch` headers. Downstream tests assert Set-Cookie, WWW-Authenticate, Server, Location, and tracing headers are stripped from the client response.
+Local unit tests in `tests/unit/lib/posthog/ingest-proxy.spec.ts` send mocked requests that include session, identity, Clerk-prefixed, and forwarding headers, then assert those names are absent from the upstream `fetch` headers. Downstream tests assert Set-Cookie, WWW-Authenticate, Server, Location, and tracing headers are stripped from the client response. The public route wiring is covered directly in `tests/unit/api/ingest-route.spec.ts`.
 
-Controlled hosted reproduction (preview deployment, non-production sentinel session headers, disposable upstream receiver) was **not** executed. No deployment was authorized.
+Controlled hosted reproduction used isolated Preview deployment `dpl_AUNXhCLZEXUPHEU8e86SLWbnD7d6` with a controlled HTTPS echo receiver. The inbound request included non-secret sentinel values in `Authorization`, `Cookie` (including `__session`), and `X-Session-Id`.
 
 ### Sanitized Hosted Evidence
 
-Not collected. Hosted sentinel session-header capture against a controlled receiver is deferred without deployment authorization. No session material was generated or retained.
+The echo response reported all three sensitive header classes absent upstream. The body and the two intended content headers were present. Only non-secret sentinels were used; no real session material or credential was generated, forwarded, or retained.
 
 ### Result
 
-Confirmed in source: the rewrite vector is gone, and the application proxy does not forward session-bearing headers. Hosted Vercel behavior of this new function path is unproven.
+Confirmed in source, unit tests, the public route test, and hosted execution: the rewrite vector is gone and the deployed function did not forward the credential sentinels.
 
 ### Root Cause
 
@@ -62,15 +86,15 @@ One constrained PostHog proxy (shared with Finding 3). Outbound headers are buil
 
 ### Regression Tests
 
-Last worker run: `SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/lib/posthog/ingest-proxy.spec.ts` — 33 passed. Coverage includes inbound session/identity/Clerk/forwarding strip, outbound Set-Cookie strip, known capture/replay/flags/asset paths, unknown/backslash/dot-segment reject before fetch, 405 for unsupported methods, declared and streamed 1 MiB body caps, exact-at-cap success, redirect reject, and timeout 504.
+Coverage includes inbound session/identity/Clerk/forwarding strip, outbound Set-Cookie strip, known capture/replay/flags/asset paths, route wiring, unknown/backslash/dot-segment reject before fetch, 405 for unsupported methods, malformed and oversized body declarations, streamed 1 MiB cap, invalid content type/encoding, redirect reject, timeout 504, generic upstream 502, and client-abort 499. The final full unit run passed 235 files / 2,334 tests.
 
 ### Residual Risk
 
-Hosted proof that the deployed Vercel function actually runs this code, and that no platform hop re-attaches credentials, is missing. `loadSiteApp` arbitrary API URLs are not proxied. Nested `/s/*` and slashless `/ingest/s` are rejected; only exact `/ingest/s/` is allowed. Upstream PostHog sees the Vercel function IP/UA, not the browser (intentional).
+`loadSiteApp` arbitrary API URLs are not proxied. Nested `/s/*` and slashless `/ingest/s` are rejected; only exact `/ingest/s/` is allowed. Upstream PostHog sees the Vercel function IP/UA, not the browser (intentional). A project automation-bypass credential could intentionally bypass Vercel WAF controls, but it does not change the application-owned outbound header allowlist.
 
 ### Final Disposition
 
-**Confirmed — Fixed.** Local automated proof only. Hosted sentinel evidence remains an open acceptance gate.
+**Confirmed — Fixed.** Source, automated, and controlled hosted sentinel evidence agree.
 
 ## Finding 2: Provider Work Refund
 
@@ -137,23 +161,23 @@ Unknown paths return 404 before fetch. Unsupported methods return 405 with `Allo
 
 ### Current Vercel Controls
 
-Read-only CLI inspection (Vercel CLI 53.2.0), not a dashboard overview:
+Read-only CLI inspection (Vercel CLI 53.2.0):
 
-- Rate-limit rule: path `^/ingest(?:/|$)`, 100 requests / 60 seconds / IP, action `rate_limit`.
+- Rate-limit rule: path `^/ingest(?:/|$)`, 100 requests / 60 seconds / IP, fixed-window action `rate_limit`.
 - Method-deny rule on the same path: methods other than GET, HEAD, POST, and OPTIONS rejected.
 - No draft rules; `pendingChanges = 0`.
-- Firewall overview unavailable (CLI required an IP bypass). Coverage of preview vs production, fail-open behavior, and regional durability were therefore not confirmed from the overview UI.
+- Firewall overview unavailable on this plan. Direct public-domain method and threshold tests confirmed production enforcement; protected Preview requests made with `vercel curl` cannot prove WAF enforcement because its automation token intentionally bypasses ordinary firewall blocks.
 - Neither rule is encoded in application source or `vercel.json`.
 
 ### Path/Method/Body/Rate Tests
 
-Path, method, and body policy: unit tests in `tests/unit/lib/posthog/ingest-proxy.spec.ts` (same 33-passed run as Finding 1), including unknown/dot-segment/backslash reject before fetch, 405 before fetch, declared oversized 413, streamed oversized 413 with reader cancel, exact 1 MiB success, and asset-path body reject.
+Path, method, and body policy passed in unit tests and on the PR Preview. Hosted responses were 200 for valid capture, 404 for unknown path, 405 for an unsupported route method, 400 for invalid content type, 413 for a real 1 MiB + 1 byte body, and 403 from the edge method rule for PUT.
 
-Live Vercel rate-threshold test (crossing the published limit by one or two requests) was **not** run. No attack traffic was sent to production.
+A direct public-domain threshold test used 105 harmless HEAD requests to a maintenance-redirected `/ingest` path after a fresh window. It produced exactly 100 HTTP 307 application responses and 5 HTTP 429 edge responses in five seconds. The HEAD probe created no PostHog event and did not follow the application redirect.
 
 ### Result
 
-Source relay is no longer unrestricted. Edge rate-limit and method-deny rules were observed as published. Live threshold enforcement is unproven.
+Source relay is no longer unrestricted. Edge rate-limit and method-deny rules were observed as published and directly enforced at the documented threshold.
 
 ### Implemented Fix
 
@@ -161,15 +185,15 @@ Application-owned constrained proxy plus documented dashboard-managed `/ingest` 
 
 ### Regression Tests
 
-Same ingest-proxy unit suite as Finding 1 (33 passed). Oxlint on changed files and `pnpm check:type` passed in that worker slice.
+Same ingest-proxy and route unit coverage as Finding 1. The final full unit run passed 235 files / 2,334 tests.
 
 ### Residual Risk
 
-Live rate-limit action, preview/production parity, and fail-open behavior are unverified. Rate limiting does not stop accepted PostHog payloads from polluting analytics below the threshold. Hosted path-normalization variants against the edge rule were not exercised.
+Rate limiting does not stop accepted PostHog payloads from polluting analytics below the threshold. Regional fail-open behavior during a Vercel control-plane incident was not induced. Preview WAF enforcement cannot be isolated while Vercel Authentication requires an automation bypass, so direct public production enforcement is the authoritative threshold proof.
 
 ### Final Disposition
 
-**Confirmed — Fixed.** Local source and unit proof only. Live rate-threshold remains an open acceptance gate.
+**Confirmed — Fixed.** Source, Preview behavior, live rule state, and direct threshold enforcement agree.
 
 ## Finding 4: Active-Plan Cap Reactivation
 
@@ -292,25 +316,25 @@ A single huge stream chunk is still allocated by the runtime before `byteLength`
 - Install: Passed (`pnpm install --frozen-lockfile`) at baseline.
 - Typecheck: Passed. Orchestrator reran `pnpm check:full` afterward; `check:type` exit 0. `pnpm check:full` exit 0.
 - Lint: Passed. Same `pnpm check:full` rerun; `check:lint` exit 0.
-- Unit tests: Passed. `pnpm test` exit 0. Unit changed phase: 45 test files passed, 410 tests passed.
-- Integration tests: Passed. `pnpm test` exit 0. Integration changed phase: 52 test files passed, 298 tests passed. Workflow changed phase: 1 test file passed, 4 tests passed. Overall phase runner: Passed: `test:unit:changed` `test:integration:changed`.
-- Preview smoke tests: Deferred — no deployment authorization (normal PostHog, billing, plan creation/retry, and lesson generation not exercised on a preview host)
-- Hosted security tests: Deferred — no deployment authorization (sentinel session-header capture; live Vercel rate-threshold crossing by one or two requests)
+- Unit tests: Passed. The 2026-08-21 full unit rerun passed 235 test files / 2,334 tests after route, proxy-error, and pre-provider persistence coverage was added.
+- Targeted coverage: Passed. The `/ingest` route reached 100% statements/lines (8/8); the focused proxy slice reached 91.21% line coverage; the three security-relevant specs passed 54 tests.
+- Changed tests: Passed. `pnpm test` exit 0: unit 46 files / 421 tests; integration 52 files / 298 tests; workflow 1 file / 4 tests.
+- Preview smoke tests: Passed for the normal unauthenticated app shell and PostHog browser traffic. Real billing transitions, plan mutations, and paid lesson generation were intentionally not performed.
+- Hosted security tests: Passed for credential stripping, valid browser ingestion, path/method/body controls, edge method denial, live rule state, and the 100-per-60-second threshold.
 
-Worker slice targeted results after this delta: parser 35 tests, lifecycle lock 9 tests, and abandoned provider-start cleanup 6 tests passed. Changed-file oxlint, `pnpm exec tsc --noEmit`, and `git diff --check` passed. The orchestrator then reran `pnpm test` (exit 0: unit 45/410, integration 52/298, workflow 1/4) and `pnpm check:full` (exit 0). No hosted preview or deployment was authorized.
+Earlier worker slice results remain valid: parser 35 tests, lifecycle lock 9 tests, and abandoned provider-start cleanup 6 tests passed. Changed-file oxlint, `pnpm exec tsc --noEmit`, and `git diff --check` passed. The final 2026-08-21 lint, type, changed-test, coverage, and pushed-head checks are recorded in PR #530.
 
 ## Remaining Security Work
 
-- Deferred hosted or operational checks:
-  - Controlled hosted sentinel session-header capture for credential stripping
-  - Live Vercel rate-threshold test crossing the published `/ingest` limit by only one or two requests
-  - Preview smoke tests for normal PostHog, billing, plan creation/retry, and lesson generation
-  - Firewall overview inspection (CLI required an IP bypass)
+- Still unverified:
+  - Real Preview billing transitions, plan mutations, and paid lesson generation (excluded to avoid shared-data mutation and provider cost)
+  - Hosted redirect rejection against a prefix-wide redirect receiver; unit regression proof covers the boundary
+  - Firewall overview UI on the current plan; direct live configuration and enforcement evidence replaces it
 - Accepted residual risks:
-  - Hosted proof of Findings 1 and 3 is missing; do not treat production `/ingest` as verified
   - PostHog function IP/UA replaces browser identity on proxied requests
   - `loadSiteApp` arbitrary API URLs are not proxied
   - Analytics pollution via accepted PostHog payloads below the rate threshold
+  - Vercel automation-bypass tokens intentionally bypass ordinary WAF rules and must remain protected credentials
   - JSON parser: one huge stream chunk may allocate before the cap is visible; omitted `maxBytes` remains unbounded
   - Over-cap eligible plans already present remain counted and block new inserts
-- Follow-up issues: None opened. Canonical scan artifacts remain historical and unchanged. Fix commit/PR for local remediations is still pending.
+- Follow-up issues: None opened. Canonical scan artifacts remain historical and unchanged. Remediation and verification are tracked in PR #530.

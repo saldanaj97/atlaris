@@ -329,6 +329,34 @@ describe('proxyIngestRequest', () => {
     expect(pull).not.toHaveBeenCalled();
   });
 
+  it.each(['', '-1', 'Infinity', 'NaN'])(
+    'rejects malformed Content-Length %j before fetch',
+    async (contentLength) => {
+      const response = await proxyIngestRequest(
+        jsonBodyRequest('http://localhost/ingest/e/', '{}', {
+          'content-length': contentLength,
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { header: 'content-type', value: 'application/octet-stream' },
+    { header: 'content-encoding', value: 'br' },
+  ])('rejects unsupported $header before fetch', async ({ header, value }) => {
+    const response = await proxyIngestRequest(
+      jsonBodyRequest('http://localhost/ingest/e/', '{}', {
+        [header]: value,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
   it('rejects a streamed body that crosses the cap and cancels the reader', async () => {
     const cancel = vi.fn();
     const chunk = new Uint8Array(POSTHOG_INGEST_MAX_BODY_BYTES);
@@ -416,6 +444,31 @@ describe('proxyIngestRequest', () => {
 
     expect(response.status).toBe(504);
     expect(AbortSignal.timeout).toHaveBeenCalled();
+  });
+
+  it('returns 502 for a generic upstream failure', async () => {
+    vi.mocked(globalThis.fetch).mockRejectedValue(new Error('network failed'));
+
+    const response = await proxyIngestRequest(
+      jsonBodyRequest('http://localhost/ingest/e/', '{}'),
+    );
+
+    expect(response.status).toBe(502);
+  });
+
+  it('returns 499 when the client aborts the upstream request', async () => {
+    const controller = new AbortController();
+    const request = jsonBodyRequest('http://localhost/ingest/e/', '{}');
+    const abortedRequest = new Request(request, { signal: controller.signal });
+    vi.mocked(globalThis.fetch).mockImplementation(async () => {
+      controller.abort();
+      throw controller.signal.reason;
+    });
+
+    const response = await proxyIngestRequest(abortedRequest);
+
+    expect(response.status).toBe(499);
+    expect(response.headers.get('connection')).toBe('close');
   });
 
   it('rejects http non-loopback origins before fetch', async () => {
