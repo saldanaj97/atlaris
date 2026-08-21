@@ -12,11 +12,24 @@ const mockReturning = vi.fn();
 const mockWhere = vi.fn();
 const mockDeleteFn = vi.fn();
 const mockSelectFn = vi.fn();
+const mockExecute = vi.fn();
+const mockLimit = vi.fn();
+const mockTransaction = vi.fn();
 const mockDbClient = {
   delete: mockDeleteFn,
   select: mockSelectFn,
+  execute: mockExecute,
+  transaction: mockTransaction,
 } satisfies DeletePlanDbClient;
 const pgDialect = new PgDialect();
+
+function mockNoActiveChild(): void {
+  mockLimit.mockResolvedValue([]);
+}
+
+function mockActiveChild(): void {
+  mockLimit.mockResolvedValue([{ id: 'mod-generating' }]);
+}
 
 describe('deletePlan', () => {
   const userId = createId('user');
@@ -28,8 +41,25 @@ describe('deletePlan', () => {
     mockReturning.mockReset();
     mockWhere.mockReset();
     mockDeleteFn.mockReset();
+    mockSelectFn.mockReset();
+    mockExecute.mockReset();
+    mockLimit.mockReset();
+    mockTransaction.mockReset();
     capturedDeleteWhere = undefined;
 
+    mockNoActiveChild();
+    mockExecute.mockResolvedValue(undefined);
+    mockTransaction.mockImplementation(
+      async (callback: (tx: typeof mockDbClient) => unknown) =>
+        callback(mockDbClient),
+    );
+    mockSelectFn.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: mockLimit,
+        }),
+      }),
+    });
     mockDeleteFn.mockImplementation((_table: unknown) => ({
       where: mockWhere,
     }));
@@ -71,6 +101,26 @@ describe('deletePlan', () => {
     });
 
     expect(result).toEqual({ success: false, reason: 'currently_generating' });
+    expect(mockDeleteFn).not.toHaveBeenCalled();
+  });
+
+  it('returns active_child_generation when a module lesson is generating', async () => {
+    const plan = createTestPlan({
+      id: planId,
+      userId,
+      generationStatus: 'ready',
+    });
+    mockSelectOwnedPlanById.mockResolvedValue(plan);
+    mockActiveChild();
+
+    const result = await deletePlan(planId, userId, mockDbClient, {
+      selectOwnedPlanById: mockSelectOwnedPlanById,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      reason: 'active_child_generation',
+    });
     expect(mockDeleteFn).not.toHaveBeenCalled();
   });
 

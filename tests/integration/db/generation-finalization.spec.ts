@@ -50,6 +50,7 @@ describe('plan generation finalization (single transaction)', () => {
       visibility: 'private',
       origin: 'ai',
       generationStatus: 'failed',
+      isQuotaEligible: false,
     });
     planId = plan.id;
   });

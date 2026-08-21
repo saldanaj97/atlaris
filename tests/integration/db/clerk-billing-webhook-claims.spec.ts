@@ -3,7 +3,11 @@ import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
   applyVerifiedClerkBillingEvent,
+  CLERK_BILLING_PAYER_LOCK_NAMESPACE,
   CLERK_BILLING_WEBHOOK_LEASE_MS,
+  ClerkBillingRefreshTimeoutError,
+  ClerkWebhookLeaseLostError,
+  reconcileClerkBillingEntitlements,
 } from '@/features/billing/clerk-billing/reconciliation';
 import {
   clerkWebhookEventClaims,
@@ -12,18 +16,19 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 
-function billingEvent(): WebhookEvent {
+function billingEvent(payerUserId = 'billing_claim_user'): WebhookEvent {
   return {
     type: 'subscription.updated',
     data: {
       id: 'sub_claim_fixture',
       status: 'active',
-      payer: { user_id: 'billing_claim_user' },
-      payer_id: 'billing_claim_user',
+      payer: { user_id: payerUserId },
+      payer_id: payerUserId,
       items: [],
     },
   } as unknown as WebhookEvent;
@@ -97,6 +102,60 @@ function logger() {
     info: vi.fn(),
     warn: vi.fn(),
   } as never;
+}
+
+async function waitForPayerLockWaiter(payerUserId: string): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const rows = await db.execute(sql`
+      SELECT granted
+      FROM pg_locks
+      WHERE locktype = 'advisory'
+        AND classid = ${sql.raw(String(CLERK_BILLING_PAYER_LOCK_NAMESPACE))}
+        AND objid = hashtext(${payerUserId})
+    `);
+    const list = Array.isArray(rows) ? rows : [];
+    const granted = list.some(
+      (row) => (row as { granted?: unknown }).granted === true,
+    );
+    const waiting = list.some(
+      (row) => (row as { granted?: unknown }).granted === false,
+    );
+    if (granted && waiting) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`Timed out waiting for payer lock waiter (${payerUserId})`);
+}
+
+async function currentTier(authUserId: string): Promise<string | undefined> {
+  const [user] = await db
+    .select({ subscriptionTier: users.subscriptionTier })
+    .from(users)
+    .where(eq(users.authUserId, authUserId));
+  return user?.subscriptionTier;
+}
+
+function isLockTimeoutError(error: unknown): boolean {
+  let current = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (!current || typeof current !== 'object') {
+      return false;
+    }
+    if ('code' in current && current.code === '55P03') {
+      return true;
+    }
+    if (
+      'message' in current &&
+      typeof current.message === 'string' &&
+      /lock timeout/i.test(current.message)
+    ) {
+      return true;
+    }
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return false;
 }
 
 async function seedBillingUser(): Promise<void> {
@@ -519,13 +578,15 @@ describe('Clerk billing webhook claims', () => {
       logger: logger(),
       createClaimToken: () => '00000000-0000-4000-8000-000000000042',
     });
+    await waitForPayerLockWaiter('billing_claim_user');
+    expect(secondGet).not.toHaveBeenCalled();
+
+    releaseRefresh();
+    await expect(first).rejects.toBeInstanceOf(ClerkWebhookLeaseLostError);
     await expect(second).resolves.toEqual({
       status: 'inserted',
       result: 'updated',
     });
-
-    releaseRefresh();
-    await expect(first).resolves.toEqual({ status: 'duplicate' });
     expect(firstGet).toHaveBeenCalledTimes(1);
     expect(secondGet).toHaveBeenCalledTimes(1);
     expect(
@@ -578,6 +639,13 @@ describe('Clerk billing webhook claims', () => {
         logger: logger(),
       }),
     ).rejects.toBe(processingError);
+    await expect(currentTier('billing_claim_user')).resolves.toBe('starter');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([]);
     await expect(
       db
         .select({ eventId: clerkWebhookEventClaims.eventId })
@@ -632,5 +700,293 @@ describe('Clerk billing webhook claims', () => {
         .from(clerkWebhookEventClaims)
         .where(eq(clerkWebhookEventClaims.eventId, eventId)),
     ).toEqual([]);
+  });
+
+  it('serializes distinct billing events for one payer so the latest Clerk snapshot wins', async () => {
+    const payerUserId = buildTestAuthUserId('clerk-payer-serialize');
+    await ensureUser({
+      authUserId: payerUserId,
+      email: buildTestEmail(payerUserId),
+      subscriptionTier: 'starter',
+    });
+    const firstRefresh = createDeferredPromise<void>();
+    const firstRelease = createDeferredPromise<BackendBillingSubscription>();
+    const firstGet = vi.fn(async () => {
+      firstRefresh.resolve();
+      return firstRelease.promise;
+    });
+    const secondGet = vi
+      .fn()
+      .mockResolvedValue(subscription({ payerId: payerUserId }));
+    const staleSubscription = subscription({
+      payerId: payerUserId,
+      status: 'past_due',
+      subscriptionItems: [
+        {
+          ...subscription().subscriptionItems[0]!,
+          status: 'past_due',
+        },
+      ],
+    });
+
+    const first = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      `evt_stale_${payerUserId}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+        db,
+        logger: logger(),
+      },
+    );
+    await firstRefresh.promise;
+
+    const second = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      `evt_latest_${payerUserId}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+        db,
+        logger: logger(),
+      },
+    );
+    await waitForPayerLockWaiter(payerUserId);
+    expect(secondGet).not.toHaveBeenCalled();
+
+    firstRelease.resolve(staleSubscription);
+    await expect(first).resolves.toEqual({
+      status: 'inserted',
+      result: 'updated',
+    });
+    await expect(second).resolves.toEqual({
+      status: 'inserted',
+      result: 'updated',
+    });
+    expect(secondGet).toHaveBeenCalledTimes(1);
+    await expect(currentTier(payerUserId)).resolves.toBe('pro');
+  });
+
+  it('allows different payers to refresh Clerk concurrently', async () => {
+    const firstPayer = buildTestAuthUserId('clerk-payer-a');
+    const secondPayer = buildTestAuthUserId('clerk-payer-b');
+    await ensureUser({
+      authUserId: firstPayer,
+      email: buildTestEmail(firstPayer),
+      subscriptionTier: 'starter',
+    });
+    await ensureUser({
+      authUserId: secondPayer,
+      email: buildTestEmail(secondPayer),
+      subscriptionTier: 'starter',
+    });
+    const firstRefresh = createDeferredPromise<void>();
+    const secondRefresh = createDeferredPromise<void>();
+    const firstRelease = createDeferredPromise<BackendBillingSubscription>();
+    const secondRelease = createDeferredPromise<BackendBillingSubscription>();
+    const firstGet = vi.fn(async () => {
+      firstRefresh.resolve();
+      return firstRelease.promise;
+    });
+    const secondGet = vi.fn(async () => {
+      secondRefresh.resolve();
+      return secondRelease.promise;
+    });
+
+    const first = applyVerifiedClerkBillingEvent(
+      billingEvent(firstPayer),
+      `evt_${firstPayer}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+        db,
+        logger: logger(),
+      },
+    );
+    const second = applyVerifiedClerkBillingEvent(
+      billingEvent(secondPayer),
+      `evt_${secondPayer}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+        db,
+        logger: logger(),
+      },
+    );
+
+    await Promise.all([firstRefresh.promise, secondRefresh.promise]);
+    firstRelease.resolve(subscription({ payerId: firstPayer }));
+    secondRelease.resolve(subscription({ payerId: secondPayer }));
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { status: 'inserted', result: 'updated' },
+      { status: 'inserted', result: 'updated' },
+    ]);
+    await expect(currentTier(firstPayer)).resolves.toBe('pro');
+    await expect(currentTier(secondPayer)).resolves.toBe('pro');
+  });
+
+  it('serializes reconciliation behind the same payer lock as webhooks', async () => {
+    const payerUserId = buildTestAuthUserId('clerk-payer-reconcile');
+    await ensureUser({
+      authUserId: payerUserId,
+      email: buildTestEmail(payerUserId),
+      subscriptionTier: 'starter',
+    });
+    const webhookRefresh = createDeferredPromise<void>();
+    const webhookRelease = createDeferredPromise<BackendBillingSubscription>();
+    const webhookGet = vi.fn(async () => {
+      webhookRefresh.resolve();
+      return webhookRelease.promise;
+    });
+    const reconcileGet = vi
+      .fn()
+      .mockResolvedValue(subscription({ payerId: payerUserId }));
+
+    const webhook = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      `evt_webhook_${payerUserId}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: webhookGet } },
+        db,
+        logger: logger(),
+      },
+    );
+    await webhookRefresh.promise;
+
+    const reconcile = reconcileClerkBillingEntitlements({
+      clerkClient: { billing: { getUserBillingSubscription: reconcileGet } },
+      db,
+      logger: logger(),
+      limit: 1,
+    });
+    await waitForPayerLockWaiter(payerUserId);
+    expect(reconcileGet).not.toHaveBeenCalled();
+
+    webhookRelease.resolve(
+      subscription({
+        payerId: payerUserId,
+        status: 'past_due',
+        subscriptionItems: [
+          {
+            ...subscription().subscriptionItems[0]!,
+            status: 'past_due',
+          },
+        ],
+      }),
+    );
+    await expect(webhook).resolves.toEqual({
+      status: 'inserted',
+      result: 'updated',
+    });
+    await expect(reconcile).resolves.toMatchObject({
+      checked: 1,
+      updated: 1,
+      failed: 0,
+    });
+    expect(reconcileGet).toHaveBeenCalledTimes(1);
+    await expect(currentTier(payerUserId)).resolves.toBe('pro');
+  });
+
+  it('does not write unlocked state when the payer lock times out', async () => {
+    const payerUserId = buildTestAuthUserId('clerk-payer-lock-timeout');
+    await ensureUser({
+      authUserId: payerUserId,
+      email: buildTestEmail(payerUserId),
+      subscriptionTier: 'starter',
+    });
+    const firstRefresh = createDeferredPromise<void>();
+    const firstRelease = createDeferredPromise<BackendBillingSubscription>();
+    const firstGet = vi.fn(async () => {
+      firstRefresh.resolve();
+      return firstRelease.promise;
+    });
+    const secondGet = vi
+      .fn()
+      .mockResolvedValue(subscription({ payerId: payerUserId }));
+
+    const first = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      `evt_hold_${payerUserId}`,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+        db,
+        logger: logger(),
+      },
+    );
+    await firstRefresh.promise;
+
+    const secondEventId = `evt_timeout_${payerUserId}`;
+    const second = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      secondEventId,
+      {
+        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+        db,
+        logger: logger(),
+        payerLockTimeoutMs: 250,
+      },
+    );
+
+    try {
+      await expect(second).rejects.toSatisfy(isLockTimeoutError);
+      expect(secondGet).not.toHaveBeenCalled();
+      await expect(currentTier(payerUserId)).resolves.toBe('starter');
+      await expect(
+        db
+          .select({ eventId: clerkWebhookEvents.eventId })
+          .from(clerkWebhookEvents)
+          .where(eq(clerkWebhookEvents.eventId, secondEventId)),
+      ).resolves.toEqual([]);
+    } finally {
+      firstRelease.resolve(subscription({ payerId: payerUserId }));
+      await first;
+    }
+  });
+
+  it('times out a hung Clerk refresh and releases the payer lock for retry', async () => {
+    const payerUserId = buildTestAuthUserId('clerk-payer-network-timeout');
+    await ensureUser({
+      authUserId: payerUserId,
+      email: buildTestEmail(payerUserId),
+      subscriptionTier: 'starter',
+    });
+    const eventId = `evt_hung_${payerUserId}`;
+    const hungGet = vi.fn(
+      () => new Promise<BackendBillingSubscription>(() => undefined),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(payerUserId), eventId, {
+        clerkClient: { billing: { getUserBillingSubscription: hungGet } },
+        db,
+        logger: logger(),
+        payerNetworkTimeoutMs: 150,
+      }),
+    ).rejects.toBeInstanceOf(ClerkBillingRefreshTimeoutError);
+
+    await expect(currentTier(payerUserId)).resolves.toBe('starter');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([]);
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEventClaims.eventId })
+        .from(clerkWebhookEventClaims)
+        .where(eq(clerkWebhookEventClaims.eventId, eventId)),
+    ).resolves.toEqual([]);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(payerUserId), eventId, {
+        clerkClient: {
+          billing: {
+            getUserBillingSubscription: vi
+              .fn()
+              .mockResolvedValue(subscription({ payerId: payerUserId })),
+          },
+        },
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+    await expect(currentTier(payerUserId)).resolves.toBe('pro');
   });
 });

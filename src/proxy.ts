@@ -177,7 +177,7 @@ export default proxy;
 export const config = {
   matcher: [
     // Catch-all for app routes including /.well-known/workflow. Skip /ingest so
-    // PostHog rewrites run (maintenance would otherwise 307 capture endpoints).
+    // the public PostHog proxy stays outside Clerk; that route owns validation.
     '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
     '/(api|trpc)(.*)',
   ],

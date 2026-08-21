@@ -213,6 +213,64 @@ describe('plan persistence store', () => {
     expect(failedRow?.isQuotaEligible).toBe(false);
   });
 
+  it('markGenerationFailure keeps a last-good eligible plan ready', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-last-good');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} last-good`,
+      },
+      db,
+    );
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
+
+    await markPlanGenerationSuccess(inserted.id, db);
+    await markPlanGenerationFailure(inserted.id, db);
+
+    const [row] = await db
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, inserted.id));
+    expect(row?.generationStatus).toBe('ready');
+    expect(row?.isQuotaEligible).toBe(true);
+  });
+
+  it('markGenerationSuccess does not restore an ineligible plan without a reservation', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-no-slot');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} no-slot`,
+      },
+      db,
+    );
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
+
+    await markPlanGenerationFailure(inserted.id, db);
+    await markPlanGenerationSuccess(inserted.id, db);
+
+    const [row] = await db
+      .select()
+      .from(learningPlans)
+      .where(eq(learningPlans.id, inserted.id));
+    expect(row?.generationStatus).toBe('failed');
+    expect(row?.isQuotaEligible).toBe(false);
+  });
+
   it('findCappedPlanWithoutModules returns plan id when attempt cap hit and no modules', async () => {
     const authUserId = buildTestAuthUserId('persist-adapter-capped');
     const userId = await ensureUser({

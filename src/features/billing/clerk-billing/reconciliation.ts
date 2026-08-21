@@ -27,11 +27,14 @@ import { randomUUID } from 'node:crypto';
 
 type ServiceRoleDb = typeof serviceRoleDb;
 type ReconciliationDb = Pick<DbTransaction, 'select' | 'update'>;
+type PayerLockDb = Pick<DbTransaction, 'select' | 'update' | 'execute'>;
 
 type ReconciliationDeps = {
   db?: ReconciliationDb;
   clerkClient?: ClerkBillingClient;
   logger: Logger;
+  payerLockTimeoutMs?: number;
+  payerNetworkTimeoutMs?: number;
 };
 
 type ApplyVerifiedClerkBillingEventDeps = Omit<ReconciliationDeps, 'db'> & {
@@ -50,6 +53,10 @@ type ClerkBillingClient = {
 const DEFAULT_RECONCILIATION_LIMIT = 100;
 const MAX_RECONCILIATION_LIMIT = 100;
 export const CLERK_BILLING_WEBHOOK_LEASE_MS = 2 * 60 * 1000;
+// attempts.ts uses namespace 1 for generation reservations.
+export const CLERK_BILLING_PAYER_LOCK_NAMESPACE = 2;
+export const CLERK_BILLING_PAYER_LOCK_TIMEOUT_MS = 15_000;
+export const CLERK_BILLING_PAYER_NETWORK_TIMEOUT_MS = 10_000;
 
 export type ClerkBillingApplyResult =
   | 'updated'
@@ -82,8 +89,97 @@ export class ClerkWebhookLeaseLostError extends Error {
   }
 }
 
+export class ClerkBillingRefreshTimeoutError extends Error {
+  constructor() {
+    super('Clerk Billing subscription refresh timed out');
+    this.name = 'ClerkBillingRefreshTimeoutError';
+  }
+}
+
 function leaseExpirySql() {
   return sql<Date>`now() + ${CLERK_BILLING_WEBHOOK_LEASE_MS} * interval '1 millisecond'`;
+}
+
+async function withBoundedTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutError: Error,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(timeoutError), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } catch (error) {
+    if (error === timeoutError) {
+      void promise.catch(() => undefined);
+    }
+    throw error;
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
+function postgresErrorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') {
+    return undefined;
+  }
+  if ('code' in error && typeof error.code === 'string') {
+    return error.code;
+  }
+  if ('cause' in error) {
+    return postgresErrorCode(error.cause);
+  }
+  return undefined;
+}
+
+async function acquireClerkBillingPayerLock(
+  tx: Pick<DbTransaction, 'execute'>,
+  payerUserId: string,
+  deps: Pick<ReconciliationDeps, 'logger' | 'payerLockTimeoutMs'>,
+): Promise<void> {
+  const timeoutMs = Math.max(
+    1,
+    Math.trunc(deps.payerLockTimeoutMs ?? CLERK_BILLING_PAYER_LOCK_TIMEOUT_MS),
+  );
+
+  await tx.execute(
+    sql`SELECT set_config('lock_timeout', ${`${timeoutMs}ms`}, true)`,
+  );
+
+  try {
+    // Namespace 2: Clerk billing payers. Do not reuse namespace 1 (attempts).
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(
+        ${sql.raw(String(CLERK_BILLING_PAYER_LOCK_NAMESPACE))},
+        hashtext(${payerUserId})
+      )`,
+    );
+  } catch (error) {
+    if (postgresErrorCode(error) === '55P03') {
+      deps.logger.warn(
+        { payerUserId },
+        'Clerk Billing payer lock timed out; retry requested',
+      );
+    }
+    throw error;
+  }
+}
+
+async function lockAndRefreshClerkBillingSource(
+  source: ClerkBillingProjectionSource,
+  deps: ReconciliationDeps & { db: PayerLockDb },
+): Promise<ClerkBillingProjectionSource> {
+  if (source.payerUserId === null) {
+    return source;
+  }
+
+  await acquireClerkBillingPayerLock(deps.db, source.payerUserId, deps);
+  return refreshClerkBillingSource(source, deps);
 }
 
 async function claimClerkWebhookEvent(
@@ -205,6 +301,18 @@ async function finalizeClerkWebhookEvent(
   const db = deps.db ?? serviceRoleDb;
 
   return db.transaction(async (tx) => {
+    let billingSource =
+      args.projectionSource?.kind === 'billing'
+        ? args.projectionSource.source
+        : null;
+
+    if (billingSource !== null && billingSource.payerUserId !== null) {
+      billingSource = await lockAndRefreshClerkBillingSource(billingSource, {
+        ...deps,
+        db: tx,
+      });
+    }
+
     const [ownedClaim] = await tx
       .delete(clerkWebhookEventClaims)
       .where(
@@ -251,7 +359,7 @@ async function finalizeClerkWebhookEvent(
 
     if (args.projectionSource.kind === 'billing') {
       const result = await applyClerkBillingSource(
-        args.projectionSource.source,
+        billingSource ?? args.projectionSource.source,
         {
           ...deps,
           db: tx,
@@ -293,9 +401,30 @@ async function refreshClerkBillingSource(
   }
 
   const client = deps.clerkClient ?? (await getClerkClient());
-  const subscription = await client.billing.getUserBillingSubscription(
-    source.payerUserId,
+  const timeoutError = new ClerkBillingRefreshTimeoutError();
+  const timeoutMs = Math.max(
+    1,
+    Math.trunc(
+      deps.payerNetworkTimeoutMs ?? CLERK_BILLING_PAYER_NETWORK_TIMEOUT_MS,
+    ),
   );
+
+  let subscription: BackendBillingSubscription;
+  try {
+    subscription = await withBoundedTimeout(
+      client.billing.getUserBillingSubscription(source.payerUserId),
+      timeoutMs,
+      timeoutError,
+    );
+  } catch (error) {
+    if (error === timeoutError) {
+      deps.logger.warn(
+        { payerUserId: source.payerUserId },
+        'Clerk Billing subscription refresh timed out; retry requested',
+      );
+    }
+    throw error;
+  }
   const refreshedSource =
     clerkBillingSourceFromBackendSubscription(subscription);
 
@@ -308,6 +437,10 @@ async function refreshClerkBillingSource(
   };
 }
 
+/**
+ * Applies a prepared billing projection. Production webhook and
+ * reconciliation callers must hold the payer xact lock first.
+ */
 export async function applyClerkBillingSource(
   source: ClerkBillingProjectionSource,
   deps: ReconciliationDeps,
@@ -402,7 +535,7 @@ export async function applyVerifiedClerkBillingEvent(
     const projectionSource: ClerkWebhookProjectionSource | null = billingSource
       ? {
           kind: 'billing',
-          source: await refreshClerkBillingSource(billingSource, deps),
+          source: billingSource,
         }
       : userSource
         ? { kind: 'user', source: userSource }
@@ -441,8 +574,11 @@ export async function reconcileClerkBillingEntitlements({
   db = serviceRoleDb,
   limit = DEFAULT_RECONCILIATION_LIMIT,
   logger,
+  payerLockTimeoutMs,
+  payerNetworkTimeoutMs,
   startingAfterAuthUserId,
-}: ReconciliationDeps & {
+}: Omit<ReconciliationDeps, 'db'> & {
+  db?: ServiceRoleDb;
   limit?: number;
   startingAfterAuthUserId?: string;
 }): Promise<{
@@ -492,16 +628,25 @@ export async function reconcileClerkBillingEntitlements({
     totals.checked += 1;
 
     try {
-      const subscription = await client.billing.getUserBillingSubscription(
-        localUser.authUserId,
-      );
-      const result = await applyClerkBillingSource(
-        {
-          ...clerkBillingSourceFromBackendSubscription(subscription),
-          payerUserId: localUser.authUserId,
-        },
-        { db, logger },
-      );
+      const result = await db.transaction(async (tx) => {
+        const source = await lockAndRefreshClerkBillingSource(
+          {
+            type: 'reconciliation',
+            payerUserId: localUser.authUserId,
+            subscriptionStatus: null,
+            paymentAttemptStatus: null,
+            items: [],
+          },
+          {
+            clerkClient: client,
+            db: tx,
+            logger,
+            payerLockTimeoutMs,
+            payerNetworkTimeoutMs,
+          },
+        );
+        return applyClerkBillingSource(source, { db: tx, logger });
+      });
 
       if (result === 'skipped_no_payer' || result === 'skipped_no_user') {
         totals.skipped += 1;

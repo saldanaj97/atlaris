@@ -4,9 +4,11 @@ import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
 import type { DbClient } from '@/lib/db/types';
 
 import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/plan-persistence-store';
+import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import { logger } from '@/lib/logging/logger';
-import { generationAttempts, learningPlans } from '@supabase/schema';
+import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
+import { sql } from 'drizzle-orm';
 
 /** Plans stuck in 'generating' longer than this are considered abandoned. */
 export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
@@ -25,6 +27,17 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  * each maintenance transaction stays bounded.
  */
 export const ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE = 1000;
+
+/** Module lesson generations with a durable provider-start marker use the same maintenance window. */
+export const ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS =
+  ORPHANED_ATTEMPT_THRESHOLD_MS;
+
+/** Keep provider-started module reconciliation bounded like the existing cleanup batches. */
+export const ORPHANED_MODULE_LESSON_GENERATION_CLEANUP_BATCH_SIZE =
+  ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE;
+
+export const ABANDONED_MODULE_LESSON_GENERATION_ERROR =
+  'Provider-started lesson generation was interrupted; retry required.';
 
 /**
  * Marks plans stuck in 'generating' status for longer than the threshold as 'failed'.
@@ -196,6 +209,113 @@ export async function cleanupOrphanedAttempts(
   });
 }
 
+type CleanupAbandonedModuleLessonGenerationsDependencies = {
+  batchSize?: number;
+};
+
+/**
+ * Settles stale module work that durably crossed the provider boundary before a
+ * worker disappeared. This only changes the module lifecycle state; it never
+ * compensates lesson-generation usage. A later retry must reserve a new slot.
+ */
+export async function cleanupAbandonedModuleLessonGenerations(
+  dbClient: DbClient,
+  thresholdMs: number = ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS,
+  deps: CleanupAbandonedModuleLessonGenerationsDependencies = {},
+): Promise<{ cleaned: number }> {
+  const cutoff = new Date(Date.now() - thresholdMs);
+  const batchSize =
+    deps.batchSize ?? ORPHANED_MODULE_LESSON_GENERATION_CLEANUP_BATCH_SIZE;
+  const providerStarted = sql`${modules.lessonGenerationMetadata}->>'providerStartedAt' IS NOT NULL`;
+  const staleProviderStarted = and(
+    eq(modules.lessonGenerationStatus, 'generating'),
+    lt(modules.lessonGenerationStartedAt, cutoff),
+    providerStarted,
+  );
+
+  return dbClient.transaction(async (tx) => {
+    // Lock the shared plan lifecycle key before locking module rows so cleanup
+    // cannot race child claims, parent deletion, or parent replacement.
+    const candidatePlans = await tx
+      .select({ planId: modules.planId })
+      .from(modules)
+      .where(staleProviderStarted)
+      .limit(batchSize);
+    const planIds = [
+      ...new Set(candidatePlans.map((row) => row.planId)),
+    ].sort();
+
+    for (const planId of planIds) {
+      await lockPlanLifecycle(tx, planId);
+    }
+
+    if (planIds.length === 0) {
+      return { cleaned: 0 };
+    }
+
+    const abandonedModules = await tx
+      .select({ id: modules.id })
+      .from(modules)
+      .where(and(staleProviderStarted, inArray(modules.planId, planIds)))
+      .limit(batchSize)
+      .for('update');
+
+    if (abandonedModules.length === 0) {
+      return { cleaned: 0 };
+    }
+
+    const abandonedModuleIds = abandonedModules.map((module) => module.id);
+    const failedAt = new Date();
+    const result = await tx
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'failed',
+        lessonGenerationFailedAt: failedAt,
+        lessonGenerationCompletedAt: null,
+        lessonGenerationError: ABANDONED_MODULE_LESSON_GENERATION_ERROR,
+      })
+      .where(and(inArray(modules.id, abandonedModuleIds), staleProviderStarted))
+      .returning({ id: modules.id });
+
+    if (result.length !== abandonedModuleIds.length) {
+      logger.error(
+        {
+          source: 'cleanup',
+          event: 'abandoned_module_lesson_generation_cleanup_partial_failure',
+          expected: abandonedModuleIds.length,
+          cleaned: result.length,
+        },
+        'Plan cleanup failed to settle all abandoned provider-started module generations',
+      );
+      throw new Error(
+        'Plan cleanup failed to settle all abandoned provider-started module generations',
+      );
+    }
+
+    logger.info(
+      {
+        source: 'cleanup',
+        event: 'abandoned_module_lesson_generations_cleaned',
+        count: result.length,
+      },
+      `Settled ${result.length} abandoned provider-started module generation(s)`,
+    );
+
+    if (result.length === batchSize) {
+      logger.warn(
+        {
+          source: 'cleanup',
+          event: 'abandoned_module_lesson_generation_cleanup_batch_full',
+          batchSize,
+        },
+        'Plan cleanup filled its abandoned module-generation batch; backlog may remain',
+      );
+    }
+
+    return { cleaned: result.length };
+  });
+}
+
 /**
  * Service-role entrypoint for the internal plan cleanup maintenance route.
  */
@@ -205,6 +325,7 @@ export async function runPlanCleanupMaintenance(): Promise<{
 }> {
   const stuckPlans = await cleanupStuckPlans(serviceRoleDb);
   const orphanedAttempts = await cleanupOrphanedAttempts(serviceRoleDb);
+  await cleanupAbandonedModuleLessonGenerations(serviceRoleDb);
 
   return {
     stuckPlansCleaned: stuckPlans.cleaned,

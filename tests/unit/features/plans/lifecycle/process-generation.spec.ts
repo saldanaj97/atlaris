@@ -487,6 +487,30 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('does not finalize failure when generation fails with active_child_generation reservation rejection', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'failure',
+          classification: 'rate_limit',
+          error: new Error('child generating'),
+          durationMs: 1,
+          reservationRejectionReason: 'active_child_generation',
+          timedOut: false,
+          extendedTimeout: false,
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttempt(validGenerationInput);
+
+    expect(result.status).toBe('retryable_failure');
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
   it('does not finalize failure when generation fails with invalid_status reservation rejection', async () => {
     ports = createMockPorts({
       generation: {

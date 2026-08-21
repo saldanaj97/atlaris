@@ -26,7 +26,11 @@ const bulkRemovePlanResultSchema = z.discriminatedUnion('success', [
   z.object({
     planId: z.string(),
     success: z.literal(false),
-    reason: z.enum(['not_found', 'currently_generating']),
+    reason: z.enum([
+      'not_found',
+      'currently_generating',
+      'active_child_generation',
+    ]),
     message: z.string(),
   }),
 ]);

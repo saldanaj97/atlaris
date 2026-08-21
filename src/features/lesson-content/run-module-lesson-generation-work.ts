@@ -27,12 +27,15 @@ import { parseModuleLessonBatchFromStream } from '@/features/lesson-content/pars
 import {
   commitModuleLessonBatchSuccess,
   commitModuleLessonGenerationFailure,
+  markModuleLessonProviderStarted,
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
 import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
-type LessonQuotaConsumed = { durationMs: number };
+type LessonQuotaConsumed =
+  | { kind: 'success'; durationMs: number }
+  | { kind: 'provider_started_failure' };
 type LessonQuotaReverted = { kind: 'failed' };
 
 /**
@@ -122,6 +125,7 @@ export async function runModuleLessonGenerationWork(
       > => {
         const attemptClockStart = clock();
         let lifecycle: ReturnType<typeof setupAbortAndTimeout> | undefined;
+        let providerStarted = false;
 
         try {
           const provider =
@@ -139,6 +143,14 @@ export async function runModuleLessonGenerationWork(
             userPrompt,
             taskIds: expectedTaskIds,
           };
+
+          await markModuleLessonProviderStarted(serverDbClient, {
+            userId: params.userId,
+            planId: params.planId,
+            moduleId: params.moduleId,
+            providerStartedAt: nowFn().toISOString(),
+          });
+          providerStarted = true;
 
           const providerResult =
             await generateModuleLessonBatchWithInstrumentation(
@@ -172,6 +184,7 @@ export async function runModuleLessonGenerationWork(
           return {
             disposition: 'consumed',
             value: {
+              kind: 'success',
               durationMs: Math.max(0, clock() - attemptClockStart),
             },
           };
@@ -197,7 +210,16 @@ export async function runModuleLessonGenerationWork(
               },
               'Failed to persist module lesson generation failure state',
             );
-            throw persistErr;
+            if (!providerStarted) {
+              throw persistErr;
+            }
+          }
+
+          if (providerStarted) {
+            return {
+              disposition: 'consumed',
+              value: { kind: 'provider_started_failure' },
+            };
           }
 
           return {
@@ -270,7 +292,10 @@ export async function runModuleLessonGenerationWork(
   }
 
   if (quotaResult.consumed) {
-    return { kind: 'success', durationMs: quotaResult.value.durationMs };
+    if (quotaResult.value.kind === 'success') {
+      return { kind: 'success', durationMs: quotaResult.value.durationMs };
+    }
+    return { kind: 'failed' };
   }
 
   if (quotaResult.reconciliationRequired) {

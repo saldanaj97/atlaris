@@ -89,6 +89,7 @@ Security audits and supply-chain policy.
 
 | File | Description |
 |------|-------------|
+| [codex-scan-verification-2026-08-20.md](./security/codex-scan-verification-2026-08-20.md) | Codex scan `1ebeff2f` verification (2026-08-20); hosted gates still open |
 | [security-audit-checklist.md](./security/security-audit-checklist.md) | Pre-launch security checklist (24 areas) |
 | [supply-chain-policy.md](./security/supply-chain-policy.md) | pnpm `minimumReleaseAge` policy |
 
@@ -163,6 +164,7 @@ docs/
 │   ├── local-database.md
 │   └── logging.md
 ├── security/
+│   ├── codex-scan-verification-2026-08-20.md
 │   ├── security-audit-checklist.md
 │   └── supply-chain-policy.md
 ├── styles/

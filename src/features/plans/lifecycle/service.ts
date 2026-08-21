@@ -170,7 +170,11 @@ function shouldMarkPlanFailedAfterGenerationFailure(
   result: Extract<GenerationRunResult, { status: 'failure' }>,
 ): boolean {
   const reason = result.reservationRejectionReason;
-  return reason !== 'in_progress' && reason !== 'invalid_status';
+  return (
+    reason !== 'in_progress' &&
+    reason !== 'invalid_status' &&
+    reason !== 'active_child_generation'
+  );
 }
 
 function deterministicCompletedAt(startedAt: Date, durationMs: number): string {

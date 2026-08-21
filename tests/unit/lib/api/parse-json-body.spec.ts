@@ -342,6 +342,51 @@ describe('parseJsonBody', () => {
     expect(factory).not.toHaveBeenCalled();
   });
 
+  it.each([
+    {
+      name: 'invalid',
+      contentLength: 'not-a-number',
+    },
+    {
+      name: 'negative',
+      contentLength: '-1',
+    },
+    {
+      name: 'overflow',
+      contentLength: '1e309',
+    },
+    {
+      name: 'unsafe integer',
+      contentLength: '9007199254740993',
+    },
+  ])(
+    'maxBytes: $name Content-Length still produces a bounded 413 result',
+    async ({ contentLength }) => {
+      const encoder = new TextEncoder();
+      const req = jsonBodyRequest(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('{"pad":"'));
+            controller.enqueue(encoder.encode(`${'x'.repeat(32)}"}`));
+          },
+        }),
+        { 'content-length': contentLength },
+      );
+      const jsonSpy = vi.spyOn(req, 'json');
+      const factory = vi.fn(() => new Error('should not run'));
+
+      const error = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: factory,
+        maxBytes: 16,
+      }).catch((err: unknown) => err);
+
+      expectPayloadTooLarge(error);
+      expect(jsonSpy).not.toHaveBeenCalled();
+      expect(factory).not.toHaveBeenCalled();
+    },
+  );
+
   it('maxBytes: rejects a chunked body that understates Content-Length', async () => {
     const encoder = new TextEncoder();
     const cancel = vi.fn();
@@ -366,6 +411,34 @@ describe('parseJsonBody', () => {
 
     expectPayloadTooLarge(error);
     expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('maxBytes: rejects an undeclared multi-chunk stream over the cap and still 413s if cancel rejects', async () => {
+    const encoder = new TextEncoder();
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const req = jsonBodyRequest(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"pad":"'));
+          controller.enqueue(encoder.encode(`${'x'.repeat(32)}"}`));
+        },
+        cancel,
+      }),
+    );
+    req.headers.delete('content-length');
+    const jsonSpy = vi.spyOn(req, 'json');
+    const factory = vi.fn(() => new Error('should not run'));
+
+    const error = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: factory,
+      maxBytes: 16,
+    }).catch((err: unknown) => err);
+
+    expectPayloadTooLarge(error);
+    expect(jsonSpy).not.toHaveBeenCalled();
+    expect(factory).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledTimes(1);
   });
 
   it('maxBytes: counts UTF-8 bytes rather than JavaScript characters', async () => {

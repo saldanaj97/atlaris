@@ -2,7 +2,11 @@ import type { BackendBillingSubscription } from '@/features/billing/clerk-billin
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 import type { db as serviceRoleDb } from '@supabase/service-role';
 
-import { applyVerifiedClerkBillingEvent } from '@/features/billing/clerk-billing/reconciliation';
+import {
+  applyVerifiedClerkBillingEvent,
+  ClerkBillingRefreshTimeoutError,
+  reconcileClerkBillingEntitlements,
+} from '@/features/billing/clerk-billing/reconciliation';
 import { createLogger } from '@/lib/logging/logger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -123,6 +127,7 @@ function makeDb(opts: {
   const selectResults = [...(opts.selectResults ?? [])];
   const updateWhere = vi.fn().mockResolvedValue(undefined);
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+  const execute = vi.fn().mockResolvedValue(undefined);
   const deleteWhere = vi.fn().mockReturnValue({
     returning: vi.fn().mockResolvedValue(deleteReturning),
     then: (resolve: (value: undefined) => unknown) => resolve(undefined),
@@ -130,10 +135,15 @@ function makeDb(opts: {
   const insertCallCount = { value: 0 };
   let transactionOpen = false;
   let db: ServiceRoleDb & {
+    execute: typeof execute;
     isTransactionOpen: () => boolean;
     updateSet: typeof updateSet;
     updateWhere: typeof updateWhere;
   };
+
+  const limitFromSelect = vi
+    .fn()
+    .mockImplementation(async () => selectResults.shift() ?? []);
 
   db = Object.assign(
     {
@@ -157,9 +167,13 @@ function makeDb(opts: {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
-            limit: vi
-              .fn()
-              .mockImplementation(async () => selectResults.shift() ?? []),
+            limit: limitFromSelect,
+            orderBy: vi.fn().mockReturnValue({
+              limit: limitFromSelect,
+            }),
+          }),
+          orderBy: vi.fn().mockReturnValue({
+            limit: limitFromSelect,
           }),
         }),
       }),
@@ -167,6 +181,7 @@ function makeDb(opts: {
       update: vi.fn().mockReturnValue({
         set: updateSet,
       }),
+      execute,
       transaction: vi.fn(async <T>(callback: (tx: ServiceRoleDb) => T) => {
         transactionOpen = true;
         try {
@@ -177,6 +192,7 @@ function makeDb(opts: {
       }),
     } as unknown as ServiceRoleDb,
     {
+      execute,
       isTransactionOpen: () => transactionOpen,
       updateSet,
       updateWhere,
@@ -364,7 +380,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
 
-  it('does not claim the event when the Clerk refresh fails', async () => {
+  it('does not complete the event when the Clerk refresh fails', async () => {
     const processingError = new Error('clerk unavailable');
     const db = makeDb({});
     const clerkClient = makeClerkClient();
@@ -380,7 +396,33 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBe(processingError);
 
-    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('times out a hung Clerk refresh without completing the webhook', async () => {
+    const db = makeDb({});
+    const clerkClient = {
+      billing: {
+        getUserBillingSubscription: vi.fn(
+          () => new Promise<BackendBillingSubscription>(() => undefined),
+        ),
+      },
+    };
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_hung_refresh', {
+        clerkClient,
+        db,
+        logger: makeLogger(),
+        payerNetworkTimeoutMs: 20,
+      }),
+    ).rejects.toBeInstanceOf(ClerkBillingRefreshTimeoutError);
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
 
@@ -402,12 +444,13 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.update).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes webhook writes from the current Clerk subscription', async () => {
+  it('refreshes webhook writes from the current Clerk subscription after locking', async () => {
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockImplementation(
       async () => {
-        expect(db.isTransactionOpen()).toBe(false);
+        expect(db.isTransactionOpen()).toBe(true);
+        expect(db.execute).toHaveBeenCalled();
         return makeSubscription();
       },
     );
@@ -503,5 +546,72 @@ describe('applyVerifiedClerkBillingEvent', () => {
         subscriptionTier: 'starter',
       }),
     );
+  });
+});
+
+describe('reconcileClerkBillingEntitlements', () => {
+  it('locks the payer before refreshing and applying Clerk state', async () => {
+    const db = makeDb({
+      selectResults: [[{ authUserId: 'user_missing' }], [makeLocalUser()]],
+    });
+    const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockImplementation(
+      async () => {
+        expect(db.isTransactionOpen()).toBe(true);
+        expect(db.execute).toHaveBeenCalled();
+        return makeSubscription();
+      },
+    );
+
+    await expect(
+      reconcileClerkBillingEntitlements({
+        clerkClient,
+        db,
+        logger: makeLogger(),
+      }),
+    ).resolves.toEqual({
+      checked: 1,
+      updated: 1,
+      skipped: 0,
+      ignored: 0,
+      failed: 0,
+      nextCursor: null,
+    });
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionStatus: 'active',
+        subscriptionTier: 'pro',
+      }),
+    );
+  });
+
+  it('leaves entitlements unchanged when the Clerk refresh fails', async () => {
+    const processingError = new Error('clerk unavailable');
+    const db = makeDb({
+      selectResults: [[{ authUserId: 'user_missing' }]],
+    });
+    const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(
+      processingError,
+    );
+
+    await expect(
+      reconcileClerkBillingEntitlements({
+        clerkClient,
+        db,
+        logger: makeLogger(),
+      }),
+    ).resolves.toEqual({
+      checked: 1,
+      updated: 0,
+      skipped: 0,
+      ignored: 0,
+      failed: 1,
+      nextCursor: null,
+    });
+
+    expect(db.update).not.toHaveBeenCalled();
   });
 });

@@ -829,7 +829,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(metrics?.n).toBe(1);
   });
 
-  it('parser failure compensates lesson_modules_generated back to prior count', async () => {
+  it('parser failure after provider start keeps the lesson_modules_generated reservation', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-fail');
     const userId = await ensureUser({
       authUserId,
@@ -871,7 +871,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
       );
-    expect(metrics?.n).toBe(2);
+    expect(metrics?.n).toBe(3);
   });
 
   it('already_ready does not change lesson_modules_generated', async () => {
