@@ -166,35 +166,44 @@ jobs:
             code=false
             source=false
             integration=false
-            while IFS= read -r f; do
-              [ -z "${f}" ] && continue
-              case "${f}" in
-                src/*|supabase/*)
-                  source=true
-                  code=true
-                  integration=true
-                  ;;
-                tests/integration/*|tests/security/*|tests/helpers/*|tests/setup/*)
-                  source=true
-                  code=true
-                  integration=true
-                  ;;
-                tests/*|scripts/*)
-                  source=true
-                  code=true
-                  ;;
-                vitest.config.ts|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next.config.ts|drizzle*.config.ts|next-env.d.ts|middleware.ts)
-                  code=true
-                  integration=true
-                  ;;
-                vitest.workflow.config.ts|.oxlintrc.json)
-                  code=true
-                  ;;
-                .husky/*|.github/scripts/*|.github/workflows/*|.circleci/*)
-                  code=true
-                  ;;
-              esac
-            done < <(git diff --name-only "${diff_range}" || true)
+            changed_files="$(mktemp)"
+            if ! git diff --name-only "${diff_range}" > "${changed_files}"; then
+              echo "git diff failed; assuming code, source, and integration changed."
+              code=true
+              source=true
+              integration=true
+            else
+              while IFS= read -r f; do
+                [ -z "${f}" ] && continue
+                case "${f}" in
+                  src/*|supabase/*)
+                    source=true
+                    code=true
+                    integration=true
+                    ;;
+                  tests/integration/*|tests/security/*|tests/helpers/*|tests/setup/*)
+                    source=true
+                    code=true
+                    integration=true
+                    ;;
+                  tests/*|scripts/*)
+                    source=true
+                    code=true
+                    ;;
+                  vitest.config.ts|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next.config.ts|drizzle*.config.ts|next-env.d.ts|middleware.ts)
+                    code=true
+                    integration=true
+                    ;;
+                  vitest.workflow.config.ts|.oxlintrc.json)
+                    code=true
+                    ;;
+                  .husky/*|.github/scripts/*|.github/workflows/*|.circleci/*)
+                    code=true
+                    ;;
+                esac
+              done < "${changed_files}"
+            fi
+            rm -f "${changed_files}"
 
             echo "${code}" > .ci-flags/code
             echo "${source}" > .ci-flags/source
