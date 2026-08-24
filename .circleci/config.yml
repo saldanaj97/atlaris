@@ -337,15 +337,30 @@ jobs:
             COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
             echo "Changed candidate files: ${COUNT}"
 
+            run_full_unit() {
+              pnpm vitest run --project unit \
+                --coverage \
+                --reporter=default \
+                --reporter=json \
+                --reporter=junit \
+                --outputFile.json=test-results.json \
+                --outputFile.junit=test-results/junit.xml \
+                tests/unit
+            }
+
             run_split_unit() {
               TESTFILES=$(circleci tests glob "tests/unit/**/*.{test,spec}.{ts,tsx}")
               if [ -z "${TESTFILES}" ]; then
                 echo "No unit test files found; skipping."
                 circleci-agent step halt
-                return
+                exit 0
               fi
               echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=filename
-              [ -s files.txt ] || circleci-agent step halt
+              if [ ! -s files.txt ]; then
+                echo "No tests assigned to this node; skipping."
+                circleci-agent step halt
+                exit 0
+              fi
               # ponytail: word-split files.txt; circleci tests run already selected this node's files
               pnpm vitest run --project unit \
                 --coverage \
@@ -371,8 +386,8 @@ jobs:
                 --outputFile.json=test-results.json \
                 --outputFile.junit=test-results/junit.xml \
                 ${FILES} || {
-                echo "Related tests failed or unsupported; falling back to split run."
-                run_split_unit
+                echo "Related tests failed or unsupported; running complete unit suite on node 1."
+                run_full_unit
               }
             else
               echo "Full split unit suite."
@@ -403,7 +418,7 @@ jobs:
               CHANGED_FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | tr '\n' ' ' || true)
             fi
 
-            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
+            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
             COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
             echo "Changed candidate files: ${COUNT}"
             mkdir -p test-results
@@ -524,9 +539,14 @@ jobs:
             if [ -z "${TESTFILES}" ]; then
               echo "No integration test files found; skipping."
               circleci-agent step halt
+              exit 0
             fi
             echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=filename
-            [ -s files.txt ] || circleci-agent step halt
+            if [ ! -s files.txt ]; then
+              echo "No tests assigned to this node; skipping."
+              circleci-agent step halt
+              exit 0
+            fi
             # ponytail: word-split files.txt; circleci tests run already selected this node's files
             pnpm vitest run --project integration \
               --coverage \
