@@ -183,7 +183,7 @@ jobs:
                   source=true
                   code=true
                   ;;
-                vitest.config.ts|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml)
+                vitest.config.ts|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next.config.ts|drizzle*.config.ts|next-env.d.ts|middleware.ts)
                   code=true
                   integration=true
                   ;;
