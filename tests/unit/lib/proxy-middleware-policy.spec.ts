@@ -7,9 +7,23 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('middleware policy', () => {
-  it('isProtectedRoute skips Clerk Billing webhook', () => {
-    expect(isProtectedRoute('/api/v1/clerk/billing/webhook')).toBe(false);
-    expect(isProviderWebhookRoute('/api/v1/clerk/billing/webhook')).toBe(true);
+  it.each([
+    '/api/v1/clerk/billing/webhook',
+    '/api/v1/clerk/billing/webhook/',
+    '/api/v1/clerk/billing/webhook/events',
+    '/api/v1/clerk/billing/webhook/events/',
+  ])('treats %s as a provider webhook and Clerk bypass', (pathname) => {
+    expect(isProviderWebhookRoute(pathname)).toBe(true);
+    expect(isProtectedRoute(pathname)).toBe(false);
+  });
+
+  it('does not treat sibling webhook-unrelated path as a provider webhook', () => {
+    expect(
+      isProviderWebhookRoute('/api/v1/clerk/billing/webhook-unrelated'),
+    ).toBe(false);
+    expect(isProtectedRoute('/api/v1/clerk/billing/webhook-unrelated')).toBe(
+      true,
+    );
   });
 
   it.each([
@@ -22,23 +36,22 @@ describe('middleware policy', () => {
     expect(isProtectedRoute(pathname)).toBe(false);
   });
 
-  it('isProtectedRoute skips worker health endpoint', () => {
-    expect(isProtectedRoute('/api/health/worker')).toBe(false);
+  it.each([
+    '/api/health/worker',
+    '/api/health/worker/',
+    '/api/cron/notifications/email',
+    '/api/cron/notifications/email/',
+    '/api/v1/notifications/email/unsubscribe',
+    '/api/v1/notifications/email/unsubscribe/',
+  ])('isProtectedRoute skips Clerk-bypass exact path %s', (pathname) => {
+    expect(isProtectedRoute(pathname)).toBe(false);
   });
 
-  it('isProtectedRoute skips the Vercel email cron endpoint', () => {
-    expect(isProtectedRoute('/api/cron/notifications/email')).toBe(false);
-  });
-
-  it('isProtectedRoute skips signed email unsubscribe endpoint', () => {
-    expect(isProtectedRoute('/api/v1/notifications/email/unsubscribe')).toBe(
-      false,
-    );
-  });
-
-  it('isProtectedRoute protects non-internal api routes', () => {
+  it('isProtectedRoute protects non-internal api and dashboard routes', () => {
     expect(isProtectedRoute('/api/plans')).toBe(true);
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
+    expect(isProtectedRoute('/dashboard')).toBe(true);
+    expect(isProtectedRoute('/dashboard/')).toBe(true);
   });
 
   it('resolveMaintenanceRedirectPath', () => {
@@ -53,8 +66,14 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(true, '/api/health/worker')).toBe(
       null,
     );
+    expect(resolveMaintenanceRedirectPath(true, '/api/health/worker/')).toBe(
+      null,
+    );
     expect(
       resolveMaintenanceRedirectPath(true, '/api/cron/notifications/email'),
+    ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(true, '/api/cron/notifications/email/'),
     ).toBe(null);
     expect(
       resolveMaintenanceRedirectPath(
@@ -62,6 +81,31 @@ describe('middleware policy', () => {
         '/api/v1/notifications/email/unsubscribe',
       ),
     ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(
+        true,
+        '/api/v1/notifications/email/unsubscribe/',
+      ),
+    ).toBe(null);
+    // Matcher excludes /ingest; policy is not the ingest gate.
+    expect(resolveMaintenanceRedirectPath(true, '/ingest')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/e/')).toBe(
+      '/maintenance',
+    );
+    expect(resolveMaintenanceRedirectPath(true, '/ingest/flags')).toBe(
+      '/maintenance',
+    );
+    expect(
+      resolveMaintenanceRedirectPath(true, '/ingest/static/array.js'),
+    ).toBe('/maintenance');
     expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
       '/maintenance',
     );
@@ -76,6 +120,12 @@ describe('middleware policy', () => {
         '/api/internal/jobs/regeneration/process',
       ),
     ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(
+        true,
+        '/api/internal/jobs/regeneration/process/',
+      ),
+    ).toBe(null);
   });
 
   it.each([
@@ -83,7 +133,6 @@ describe('middleware policy', () => {
     '/api/internal/maintenance/plans/cleanup',
     '/api/internal/maintenance/billing/reconcile-clerk',
     '/api/internal/maintenance/notifications/email',
-    '/api/internal/jobs/regeneration/process/',
     '/api/internal/jobs/regeneration/process/extra',
     '/api/internal/jobs/regeneration/process-other',
   ])('redirects maintenance-mode non-bypass path %s', (pathname) => {

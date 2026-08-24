@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 
 const LANDING_CANONICAL_URL = '/landing';
 const LANDING_CANONICAL_TITLE =
-  'Atlaris — Turn learning goals into a scheduled plan';
+  'Atlaris — Make space for the work that changes you';
 const LANDING_DESCRIPTION =
-  'Atlaris turns what you want to learn into a time-blocked, resource-linked study plan, with calendar sync coming soon.';
+  'Name a goal. Atlaris charts the plan and remembers where you left off.';
 
 export const metadata: Metadata = {
   title: LANDING_CANONICAL_TITLE,
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
         url: '/og-landing.jpg',
         width: 1200,
         height: 630,
-        alt: 'Atlaris - AI Learning Scheduler',
+        alt: 'Atlaris landing',
       },
     ],
     type: 'website',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Nested under `(marketing)/layout.tsx`: SiteHeader, padded `<main>`, SiteFooter.
+ * Nested under `(marketing)/layout.tsx`: SiteHeader, flush `<main>`, SiteFooter.
  * Root supplies `<html>`, `<body>`, fonts, auth/theme providers, Toaster.
  */
 export default function LandingLayout({

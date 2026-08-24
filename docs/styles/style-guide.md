@@ -131,7 +131,7 @@ Use responsive Sora via `font-serif`:
 - Hero: roughly `text-[2.75rem]` → `sm:text-5xl` → `md:text-[3.25rem]`, `font-semibold`, tight tracking
 - Section headings: `text-3xl sm:text-4xl` is a common scale
 - **Default emphasis:** italic `text-primary` on the second hero line
-- **Section overlines:** uppercase Sora, wide tracking — see `SectionOverline` / hero overline in `HeroSection`
+- **Section overlines:** uppercase Sora, wide tracking — see `SectionOverline`
 - **`gradient-text`:** optional accent only (wordmark `variant="gradient"`, rare headlines) — not the default hero treatment
 
 ### Subtitle / helper text
@@ -277,14 +277,10 @@ From `Landing.tsx` / `PricingShell.tsx`:
 
 **Examples:** Landing, Pricing. (`/about` redirects to `/landing`.)
 
-#### Overline + heading
+#### Heading
 
 ```tsx
-<p className='font-serif text-[0.6875rem] font-medium tracking-[0.22em] text-muted-foreground uppercase sm:text-xs'>
-  The After-Hours Edition
-</p>
-
-<h1 className='mt-6 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground sm:text-5xl md:text-[3.25rem]'>
+<h1 className='font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-foreground sm:text-5xl md:text-[3.25rem]'>
   <span className='block'>Make space for</span>
   <span className='mt-1 block font-medium text-primary italic'>
     the work that changes you.
@@ -296,7 +292,7 @@ From `Landing.tsx` / `PricingShell.tsx`:
 
 ```tsx
 <p className='mx-auto mt-6 max-w-xl font-sans text-base text-muted-foreground sm:text-lg'>
-  Plans, tasks, and analytics for the quiet hours.
+  Name a goal. Atlaris charts the plan and remembers where you left off.
 </p>
 ```
 

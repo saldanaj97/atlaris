@@ -41,6 +41,9 @@ describe('DesktopHeader layout', () => {
     renderDesktopHeader();
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
     expect(screen.getByRole('link', { name: 'Plans' })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Analytics' }),
@@ -86,14 +89,20 @@ describe('DesktopHeader layout', () => {
       showClerkUserButton: true,
     });
 
-    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
+      'href',
+      '/landing',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
     expect(screen.getByRole('link', { name: 'Pricing' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'About' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'href',
-      '/plans/new',
+      '/dashboard',
     );
 
     expect(

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
+import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
@@ -20,7 +21,7 @@ const sora = Sora({
 });
 
 const metadataDescription =
-  'Create personalized learning plans with AI-generated modules and tasks. Track progress and learn smarter.';
+  'Name a goal. Atlaris charts the plan and remembers where you left off.';
 
 const clerkAppearance = {
   variables: {
@@ -47,25 +48,25 @@ const clerkLocalization = {
     start: {
       title: 'Sign in to Atlaris',
       titleCombined: 'Sign in to Atlaris',
-      subtitle: 'Continue building your learning schedule.',
-      subtitleCombined: 'Continue building your learning schedule.',
+      subtitle: 'Pick up tonight’s route.',
+      subtitleCombined: 'Pick up tonight’s route.',
     },
   },
   signUp: {
     start: {
       title: 'Create your Atlaris account',
       titleCombined: 'Create your Atlaris account',
-      subtitle: 'Turn your learning goal into a structured plan.',
-      subtitleCombined: 'Turn your learning goal into a structured plan.',
+      subtitle: 'Name a goal. Atlaris holds the route.',
+      subtitleCombined: 'Name a goal. Atlaris holds the route.',
     },
   },
 };
 
 export const metadata: Metadata = {
-  title: 'Atlaris - AI-Powered Learning Paths',
+  title: 'Atlaris | Plans for the quiet hours',
   description: metadataDescription,
   openGraph: {
-    title: 'Atlaris - AI-Powered Learning Paths',
+    title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
     images: [
       { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
@@ -81,7 +82,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Atlaris - AI-Powered Learning Paths',
+    title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
     images: ['/og-default.jpg'],
     site: '@atlarisapp',
@@ -118,6 +119,12 @@ export default function RootLayout({
       <body
         className={`${workSans.className} flex min-h-screen w-full flex-col antialiased`}
       >
+        <a
+          href='#main-content'
+          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+        >
+          Skip to main content
+        </a>
         {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
         {shouldUseClerkUi() ? (
           <ClerkProvider
@@ -127,6 +134,7 @@ export default function RootLayout({
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
           >
+            <PostHogUserIdentifier />
             {appContent}
           </ClerkProvider>
         ) : (

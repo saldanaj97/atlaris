@@ -1,18 +1,28 @@
+import { getCurrentMonth } from '@/features/billing/usage-metrics';
+import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import {
+  cleanupAbandonedModuleLessonGenerations,
   cleanupOrphanedAttempts,
   cleanupStuckPlans,
   ORPHANED_ATTEMPT_THRESHOLD_MS,
+  ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
-import { generationAttempts, learningPlans } from '@supabase/schema';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  usageMetrics,
+} from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 import { eq, inArray } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('cleanupStuckPlans (integration)', () => {
-  it('marks only old generating plans failed with a shared timestamp', async () => {
+  it('restores last-good stuck plans and fails never-usable stuck plans', async () => {
     const user = await createTestUser();
     const thresholdMs = STUCK_PLAN_THRESHOLD_MS;
     const stuckCutoff = new Date(Date.now() - thresholdMs - 60_000);
@@ -28,7 +38,7 @@ describe('cleanupStuckPlans (integration)', () => {
       userId: user.id,
       topic: 'Stuck two',
       generationStatus: 'generating',
-      isQuotaEligible: true,
+      isQuotaEligible: false,
     });
     const recentGenerating = await createTestPlan({
       userId: user.id,
@@ -90,8 +100,8 @@ describe('cleanupStuckPlans (integration)', () => {
     const byId = new Map(rows.map((row) => [row.id, row]));
 
     expect(byId.get(stuckOne.id)).toMatchObject({
-      generationStatus: 'failed',
-      isQuotaEligible: false,
+      generationStatus: 'ready',
+      isQuotaEligible: true,
     });
     expect(byId.get(stuckTwo.id)).toMatchObject({
       generationStatus: 'failed',
@@ -137,6 +147,98 @@ describe('cleanupStuckPlans (integration)', () => {
       .where(eq(learningPlans.id, plan.id));
 
     expect(row?.generationStatus).toBe('generating');
+  });
+});
+
+describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
+  it('settles stale provider-started work without refunding the budget and permits a charged retry', async () => {
+    const user = await createTestUser();
+    const plan = await createTestPlan({
+      userId: user.id,
+      topic: 'Abandoned module lesson generation',
+    });
+    const mod = await createTestModule({ planId: plan.id });
+    await createTestTask({ moduleId: mod.id });
+    const month = getCurrentMonth();
+    const staleStartedAt = new Date(
+      Date.now() - ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS - 60_000,
+    );
+
+    await db.insert(usageMetrics).values({
+      userId: user.id,
+      month,
+      lessonModulesGenerated: 1,
+    });
+    await db
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'generating',
+        lessonGenerationStartedAt: staleStartedAt,
+        lessonGenerationCompletedAt: null,
+        lessonGenerationFailedAt: null,
+        lessonGenerationError: null,
+        lessonGenerationMetadata: {
+          version: 1,
+          providerStartedAt: staleStartedAt.toISOString(),
+        },
+      })
+      .where(eq(modules.id, mod.id));
+
+    const cleanupResult = await cleanupAbandonedModuleLessonGenerations(db);
+    expect(cleanupResult.cleaned).toBe(1);
+
+    const [settledModule] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        error: modules.lessonGenerationError,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(settledModule).toMatchObject({
+      status: 'failed',
+      error:
+        'Provider-started lesson generation was interrupted; retry required.',
+      metadata: {
+        version: 1,
+        providerStartedAt: staleStartedAt.toISOString(),
+      },
+    });
+
+    const [afterCleanup] = await db
+      .select({ lessonModulesGenerated: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, user.id));
+    expect(afterCleanup?.lessonModulesGenerated).toBe(1);
+
+    const provider = {
+      generateModuleLessonBatch: vi.fn(async () => {
+        throw new Error('retry provider failure');
+      }),
+    };
+    await expect(
+      generateModuleLessons(
+        {
+          dbClient: db,
+          userId: user.id,
+          planId: plan.id,
+          moduleId: mod.id,
+          userTier: 'free',
+        },
+        {
+          provider,
+          serverDbClient: db,
+          resolveGenerationEnabled: async () => true,
+        },
+      ),
+    ).resolves.toEqual({ kind: 'failed' });
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalledOnce();
+
+    const [afterRetry] = await db
+      .select({ lessonModulesGenerated: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(eq(usageMetrics.userId, user.id));
+    expect(afterRetry?.lessonModulesGenerated).toBe(2);
   });
 });
 

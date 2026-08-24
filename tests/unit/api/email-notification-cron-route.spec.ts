@@ -1,5 +1,11 @@
 import { createEmailNotificationDeliveryCronRoute } from '@/app/api/cron/notifications/email/route';
+import { RateLimitError } from '@/lib/api/errors';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/lib/api/ip-rate-limit', () => ({
+  checkIpRateLimit: vi.fn(),
+}));
 
 const URL = 'https://atlaris.app/api/cron/notifications/email';
 
@@ -14,6 +20,7 @@ describe('email notification delivery cron route', () => {
   beforeEach(() => {
     resolveDeliveryEnabled.mockReset();
     startWorkflow.mockReset();
+    vi.mocked(checkIpRateLimit).mockReset();
   });
 
   it('rejects missing or wrong CRON_SECRET before flag or workflow access', async () => {
@@ -37,6 +44,7 @@ describe('email notification delivery cron route', () => {
 
     expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
     expect(startWorkflow).not.toHaveBeenCalled();
+    expect(checkIpRateLimit).not.toHaveBeenCalled();
   });
 
   it('fails closed when CRON_SECRET is not configured', async () => {
@@ -54,6 +62,72 @@ describe('email notification delivery cron route', () => {
     );
 
     expect(response.status).toBe(503);
+    expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
+    expect(startWorkflow).not.toHaveBeenCalled();
+    expect(checkIpRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('rate-limits authorized cron triggers with the internal IP category', async () => {
+    resolveDeliveryEnabled.mockResolvedValue(false);
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+    });
+    const authorizedRequest = request({
+      authorization: 'Bearer cron-secret',
+      'x-vercel-cron-schedule': '0 14 * * *',
+    });
+
+    const response = await GET(authorizedRequest);
+
+    expect(response.status).toBe(200);
+    expect(checkIpRateLimit).toHaveBeenCalledTimes(1);
+    expect(checkIpRateLimit).toHaveBeenCalledWith(
+      authorizedRequest,
+      'internal',
+    );
+  });
+
+  it('returns 429 from the error boundary when the internal IP limiter is exceeded', async () => {
+    vi.mocked(checkIpRateLimit).mockImplementation(() => {
+      throw new RateLimitError('limited', {
+        retryAfter: 42,
+        limit: 100,
+        remaining: 0,
+        reset: 1234567890,
+      });
+    });
+    const GET = createEmailNotificationDeliveryCronRoute({
+      resolveCronSecret: () => 'cron-secret',
+      resolveDeliveryEnabled,
+      startWorkflow,
+    });
+
+    const response = await GET(
+      request({
+        authorization: 'Bearer cron-secret',
+        'x-vercel-cron-schedule': '0 14 * * *',
+      }),
+    );
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-ratelimit-limit')).toBe('100');
+    expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+    expect(response.headers.get('x-ratelimit-reset')).toBe('1234567890');
+    await expect(response.json()).resolves.toEqual({
+      error: 'limited',
+      code: 'RATE_LIMITED',
+      classification: 'rate_limit',
+      details: {
+        retryAfter: 42,
+        limit: 100,
+        remaining: 0,
+        reset: 1234567890,
+      },
+      retryAfter: 42,
+    });
     expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
     expect(startWorkflow).not.toHaveBeenCalled();
   });

@@ -114,6 +114,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Do not run tests, `check:full`, or automated reviews after small edits by default — see `.cursor/rules/selective-verification.mdc`
 - Run verification only when asked, when fixing CI failures, or when the current thread has changed 10+ files; prefer scoped commands (`pnpm test:unit:changed`, a targeted spec file) over full suites
 
+## Cursor Cloud database
+
+- In Cursor Cloud Agents, run `pnpm db:agent:up` before database work and `pnpm db:agent:status` for diagnosis.
+- The agent database is PostgreSQL 17 on task-local loopback only. Never provide it a hosted URL or run `pnpm db:agent:reset` against staging or production.
+- Keep the ordinary local OrbStack/Supabase workflow unchanged. See `docs/development/local-database.md` for the environment boundaries and command contracts.
+
 # Core Principles
 
 - Simplicity First: Make every change as simple as possible. Impact minimal code. Strive for elegant solutions, but balance with pragmatism. Don't over-engineer simple fixes.
@@ -123,3 +129,13 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Verification: Prove correctness when it matters — diffs, targeted tests, logs, demos. Full-suite runs follow `.cursor/rules/selective-verification.mdc`, not every small change.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
 - Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

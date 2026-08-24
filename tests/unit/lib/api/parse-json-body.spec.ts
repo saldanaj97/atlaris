@@ -1,3 +1,4 @@
+import { AppError } from '@/lib/api/errors';
 import {
   detectJsonBodyPresence,
   parseJsonBody,
@@ -19,6 +20,31 @@ function mockRequest(init: {
     value: init.json,
   });
   return request;
+}
+
+function jsonBodyRequest(
+  body: BodyInit,
+  headers: Record<string, string> = {},
+): Request {
+  const init: RequestInit & { duplex?: string } = {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      ...headers,
+    },
+    body,
+  };
+  if (body instanceof ReadableStream) {
+    init.duplex = 'half';
+  }
+  return new Request('http://localhost/parse-json-body', init);
+}
+
+function expectPayloadTooLarge(error: unknown): asserts error is AppError {
+  expect(error).toBeInstanceOf(AppError);
+  expect((error as AppError).message).toBe('payload too large');
+  expect((error as AppError).status()).toBe(413);
+  expect((error as AppError).code()).toBe('PAYLOAD_TOO_LARGE');
 }
 
 describe('detectJsonBodyPresence', () => {
@@ -262,6 +288,231 @@ describe('parseJsonBody', () => {
         fallback: {},
       }),
     ).rejects.toBe(typeErr);
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('maxBytes: parses a body below the cap', async () => {
+    const body = '{"ok":true}';
+    const req = jsonBodyRequest(body);
+    const jsonSpy = vi.spyOn(req, 'json');
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () => new Error('should not run'),
+        maxBytes: new TextEncoder().encode(body).byteLength + 1,
+      }),
+    ).resolves.toEqual({ ok: true });
+    expect(jsonSpy).not.toHaveBeenCalled();
+  });
+
+  it('maxBytes: parses a body equal to the cap', async () => {
+    const body = '{"ok":true}';
+    const req = jsonBodyRequest(body);
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () => new Error('should not run'),
+        maxBytes: new TextEncoder().encode(body).byteLength,
+      }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it('maxBytes: rejects an oversized Content-Length without reading the body', async () => {
+    const pull = vi.fn(() => {
+      throw new Error('body should not be read');
+    });
+    const cancel = vi.fn();
+    const req = jsonBodyRequest(
+      new ReadableStream<Uint8Array>({ pull, cancel }),
+      { 'content-length': '64' },
+    );
+    const jsonSpy = vi.spyOn(req, 'json');
+    const factory = vi.fn(() => new Error('should not run'));
+
+    const error = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: factory,
+      maxBytes: 16,
+    }).catch((err: unknown) => err);
+
+    expectPayloadTooLarge(error);
+    expect(jsonSpy).not.toHaveBeenCalled();
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'invalid',
+      contentLength: 'not-a-number',
+    },
+    {
+      name: 'negative',
+      contentLength: '-1',
+    },
+    {
+      name: 'overflow',
+      contentLength: '1e309',
+    },
+    {
+      name: 'unsafe integer',
+      contentLength: '9007199254740993',
+    },
+  ])(
+    'maxBytes: $name Content-Length still produces a bounded 413 result',
+    async ({ contentLength }) => {
+      const encoder = new TextEncoder();
+      const req = jsonBodyRequest(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('{"pad":"'));
+            controller.enqueue(encoder.encode(`${'x'.repeat(32)}"}`));
+          },
+        }),
+        { 'content-length': contentLength },
+      );
+      const jsonSpy = vi.spyOn(req, 'json');
+      const factory = vi.fn(() => new Error('should not run'));
+
+      const error = await parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: factory,
+        maxBytes: 16,
+      }).catch((err: unknown) => err);
+
+      expectPayloadTooLarge(error);
+      expect(jsonSpy).not.toHaveBeenCalled();
+      expect(factory).not.toHaveBeenCalled();
+    },
+  );
+
+  it('maxBytes: rejects a chunked body that understates Content-Length', async () => {
+    const encoder = new TextEncoder();
+    const cancel = vi.fn();
+    const req = jsonBodyRequest(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"pad":"'));
+          controller.enqueue(encoder.encode(`${'x'.repeat(32)}"}`));
+          controller.close();
+        },
+        cancel,
+      }),
+      { 'content-length': '4' },
+    );
+    const factory = vi.fn(() => new Error('should not run'));
+
+    const error = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: factory,
+      maxBytes: 16,
+    }).catch((err: unknown) => err);
+
+    expectPayloadTooLarge(error);
+    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('maxBytes: rejects an undeclared multi-chunk stream over the cap and still 413s if cancel rejects', async () => {
+    const encoder = new TextEncoder();
+    const cancel = vi.fn(() => Promise.reject(new Error('cancel failed')));
+    const req = jsonBodyRequest(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('{"pad":"'));
+          controller.enqueue(encoder.encode(`${'x'.repeat(32)}"}`));
+        },
+        cancel,
+      }),
+    );
+    req.headers.delete('content-length');
+    const jsonSpy = vi.spyOn(req, 'json');
+    const factory = vi.fn(() => new Error('should not run'));
+
+    const error = await parseJsonBody(req, {
+      mode: 'required',
+      onMalformedJson: factory,
+      maxBytes: 16,
+    }).catch((err: unknown) => err);
+
+    expectPayloadTooLarge(error);
+    expect(jsonSpy).not.toHaveBeenCalled();
+    expect(factory).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('maxBytes: counts UTF-8 bytes rather than JavaScript characters', async () => {
+    const payload = '{"x":"é"}';
+    const encoded = new TextEncoder().encode(payload);
+    expect(encoded.byteLength).toBeGreaterThan(payload.length);
+
+    const streamBody = () =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoded.slice());
+          controller.close();
+        },
+      });
+
+    const overCharCap = await parseJsonBody(jsonBodyRequest(streamBody()), {
+      mode: 'required',
+      onMalformedJson: () => new Error('should not run'),
+      maxBytes: payload.length,
+    }).catch((err: unknown) => err);
+    expectPayloadTooLarge(overCharCap);
+
+    await expect(
+      parseJsonBody(jsonBodyRequest(streamBody()), {
+        mode: 'required',
+        onMalformedJson: () => new Error('should not run'),
+        maxBytes: encoded.byteLength,
+      }),
+    ).resolves.toEqual({ x: 'é' });
+  });
+
+  it('omitted maxBytes: keeps unbounded req.json() behavior', async () => {
+    const huge = { pad: 'x'.repeat(10_000) };
+    const req = mockRequest({
+      json: () => Promise.resolve(huge),
+    });
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: () => new Error('should not run'),
+      }),
+    ).resolves.toEqual(huge);
+  });
+
+  it('required mode with maxBytes: malformed JSON still uses onMalformedJson', async () => {
+    const syntaxBody = '{bad';
+    const req = jsonBodyRequest(syntaxBody);
+    const factory = vi.fn(() => new Error('from factory'));
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'required',
+        onMalformedJson: factory,
+        maxBytes: 1024,
+      }),
+    ).rejects.toThrow('from factory');
+    expect(factory).toHaveBeenCalledWith(expect.any(SyntaxError));
+  });
+
+  it('optional mode with maxBytes: empty undetected body still returns fallback', async () => {
+    const req = new Request('http://localhost/parse-json-body', {
+      method: 'POST',
+    });
+    const factory = vi.fn(() => new Error('should not run'));
+
+    await expect(
+      parseJsonBody(req, {
+        mode: 'optional',
+        onMalformedJson: factory,
+        fallback: {},
+        maxBytes: 1024,
+      }),
+    ).resolves.toEqual({});
     expect(factory).not.toHaveBeenCalled();
   });
 });

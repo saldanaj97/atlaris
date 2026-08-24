@@ -41,9 +41,9 @@ export default function MobileNavigation({
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
   const primaryCtaHref = isAuthenticated
-    ? ROUTES.PLANS.NEW
+    ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Create a plan' : 'Get started';
+  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

@@ -1,6 +1,36 @@
 # Rate Limiting
 
-This document describes the rate limiting system for Atlaris API endpoints. There are two layers of rate limiting: user-based (authenticated) and job-based (plan generation specific).
+Atlaris rate limiting is five layers, not a single wrapper. Edge, IP, user, durable generation, and product quotas are independent controls. A category in config does nothing until a route or Server Action opts into it.
+
+## Five-layer model
+
+| Layer | Where | Scope | Consistency |
+| ----- | ----- | ----- | ----------- |
+| Vercel edge rate limit | Dashboard-managed Firewall Rate Limit on `/ingest` | Unauthenticated PostHog ingest-proxy traffic | Edge-wide (Vercel) |
+| Application IP limiter | `src/lib/api/ip-rate-limit.ts` | Unauthenticated or machine routes keyed by client IP | Per process (in-memory LRU) |
+| Authenticated user limiter | `src/lib/api/user-rate-limit.ts` | Authenticated API routes and Server Actions keyed by user ID | Per process (in-memory LRU) |
+| Durable DB plan-generation limiter | `src/lib/api/rate-limit.ts` | Generation, retry, and regeneration attempts (`generation_attempts`) | Database-shared, fail-closed preflight (not atomic) |
+| Product quotas / kill switches | Billing quota boundaries and Vercel Flags | Plan count, duration, metered generation, operational disable | Shared product/ops policy |
+
+## Vercel Firewall allocation
+
+Hobby/Pro projects have **1 Rate Limit slot** and **3 custom WAF slots**. The intended JCS-53 allocation is:
+
+| Capability | Allocation |
+| ---------- | ---------- |
+| Rate Limit | **1 / 1** — keep the dashboard-managed `/ingest` rule; it is the sole Rate Limit slot |
+| Custom WAF Rules | **1 / 3** — `/ingest` unsupported-method deny; leave the remaining two unused |
+| Optional `/ingest` method rule | Dashboard-managed method allowlist (GET, HEAD, POST, OPTIONS) as defense in depth |
+
+This dashboard rule is **not** represented in `vercel.json`. That file remains repository configuration for cron schedules only. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
+
+Live verification on 2026-08-21 confirmed the published configuration is active: the rate rule is a fixed window of 100 requests per 60 seconds per IP on `^/ingest(?:/|$)`, and the method rule denies methods outside GET, HEAD, POST, and OPTIONS. A fresh-window direct test against the public production domain sent 105 harmless HEAD requests in five seconds and received 100 application responses followed by 5 HTTP 429 responses. A direct PUT returned 403.
+
+Do not use `vercel curl` to verify custom WAF enforcement. It automatically supplies a Vercel automation-bypass token, and Vercel documents that this token bypasses ordinary Firewall blocks. It is appropriate for protected Preview application checks, but the WAF threshold must be tested through a non-bypassed public domain or another path that does not carry the automation token.
+
+Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worker secrets, or broad `/.well-known` paths. Those surfaces are enforced in application code (user/IP limiters, cryptographic verification, worker tokens). Keep the remaining custom WAF slots unused so they remain available as emergency virtual patches.
+
+`/ingest` is an application-owned constrained PostHog proxy (`src/app/ingest/[...path]/route.ts`), not a raw reverse-proxy rewrite. Clerk proxy matching excludes that prefix so analytics ingest stays public; the route itself enforces path, method, body, header, redirect, and timeout policy.
 
 ## Quick Reference
 
@@ -11,38 +41,81 @@ This document describes the rate limiting system for Atlaris API endpoints. Ther
 | `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                 |
 | `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate meter)  |
 | `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints        |
-| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences    |
+| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences, Server Actions |
 | `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences        |
 | `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation             |
+
+### IP Rate Limits (Unauthenticated / Machine Endpoints)
+
+| Category    | Limit        | Window   | Use Case                                              |
+| ----------- | ------------ | -------- | ----------------------------------------------------- |
+| `health`    | 60 requests  | 1 minute | Worker health                                         |
+| `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                 |
+| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                     |
+| `auth`      | 10 requests  | 1 minute | Defined; no current route uses it                     |
+| `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)        |
+| `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs, notification cron |
 
 ### Plan Generation Rate Limit
 
 | Limit                                           | Window                                              | Scope                          |
 | ----------------------------------------------- | --------------------------------------------------- | ------------------------------ |
-| `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user (generation_attempts) |
+| `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user: generation, retry, and regeneration (`generation_attempts`) |
 
 Source of truth for durable generation limits is `src/shared/constants/generation.ts` (enforced in `src/lib/api/rate-limit.ts`). Avoid hardcoding numeric values in docs/tests.
 
 ## Architecture
 
-### User-Based Rate Limiting
+### Vercel edge (`/ingest/*`)
 
-Located in `src/lib/api/user-rate-limit.ts`.
+Dashboard-managed Rate Limit on the PostHog ingest proxy path (`^/ingest(?:/|$)`). This is the only Vercel Rate Limit slot. A separate dashboard method rule denies methods outside GET, HEAD, POST, and OPTIONS on the same path. Neither rule is encoded in application source or `vercel.json`.
 
-- **Storage**: In-memory LRU cache per process
-- **Key**: Authenticated user ID (not IP)
+### Application IP limiter
+
+Located in `src/lib/api/ip-rate-limit.ts`. Shared sliding-window algorithm: `src/lib/api/rate-limit-core.ts`.
+
+- **Storage**: In-memory LRU cache **per Node.js process**
+- **Key**: Client IP (`X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`; unknown if none)
+- **Scope**: Per IP category (`health`, `webhook`, `publicApi`, `auth`, `docs`, `internal`)
+- **Opt-in**: A route must call `checkIpRateLimit(request, category)`. Declaring a category in `IP_RATE_LIMIT_CONFIGS` does not enforce it.
+- **Multi-instance note**: Each serverless instance enforces its own counters. Limits are best-effort, not globally strict.
+
+### Authenticated user limiter
+
+Located in `src/lib/api/user-rate-limit.ts`. Same sliding-window core as the IP limiter.
+
+- **Storage**: In-memory LRU cache **per Node.js process**
+- **Key**: Clerk auth user ID (`authUserId` / route `ctx.userId`), shared by routes and Server Actions. Not the internal `users.id`.
 - **Scope**: Per category, per user
-- **Multi-instance note**: Each server instance enforces its own limits. For strict global limits, consider Redis-backed storage.
+- **Opt-in**: `requestBoundary.route({ rateLimit })` or `requestBoundary.action({ rateLimit })`
+- **Multi-instance note**: Same per-process caveat as the IP limiter. Two concurrent instances can each admit a full window of requests for the same user.
 
-### Plan Generation Rate Limiting
+### Durable plan-generation limiter
 
 Located in `src/lib/api/rate-limit.ts`.
 
-- **Storage**: Database (generation_attempts table)
-- **Key**: RLS-scoped (current user via session)
-- **Scope**: Actual generation attempts (stream + retry paths)
+- **Storage**: Database (`generation_attempts` table)
+- **Key**: RLS-scoped current user
+- **Scope**: Generation, retry, and regeneration attempts
+- **Mechanism**: Fail-closed preflight count of `generation_attempts` in the rolling window. This is not an atomic reservation.
 - **Policy constants**: `PLAN_GENERATION_LIMIT`, `PLAN_GENERATION_WINDOW_MINUTES`
-- **Multi-instance note**: Globally consistent (database-backed)
+- **Concurrency note**: Because the check is a non-atomic preflight count with no reservation, concurrent requests can exceed the nominal window.
+
+### Product quotas and kill switches
+
+These are not request-frequency limiters. They cap product usage or disable a feature:
+
+- Plan-count and duration gates on plan creation
+- Metered billing quotas (lesson generation, regeneration)
+- Vercel Flags kill switches (`moduleLessonGeneration`, `emailNotificationDelivery`)
+
+### Per-process limits and Redis
+
+IP and user limiters are **intentionally per-process**. They protect a single instance from a noisy client; they do not provide a cluster-wide token bucket.
+
+Redis (or any other distributed limiter) is **deferred** until production traffic shows that per-process windows are actually being exceeded in a way that matters for cost or abuse. Do not add a shared store solely because multiple Vercel instances exist.
+
+The durable generation limiter is a database-shared, fail-closed preflight count for generation, retry, and regeneration — not a strict global cap. Because the check is a non-atomic preflight with no reservation, concurrent requests can exceed the nominal window. Product quotas and kill switches further bound that cost.
 
 ## Usage in API Routes
 
@@ -68,6 +141,25 @@ export const POST = requestBoundary.route(
 );
 ```
 
+### Using `requestBoundary.action`
+
+Authenticated Server Actions use the same user categories. Current actions use `mutation`:
+
+```typescript
+import { requestBoundary } from '@/lib/api/request-boundary';
+
+export async function batchUpdateTaskProgressAction(input: Input) {
+  return requestBoundary.action(
+    { rateLimit: 'mutation' },
+    async ({ actor, db }) => {
+      // Action code
+    },
+  );
+}
+```
+
+Server Actions share framework POST paths, so they cannot be targeted reliably with a WAF path rule. Per-user `mutation` is the intended control.
+
 ### Category Selection Guide
 
 | Endpoint Type                                   | Category           |
@@ -75,13 +167,26 @@ export const POST = requestBoundary.route(
 | Plan generation, regeneration                   | `aiGeneration`     |
 | Module lesson batch generation                  | `lessonGeneration` |
 | Future third-party integration writes           | `integration`      |
-| Plan delete/bulk-delete, profile, preferences   | `mutation`         |
+| Plan delete/bulk-delete, profile, preferences, Server Actions | `mutation` |
 | GET endpoints for data retrieval / status polls | `read`             |
 | Future OAuth initiation (not callbacks)         | `oauth`            |
 
+### IP limiter (`checkIpRateLimit`)
+
+For unauthenticated or machine-authenticated routes:
+
+```typescript
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
+
+checkIpRateLimit(request, 'publicApi'); // unsubscribe POST
+checkIpRateLimit(request, 'internal'); // notification cron / workers
+```
+
+`checkIpRateLimit` throws `RateLimitError` when the window is exceeded. Routes that already use `withErrorBoundary` map that to the canonical 429 payload. It does not attach `X-RateLimit-*` headers by itself; use `getRateLimitHeaders` when a route needs them.
+
 ### Plan Generation (Special Case)
 
-Plan generation has an additional database-backed rate limit:
+Plan generation, retry, and regeneration have an additional database-backed preflight rate limit after the user `aiGeneration` limiter:
 
 ```typescript
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
@@ -157,6 +262,9 @@ Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-lim
 - `PATCH /api/v1/user/preferences`
 - `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`
+- `batchUpdateTaskProgressAction` (`src/app/(app)/plans/[id]/actions.ts`)
+- `batchUpdateModuleTaskProgressAction` (`src/app/(app)/plans/[id]/modules/[moduleId]/actions.ts`)
+- `syncAnalyticsTimezoneAction` (`src/app/(app)/analytics/usage/actions.ts`)
 
 ### Read (`read`)
 
@@ -173,7 +281,43 @@ Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-lim
 
 ### Integration / OAuth (`integration`, `oauth`)
 
-These categories remain available in the shared rate-limiter configuration for future provider work, but there are currently no active Google OAuth or integration API routes in the app.
+These categories remain available in the shared user-limiter configuration for future provider work. There are currently no active Google OAuth or integration API routes.
+
+### IP: Health (`health`)
+
+- `GET /api/health/worker`
+
+### IP: Webhook (`webhook`)
+
+- `POST /api/v1/clerk/billing/webhook`
+
+### IP: Public API (`publicApi`)
+
+- `POST /api/v1/notifications/email/unsubscribe`
+
+`GET /api/v1/notifications/email/unsubscribe` is static confirmation-only and intentionally unmetered so scanners and prefetchers cannot starve legitimate opt-outs. Only the signed one-click POST uses `publicApi`.
+
+### IP: Docs (`docs`)
+
+Available only in development and test; otherwise these routes return `404`.
+
+- `GET /api/docs`
+- `GET /api/docs/openapi`
+
+### IP: Internal (`internal`)
+
+- `POST /api/internal/jobs/regeneration/process`
+- `POST /api/internal/maintenance/billing/reconcile-clerk`
+- `POST /api/internal/maintenance/notifications/email`
+- `POST /api/internal/maintenance/plans/cleanup`
+- `POST /api/internal/maintenance/retention/cleanup`
+- `GET /api/cron/notifications/email`
+
+Maintenance POSTs apply `internal` through `createMaintenancePostRoute` in `src/lib/api/internal/maintenance-route.ts`.
+
+### IP: Auth (`auth`)
+
+Defined in `IP_RATE_LIMIT_CONFIGS` (10 requests / minute). No current route calls `checkIpRateLimit(request, 'auth')`.
 
 ## Future Considerations
 
@@ -213,13 +357,19 @@ const aiWindowMs = USER_RATE_LIMIT_CONFIGS.aiGeneration.windowMs; // 3600000
 
 ### Redis-Backed Storage
 
-For strict global rate limiting across multiple server instances, the `createUserRateLimiter` function can be extended to use Redis instead of the in-memory LRU cache.
+Do not add Redis (or another distributed limiter) until production traffic shows that per-process IP/user windows are being exceeded in a way that matters. The durable Postgres limiter is a fail-closed preflight count on generation, retry, and regeneration, not a cluster-wide atomic reservation.
 
 ## Related Files
 
-- `src/lib/api/user-rate-limit.ts` - User-based rate limiting module
-- `src/lib/api/rate-limit.ts` - Plan generation rate limiting
-- `src/lib/api/request-boundary.ts` - request-boundary route helper
-- `src/lib/api/route-wrappers.ts` - shared error boundary and user rate-limit wrapper/header logic
-- `src/lib/api/errors.ts` - `RateLimitError` class
-- `tests/unit/api/user-rate-limit.spec.ts` - Unit tests
+- `src/lib/api/ip-rate-limit.ts` — IP-based rate limiting
+- `src/lib/api/user-rate-limit.ts` — User-based rate limiting
+- `src/lib/api/rate-limit-core.ts` — Shared sliding-window LRU used by IP and user limiters
+- `src/lib/api/rate-limit.ts` — Durable plan-generation rate limiting
+- `src/lib/api/request-boundary.ts` — `requestBoundary.route` / `.action` rate-limit options
+- `src/lib/api/route-wrappers.ts` — Shared error boundary and user rate-limit wrapper/header logic
+- `src/lib/api/errors.ts` — `RateLimitError` class
+- `src/lib/api/internal/maintenance-route.ts` — Applies the `internal` IP limiter to maintenance POSTs
+- `src/shared/constants/generation.ts` — Durable generation limit constants
+- `vercel.json` — Cron schedules only; does not record Firewall rules
+- `tests/unit/api/user-rate-limit.spec.ts` — User limiter unit tests
+- `tests/unit/api/ip-rate-limit.spec.ts` — IP limiter unit tests

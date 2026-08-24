@@ -2,7 +2,10 @@ import { ConflictError, NotFoundError } from '@/lib/api/errors';
 import { deletePlan, type DeletePlanDbClient } from '@/lib/db/queries/plans';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
-export type BulkRemovePlanFailureReason = 'not_found' | 'currently_generating';
+export type BulkRemovePlanFailureReason =
+  | 'not_found'
+  | 'currently_generating'
+  | 'active_child_generation';
 
 export type BulkRemovePlanResult =
   | { planId: string; success: true }
@@ -19,6 +22,8 @@ const REMOVE_PLAN_FAILURE_MESSAGES: Record<
 > = {
   not_found: 'Learning plan not found.',
   currently_generating: 'Cannot delete a plan that is currently generating.',
+  active_child_generation:
+    'Cannot delete a plan while a module lesson is generating.',
 };
 
 /**
@@ -39,7 +44,7 @@ export async function removePlanForWrite(params: {
     throw new NotFoundError(REMOVE_PLAN_FAILURE_MESSAGES.not_found);
   }
 
-  throw new ConflictError(REMOVE_PLAN_FAILURE_MESSAGES.currently_generating);
+  throw new ConflictError(REMOVE_PLAN_FAILURE_MESSAGES[result.reason]);
 }
 
 async function removePlanForBulkWrite(params: {

@@ -10,6 +10,7 @@ interface LockedOwnedPlanRecord {
   id: string;
   userId: string;
   generationStatus: OwnedPlanRecord['generationStatus'];
+  isQuotaEligible: boolean;
 }
 
 interface OwnedPlanQueryParams {
@@ -70,6 +71,7 @@ export async function lockOwnedPlanById({
       id: learningPlans.id,
       userId: learningPlans.userId,
       generationStatus: learningPlans.generationStatus,
+      isQuotaEligible: learningPlans.isQuotaEligible,
     })
     .from(learningPlans)
     .where(ownedPlanWhere(planId, ownerUserId))

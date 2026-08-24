@@ -49,6 +49,17 @@ describe('removePlanForWrite', () => {
       'Cannot delete a plan that is currently generating.',
     );
   });
+
+  it('throws ConflictError when deletePlan returns active_child_generation', async () => {
+    mockDeletePlan.mockResolvedValue({
+      success: false,
+      reason: 'active_child_generation',
+    });
+
+    await expect(removePlanForWrite({ planId, userId })).rejects.toThrow(
+      'Cannot delete a plan while a module lesson is generating.',
+    );
+  });
 });
 
 describe('removePlansForWrite', () => {
@@ -174,6 +185,27 @@ describe('removePlansForWrite', () => {
         success: false,
         reason: 'currently_generating',
         message: 'Cannot delete a plan that is currently generating.',
+      },
+    ]);
+  });
+
+  it('maps active_child_generation failures to readable messages', async () => {
+    mockDeletePlan.mockResolvedValue({
+      success: false,
+      reason: 'active_child_generation',
+    });
+
+    const results = await removePlansForWrite({
+      planIds: [firstPlanId],
+      userId,
+    });
+
+    expect(results).toEqual([
+      {
+        planId: firstPlanId,
+        success: false,
+        reason: 'active_child_generation',
+        message: 'Cannot delete a plan while a module lesson is generating.',
       },
     ]);
   });

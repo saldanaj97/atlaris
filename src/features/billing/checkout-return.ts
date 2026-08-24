@@ -5,7 +5,7 @@ export const CHECKOUT_BASELINE_QUERY_PARAM = 'checkoutBaseline';
 export const CHECKOUT_SYNC_POLL_INTERVAL_MS = 2000;
 export const CHECKOUT_SYNC_TIMEOUT_MS = 30_000;
 
-export const CHECKOUT_SYNC_UPDATING_MESSAGE = 'Updating your subscription...';
+export const CHECKOUT_SYNC_UPDATING_MESSAGE = 'Updating your subscription…';
 export const CHECKOUT_SYNC_TIMEOUT_MESSAGE =
   'Your subscription update is still processing. Refresh this page in a moment, or try again from Settings.';
 

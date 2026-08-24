@@ -95,7 +95,7 @@ describe('Navigation', () => {
         (item) => item.label === 'Home',
       );
       expect(homeItem).toBeDefined();
-      expect(homeItem?.href).toBe('/');
+      expect(homeItem?.href).toBe('/landing');
     });
 
     it('should contain Pricing nav item', () => {

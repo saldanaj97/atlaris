@@ -9,6 +9,7 @@ import {
   canonicalUsageToRecordParams,
   recordUsageInTx,
 } from '../../../../supabase/usage';
+import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
@@ -231,6 +232,45 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     );
 }
 
+/**
+ * CAS: merge `providerStartedAt` into owned module JSON metadata while status
+ * is `generating`. Throws unless exactly one row matches.
+ */
+export async function markModuleLessonProviderStarted(
+  dbClient: GenerationDb,
+  args: {
+    readonly userId: string;
+    readonly planId: string;
+    readonly moduleId: string;
+    readonly providerStartedAt: string;
+  },
+): Promise<void> {
+  const updated = await dbClient
+    .update(modules)
+    .set({
+      lessonGenerationMetadata: sql`jsonb_set(
+        coalesce(${modules.lessonGenerationMetadata}, '{"version":1}'::jsonb),
+        '{providerStartedAt}',
+        to_jsonb(${args.providerStartedAt}::text)
+      )`,
+    })
+    .where(
+      and(
+        eq(modules.id, args.moduleId),
+        eq(modules.planId, args.planId),
+        eq(modules.lessonGenerationStatus, 'generating'),
+        moduleOwnedByUser(args.userId),
+      ),
+    )
+    .returning({ id: modules.id });
+
+  if (updated.length !== 1) {
+    throw new Error(
+      'Module lesson generation provider-start marker did not match exactly one row',
+    );
+  }
+}
+
 async function readScopedModuleState(
   dbClient: GenerationDb,
   planId: string,
@@ -284,6 +324,7 @@ function classifyModuleLessonGenerationClaimState(
 /**
  * CAS: `not_generated` | `failed` → `generating` for an owned module row.
  * Surfaces `already_ready`, `in_flight`, and `not_found` without mutating.
+ * Requires an owned parent plan with `generationStatus = 'ready'`.
  */
 export async function claimModuleLessonGenerationOrDescribe(
   dbClient: GenerationDb,
@@ -309,47 +350,73 @@ export async function claimModuleLessonGenerationOrDescribe(
   const claimStartedAt = options?.workflow
     ? new Date(options.workflow.startedAt)
     : now();
-  const attemptClaim = async (): Promise<boolean> => {
-    const touched = await dbClient
-      .update(modules)
-      .set({
-        lessonGenerationStatus: 'generating',
-        lessonGenerationStartedAt: claimStartedAt,
-        lessonGenerationCompletedAt: null,
-        lessonGenerationFailedAt: null,
-        lessonGenerationError: null,
-        ...(workflowMetadata
-          ? { lessonGenerationMetadata: workflowMetadata }
-          : {}),
-      })
+
+  const rlsCtx = await prepareRlsTransactionContext(dbClient);
+
+  return dbClient.transaction(async (tx) => {
+    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
+    await lockPlanLifecycle(tx, planId);
+
+    const [parent] = await tx
+      .select({ generationStatus: learningPlans.generationStatus })
+      .from(learningPlans)
       .where(
-        and(
-          eq(modules.id, moduleId),
-          eq(modules.planId, planId),
-          inArray(modules.lessonGenerationStatus, [...claimableStatuses]),
-          moduleOwnedByUser(userId),
-        ),
+        and(eq(learningPlans.id, planId), eq(learningPlans.userId, userId)),
       )
-      .returning({ id: modules.id });
+      .limit(1);
 
-    return touched.length === 1;
-  };
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (await attemptClaim()) {
-      return {
-        kind: 'claimed',
-        workflowStartedAt: options?.workflow?.startedAt ?? null,
-      };
+    if (!parent) {
+      return { kind: 'not_found' };
+    }
+    if (parent.generationStatus !== 'ready') {
+      return { kind: 'in_flight' };
     }
 
-    const state = await readScopedModuleState(
-      dbClient,
-      planId,
-      moduleId,
-      userId,
-    );
+    const attemptClaim = async (): Promise<boolean> => {
+      const touched = await tx
+        .update(modules)
+        .set({
+          lessonGenerationStatus: 'generating',
+          lessonGenerationStartedAt: claimStartedAt,
+          lessonGenerationCompletedAt: null,
+          lessonGenerationFailedAt: null,
+          lessonGenerationError: null,
+          ...(workflowMetadata
+            ? { lessonGenerationMetadata: workflowMetadata }
+            : {}),
+        })
+        .where(
+          and(
+            eq(modules.id, moduleId),
+            eq(modules.planId, planId),
+            inArray(modules.lessonGenerationStatus, [...claimableStatuses]),
+            moduleOwnedByUser(userId),
+          ),
+        )
+        .returning({ id: modules.id });
 
+      return touched.length === 1;
+    };
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (await attemptClaim()) {
+        return {
+          kind: 'claimed',
+          workflowStartedAt: options?.workflow?.startedAt ?? null,
+        };
+      }
+
+      const state = await readScopedModuleState(tx, planId, moduleId, userId);
+      const result = classifyModuleLessonGenerationClaimState(
+        state,
+        options?.workflow,
+      );
+      if (result) {
+        return result;
+      }
+    }
+
+    const state = await readScopedModuleState(tx, planId, moduleId, userId);
     const result = classifyModuleLessonGenerationClaimState(
       state,
       options?.workflow,
@@ -357,20 +424,11 @@ export async function claimModuleLessonGenerationOrDescribe(
     if (result) {
       return result;
     }
-  }
 
-  const state = await readScopedModuleState(dbClient, planId, moduleId, userId);
-  const result = classifyModuleLessonGenerationClaimState(
-    state,
-    options?.workflow,
-  );
-  if (result) {
-    return result;
-  }
-
-  throw new Error(
-    `Unexpected module lesson_generation_status after claim retries: ${String(state?.status)}`,
-  );
+    throw new Error(
+      `Unexpected module lesson_generation_status after claim retries: ${String(state?.status)}`,
+    );
+  });
 }
 
 export type CommitModuleLessonBatchSuccessInput = {

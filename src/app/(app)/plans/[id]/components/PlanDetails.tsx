@@ -17,6 +17,7 @@ import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog'
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import posthog from 'posthog-js';
 import { type ReactElement } from 'react';
 import { toast } from 'sonner';
 
@@ -43,6 +44,13 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     });
     if (result?.revalidateFailed) {
       toast.message('Progress saved. Refresh if the page looks stale.');
+    }
+    for (const update of updates) {
+      posthog.capture('task_status_changed', {
+        task_id: update.taskId,
+        new_status: update.status,
+        variant: 'timeline',
+      });
     }
   }
 

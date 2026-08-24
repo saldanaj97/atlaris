@@ -1,3 +1,5 @@
+import { stripTrailingSlash } from '@/lib/path/strip-trailing-slash';
+
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/api',
@@ -11,7 +13,7 @@ const PROTECTED_PREFIXES = [
 const MAINTENANCE_MODE_BYPASS_PREFIXES = [
   '/.well-known/vercel/flags',
   /** Workflow SDK runtime callbacks; proxy applies callback auth before Clerk. */
-  '/.well-known/workflow/',
+  '/.well-known/workflow',
 ] as const;
 
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
@@ -31,38 +33,40 @@ const PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH =
   '/api/v1/notifications/email/unsubscribe' as const;
 
 export function isProviderWebhookRoute(pathname: string): boolean {
-  return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix),
+  const path = stripTrailingSlash(pathname);
+  return PROVIDER_WEBHOOK_ROUTE_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 
-function isSignedEmailUnsubscribeRoute(pathname: string): boolean {
-  return pathname === PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH;
+function isSignedEmailUnsubscribeRoute(path: string): boolean {
+  return path === PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH;
 }
 
 export function isProtectedRoute(pathname: string): boolean {
+  const path = stripTrailingSlash(pathname);
   // Payment/auth provider webhooks bypass Clerk; route-level signatures apply.
-  if (isProviderWebhookRoute(pathname)) {
+  if (isProviderWebhookRoute(path)) {
     return false;
   }
   // One-click unsubscribe authenticates via signed token, not Clerk.
-  if (isSignedEmailUnsubscribeRoute(pathname)) {
+  if (isSignedEmailUnsubscribeRoute(path)) {
     return false;
   }
   // Internal worker/maintenance routes bypass Clerk; each route must enforce
   // its own worker token auth (see assertInternalWorkerAccess).
-  if (pathname.startsWith('/api/internal/')) {
+  if (path === '/api/internal' || path.startsWith('/api/internal/')) {
     return false;
   }
   // Worker health probes authenticate via route-level worker token, not Clerk.
-  if (pathname === '/api/health/worker') {
+  if (path === '/api/health/worker') {
     return false;
   }
   // Vercel Cron authenticates at the route boundary with CRON_SECRET.
-  if (pathname === '/api/cron/notifications/email') {
+  if (path === '/api/cron/notifications/email') {
     return false;
   }
-  return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
 /** Target path for maintenance redirect, or null when current route is allowed. */
@@ -70,19 +74,20 @@ export function resolveMaintenanceRedirectPath(
   maintenanceMode: boolean,
   pathname: string,
 ): '/maintenance' | '/' | null {
+  const path = stripTrailingSlash(pathname);
   if (
     MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
-      pathname.startsWith(prefix),
+      path.startsWith(prefix),
     ) ||
-    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(pathname)
+    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path)
   ) {
     return null;
   }
 
-  if (maintenanceMode && pathname !== '/maintenance') {
+  if (maintenanceMode && path !== '/maintenance') {
     return '/maintenance';
   }
-  if (!maintenanceMode && pathname === '/maintenance') {
+  if (!maintenanceMode && path === '/maintenance') {
     return '/';
   }
   return null;
@@ -94,16 +99,17 @@ export function shouldBypassClerkMiddleware(input: {
   localProductTestingEnabled: boolean;
   pathname: string;
 }): boolean {
+  const path = stripTrailingSlash(input.pathname);
+  const isApiRoute = path === '/api' || path.startsWith('/api/');
+
   const devBypass =
-    input.isDevelopment &&
-    input.devAuthUserId !== undefined &&
-    input.pathname.startsWith('/api/');
+    input.isDevelopment && input.devAuthUserId !== undefined && isApiRoute;
 
   const localProductTestingPageBypass =
     input.isDevelopment &&
     input.devAuthUserId !== undefined &&
     input.localProductTestingEnabled &&
-    !input.pathname.startsWith('/api/');
+    !isApiRoute;
 
   return devBypass || localProductTestingPageBypass;
 }

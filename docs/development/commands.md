@@ -86,6 +86,17 @@ pnpm db:dev:reset     # Recreate local Supabase DB from migrations + seed.sql
 pnpm db:dev:seed      # Re-seed the deterministic local product-testing user
 ```
 
+### Cursor Cloud Agent database
+
+These commands operate only on the fixed, task-local PostgreSQL 17 target documented in [local-database.md](./local-database.md). They reject hosted credentials and arbitrary database URLs.
+
+```bash
+pnpm db:agent:preflight # Read-only runtime and safety checks
+pnpm db:agent:up        # Idempotent start, migrate, grant, seed, and verify
+pnpm db:agent:status    # Read-only database status
+pnpm db:agent:reset     # Recreate only the managed agent database
+```
+
 ## Testing
 
 See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehensive testing documentation.

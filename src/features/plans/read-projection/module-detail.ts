@@ -36,6 +36,9 @@ export function buildModuleDetailNavItems(
       order: moduleRow.order,
       title: moduleRow.title,
       isLocked: hasIncompleteTaskInPreviousModules,
+      isComplete:
+        moduleRow.totalTaskCount > 0 &&
+        moduleRow.completedTaskCount >= moduleRow.totalTaskCount,
     });
 
     if (!hasIncompleteTaskInPreviousModules) {

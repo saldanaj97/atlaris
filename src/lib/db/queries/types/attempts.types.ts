@@ -44,7 +44,13 @@ export interface AttemptReservation {
 
 export interface AttemptRejection {
   reserved: false;
-  reason: 'capped' | 'in_progress' | 'invalid_status' | 'rate_limited';
+  reason:
+    | 'capped'
+    | 'in_progress'
+    | 'invalid_status'
+    | 'rate_limited'
+    | 'plan_limit'
+    | 'active_child_generation';
   currentStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];

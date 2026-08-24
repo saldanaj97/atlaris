@@ -17,6 +17,7 @@ export const PATCH = requestBoundary.route(
       mode: 'required',
       onMalformedJson: () =>
         new ValidationError('Invalid JSON in request body'),
+      maxBytes: 256 * 1024,
     });
     const parsed = emailNotificationPreferenceFormValuesSchema.safeParse(body);
 

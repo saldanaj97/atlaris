@@ -1,9 +1,12 @@
 /**
  * Shared JSON request-body parsing for API routes.
- * Handles only `req.json()` and route-specific malformed-JSON behavior.
+ * Handles `req.json()`, optional actual-byte caps, and route-specific malformed-JSON behavior.
  */
 
+import { AppError } from '@/lib/api/errors';
 import { isAbortError } from '@/lib/errors';
+
+const OVERSIZED_BODY_CODE = 'PAYLOAD_TOO_LARGE';
 
 export type ParseJsonBodyOptions = {
   /**
@@ -17,9 +20,15 @@ export type ParseJsonBodyOptions = {
   fallback?: unknown;
   /** Only used in `optional` mode. Defaults to {@link detectJsonBodyPresence}. */
   detectBody?: (req: Request) => boolean;
+  /**
+   * Optional actual-byte cap. When omitted, parsing stays on unbounded `req.json()`.
+   * When set, oversized `Content-Length` may reject early; the streamed body is
+   * still counted in bytes so missing, malformed, or understated headers cannot bypass the cap.
+   */
+  maxBytes?: number;
 };
 
-function parsePositiveContentLength(value: string | null): number | null {
+function parseFiniteContentLength(value: string | null): number | null {
   if (value === null) {
     return null;
   }
@@ -28,10 +37,29 @@ function parsePositiveContentLength(value: string | null): number | null {
     return null;
   }
   const n = Number(trimmed);
-  if (!Number.isFinite(n) || n <= 0) {
+  if (!Number.isFinite(n) || n < 0) {
     return null;
   }
   return n;
+}
+
+function parsePositiveContentLength(value: string | null): number | null {
+  const n = parseFiniteContentLength(value);
+  if (n === null || n <= 0) {
+    return null;
+  }
+  return n;
+}
+
+function oversizedBodyError(): AppError {
+  return new AppError('payload too large', {
+    status: 413,
+    code: OVERSIZED_BODY_CODE,
+  });
+}
+
+function isOversizedBodyError(err: unknown): err is AppError {
+  return err instanceof AppError && err.code() === OVERSIZED_BODY_CODE;
 }
 
 /**
@@ -47,6 +75,58 @@ export function detectJsonBodyPresence(req: Request): boolean {
   );
 }
 
+async function readBodyCapped(
+  req: Request,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  if (req.body == null) {
+    return new Uint8Array();
+  }
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    length += value.byteLength;
+    if (length > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+async function parseJsonBodyCapped(
+  req: Request,
+  maxBytes: number,
+): Promise<unknown> {
+  const declared = parseFiniteContentLength(req.headers.get('content-length'));
+  if (declared !== null && declared > maxBytes) {
+    throw oversizedBodyError();
+  }
+
+  const bytes = await readBodyCapped(req, maxBytes);
+  if (bytes === null) {
+    throw oversizedBodyError();
+  }
+
+  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+
 export async function parseJsonBody(
   req: Request,
   options: ParseJsonBodyOptions,
@@ -54,10 +134,12 @@ export async function parseJsonBody(
   const detectBody = options.detectBody ?? detectJsonBodyPresence;
 
   try {
-    const body = await req.json();
-    return body;
+    if (options.maxBytes !== undefined) {
+      return await parseJsonBodyCapped(req, options.maxBytes);
+    }
+    return await req.json();
   } catch (err: unknown) {
-    if (isAbortError(err)) {
+    if (isAbortError(err) || isOversizedBodyError(err)) {
       throw err;
     }
 

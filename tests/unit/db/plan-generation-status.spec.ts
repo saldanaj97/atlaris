@@ -1,5 +1,6 @@
 import {
   PLAN_GENERATING_INSERT_DEFAULTS,
+  planOwnsActiveCapSlot,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import { learningPlans } from '@supabase/schema';
@@ -22,6 +23,47 @@ describe('plan-generation-status helpers', () => {
 
     it('sets isQuotaEligible to false', () => {
       expect(PLAN_GENERATING_INSERT_DEFAULTS.isQuotaEligible).toBe(false);
+    });
+  });
+
+  describe('planOwnsActiveCapSlot', () => {
+    it('treats eligible plans as occupying a slot regardless of status', () => {
+      expect(
+        planOwnsActiveCapSlot({
+          isQuotaEligible: true,
+          generationStatus: 'ready',
+        }),
+      ).toBe(true);
+      expect(
+        planOwnsActiveCapSlot({
+          isQuotaEligible: true,
+          generationStatus: 'generating',
+        }),
+      ).toBe(true);
+    });
+
+    it('treats generating ineligible plans as a pending reservation', () => {
+      expect(
+        planOwnsActiveCapSlot({
+          isQuotaEligible: false,
+          generationStatus: 'generating',
+        }),
+      ).toBe(true);
+    });
+
+    it('requires a new slot for failed or pending_retry ineligible plans', () => {
+      expect(
+        planOwnsActiveCapSlot({
+          isQuotaEligible: false,
+          generationStatus: 'failed',
+        }),
+      ).toBe(false);
+      expect(
+        planOwnsActiveCapSlot({
+          isQuotaEligible: false,
+          generationStatus: 'pending_retry',
+        }),
+      ).toBe(false);
     });
   });
 

@@ -20,6 +20,10 @@ import type {
   TaskProgress,
 } from '@/shared/types/db.types';
 
+import {
+  hasActiveChildModuleGeneration,
+  lockPlanLifecycle,
+} from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   fetchModuleTaskMetricsRows,
@@ -40,7 +44,10 @@ import {
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
-export type DeletePlanDbClient = Pick<DbClient, 'delete' | 'select'>;
+export type DeletePlanDbClient = Pick<
+  DbClient,
+  'delete' | 'select' | 'execute' | 'transaction'
+>;
 
 type PlanSummaryRows = {
   planRows: LearningPlan[];
@@ -457,7 +464,10 @@ export async function getPlanStatusRowsForUser(
 }
 
 /** Explicit failure reasons returned by deletePlan. */
-type DeletePlanFailureReason = 'not_found' | 'currently_generating';
+type DeletePlanFailureReason =
+  | 'not_found'
+  | 'currently_generating'
+  | 'active_child_generation';
 
 /** Result of a plan deletion attempt. */
 type DeletePlanResult =
@@ -484,46 +494,54 @@ export async function deletePlan(
 ): Promise<DeletePlanResult> {
   const client = dbClient ?? serviceRoleDb;
 
-  const plan = await deps.selectOwnedPlanById({
-    planId,
-    ownerUserId: userId,
-    dbClient: client,
-  });
+  return client.transaction(async (tx) => {
+    await lockPlanLifecycle(tx, planId);
 
-  if (!plan) {
+    const plan = await deps.selectOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: tx,
+    });
+
+    if (!plan) {
+      return { success: false, reason: 'not_found' };
+    }
+
+    if (!isDeletablePlanStatus(plan.generationStatus)) {
+      return { success: false, reason: 'currently_generating' };
+    }
+
+    if (await hasActiveChildModuleGeneration(tx, planId)) {
+      return { success: false, reason: 'active_child_generation' };
+    }
+
+    const deletedPlans = await tx
+      .delete(learningPlans)
+      .where(
+        and(
+          eq(learningPlans.id, planId),
+          eq(learningPlans.userId, userId),
+          inArray(learningPlans.generationStatus, DELETABLE_PLAN_STATUSES),
+        ),
+      )
+      .returning({ id: learningPlans.id });
+
+    if (deletedPlans.length > 0) {
+      return { success: true };
+    }
+
+    const currentPlan = await deps.selectOwnedPlanById({
+      planId,
+      ownerUserId: userId,
+      dbClient: tx,
+    });
+
+    if (currentPlan?.generationStatus === 'generating') {
+      return { success: false, reason: 'currently_generating' };
+    }
+
     return { success: false, reason: 'not_found' };
-  }
-
-  if (!isDeletablePlanStatus(plan.generationStatus)) {
-    return { success: false, reason: 'currently_generating' };
-  }
-
-  const deletedPlans = await client
-    .delete(learningPlans)
-    .where(
-      and(
-        eq(learningPlans.id, planId),
-        eq(learningPlans.userId, userId),
-        inArray(learningPlans.generationStatus, DELETABLE_PLAN_STATUSES),
-      ),
-    )
-    .returning({ id: learningPlans.id });
-
-  if (deletedPlans.length > 0) {
-    return { success: true };
-  }
-
-  const currentPlan = await deps.selectOwnedPlanById({
-    planId,
-    ownerUserId: userId,
-    dbClient: client,
   });
-
-  if (currentPlan?.generationStatus === 'generating') {
-    return { success: false, reason: 'currently_generating' };
-  }
-
-  return { success: false, reason: 'not_found' };
 }
 
 /**

@@ -106,6 +106,13 @@ function createMockTx(options?: {
 
   return {
     execute: vi.fn().mockResolvedValue(undefined),
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
     delete: vi.fn(() => ({
       where: deleteWhere,
     })),
@@ -222,5 +229,22 @@ describe('persistSuccessfulAttempt', () => {
     expect(mockTx.insert.mock.invocationCallOrder[0]).toBeLessThan(
       mockTx.update.mock.invocationCallOrder[0],
     );
+  });
+
+  it('throws before replacing modules when a child lesson generation is active', async () => {
+    const mockTx = createMockTx();
+    mockTx.select.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ id: 'mod-generating' }]),
+        }),
+      }),
+    });
+    useMockTransaction(mockTx);
+
+    await expect(persistSuccessfulAttempt(createBaseParams())).rejects.toThrow(
+      'active child module lesson generation is in progress',
+    );
+    expect(mockTx.delete).not.toHaveBeenCalled();
   });
 });

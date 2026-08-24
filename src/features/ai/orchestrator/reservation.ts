@@ -22,6 +22,10 @@ const RESERVATION_REJECTION_DETAILS: Record<
     classification: 'capped',
     message: () => 'Generation attempt cap reached',
   },
+  plan_limit: {
+    classification: 'capped',
+    message: () => 'Active plan limit reached for this subscription tier',
+  },
   rate_limited: {
     classification: 'rate_limit',
     message: () => 'Generation rate limit exceeded for this user',
@@ -30,6 +34,11 @@ const RESERVATION_REJECTION_DETAILS: Record<
     classification: 'rate_limit',
     message: () =>
       'A generation is already in progress for this plan (concurrent conflict)',
+  },
+  active_child_generation: {
+    classification: 'rate_limit',
+    message: () =>
+      'A module lesson generation is already in progress for this plan (concurrent conflict)',
   },
   invalid_status: {
     classification: 'validation',

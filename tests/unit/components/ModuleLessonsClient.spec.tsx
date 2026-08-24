@@ -187,7 +187,7 @@ describe('ModuleLessonsClient', () => {
     });
 
     expect(screen.getByText('Generating')).toBeInTheDocument();
-    expect(screen.getByText('Generating lessons...')).toBeInTheDocument();
+    expect(screen.getByText('Generating lessons…')).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(2500);
@@ -234,9 +234,7 @@ describe('ModuleLessonsClient', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(GENERATE_URL, { method: 'POST' });
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
@@ -301,9 +299,7 @@ describe('ModuleLessonsClient', () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
     expect(refreshMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -407,9 +403,7 @@ describe('ModuleLessonsClient', () => {
       );
     });
 
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
@@ -422,9 +416,7 @@ describe('ModuleLessonsClient', () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
     expect(refreshMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -485,9 +477,7 @@ describe('ModuleLessonsClient', () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(
-      screen.getByRole('button', { name: 'Generating...' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
