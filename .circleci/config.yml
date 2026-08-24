@@ -428,8 +428,16 @@ jobs:
             echo "Base ref: ${BASE_REF}"
 
             CHANGED_FILES=""
+            DIFF_OK=0
             if git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
-              CHANGED_FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | tr '\n' ' ' || true)
+              if CHANGED_LISTING=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
+                CHANGED_FILES=$(printf '%s\n' "${CHANGED_LISTING}" | tr '\n' ' ')
+                DIFF_OK=1
+              else
+                echo "git diff failed; running full integration suite."
+              fi
+            else
+              echo "origin/${BASE_REF} missing; running full integration suite."
             fi
 
             FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
@@ -440,7 +448,10 @@ jobs:
             GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock\.yaml|drizzle(.*)\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?)$' || true)
 
             MODE="light"
-            if [ -n "${GLOBAL_TRIGGER}" ]; then
+            if [ "${DIFF_OK}" -eq 0 ]; then
+              MODE="full"
+              echo "Integration mode: full (missing base or failed diff)"
+            elif [ -n "${GLOBAL_TRIGGER}" ]; then
               MODE="full"
               echo "Integration mode: full (global trigger detected)"
             elif [ "${COUNT}" -gt 50 ]; then
