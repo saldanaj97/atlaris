@@ -190,11 +190,11 @@ jobs:
                     source=true
                     code=true
                     ;;
-                  vitest.config.ts|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next.config.ts|drizzle*.config.ts|next-env.d.ts|middleware.ts)
+                  *.config.ts|*.config.js|*.config.mjs|*.config.cjs|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next-env.d.ts|middleware.ts)
                     code=true
                     integration=true
                     ;;
-                  vitest.workflow.config.ts|.oxlintrc.json)
+                  .oxlintrc.json)
                     code=true
                     ;;
                   .husky/*|.github/scripts/*|.github/workflows/*|.circleci/*)
@@ -395,6 +395,11 @@ jobs:
                 --outputFile.json=test-results.json \
                 --outputFile.junit=test-results/junit.xml \
                 ${FILES} || {
+                failed="$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo 0)"
+                if [ "${failed}" -gt 0 ]; then
+                  echo "Related unit tests failed; not falling back."
+                  exit 1
+                fi
                 echo "Related tests failed or unsupported; running complete unit suite on node 1."
                 run_full_unit
               }
