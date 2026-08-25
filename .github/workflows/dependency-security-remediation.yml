@@ -248,7 +248,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write
     steps:
       - name: Download the validated plan
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -415,6 +414,18 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
+          # CircleCI statuses arrive after the bot-branch push. `gh pr checks --required`
+          # exits immediately when none are registered yet.
+          required='[]'
+          for _ in $(seq 1 36); do
+            if required="$(gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --required --json name 2>/dev/null)" \
+              && [ "$(jq length <<<"$required")" -gt 0 ]; then
+              break
+            fi
+            required='[]'
+            sleep 5
+          done
+          test "$(jq length <<<"$required")" -gt 0
           gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --required --watch
           test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
 

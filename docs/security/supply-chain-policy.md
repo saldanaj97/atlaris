@@ -41,7 +41,7 @@ Instead, `.github/workflows/dependency-security-remediation.yml` owns security l
 
 The remediation lane may change `pnpm-lock.yaml` and, only when pnpm adds exact release-age exceptions, `pnpm-workspace.yaml`. It never edits `package.json`, `overrides`, `trustPolicy`, `trustPolicyExclude`, or `allowBuilds`.
 
-If a PR is created with `GITHUB_TOKEN`, GitHub Actions will not start an unattended `pull_request` workflow. CircleCI still receives the branch `push` via its GitHub App, so bot-branch PR CI is the CircleCI `ci-pr` workflow. The remediation job waits for the repository's required status checks on the final bot SHA (`gh pr checks --required --watch`).
+If a PR is created with `GITHUB_TOKEN`, GitHub Actions will not start an unattended `pull_request` workflow. CircleCI still receives the branch `push` via its GitHub App, so bot-branch PR CI is the CircleCI `ci-pr` workflow. The remediation job polls until required status checks are registered on the final bot SHA, then waits with `gh pr checks --required --watch`.
 
 `CODEOWNERS` protects `pnpm-workspace.yaml`, the Dependabot policy, and every workflow/script under `.github`. The active `develop` and `main` rulesets require that code-owner review, so a contributor cannot weaken the write-scoped automation or its CI gate without maintainer approval.
 

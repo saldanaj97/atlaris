@@ -65,7 +65,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
 - `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
 - A validated run updates one bot-owned branch/PR targeting `develop`; a clean audit is a no-op, and registry failures, residual findings, unexpected files, or ambiguous versions fail closed without mutating a PR.
-- The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot-branch `push` (GitHub App). The job waits for required status checks on the final bot SHA (`gh pr checks --required --watch`).
+- The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot-branch `push` (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
 - The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
 
 ### 5) `.github/workflows/staging-db-migrations.yaml`
