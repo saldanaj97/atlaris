@@ -46,6 +46,10 @@ import {
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import {
+  describeGenerationPurpose,
+  parseGenerationPurpose,
+} from '@/shared/types/generation-purpose';
 import { generationAttempts, users } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
@@ -86,6 +90,7 @@ export async function reserveAttemptSlot(
     allowedGenerationStatuses,
     requiredGenerationStatus,
   } = params;
+  const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const nowFn = params.now ?? (() => new Date());
 
   const sanitized = sanitizeInput(input);
@@ -211,6 +216,7 @@ export async function reserveAttemptSlot(
       .values({
         planId,
         status: 'in_progress',
+        generationPurpose,
         classification: null,
         durationMs: 0,
         modulesCount: 0,
@@ -234,6 +240,7 @@ export async function reserveAttemptSlot(
       attemptId: attempt.id,
       attemptNumber: existingAttempts + 1,
       startedAt,
+      generationPurpose: attempt.generationPurpose,
       sanitized,
       promptHash,
     } as const;
@@ -297,6 +304,7 @@ export async function finalizeAttemptSuccess({
   logAttemptEvent('success', {
     planId,
     attemptId: updatedAttempt.id,
+    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
     durationMs: updatedAttempt.durationMs,
     modulesCount,
     tasksCount,
@@ -391,6 +399,7 @@ export async function finalizeAttemptFailure({
   logAttemptEvent('failure', {
     planId,
     attemptId: attempt.id,
+    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
     classification,
     durationMs: attempt.durationMs,
     timedOut,

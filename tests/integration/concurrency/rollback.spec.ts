@@ -79,6 +79,7 @@ describe('Concurrency - rollback on DB error', () => {
         {
           planId: plan.id,
           userId,
+          generationPurpose: 'initial',
           input: {
             topic: 'Rollback Plan',
             notes: 'Should rollback completely',

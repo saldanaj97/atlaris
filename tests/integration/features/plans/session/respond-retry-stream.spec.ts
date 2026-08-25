@@ -338,6 +338,7 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
     expect(captured[0]?.allowedGenerationStatuses).toEqual(
       PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
     );
+    expect(captured[0]?.generationPurpose).toBe('initial');
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {

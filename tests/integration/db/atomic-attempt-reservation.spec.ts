@@ -44,6 +44,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const result = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test Topic',
         skillLevel: 'beginner',
@@ -57,6 +58,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     if (result.reserved) {
       expect(result.attemptNumber).toBe(1);
       expect(result.attemptId).toBeDefined();
+      expect(result.generationPurpose).toBe('initial');
       expect(result.sanitized.topic.value).toBe('Test Topic');
     }
 
@@ -86,12 +88,14 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         planId,
         userId,
         input,
+        generationPurpose: 'initial',
         dbClient: db,
       }),
       reserveAttemptSlot({
         planId,
         userId,
         input,
+        generationPurpose: 'initial',
         dbClient: db,
       }),
     ]);
@@ -163,12 +167,14 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
         planId,
         userId,
         input,
+        generationPurpose: 'initial',
         dbClient: db,
       }),
       reserveAttemptSlot({
         planId: secondPlan.id,
         userId,
         input,
+        generationPurpose: 'initial',
         dbClient: db,
       }),
     ]);
@@ -207,6 +213,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const result = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',
@@ -227,6 +234,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const first = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',
@@ -254,6 +262,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const second = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',
@@ -273,6 +282,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',
@@ -325,6 +335,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',
@@ -369,6 +380,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
+      generationPurpose: 'initial',
       input: {
         topic: 'Test',
         skillLevel: 'beginner',

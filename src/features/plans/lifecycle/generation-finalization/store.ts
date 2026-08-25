@@ -32,6 +32,7 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
+import { describeGenerationPurpose } from '@/shared/types/generation-purpose';
 
 export async function commitPlanGenerationSuccess(
   dbClient: AttemptsDbClient,
@@ -99,6 +100,7 @@ export async function commitPlanGenerationSuccess(
   logAttemptEvent('success', {
     planId: input.planId,
     attemptId: attempt.id,
+    generationPurpose: describeGenerationPurpose(input.generationPurpose),
     durationMs: attempt.durationMs,
     modulesCount,
     tasksCount,
@@ -172,6 +174,7 @@ export async function commitPlanGenerationFailure(
   logAttemptEvent('failure', {
     planId: input.planId,
     attemptId: attempt.id,
+    generationPurpose: describeGenerationPurpose(input.generationPurpose),
     classification: input.classification,
     durationMs: attempt.durationMs,
     timedOut: input.timedOut,

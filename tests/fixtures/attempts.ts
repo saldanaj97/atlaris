@@ -20,6 +20,7 @@ type GenerationAttemptRow = InferSelectModel<typeof generationAttempts>;
 
 const FailedAttemptDefaults = {
   status: 'failure' as const,
+  generationPurpose: 'initial' as const,
   modulesCount: 0,
   tasksCount: 0,
   truncatedTopic: false,
@@ -161,6 +162,7 @@ export function makeAttemptReservation(
       },
     },
     promptHash: 'test-prompt-hash',
+    generationPurpose: 'initial',
     ...overrides,
   };
 }

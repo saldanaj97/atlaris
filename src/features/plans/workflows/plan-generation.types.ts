@@ -6,12 +6,18 @@ import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import {
+  resolveLegacyWorkflowGenerationPurpose,
+  type GenerationPurpose,
+} from '@/shared/types/generation-purpose';
+
 export type SerializableAttemptReservation = {
   readonly attemptId: string;
   readonly attemptNumber: number;
   readonly startedAt: string;
   readonly promptHash: string;
   readonly sanitized: AttemptReservation['sanitized'];
+  readonly generationPurpose?: GenerationPurpose;
 };
 
 export type PlanGenerationWorkflowInput = {
@@ -19,6 +25,7 @@ export type PlanGenerationWorkflowInput = {
   readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
+  readonly generationPurpose?: GenerationPurpose;
   readonly modelOverride?: string | null;
   readonly correlationId: string;
   readonly reservation: SerializableAttemptReservation;
@@ -27,6 +34,15 @@ export type PlanGenerationWorkflowInput = {
 };
 
 export type PlanGenerationWorkflowResult = GenerationAttemptResult;
+
+export function resolvePlanGenerationWorkflowPurpose(
+  input: Pick<PlanGenerationWorkflowInput, 'generationPurpose'>,
+): GenerationPurpose {
+  return resolveLegacyWorkflowGenerationPurpose(
+    input.generationPurpose,
+    'initial',
+  );
+}
 
 export function toSerializableReservation(
   reservation: AttemptReservation,
@@ -37,6 +53,7 @@ export function toSerializableReservation(
     startedAt: reservation.startedAt.toISOString(),
     promptHash: reservation.promptHash,
     sanitized: reservation.sanitized,
+    generationPurpose: reservation.generationPurpose,
   };
 }
 
@@ -50,6 +67,7 @@ function parseReservationStartedAt(startedAt: string): Date {
 
 export function fromSerializableReservation(
   reservation: SerializableAttemptReservation,
+  fallbackPurpose: GenerationPurpose = 'initial',
 ): AttemptReservation {
   return {
     reserved: true,
@@ -58,5 +76,9 @@ export function fromSerializableReservation(
     startedAt: parseReservationStartedAt(reservation.startedAt),
     promptHash: reservation.promptHash,
     sanitized: reservation.sanitized,
+    generationPurpose: resolveLegacyWorkflowGenerationPurpose(
+      reservation.generationPurpose,
+      fallbackPurpose,
+    ),
   };
 }

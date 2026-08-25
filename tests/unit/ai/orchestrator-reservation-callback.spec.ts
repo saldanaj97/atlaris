@@ -69,6 +69,7 @@ function buildReservedAttempt(attemptNumber: number): AttemptReservation {
       notes: { value: undefined, truncated: false },
     },
     promptHash: createId('hash'),
+    generationPurpose: 'initial',
   };
 }
 
@@ -135,6 +136,7 @@ describe('runGenerationAttempt reservation seam', () => {
       {
         planId,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',
@@ -181,6 +183,7 @@ describe('runGenerationAttempt reservation seam', () => {
       {
         planId: createId('plan'),
         userId: createId('user'),
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',
@@ -242,6 +245,7 @@ describe('runGenerationAttempt reservation seam', () => {
       {
         planId,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',

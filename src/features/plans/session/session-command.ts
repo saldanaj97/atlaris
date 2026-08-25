@@ -184,6 +184,7 @@ async function prepareRetry(
       planId,
       userId: internalUserId,
       tier,
+      generationPurpose: 'initial',
       allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
       input: retryInput,
     },

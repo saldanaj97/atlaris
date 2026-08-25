@@ -41,6 +41,7 @@ export function buildCreateGenerationInput({
     planId,
     userId,
     tier,
+    generationPurpose: 'initial',
     input: {
       topic: ni.topic,
       notes: body.notes,

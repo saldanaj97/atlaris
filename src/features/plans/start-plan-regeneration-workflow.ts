@@ -38,7 +38,12 @@ export async function startPlanRegenerationWorkflow(
 
   let run: Awaited<ReturnType<typeof workflowStart>>;
   try {
-    run = await workflowStart(planRegenerationWorkflow, [input]);
+    run = await workflowStart(planRegenerationWorkflow, [
+      {
+        ...input,
+        generationPurpose: 'regeneration',
+      },
+    ]);
   } catch (error: unknown) {
     log.error(
       {

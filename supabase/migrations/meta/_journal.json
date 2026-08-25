@@ -407,6 +407,13 @@
       "when": 1787652060000,
       "tag": "20260825151604_add_user_entitlement_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1787671819000,
+      "tag": "20260825153019_add_generation_attempt_purpose",
+      "breakpoints": true
     }
   ]
 }

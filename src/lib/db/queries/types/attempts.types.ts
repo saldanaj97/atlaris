@@ -6,6 +6,7 @@ import type {
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@supabase/schema');
@@ -27,6 +28,7 @@ export interface AttemptReservation {
   attemptId: string;
   attemptNumber: number;
   startedAt: Date;
+  generationPurpose: GenerationPurpose;
   sanitized: {
     topic: {
       value: string;
@@ -153,6 +155,7 @@ export interface ReserveAttemptSlotParams {
   planId: string;
   userId: string;
   input: GenerationInput;
+  generationPurpose: GenerationPurpose;
   dbClient: AttemptsDbClient;
   /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
   allowedGenerationStatuses?: ReadonlyArray<

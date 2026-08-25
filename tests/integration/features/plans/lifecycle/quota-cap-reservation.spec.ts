@@ -104,6 +104,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: plan.id,
       userId,
       tier: 'free',
+      generationPurpose: 'regeneration',
       input: {
         topic: plan.topic,
         skillLevel: plan.skillLevel,
@@ -151,6 +152,7 @@ describe('last-good plan vs active-plan cap', () => {
       error: new Error('rate limited'),
       durationMs: 1,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 
@@ -180,6 +182,7 @@ describe('last-good plan vs active-plan cap', () => {
       tier: 'free',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
+      generationPurpose: 'initial',
     });
 
     expect(result.status).toBe('permanent_failure');
@@ -234,6 +237,7 @@ describe('last-good plan vs active-plan cap', () => {
       tier: 'free',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
+      generationPurpose: 'initial',
     });
 
     await sawReservation.promise;
@@ -281,6 +285,7 @@ describe('last-good plan vs active-plan cap', () => {
         tier: 'free',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
+        generationPurpose: 'initial',
       }),
       lifecycle.processGenerationAttempt({
         planId: failedB.id,
@@ -288,6 +293,7 @@ describe('last-good plan vs active-plan cap', () => {
         tier: 'free',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
+        generationPurpose: 'initial',
       }),
     ]);
 
@@ -321,6 +327,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: target.id,
       userId,
       tier: 'free',
+      generationPurpose: 'regeneration',
       input: {
         topic: target.topic,
         skillLevel: target.skillLevel,
@@ -364,6 +371,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: eligible.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!eligibleReservation.reserved) {
@@ -384,6 +392,7 @@ describe('last-good plan vs active-plan cap', () => {
       timedOut: true,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 
@@ -403,6 +412,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: failed.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!ineligibleReservation.reserved) {
@@ -424,6 +434,7 @@ describe('last-good plan vs active-plan cap', () => {
       timedOut: true,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 

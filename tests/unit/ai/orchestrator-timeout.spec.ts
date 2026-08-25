@@ -115,6 +115,7 @@ function createTimeoutTestContext(
       notes: { value: undefined, truncated: false, originalLength: undefined },
     },
     promptHash,
+    generationPurpose: 'initial',
   };
 
   const successAttemptRecord: SuccessAttemptRecord = {
@@ -230,6 +231,7 @@ describe('runGenerationAttempt timeout wiring', () => {
       {
         planId: ctx.ids.planId,
         userId: ctx.ids.userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',
@@ -275,6 +277,7 @@ describe('runGenerationAttempt timeout wiring', () => {
       {
         planId: ctx.ids.planId,
         userId: ctx.ids.userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',

@@ -10,6 +10,7 @@ import type { DbClient } from '@/lib/db/types';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { safeNormalizeUsage } from '@/features/ai/usage';
+import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 
@@ -25,6 +26,7 @@ async function validateReservation(
     .select({
       attemptId: generationAttempts.id,
       attemptStatus: generationAttempts.status,
+      generationPurpose: generationAttempts.generationPurpose,
       planStatus: learningPlans.generationStatus,
     })
     .from(generationAttempts)
@@ -55,6 +57,12 @@ async function validateReservation(
       `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: plan status is ${row.planStatus}.`,
     );
   }
+
+  if (row.generationPurpose !== params.generationPurpose) {
+    throw new Error(
+      `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: purpose ${row.generationPurpose} does not match ${params.generationPurpose}.`,
+    );
+  }
 }
 
 async function runGeneration(
@@ -83,6 +91,7 @@ async function runGeneration(
       planId: params.planId,
       userId: params.userId,
       input: generationInput,
+      generationPurpose: parseGenerationPurpose(params.generationPurpose),
     },
     {
       provider,

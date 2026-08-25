@@ -1,7 +1,10 @@
 import type { PlanGenerationWorkflowInput } from './plan-generation.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 
-import { fromSerializableReservation } from './plan-generation.types';
+import {
+  fromSerializableReservation,
+  resolvePlanGenerationWorkflowPurpose,
+} from './plan-generation.types';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { generationAttempts } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
@@ -53,7 +56,11 @@ export async function runPlanGenerationStep(
   'use step';
 
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
-  const reservation = fromSerializableReservation(input.reservation);
+  const generationPurpose = resolvePlanGenerationWorkflowPurpose(input);
+  const reservation = fromSerializableReservation(
+    input.reservation,
+    generationPurpose,
+  );
   const { workflowRunId: runId } = getWorkflowMetadata();
 
   const result = await lifecycle.processGenerationAttemptWithReservation(
@@ -62,6 +69,7 @@ export async function runPlanGenerationStep(
       userId: input.userId,
       tier: input.tier,
       input: input.input,
+      generationPurpose,
       modelOverride: input.modelOverride ?? undefined,
       allowedGenerationStatuses: input.allowedGenerationStatuses,
       requiredGenerationStatus: input.requiredGenerationStatus,

@@ -1,9 +1,24 @@
+import {
+  resolveLegacyWorkflowGenerationPurpose,
+  type GenerationPurpose,
+} from '@/shared/types/generation-purpose';
+
 export type PlanRegenerationWorkflowInput = {
   readonly jobId: string;
   readonly planId: string;
   readonly userId: string;
   readonly correlationId: string;
+  readonly generationPurpose?: GenerationPurpose;
 };
+
+export function resolvePlanRegenerationWorkflowPurpose(
+  input: Pick<PlanRegenerationWorkflowInput, 'generationPurpose'>,
+): GenerationPurpose {
+  return resolveLegacyWorkflowGenerationPurpose(
+    input.generationPurpose,
+    'regeneration',
+  );
+}
 
 export type PlanRegenerationWorkflowClaimResult =
   | { readonly kind: 'claimed'; readonly runId: string }

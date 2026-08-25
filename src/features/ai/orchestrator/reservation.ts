@@ -64,6 +64,7 @@ export function createReservationRejectionResult(
     classification,
     durationMs,
     promptHash: null,
+    generationPurpose: context.generationPurpose,
     now: nowFn,
   });
 
@@ -71,6 +72,7 @@ export function createReservationRejectionResult(
     {
       planId: context.planId,
       userId: context.userId,
+      generationPurpose: context.generationPurpose,
       classification,
       errorMessage,
       reservationReason: reservation.reason,

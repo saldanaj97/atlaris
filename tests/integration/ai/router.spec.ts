@@ -57,6 +57,7 @@ describe('AI Router (mock in tests)', () => {
       {
         planId: planRow.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'TypeScript',
           skillLevel: 'beginner',

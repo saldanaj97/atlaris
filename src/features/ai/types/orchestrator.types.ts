@@ -16,11 +16,13 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 export type GenerationAttemptContext = {
   planId: string;
   userId: string;
   input: GenerationInput;
+  generationPurpose: GenerationPurpose;
 };
 
 type ReserveAttemptSlotOperation = (

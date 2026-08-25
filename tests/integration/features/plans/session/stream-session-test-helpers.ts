@@ -196,6 +196,7 @@ export function fakeAttemptReservation(
       notes: { value: undefined, truncated: false },
     },
     promptHash: `fake-hash-${attemptNumber}`,
+    generationPurpose: 'initial',
   };
 }
 

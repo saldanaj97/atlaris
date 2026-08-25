@@ -64,6 +64,7 @@ describe('plan generation finalization (single transaction)', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-03-01T10:00:00.000Z'),
     });
@@ -105,6 +106,7 @@ describe('plan generation finalization (single transaction)', () => {
       durationMs: 500,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       workflowMetadata: {
         provider: 'workflow-sdk',
         runId: 'run-plan-generation-1',
@@ -170,6 +172,7 @@ describe('plan generation finalization (single transaction)', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-03-02T08:00:00.000Z'),
     });
@@ -189,6 +192,7 @@ describe('plan generation finalization (single transaction)', () => {
       timedOut: true,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
       workflowMetadata: {
         provider: 'workflow-sdk',
@@ -230,6 +234,7 @@ describe('plan generation finalization (single transaction)', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-03-03T12:00:00.000Z'),
     });
@@ -262,6 +267,7 @@ describe('plan generation finalization (single transaction)', () => {
       providerMetadata: { provider: 'mock', model: 'm2' },
       usage,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: false,
       now: () => new Date('2026-03-03T12:00:03.000Z'),
     });
@@ -286,6 +292,7 @@ describe('plan generation finalization (single transaction)', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-03-04T09:00:00.000Z'),
     });
@@ -314,6 +321,7 @@ describe('plan generation finalization (single transaction)', () => {
           durationMs: 100,
           extendedTimeout: false,
           usageKind: 'plan',
+          generationPurpose: 'initial',
           now: () => new Date('2026-03-04T09:00:01.000Z'),
         },
         {

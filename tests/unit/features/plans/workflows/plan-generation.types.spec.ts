@@ -1,5 +1,6 @@
 import {
   fromSerializableReservation,
+  resolvePlanGenerationWorkflowPurpose,
   toSerializableReservation,
 } from '@/features/plans/workflows/plan-generation.types';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
@@ -22,6 +23,7 @@ describe('plan-generation workflow reservation serialization', () => {
       startedAt: reservation.startedAt.toISOString(),
       promptHash: reservation.promptHash,
       sanitized: reservation.sanitized,
+      generationPurpose: 'initial',
     });
     expect(restored).toEqual(reservation);
   });
@@ -61,5 +63,49 @@ describe('plan-generation workflow reservation serialization', () => {
     expect(() => fromSerializableReservation(serialized)).toThrow(
       'Invalid reservation.startedAt:',
     );
+  });
+
+  it('round-trips regeneration purpose through serializable form', () => {
+    const reservation = makeAttemptReservation({
+      generationPurpose: 'regeneration',
+    });
+    const restored = fromSerializableReservation(
+      toSerializableReservation(reservation),
+    );
+
+    expect(restored.generationPurpose).toBe('regeneration');
+  });
+
+  it('resolves missing workflow payload and reservation purpose at the trusted fallback', () => {
+    expect(resolvePlanGenerationWorkflowPurpose({})).toBe('initial');
+    expect(
+      resolvePlanGenerationWorkflowPurpose({ generationPurpose: 'initial' }),
+    ).toBe('initial');
+
+    const reservation = makeAttemptReservation();
+    const serialized = toSerializableReservation(reservation);
+    const restored = fromSerializableReservation({
+      attemptId: serialized.attemptId,
+      attemptNumber: serialized.attemptNumber,
+      startedAt: serialized.startedAt,
+      promptHash: serialized.promptHash,
+      sanitized: serialized.sanitized,
+    });
+
+    expect(restored.generationPurpose).toBe('initial');
+  });
+
+  it('rejects invalid reservation purpose values', () => {
+    const reservation = makeAttemptReservation();
+    const serialized = {
+      ...toSerializableReservation(reservation),
+      generationPurpose: 'retry',
+    };
+
+    expect(() =>
+      fromSerializableReservation(
+        serialized as unknown as ReturnType<typeof toSerializableReservation>,
+      ),
+    ).toThrow(/Invalid generation purpose/);
   });
 });

@@ -87,6 +87,7 @@ function buildContext(
       ...buildInput(),
       ...(overrides.input ?? {}),
     },
+    generationPurpose: 'initial',
     ...overrides,
   };
 }
@@ -124,6 +125,7 @@ function buildReservation(
       },
     },
     promptHash: buildId('hash'),
+    generationPurpose: 'initial',
     ...overrides,
   };
 }
@@ -146,6 +148,7 @@ function buildAttemptRecord(
     promptHash: buildId('hash'),
     metadata: null,
     createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    generationPurpose: 'initial',
     ...overrides,
   };
 }
@@ -253,10 +256,14 @@ describe('runGenerationAttempt pacing', () => {
   it('applies pacing after parsing and before recording success', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const { attemptOperations, dbClient, finalizeAttemptSuccessMock } =
-      createDbHarness({
-        successAttempt: buildAttemptRecord(context.planId),
-      });
+    const {
+      attemptOperations,
+      dbClient,
+      finalizeAttemptSuccessMock,
+      reserveAttemptSlotMock,
+    } = createDbHarness({
+      successAttempt: buildAttemptRecord(context.planId),
+    });
     const options: RunGenerationOptions = {
       attemptOperations,
       provider,
@@ -282,6 +289,32 @@ describe('runGenerationAttempt pacing', () => {
         providerMetadata: { model: 'gpt-4' },
       }),
     );
+    expect(reserveAttemptSlotMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationPurpose: 'initial',
+      }),
+    );
+  });
+
+  it('fails closed when reserved purpose does not match context purpose', async () => {
+    const context = buildContext({ generationPurpose: 'initial' });
+    const reservation = buildReservation({
+      generationPurpose: 'regeneration',
+    });
+    const provider = createProvider(parsedModules);
+    const { attemptOperations, dbClient } = createDbHarness({
+      successAttempt: buildAttemptRecord(context.planId),
+    });
+
+    await expect(
+      runGenerationAttempt(context, {
+        attemptOperations,
+        provider,
+        dbClient,
+        reservation,
+        timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
+      }),
+    ).rejects.toThrow(/does not match/);
   });
 
   it('trims work when available capacity is low', async () => {

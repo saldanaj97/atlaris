@@ -18,6 +18,7 @@ import type {
 } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 /** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {
@@ -138,6 +139,7 @@ export type ProcessGenerationInput = {
   readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: Readonly<GenerationInput>;
+  readonly generationPurpose: GenerationPurpose;
   readonly modelOverride?: string;
   readonly signal?: AbortSignal;
   /** When set, passed to `reserveAttemptSlot` for transactional status checks. */

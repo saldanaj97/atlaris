@@ -1,8 +1,11 @@
-import type { PlanRegenerationWorkflowInput } from './plan-regeneration.types';
-import type { PlanRegenerationWorkflowClaimResult } from './plan-regeneration.types';
-import type { PlanRegenerationWorkflowTerminalResult } from './plan-regeneration.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 
+import {
+  resolvePlanRegenerationWorkflowPurpose,
+  type PlanRegenerationWorkflowClaimResult,
+  type PlanRegenerationWorkflowInput,
+  type PlanRegenerationWorkflowTerminalResult,
+} from './plan-regeneration.types';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   claimRegenerationJob,
@@ -152,6 +155,7 @@ export async function processPlanRegenerationStep(
     planId: plan.id,
     userId: plan.userId,
     tier,
+    generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
     input: generationInput,
   });
 }

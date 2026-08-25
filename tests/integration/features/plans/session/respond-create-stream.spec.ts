@@ -330,6 +330,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     expect(captured).toHaveLength(1);
     // Invalid query param + null saved preference → tier_default → no override.
     expect(captured[0]?.modelOverride).toBeUndefined();
+    expect(captured[0]?.generationPurpose).toBe('initial');
   });
 
   it('forwards a valid model query param into processGenerationAttempt', async () => {

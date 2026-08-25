@@ -53,6 +53,7 @@ describe('production Workflow SDK entrypoints', () => {
       planId: plan.id,
       userId,
       input: GENERATION_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!reservation.reserved) {
@@ -67,6 +68,7 @@ describe('production Workflow SDK entrypoints', () => {
         userId,
         tier: 'pro',
         input: GENERATION_INPUT,
+        generationPurpose: 'initial',
         modelOverride: null,
         correlationId: `workflow-plan-${plan.id}`,
         reservation: toSerializableReservation(reservation),

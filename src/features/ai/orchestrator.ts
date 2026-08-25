@@ -29,6 +29,7 @@ import {
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-db-client';
+import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 
 const DEFAULT_CLOCK = () => Date.now();
 
@@ -65,6 +66,16 @@ export async function runGenerationExecution(
   const attemptOps = resolveAttemptOperations(options.attemptOperations);
   const timeoutConfig = resolveTimeoutConfig(options.timeoutConfig, clock);
   const attemptClockStart = clock();
+  const generationPurpose = parseGenerationPurpose(context.generationPurpose);
+
+  if (
+    options.reservation &&
+    options.reservation.generationPurpose !== generationPurpose
+  ) {
+    throw new Error(
+      `Stale generation reservation ${options.reservation.attemptId} for plan ${context.planId}: purpose ${options.reservation.generationPurpose} does not match ${generationPurpose}.`,
+    );
+  }
 
   const reservation =
     options.reservation ??
@@ -72,6 +83,7 @@ export async function runGenerationExecution(
       planId: context.planId,
       userId: context.userId,
       input: context.input,
+      generationPurpose,
       dbClient,
       now: nowFn,
       ...(options.allowedGenerationStatuses !== undefined

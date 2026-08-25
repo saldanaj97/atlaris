@@ -19,6 +19,7 @@ const input: ProcessGenerationInput = {
   planId: createId('plan'),
   userId: createId('user'),
   tier: 'free',
+  generationPurpose: 'initial',
   input: {
     topic: 'Topic',
     skillLevel: 'beginner',
@@ -95,10 +96,23 @@ describe('createWorkflowBackedProcessGeneration', () => {
     const result = await run({ ...input, onAttemptReserved });
 
     expect(onAttemptReserved).toHaveBeenCalledWith(reservation);
-    expect(mocks.workflowStart).toHaveBeenCalledWith(
-      planGenerationWorkflow,
-      expect.any(Array),
+    expect(mocks.reserveAttemptSlot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planId: input.planId,
+        userId: input.userId,
+        generationPurpose: 'initial',
+      }),
     );
+    expect(mocks.workflowStart).toHaveBeenCalledWith(planGenerationWorkflow, [
+      expect.objectContaining({
+        planId: input.planId,
+        generationPurpose: 'initial',
+        reservation: expect.objectContaining({
+          attemptId: 'att-99',
+          generationPurpose: 'initial',
+        }),
+      }),
+    ]);
     expect(result).toEqual(workflowResult);
   });
 

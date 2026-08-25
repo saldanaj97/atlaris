@@ -24,6 +24,7 @@ function mockSuccessAttemptReturn(planId: string) {
     promptHash: defaultReservation.promptHash,
     metadata: null,
     createdAt: new Date(),
+    generationPurpose: 'initial',
   };
 }
 
@@ -79,6 +80,7 @@ const validGenerationInput: ProcessGenerationInput = {
   planId: 'plan-gen-001',
   userId: 'user-abc',
   tier: 'free',
+  generationPurpose: 'initial',
   input: {
     topic: 'Learn TypeScript',
     skillLevel: 'beginner',
@@ -127,6 +129,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
           provider: 'openai',
           model: 'gpt-4o',
         }),
+        generationPurpose: 'initial',
         preparation: defaultReservation,
         extendedTimeout: false,
       }),
@@ -431,6 +434,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
       planId: 'plan-gen-001',
       userId: 'user-abc',
       tier: 'pro',
+      generationPurpose: 'initial',
       input: validGenerationInput.input,
       signal,
     });
@@ -605,6 +609,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(vi.mocked(ports.generation.runGeneration)).toHaveBeenCalledWith(
       expect.objectContaining({
         reservation,
+        generationPurpose: 'initial',
       }),
     );
   });

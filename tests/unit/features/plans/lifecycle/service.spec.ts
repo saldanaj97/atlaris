@@ -304,6 +304,7 @@ describe('PlanLifecycleService', () => {
       planId: 'plan-gen-001',
       userId: 'user-abc',
       tier: 'free' as const,
+      generationPurpose: 'initial' as const,
       input: {
         topic: 'Learn TypeScript',
         skillLevel: 'beginner' as const,
@@ -367,6 +368,7 @@ describe('PlanLifecycleService', () => {
         durationMs: 250,
         extendedTimeout: false,
         usageKind: 'plan',
+        generationPurpose: 'initial',
       });
     });
 

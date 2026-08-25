@@ -22,6 +22,7 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20260811100800_revoke_security_definer_execute.sql
   supabase/migrations/20260811100900_restrict_task_progress_update_columns.sql
   supabase/migrations/20260825151604_add_user_entitlement_fields.sql
+  supabase/migrations/20260825153019_add_generation_attempt_purpose.sql
 )
 
 # Keep the users INSERT revoke contract-only until service-role provisioning is live.

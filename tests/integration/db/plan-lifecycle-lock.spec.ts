@@ -133,6 +133,7 @@ describe('plan lifecycle lock (integration)', () => {
       planId: plan.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       requiredGenerationStatus: 'ready',
     });
@@ -146,7 +147,12 @@ describe('plan lifecycle lock (integration)', () => {
     }
 
     const rejection = createReservationRejectionResult(
-      { planId: plan.id, userId, input: TEST_INPUT },
+      {
+        planId: plan.id,
+        userId,
+        input: TEST_INPUT,
+        generationPurpose: 'initial',
+      },
       reservation,
       0,
       () => 1,
@@ -188,6 +194,7 @@ describe('plan lifecycle lock (integration)', () => {
       planId: plan.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!reservation.reserved) {
@@ -468,6 +475,7 @@ describe('plan lifecycle lock (integration)', () => {
       planId: plan.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       requiredGenerationStatus: 'ready',
     });

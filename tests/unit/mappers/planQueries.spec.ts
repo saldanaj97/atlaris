@@ -157,6 +157,7 @@ function createGenerationAttempt(
     promptHash: null,
     metadata: null,
     createdAt: new Date('2024-01-01'),
+    generationPurpose: 'initial',
     ...overrides,
   };
 }

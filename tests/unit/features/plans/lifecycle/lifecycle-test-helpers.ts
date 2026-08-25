@@ -25,6 +25,7 @@ export function mockFinalizeSuccessRecord(planId: string, attemptId: string) {
     promptHash: 'ph',
     metadata: null,
     createdAt: new Date(),
+    generationPurpose: 'initial',
   };
 }
 

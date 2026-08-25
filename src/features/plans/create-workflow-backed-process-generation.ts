@@ -48,6 +48,7 @@ async function defaultFinalizeWorkflowStartFailure(
     timedOut: false,
     extendedTimeout: false,
     usageKind: 'plan',
+    generationPurpose: input.reservation.generationPurpose,
     retryable: true,
   });
 }
@@ -73,6 +74,7 @@ export function createWorkflowBackedProcessGeneration(
       planId: input.planId,
       userId: input.userId,
       input: input.input,
+      generationPurpose: input.generationPurpose,
       dbClient,
       ...(input.allowedGenerationStatuses !== undefined
         ? { allowedGenerationStatuses: input.allowedGenerationStatuses }
@@ -95,6 +97,7 @@ export function createWorkflowBackedProcessGeneration(
           userId: input.userId,
           tier: input.tier,
           input: input.input,
+          generationPurpose: input.generationPurpose,
           modelOverride: input.modelOverride ?? null,
           correlationId,
           reservation: toSerializableReservation(reservation),

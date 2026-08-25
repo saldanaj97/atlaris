@@ -121,6 +121,9 @@ describe('Supabase migration workflows', () => {
       '20260811100900_restrict_task_progress_update_columns.sql',
     );
     expect(script).toContain('20260825151604_add_user_entitlement_fields.sql');
+    expect(script).toContain(
+      '20260825153019_add_generation_attempt_purpose.sql',
+    );
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -360,11 +363,14 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 57,
-      tag: '20260825151604_add_user_entitlement_fields',
+      idx: 58,
+      tag: '20260825153019_add_generation_attempt_purpose',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',
+    );
+    expect(migrationFiles).toContain(
+      '20260825153019_add_generation_attempt_purpose.sql',
     );
 
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
@@ -374,6 +380,9 @@ describe('Supabase migration workflows', () => {
     expect(expandMigrations).toBeDefined();
     expect(expandMigrations).toContain(
       '20260825151604_add_user_entitlement_fields.sql',
+    );
+    expect(expandMigrations).toContain(
+      '20260825153019_add_generation_attempt_purpose.sql',
     );
     expect(expandMigrations).not.toContain(
       '20260811100400_revoke_users_authenticated_insert.sql',
