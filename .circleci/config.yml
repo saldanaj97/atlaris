@@ -658,15 +658,40 @@ jobs:
           coverage-destination: coverage-integration
 
   workflow-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    environment:
+      NODE_ENV: test
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - checkout
       - init-env
       - skip-unless-code
-      - install-node-and-deps
+      - install-pnpm-deps
       - run:
           name: Dependency remediation tests
           command: node --test .github/scripts/dependency-remediation.test.mjs
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: Production workflow tests
           command: pnpm test:workflow
