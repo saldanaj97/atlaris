@@ -379,7 +379,7 @@ jobs:
                 circleci-agent step halt
                 exit 0
               fi
-              echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=filename
+              echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
               if [ ! -s files.txt ]; then
                 echo "No tests assigned to this node; skipping."
                 circleci-agent step halt
@@ -650,7 +650,7 @@ jobs:
               circleci-agent step halt
               exit 0
             fi
-            echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=filename
+            echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
             if [ ! -s files.txt ]; then
               echo "No tests assigned to this node; skipping."
               circleci-agent step halt
