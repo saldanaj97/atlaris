@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 
-import { ledgerGlassSurface } from '@/app/(app)/settings/components/LedgerPrimitives';
 import { PageHeader } from '@/components/ui/page-header';
-import { cn } from '@/lib/utils';
+import { Surface } from '@/components/ui/surface';
 import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Achievements | Atlaris',
-  description: 'Track learning milestones and unlock badges as you progress.',
+  description: 'Milestones from plan progress, streaks, and consistency.',
   openGraph: {
     title: 'Achievements | Atlaris',
-    description: 'Track learning milestones and unlock badges as you progress.',
+    description: 'Milestones from plan progress, streaks, and consistency.',
     url: '/analytics/achievements',
     images: ['/og-default.jpg'],
   },
@@ -56,33 +55,34 @@ export default function AchievementsPage() {
     <>
       <PageHeader
         title='Achievements'
-        subtitle='Badges unlock from plan progress, streaks, and consistency — tracking ships soon.'
+        subtitle='Milestones from plan progress — tracking ships soon.'
       />
 
-      <section
-        aria-labelledby='achievements-coming-soon-heading'
-        className={cn(
-          'relative mx-auto max-w-3xl overflow-hidden px-5 py-7 sm:px-7',
-          ledgerGlassSurface,
-        )}
-      >
-        <div className='pointer-events-none opacity-40' aria-hidden='true'>
-          <h2 className='text-base font-medium text-foreground'>
-            Upcoming milestones
-          </h2>
-          <ul className='mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2'>
+      <section aria-labelledby='achievements-coming-soon-heading'>
+        <Surface className='relative mx-auto max-w-3xl overflow-hidden'>
+          <p
+            id='achievements-coming-soon-heading'
+            className='text-base font-medium text-foreground'
+          >
+            Coming soon
+          </p>
+          <p className='mt-1 max-w-md text-sm text-muted-foreground'>
+            Achievement tracking isn&apos;t available yet. These milestones are
+            a preview of what&apos;s ahead.
+          </p>
+          <ul
+            className='mt-6 grid gap-x-6 gap-y-4 opacity-50 sm:grid-cols-2'
+            aria-hidden='true'
+          >
             {ACHIEVEMENTS.map((achievement) => (
               <li key={achievement.name} className='flex items-start gap-3'>
-                <span
-                  className='flex size-8 shrink-0 items-center justify-center rounded-md bg-panel-muted'
-                  aria-hidden='true'
-                >
+                <span className='flex size-8 shrink-0 items-center justify-center rounded-md bg-panel-muted'>
                   {achievement.icon}
                 </span>
                 <div className='min-w-0'>
-                  <h3 className='text-sm font-medium text-foreground'>
+                  <p className='text-sm font-medium text-foreground'>
                     {achievement.name}
-                  </h3>
+                  </p>
                   <p className='mt-0.5 text-sm text-muted-foreground'>
                     {achievement.description}
                   </p>
@@ -90,26 +90,7 @@ export default function AchievementsPage() {
               </li>
             ))}
           </ul>
-        </div>
-
-        <div
-          className={cn(
-            'absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center',
-            ledgerGlassSurface,
-            'border-transparent shadow-none',
-          )}
-        >
-          <p
-            id='achievements-coming-soon-heading'
-            className='text-base font-medium text-foreground'
-          >
-            Coming soon
-          </p>
-          <p className='mt-1 max-w-xs text-sm text-muted-foreground'>
-            Achievement tracking isn&apos;t available yet. These milestones are
-            a preview of what&apos;s ahead.
-          </p>
-        </div>
+        </Surface>
       </section>
     </>
   );

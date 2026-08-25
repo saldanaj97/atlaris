@@ -41,7 +41,7 @@ Instead, `.github/workflows/dependency-security-remediation.yml` owns security l
 
 The remediation lane may change `pnpm-lock.yaml` and, only when pnpm adds exact release-age exceptions, `pnpm-workspace.yaml`. It never edits `package.json`, `overrides`, `trustPolicy`, `trustPolicyExclude`, or `allowBuilds`.
 
-If a PR is created with `GITHUB_TOKEN`, the workflow explicitly dispatches `ci-pr.yml` on the final bot-branch SHA with `base_ref=develop`, then verifies that `All Checks Passed (PR)` belongs to that exact SHA. This dispatch is required because a token-created PR does not reliably start an unattended PR workflow.
+If a PR is created with `GITHUB_TOKEN`, GitHub Actions will not start an unattended `pull_request` workflow. CircleCI still receives the branch `push` via its GitHub App, so bot-branch PR CI is the CircleCI `ci-pr` workflow. The remediation job polls until required status checks are registered on the final bot SHA, then waits with `gh pr checks --required --watch`.
 
 `CODEOWNERS` protects `pnpm-workspace.yaml`, the Dependabot policy, and every workflow/script under `.github`. The active `develop` and `main` rulesets require that code-owner review, so a contributor cannot weaken the write-scoped automation or its CI gate without maintainer approval.
 
@@ -56,7 +56,7 @@ The native auto-merge workflow queues (it does not immediately perform) a squash
 - the PR is not a draft and its API file list is either `pnpm-lock.yaml` alone or exactly `package.json` plus `pnpm-lock.yaml`;
 - no workspace, policy, workflow, or other file changed.
 
-GitHub completes that queued merge only after required CI, including `All Checks Passed (PR)`, is green on the latest head SHA.
+GitHub completes that queued merge only after required CI (CircleCI `ci-pr` jobs on the development ruleset) is green on the latest head SHA.
 
 Minor, major, security-remediation, policy, unknown-metadata, and non-allowlisted PRs remain open for human review. The workflow never approves a PR or bypasses required checks.
 

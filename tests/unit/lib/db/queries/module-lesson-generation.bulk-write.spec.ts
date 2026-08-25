@@ -1,7 +1,12 @@
 import type { DbClient } from '@/lib/db/types';
 
-import { commitModuleLessonBatchSuccess } from '@/lib/db/queries/module-lesson-generation';
+import {
+  commitModuleLessonBatchSuccess,
+  markModuleLessonProviderStarted,
+} from '@/lib/db/queries/module-lesson-generation';
 import { SERVICE_ROLE_DB_MARKER } from '@supabase/service-role';
+import { type SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('commitModuleLessonBatchSuccess bulk task writes', () => {
@@ -65,5 +70,66 @@ describe('commitModuleLessonBatchSuccess bulk task writes', () => {
     });
 
     expect(tx.execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('markModuleLessonProviderStarted', () => {
+  const pgDialect = new PgDialect();
+  const providerStartedAt = '2026-08-20T18:00:00.000Z';
+
+  function mockUpdate(returningRows: Array<{ id: string }>) {
+    let capturedSet: { lessonGenerationMetadata?: SQL } | undefined;
+    let capturedWhere: SQL | undefined;
+    const returning = vi.fn().mockResolvedValue(returningRows);
+    const where = vi.fn((clause: SQL) => {
+      capturedWhere = clause;
+      return { returning };
+    });
+    const set = vi.fn((values: { lessonGenerationMetadata?: SQL }) => {
+      capturedSet = values;
+      return { where };
+    });
+    const update = vi.fn().mockReturnValue({ set });
+    const dbClient = { update } as unknown as DbClient;
+    return { dbClient, captured: () => ({ capturedSet, capturedWhere }) };
+  }
+
+  it('merges providerStartedAt into generating owned-module metadata', async () => {
+    const { dbClient, captured } = mockUpdate([{ id: 'module-1' }]);
+
+    await markModuleLessonProviderStarted(dbClient, {
+      userId: 'user-1',
+      planId: 'plan-1',
+      moduleId: 'module-1',
+      providerStartedAt,
+    });
+
+    const { capturedSet, capturedWhere } = captured();
+    const setQuery = pgDialect.sqlToQuery(
+      capturedSet?.lessonGenerationMetadata as SQL,
+    );
+    const whereQuery = pgDialect.sqlToQuery(capturedWhere as SQL);
+
+    expect(setQuery.sql).toContain('jsonb_set');
+    expect(setQuery.sql).toContain('providerStartedAt');
+    expect(setQuery.params).toContain(providerStartedAt);
+    expect(whereQuery.params).toEqual(
+      expect.arrayContaining(['module-1', 'plan-1', 'generating', 'user-1']),
+    );
+  });
+
+  it('throws unless exactly one generating row matches', async () => {
+    const { dbClient } = mockUpdate([]);
+
+    await expect(
+      markModuleLessonProviderStarted(dbClient, {
+        userId: 'user-1',
+        planId: 'plan-1',
+        moduleId: 'module-1',
+        providerStartedAt,
+      }),
+    ).rejects.toThrow(
+      'Module lesson generation provider-start marker did not match exactly one row',
+    );
   });
 });

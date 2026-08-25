@@ -126,6 +126,8 @@ export type ModuleDetailNavItem = {
   order: number;
   title: string;
   isLocked: boolean;
+  /** Visual complete: every task done. Empty modules stay false. */
+  isComplete: boolean;
 };
 
 /** Server read-model for `/plans/[planId]/modules/[moduleId]`. */

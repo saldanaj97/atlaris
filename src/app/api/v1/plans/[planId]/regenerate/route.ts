@@ -14,6 +14,7 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { captureAfterResponse } from '@/lib/posthog-server';
 import { ZodError } from 'zod';
 
 /**
@@ -29,6 +30,7 @@ export const POST: PlainHandler = requestBoundary.route(
       mode: 'required',
       onMalformedJson: () =>
         new ValidationError('Invalid JSON in request body.'),
+      maxBytes: 1 * 1024 * 1024,
     });
 
     let overrides: PlanRegenerationOverridesInput | undefined;
@@ -103,7 +105,12 @@ export const POST: PlainHandler = requestBoundary.route(
             retryable: result.retryable,
           },
         });
-      case 'enqueued':
+      case 'enqueued': {
+        captureAfterResponse(actor, 'plan_regeneration_requested', {
+          plan_id: planId,
+          job_id: result.jobId,
+          has_overrides: overrides !== undefined,
+        });
         return json(
           {
             planId,
@@ -117,6 +124,7 @@ export const POST: PlainHandler = requestBoundary.route(
             ),
           },
         );
+      }
       default: {
         const _exhaustive: never = result;
         return _exhaustive;

@@ -85,4 +85,29 @@ describe('POST /api/v1/plans/bulk-delete', () => {
     });
     expect(response.status).toBe(200);
   });
+
+  it('returns a controlled 413 for an oversized declared JSON body', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/v1/plans/bulk-delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': String(256 * 1024 + 1),
+        },
+        body: new ReadableStream<Uint8Array>({
+          pull() {
+            throw new Error('body should not be read');
+          },
+        }),
+        duplex: 'half',
+      } as RequestInit),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({
+      error: 'payload too large',
+      code: 'PAYLOAD_TOO_LARGE',
+    });
+    expect(removePlansForWrite).not.toHaveBeenCalled();
+  });
 });

@@ -135,7 +135,7 @@ describe('PlansList', () => {
 
     expect(screen.getByText('No plans found')).toBeInTheDocument();
     expect(
-      screen.getByText(/Create your first plan to get started/i),
+      screen.getByText(/Create a plan and pick up when the night is quiet/i),
     ).toBeInTheDocument();
   });
 

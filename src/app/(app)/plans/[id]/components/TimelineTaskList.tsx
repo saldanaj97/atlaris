@@ -5,9 +5,11 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import { getResourceIcon } from '@/app/(app)/plans/resource-display';
 import { Button } from '@/components/ui/button';
+import { planDetailPath } from '@/features/navigation/routes';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 import { createElement } from 'react';
 
 function TimelineResourceLink({
@@ -36,10 +38,12 @@ function TimelineResourceLink({
 function TimelineTaskCard({
   task,
   status,
+  moduleHref,
   onTaskStatusChange,
 }: {
   task: ClientTask;
   status: ProgressStatus;
+  moduleHref: string;
   onTaskStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
 }) {
   const isCompleted = status === 'completed';
@@ -48,13 +52,19 @@ function TimelineTaskCard({
   return (
     <div
       className={cn(
-        'rounded-lg border p-4 transition-colors',
+        'relative rounded-lg border p-4 transition-colors',
         isCompleted
           ? 'border-success/30 bg-success/5 dark:border-success/30 dark:bg-success/10'
           : 'border-border bg-muted/30 hover:border-primary/30 dark:bg-muted/25 dark:hover:border-primary/50',
       )}
     >
-      <div className='flex h-full flex-col gap-3 sm:flex-row sm:items-center'>
+      <Link
+        href={moduleHref}
+        className='absolute inset-0 z-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+      >
+        <span className='sr-only'>{task.title}</span>
+      </Link>
+      <div className='pointer-events-none flex h-full flex-col gap-3 sm:flex-row sm:items-center'>
         <div className='flex shrink-0 items-center'>
           <CheckCircle2
             size={18}
@@ -87,7 +97,7 @@ function TimelineTaskCard({
             </p>
           )}
         </div>
-        <div className='flex shrink-0 items-center self-end sm:self-auto'>
+        <div className='pointer-events-auto relative z-10 flex shrink-0 items-center self-end sm:self-auto'>
           <TaskCompletionButton
             taskId={task.id}
             status={status}
@@ -98,7 +108,7 @@ function TimelineTaskCard({
       </div>
 
       {resources.length > 0 && (
-        <div className='mt-3 ml-0 flex flex-wrap gap-2 sm:ml-6'>
+        <div className='relative z-10 mt-3 ml-0 flex flex-wrap gap-2 sm:ml-6'>
           {resources.map((resource) => (
             <TimelineResourceLink key={resource.id} resource={resource} />
           ))}
@@ -109,10 +119,12 @@ function TimelineTaskCard({
 }
 
 export function TimelineTaskList({
+  planId,
   module,
   statuses,
   onTaskStatusChange,
 }: {
+  planId: string;
   module: TimelineModule;
   statuses: Partial<Record<string, ProgressStatus>>;
   onTaskStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
@@ -123,6 +135,8 @@ export function TimelineTaskList({
     );
   }
 
+  const moduleHref = `${planDetailPath(planId)}/modules/${module.id}`;
+
   return (
     <div className='space-y-3'>
       {module.tasks.map((task) => (
@@ -130,6 +144,7 @@ export function TimelineTaskList({
           key={task.id}
           task={task}
           status={statuses[task.id] ?? 'not_started'}
+          moduleHref={moduleHref}
           onTaskStatusChange={onTaskStatusChange}
         />
       ))}

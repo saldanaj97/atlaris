@@ -80,6 +80,7 @@ export const ModuleLessonGenerationMetadataSchema = z.strictObject({
   version: z.literal(1),
   batchRequestId: z.string().max(128).optional(),
   workflow: WorkflowSdkMetadataSchema.optional(),
+  providerStartedAt: z.iso.datetime().optional(),
 });
 
 const ModuleLessonGenerationApiBaseSchema = z.strictObject({

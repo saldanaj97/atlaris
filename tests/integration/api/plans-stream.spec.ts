@@ -12,6 +12,7 @@ import {
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { createStreamHandler, POST } from '@/app/api/v1/plans/stream/route';
 import { AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
@@ -34,6 +35,17 @@ const workflowProcessFactory = vi.hoisted(() =>
 vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
   createWorkflowBackedProcessGeneration: workflowProcessFactory,
 }));
+
+vi.mock('@/lib/api/parse-json-body', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/api/parse-json-body')>();
+  return {
+    ...actual,
+    parseJsonBody: vi.fn((...args: Parameters<typeof actual.parseJsonBody>) =>
+      actual.parseJsonBody(...args),
+    ),
+  };
+});
 
 const NUMERIC_HEADER_PATTERN = /^\d+$/;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
@@ -210,9 +222,7 @@ describe('POST /api/v1/plans/stream — HTTP preflight + default boundary smoke'
       },
       body: '{}',
     });
-    Object.defineProperty(request, 'json', {
-      value: async () => payload,
-    });
+    vi.mocked(parseJsonBody).mockResolvedValueOnce(payload);
 
     const response = await post(request);
 

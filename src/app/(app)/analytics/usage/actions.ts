@@ -13,15 +13,18 @@ export async function syncAnalyticsTimezoneAction(
   const nextAnalyticsTimezone = parsed.data.analyticsTimezone;
   if (!nextAnalyticsTimezone) return false;
 
-  const result = await requestBoundary.action(async ({ actor, db }) => {
-    if (actor.analyticsTimezone === nextAnalyticsTimezone) {
-      return false;
-    }
+  const result = await requestBoundary.action(
+    { rateLimit: 'mutation' },
+    async ({ actor, db }) => {
+      if (actor.analyticsTimezone === nextAnalyticsTimezone) {
+        return false;
+      }
 
-    await upsertUserAnalyticsTimezone(actor.id, nextAnalyticsTimezone, db);
+      await upsertUserAnalyticsTimezone(actor.id, nextAnalyticsTimezone, db);
 
-    return true;
-  });
+      return true;
+    },
+  );
 
   return result ?? false;
 }

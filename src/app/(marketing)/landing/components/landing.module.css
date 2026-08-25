@@ -1,65 +1,288 @@
-/* After Hours landing motion. */
+/* After Hours landing motion. Keep movement quiet, composited, and one-shot. */
 
-/* Scroll reveal (driven by RevealAnimation.tsx) */
-.reveal {
+.revealItem,
+.revealFromLeft,
+.revealFromRight,
+.revealScale,
+.planRow,
+.questionRow,
+.progressFill,
+.analyticsBar,
+.routeDot {
   opacity: 1;
   transform: none;
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: calc(var(--i, 0) * 90ms);
 }
 
-.reveal[data-reveal-state='observing'] {
+.reveal[data-reveal-state='observing']
+  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
   opacity: 0;
-  transform: translateY(1.5rem);
 }
 
-.reveal[data-reveal-state='visible'] {
-  opacity: 1;
-  transform: none;
+.reveal[data-reveal-state='observing'] .revealItem {
+  transform: translate3d(0, 1.25rem, 0);
 }
 
-/* Slow drift for the sparkle marks */
-.drift {
-  animation: drift 9s ease-in-out infinite;
+.reveal[data-reveal-state='observing'] .revealFromLeft {
+  transform: translate3d(-1.5rem, 0, 0);
 }
 
-@keyframes drift {
-  0%,
-  100% {
-    transform: translateY(0);
+.reveal[data-reveal-state='observing'] .revealFromRight {
+  transform: translate3d(1.5rem, 0, 0);
+}
+
+.reveal[data-reveal-state='observing'] .revealScale {
+  transform: translate3d(0, 0.75rem, 0) scale(0.965);
+}
+
+.reveal[data-reveal-state='visible']
+  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+  transition:
+    opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+/* Hero load choreography */
+.heroLead,
+.heroEmphasis,
+.heroCopy,
+.heroActions {
+  animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.heroLead {
+  animation-delay: 80ms;
+}
+
+.heroEmphasis {
+  animation-name: heroEmphasis;
+  animation-delay: 180ms;
+  transform-origin: 50% 100%;
+}
+
+.heroCopy {
+  animation-delay: 330ms;
+}
+
+.heroActions {
+  animation-delay: 470ms;
+}
+
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.35rem, 0);
   }
-  50% {
-    transform: translateY(-0.5rem);
-  }
 }
 
-/* Polaris pulse on the final banner */
-.pulse {
-  animation: polarisPulse 4s ease-in-out infinite;
-}
-
-@keyframes polarisPulse {
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: scale(1);
+@keyframes heroEmphasis {
+  from {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+    transform: translate3d(0, 1rem, 0) scale(0.985);
   }
-  50% {
+  to {
+    clip-path: inset(0);
     opacity: 1;
-    transform: scale(1.12);
+    transform: none;
+  }
+}
+
+/* Page atmosphere */
+.ambientOrb {
+  animation: ambientFloat var(--orb-duration, 18s) ease-in-out
+    var(--orb-delay, 0s) infinite alternate;
+}
+
+.ambientOrbPrimary {
+  --orb-duration: 17s;
+  --orb-x: -1.5rem;
+  --orb-y: 1.25rem;
+  --orb-scale: 1.05;
+}
+
+.ambientOrbMuted {
+  --orb-duration: 21s;
+  --orb-delay: -5s;
+  --orb-x: 1.75rem;
+  --orb-y: -1rem;
+  --orb-scale: 1.08;
+}
+
+.ambientOrbCard {
+  --orb-duration: 19s;
+  --orb-delay: -9s;
+  --orb-x: -1rem;
+  --orb-y: -1.5rem;
+  --orb-scale: 0.96;
+}
+
+@keyframes ambientFloat {
+  to {
+    transform: translate3d(var(--orb-x), var(--orb-y), 0)
+      scale(var(--orb-scale));
+  }
+}
+
+/* Route line and fixed points */
+.routePath {
+  stroke-dashoffset: 0;
+}
+
+.reveal[data-reveal-state='observing'] .routePath {
+  stroke-dashoffset: 1;
+}
+
+.reveal[data-reveal-state='visible'] .routePath {
+  animation: routeDraw 1.45s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+@keyframes routeDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.routeDot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.reveal[data-reveal-state='observing'] .routeDot {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.reveal[data-reveal-state='visible'] .routeDot {
+  animation: routeDotIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+@keyframes routeDotIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+/* Product instrument demonstrations */
+.reveal[data-reveal-state='observing'] .planRow {
+  opacity: 0;
+  transform: translate3d(-0.75rem, 0, 0);
+}
+
+.reveal[data-reveal-state='visible'] .planRow {
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+.progressFill {
+  transform-origin: left;
+}
+
+.reveal[data-reveal-state='observing'] .progressFill {
+  transform: scaleX(0);
+}
+
+.reveal[data-reveal-state='visible'] .progressFill {
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1) 0.58s;
+}
+
+.analyticsBar {
+  transform-origin: bottom;
+}
+
+.reveal[data-reveal-state='observing'] .analyticsBar {
+  opacity: 0.35;
+  transform: scaleY(0);
+}
+
+.reveal[data-reveal-state='visible'] .analyticsBar {
+  transition:
+    opacity 0.45s ease-out calc(var(--i, 0) * 90ms),
+    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+/* FAQ sequence and open-state feedback */
+.reveal[data-reveal-state='observing'] .questionRow {
+  opacity: 0;
+  transform: translate3d(0, 0.75rem, 0);
+}
+
+.reveal[data-reveal-state='visible'] .questionRow {
+  transition:
+    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+.questionRow[open] .faqAnswer {
+  animation: faqAnswerIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes faqAnswerIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -0.4rem, 0);
+  }
+}
+
+/* CTA feedback stays short because these controls are used repeatedly. */
+.ctaMotion:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .ctaMotion:hover {
+    transform: translateY(-0.125rem);
+  }
+
+  .ctaMotion:active {
+    transform: translateY(-0.125rem) scale(0.98);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .heroLead,
+  .heroEmphasis,
+  .heroCopy,
+  .heroActions,
+  .ambientOrb,
+  .questionRow[open] .faqAnswer {
+    animation: none;
+  }
+
+  .reveal[data-reveal-state]
+    :is(
+      .revealItem,
+      .revealFromLeft,
+      .revealFromRight,
+      .revealScale,
+      .planRow,
+      .questionRow,
+      .progressFill,
+      .analyticsBar,
+      .routeDot
+    ) {
     opacity: 1;
     transform: none;
     transition: none;
   }
 
-  .drift,
-  .pulse {
+  .reveal[data-reveal-state] .routePath {
     animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .reveal[data-reveal-state] .routeDot {
+    animation: none;
+  }
+
+  .ctaMotion:hover,
+  .ctaMotion:active {
+    transform: none;
   }
 }

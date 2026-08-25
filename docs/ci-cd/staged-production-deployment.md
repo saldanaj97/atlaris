@@ -41,7 +41,7 @@ This lane complements Local Preview and Staging. It does not replace them.
 Reasons:
 
 - `.github/workflows/ci-trunk.yml` ignores documentation-only pushes (`paths-ignore` for `docs/**`, `**/*.md`, and related paths). `All Checks Passed (trunk)` is therefore **not** emitted for every Production candidate SHA.
-- `All Checks Passed (PR)` validates the pre-merge PR commit, not necessarily the post-merge Production candidate.
+- CircleCI `ci-pr` job statuses validate the pre-merge PR commit, not necessarily the post-merge Production candidate.
 - A required check that never starts must not leave Production deployments permanently waiting.
 
 When a later change adds a check:

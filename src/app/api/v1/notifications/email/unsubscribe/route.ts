@@ -1,4 +1,5 @@
 import { applySignedEmailUnsubscribe } from '@/features/notifications/email/unsubscribe';
+import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 import { withErrorBoundary } from '@/lib/api/route-wrappers';
 
 const NO_STORE_HEADERS = {
@@ -136,6 +137,8 @@ export const GET = withErrorBoundary(async () => {
 });
 
 async function handlePost(request: Request): Promise<Response> {
+  checkIpRateLimit(request, 'publicApi');
+
   const token = new URL(request.url).searchParams.get('token');
   if (!token) {
     return htmlResponse(failureHtml(), 400);

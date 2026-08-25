@@ -48,18 +48,7 @@ export function ModuleDetailContentSkeleton() {
               </div>
             </div>
           </div>
-
-          <div className='absolute right-0 bottom-0 left-0 h-1 bg-muted'>
-            <Skeleton className='h-full w-1/4' />
-          </div>
         </div>
-
-        {/* Stats strip skeleton */}
-        <dl className='mt-6 grid grid-cols-2 gap-y-4 border-y border-border/60 py-4 sm:flex sm:divide-x sm:divide-border/60'>
-          <StatCellSkeleton widths={['w-12', 'w-14', 'w-16']} />
-          <StatCellSkeleton widths={['w-14', 'w-20', 'w-24']} />
-          <StatCellSkeleton widths={['w-14', 'w-12', 'w-24']} />
-        </dl>
       </article>
 
       {/* Lessons Section skeleton */}
@@ -78,24 +67,6 @@ export function ModuleDetailContentSkeleton() {
           ))}
         </div>
       </section>
-    </div>
-  );
-}
-
-function StatCellSkeleton({
-  widths,
-}: {
-  widths: readonly [string, string, string];
-}) {
-  return (
-    <div className='min-w-0 px-4 first:pl-0 sm:px-6'>
-      <dt>
-        <Skeleton className={`h-3 bg-secondary ${widths[0]}`} />
-      </dt>
-      <dd className='mt-1'>
-        <Skeleton className={`h-6 ${widths[1]}`} />
-        <Skeleton className={`mt-0.5 h-3 bg-muted ${widths[2]}`} />
-      </dd>
     </div>
   );
 }

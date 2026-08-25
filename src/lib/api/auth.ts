@@ -133,7 +133,7 @@ export async function requireCurrentUserRecord(): Promise<ActorUser> {
 
 /**
  * Private helper encapsulating shared auth + RLS + context + cleanup logic
- * used by withAuth, withServerComponentContext, and withServerActionContext.
+ * used by withAuth, runServerComponentContext, and withServerActionContext.
  */
 async function runWithAuthenticatedContext<T>(
   authUserId: string,
@@ -207,6 +207,25 @@ export function withAuth(handler: AuthHandler): PlainHandler {
 }
 
 /**
+ * @internal Used by `requestBoundary.component()`.
+ *
+ * Establishes an RLS-enforced DB context for Server Components.
+ * Returns null if the user is not authenticated.
+ */
+export async function runServerComponentContext<T>(
+  fn: (user: ActorUser) => MaybePromise<T>,
+): Promise<T | null> {
+  const authUserId = await getEffectiveAuthUserId({ strict: true });
+  if (!authUserId) return null;
+
+  if (appEnv.isTest) {
+    return runWithTestContext(authUserId, (user) => fn(user));
+  }
+
+  return runWithAuthenticatedContext(authUserId, (user) => fn(user));
+}
+
+/**
  * @deprecated Use `requestBoundary.component()` instead. See docs/CHANGELOG.md.
  * Will be removed in v2.0.
  *
@@ -227,14 +246,7 @@ export async function withServerComponentContext<T>(
     );
   }
 
-  const authUserId = await getEffectiveAuthUserId({ strict: true });
-  if (!authUserId) return null;
-
-  if (appEnv.isTest) {
-    return runWithTestContext(authUserId, (user) => fn(user));
-  }
-
-  return runWithAuthenticatedContext(authUserId, (user) => fn(user));
+  return runServerComponentContext(fn);
 }
 
 /**

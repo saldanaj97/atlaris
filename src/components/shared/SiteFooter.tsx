@@ -1,53 +1,14 @@
+import BrandLogo from '@/components/shared/BrandLogo';
+
 export default function SiteFooter() {
   return (
     <footer className='border-t border-border px-4 py-8 sm:px-6 lg:px-8'>
       <div className='mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row'>
-        {/* Brand */}
-        <div className='flex items-center gap-2'>
-          <AtlarisLogoSmall />
-          <span className='text-sm font-semibold text-foreground'>Atlaris</span>
-        </div>
-
-        {/* Copyright */}
+        <BrandLogo size='sm' />
         <p className='text-xs text-muted-foreground' suppressHydrationWarning>
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>
     </footer>
-  );
-}
-
-function AtlarisLogoSmall() {
-  return (
-    <svg
-      viewBox='0 0 24 24'
-      fill='none'
-      xmlns='http://www.w3.org/2000/svg'
-      className='size-5'
-      aria-hidden='true'
-    >
-      <rect
-        x='1.5'
-        y='1.5'
-        width='21'
-        height='21'
-        rx='4.5'
-        className='fill-primary stroke-primary'
-        strokeWidth='1'
-      />
-      <path
-        d='M7.5 16.5L12 7.5L16.5 16.5'
-        stroke='white'
-        strokeWidth='1.5'
-        strokeLinecap='round'
-        strokeLinejoin='round'
-      />
-      <path
-        d='M9 13.5H15'
-        stroke='white'
-        strokeWidth='1.5'
-        strokeLinecap='round'
-      />
-    </svg>
   );
 }
