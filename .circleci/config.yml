@@ -141,6 +141,7 @@ commands:
 jobs:
   detect-changes:
     executor: node
+    resource_class: small
     steps:
       - checkout
       - init-env
