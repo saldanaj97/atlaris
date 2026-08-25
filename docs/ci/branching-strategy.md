@@ -85,11 +85,11 @@ We use two protected branches that serve as anchors for all development:
 
 ## CI Workflows Explained
 
-We use 4 core GitHub Actions workflows:
+PR validation is CircleCI. Trunk integration after merge to `develop`/`main` is still GitHub Actions, plus a CircleCI sidecar.
 
-### 1. `ci-pr.yml` - PR Validation
+### 1. CircleCI `ci-pr` - PR Validation
 
-**Triggers:** Pull requests to `develop` or `main`
+**Triggers:** Pushes to non-`main`/non-`develop` branches, and GitHub App `pull_request` events whose head branch is `develop` (the `develop` → `main` promotion PR)
 
 **What it runs:**
 
@@ -99,10 +99,12 @@ We use 4 core GitHub Actions workflows:
 - Build (Next.js)
 - Unit tests
 - Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
+- RLS security tests
+- Production workflow tests
 
-**Purpose:** Fast feedback on PRs before merge.
+**Purpose:** Fast feedback on PRs before merge. GitHub rulesets require these job names, not a GitHub Actions aggregator.
 
-### 2. `ci-trunk.yml` - Full CI
+### 2. `ci-trunk.yml` - Full CI (GitHub Actions)
 
 **Triggers:** Push to `develop` or `main`
 
@@ -168,7 +170,7 @@ git commit -m "feat: ..."
 
 ### Step 4: PR review process
 
-1. CI runs automatically (`ci-pr.yml`)
+1. CI runs automatically (CircleCI `ci-pr`)
 2. Vercel preview deploy runs automatically
 3. Address feedback and merge
 
@@ -223,7 +225,7 @@ Use the Vercel preview deployment URL; ensure preview environment variables poin
 
 ## Related Files
 
-- `.github/workflows/ci-pr.yml` - PR validation
+- `.circleci/config.yml` - PR validation (`ci-pr`) and CircleCI trunk sidecar
 - `.github/workflows/ci-trunk.yml` - Full CI on trunk
 - `.github/workflows/staging-db-migrations.yaml` - Staging migration workflow
 - `.github/workflows/production-db-migrations.yaml` - Production migration workflow

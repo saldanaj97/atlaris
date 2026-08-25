@@ -31,7 +31,13 @@ commands:
       - run:
           name: Set pipeline env
           command: |
-            echo 'export BASE_REF="<< pipeline.parameters.base_ref >>"' >> "$BASH_ENV"
+            EVENT_NAME="<< pipeline.event.name >>"
+            BRANCH="<< pipeline.git.branch >>"
+            BASE_REF="<< pipeline.parameters.base_ref >>"
+            if [ "${EVENT_NAME}" = "pull_request" ] && [ "${BRANCH}" = "develop" ]; then
+              BASE_REF="main"
+            fi
+            echo "export BASE_REF=\"${BASE_REF}\"" >> "$BASH_ENV"
             echo 'export INTEGRATION_MAX_WORKERS="<< pipeline.parameters.integration_workers >>"' >> "$BASH_ENV"
             echo 'export TEST_DB_DEBUG="<< pipeline.parameters.test_db_debug >>"' >> "$BASH_ENV"
 
@@ -147,8 +153,16 @@ jobs:
             echo true > .ci-flags/source
             echo true > .ci-flags/integration
 
+            event_name="<< pipeline.event.name >>"
             base_rev="<< pipeline.git.base_revision >>"
-            if [ "${CIRCLE_BRANCH}" = "main" ] || [ "${CIRCLE_BRANCH}" = "develop" ]; then
+            if [ "${event_name}" = "pull_request" ]; then
+              if ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+                echo "origin/${BASE_REF} missing; assuming code changed."
+                echo "code=true source=true integration=true"
+                exit 0
+              fi
+              diff_range="origin/${BASE_REF}...HEAD"
+            elif [ "${CIRCLE_BRANCH}" = "main" ] || [ "${CIRCLE_BRANCH}" = "develop" ]; then
               if [ -z "${base_rev}" ]; then
                 echo "No pipeline.git.base_revision; assuming code changed."
                 echo "code=true source=true integration=true"
@@ -388,7 +402,7 @@ jobs:
                 echo "Skipping related run on node ${NODE}/${TOTAL}."
                 exit 0
               fi
-              # ponytail: word-split FILES; same as GitHub ci-pr.yml
+              # ponytail: word-split FILES; CircleCI related-file list is already filtered
               pnpm vitest related --project unit --run --coverage \
                 --reporter=default \
                 --reporter=json \
@@ -699,58 +713,57 @@ jobs:
           no_output_timeout: 15m
 
 workflows:
+  # PR merge gate. Feature-branch pushes keep running ci-pr. Pushes to
+  # develop/main do not (ci-trunk owns those). develop→main PRs need a
+  # GitHub App pull_request trigger or this workflow never starts on develop.
   ci-pr:
+    when:
+      or:
+        - and:
+            - equal: [pull_request, << pipeline.event.name >>]
+            - equal: [develop, << pipeline.git.branch >>]
+            - or:
+                - equal: [opened, << pipeline.event.action >>]
+                - equal: [synchronize, << pipeline.event.action >>]
+                - equal: [reopened, << pipeline.event.action >>]
+                - equal: [ready_for_review, << pipeline.event.action >>]
+        - and:
+            - not:
+                equal: [pull_request, << pipeline.event.name >>]
+            - not:
+                equal: [main, << pipeline.git.branch >>]
+            - not:
+                equal: [develop, << pipeline.git.branch >>]
     jobs:
-      - detect-changes:
-          filters:
-            branches:
-              ignore: [main, develop]
+      - detect-changes
       - lint-and-type-check:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - vulnerability-scan:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - build:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - unit-tests:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - integration-light:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - security-tests:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
       - workflow-tests:
           requires:
             - detect-changes
-          filters:
-            branches:
-              ignore: [main, develop]
 
   # GitHub ci-trunk.yml also runs on merge_group; CircleCI has no equivalent.
   # Codecov and all-checks-trunk are omitted: workflow status is the gate.
   ci-trunk:
+    when:
+      not:
+        equal: [pull_request, << pipeline.event.name >>]
     jobs:
       - detect-changes:
           filters:
