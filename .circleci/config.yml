@@ -125,9 +125,6 @@ commands:
           command: mkdir -p test-results coverage
       - store_test_results:
           path: test-results
-      - store_artifacts:
-          path: test-results
-          destination: test-results
       - when:
           condition: << parameters.coverage-destination >>
           steps:
