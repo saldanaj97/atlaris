@@ -95,6 +95,14 @@ describe('plan-generation workflow reservation serialization', () => {
     expect(restored.generationPurpose).toBe('initial');
   });
 
+  it('rejects explicit regeneration purpose on the plan-generation boundary', () => {
+    expect(() =>
+      resolvePlanGenerationWorkflowPurpose({
+        generationPurpose: 'regeneration',
+      }),
+    ).toThrow(/Invalid generation purpose: regeneration \(expected initial\)/);
+  });
+
   it('rejects invalid reservation purpose values', () => {
     const reservation = makeAttemptReservation();
     const serialized = {

@@ -7,6 +7,7 @@ import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
+  parseGenerationPurpose,
   resolveLegacyWorkflowGenerationPurpose,
   type GenerationPurpose,
 } from '@/shared/types/generation-purpose';
@@ -38,10 +39,23 @@ export type PlanGenerationWorkflowResult = GenerationAttemptResult;
 export function resolvePlanGenerationWorkflowPurpose(
   input: Pick<PlanGenerationWorkflowInput, 'generationPurpose'>,
 ): GenerationPurpose {
-  return resolveLegacyWorkflowGenerationPurpose(
-    input.generationPurpose,
-    'initial',
-  );
+  if (input.generationPurpose === undefined) {
+    return 'initial';
+  }
+
+  const parsed = parseGenerationPurpose(input.generationPurpose);
+  switch (parsed) {
+    case 'initial':
+      return parsed;
+    case 'regeneration':
+      throw new Error(
+        `Invalid generation purpose: ${parsed} (expected initial)`,
+      );
+    default: {
+      const _never: never = parsed;
+      throw new Error(`Unhandled generation purpose: ${String(_never)}`);
+    }
+  }
 }
 
 export function toSerializableReservation(

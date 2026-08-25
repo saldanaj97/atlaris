@@ -14,6 +14,14 @@ describe('plan regeneration workflow purpose', () => {
     expect(resolvePlanRegenerationWorkflowPurpose({})).toBe('regeneration');
   });
 
+  it('rejects explicit initial purpose instead of persisting it', () => {
+    expect(() =>
+      resolvePlanRegenerationWorkflowPurpose({
+        generationPurpose: 'initial',
+      }),
+    ).toThrow(/Invalid generation purpose: initial \(expected regeneration\)/);
+  });
+
   it('rejects invalid purpose values instead of inferring', () => {
     expect(() =>
       resolvePlanRegenerationWorkflowPurpose({

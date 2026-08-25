@@ -25,10 +25,13 @@ export function parseGenerationPurpose(value: unknown): GenerationPurpose {
 }
 
 /**
- * Temporary expand-window helper for already-enqueued workflow payloads that
- * predate `generationPurpose`. Call once at a trusted workflow boundary, then
- * persist the resolved value. Do not use this to infer purpose from usageKind,
- * routes, or metadata after rollout.
+ * Temporary expand-window helper for serialized reservations that predate
+ * `generationPurpose`. Missing resolves to `fallback`; an explicit value is
+ * parsed as any valid GenerationPurpose.
+ *
+ * Workflow payload classification must use the trusted boundary resolvers,
+ * which reject an explicit purpose that does not match that workflow.
+ * Do not use this to infer purpose from usageKind, routes, or metadata.
  */
 export function resolveLegacyWorkflowGenerationPurpose(
   rawPurpose: unknown,

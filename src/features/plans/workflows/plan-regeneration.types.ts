@@ -1,5 +1,5 @@
 import {
-  resolveLegacyWorkflowGenerationPurpose,
+  parseGenerationPurpose,
   type GenerationPurpose,
 } from '@/shared/types/generation-purpose';
 
@@ -14,10 +14,23 @@ export type PlanRegenerationWorkflowInput = {
 export function resolvePlanRegenerationWorkflowPurpose(
   input: Pick<PlanRegenerationWorkflowInput, 'generationPurpose'>,
 ): GenerationPurpose {
-  return resolveLegacyWorkflowGenerationPurpose(
-    input.generationPurpose,
-    'regeneration',
-  );
+  if (input.generationPurpose === undefined) {
+    return 'regeneration';
+  }
+
+  const parsed = parseGenerationPurpose(input.generationPurpose);
+  switch (parsed) {
+    case 'regeneration':
+      return parsed;
+    case 'initial':
+      throw new Error(
+        `Invalid generation purpose: ${parsed} (expected regeneration)`,
+      );
+    default: {
+      const _never: never = parsed;
+      throw new Error(`Unhandled generation purpose: ${String(_never)}`);
+    }
+  }
 }
 
 export type PlanRegenerationWorkflowClaimResult =
