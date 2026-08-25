@@ -43,14 +43,18 @@ commands:
             git fetch --unshallow || true
             git fetch --no-tags origin "${BASE_REF}" || true
 
+  # Halt on detect-changes flags before checkout so git/deps/artifacts are skipped.
+  # Attach at /tmp/.ci-flags so checkout still sees an empty project directory.
+  # This cannot avoid Docker executor or PostgreSQL secondary-container
+  # provisioning: CircleCI starts the full executor before any step.
   skip-unless-code:
     steps:
       - attach_workspace:
-          at: .ci-flags
+          at: /tmp/.ci-flags
       - run:
           name: Skip if no code changes
           command: |
-            if [ "$(cat .ci-flags/code 2>/dev/null || echo true)" != "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/code 2>/dev/null || echo true)" != "true" ]; then
               echo "No code changes; skipping."
               circleci-agent step halt
             fi
@@ -58,11 +62,11 @@ commands:
   skip-unless-integration:
     steps:
       - attach_workspace:
-          at: .ci-flags
+          at: /tmp/.ci-flags
       - run:
           name: Skip if no integration-path changes
           command: |
-            if [ "$(cat .ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
               echo "No integration-path changes; skipping."
               circleci-agent step halt
             fi
@@ -219,14 +223,14 @@ jobs:
   lint-and-type-check:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - install-pnpm-deps
       - run:
           name: Lint
           command: |
-            if [ "$(cat .ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
               pnpm check:lint:ci
             else
               pnpm check:lint
@@ -239,9 +243,9 @@ jobs:
   vulnerability-scan:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - node/install-pnpm:
           version: '11.9.0'
       - run:
@@ -298,9 +302,9 @@ jobs:
   build:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - install-pnpm-deps
       - restore_cache:
           keys:
@@ -323,9 +327,9 @@ jobs:
       NODE_ENV: test
       SKIP_DB_TEST_SETUP: 'true'
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - fetch-base
       - install-pnpm-deps
       - run:
@@ -425,9 +429,9 @@ jobs:
       POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - fetch-base
       - install-pnpm-deps
       - run:
@@ -550,8 +554,6 @@ jobs:
       POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
-      - checkout
-      - init-env
       - when:
           condition:
             equal: [integration, << parameters.skip_unless >>]
@@ -562,6 +564,8 @@ jobs:
             equal: [code, << parameters.skip_unless >>]
           steps:
             - skip-unless-code
+      - checkout
+      - init-env
       - install-pnpm-deps
       - run:
           name: Wait for PostgreSQL
@@ -607,9 +611,9 @@ jobs:
       POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-integration
       - checkout
       - init-env
-      - skip-unless-integration
       - install-pnpm-deps
       - run:
           name: Wait for PostgreSQL
@@ -672,9 +676,9 @@ jobs:
       POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - install-pnpm-deps
       - run:
           name: Dependency remediation tests
