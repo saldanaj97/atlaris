@@ -15,7 +15,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Start work from `develop`.
 - Open PRs into `develop` (or `main` only for true hotfixes).
-- PRs run CI checks.
+- PRs run CircleCI `ci-pr` checks.
 - Vercel handles preview deployments natively for non-`main` branches.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
@@ -38,11 +38,12 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ## Workflow map (what each workflow does)
 
-### 1) `.github/workflows/ci-pr.yml`
+### 1) CircleCI `ci-pr` (`.circleci/config.yml`)
 
-- Trigger: PRs to `develop` or `main`
-- Runs: lint, type-check, dependency audit, build, unit tests, and PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
-- Internal path filtering skips expensive jobs when no code changed, while the aggregate `All Checks Passed (PR)` check is still emitted for every PR.
+- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events when the head branch is `develop` (`develop` → `main`)
+- Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
+- Path filtering skips expensive jobs when no code changed. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
+- `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
 ### 2) `.github/workflows/ci-trunk.yml`
 
@@ -64,7 +65,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
 - `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
 - A validated run updates one bot-owned branch/PR targeting `develop`; a clean audit is a no-op, and registry failures, residual findings, unexpected files, or ambiguous versions fail closed without mutating a PR.
-- The workflow explicitly dispatches `ci-pr.yml` with `base_ref=develop` on the final bot-branch SHA and verifies `All Checks Passed (PR)` is attached to that exact SHA. This is required because a `GITHUB_TOKEN`-created PR does not reliably trigger an unattended PR workflow.
+- The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot-branch `push` (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
 - The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
 
 ### 5) `.github/workflows/staging-db-migrations.yaml`
@@ -96,7 +97,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ## End-to-end flow: PR lifecycle
 
 1. You push to a feature branch and open a PR to `develop`.
-2. `ci-pr.yml` validates code quality and tests.
+2. CircleCI `ci-pr` validates code quality and tests.
 3. Vercel creates/updates a preview deployment automatically.
 4. Configure preview Supabase settings in Vercel if preview deployments need a database.
 
@@ -188,7 +189,7 @@ Prefer the staged Production CLI path (`--skip-domain` then explicit promote) ov
 - Confirm the scheduled/manual workflow run is present on `main`; schedules on other branches are not authoritative.
 - Check whether `develop` moved between planning and publication; the workflow intentionally stops and re-plans on the next run.
 - For a residual high/critical or manifest-required advisory, follow the dedicated manual remediation-PR lane in [`docs/security/supply-chain-policy.md`](../security/supply-chain-policy.md).
-- For a bot PR with missing checks, inspect the explicit `ci-pr.yml` dispatch and verify it ran against the latest bot-branch SHA with `base_ref=develop`.
+- For a bot PR with missing checks, confirm CircleCI `ci-pr` ran on the bot branch push and that the development ruleset required jobs are present on that SHA.
 
 ---
 
@@ -209,7 +210,7 @@ Prefer the staged Production CLI path (`--skip-domain` then explicit promote) ov
 - `docs/ci-cd/staged-production-deployment.md`
 - `docs/ci/branching-strategy.md`
 - `docs/development/deploy.md`
-- `.github/workflows/ci-pr.yml`
+- `.circleci/config.yml`
 - `.github/workflows/ci-trunk.yml`
 - `.github/workflows/staging-db-migrations.yaml`
 - `.github/workflows/production-db-migrations.yaml`
