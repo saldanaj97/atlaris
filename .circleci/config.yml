@@ -239,17 +239,19 @@ jobs:
       - init-env
       - install-pnpm-deps
       - run:
-          name: Lint
-          command: |
-            if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
-              pnpm check:lint:ci
-            else
-              pnpm check:lint
-            fi
-      - run:
-          name: Type check
-          command: pnpm check:type
+          name: Lint and type check
           no_output_timeout: 5m
+          command: |
+            lint_command="pnpm check:lint"
+            if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
+              lint_command="pnpm check:lint:ci"
+            fi
+            pnpm exec concurrently \
+              --kill-others-on-fail \
+              --names lint,type \
+              --prefix-colors blue,magenta \
+              "$lint_command" \
+              "pnpm check:type"
 
   vulnerability-scan:
     executor: node
