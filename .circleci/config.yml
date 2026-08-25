@@ -308,15 +308,15 @@ jobs:
       - install-pnpm-deps
       - restore_cache:
           keys:
-            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-
             - next-v1-{{ checksum "pnpm-lock.yaml" }}-
       - run:
           name: Build
           command: pnpm build
           no_output_timeout: 10m
       - save_cache:
-          when: always
-          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}
+          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
           paths:
             - .next/cache
 
