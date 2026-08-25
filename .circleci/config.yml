@@ -256,6 +256,7 @@ jobs:
 
   vulnerability-scan:
     executor: node
+    resource_class: small
     steps:
       - skip-unless-code
       - checkout
