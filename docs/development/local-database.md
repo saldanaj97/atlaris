@@ -6,13 +6,32 @@ Clerk Auth remains hosted. Supabase local replaces the database and local Supaba
 
 ## Database environments
 
-| Environment               | Database                                                                    |
-| ------------------------- | --------------------------------------------------------------------------- |
-| Local developer           | Full Supabase CLI stack through OrbStack                                    |
-| Cursor Cloud Agent        | Private PostgreSQL 17 on that agent VM's loopback interface                 |
-| Integration and RLS tests | Existing Testcontainers PostgreSQL 17                                       |
-| Staging                   | Hosted Supabase `atlaris-dev`, for integration and manual smoke checks only |
-| Production                | Hosted Supabase `atlaris-prod`                                              |
+| Environment                    | Database                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| Local developer                | Full Supabase CLI stack through OrbStack                                    |
+| Cursor Cloud Agent             | Private PostgreSQL 17 on that agent VM's loopback interface                 |
+| Local automated tests          | Testcontainers-managed PostgreSQL 17                                        |
+| GitHub Actions DB-backed tests | Testcontainers-managed PostgreSQL 17                                        |
+| CircleCI DB-backed tests       | Docker executor PostgreSQL 17 secondary container                           |
+| Staging                        | Hosted Supabase `atlaris-dev`, for integration and manual smoke checks only |
+| Production                     | Hosted Supabase `atlaris-prod`                                              |
+
+None of the automated test lanes use the long-lived Supabase local stack or a hosted Supabase/staging/production database.
+
+### Automated test databases
+
+Local automated tests (integration, RLS/security, workflow, and e2e) start Testcontainers PostgreSQL 17 by default. GitHub Actions uses the same Testcontainers path.
+
+CircleCI database-backed jobs attach a `postgres:17-alpine` secondary container on the Docker executor and set `SKIP_TESTCONTAINERS=true` with:
+
+```env
+POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres
+POSTGRES_URL_NON_POOLING=postgresql://postgres:postgres@127.0.0.1:5432/postgres
+```
+
+With `SKIP_TESTCONTAINERS=true`, no Testcontainers container is started. The existing global setup still waits for Postgres, then runs the shared bootstrap, `pnpm db:migrate`, RLS grants, runtime fixups, and template-database creation. It writes process-scoped runtime state (`TESTCONTAINERS_ENV_FILE`). Each Vitest worker clones `atlaris_test_wN` from that template.
+
+`SKIP_TESTCONTAINERS=true` requires `POSTGRES_URL` and/or `POSTGRES_URL_NON_POOLING` and refuses non-local hosts. Do not point tests at hosted databases.
 
 ### Cursor Cloud Agent database
 
@@ -58,17 +77,17 @@ That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env
 
 ## Ports and local services
 
-| Port   | Service                      | Purpose                         |
-| ------ | ---------------------------- | ------------------------------- |
-| 54321  | Supabase API                 | Local Data/Auth API URL         |
-| 54322  | Supabase Postgres            | Local development database      |
-| 54323  | Supabase Studio              | Local database UI               |
-| 54324  | Supabase email testing inbox | Local auth email monitor        |
-| 54330  | `docker-compose.test.yml`    | Manual / CI-style tests         |
-| random | Testcontainers PostgreSQL 17 | Automated integration/RLS tests |
-| 55432  | Cursor Cloud PostgreSQL 17   | Task-local agent development    |
+| Port   | Service                      | Purpose                                  |
+| ------ | ---------------------------- | ---------------------------------------- |
+| 54321  | Supabase API                 | Local Data/Auth API URL                  |
+| 54322  | Supabase Postgres            | Local development database               |
+| 54323  | Supabase Studio              | Local database UI                        |
+| 54324  | Supabase email testing inbox | Local auth email monitor                 |
+| 54330  | `docker-compose.test.yml`    | Manual / CI-style tests                  |
+| random | Testcontainers PostgreSQL 17 | Local and GitHub Actions automated tests |
+| 55432  | Cursor Cloud PostgreSQL 17   | Task-local agent development             |
 
-Automated integration/security tests still use isolated Testcontainers, not the long-lived Supabase local database.
+CircleCI database-backed jobs use the sidecar at `127.0.0.1:5432` inside the job, not a developer-machine port. Automated tests never use the long-lived Supabase local database.
 
 ## Quick start
 
@@ -151,4 +170,4 @@ Hosted deployment and migration workflows are separate from the local-dev stack.
 - **Port conflict** — Stop the process using the relevant Supabase local port, or adjust `supabase/config.toml`.
 - **Connection refused** — Run `pnpm db:dev:start`; confirm `supabase status` reports Postgres on `127.0.0.1:54322`.
 - **Missing seed user** — Run `pnpm db:dev:seed` or `pnpm db:dev:reset`.
-- **Integration tests should not use Supabase local** — Leave Testcontainers enabled unless you are intentionally debugging with `SKIP_TESTCONTAINERS=true`.
+- **Integration tests should not use Supabase local or hosted databases** — Leave Testcontainers enabled locally and on GitHub Actions. CircleCI sets `SKIP_TESTCONTAINERS=true` against the job sidecar. Do not use hosted URLs.

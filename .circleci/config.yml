@@ -43,14 +43,18 @@ commands:
             git fetch --unshallow || true
             git fetch --no-tags origin "${BASE_REF}" || true
 
+  # Halt on detect-changes flags before checkout so git/deps/artifacts are skipped.
+  # Attach at /tmp/.ci-flags so checkout still sees an empty project directory.
+  # This cannot avoid Docker executor or PostgreSQL secondary-container
+  # provisioning: CircleCI starts the full executor before any step.
   skip-unless-code:
     steps:
       - attach_workspace:
-          at: .ci-flags
+          at: /tmp/.ci-flags
       - run:
           name: Skip if no code changes
           command: |
-            if [ "$(cat .ci-flags/code 2>/dev/null || echo true)" != "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/code 2>/dev/null || echo true)" != "true" ]; then
               echo "No code changes; skipping."
               circleci-agent step halt
             fi
@@ -58,11 +62,11 @@ commands:
   skip-unless-integration:
     steps:
       - attach_workspace:
-          at: .ci-flags
+          at: /tmp/.ci-flags
       - run:
           name: Skip if no integration-path changes
           command: |
-            if [ "$(cat .ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
               echo "No integration-path changes; skipping."
               circleci-agent step halt
             fi
@@ -121,9 +125,6 @@ commands:
           command: mkdir -p test-results coverage
       - store_test_results:
           path: test-results
-      - store_artifacts:
-          path: test-results
-          destination: test-results
       - when:
           condition: << parameters.coverage-destination >>
           steps:
@@ -176,7 +177,7 @@ jobs:
               while IFS= read -r f; do
                 [ -z "${f}" ] && continue
                 case "${f}" in
-                  src/*|supabase/*)
+                  src/*|supabase/*|public/*)
                     source=true
                     code=true
                     integration=true
@@ -219,14 +220,14 @@ jobs:
   lint-and-type-check:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - install-pnpm-deps
       - run:
           name: Lint
           command: |
-            if [ "$(cat .ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
+            if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
               pnpm check:lint:ci
             else
               pnpm check:lint
@@ -239,9 +240,9 @@ jobs:
   vulnerability-scan:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - node/install-pnpm:
           version: '11.9.0'
       - run:
@@ -298,21 +299,21 @@ jobs:
   build:
     executor: node
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - install-pnpm-deps
       - restore_cache:
           keys:
-            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-
             - next-v1-{{ checksum "pnpm-lock.yaml" }}-
       - run:
           name: Build
           command: pnpm build
           no_output_timeout: 10m
       - save_cache:
-          when: always
-          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}
+          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
           paths:
             - .next/cache
 
@@ -323,9 +324,9 @@ jobs:
       NODE_ENV: test
       SKIP_DB_TEST_SETUP: 'true'
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - fetch-base
       - install-pnpm-deps
       - run:
@@ -411,15 +412,38 @@ jobs:
           coverage-destination: coverage-unit
 
   integration-light:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
     environment:
       NODE_ENV: test
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
       - fetch-base
-      - install-node-and-deps
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: Integration tests (related/full/light)
           no_output_timeout: 20m
@@ -507,7 +531,14 @@ jobs:
           coverage-destination: coverage-integration
 
   security-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
     parameters:
       skip_unless:
         type: enum
@@ -516,9 +547,10 @@ jobs:
     environment:
       NODE_ENV: test
       ALLOW_DB_TRUNCATE: 'true'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
-      - checkout
-      - init-env
       - when:
           condition:
             equal: [integration, << parameters.skip_unless >>]
@@ -529,7 +561,22 @@ jobs:
             equal: [code, << parameters.skip_unless >>]
           steps:
             - skip-unless-code
-      - install-node-and-deps
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: RLS security tests
           no_output_timeout: 15m
@@ -545,16 +592,39 @@ jobs:
           results-file: test-results-security.json
 
   integration-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
     parallelism: 2
     environment:
       NODE_ENV: test
       ENABLE_CURATION: 'false'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-integration
       - checkout
       - init-env
-      - skip-unless-integration
-      - install-node-and-deps
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: Integration tests
           no_output_timeout: 25m
@@ -589,15 +659,40 @@ jobs:
           coverage-destination: coverage-integration
 
   workflow-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    environment:
+      NODE_ENV: test
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
+      - skip-unless-code
       - checkout
       - init-env
-      - skip-unless-code
-      - install-node-and-deps
+      - install-pnpm-deps
       - run:
           name: Dependency remediation tests
           command: node --test .github/scripts/dependency-remediation.test.mjs
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: Production workflow tests
           command: pnpm test:workflow
