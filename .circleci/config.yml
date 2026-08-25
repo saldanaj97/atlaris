@@ -176,7 +176,7 @@ jobs:
               while IFS= read -r f; do
                 [ -z "${f}" ] && continue
                 case "${f}" in
-                  src/*|supabase/*)
+                  src/*|supabase/*|public/*)
                     source=true
                     code=true
                     integration=true
