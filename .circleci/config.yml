@@ -568,16 +568,39 @@ jobs:
           results-file: test-results-security.json
 
   integration-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
     parallelism: 2
     environment:
       NODE_ENV: test
       ENABLE_CURATION: 'false'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - checkout
       - init-env
       - skip-unless-integration
-      - install-node-and-deps
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: Integration tests
           no_output_timeout: 25m
