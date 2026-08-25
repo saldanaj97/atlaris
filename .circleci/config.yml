@@ -650,69 +650,71 @@ jobs:
           no_output_timeout: 15m
 
 workflows:
+  # Temporary: keep ci/circleci-postgres-integration-light off ci-pr; remove after evidence.
   ci-pr:
     jobs:
       - detect-changes:
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - lint-and-type-check:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - vulnerability-scan:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - build:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - unit-tests:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - integration-light:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - security-tests:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
       - workflow-tests:
           requires:
             - detect-changes
           filters:
             branches:
-              ignore: [main, develop]
+              ignore: [main, develop, ci/circleci-postgres-integration-light]
 
   # GitHub ci-trunk.yml also runs on merge_group; CircleCI has no equivalent.
   # Codecov and all-checks-trunk are omitted: workflow status is the gate.
+  # Temporary: include ci/circleci-postgres-integration-light for integration-tests; remove after evidence.
   ci-trunk:
     jobs:
       - detect-changes:
           filters:
             branches:
-              only: [main, develop]
+              only: [main, develop, ci/circleci-postgres-integration-light]
       - integration-tests:
           requires:
             - detect-changes
           filters:
             branches:
-              only: [main, develop]
+              only: [main, develop, ci/circleci-postgres-integration-light]
       - security-tests:
           skip_unless: integration
           requires:
