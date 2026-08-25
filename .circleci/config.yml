@@ -530,7 +530,14 @@ jobs:
           coverage-destination: coverage-integration
 
   security-tests:
-    executor: ubuntu
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
     parameters:
       skip_unless:
         type: enum
@@ -539,6 +546,9 @@ jobs:
     environment:
       NODE_ENV: test
       ALLOW_DB_TRUNCATE: 'true'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - checkout
       - init-env
@@ -552,7 +562,20 @@ jobs:
             equal: [code, << parameters.skip_unless >>]
           steps:
             - skip-unless-code
-      - install-node-and-deps
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
       - run:
           name: RLS security tests
           no_output_timeout: 15m
