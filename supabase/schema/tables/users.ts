@@ -34,6 +34,16 @@ export const users = pgTable(
     }),
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     monthlyExportCount: integer('monthly_export_count').notNull().default(0),
+    // Server-owned lifetime entitlements. Authenticated UPDATE grants omit these.
+    // free_access_plan_id FK (ON DELETE SET NULL) lives in SQL so this table
+    // does not import learning_plans and create a circular module cycle.
+    initialPlanGeneratedAt: timestamp('initial_plan_generated_at', {
+      withTimezone: true,
+    }),
+    freeAccessPlanId: uuid('free_access_plan_id'),
+    freeAccessPlanSelectedAt: timestamp('free_access_plan_selected_at', {
+      withTimezone: true,
+    }),
     ...timestampFields,
   },
   (table) => [
@@ -62,7 +72,8 @@ export const users = pgTable(
     // Users can update only their own profile fields.
     // Column-level privileges (see
     // privileges/users-authenticated-update-columns.ts) restrict the authenticated
-    // role. Billing and system columns are only writable by the service-role (BYPASSRLS).
+    // role. Billing, system, and lifetime entitlement columns are only writable
+    // by the service-role (BYPASSRLS).
     pgPolicy('users_update_own', {
       for: 'update',
       to: 'authenticated',

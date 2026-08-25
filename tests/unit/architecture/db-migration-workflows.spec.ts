@@ -120,6 +120,7 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '20260811100900_restrict_task_progress_update_columns.sql',
     );
+    expect(script).toContain('20260825151604_add_user_entitlement_fields.sql');
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -358,12 +359,22 @@ describe('Supabase migration workflows', () => {
     for (const entry of targetEntries.slice(-6)) {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
+    expect(journal.entries.at(-1)).toMatchObject({
+      idx: 57,
+      tag: '20260825151604_add_user_entitlement_fields',
+    });
+    expect(migrationFiles).toContain(
+      '20260825151604_add_user_entitlement_fields.sql',
+    );
 
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     const expandMigrations = script.match(
       /readonly -a EXPAND_MIGRATIONS=\(([\s\S]*?)\n\)/,
     )?.[1];
     expect(expandMigrations).toBeDefined();
+    expect(expandMigrations).toContain(
+      '20260825151604_add_user_entitlement_fields.sql',
+    );
     expect(expandMigrations).not.toContain(
       '20260811100400_revoke_users_authenticated_insert.sql',
     );

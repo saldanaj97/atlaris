@@ -82,6 +82,9 @@ function isActorUser(user: unknown): user is ActorUser {
     isOptionalString(maybeUser.name) &&
     hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
+    isOptionalDate(maybeUser.initialPlanGeneratedAt) &&
+    isOptionalString(maybeUser.freeAccessPlanId) &&
+    isOptionalDate(maybeUser.freeAccessPlanSelectedAt) &&
     isOptionalPreferredAiModel(maybeUser.preferredAiModel)
   );
 }
