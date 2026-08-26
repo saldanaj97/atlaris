@@ -429,8 +429,7 @@ jobs:
               echo "Full split unit suite."
               run_split_unit
             fi
-      - store-test-outputs:
-          coverage-destination: coverage-unit
+      - store-test-outputs
 
   integration-light:
     docker:
@@ -548,8 +547,7 @@ jobs:
                   --outputFile.junit=test-results/junit.xml
                 ;;
             esac
-      - store-test-outputs:
-          coverage-destination: coverage-integration
+      - store-test-outputs
 
   security-tests:
     docker:
@@ -676,8 +674,7 @@ jobs:
               --outputFile.json=test-results.json \
               --outputFile.junit=test-results/junit.xml \
               $(cat files.txt)
-      - store-test-outputs:
-          coverage-destination: coverage-integration
+      - store-test-outputs
 
   workflow-tests:
     docker:
