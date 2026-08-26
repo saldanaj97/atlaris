@@ -248,7 +248,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write
     steps:
       - name: Download the validated plan
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -407,26 +406,28 @@ jobs:
           fi
           echo "number=$pr_number" >> "$GITHUB_OUTPUT"
 
-      - name: Dispatch PR CI for the final bot SHA
+      - name: Wait for required CircleCI PR checks
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         working-directory: worktree
         run: |
           set -euo pipefail
-          gh workflow run ci-pr.yml --repo "$EXPECTED_REPOSITORY" --ref "$BOT_BRANCH" -f base_ref="$BASE_BRANCH"
-          run_id=''
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            run_id="$(gh run list --repo "$EXPECTED_REPOSITORY" --workflow ci-pr.yml --branch "$BOT_BRANCH" --event workflow_dispatch --limit 10 --json databaseId,headSha --jq '.[] | select(.headSha == "'"$FINAL_SHA"'") | .databaseId' | head -n 1)"
-            [ -n "$run_id" ] && break
-            sleep "$((attempt < 5 ? attempt : 5))"
-          done
-          test -n "$run_id"
-          gh run watch "$run_id" --repo "$EXPECTED_REPOSITORY" --exit-status
           test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
+          # CircleCI statuses arrive after the bot-branch push. `gh pr checks --required`
+          # exits immediately when none are registered yet.
+          required='[]'
+          for _ in $(seq 1 36); do
+            if required="$(gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --required --json name 2>/dev/null)" \
+              && [ "$(jq length <<<"$required")" -gt 0 ]; then
+              break
+            fi
+            required='[]'
+            sleep 5
+          done
+          test "$(jq length <<<"$required")" -gt 0
           gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --required --watch
-          all_checks="$(gh pr checks "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json name,state --jq '.[] | select(.name == "All Checks Passed (PR)" and .state == "SUCCESS")')"
-          test -n "$all_checks"
+          test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
 
       - name: Queue auto-merge only for strict stable patches
         if: needs.plan.outputs.status == 'ready'

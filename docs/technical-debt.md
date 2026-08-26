@@ -148,6 +148,6 @@ When adding new user-editable columns to the `users` table, update in lockstep:
 
 Unit tests in `tests/unit/db/users-authenticated-update-columns.spec.ts` compare the migration and bootstrap sources against the canonical list and direct-INSERT revoke.
 
-**CI PR note:** The fast integration job in `.github/workflows/ci-pr.yml` uses the Testcontainers-backed migration bootstrap instead of a `pnpm db:push` shortcut, so PR integration DBs now run through the committed migration path. Keep this aligned with trunk (`ci-trunk.yml`) and the files above when privilege rules change.
+**CI note:** CircleCI `integration-light` (PR) and `ci-trunk` (post-merge) use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers, plus the migration bootstrap instead of a `pnpm db:push` shortcut, so CI integration DBs run through the committed migration path. Keep those jobs aligned with the files above when privilege rules change.
 
 Failure to update consumers after changing the allowlist will cause authenticated users to lose `UPDATE` on new columns or leave system columns writable — caught by security/unit tests and the drift spec.

@@ -6,7 +6,7 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 
 ## Package manager
 
-- CI pins **pnpm 11.9.0** (see `.github/workflows/ci-pr.yml`).
+- CI pins **pnpm 11.9.0** (see `.circleci/config.yml`).
 - Supply-chain release-age policy (`minimumReleaseAge`) is configured in `pnpm-workspace.yaml`; see [supply-chain policy](../security/supply-chain-policy.md).
 
 ## Development Server
