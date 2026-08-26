@@ -1,9 +1,14 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-operation-policy';
+import { getModelsForTier } from '@/features/ai/ai-models';
+import {
+  MODEL_OPERATIONS,
+  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
+} from '@/features/ai/model-operation-policy';
 import {
   getPersistableModelsForTier,
   isPersistableModelId,
+  isRuntimeOnlyModelId,
   resolveEffectivePreference,
   resolveSavedPreferenceForSettings,
   savedModelIdForOperation,
@@ -34,7 +39,7 @@ describe('model-preferences', () => {
       STARTER_MODEL_ID,
       PRO_ONLY_MODEL_ID,
       'anthropic/claude-haiku-4.5',
-    ])('accepts persistable enum-listed id %s', (id) => {
+    ])('accepts catalog ids that are not runtime-only %s', (id) => {
       expect(isPersistableModelId(id)).toBe(true);
     });
 
@@ -82,6 +87,21 @@ describe('model-preferences', () => {
       expect(proModels.some((m) => m.id === 'anthropic/claude-haiku-4.5')).toBe(
         true,
       );
+    });
+
+    it('matches the operation policy catalog minus runtime-only ids', () => {
+      const tiers = ['free', 'starter', 'pro'] as const;
+      for (const tier of tiers) {
+        for (const operation of MODEL_OPERATIONS) {
+          expect(
+            getPersistableModelsForTier(tier, operation).map((m) => m.id),
+          ).toEqual(
+            getModelsForTier(tier, operation)
+              .filter((m) => !isRuntimeOnlyModelId(m.id))
+              .map((m) => m.id),
+          );
+        }
+      }
     });
   });
 

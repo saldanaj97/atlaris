@@ -1,22 +1,23 @@
 /**
- * Rules for which models can be persisted as `user_preferences.preferred_ai_model` vs
+ * Rules for which models can be persisted as user preference slots vs
  * runtime-only defaults (e.g. `openrouter/free`).
+ *
+ * Persistability comes from the current operation policy catalogs, not the
+ * legacy PostgreSQL `preferred_ai_model` enum.
  */
 
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { preferredAiModel } from '../../../supabase/enums';
 import {
   getDefaultModelForTier,
   getModelsForTier,
+  isValidModelId,
 } from '@/features/ai/ai-models';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-
-const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
 
@@ -26,25 +27,24 @@ export function isRuntimeOnlyModelId(modelId: string): boolean {
 }
 
 /**
- * Model IDs that may be stored in `preferred_ai_model` (DB enum) and shown as
- * explicit save targets in settings. Excludes runtime router fallbacks.
+ * Model IDs that may be stored as a saved preference and shown as explicit
+ * save targets in settings. Membership is the current catalog minus runtime
+ * router fallbacks such as `openrouter/free`.
  */
 export function isPersistableModelId(modelId: string): boolean {
-  return (
-    PERSISTABLE_MODEL_IDS.has(modelId) && !RUNTIME_ONLY_MODEL_IDS.has(modelId)
-  );
+  return isValidModelId(modelId) && !isRuntimeOnlyModelId(modelId);
 }
 
 /**
- * Models the user may pick in AI settings: tier-filtered catalog intersected
- * with persistable enum values. `openrouter/free` is never listed here.
+ * Models the user may pick in AI settings: the current tier × operation
+ * policy catalog excluding runtime-only routers.
  */
 export function getPersistableModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
 ): AvailableModel[] {
-  return getModelsForTier(tier, operation).filter((m) =>
-    isPersistableModelId(m.id),
+  return getModelsForTier(tier, operation).filter(
+    (m) => !isRuntimeOnlyModelId(m.id),
   );
 }
 
@@ -112,8 +112,8 @@ export function resolveEffectivePreference(
 /**
  * Resolves a stored preference for settings UI only.
  *
- * @returns The saved model id when it is persistable and allowed for the tier;
- *          `null` means no saved preference (not "use tier default" as a saved row).
+ * @returns The saved model id when it is persistable and allowed for the current
+ *          tier × operation; `null` means no saved preference to show in the picker.
  */
 export function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,

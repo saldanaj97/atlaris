@@ -601,6 +601,36 @@ describe('GET /api/v1/user/preferences — Pro save then Free downgrade', () => 
     const after = await readSavedPreferenceRow(testAuthUserId);
     expect(after).toEqual(before);
   });
+
+  it('rejects PATCH of the GET saved paid ID while Free and leaves the row unchanged', async () => {
+    const before = await readSavedPreferenceRow(testAuthUserId);
+    expect(before?.preferredAiModel).toBe(PRO_MODEL_ID);
+
+    const getResponse = await GET(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'GET',
+      }),
+    );
+    expect(getResponse.status).toBe(200);
+    const getData = expectJsonObject(await getResponse.json());
+    expect(getData.preferredAiModel).toBe(PRO_MODEL_ID);
+
+    const patchResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferredAiModel: getData.preferredAiModel,
+        }),
+      }),
+    );
+    expect(patchResponse.status).toBe(403);
+    const patchData = expectJsonObject(await patchResponse.json());
+    expect(patchData.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+
+    const after = await readSavedPreferenceRow(testAuthUserId);
+    expect(after).toEqual(before);
+  });
 });
 
 describe('PATCH /api/v1/user/preferences — Free', () => {
@@ -642,6 +672,19 @@ describe('PATCH /api/v1/user/preferences — Free', () => {
     );
     expect(getData.preferredAiModel).toBeNull();
     expect(getData.availableModels).toEqual([]);
+  });
+
+  it('rejects an unknown model id with 403 rather than MODEL_INVALID', async () => {
+    const response = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: 'invalid/model-id' }),
+      }),
+    );
+    expect(response.status).toBe(403);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
   });
 });
 

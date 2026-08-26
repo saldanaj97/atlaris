@@ -104,26 +104,26 @@ function assertCanPersistSlot(
     return;
   }
 
-  const operation = operationForSlot(slot);
-  const modelValidation = validateModelForTier(tier, modelId, operation);
-  if (!modelValidation.valid) {
-    throwForInvalidModel(modelValidation.reason, modelId, tier);
-  }
-
   switch (tier) {
     case 'free':
       throw createModelNotAllowedError(modelId, tier);
     case 'starter':
-      if (slot !== 'preferredAiModel') {
-        throw createModelNotAllowedError(modelId, tier);
-      }
-      break;
     case 'pro':
       break;
     default: {
       const _never: never = tier;
       throw new Error(`Unhandled subscription tier: ${String(_never)}`);
     }
+  }
+
+  const operation = operationForSlot(slot);
+  const modelValidation = validateModelForTier(tier, modelId, operation);
+  if (!modelValidation.valid) {
+    throwForInvalidModel(modelValidation.reason, modelId, tier);
+  }
+
+  if (tier === 'starter' && slot !== 'preferredAiModel') {
+    throw createModelNotAllowedError(modelId, tier);
   }
 
   if (isRuntimeOnlyModelId(modelId)) {
