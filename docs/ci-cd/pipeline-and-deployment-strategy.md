@@ -40,7 +40,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ### 1) CircleCI `ci-pr` (`.circleci/config.yml`)
 
-- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events when the head branch is `develop` (`develop` → `main`)
+- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs. Feature-branch PR events must run `ci-pr` because auto-cancel of the in-flight push pipeline would otherwise leave an empty run.
 - Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
 - Path filtering skips expensive jobs when no code changed. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
