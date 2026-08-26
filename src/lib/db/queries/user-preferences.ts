@@ -1,6 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
-import type { PreferredAiModel } from '@supabase/enums';
+import type { SQL } from 'drizzle-orm';
 
 import {
   prepareRlsTransactionContext,
@@ -22,14 +22,38 @@ export const EMAIL_NOTIFICATION_CATEGORIES =
   emailNotificationCategory.enumValues;
 
 export type UserPreferenceValues = {
-  preferredAiModel: PreferredAiModel | null;
+  preferredAiModel: string | null;
+  preferredRegenerationAiModel: string | null;
+  preferredLessonAiModel: string | null;
   analyticsTimezone: string;
+};
+
+export type UserModelPreferencePatch = {
+  preferredAiModel?: string | null;
+  preferredRegenerationAiModel?: string | null;
+  preferredLessonAiModel?: string | null;
 };
 
 export const DEFAULT_USER_PREFERENCES: UserPreferenceValues = {
   preferredAiModel: null,
+  preferredRegenerationAiModel: null,
+  preferredLessonAiModel: null,
   analyticsTimezone: 'UTC',
 };
+
+function mapPreferenceRow(row: {
+  preferred_ai_model: string | null;
+  preferred_regeneration_ai_model: string | null;
+  preferred_lesson_ai_model: string | null;
+  analytics_timezone: string;
+}): UserPreferenceValues {
+  return {
+    preferredAiModel: row.preferred_ai_model,
+    preferredRegenerationAiModel: row.preferred_regeneration_ai_model,
+    preferredLessonAiModel: row.preferred_lesson_ai_model,
+    analyticsTimezone: row.analytics_timezone,
+  };
+}
 
 export async function getUserPreferences(
   userId: string,
@@ -38,6 +62,9 @@ export async function getUserPreferences(
   const [row] = await dbClient
     .select({
       preferredAiModel: userPreferences.preferredAiModel,
+      preferredRegenerationAiModel:
+        userPreferences.preferredRegenerationAiModel,
+      preferredLessonAiModel: userPreferences.preferredLessonAiModel,
       analyticsTimezone: userPreferences.analyticsTimezone,
     })
     .from(userPreferences)
@@ -189,29 +216,77 @@ export async function saveEmailNotificationPreferences(
   });
 }
 
-export async function upsertUserPreferredAiModel(
+export async function upsertUserModelPreferences(
   userId: string,
-  preferredAiModel: PreferredAiModel | null,
+  patch: UserModelPreferencePatch,
   dbClient: Pick<DbClient, 'execute'>,
 ): Promise<UserPreferenceValues | undefined> {
+  const insertOutline =
+    patch.preferredAiModel !== undefined
+      ? sql`${patch.preferredAiModel}`
+      : sql`DEFAULT`;
+  const insertRegeneration =
+    patch.preferredRegenerationAiModel !== undefined
+      ? sql`${patch.preferredRegenerationAiModel}`
+      : sql`DEFAULT`;
+  const insertLesson =
+    patch.preferredLessonAiModel !== undefined
+      ? sql`${patch.preferredLessonAiModel}`
+      : sql`DEFAULT`;
+
+  const updates: SQL[] = [sql`"updated_at" = now()`];
+  if (patch.preferredAiModel !== undefined) {
+    updates.push(sql`"preferred_ai_model" = EXCLUDED."preferred_ai_model"`);
+  }
+  if (patch.preferredRegenerationAiModel !== undefined) {
+    updates.push(
+      sql`"preferred_regeneration_ai_model" = EXCLUDED."preferred_regeneration_ai_model"`,
+    );
+  }
+  if (patch.preferredLessonAiModel !== undefined) {
+    updates.push(
+      sql`"preferred_lesson_ai_model" = EXCLUDED."preferred_lesson_ai_model"`,
+    );
+  }
+
   const [row] = (await dbClient.execute(sql`
-    INSERT INTO ${userPreferences} ("user_id", "preferred_ai_model", "updated_at")
-    VALUES (${userId}, ${preferredAiModel}, now())
+    INSERT INTO ${userPreferences} (
+      "user_id",
+      "preferred_ai_model",
+      "preferred_regeneration_ai_model",
+      "preferred_lesson_ai_model",
+      "updated_at"
+    )
+    VALUES (
+      ${userId},
+      ${insertOutline},
+      ${insertRegeneration},
+      ${insertLesson},
+      now()
+    )
     ON CONFLICT ("user_id") DO UPDATE SET
-      "preferred_ai_model" = EXCLUDED."preferred_ai_model",
-      "updated_at" = EXCLUDED."updated_at"
-    RETURNING "preferred_ai_model", "analytics_timezone"
+      ${sql.join(updates, sql`, `)}
+    RETURNING
+      "preferred_ai_model",
+      "preferred_regeneration_ai_model",
+      "preferred_lesson_ai_model",
+      "analytics_timezone"
   `)) as Array<{
-    preferred_ai_model: PreferredAiModel | null;
+    preferred_ai_model: string | null;
+    preferred_regeneration_ai_model: string | null;
+    preferred_lesson_ai_model: string | null;
     analytics_timezone: string;
   }>;
 
-  return row
-    ? {
-        preferredAiModel: row.preferred_ai_model,
-        analyticsTimezone: row.analytics_timezone,
-      }
-    : undefined;
+  return row ? mapPreferenceRow(row) : undefined;
+}
+
+export async function upsertUserPreferredAiModel(
+  userId: string,
+  preferredAiModel: string | null,
+  dbClient: Pick<DbClient, 'execute'>,
+): Promise<UserPreferenceValues | undefined> {
+  return upsertUserModelPreferences(userId, { preferredAiModel }, dbClient);
 }
 
 export async function upsertUserAnalyticsTimezone(
@@ -225,16 +300,17 @@ export async function upsertUserAnalyticsTimezone(
     ON CONFLICT ("user_id") DO UPDATE SET
       "analytics_timezone" = EXCLUDED."analytics_timezone",
       "updated_at" = EXCLUDED."updated_at"
-    RETURNING "preferred_ai_model", "analytics_timezone"
+    RETURNING
+      "preferred_ai_model",
+      "preferred_regeneration_ai_model",
+      "preferred_lesson_ai_model",
+      "analytics_timezone"
   `)) as Array<{
-    preferred_ai_model: PreferredAiModel | null;
+    preferred_ai_model: string | null;
+    preferred_regeneration_ai_model: string | null;
+    preferred_lesson_ai_model: string | null;
     analytics_timezone: string;
   }>;
 
-  return row
-    ? {
-        preferredAiModel: row.preferred_ai_model,
-        analyticsTimezone: row.analytics_timezone,
-      }
-    : undefined;
+  return row ? mapPreferenceRow(row) : undefined;
 }

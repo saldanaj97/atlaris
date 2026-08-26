@@ -110,6 +110,8 @@ export const PUT = requestBoundary.route(
           ...updatedUser,
           analyticsTimezone: actor.analyticsTimezone,
           preferredAiModel: actor.preferredAiModel,
+          preferredRegenerationAiModel: actor.preferredRegenerationAiModel,
+          preferredLessonAiModel: actor.preferredLessonAiModel,
         };
       }
 

@@ -113,6 +113,8 @@ export function buildUserFixture(
     freeAccessPlanId: null,
     freeAccessPlanSelectedAt: null,
     preferredAiModel: null,
+    preferredRegenerationAiModel: null,
+    preferredLessonAiModel: null,
     analyticsTimezone: 'UTC',
     createdAt: now,
     updatedAt: now,

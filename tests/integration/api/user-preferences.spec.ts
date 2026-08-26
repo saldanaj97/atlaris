@@ -3,7 +3,9 @@ import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
+import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-operation-policy';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
@@ -28,11 +30,26 @@ const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
 const STARTER_MODEL_ID = STARTER_PERSISTABLE_MODELS[0]?.id;
 const SECOND_STARTER_MODEL_ID =
   STARTER_PERSISTABLE_MODELS[1]?.id ?? STARTER_MODEL_ID;
+const THIRD_STARTER_MODEL_ID =
+  STARTER_PERSISTABLE_MODELS[2]?.id ?? SECOND_STARTER_MODEL_ID;
 const PRO_MODEL_ID = getPersistableModelsForTier('pro', PLAN_OPERATION).find(
   ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
+const PRO_REGEN_MODEL_ID = 'google/gemini-3-pro-preview';
+const PRO_LESSON_MODEL_ID = 'google/gemini-3-flash-preview';
+const FREE_EFFECTIVE_MODEL = getDefaultModelForTier('free', PLAN_OPERATION);
+const STARTER_EFFECTIVE_MODEL = getDefaultModelForTier(
+  'starter',
+  PLAN_OPERATION,
+);
+const PRO_LESSON_DEFAULT = getDefaultModelForTier('pro', 'lesson');
 
-if (!STARTER_MODEL_ID || !SECOND_STARTER_MODEL_ID || !PRO_MODEL_ID) {
+if (
+  !STARTER_MODEL_ID ||
+  !SECOND_STARTER_MODEL_ID ||
+  !THIRD_STARTER_MODEL_ID ||
+  !PRO_MODEL_ID
+) {
   throw new Error('Expected starter and pro persistable model fixtures');
 }
 
@@ -45,6 +62,25 @@ function expectJsonObject(value: unknown): Record<string, unknown> {
 function expectModelArray(value: unknown): ApiModelResponse[] {
   expect(Array.isArray(value)).toBe(true);
   return value as ApiModelResponse[];
+}
+
+async function readSavedPreferenceRow(authUserId: string) {
+  const userRow = await db.query.users.findFirst({
+    where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
+  });
+  expect(userRow).toBeDefined();
+
+  const [preferencesRow] = await db
+    .select({
+      preferredAiModel: userPreferences.preferredAiModel,
+      preferredRegenerationAiModel:
+        userPreferences.preferredRegenerationAiModel,
+      preferredLessonAiModel: userPreferences.preferredLessonAiModel,
+    })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userRow!.id));
+
+  return preferencesRow;
 }
 
 describe('GET /api/v1/user/preferences', () => {
@@ -61,7 +97,7 @@ describe('GET /api/v1/user/preferences', () => {
     clearTestUser();
   });
 
-  it('returns available models for authenticated user', async () => {
+  it('returns empty availableModels for Free and does not invent a saved preference', async () => {
     setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
@@ -72,27 +108,12 @@ describe('GET /api/v1/user/preferences', () => {
     expect(response.status).toBe(200);
 
     const data = expectJsonObject(await response.json());
-    const availableModels = expectModelArray(data.availableModels);
-    expect(availableModels.length).toBe(
-      getPersistableModelsForTier('free', PLAN_OPERATION).length,
-    );
-    expect(availableModels.some((m) => m.id === 'openrouter/free')).toBe(false);
-  });
-
-  it('returns default preferredAiModel when user has not set one', async () => {
-    setTestUser(testAuthUserId);
-
-    const request = new Request('http://localhost/api/v1/user/preferences', {
-      method: 'GET',
-    });
-
-    const response = await GET(request);
-    expect(response.status).toBe(200);
-
-    const data = expectJsonObject(await response.json());
-    expect(data.preferredAiModel).toBe(
-      getDefaultModelForTier('free', PLAN_OPERATION),
-    );
+    expect(data.preferredAiModel).toBeNull();
+    expect(data.preferredRegenerationAiModel).toBeNull();
+    expect(data.preferredLessonAiModel).toBeNull();
+    expect(data.effectivePreferredAiModel).toBe(FREE_EFFECTIVE_MODEL);
+    expect(data.effectivePreferredAiModel).toBe(AI_DEFAULT_MODEL);
+    expect(expectModelArray(data.availableModels)).toEqual([]);
   });
 
   it('returns models with correct structure', async () => {
@@ -172,20 +193,13 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(data.message).toBe('Preferences updated');
     expect(data.preferredAiModel).toBe(STARTER_MODEL_ID);
 
-    const userRow = await db.query.users.findFirst({
-      where: (fields, operators) =>
-        operators.eq(fields.authUserId, testAuthUserId),
-    });
-    expect(userRow).toBeDefined();
-
-    const [preferencesRow] = await db
-      .select({ preferredAiModel: userPreferences.preferredAiModel })
-      .from(userPreferences)
-      .where(eq(userPreferences.userId, userRow!.id));
+    const preferencesRow = await readSavedPreferenceRow(testAuthUserId);
     expect(preferencesRow?.preferredAiModel).toBe(STARTER_MODEL_ID);
+    expect(preferencesRow?.preferredRegenerationAiModel).toBeNull();
+    expect(preferencesRow?.preferredLessonAiModel).toBeNull();
   });
 
-  it('clears preferredAiModel with null PATCH and GET reflects tier default', async () => {
+  it('clears preferredAiModel with null PATCH and GET keeps saved null plus effective default', async () => {
     setTestUser(testAuthUserId);
 
     const setRequest = new Request('http://localhost/api/v1/user/preferences', {
@@ -216,16 +230,13 @@ describe('PATCH /api/v1/user/preferences', () => {
     });
     const getResponse = await GET(getRequest);
     expect(getResponse.status).toBe(200);
-    const getData = await getResponse.json();
-    expect(getData.preferredAiModel).toBe(
-      getDefaultModelForTier('starter', PLAN_OPERATION),
-    );
+    const getData = expectJsonObject(await getResponse.json());
+    expect(getData.preferredAiModel).toBeNull();
+    expect(getData.effectivePreferredAiModel).toBe(STARTER_EFFECTIVE_MODEL);
   });
 
-  it('persists preferredAiModel and returns it on GET', async () => {
+  it('persists preferredAiModel and returns it on GET as the saved value', async () => {
     setTestUser(testAuthUserId);
-    // Use a concrete model from the DB enum — openrouter/free is a
-    // generation-time router fallback, not a persistable preference.
     const resetModel = STARTER_MODEL_ID;
 
     const patchRequest = new Request(
@@ -253,6 +264,7 @@ describe('PATCH /api/v1/user/preferences', () => {
 
     const getData = expectJsonObject(await getResponse.json());
     expect(getData.preferredAiModel).toBe(SECOND_STARTER_MODEL_ID);
+    expect(getData.effectivePreferredAiModel).toBe(SECOND_STARTER_MODEL_ID);
 
     const resetRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -313,8 +325,56 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
-  it('rejects invalid model ID with validation error', async () => {
+  it('can save exactly the three Starter outline IDs and leaves lesson unused', async () => {
     setTestUser(testAuthUserId);
+    expect([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]).toEqual([
+      STARTER_MODEL_ID,
+      SECOND_STARTER_MODEL_ID,
+      THIRD_STARTER_MODEL_ID,
+    ]);
+
+    for (const modelId of STARTER_OUTLINE_REGENERATION_MODEL_IDS) {
+      const response = await PATCH(
+        new Request('http://localhost/api/v1/user/preferences', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preferredAiModel: modelId }),
+        }),
+      );
+      expect(response.status).toBe(200);
+      const data = expectJsonObject(await response.json());
+      expect(data.preferredAiModel).toBe(modelId);
+      expect(data.preferredLessonAiModel).toBeNull();
+    }
+
+    const lessonResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredLessonAiModel: STARTER_MODEL_ID }),
+      }),
+    );
+    expect(lessonResponse.status).toBe(403);
+    const lessonData = expectJsonObject(await lessonResponse.json());
+    expect(lessonData.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+
+    const row = await readSavedPreferenceRow(testAuthUserId);
+    expect(row?.preferredAiModel).toBe(THIRD_STARTER_MODEL_ID);
+    expect(row?.preferredLessonAiModel).toBeNull();
+    expect(row?.preferredRegenerationAiModel).toBeNull();
+  });
+
+  it('rejects invalid model ID with validation error and keeps the previous saved value', async () => {
+    setTestUser(testAuthUserId);
+
+    const seedResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: STARTER_MODEL_ID }),
+      }),
+    );
+    expect(seedResponse.status).toBe(200);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -331,6 +391,18 @@ describe('PATCH /api/v1/user/preferences', () => {
 
     const data = expectJsonObject(await response.json());
     expect(data.error).toBeDefined();
+    expect(data.code).toBe('MODEL_INVALID');
+
+    const getData = expectJsonObject(
+      await (
+        await GET(
+          new Request('http://localhost/api/v1/user/preferences', {
+            method: 'GET',
+          }),
+        )
+      ).json(),
+    );
+    expect(getData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
   it('rejects empty model ID', async () => {
@@ -432,8 +504,17 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(response.status).toBe(400);
   });
 
-  it('rejects tier-denied model with 403', async () => {
+  it('rejects tier-denied model with 403 and keeps the previous saved value', async () => {
     setTestUser(testAuthUserId);
+
+    const seedResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: STARTER_MODEL_ID }),
+      }),
+    );
+    expect(seedResponse.status).toBe(200);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'PATCH',
@@ -449,10 +530,21 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(response.status).toBe(403);
     const data = expectJsonObject(await response.json());
     expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+
+    const getData = expectJsonObject(
+      await (
+        await GET(
+          new Request('http://localhost/api/v1/user/preferences', {
+            method: 'GET',
+          }),
+        )
+      ).json(),
+    );
+    expect(getData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 });
 
-describe('GET /api/v1/user/preferences — invalid stored preference', () => {
+describe('GET /api/v1/user/preferences — Pro save then Free downgrade', () => {
   const testAuthUserId = `preferences-downgrade-invalid-${Date.now()}`;
 
   beforeEach(async () => {
@@ -490,7 +582,10 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
     clearTestUser();
   });
 
-  it('returns tier fallback when stored model is invalid for current tier', async () => {
+  it('returns the saved paid ID plus effective Free router and does not rewrite the row', async () => {
+    const before = await readSavedPreferenceRow(testAuthUserId);
+    expect(before?.preferredAiModel).toBe(PRO_MODEL_ID);
+
     const request = new Request('http://localhost/api/v1/user/preferences', {
       method: 'GET',
     });
@@ -498,8 +593,143 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const data = expectJsonObject(await response.json());
-    expect(data.preferredAiModel).toBe(
-      getDefaultModelForTier('free', PLAN_OPERATION),
+    expect(data.preferredAiModel).toBe(PRO_MODEL_ID);
+    expect(data.effectivePreferredAiModel).toBe(AI_DEFAULT_MODEL);
+    expect(data.effectivePreferredAiModel).not.toBe(data.preferredAiModel);
+    expect(expectModelArray(data.availableModels)).toEqual([]);
+
+    const after = await readSavedPreferenceRow(testAuthUserId);
+    expect(after).toEqual(before);
+  });
+});
+
+describe('PATCH /api/v1/user/preferences — Free', () => {
+  const testAuthUserId = `preferences-free-patch-${Date.now()}`;
+
+  beforeEach(async () => {
+    await ensureUser({
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'free',
+    });
+    setTestUser(testAuthUserId);
+  });
+
+  afterAll(() => {
+    clearTestUser();
+  });
+
+  it('rejects any non-null model save with 403', async () => {
+    const response = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: STARTER_MODEL_ID }),
+      }),
     );
+    expect(response.status).toBe(403);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+
+    const getData = expectJsonObject(
+      await (
+        await GET(
+          new Request('http://localhost/api/v1/user/preferences', {
+            method: 'GET',
+          }),
+        )
+      ).json(),
+    );
+    expect(getData.preferredAiModel).toBeNull();
+    expect(getData.availableModels).toEqual([]);
+  });
+});
+
+describe('PATCH /api/v1/user/preferences — Pro slots', () => {
+  const testAuthUserId = `preferences-pro-slots-${Date.now()}`;
+
+  beforeEach(async () => {
+    await ensureUser({
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'pro',
+    });
+    setTestUser(testAuthUserId);
+  });
+
+  afterAll(() => {
+    clearTestUser();
+  });
+
+  it('saves three slots independently and uses operation defaults only as effective', async () => {
+    const outlineResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredAiModel: PRO_MODEL_ID }),
+      }),
+    );
+    expect(outlineResponse.status).toBe(200);
+
+    const regenResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferredRegenerationAiModel: PRO_REGEN_MODEL_ID,
+        }),
+      }),
+    );
+    expect(regenResponse.status).toBe(200);
+
+    const lessonResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredLessonAiModel: PRO_LESSON_MODEL_ID }),
+      }),
+    );
+    expect(lessonResponse.status).toBe(200);
+
+    const savedGet = expectJsonObject(
+      await (
+        await GET(
+          new Request('http://localhost/api/v1/user/preferences', {
+            method: 'GET',
+          }),
+        )
+      ).json(),
+    );
+    expect(savedGet.preferredAiModel).toBe(PRO_MODEL_ID);
+    expect(savedGet.preferredRegenerationAiModel).toBe(PRO_REGEN_MODEL_ID);
+    expect(savedGet.preferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
+    expect(savedGet.effectivePreferredAiModel).toBe(PRO_MODEL_ID);
+    expect(savedGet.effectivePreferredRegenerationAiModel).toBe(
+      PRO_REGEN_MODEL_ID,
+    );
+    expect(savedGet.effectivePreferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
+
+    const clearLesson = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferredLessonAiModel: null }),
+      }),
+    );
+    expect(clearLesson.status).toBe(200);
+
+    const clearedGet = expectJsonObject(
+      await (
+        await GET(
+          new Request('http://localhost/api/v1/user/preferences', {
+            method: 'GET',
+          }),
+        )
+      ).json(),
+    );
+    expect(clearedGet.preferredAiModel).toBe(PRO_MODEL_ID);
+    expect(clearedGet.preferredRegenerationAiModel).toBe(PRO_REGEN_MODEL_ID);
+    expect(clearedGet.preferredLessonAiModel).toBeNull();
+    expect(clearedGet.effectivePreferredLessonAiModel).toBe(PRO_LESSON_DEFAULT);
   });
 });

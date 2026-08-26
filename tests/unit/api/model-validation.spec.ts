@@ -234,15 +234,13 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects invalid model ID', () => {
+    it('accepts unknown model IDs as text; the route enforces policy', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: 'not-a-real-model',
       });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID']),
-        );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBe('not-a-real-model');
       }
     });
 
@@ -263,11 +261,6 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         preferredAiModel: undefined,
       });
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID']),
-        );
-      }
     });
 
     it('rejects non-string preferredAiModel', () => {
@@ -284,6 +277,21 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.preferredAiModel).toBeNull();
+      }
+    });
+
+    it('accepts independent Pro regeneration and lesson slots', () => {
+      const result = updatePreferencesSchema.safeParse({
+        preferredRegenerationAiModel: PRO_PERSISTABLE_MODEL,
+        preferredLessonAiModel: null,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBeUndefined();
+        expect(result.data.preferredRegenerationAiModel).toBe(
+          PRO_PERSISTABLE_MODEL,
+        );
+        expect(result.data.preferredLessonAiModel).toBeNull();
       }
     });
 

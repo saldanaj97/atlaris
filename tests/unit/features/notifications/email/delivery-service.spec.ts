@@ -103,6 +103,8 @@ describe('runEmailNotificationDelivery', () => {
     });
     getUserPrefs.mockResolvedValue({
       preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: null,
       analyticsTimezone: 'UTC',
     });
     listDayKeys.mockResolvedValue(['2026-07-06', '2026-07-07', '2026-07-08']);

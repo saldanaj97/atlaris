@@ -1,4 +1,3 @@
-import type { PreferredAiModel } from '../../../../../supabase/enums';
 import type { getDb } from '@supabase/runtime';
 import type { users } from '@supabase/schema';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
@@ -11,7 +10,9 @@ export type ActorUser = Omit<
   'analyticsTimezone' | 'preferredAiModel'
 > & {
   analyticsTimezone: string;
-  preferredAiModel: PreferredAiModel | null;
+  preferredAiModel: string | null;
+  preferredRegenerationAiModel: string | null;
+  preferredLessonAiModel: string | null;
 };
 
 /** Inferred insert type for the `users` table (use for create operations). */

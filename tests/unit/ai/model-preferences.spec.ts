@@ -4,7 +4,9 @@ import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-oper
 import {
   getPersistableModelsForTier,
   isPersistableModelId,
+  resolveEffectivePreference,
   resolveSavedPreferenceForSettings,
+  savedModelIdForOperation,
 } from '@/features/ai/model-preferences';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
@@ -110,5 +112,65 @@ describe('model-preferences', () => {
         );
       },
     );
+  });
+
+  describe('savedModelIdForOperation', () => {
+    const saved = {
+      preferredAiModel: 'openai/gpt-5.2',
+      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+    };
+
+    it('Starter/Free regeneration reuse the outline slot', () => {
+      expect(savedModelIdForOperation('starter', saved, 'regeneration')).toBe(
+        saved.preferredAiModel,
+      );
+      expect(savedModelIdForOperation('free', saved, 'regeneration')).toBe(
+        saved.preferredAiModel,
+      );
+    });
+
+    it('Pro regeneration and lesson use their own slots', () => {
+      expect(savedModelIdForOperation('pro', saved, 'initial_outline')).toBe(
+        saved.preferredAiModel,
+      );
+      expect(savedModelIdForOperation('pro', saved, 'regeneration')).toBe(
+        saved.preferredRegenerationAiModel,
+      );
+      expect(savedModelIdForOperation('pro', saved, 'lesson')).toBe(
+        saved.preferredLessonAiModel,
+      );
+    });
+  });
+
+  describe('resolveEffectivePreference', () => {
+    it('returns the saved id when it is allowed for the operation', () => {
+      expect(
+        resolveEffectivePreference(
+          'starter',
+          STARTER_MODEL_ID,
+          'initial_outline',
+        ),
+      ).toBe(STARTER_MODEL_ID);
+    });
+
+    it('returns the Free router default without treating it as a saved value', () => {
+      expect(
+        resolveEffectivePreference(
+          'free',
+          PRO_ONLY_MODEL_ID,
+          'initial_outline',
+        ),
+      ).toBe(AI_DEFAULT_MODEL);
+      expect(resolveEffectivePreference('free', null, 'initial_outline')).toBe(
+        AI_DEFAULT_MODEL,
+      );
+    });
+
+    it('uses the Pro lesson default when the lesson slot is empty', () => {
+      expect(resolveEffectivePreference('pro', null, 'lesson')).toBe(
+        'google/gemini-3-flash-preview',
+      );
+    });
   });
 });
