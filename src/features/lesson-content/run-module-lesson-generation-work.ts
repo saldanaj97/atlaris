@@ -133,6 +133,7 @@ export async function runModuleLessonGenerationWork(
             resolveModelForTier(
               params.userTier,
               params.modelOverride ?? undefined,
+              'lesson',
             ).provider;
 
           lifecycle = setupAbortAndTimeout(timeoutConfig, params.signal);

@@ -34,15 +34,19 @@ export const GET = requestBoundary.route(
     });
 
     const userTier = actor.subscriptionTier;
-    const availableModels = getPersistableModelsForTier(userTier);
+    const availableModels = getPersistableModelsForTier(
+      userTier,
+      'initial_outline',
+    );
 
-    const fallbackModel = getDefaultModelForTier(userTier);
+    const fallbackModel = getDefaultModelForTier(userTier, 'initial_outline');
     let preferredAiModel = fallbackModel;
 
     if (actor.preferredAiModel) {
       const modelValidation = validateModelForTier(
         userTier,
         actor.preferredAiModel,
+        'initial_outline',
       );
 
       if (modelValidation.valid) {
@@ -127,6 +131,7 @@ export const PATCH = requestBoundary.route(
     const modelValidation = validateModelForTier(
       userTier,
       parsed.data.preferredAiModel,
+      'initial_outline',
     );
 
     // Enumerate every known reason from validateModelForTier (see ModelValidationResult in

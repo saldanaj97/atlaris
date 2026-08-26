@@ -374,6 +374,13 @@ describe('runModuleLessonGenerationWork', () => {
       expect(mocks.invokeProvider).not.toHaveBeenCalled();
       expect(mocks.compensate).toHaveBeenCalledOnce();
       expect(mocks.compensate).toHaveBeenCalledWith(baseToken, fakeDb);
+      if (omitProvider) {
+        expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+          'free',
+          undefined,
+          'lesson',
+        );
+      }
     },
   );
 

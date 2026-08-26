@@ -25,13 +25,17 @@ export async function ModelSelectionCard() {
 
   const userTier: SubscriptionTier = user.subscriptionTier;
 
-  const availableModels = getPersistableModelsForTier(userTier);
+  const availableModels = getPersistableModelsForTier(
+    userTier,
+    'initial_outline',
+  );
   const currentModel = resolveSavedPreferenceForSettings(
     userTier,
     user.preferredAiModel,
+    'initial_outline',
   );
 
-  const tierDefaultId = getDefaultModelForTier(userTier);
+  const tierDefaultId = getDefaultModelForTier(userTier, 'initial_outline');
   const tierDefaultMeta = getModelById(tierDefaultId);
   const tierDefaultLabel = tierDefaultMeta?.name ?? 'your tier default model';
 

@@ -6,6 +6,7 @@
  *
  */
 
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -38,17 +39,19 @@ type ModelResolverLogger = {
 };
 
 /**
- * Validates whether a requested model is both known and allowed for a tier.
+ * Validates whether a requested model is both known and allowed for a
+ * tier × operation catalog. Does not throw; callers fall back.
  */
 export function validateModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string,
+  operation: ModelOperation,
 ): ModelValidationResult {
   if (!isValidModelId(requestedModel)) {
     return { valid: false, reason: 'invalid_model' };
   }
 
-  const allowedModels = getModelsForTier(userTier);
+  const allowedModels = getModelsForTier(userTier, operation);
   const isAllowed = allowedModels.some((model) => model.id === requestedModel);
 
   if (!isAllowed) {
@@ -66,13 +69,14 @@ function getProviderSafe(
   modelIdToUse: string,
   requestedModel: string | undefined | null,
   userTier: SubscriptionTier,
+  operation: ModelOperation,
   providerGetter: ProviderGetter,
   requestLogger: ModelResolverLogger,
 ): AiPlanGenerationProvider {
   try {
     // Always use the model-specific provider factory so default-model fallback
     // cannot be silently redirected by aiEnv.defaultModel.
-    return providerGetter(modelIdToUse, userTier);
+    return providerGetter(modelIdToUse, userTier, operation);
   } catch (err) {
     const factoryName = providerGetter.name || 'unknownFactory';
     const errPayload =
@@ -102,6 +106,7 @@ function getProviderSafe(
  * @param userTier - The user's subscription tier
  * @param requestedModel - Optional model ID from request. Pass undefined when param absent
  *   (not_specified fallback). Null/empty string means invalid_model fallback.
+ * @param operation - Generation operation whose catalog and default apply.
  * @param providerGetter - Optional provider getter for dependency injection in tests.
  *   Defaults to getGenerationProviderWithModel.
  * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
@@ -109,11 +114,12 @@ function getProviderSafe(
  */
 export function resolveModelForTier(
   userTier: SubscriptionTier,
-  requestedModel?: string | null,
+  requestedModel: string | null | undefined,
+  operation: ModelOperation,
   providerGetter: ProviderGetter = getGenerationProviderWithModel,
   requestLogger: ModelResolverLogger = logger,
 ): ModelResolution {
-  const defaultModelForTier = getDefaultModelForTier(userTier);
+  const defaultModelForTier = getDefaultModelForTier(userTier, operation);
 
   // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
   const modelSpecified = requestedModel !== undefined;
@@ -125,6 +131,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         userTier,
+        operation,
         providerGetter,
         requestLogger,
       ),
@@ -136,7 +143,7 @@ export function resolveModelForTier(
   // Explicit null or empty string → invalid_model
   if (requestedModel === null || requestedModel === '') {
     requestLogger.warn(
-      { requestedModel, userTier },
+      { requestedModel, userTier, operation },
       'Invalid model requested, falling back to default',
     );
     return {
@@ -145,6 +152,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         userTier,
+        operation,
         providerGetter,
         requestLogger,
       ),
@@ -153,11 +161,11 @@ export function resolveModelForTier(
     };
   }
 
-  const validation = validateModelForTier(userTier, requestedModel);
+  const validation = validateModelForTier(userTier, requestedModel, operation);
 
   if (!validation.valid) {
     requestLogger.warn(
-      { requestedModel, userTier, reason: validation.reason },
+      { requestedModel, userTier, operation, reason: validation.reason },
       'Invalid or tier-denied model, falling back to default',
     );
     return {
@@ -166,6 +174,7 @@ export function resolveModelForTier(
         defaultModelForTier,
         requestedModel,
         userTier,
+        operation,
         providerGetter,
         requestLogger,
       ),
@@ -180,6 +189,7 @@ export function resolveModelForTier(
       requestedModel,
       requestedModel,
       userTier,
+      operation,
       providerGetter,
       requestLogger,
     ),

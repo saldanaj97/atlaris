@@ -4,8 +4,10 @@ import type {
   PlanLifecycleGeneration,
 } from './service';
 import type { GeneratedModule } from './types';
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
 import type { DbClient } from '@/lib/db/types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationExecution } from '@/features/ai/orchestrator';
@@ -13,6 +15,21 @@ import { safeNormalizeUsage } from '@/features/ai/usage';
 import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
+
+function modelOperationForGenerationPurpose(
+  purpose: GenerationPurpose,
+): ModelOperation {
+  switch (purpose) {
+    case 'initial':
+      return 'initial_outline';
+    case 'regeneration':
+      return 'regeneration';
+    default: {
+      const _never: never = purpose;
+      throw new Error(`Unhandled generation purpose: ${String(_never)}`);
+    }
+  }
+}
 
 async function validateReservation(
   dbClient: DbClient,
@@ -71,9 +88,11 @@ async function runGeneration(
 ): Promise<GenerationRunResult> {
   await validateReservation(dbClient, params);
 
+  const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const { provider } = resolveModelForTier(
     params.tier,
     params.modelOverride ?? undefined,
+    modelOperationForGenerationPurpose(generationPurpose),
   );
 
   const generationInput: GenerationInput = {
@@ -91,7 +110,7 @@ async function runGeneration(
       planId: params.planId,
       userId: params.userId,
       input: generationInput,
-      generationPurpose: parseGenerationPurpose(params.generationPurpose),
+      generationPurpose,
     },
     {
       provider,

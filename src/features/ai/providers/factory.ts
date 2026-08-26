@@ -1,3 +1,4 @@
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -46,6 +47,7 @@ function shouldUseMock(): boolean {
 export function getGenerationProviderWithModel(
   modelId: string,
   tier?: SubscriptionTier,
+  operation?: ModelOperation,
 ): AiPlanGenerationProvider {
   if (!modelId) {
     throw new Error('modelId must be a non-empty string');
@@ -63,8 +65,8 @@ export function getGenerationProviderWithModel(
 
   return new RouterGenerationProvider({
     model: modelId,
-    ...(tier !== undefined
-      ? { fallbackModels: getFallbackModelsForTier(tier, modelId) }
+    ...(tier !== undefined && operation !== undefined
+      ? { fallbackModels: getFallbackModelsForTier(tier, modelId, operation) }
       : {}),
   });
 }

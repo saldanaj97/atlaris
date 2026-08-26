@@ -1,7 +1,6 @@
 /**
- * Subscription tier required to access a model. The AI model catalog only
- * splits between `free`-accessible and `pro`-only tiers, regardless of how
- * many subscription tiers the billing surface defines.
+ * Catalog access label (`free` vs `pro`). This is not proof of zero cost and
+ * is not the operation allowlist — see `model-operation-policy.ts`.
  */
 type ModelTier = 'free' | 'pro';
 
@@ -17,7 +16,7 @@ export type AvailableModel = {
   provider: string;
   /** Short description for UI display */
   description: string;
-  /** Required subscription tier to access this model */
+  /** Catalog access label. Not proof of zero cost. */
   tier: ModelTier;
   /** Context window size in tokens */
   contextWindow: number;

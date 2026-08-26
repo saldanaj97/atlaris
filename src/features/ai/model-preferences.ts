@@ -3,6 +3,7 @@
  * runtime-only defaults (e.g. `openrouter/free`).
  */
 
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -37,8 +38,11 @@ export function isPersistableModelId(modelId: string): boolean {
  */
 export function getPersistableModelsForTier(
   tier: SubscriptionTier,
+  operation: ModelOperation,
 ): AvailableModel[] {
-  return getModelsForTier(tier).filter((m) => isPersistableModelId(m.id));
+  return getModelsForTier(tier, operation).filter((m) =>
+    isPersistableModelId(m.id),
+  );
 }
 
 /**
@@ -50,25 +54,30 @@ export function getPersistableModelsForTier(
 export function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
+  operation: ModelOperation,
 ): string | null {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
     logger.debug(
-      { tier, savedPreferredAiModel },
+      { tier, operation, savedPreferredAiModel },
       'No saved preferred AI model available for settings resolution',
     );
     return null;
   }
   if (!isPersistableModelId(savedPreferredAiModel)) {
     logger.debug(
-      { tier, savedPreferredAiModel },
+      { tier, operation, savedPreferredAiModel },
       'Saved preferred AI model is not persistable for settings resolution',
     );
     return null;
   }
-  const validation = validateModelForTier(tier, savedPreferredAiModel);
+  const validation = validateModelForTier(
+    tier,
+    savedPreferredAiModel,
+    operation,
+  );
   if (!validation.valid) {
     logger.debug(
-      { tier, savedPreferredAiModel, reason: validation.reason },
+      { tier, operation, savedPreferredAiModel, reason: validation.reason },
       'Saved preferred AI model is not allowed for current tier in settings resolution',
     );
     return null;

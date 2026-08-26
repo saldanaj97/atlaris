@@ -188,14 +188,13 @@ describe('getOutputTokenCeiling', () => {
 
 describe('tier consistency', () => {
   it('enforces the same ceiling for a model regardless of user tier', () => {
-    // For every model that appears in both free and pro tiers,
-    // the ceiling must be identical.
-    const freeTierModels = getModelsForTier('free');
-    const proTierModels = getModelsForTier('pro');
+    const freeOutlineModels = getModelsForTier('free', 'initial_outline');
+    const proOutlineModels = getModelsForTier('pro', 'initial_outline');
 
-    // Free models are a subset of pro models
-    for (const freeModel of freeTierModels) {
-      const proCounterpart = proTierModels.find((m) => m.id === freeModel.id);
+    for (const freeModel of freeOutlineModels) {
+      const proCounterpart = proOutlineModels.find(
+        (m) => m.id === freeModel.id,
+      );
       if (!proCounterpart) {
         throw new Error(
           `Free-tier model "${freeModel.id}" has no pro-tier counterpart`,
@@ -208,16 +207,15 @@ describe('tier consistency', () => {
     }
   });
 
-  it('starter and free tiers get identical ceilings', () => {
-    const freeModels = getModelsForTier('free');
-    const starterModels = getModelsForTier('starter');
-
-    const freeMap = new Map(freeModels.map((m) => [m.id, m]));
-    const starterMap = new Map(starterModels.map((m) => [m.id, m]));
-
-    const freeIds = new Set(freeMap.keys());
-    const starterIds = new Set(starterMap.keys());
-    expect(freeIds).toEqual(starterIds);
+  it('Free and Starter lesson catalogs share the free router; outline catalogs differ', () => {
+    expect(getModelsForTier('free', 'lesson').map((m) => m.id)).toEqual(
+      getModelsForTier('starter', 'lesson').map((m) => m.id),
+    );
+    expect(
+      getModelsForTier('free', 'initial_outline').map((m) => m.id),
+    ).not.toEqual(
+      getModelsForTier('starter', 'initial_outline').map((m) => m.id),
+    );
   });
 
   it('getOutputTokenCeiling is a pure function of modelId (no tier parameter)', () => {

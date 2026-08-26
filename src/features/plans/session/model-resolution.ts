@@ -34,7 +34,11 @@ export function resolveStreamModelResolution({
   let validationError: StreamModelValidationError | undefined;
 
   if (suppliedModel !== undefined) {
-    const validation = validateModelForTier(tier, suppliedModel);
+    const validation = validateModelForTier(
+      tier,
+      suppliedModel,
+      'initial_outline',
+    );
     if (validation.valid) {
       return {
         modelOverride: suppliedModel,
@@ -54,6 +58,7 @@ export function resolveStreamModelResolution({
   const savedModel = resolveSavedPreferenceForSettings(
     tier,
     savedPreferredAiModel,
+    'initial_outline',
   );
   if (savedModel !== null) {
     return {

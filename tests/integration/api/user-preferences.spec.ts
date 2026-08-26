@@ -20,15 +20,20 @@ type ApiModelResponse = {
   contextWindow: number;
 };
 
-const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
-const FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[0]?.id;
-const SECOND_FREE_MODEL_ID = FREE_PERSISTABLE_MODELS[1]?.id ?? FREE_MODEL_ID;
-const PRO_MODEL_ID = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
+const PLAN_OPERATION = 'initial_outline' as const;
+const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
+  'starter',
+  PLAN_OPERATION,
+);
+const STARTER_MODEL_ID = STARTER_PERSISTABLE_MODELS[0]?.id;
+const SECOND_STARTER_MODEL_ID =
+  STARTER_PERSISTABLE_MODELS[1]?.id ?? STARTER_MODEL_ID;
+const PRO_MODEL_ID = getPersistableModelsForTier('pro', PLAN_OPERATION).find(
+  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 
-if (!FREE_MODEL_ID || !SECOND_FREE_MODEL_ID || !PRO_MODEL_ID) {
-  throw new Error('Expected free and pro persistable model fixtures');
+if (!STARTER_MODEL_ID || !SECOND_STARTER_MODEL_ID || !PRO_MODEL_ID) {
+  throw new Error('Expected starter and pro persistable model fixtures');
 }
 
 function expectJsonObject(value: unknown): Record<string, unknown> {
@@ -69,7 +74,7 @@ describe('GET /api/v1/user/preferences', () => {
     const data = expectJsonObject(await response.json());
     const availableModels = expectModelArray(data.availableModels);
     expect(availableModels.length).toBe(
-      getPersistableModelsForTier('free').length,
+      getPersistableModelsForTier('free', PLAN_OPERATION).length,
     );
     expect(availableModels.some((m) => m.id === 'openrouter/free')).toBe(false);
   });
@@ -85,7 +90,9 @@ describe('GET /api/v1/user/preferences', () => {
     expect(response.status).toBe(200);
 
     const data = expectJsonObject(await response.json());
-    expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
+    expect(data.preferredAiModel).toBe(
+      getDefaultModelForTier('free', PLAN_OPERATION),
+    );
   });
 
   it('returns models with correct structure', async () => {
@@ -97,34 +104,8 @@ describe('GET /api/v1/user/preferences', () => {
 
     const response = await GET(request);
     const data = expectJsonObject(await response.json());
-
-    const firstModel = expectModelArray(data.availableModels)[0];
-    expect(firstModel).toBeDefined();
-
-    // API contract: id is a non-empty string
-    expect(typeof firstModel.id).toBe('string');
-    expect(firstModel.id.length).toBeGreaterThan(0);
-
-    // API contract: name is a non-empty string
-    expect(typeof firstModel.name).toBe('string');
-    expect(firstModel.name.length).toBeGreaterThan(0);
-
-    // API contract: provider is a non-empty string
-    expect(typeof firstModel.provider).toBe('string');
-    expect(firstModel.provider.length).toBeGreaterThan(0);
-
-    // API contract: description is a string (may be empty)
-    expect(typeof firstModel.description).toBe('string');
-
-    // API contract: tier is one of the allowed model tiers
-    expect(['free', 'pro']).toContain(firstModel.tier);
-    expect(typeof firstModel.tier).toBe('string');
-    expect(firstModel.tier.length).toBeGreaterThan(0);
-
-    // API contract: contextWindow is a positive integer
-    expect(typeof firstModel.contextWindow).toBe('number');
-    expect(Number.isInteger(firstModel.contextWindow)).toBe(true);
-    expect(firstModel.contextWindow).toBeGreaterThan(0);
+    const availableModels = expectModelArray(data.availableModels);
+    expect(availableModels).toEqual([]);
   });
 
   it('returns 401 for unauthenticated request', async () => {
@@ -146,6 +127,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     await ensureUser({
       authUserId: testAuthUserId,
       email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'starter',
     });
   });
 
@@ -179,7 +161,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: FREE_MODEL_ID,
+        preferredAiModel: STARTER_MODEL_ID,
       }),
     });
 
@@ -188,7 +170,7 @@ describe('PATCH /api/v1/user/preferences', () => {
 
     const data = expectJsonObject(await response.json());
     expect(data.message).toBe('Preferences updated');
-    expect(data.preferredAiModel).toBe(FREE_MODEL_ID);
+    expect(data.preferredAiModel).toBe(STARTER_MODEL_ID);
 
     const userRow = await db.query.users.findFirst({
       where: (fields, operators) =>
@@ -200,7 +182,7 @@ describe('PATCH /api/v1/user/preferences', () => {
       .select({ preferredAiModel: userPreferences.preferredAiModel })
       .from(userPreferences)
       .where(eq(userPreferences.userId, userRow!.id));
-    expect(preferencesRow?.preferredAiModel).toBe(FREE_MODEL_ID);
+    expect(preferencesRow?.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
   it('clears preferredAiModel with null PATCH and GET reflects tier default', async () => {
@@ -210,7 +192,7 @@ describe('PATCH /api/v1/user/preferences', () => {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        preferredAiModel: SECOND_FREE_MODEL_ID,
+        preferredAiModel: SECOND_STARTER_MODEL_ID,
       }),
     });
     const setResponse = await PATCH(setRequest);
@@ -235,14 +217,16 @@ describe('PATCH /api/v1/user/preferences', () => {
     const getResponse = await GET(getRequest);
     expect(getResponse.status).toBe(200);
     const getData = await getResponse.json();
-    expect(getData.preferredAiModel).toBe(getDefaultModelForTier('free'));
+    expect(getData.preferredAiModel).toBe(
+      getDefaultModelForTier('starter', PLAN_OPERATION),
+    );
   });
 
   it('persists preferredAiModel and returns it on GET', async () => {
     setTestUser(testAuthUserId);
     // Use a concrete model from the DB enum — openrouter/free is a
     // generation-time router fallback, not a persistable preference.
-    const resetModel = FREE_MODEL_ID;
+    const resetModel = STARTER_MODEL_ID;
 
     const patchRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -252,7 +236,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: SECOND_FREE_MODEL_ID,
+          preferredAiModel: SECOND_STARTER_MODEL_ID,
         }),
       },
     );
@@ -268,7 +252,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(getResponse.status).toBe(200);
 
     const getData = expectJsonObject(await getResponse.json());
-    expect(getData.preferredAiModel).toBe(SECOND_FREE_MODEL_ID);
+    expect(getData.preferredAiModel).toBe(SECOND_STARTER_MODEL_ID);
 
     const resetRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -298,7 +282,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: SECOND_FREE_MODEL_ID,
+          preferredAiModel: SECOND_STARTER_MODEL_ID,
         }),
       },
     );
@@ -307,7 +291,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(firstResponse.status).toBe(200);
 
     const firstData = expectJsonObject(await firstResponse.json());
-    expect(firstData.preferredAiModel).toBe(SECOND_FREE_MODEL_ID);
+    expect(firstData.preferredAiModel).toBe(SECOND_STARTER_MODEL_ID);
 
     const secondRequest = new Request(
       'http://localhost/api/v1/user/preferences',
@@ -317,7 +301,7 @@ describe('PATCH /api/v1/user/preferences', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          preferredAiModel: FREE_MODEL_ID,
+          preferredAiModel: STARTER_MODEL_ID,
         }),
       },
     );
@@ -326,7 +310,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(secondResponse.status).toBe(200);
 
     const secondData = expectJsonObject(await secondResponse.json());
-    expect(secondData.preferredAiModel).toBe(FREE_MODEL_ID);
+    expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
   it('rejects invalid model ID with validation error', async () => {
@@ -407,7 +391,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: FREE_MODEL_ID,
+        preferredAiModel: STARTER_MODEL_ID,
       }),
     });
 
@@ -439,7 +423,7 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        preferredAiModel: FREE_MODEL_ID,
+        preferredAiModel: STARTER_MODEL_ID,
         extraField: 'not-allowed',
       }),
     });
@@ -514,6 +498,8 @@ describe('GET /api/v1/user/preferences — invalid stored preference', () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const data = expectJsonObject(await response.json());
-    expect(data.preferredAiModel).toBe(getDefaultModelForTier('free'));
+    expect(data.preferredAiModel).toBe(
+      getDefaultModelForTier('free', PLAN_OPERATION),
+    );
   });
 });

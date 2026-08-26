@@ -1,7 +1,8 @@
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
   type ModelResolution,
@@ -10,19 +11,15 @@ import {
 } from '@/features/ai/model-resolver';
 import { describe, expect, it, vi } from 'vitest';
 
-describe('Model resolver (Task 2 - Phase 2)', () => {
-  const getModelIdBy = (
-    predicate: (model: (typeof AVAILABLE_MODELS)[number]) => boolean,
-  ): string => {
-    const model = AVAILABLE_MODELS.find(predicate);
-    if (!model) {
-      throw new Error('Expected model fixture to exist in AVAILABLE_MODELS');
-    }
-    return model.id;
-  };
+const STARTER_DEFAULT = 'google/gemini-2.5-flash-lite';
+const STARTER_OVERRIDE = 'openai/gpt-4o-mini-2024-07-18';
+const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
+const PRO_REGEN_DEFAULT = 'google/gemini-3-pro-preview';
+const PRO_LESSON_DEFAULT = 'google/gemini-3-flash-preview';
+const HAIKU_MODEL_ID = 'anthropic/claude-haiku-4.5';
+const OTHER_FREE_CATALOG_ID = 'google/gemini-2.0-flash-exp:free';
 
-  const FREE_MODEL_ID = getModelIdBy((model) => model.tier === 'free');
-  const PRO_MODEL_ID = getModelIdBy((model) => model.tier === 'pro');
+describe('Model resolver', () => {
   type ResolutionExpectation = Pick<
     ModelResolution,
     'modelId' | 'fallback' | 'fallbackReason'
@@ -43,16 +40,18 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
 
   const resolveWithMockProvider = (
     userTier: SubscriptionTier,
-    requestedModel?: string | null,
-  ): { result: ModelResolution } => {
+    requestedModel: string | null | undefined,
+    operation: ModelOperation,
+  ): { result: ModelResolution; providerGetter: ReturnType<typeof vi.fn> } => {
     const provider = createMockProvider();
-    const providerGetter = () => provider;
+    const providerGetter = vi.fn(() => provider);
     const result = resolveModelForTier(
       userTier,
       requestedModel,
+      operation,
       providerGetter,
     );
-    return { result };
+    return { result, providerGetter };
   };
 
   const expectResolution = (
@@ -64,9 +63,13 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
     expect(result.fallbackReason).toBe(expected.fallbackReason);
   };
 
-  describe('Free tier users', () => {
-    it('returns default model when no model requested', () => {
-      const { result } = resolveWithMockProvider('free');
+  describe('Free tier', () => {
+    it('returns the free router when no model is requested', () => {
+      const { result } = resolveWithMockProvider(
+        'free',
+        undefined,
+        'initial_outline',
+      );
 
       expectResolution(result, {
         modelId: AI_DEFAULT_MODEL,
@@ -75,36 +78,78 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       });
     });
 
-    it('allows free tier model', () => {
-      const { result } = resolveWithMockProvider('free', FREE_MODEL_ID);
-
-      expectResolution(result, {
-        modelId: FREE_MODEL_ID,
+    it('allows the free router and ignores paid overrides', () => {
+      const allowed = resolveWithMockProvider(
+        'free',
+        AI_DEFAULT_MODEL,
+        'initial_outline',
+      );
+      expectResolution(allowed.result, {
+        modelId: AI_DEFAULT_MODEL,
         fallback: false,
       });
-    });
 
-    it('passes the user tier to the provider factory', () => {
-      const provider = createMockProvider();
-      const providerGetter = vi.fn(() => provider);
-
-      resolveModelForTier('free', FREE_MODEL_ID, providerGetter);
-
-      expect(providerGetter).toHaveBeenCalledWith(FREE_MODEL_ID, 'free');
-    });
-
-    it('denies pro model and falls back to default', () => {
-      const { result } = resolveWithMockProvider('free', PRO_MODEL_ID);
-
-      expectResolution(result, {
+      const denied = resolveWithMockProvider(
+        'free',
+        PRO_OUTLINE_DEFAULT,
+        'initial_outline',
+      );
+      expectResolution(denied.result, {
         modelId: AI_DEFAULT_MODEL,
         fallback: true,
         fallbackReason: 'tier_denied',
       });
     });
 
-    it('rejects invalid model ID', () => {
-      const { result } = resolveWithMockProvider('free', 'invalid-model-id');
+    it('passes operation to the provider factory before work', () => {
+      const { providerGetter } = resolveWithMockProvider(
+        'free',
+        AI_DEFAULT_MODEL,
+        'lesson',
+      );
+
+      expect(providerGetter).toHaveBeenCalledWith(
+        AI_DEFAULT_MODEL,
+        'free',
+        'lesson',
+      );
+    });
+
+    it('falls back before provider when Haiku or another catalog id is requested', () => {
+      const haiku = resolveWithMockProvider(
+        'free',
+        HAIKU_MODEL_ID,
+        'initial_outline',
+      );
+      expectResolution(haiku.result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
+      expect(haiku.providerGetter).toHaveBeenCalledWith(
+        AI_DEFAULT_MODEL,
+        'free',
+        'initial_outline',
+      );
+
+      const otherFree = resolveWithMockProvider(
+        'free',
+        OTHER_FREE_CATALOG_ID,
+        'lesson',
+      );
+      expectResolution(otherFree.result, {
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
+    });
+
+    it('rejects invalid model IDs with the operation default', () => {
+      const { result } = resolveWithMockProvider(
+        'free',
+        'invalid-model-id',
+        'initial_outline',
+      );
 
       expectResolution(result, {
         modelId: AI_DEFAULT_MODEL,
@@ -115,112 +160,156 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
   });
 
   describe('validateModelForTier', () => {
-    it('returns valid for allowed tier model', () => {
-      expect(validateModelForTier('free', FREE_MODEL_ID)).toEqual({
+    it('returns valid for an allowed operation model', () => {
+      expect(
+        validateModelForTier('free', AI_DEFAULT_MODEL, 'initial_outline'),
+      ).toEqual({
         valid: true,
       });
     });
 
-    it('returns tier_denied for disallowed tier model', () => {
-      expect(validateModelForTier('free', PRO_MODEL_ID)).toEqual({
+    it('returns tier_denied for Haiku on Free/Starter', () => {
+      expect(
+        validateModelForTier('free', HAIKU_MODEL_ID, 'initial_outline'),
+      ).toEqual({
+        valid: false,
+        reason: 'tier_denied',
+      });
+      expect(
+        validateModelForTier('starter', HAIKU_MODEL_ID, 'regeneration'),
+      ).toEqual({
         valid: false,
         reason: 'tier_denied',
       });
     });
 
     it('returns invalid_model for unknown model id', () => {
-      expect(validateModelForTier('pro', 'does/not/exist')).toEqual({
+      expect(
+        validateModelForTier('pro', 'does/not/exist', 'initial_outline'),
+      ).toEqual({
         valid: false,
         reason: 'invalid_model',
       });
     });
   });
 
-  describe('Starter tier users', () => {
-    it('returns default model when no model requested', () => {
-      const { result } = resolveWithMockProvider('starter');
-
-      expectResolution(result, {
-        modelId: AI_DEFAULT_MODEL,
+  describe('Starter tier', () => {
+    it('uses the outline default and allows an allowlist override', () => {
+      const unspecified = resolveWithMockProvider(
+        'starter',
+        undefined,
+        'initial_outline',
+      );
+      expectResolution(unspecified.result, {
+        modelId: STARTER_DEFAULT,
         fallback: true,
         fallbackReason: 'not_specified',
       });
-    });
 
-    it('gets free models only (same as free tier)', () => {
-      const { result } = resolveWithMockProvider('starter', FREE_MODEL_ID);
-
-      expectResolution(result, {
-        modelId: FREE_MODEL_ID,
+      const override = resolveWithMockProvider(
+        'starter',
+        STARTER_OVERRIDE,
+        'regeneration',
+      );
+      expectResolution(override.result, {
+        modelId: STARTER_OVERRIDE,
         fallback: false,
       });
     });
 
-    it('denies pro models', () => {
-      const { result } = resolveWithMockProvider('starter', PRO_MODEL_ID);
+    it('does not fall back to openrouter/free for outline/regen', () => {
+      const { result } = resolveWithMockProvider(
+        'starter',
+        PRO_OUTLINE_DEFAULT,
+        'initial_outline',
+      );
+
+      expectResolution(result, {
+        modelId: STARTER_DEFAULT,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
+      expect(result.modelId).not.toBe(AI_DEFAULT_MODEL);
+    });
+
+    it('ignores a plan preference for lesson and uses the free router', () => {
+      const { result, providerGetter } = resolveWithMockProvider(
+        'starter',
+        STARTER_DEFAULT,
+        'lesson',
+      );
 
       expectResolution(result, {
         modelId: AI_DEFAULT_MODEL,
         fallback: true,
         fallbackReason: 'tier_denied',
       });
+      expect(providerGetter).toHaveBeenCalledWith(
+        AI_DEFAULT_MODEL,
+        'starter',
+        'lesson',
+      );
     });
   });
 
-  describe('Pro tier users', () => {
-    it('allows free models', () => {
-      const { result } = resolveWithMockProvider('pro', FREE_MODEL_ID);
+  describe('Pro tier', () => {
+    it('uses independent operation defaults instead of the first catalog row', () => {
+      expect(
+        resolveWithMockProvider('pro', undefined, 'initial_outline').result
+          .modelId,
+      ).toBe(PRO_OUTLINE_DEFAULT);
+      expect(
+        resolveWithMockProvider('pro', undefined, 'regeneration').result
+          .modelId,
+      ).toBe(PRO_REGEN_DEFAULT);
+      expect(
+        resolveWithMockProvider('pro', undefined, 'lesson').result.modelId,
+      ).toBe(PRO_LESSON_DEFAULT);
+    });
+
+    it('allows a Free-labelled catalog model on Pro', () => {
+      const { result } = resolveWithMockProvider(
+        'pro',
+        OTHER_FREE_CATALOG_ID,
+        'initial_outline',
+      );
 
       expectResolution(result, {
-        modelId: FREE_MODEL_ID,
+        modelId: OTHER_FREE_CATALOG_ID,
         fallback: false,
       });
     });
 
-    it('allows pro models', () => {
-      const { result } = resolveWithMockProvider('pro', PRO_MODEL_ID);
+    it('falls back to the operation default for invalid ids', () => {
+      const { result } = resolveWithMockProvider(
+        'pro',
+        'fake-model',
+        'regeneration',
+      );
 
       expectResolution(result, {
-        modelId: PRO_MODEL_ID,
-        fallback: false,
-      });
-    });
-
-    it('rejects invalid model even for pro', () => {
-      const { result } = resolveWithMockProvider('pro', 'fake-model');
-
-      expectResolution(result, {
-        modelId: AI_DEFAULT_MODEL,
+        modelId: PRO_REGEN_DEFAULT,
         fallback: true,
         fallbackReason: 'invalid_model',
-      });
-    });
-
-    it('treats undefined as not_specified for pro tier', () => {
-      const { result } = resolveWithMockProvider('pro', undefined);
-
-      expectResolution(result, {
-        modelId: AI_DEFAULT_MODEL,
-        fallback: true,
-        fallbackReason: 'not_specified',
       });
     });
 
     it.each([
       ["empty string ''", ''],
       ['null', null],
-    ] as const)(
-      'treats %s as invalid for pro tier: resolves to AI_DEFAULT_MODEL with fallback invalid_model',
-      (_label, edgeValue) => {
-        const { result } = resolveWithMockProvider('pro', edgeValue);
+    ] as const)('treats %s as invalid for Pro outline', (_label, edgeValue) => {
+      const { result } = resolveWithMockProvider(
+        'pro',
+        edgeValue,
+        'initial_outline',
+      );
 
-        expectResolution(result, {
-          modelId: AI_DEFAULT_MODEL,
-          fallback: true,
-          fallbackReason: 'invalid_model',
-        });
-      },
-    );
+      expectResolution(result, {
+        modelId: PRO_OUTLINE_DEFAULT,
+        fallback: true,
+        fallbackReason: 'invalid_model',
+      });
+    });
   });
 
   describe('Provider factory errors', () => {
@@ -230,7 +319,12 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       };
       let thrown: unknown;
       try {
-        resolveModelForTier('free', undefined, throwingProviderGetter);
+        resolveModelForTier(
+          'free',
+          undefined,
+          'initial_outline',
+          throwingProviderGetter,
+        );
       } catch (error) {
         thrown = error;
       }
@@ -249,7 +343,12 @@ describe('Model resolver (Task 2 - Phase 2)', () => {
       };
       let thrown: unknown;
       try {
-        resolveModelForTier('pro', PRO_MODEL_ID, throwingProviderGetter);
+        resolveModelForTier(
+          'pro',
+          PRO_OUTLINE_DEFAULT,
+          'initial_outline',
+          throwingProviderGetter,
+        );
       } catch (error) {
         thrown = error;
       }
