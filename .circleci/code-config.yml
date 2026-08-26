@@ -210,6 +210,8 @@ jobs:
       - checkout
       - init-env
       - install-pnpm-deps
+      - attach_workspace:
+          at: /tmp/.ci-flags
       - run:
           name: Lint and type check
           no_output_timeout: 5m

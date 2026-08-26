@@ -58,6 +58,21 @@ describe('CircleCI test result collection', () => {
   });
 });
 
+describe('CircleCI change flags', () => {
+  it('attaches detected flags before selecting the lint command', () => {
+    const lintJob = CODE_CONFIG.match(
+      /\n  lint-and-type-check:\n([\s\S]*?)\n  vulnerability-scan:/,
+    )?.[1];
+
+    expect(lintJob).toContain(
+      '- attach_workspace:\n          at: /tmp/.ci-flags',
+    );
+    expect(lintJob?.indexOf('attach_workspace')).toBeLessThan(
+      lintJob?.indexOf('lint_command') ?? -1,
+    );
+  });
+});
+
 describe('CircleCI PR merge gate', () => {
   it('runs ci-pr on develop-headed pull_request events', () => {
     const pullRequestGate = CI_PR_WORKFLOW.match(
