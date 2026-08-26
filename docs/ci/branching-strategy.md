@@ -85,7 +85,7 @@ We use two protected branches that serve as anchors for all development:
 
 ## CI Workflows Explained
 
-PR validation is CircleCI. Trunk integration after merge to `develop`/`main` is still GitHub Actions, plus a CircleCI sidecar.
+PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`main` is CircleCI `ci-trunk` only.
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
@@ -104,9 +104,9 @@ PR validation is CircleCI. Trunk integration after merge to `develop`/`main` is 
 
 **Purpose:** Fast feedback on PRs before merge. GitHub rulesets require these job names, not a GitHub Actions aggregator.
 
-### 2. `ci-trunk.yml` - Full CI (GitHub Actions)
+### 2. CircleCI `ci-trunk` - Full CI (post-merge)
 
-**Triggers:** Push to `develop` or `main`
+**Triggers:** **All pushes** to `develop` or `main` (not `pull_request` events). Keep the CircleCI GitHub App **All pushes** trigger.
 
 **What it runs:**
 
@@ -114,6 +114,8 @@ PR validation is CircleCI. Trunk integration after merge to `develop`/`main` is 
 - RLS security tests
 
 **Purpose:** Comprehensive validation after merge. Browser smoke (`pnpm test:smoke`) is supported locally but is not a hosted CI gate.
+
+**Known gaps:** CircleCI has no `merge_group` trigger. Codecov upload is still absent (workflow status is the gate). Jobs use a CircleCI Postgres sidecar, not Testcontainers.
 
 ### 3. `staging-db-migrations.yaml` - Staging Database Migration Workflow
 
@@ -176,14 +178,14 @@ git commit -m "feat: ..."
 
 ### Step 5: Merge to `develop`
 
-1. Full CI runs (`ci-trunk.yml`)
+1. Full CI runs (CircleCI `ci-trunk`)
 2. An operator dispatches `staging-db-migrations.yaml` phase `expand`
 3. Vercel deploys staging; after health verification, the operator dispatches phase `contract`
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
-2. Full CI runs (skipped for docs-only pushes via `paths-ignore`)
+2. Full CI runs (CircleCI `ci-trunk`; `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path files)
 3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
 4. An operator runs the **Staged Production** lane (`vercel --prod --skip-domain` → verify protected URL → `vercel promote`). See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md). There is no automatic Production app deploy on merge to `main`.
 5. After promote + health/archive checks, the operator dispatches phase `contract`
@@ -225,8 +227,7 @@ Use the Vercel preview deployment URL; ensure preview environment variables poin
 
 ## Related Files
 
-- `.circleci/config.yml` - PR validation (`ci-pr`) and CircleCI trunk sidecar
-- `.github/workflows/ci-trunk.yml` - Full CI on trunk
+- `.circleci/config.yml` - PR validation (`ci-pr`) and trunk (`ci-trunk`)
 - `.github/workflows/staging-db-migrations.yaml` - Staging migration workflow
 - `.github/workflows/production-db-migrations.yaml` - Production migration workflow
 - `docs/ci-cd/pipeline-and-deployment-strategy.md` - Deployment pipeline details

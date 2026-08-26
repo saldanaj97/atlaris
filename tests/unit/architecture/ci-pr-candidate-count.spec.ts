@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 const CIRCLE_CI = readFileSync(
-  join(import.meta.dirname, '..', '..', '..', '.circleci', 'config.yml'),
+  join(REPO_ROOT, '.circleci', 'config.yml'),
   'utf8',
 );
 const CANDIDATE_COUNT =
@@ -62,5 +63,11 @@ describe('CircleCI PR merge gate', () => {
     expect(CIRCLE_CI).toMatch(
       /ci-trunk:\n    when:\n      not:\n        equal: \[pull_request, << pipeline\.event\.name >>\]/,
     );
+  });
+
+  it('does not keep GitHub Actions ci-trunk.yml', () => {
+    expect(
+      existsSync(join(REPO_ROOT, '.github', 'workflows', 'ci-trunk.yml')),
+    ).toBe(false);
   });
 });

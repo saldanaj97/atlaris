@@ -770,8 +770,7 @@ workflows:
           requires:
             - detect-changes
 
-  # GitHub ci-trunk.yml also runs on merge_group; CircleCI has no equivalent.
-  # Codecov and all-checks-trunk are omitted: workflow status is the gate.
+  # No merge_group trigger. Codecov and all-checks-trunk omitted: workflow status is the gate.
   ci-trunk:
     when:
       not:
