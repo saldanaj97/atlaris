@@ -559,7 +559,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-    resource_class: large
+    resource_class: medium
     parameters:
       skip_unless:
         type: enum
