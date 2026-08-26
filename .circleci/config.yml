@@ -340,7 +340,7 @@ jobs:
 
   unit-tests:
     executor: node
-    parallelism: 2
+    parallelism: 4
     environment:
       NODE_ENV: test
       SKIP_DB_TEST_SETUP: 'true'
