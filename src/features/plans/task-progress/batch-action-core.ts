@@ -3,7 +3,7 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { resolveUserTier } from '@/features/billing/tier';
 import { enqueueFollowUpLessonsAfterProgress } from '@/features/lesson-content/progressive-enqueue';
-import { assertPlanContentAccess } from '@/features/plans/entitlement/access';
+import { requirePlanContentAccess } from '@/features/plans/api/route-context';
 import {
   applyTaskProgressUpdates,
   validateTaskProgressBatchInput,
@@ -37,9 +37,9 @@ export async function batchUpdateTaskProgressCore(
     updates: input.updates,
   });
 
-  await assertPlanContentAccess({
-    userId: input.userId,
+  await requirePlanContentAccess({
     planId: input.planId,
+    ownerUserId: input.userId,
     dbClient: input.dbClient,
   });
 
