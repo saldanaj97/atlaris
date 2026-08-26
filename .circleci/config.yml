@@ -24,6 +24,7 @@ workflows:
     jobs:
       - path-filtering/filter:
           name: select-config
+          tag: "3.12"
           base-revision: << pipeline.event.github.pull_request.base.ref >>
           config-path: .circleci/no-updates.yml
           # Only docs/** is docs-only; root and CI/config changes run code CI.
@@ -41,6 +42,7 @@ workflows:
     jobs:
       - path-filtering/filter:
           name: select-config
+          tag: "3.12"
           base-revision: main
           config-path: .circleci/no-updates.yml
           mapping: *config-mapping
@@ -55,6 +57,7 @@ workflows:
     jobs:
       - path-filtering/filter:
           name: select-config
+          tag: "3.12"
           base-revision: << pipeline.parameters.base_ref >>
           config-path: .circleci/no-updates.yml
           mapping: *config-mapping
