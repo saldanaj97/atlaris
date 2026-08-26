@@ -7,14 +7,25 @@ const CIRCLE_CI = readFileSync(
   join(REPO_ROOT, '.circleci', 'config.yml'),
   'utf8',
 );
+const TEST_SUITES = readFileSync(
+  join(REPO_ROOT, '.circleci', 'test-suites.yml'),
+  'utf8',
+);
 const CANDIDATE_COUNT =
   "COUNT=$(printf '%s\\n' \"${FILES}\" | awk 'NF { count += 1 } END { print count + 0 }')";
 const [CI_PR_WORKFLOW] = CIRCLE_CI.split(/\n  ci-trunk:\n/);
 
 describe('PR CI candidate file counting', () => {
-  it('treats an empty filtered file list as zero candidates in every consumer', () => {
-    expect(CIRCLE_CI.split(CANDIDATE_COUNT)).toHaveLength(3);
+  it('treats an empty filtered integration file list as zero candidates', () => {
+    expect(CIRCLE_CI.split(CANDIDATE_COUNT)).toHaveLength(2);
     expect(CIRCLE_CI).not.toContain('echo "${FILES}" | wc -l');
+  });
+
+  it('routes unit selection, splitting, and impact refresh through Smarter Testing', () => {
+    expect(CIRCLE_CI).toContain('circleci testsuite run "unit tests"');
+    expect(CIRCLE_CI).toContain('--analyze-tests=impacted --run-tests=none');
+    expect(TEST_SUITES).toContain('test-impact-analysis: true');
+    expect(TEST_SUITES).toContain('dynamic-test-splitting: true');
   });
 
   it('allows related mode to pass when no integration tests match', () => {

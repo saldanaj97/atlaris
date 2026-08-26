@@ -1,0 +1,41 @@
+---
+name: unit tests
+discover: >-
+  pnpm exec vitest list --config vitest.config.ts --project unit --filesOnly tests/unit
+  | sed -E 's/^\[[^]]+\] //'
+run: >-
+  pnpm exec vitest run --config vitest.config.ts --project unit
+  --reporter=default
+  --reporter=json
+  --reporter=junit
+  --outputFile.json=test-results.json
+  --outputFile.junit="<< outputs.junit >>"
+  << test.atoms >>
+analysis: >-
+  coverage_dir=$(mktemp -d) &&
+  pnpm exec vitest run --config vitest.config.ts --project unit
+  --coverage
+  --coverage.reporter=lcov
+  --coverage.reportsDirectory="${coverage_dir}"
+  << test.atoms >> &&
+  mv "${coverage_dir}/lcov.info" "<< outputs.lcov >>"
+outputs:
+  junit: test-results/junit.xml
+options:
+  test-impact-analysis: true
+  dynamic-test-splitting: true
+  impact-key: atlaris-unit-tests
+  full-test-run-paths:
+    - .circleci/**
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - tsconfig.json
+    - '*.config.*'
+    - middleware.ts
+    - public/**
+    - supabase/**
+    - tests/helpers/**
+    - tests/mocks/**
+    - tests/setup/**
+    - tests/unit/setup.ts

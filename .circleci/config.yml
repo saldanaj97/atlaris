@@ -357,88 +357,27 @@ jobs:
           name: Unit tests
           no_output_timeout: 20m
           command: |
-            NODE=$((CIRCLE_NODE_INDEX + 1))
-            TOTAL="${CIRCLE_NODE_TOTAL}"
-            echo "Base ref: ${BASE_REF} node ${NODE}/${TOTAL}"
             mkdir -p test-results
-
-            CHANGED_FILES=""
-            if git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
-              CHANGED_FILES=$(git diff --name-only "origin/${BASE_REF}...HEAD" | tr '\n' ' ' || true)
-            fi
-
-            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests)/.*\.(ts|tsx)$' || true)
-            COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
-            echo "Changed candidate files: ${COUNT}"
-
-            run_full_unit() {
-              pnpm vitest run --project unit \
-                --coverage \
-                --reporter=default \
-                --reporter=json \
-                --reporter=junit \
-                --outputFile.json=test-results.json \
-                --outputFile.junit=test-results/junit.xml \
-                tests/unit
-            }
-
-            run_split_unit() {
-              TESTFILES=$(circleci tests glob "tests/unit/**/*.{test,spec}.{ts,tsx}")
-              if [ -z "${TESTFILES}" ]; then
-                echo "No unit test files found; skipping."
-                circleci-agent step halt
-                exit 0
-              fi
-              # ponytail: name-split, not classname timings. Hosted 4-way timings
-              # isolated tests/unit/app/plans/new/page.spec.tsx (16 tests) on one
-              # shard because JUnit sums sequential test times while the unit
-              # pool is concurrent. Ceiling: a new huge spec can still skew one
-              # alphabetical bucket; upgrade to file-count-aware weights if
-              # wall-clock regresses.
-              echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=name
-              if [ ! -s files.txt ]; then
-                echo "No tests assigned to this node; skipping."
-                circleci-agent step halt
-                exit 0
-              fi
-              # ponytail: word-split files.txt; circleci tests run already selected this node's files
-              pnpm vitest run --project unit \
-                --coverage \
-                --reporter=default \
-                --reporter=json \
-                --reporter=junit \
-                --outputFile.json=test-results.json \
-                --outputFile.junit=test-results/junit.xml \
-                $(cat files.txt)
-            }
-
-            if [ "${COUNT}" -gt 0 ] && [ "${COUNT}" -le 50 ]; then
-              echo "Related unit tests mode."
-              if [ "${NODE}" != "1" ]; then
-                echo "Skipping related run on node ${NODE}/${TOTAL}."
-                exit 0
-              fi
-              # ponytail: word-split FILES; CircleCI related-file list is already filtered
-              pnpm vitest related --project unit --run --coverage \
-                --reporter=default \
-                --reporter=json \
-                --reporter=junit \
-                --outputFile.json=test-results.json \
-                --outputFile.junit=test-results/junit.xml \
-                ${FILES} || {
-                failed="$(jq -r '.numFailedTests // 0' test-results.json 2>/dev/null || echo 0)"
-                if [ "${failed}" -gt 0 ]; then
-                  echo "Related unit tests failed; not falling back."
-                  exit 1
-                fi
-                echo "Related tests failed or unsupported; running complete unit suite on node 1."
-                run_full_unit
-              }
+            if [ "${BASE_REF}" = "main" ]; then
+              circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
             else
-              echo "Full split unit suite."
-              run_split_unit
+              circleci testsuite run "unit tests" --analyze-tests=none --run-tests=impacted
             fi
       - store-test-outputs
+
+  unit-impact-analysis:
+    executor: node
+    environment:
+      NODE_ENV: test
+      SKIP_DB_TEST_SETUP: 'true'
+    steps:
+      - skip-unless-code
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Refresh unit test impact data
+          no_output_timeout: 20m
+          command: circleci testsuite run "unit tests" --analyze-tests=impacted --run-tests=none
 
   integration-light:
     docker:
@@ -783,6 +722,12 @@ workflows:
           filters:
             branches:
               only: [main, develop]
+      - unit-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
       - integration-tests:
           requires:
             - detect-changes
