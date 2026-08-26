@@ -687,7 +687,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-    resource_class: large
+    resource_class: medium
     environment:
       NODE_ENV: test
       SKIP_TESTCONTAINERS: 'true'
