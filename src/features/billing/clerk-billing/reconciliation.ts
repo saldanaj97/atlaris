@@ -479,10 +479,24 @@ export async function applyClerkBillingSource(
   const projection = projectClerkBillingSource(source, user);
 
   if (projection === null) {
-    deps.logger.info(
-      { authUserId: user.authUserId, type: source.type },
-      'Clerk Billing event did not require a local projection update',
-    );
+    const unmappedItems = source.items.filter((item) => item.tier === null);
+    if (unmappedItems.length > 0) {
+      deps.logger.warn(
+        {
+          authUserId: user.authUserId,
+          planIds: unmappedItems.map((item) => item.planId),
+          planSlugs: unmappedItems.map((item) => item.planSlug),
+          storedTier: user.subscriptionTier,
+          type: source.type,
+        },
+        'Clerk Billing plan could not be mapped; preserving stored tier',
+      );
+    } else {
+      deps.logger.info(
+        { authUserId: user.authUserId, type: source.type },
+        'Clerk Billing event did not require a local projection update',
+      );
+    }
     return 'ignored';
   }
 

@@ -127,7 +127,7 @@ function toProjectionItemFromWebhook(
   return {
     id: item.id,
     status: item.status,
-    tier: tierFromClerkPlan({ id: planId, slug: planSlug, amountInCents }),
+    tier: tierFromClerkPlan({ id: planId, slug: planSlug }),
     planId,
     planSlug,
     amountInCents,
@@ -147,7 +147,6 @@ function toProjectionItemFromBackend(
     tier: tierFromClerkPlan({
       id: item.planId ?? item.plan?.id ?? null,
       slug: item.plan?.slug ?? null,
-      amountInCents,
     }),
     planId: item.planId ?? item.plan?.id ?? null,
     planSlug: item.plan?.slug ?? null,
@@ -378,6 +377,13 @@ export function projectClerkBillingSource(
       subscriptionPeriodEnd: activeFreeItem.periodEnd,
       cancelAtPeriodEnd: false,
     };
+  }
+
+  if (
+    source.items.length > 0 &&
+    source.items.every((item) => item.tier === null)
+  ) {
+    return null;
   }
 
   if (

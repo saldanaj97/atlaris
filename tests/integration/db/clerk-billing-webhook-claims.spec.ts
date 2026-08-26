@@ -84,8 +84,8 @@ function subscription(
       {
         id: 'item_claim_pro',
         status: 'active',
-        planId: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        planId: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: { amount: 2_000 },
         periodEnd: new Date('2026-09-01T00:00:00.000Z').getTime(),
         isFreeTrial: false,

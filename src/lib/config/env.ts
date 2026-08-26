@@ -8,6 +8,7 @@ export {
 export { appEnv, createAppEnv } from '@/lib/config/env/app';
 export {
   clerkAuthEnv,
+  clerkBillingPlanEnv,
   createClerkAuthEnv,
   devAuthEnv,
 } from '@/lib/config/env/auth';

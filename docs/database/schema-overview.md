@@ -24,24 +24,24 @@ email_notification_deliveries     (service-owned per-message ledger; deny-all RL
 
 Defined in `supabase/enums.ts` (plus delivery status enums on delivery table modules):
 
-| Enum                       | Values                                                                                                    |
-| -------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `skill_level`              | `beginner`, `intermediate`, `advanced`                                                                    |
-| `learning_style`           | `reading`, `video`, `practice`, `mixed`                                                                   |
-| `resource_type`            | `video`, `article`, `course`, `doc`, `other`                                                              |
-| `progress_status`          | `not_started`, `in_progress`, `completed`                                                                 |
-| `generation_status`        | `generating`, `pending_retry`, `ready`, `failed`                                                          |
-| `lesson_generation_status` | `not_generated`, `generating`, `ready`, `failed` (per **module**; separate from plan `generation_status`) |
-| `job_status`               | `pending`, `processing`, `completed`, `failed`                                                            |
-| `job_type`                 | values sourced from `src/lib/jobs/constants.ts`                                                           |
-| `subscription_tier`        | `free`, `starter`, `pro`                                                                                  |
-| `subscription_status`      | `active`, `canceled`, `past_due`, `trialing`                                                              |
-| `plan_origin`              | `ai`, `template`, `manual`                                                                                |
-| `preferred_ai_model`       | tier-gated model ids (see AI catalog / settings)                                                          |
-| `email_notification_category` | `weekly_summary`, `daily_reminder`, `streak_reminder`                                                  |
-| `email_notification_delivery_status` | `pending`, `sent`, `skipped`, `failed`, `manual_review`                                          |
-| `email_notification_delivery_run_kind` | `daily`, `weekly`                                                                                |
-| `email_notification_delivery_run_status` | `queued`, `running`, `paused`, `completed`, `failed`, `needs_review`                           |
+| Enum                                     | Values                                                                                                    |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `skill_level`                            | `beginner`, `intermediate`, `advanced`                                                                    |
+| `learning_style`                         | `reading`, `video`, `practice`, `mixed`                                                                   |
+| `resource_type`                          | `video`, `article`, `course`, `doc`, `other`                                                              |
+| `progress_status`                        | `not_started`, `in_progress`, `completed`                                                                 |
+| `generation_status`                      | `generating`, `pending_retry`, `ready`, `failed`                                                          |
+| `lesson_generation_status`               | `not_generated`, `generating`, `ready`, `failed` (per **module**; separate from plan `generation_status`) |
+| `job_status`                             | `pending`, `processing`, `completed`, `failed`                                                            |
+| `job_type`                               | values sourced from `src/lib/jobs/constants.ts`                                                           |
+| `subscription_tier`                      | `free`, `starter`, `pro`                                                                                  |
+| `subscription_status`                    | `active`, `canceled`, `past_due`, `trialing`                                                              |
+| `plan_origin`                            | `ai`, `template`, `manual`                                                                                |
+| `preferred_ai_model`                     | tier-gated model ids (see AI catalog / settings)                                                          |
+| `email_notification_category`            | `weekly_summary`, `daily_reminder`, `streak_reminder`                                                     |
+| `email_notification_delivery_status`     | `pending`, `sent`, `skipped`, `failed`, `manual_review`                                                   |
+| `email_notification_delivery_run_kind`   | `daily`, `weekly`                                                                                         |
+| `email_notification_delivery_run_status` | `queued`, `running`, `paused`, `completed`, `failed`, `needs_review`                                      |
 
 ## Key constraints
 
@@ -69,22 +69,22 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 
 ## Frequently referenced indexes
 
-| Table                | Index / uniqueness                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `learning_plans`     | `(user_id, created_at desc)`, `(user_id, is_quota_eligible, generation_status)`                               |
-| `modules`            | `(plan_id, order)`                                                                                            |
-| `tasks`              | `(module_id, order)`                                                                                          |
-| `task_progress`      | `(user_id, task_id)`                                                                                          |
-| `task_resources`     | `(task_id, resource_id)`                                                                                      |
-| `learning_activity_events` | `(user_id, occurred_at)`, `(user_id, plan_id, occurred_at)`, `(task_id, occurred_at)`                    |
-| `job_queue`          | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)`                         |
-| `usage_metrics`      | `(user_id, month)` unique; `lesson_modules_generated` counts successful module lesson batches (billing meter) |
-| `ai_usage_events`    | `(user_id, created_at)`                                                                                       |
-| `oauth_state_tokens` | `(state_token_hash)`, `(expires_at)`                                                                          |
-| `clerk_webhook_events` | `(event_id)` unique, `(created_at)`                                                                         |
-| `clerk_webhook_event_claims` | `(event_id)` primary key, `(claim_expires_at)`                                                        |
-| `email_notification_deliveries` | `(user_id, category, delivery_key)` unique                                                         |
-| `email_notification_delivery_runs` | `(run_kind, scheduler_date_utc)` unique; unique `workflow_run_id` when set                        |
+| Table                              | Index / uniqueness                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `learning_plans`                   | `(user_id, created_at desc)`, `(user_id, is_quota_eligible, generation_status)`                        |
+| `modules`                          | `(plan_id, order)`                                                                                     |
+| `tasks`                            | `(module_id, order)`                                                                                   |
+| `task_progress`                    | `(user_id, task_id)`                                                                                   |
+| `task_resources`                   | `(task_id, resource_id)`                                                                               |
+| `learning_activity_events`         | `(user_id, occurred_at)`, `(user_id, plan_id, occurred_at)`, `(task_id, occurred_at)`                  |
+| `job_queue`                        | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)`                  |
+| `usage_metrics`                    | `(user_id, month)` unique; `lesson_modules_generated` is an observational column (not a product quota) |
+| `ai_usage_events`                  | `(user_id, created_at)`                                                                                |
+| `oauth_state_tokens`               | `(state_token_hash)`, `(expires_at)`                                                                   |
+| `clerk_webhook_events`             | `(event_id)` unique, `(created_at)`                                                                    |
+| `clerk_webhook_event_claims`       | `(event_id)` primary key, `(claim_expires_at)`                                                         |
+| `email_notification_deliveries`    | `(user_id, category, delivery_key)` unique                                                             |
+| `email_notification_delivery_runs` | `(run_kind, scheduler_date_utc)` unique; unique `workflow_run_id` when set                             |
 
 ## Ownership and retention
 
@@ -101,22 +101,22 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 
 ## Code locations
 
-| Concern                  | Location                                         |
-| ------------------------ | ------------------------------------------------ |
-| Schema tables            | `supabase/schema/tables/`                        |
-| User preferences         | `supabase/schema/tables/user-preferences.ts`     |
+| Concern                  | Location                                                                  |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Schema tables            | `supabase/schema/tables/`                                                 |
+| User preferences         | `supabase/schema/tables/user-preferences.ts`                              |
 | Email delivery ledgers   | `email-notification-deliveries.ts`, `email-notification-delivery-runs.ts` |
-| Learning activity events | `learningActivityEvents` in `tables/tasks.ts`    |
-| Enum definitions         | `supabase/enums.ts`                              |
-| Relations                | `supabase/schema/relations.ts`                   |
-| Query modules            | `src/lib/db/queries/`                            |
-| Preference queries       | `src/lib/db/queries/user-preferences.ts`         |
-| Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts` |
-| Usage tracking           | `supabase/usage.ts`                              |
-| Migrations               | `supabase/migrations/`                           |
-| Request DB               | `supabase/runtime.ts`                            |
-| RLS client               | `supabase/rls.ts`                                |
-| Service-role DB          | `supabase/service-role.ts`                       |
+| Learning activity events | `learningActivityEvents` in `tables/tasks.ts`                             |
+| Enum definitions         | `supabase/enums.ts`                                                       |
+| Relations                | `supabase/schema/relations.ts`                                            |
+| Query modules            | `src/lib/db/queries/`                                                     |
+| Preference queries       | `src/lib/db/queries/user-preferences.ts`                                  |
+| Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts`                          |
+| Usage tracking           | `supabase/usage.ts`                                                       |
+| Migrations               | `supabase/migrations/`                                                    |
+| Request DB               | `supabase/runtime.ts`                                                     |
+| RLS client               | `supabase/rls.ts`                                                         |
+| Service-role DB          | `supabase/service-role.ts`                                                |
 
 ## Implemented feature coverage
 
@@ -125,7 +125,7 @@ Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` da
 - Plan scheduling and task progress tracking
 - Learning activity history for usage analytics streaks/trends
 - User preferences (AI model, analytics timezone) and email notification opt-ins
-- Monthly usage and billing-related usage accounting (including `lesson_modules_generated` on `usage_metrics`)
+- Monthly usage and billing-related usage accounting (`usage_metrics.regenerations_used`; `lesson_modules_generated` remains observational)
 - Clerk Billing entitlement projection + webhook idempotency ledger
 - Opted-in email notification preferences and delivery orchestration (flag-gated), with durable delivery ledger/runs (see `docs/architecture/email-notification-delivery-runbook.md`)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)

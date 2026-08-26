@@ -8,10 +8,7 @@ import {
   getPostgresHostname,
   isLocalPostgresHostname,
 } from './local-postgres-host';
-import {
-  CLERK_BILLING_PLAN_IDS,
-  CLERK_BILLING_PLAN_SLUGS,
-} from '@/features/billing/clerk-billing/plan-mapping';
+import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import {
   applyClerkBillingSource,
   type ClerkBillingApplyResult,
@@ -137,8 +134,8 @@ async function main(): Promise<void> {
   const tier = parseTier(args.plan);
   const status = parseStatus(args.status);
   const periodEnd = parsePeriodEnd(args['period-end'], tier);
-  const planId = CLERK_BILLING_PLAN_IDS[tier];
   const planSlug = CLERK_BILLING_PLAN_SLUGS[tier];
+  const planId = `local_${tier}`;
   const item: ClerkBillingProjectionItem = {
     id: `local_${tier}_${status}`,
     status,

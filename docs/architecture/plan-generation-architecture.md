@@ -50,17 +50,17 @@ This separation between external auth identity and internal app user row is not 
 
 ### API layer
 
-| File                                                                                | Responsibility                             |
-| ----------------------------------------------------------------------------------- | ------------------------------------------ |
-| `src/app/api/v1/plans/stream/route.ts`                                              | Start streamed plan generation             |
-| `src/app/api/v1/plans/stream/helpers.ts`                                            | Stream-side success/failure handling       |
-| `src/app/api/v1/plans/[planId]/status/route.ts`                                     | Return plan generation status              |
-| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                   | Return attempt history                     |
-| `src/app/api/v1/plans/[planId]/retry/route.ts`                                      | Retry a failed or pending-retry generation |
-| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                 | Regenerate an existing plan                |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts` | Start module lesson workflow (async)       |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`   | Poll module lesson generation status       |
-| `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook    |
+| File                                                                                  | Responsibility                             |
+| ------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `src/app/api/v1/plans/stream/route.ts`                                                | Start streamed plan generation             |
+| `src/app/api/v1/plans/stream/helpers.ts`                                              | Stream-side success/failure handling       |
+| `src/app/api/v1/plans/[planId]/status/route.ts`                                       | Return plan generation status              |
+| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                     | Return attempt history                     |
+| `src/app/api/v1/plans/[planId]/retry/route.ts`                                        | Retry a failed or pending-retry generation |
+| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                   | Regenerate an existing plan                |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`   | Start module lesson workflow (async)       |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`     | Poll module lesson generation status       |
+| `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook      |
 
 ### AI layer
 
@@ -187,10 +187,10 @@ Production uses a **durable workflow**: the POST handler starts the run and retu
 
 ### Entry points
 
-| Method | Path | Role |
-| ------ | ---- | ---- |
-| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, start workflow |
-| `GET` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/status` | Ownership-scoped poll for status + optional `workflowRunId` |
+| Method | Path                                                              | Role                                                        |
+| ------ | ----------------------------------------------------------------- | ----------------------------------------------------------- |
+| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, start workflow                             |
+| `GET`  | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/status`   | Ownership-scoped poll for status + optional `workflowRunId` |
 
 - Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts`
 - Start orchestration: `startModuleLessonGeneration` in `src/features/lesson-content/start-module-lesson-generation-workflow.ts`
@@ -203,35 +203,35 @@ Production uses a **durable workflow**: the POST handler starts the run and retu
 ### Preconditions and guards
 
 - **Ownership:** generate and status routes call `requireOwnedPlanById` before work.
-- **Unlock rule:** `loadModuleLessonGenerationContext` in `src/lib/db/queries/module-lesson-generation.ts` marks the module unlocked only when every **earlier** module (by plan order) has all tasks completed; otherwise generation returns `locked` (HTTP 409).
+- **Unlock rule:** `loadModuleLessonGenerationContext` sets `isUnlocked: true` when the module exists. Sequential earlier-module completion is not a generate gate. Timeline may still paint locked styling, but modules are clickable. Preflight still returns `locked` if `isUnlocked` is false.
 - **Preflight on POST (no DB claim yet):** `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` / `already_ready` / `in_flight` / `eligible` using the request RLS client. Eligible requests start the workflow without claiming.
 - **Claimable states (inside workflow):** `claimModuleLessonGenerationOrDescribe` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `modules.lessonGenerationMetadata.workflow.runId`. Concurrent `generating` → `in_flight`; `ready` → `already_ready`.
-- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider/quota work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
+- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
 - **Rate limit:** generate uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user). Status uses the `read` limiter.
-- **Monthly meter:** `runLessonGenerationQuotaReserved` runs **inside the workflow after a successful claim**, not on the POST. Limits come from `TIER_LIMITS[tier].monthlyLessonGenerations` (`src/shared/constants/tier-limits.ts`: free 3, starter 25, pro unlimited). On quota denial the module reverts to `not_generated` while keeping workflow metadata so polling can terminate cleanly; clients learn denial via status/`failed` transitions, not a synchronous POST 429.
+- **Product quota:** none. Lesson generation is not metered as a billing entitlement. `usage_metrics.lesson_modules_generated` remains an observational column (defaults to 0; do not drop). Progressive enqueue generates the first two ordered modules after plan finalization and queues module N+2 after ≥50% completion of module N.
 
 ### Execution flow (happy path)
 
 1. POST: ownership + flag + `loadModuleLessonGenerationContext` + preflight.
 2. POST: `workflow/api.start(moduleLessonGenerationWorkflow, …)` → return **202** `generating` with `workflowRunId` (or short-circuit `already_ready` / `in_flight` without starting).
 3. Workflow claim step (service-role): load context again → `claimModuleLessonGenerationOrDescribe` with the workflow run ID.
-4. Workflow run step: re-check flag → reserve lesson-generation quota → build prompts (`module-lesson-prompts.ts`) → provider batch + parse → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata, `usage_metrics.lesson_modules_generated`).
-5. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs) and reverts the meter reservation.
+4. Workflow run step: re-check flag → entitlement/content access → build prompts (`module-lesson-prompts.ts`) → provider batch + parse → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata). No lesson-generation product quota reservation.
+5. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs).
 6. Client polls GET status until `ready` / `failed` / `not_generated` (after observed generating or matching `workflowRunId`), matching the POST `workflowRunId` before treating a pre-claim rollback as terminal.
 
 ### API response shape
 
 Generate JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/schemas/lesson-content.schemas.ts`). Typical HTTP mapping from the start path:
 
-| Result | HTTP | Notes |
-| ------ | ---- | ----- |
-| `workflow_started` | **202** | `state: generating` + `workflowRunId` |
-| `in_flight` | **202** | `state: generating` (no new run) |
-| `already_ready` | **200** | `state: ready` |
-| `workflow_start_failed` / provider failure mapping | **502** | `provider_failure` |
-| `disabled` | **503** | flag off / evaluation failed |
-| `not_found` | **404** | |
-| `locked` | **409** | earlier modules incomplete |
+| Result                                             | HTTP    | Notes                                 |
+| -------------------------------------------------- | ------- | ------------------------------------- |
+| `workflow_started`                                 | **202** | `state: generating` + `workflowRunId` |
+| `in_flight`                                        | **202** | `state: generating` (no new run)      |
+| `already_ready`                                    | **200** | `state: ready`                        |
+| `workflow_start_failed` / provider failure mapping | **502** | `provider_failure`                    |
+| `disabled`                                         | **503** | flag off / evaluation failed          |
+| `not_found`                                        | **404** |                                       |
+| `locked`                                           | **409** | earlier modules incomplete            |
 
 Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId? }` with `Cache-Control: no-store`.
 

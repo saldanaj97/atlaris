@@ -77,8 +77,8 @@ function makeFailedPaymentAttemptEvent(): WebhookEvent {
         {
           id: 'item_pro',
           status: 'active',
-          plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-          plan: null,
+          plan_id: 'cplan_pro_fixture',
+          plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
           amount: { amount: 2_000 },
           period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
           is_free_trial: false,
@@ -224,8 +224,8 @@ function makeSubscription(
       {
         id: 'item_pro',
         status: 'active',
-        planId: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        planId: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: { amount: 2_000 },
         periodEnd: new Date('2026-09-01T00:00:00.000Z').getTime(),
         isFreeTrial: false,
@@ -545,6 +545,39 @@ describe('applyVerifiedClerkBillingEvent', () => {
         subscriptionStatus: 'past_due',
         subscriptionTier: 'starter',
       }),
+    );
+  });
+
+  it('preserves stored tier when Clerk returns an unknown plan slug', async () => {
+    const logger = makeLogger();
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        subscriptionItems: [
+          {
+            ...makeSubscription().subscriptionItems[0]!,
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_unknown_plan', {
+        clerkClient,
+        db,
+        logger,
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    expect(db.update).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planSlugs: ['enterprise_plan'],
+        storedTier: 'starter',
+      }),
+      'Clerk Billing plan could not be mapped; preserving stored tier',
     );
   });
 });

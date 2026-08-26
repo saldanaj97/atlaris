@@ -84,3 +84,16 @@ export const clerkAuthEnv = {
     );
   },
 } as const;
+
+/** Optional per-environment Clerk plan IDs. Slugs remain the entitlement contract. */
+export const clerkBillingPlanEnv = {
+  get planIdFree() {
+    return getServerOptional('CLERK_BILLING_PLAN_ID_FREE');
+  },
+  get planIdStarter() {
+    return getServerOptional('CLERK_BILLING_PLAN_ID_STARTER');
+  },
+  get planIdPro() {
+    return getServerOptional('CLERK_BILLING_PLAN_ID_PRO');
+  },
+} as const;

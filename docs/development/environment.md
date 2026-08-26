@@ -36,18 +36,18 @@ Prefer the exported grouped configs instead of raw keys:
 
 Runtime feature gates use the Flags SDK (`src/flags.ts`) with `@flags-sdk/vercel` when `FLAGS` is set. These are distinct from the permanently enabled Workflow SDK product paths.
 
-| Variable | Purpose | Required |
-| -------- | ------- | -------- |
-| `FLAGS` | Enables the Vercel Flags adapter (`vercelAdapter()`). When unset, flags resolve through a local fallback that returns each flag's `defaultValue` (or `false`). | Preview/Production when using Vercel Flags |
-| `FLAGS_SECRET` | Flags Explorer / encryption secret for the Vercel Flags integration | Preview/Production when using Vercel Flags |
+| Variable       | Purpose                                                                                                                                                        | Required                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `FLAGS`        | Enables the Vercel Flags adapter (`vercelAdapter()`). When unset, flags resolve through a local fallback that returns each flag's `defaultValue` (or `false`). | Preview/Production when using Vercel Flags |
+| `FLAGS_SECRET` | Flags Explorer / encryption secret for the Vercel Flags integration                                                                                            | Preview/Production when using Vercel Flags |
 
 Declared flags:
 
-| Flag key | Code export | Default / failure mode | Combines with |
-| -------- | ----------- | ---------------------- | ------------- |
-| `maintenance-mode` | `maintenanceMode` | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
-| `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts` | Resend + production `APP_URL` (see `emailEnv`) |
-| `module-lesson-generation` | `moduleLessonGeneration` | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts` | Synchronous and Workflow SDK module lesson generation |
+| Flag key                      | Code export                 | Default / failure mode                                                                                                                                               | Combines with                                                                                               |
+| ----------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `maintenance-mode`            | `maintenanceMode`           | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
+| `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts`      | Resend + production `APP_URL` (see `emailEnv`)                                                              |
+| `module-lesson-generation`    | `moduleLessonGeneration`    | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts`            | Synchronous and Workflow SDK module lesson generation                                                       |
 
 **Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery and lesson generation stay off; maintenance stays off unless `MAINTENANCE_MODE=true`.
 
@@ -71,15 +71,18 @@ The application uses Clerk Auth for UI, route protection, and server session rea
 
 Key auth-related server variables include:
 
-| Variable                            | Purpose                                                                                                                               | Required |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                    | Yes      |
-| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                               | Yes      |
-| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                    | Yes when Clerk Billing webhooks are enabled |
-| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No       |
-| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout. | No       |
-| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                       | No       |
-| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                        | No       |
+| Variable                            | Purpose                                                                                                                                                                                                         | Required                                    |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser-safe publishable key                                                                                                                                                                              | Yes                                         |
+| `CLERK_SECRET_KEY`                  | Clerk server secret key                                                                                                                                                                                         | Yes                                         |
+| `CLERK_WEBHOOK_SIGNING_SECRET`      | Clerk/Svix signing secret for `POST /api/v1/clerk/billing/webhook`                                                                                                                                              | Yes when Clerk Billing webhooks are enabled |
+| `CLERK_BILLING_PLAN_ID_FREE`        | Optional exact Clerk plan ID for Free; secondary match only. Slug `free_user` is authoritative.                                                                                                                 | No                                          |
+| `CLERK_BILLING_PLAN_ID_STARTER`     | Optional exact Clerk plan ID for Starter; secondary match only. Slug `starter_plan` is authoritative.                                                                                                           | No                                          |
+| `CLERK_BILLING_PLAN_ID_PRO`         | Optional exact Clerk plan ID for Pro; secondary match only. Slug `pro_plan` is authoritative.                                                                                                                   | No                                          |
+| `LOCAL_PRODUCT_TESTING`             | Enables the local product-testing workflow (must be off in hosted deploys). Do not combine with Clerk UI checkout — see [Clerk development checkout](#clerk-development-checkout-fixture-vs-real-payment-flow). | No                                          |
+| `DEV_AUTH_USER_ID`                  | Optional dev/test auth override (`users.auth_user_id`); use bootstrap seed id for local DB. Required with `LOCAL_PRODUCT_TESTING=true`; must be empty for real Clerk checkout.                                  | No                                          |
+| `DEV_AUTH_USER_EMAIL`               | Optional dev/test display email                                                                                                                                                                                 | No                                          |
+| `DEV_AUTH_USER_NAME`                | Optional dev/test display name                                                                                                                                                                                  | No                                          |
 
 Module lesson generation enablement is the Vercel Flag `module-lesson-generation` (fail-closed / default disabled). See `docs/development/deploy.md`.
 
@@ -89,8 +92,8 @@ Module lesson generation still uses the separate fail-closed Vercel Flag `module
 
 #### App configuration
 
-| Variable | Purpose | Required |
-| -------- | ------- | -------- |
+| Variable                  | Purpose                                                                                                                                                              | Required                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | `WORKFLOW_CALLBACK_TOKEN` | Shared bearer token for non-Vercel workflow callback routes (`/.well-known/workflow/v1/flow`, `/step`). Not used on Vercel-hosted deploys (queue consumer security). | Yes on self-hosted production |
 
 #### SDK-read variables (not parsed in app code)
@@ -162,6 +165,9 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
   - `starter_plan` → `starter`
   - `pro_plan` → `pro`
 - Do not use a generic `pro` Clerk plan slug.
+- Never reuse one Clerk plan ID for Free and Starter. Mapping never infers tier from price. Unknown slugs preserve the stored Atlaris tier.
+- Optional `CLERK_BILLING_PLAN_ID_*` env vars are environment-specific diagnostics, not portable entitlement keys.
+- Dashboard plan features are merchandising copy for PricingTable. Runtime enforcement stays in `TIER_LIMITS` and server policies. Do not add Clerk `has()` / `Protect` checks.
 - Dashboard plan features/limits should match `src/shared/constants/tier-limits.ts` (link the source; do not copy values into docs where drift is likely).
 - Webhook endpoint: `{APP_URL}/api/v1/clerk/billing/webhook`, subscribed to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `CLERK_WEBHOOK_SIGNING_SECRET` must all belong to that same Development instance. Presence of an encrypted Vercel variable is not proof the value matches the endpoint.
