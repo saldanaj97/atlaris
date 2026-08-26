@@ -227,12 +227,6 @@ describe('Usage Tracking', () => {
         scenario: 'increment-regen',
       },
       {
-        type: 'export' as const,
-        field: 'exportsUsed' as const,
-        initial: 5,
-        scenario: 'increment-export',
-      },
-      {
         type: 'lesson_generation' as const,
         field: 'lessonModulesGenerated' as const,
         initial: 1,
@@ -399,7 +393,7 @@ describe('Usage Tracking', () => {
         },
       ]);
 
-      // Use some regenerations and exports
+      // Use some regenerations
       const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
@@ -419,10 +413,6 @@ describe('Usage Tracking', () => {
         regenerations: {
           used: 3,
           limit: 5,
-        },
-        exports: {
-          used: 7,
-          limit: 10,
         },
         lessonGenerations: {
           used: 0,
@@ -457,7 +447,7 @@ describe('Usage Tracking', () => {
       }));
       await db.insert(learningPlans).values(plans);
 
-      // Use some regenerations and exports
+      // Use some regenerations
       const month = getCurrentMonth();
       await db.insert(usageMetrics).values({
         userId,
@@ -477,10 +467,6 @@ describe('Usage Tracking', () => {
         regenerations: {
           used: 20,
           limit: 50,
-        },
-        exports: {
-          used: 100,
-          limit: Infinity,
         },
         lessonGenerations: {
           used: 0,
@@ -505,8 +491,8 @@ describe('Usage Tracking', () => {
       const summary = await getUsageSummary(userId);
 
       expect(summary.regenerations.used).toBe(0);
-      expect(summary.exports.used).toBe(0);
       expect(summary.lessonGenerations.used).toBe(0);
+      expect(summary).not.toHaveProperty('exports');
 
       // Summary reads should not write a row just to display zeros.
       const after = await db

@@ -46,7 +46,6 @@ export async function PlanHeaderSummaryContent({
           tier: usage.tier,
           activePlans: usage.activePlans,
           regenerations: usage.regenerations,
-          exports: usage.exports,
         }}
       />
     </div>

@@ -135,7 +135,7 @@ Settings remains DB-backed. Manage/current-plan Clerk buttons live on `/pricing`
 
 ## Subscription API
 
-`GET /api/v1/user/subscription` (`src/app/api/v1/user/subscription/route.ts`) returns tier, status, period end, cancel flag, and usage meters from `getBillingAccountSnapshot`. Auth via `requestBoundary.route` with read rate limit.
+`GET /api/v1/user/subscription` (`src/app/api/v1/user/subscription/route.ts`) returns tier, status, period end, cancel flag, and usage meters from `getBillingAccountSnapshot`. Auth via `requestBoundary.route` with read rate limit. Usage is `activePlans: { current, limit }`, `regenerations: { used, limit }`, and `lessonGenerations: { used, limit }`. Unlimited limits serialize as `null`. Exports are not part of the contract.
 
 ## Quotas and meters
 
@@ -148,7 +148,8 @@ Tier caps: `src/shared/constants/tier-limits.ts` (`TIER_LIMITS` for `free` / `st
 | Monthly regenerations | `runRegenerationQuotaReserved` → `usage_metrics.regenerations_used` |
 | Monthly lesson generations | `runLessonGenerationQuotaReserved` → `usage_metrics.lesson_modules_generated` |
 | AI model allowlist | `validateModelForTier` / settings AI section |
-| Monthly exports | Limits appear in `TIER_LIMITS` and Settings usage UI; **no production route reserves the `export` meter yet** |
+
+Exports are not a product entitlement. Do not advertise, meter, or reserve them. `users.monthly_export_count` and `usage_metrics.exports_used` remain in the schema for compatibility only.
 
 Metered reservation core: `src/features/billing/metered-reservation.ts`. Boundaries wrap reserve → work → compensate on failure. Month key is `YYYY-MM` on `usage_metrics`.
 
@@ -176,7 +177,7 @@ Single page `/settings` (`SettingsLedgerPage`):
 | Hash | Content |
 | ---- | ------- |
 | `#billing` | Checkout sync + plan rows from DB snapshot |
-| `#usage` | Active plans / regenerations / exports / lesson generations meters |
+| `#usage` | Active plans / regenerations / lesson generations meters |
 | `#ai` | Model picker gated by `actor.subscriptionTier` |
 
 ## Code map

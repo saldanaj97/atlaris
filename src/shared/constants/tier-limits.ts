@@ -6,7 +6,6 @@ export const TIER_LIMITS: TierLimits = {
   free: {
     maxActivePlans: 3,
     monthlyRegenerations: 5,
-    monthlyExports: 10,
     monthlyLessonGenerations: 3,
     maxWeeks: 2,
     maxHours: null,
@@ -14,7 +13,6 @@ export const TIER_LIMITS: TierLimits = {
   starter: {
     maxActivePlans: 10,
     monthlyRegenerations: 10,
-    monthlyExports: 50,
     monthlyLessonGenerations: 25,
     maxWeeks: 8,
     maxHours: null,
@@ -22,7 +20,6 @@ export const TIER_LIMITS: TierLimits = {
   pro: {
     maxActivePlans: Infinity,
     monthlyRegenerations: 50,
-    monthlyExports: Infinity,
     monthlyLessonGenerations: Infinity,
     maxWeeks: null,
     maxHours: null,

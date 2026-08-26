@@ -12,7 +12,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
-import { BookOpen, RefreshCw, Share2, Trophy } from 'lucide-react';
+import { BookOpen, RefreshCw, Trophy } from 'lucide-react';
 import Link from 'next/link';
 
 interface UsageHoverCardProps {
@@ -72,17 +72,6 @@ export function UsageHoverCard({ usage, children }: UsageHoverCardProps) {
               <span className='font-medium'>
                 {usage.regenerations.used} /{' '}
                 {formatCompactUsageLimit(usage.regenerations.limit)}
-              </span>
-            </div>
-
-            <div className='flex items-center justify-between text-sm'>
-              <div className='flex items-center gap-2 text-muted-foreground'>
-                <Share2 className='size-3.5' />
-                Exports
-              </div>
-              <span className='font-medium'>
-                {usage.exports.used} /{' '}
-                {formatCompactUsageLimit(usage.exports.limit)}
               </span>
             </div>
           </div>

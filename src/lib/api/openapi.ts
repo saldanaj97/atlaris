@@ -76,10 +76,18 @@ const lightweightPlanSummarySchema = z
   })
   .openapi('LightweightPlanSummary');
 
+const usageMeterSchema = z.object({
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nonnegative().nullable(),
+});
+
 const subscriptionUsageSchema = z.object({
-  activePlans: z.number().int(),
-  regenerations: z.number().int(),
-  exports: z.number().int(),
+  activePlans: z.object({
+    current: z.number().int().nonnegative(),
+    limit: z.number().int().nonnegative().nullable(),
+  }),
+  regenerations: usageMeterSchema,
+  lessonGenerations: usageMeterSchema,
 });
 
 const subscriptionResponseSchema = z

@@ -25,7 +25,7 @@ import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { usageMetrics, users } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
-type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
+type MeterKind = 'regeneration' | 'lessonGeneration';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -35,10 +35,7 @@ type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
  */
 type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
-type MeterColumn =
-  | 'regenerationsUsed'
-  | 'exportsUsed'
-  | 'lessonModulesGenerated';
+type MeterColumn = 'regenerationsUsed' | 'lessonModulesGenerated';
 
 type MeterConfig = {
   column: MeterColumn;
@@ -60,14 +57,6 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
       incrementExistingUsageInTx(tx, userId, month, 'regeneration'),
     readColumn: (metrics) => metrics.regenerationsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
-  },
-  export: {
-    column: 'exportsUsed',
-    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyExports,
-    incrementInTx: (tx, userId, month) =>
-      incrementExistingUsageInTx(tx, userId, month, 'export'),
-    readColumn: (metrics) => metrics.exportsUsed,
-    decrementSql: () => sql`GREATEST(0, ${usageMetrics.exportsUsed} - 1)`,
   },
   lessonGeneration: {
     column: 'lessonModulesGenerated',

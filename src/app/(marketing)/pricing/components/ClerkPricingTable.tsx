@@ -117,23 +117,52 @@ function currentPaidPlanSlug(
   );
 }
 
-function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
-  const clerkFeatures = plan.features.flatMap((feature) =>
-    feature.name?.trim() ? [feature.name.trim()] : [],
-  );
+function isExportFeatureName(name: string): boolean {
+  return /\bexports?\b/i.test(name);
+}
 
+function publicPlanFeatures(plan: ClerkPlanSnapshot): readonly string[] {
+  const clerkFeatures = plan.features.flatMap((feature) => {
+    const name = feature.name?.trim();
+    if (!name || isExportFeatureName(name)) return [];
+    return [name];
+  });
+
+  return clerkFeatures.length > 0
+    ? clerkFeatures
+    : (PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? []);
+}
+
+function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
   return {
     id: plan.id,
     slug: plan.slug,
     name: plan.name?.trim() || PLAN_NAME_BY_SLUG[plan.slug] || plan.slug,
     description: plan.description?.trim() || '',
-    features:
-      clerkFeatures.length > 0
-        ? clerkFeatures
-        : (PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? []),
+    features: publicPlanFeatures(plan),
     fee: plan.fee ?? null,
     annualFee: plan.annualFee ?? null,
     annualMonthlyFee: plan.annualMonthlyFee ?? null,
+  };
+}
+
+const NATIVE_PRICING_FEATURE_HIDE = {
+  pricingTableCardFeatures: { display: 'none' },
+  pricingTableCardFeaturesList: { display: 'none' },
+  pricingTableMatrix: { display: 'none' },
+  planDetailFeatures: { display: 'none' },
+  planDetailFeaturesList: { display: 'none' },
+} as const;
+
+function nativePricingTableAppearance(
+  appearance: ClerkPricingTableProps['appearance'],
+): ClerkPricingTableProps['appearance'] {
+  return {
+    ...appearance,
+    elements: {
+      ...appearance?.elements,
+      ...NATIVE_PRICING_FEATURE_HIDE,
+    },
   };
 }
 
@@ -244,7 +273,7 @@ export function ClerkPricingTable({
   if (loadFailed || (loaded && !billing)) {
     return (
       <PricingTable
-        appearance={appearance}
+        appearance={nativePricingTableAppearance(appearance)}
         newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
       />
     );

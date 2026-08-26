@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => ({
   getSubscription: vi.fn(),
   openCheckout: vi.fn(),
   openSubscription: vi.fn(),
+  pricingTableAppearance: undefined as
+    | { elements?: Record<string, unknown> }
+    | undefined,
   useAuth: vi.fn(),
   useClerk: vi.fn(),
 }));
@@ -25,7 +28,14 @@ vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
 }));
 
 vi.mock('@clerk/nextjs', () => ({
-  PricingTable: () => <div data-testid='native-pricing-table' />,
+  PricingTable: ({
+    appearance,
+  }: {
+    appearance?: { elements?: Record<string, unknown> };
+  }) => {
+    mocks.pricingTableAppearance = appearance;
+    return <div data-testid='native-pricing-table' />;
+  },
   SignInButton: ({
     children,
     forceRedirectUrl,
@@ -106,6 +116,7 @@ describe('ClerkPricingTable', () => {
     mocks.getSubscription.mockReset();
     mocks.openCheckout.mockReset();
     mocks.openSubscription.mockReset();
+    mocks.pricingTableAppearance = undefined;
     mocks.getSubscription.mockResolvedValue({ subscriptionItems: [] });
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: 'user_123' });
     mocks.useClerk.mockReturnValue({
@@ -129,6 +140,12 @@ describe('ClerkPricingTable', () => {
     await renderPricingTable();
 
     expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
+    expect(
+      mocks.pricingTableAppearance?.elements?.pricingTableCardFeatures,
+    ).toEqual({ display: 'none' });
+    expect(
+      mocks.pricingTableAppearance?.elements?.pricingTableCardFeaturesList,
+    ).toEqual({ display: 'none' });
   });
 
   it('tracks pointer position and resets card parallax', async () => {
@@ -196,6 +213,27 @@ describe('ClerkPricingTable', () => {
     const card = await screen.findByRole('article', { name: 'Free' });
     fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
     expect(requestAnimationFrame).not.toHaveBeenCalled();
+  });
+
+  it('omits stale Clerk export features while keeping other provider copy', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: '10 active learning plans' },
+            { name: '50 exports per month' },
+            { name: 'Priority queue access' },
+          ],
+        },
+      ],
+    });
+
+    await renderPricingTable();
+
+    expect(await screen.findByText('10 active learning plans')).toBeVisible();
+    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(screen.queryByText(/exports per month/i)).not.toBeInTheDocument();
   });
 
   it('fills empty Clerk feature lists and sends the selected period to Clerk checkout', async () => {
@@ -481,6 +519,9 @@ describe('ClerkPricingTable', () => {
 
     expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
     expect(window.location.search).toBe('');
+    expect(
+      mocks.pricingTableAppearance?.elements?.pricingTableCardFeatures,
+    ).toEqual({ display: 'none' });
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {

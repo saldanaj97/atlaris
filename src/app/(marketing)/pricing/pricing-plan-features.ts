@@ -31,20 +31,17 @@ export const PRICING_PLAN_FEATURES: Record<
   free: [
     `${formatMarketingLimit(TIER_LIMITS.free.maxActivePlans)} active learning plans`,
     `${formatMarketingLimit(TIER_LIMITS.free.monthlyRegenerations)} plan regenerations per month`,
-    `${formatMarketingLimit(TIER_LIMITS.free.monthlyExports)} exports per month`,
     `${formatMarketingSchedulingHorizon(TIER_LIMITS.free.maxWeeks)} scheduling horizon`,
   ],
   starter: [
     `${formatMarketingLimit(TIER_LIMITS.starter.maxActivePlans)} active learning plans`,
     `${formatMarketingLimit(TIER_LIMITS.starter.monthlyRegenerations)} plan regenerations per month`,
-    `${formatMarketingLimit(TIER_LIMITS.starter.monthlyExports)} exports per month`,
     `${formatMarketingSchedulingHorizon(TIER_LIMITS.starter.maxWeeks)} scheduling horizon`,
     'Priority queue access',
   ],
   pro: [
     `${formatMarketingLimit(TIER_LIMITS.pro.maxActivePlans)} active learning plans`,
     `${formatMarketingLimit(TIER_LIMITS.pro.monthlyRegenerations)} plan regenerations per month`,
-    `${formatMarketingLimit(TIER_LIMITS.pro.monthlyExports)} exports per month`,
     `${MAX_SELECTABLE_PLAN_WEEKS}-week scheduling horizon`,
     'Priority queue + analytics',
   ],

@@ -12,11 +12,7 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, eq, sql } from 'drizzle-orm';
 
 // Usage type for incrementing counters
-export type UsageType =
-  | 'plan'
-  | 'regeneration'
-  | 'export'
-  | 'lesson_generation';
+export type UsageType = 'plan' | 'regeneration' | 'lesson_generation';
 
 export type UsageSummary = {
   tier: SubscriptionTier;
@@ -25,10 +21,6 @@ export type UsageSummary = {
     limit: number;
   };
   regenerations: {
-    used: number;
-    limit: number;
-  };
-  exports: {
     used: number;
     limit: number;
   };
@@ -46,8 +38,6 @@ function getUsageCounterUpdate(type: UsageType) {
       return {
         regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1`,
       };
-    case 'export':
-      return { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
     case 'lesson_generation':
       return {
         lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
@@ -191,10 +181,6 @@ export async function getUsageSummaryForTier(args: {
     regenerations: {
       used: metrics?.regenerationsUsed ?? 0,
       limit: limits.monthlyRegenerations,
-    },
-    exports: {
-      used: metrics?.exportsUsed ?? 0,
-      limit: limits.monthlyExports,
     },
     lessonGenerations: {
       used: metrics?.lessonModulesGenerated ?? 0,

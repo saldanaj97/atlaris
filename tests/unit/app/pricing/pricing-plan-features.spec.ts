@@ -8,6 +8,7 @@ describe('PRICING_FEATURES_BY_CLERK_SLUG', () => {
       const features = PRICING_FEATURES_BY_CLERK_SLUG[slug];
       expect(features?.length).toBeGreaterThan(0);
       expect(features.every((line) => line.trim().length > 0)).toBe(true);
+      expect(features.every((line) => !/\bexports?\b/i.test(line))).toBe(true);
     }
   });
 
@@ -16,6 +17,6 @@ describe('PRICING_FEATURES_BY_CLERK_SLUG', () => {
       PRICING_FEATURES_BY_CLERK_SLUG[CLERK_BILLING_PLAN_SLUGS.pro];
     expect(proFeatures).toContain('24-week scheduling horizon');
     expect(proFeatures).toContain('Unlimited active learning plans');
-    expect(proFeatures).toContain('Unlimited exports per month');
+    expect(proFeatures).not.toContain('Unlimited exports per month');
   });
 });
