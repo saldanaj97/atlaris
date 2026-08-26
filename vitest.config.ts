@@ -39,10 +39,6 @@ const testAliases = {
 const integrationMaxWorkers = getIntegrationMaxWorkers();
 
 function getIntegrationMaxWorkers(): number {
-  if (process.env.SKIP_TESTCONTAINERS === 'true') {
-    return 1;
-  }
-
   const configured = Number.parseInt(
     process.env.INTEGRATION_MAX_WORKERS ?? '4',
     10,
@@ -88,7 +84,7 @@ export default defineConfig({
           // shift in a future minor. See tests/setup/test-env.ts for per-worker DB provisioning.
           pool: 'forks',
           // Integration defaults to 4 workers; test-env provisions one cloned DB per Vitest worker.
-          // Override with INTEGRATION_MAX_WORKERS; SKIP_TESTCONTAINERS forces 1 worker.
+          // Override with INTEGRATION_MAX_WORKERS.
           maxWorkers: integrationMaxWorkers,
           testTimeout: 90_000,
           include: ['tests/integration/**/*.{test,spec}.{ts,tsx}'],
