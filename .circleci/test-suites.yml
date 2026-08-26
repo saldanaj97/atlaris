@@ -8,7 +8,7 @@ run: >-
   --reporter=default
   --reporter=json
   --reporter=junit
-  --outputFile.json=test-results.json
+  --outputFile.json=test-results/unit/results.json
   --outputFile.junit="<< outputs.junit >>"
   << test.atoms >>
 analysis: >-
@@ -20,7 +20,7 @@ analysis: >-
   << test.atoms >> &&
   mv "${coverage_dir}/lcov.info" "<< outputs.lcov >>"
 outputs:
-  junit: test-results/junit.xml
+  junit: test-results/unit/junit.xml
 options:
   test-impact-analysis: true
   dynamic-test-splitting: true

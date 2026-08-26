@@ -100,7 +100,6 @@ commands:
     parameters:
       results-file:
         type: string
-        default: test-results.json
     steps:
       - run:
           name: Test summary
@@ -121,7 +120,6 @@ commands:
     parameters:
       results-file:
         type: string
-        default: test-results.json
       coverage-destination:
         type: string
         default: ''
@@ -357,13 +355,14 @@ jobs:
           name: Unit tests
           no_output_timeout: 20m
           command: |
-            mkdir -p test-results
+            mkdir -p test-results/unit
             if [ "${BASE_REF}" = "main" ]; then
               circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
             else
               circleci testsuite run "unit tests" --analyze-tests=none --run-tests=impacted
             fi
-      - store-test-outputs
+      - store-test-outputs:
+          results-file: test-results/unit/results.json
 
   unit-impact-analysis:
     executor: node
@@ -435,7 +434,7 @@ jobs:
             FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
             COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
             echo "Changed candidate files: ${COUNT}"
-            mkdir -p test-results
+            mkdir -p test-results/integration-light
 
             GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock\.yaml|drizzle(.*)\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?)$' || true)
 
@@ -463,8 +462,8 @@ jobs:
                   --reporter=default \
                   --reporter=json \
                   --reporter=junit \
-                  --outputFile.json=test-results.json \
-                  --outputFile.junit=test-results/junit.xml \
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml \
                   ${FILES}
                 ;;
               full)
@@ -477,8 +476,8 @@ jobs:
                   --reporter=default \
                   --reporter=json \
                   --reporter=junit \
-                  --outputFile.json=test-results.json \
-                  --outputFile.junit=test-results/junit.xml
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml
                 ;;
               light)
                 mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name '*.test.ts' -o -name '*.spec.ts' -o -name '*.test.tsx' -o -name '*.spec.tsx' \))
@@ -491,11 +490,12 @@ jobs:
                   --reporter=default \
                   --reporter=json \
                   --reporter=junit \
-                  --outputFile.json=test-results.json \
-                  --outputFile.junit=test-results/junit.xml
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml
                 ;;
             esac
-      - store-test-outputs
+      - store-test-outputs:
+          results-file: test-results/integration-light/results.json
 
   security-tests:
     docker:
@@ -548,15 +548,15 @@ jobs:
           name: RLS security tests
           no_output_timeout: 15m
           command: |
-            mkdir -p test-results
+            mkdir -p test-results/security
             pnpm vitest run --project security tests/security/ \
               --reporter=default \
               --reporter=json \
               --reporter=junit \
-              --outputFile.json=test-results-security.json \
-              --outputFile.junit=test-results/junit.xml
+              --outputFile.json=test-results/security/results.json \
+              --outputFile.junit=test-results/security/junit.xml
       - store-test-outputs:
-          results-file: test-results-security.json
+          results-file: test-results/security/results.json
 
   integration-tests:
     docker:
@@ -596,7 +596,7 @@ jobs:
           name: Integration tests
           no_output_timeout: 25m
           command: |
-            mkdir -p test-results
+            mkdir -p test-results/integration
             TESTFILES=$(circleci tests glob "tests/integration/**/*.{test,spec}.{ts,tsx}")
             if [ -z "${TESTFILES}" ]; then
               echo "No integration test files found; skipping."
@@ -619,10 +619,11 @@ jobs:
               --reporter=default \
               --reporter=json \
               --reporter=junit \
-              --outputFile.json=test-results.json \
-              --outputFile.junit=test-results/junit.xml \
+              --outputFile.json=test-results/integration/results.json \
+              --outputFile.junit=test-results/integration/junit.xml \
               $(cat files.txt)
-      - store-test-outputs
+      - store-test-outputs:
+          results-file: test-results/integration/results.json
 
   workflow-tests:
     docker:
@@ -645,7 +646,14 @@ jobs:
       - install-pnpm-deps
       - run:
           name: Dependency remediation tests
-          command: node --test .github/scripts/dependency-remediation.test.mjs
+          command: |
+            mkdir -p test-results/workflow
+            node --test \
+              --test-reporter=spec \
+              --test-reporter-destination=stdout \
+              --test-reporter=junit \
+              --test-reporter-destination=test-results/workflow/node.xml \
+              .github/scripts/dependency-remediation.test.mjs
       - run:
           name: Wait for PostgreSQL
           command: |
@@ -661,8 +669,16 @@ jobs:
             "
       - run:
           name: Production workflow tests
-          command: pnpm test:workflow
+          command: |
+            pnpm vitest run --config vitest.workflow.config.ts tests/workflow \
+              --reporter=default \
+              --reporter=json \
+              --reporter=junit \
+              --outputFile.json=test-results/workflow/results.json \
+              --outputFile.junit=test-results/workflow/vitest.xml
           no_output_timeout: 15m
+      - store-test-outputs:
+          results-file: test-results/workflow/results.json
 
 workflows:
   # PR merge gate. Feature-branch pushes keep running ci-pr. Pushes to

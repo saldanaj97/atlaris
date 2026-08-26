@@ -35,6 +35,25 @@ describe('PR CI candidate file counting', () => {
   });
 });
 
+describe('CircleCI test result collection', () => {
+  it('stores every runnable suite under a dedicated result directory', () => {
+    expect(CIRCLE_CI).toContain(
+      '- store_test_results:\n          path: test-results',
+    );
+    expect(TEST_SUITES).toContain('junit: test-results/unit/junit.xml');
+
+    for (const path of [
+      'test-results/integration-light/junit.xml',
+      'test-results/integration/junit.xml',
+      'test-results/security/junit.xml',
+      'test-results/workflow/node.xml',
+      'test-results/workflow/vitest.xml',
+    ]) {
+      expect(CIRCLE_CI).toContain(path);
+    }
+  });
+});
+
 describe('CircleCI PR merge gate', () => {
   it('runs ci-pr on develop-headed pull_request events', () => {
     const pullRequestGate = CI_PR_WORKFLOW.match(

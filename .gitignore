@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/test-results/
 /.workflow-data/
 /.workflow-vitest/
 /tests/.testcontainers-env.*.json
