@@ -85,6 +85,7 @@ function createRetryHandler(deps?: {
           deadlineDate: plan.deadlineDate,
           origin: plan.origin,
         },
+        savedPreferredAiModel: actor.preferredAiModel ?? null,
         tierDb: db,
         responseHeaders: generationRateLimitHeaders,
         requestId: correlationId,

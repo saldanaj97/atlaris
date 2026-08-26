@@ -1,6 +1,8 @@
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { validateModelForTier } from '@/features/ai/model-resolver';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
@@ -16,6 +18,43 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { captureAfterResponse } from '@/lib/posthog-server';
 import { ZodError } from 'zod';
+
+function assertRegenerationModelAllowed(
+  tier: SubscriptionTier,
+  model: string | undefined,
+): void {
+  if (model === undefined) {
+    return;
+  }
+
+  const validation = validateModelForTier(tier, model, 'regeneration');
+  if (validation.valid) {
+    return;
+  }
+
+  switch (validation.reason) {
+    case 'invalid_model':
+      throw new AppError('Model is not recognized.', {
+        status: 400,
+        code: 'MODEL_INVALID',
+        details: { model },
+      });
+    case 'tier_denied':
+      throw new AppError('Model is not allowed for your subscription tier.', {
+        status: 403,
+        code: 'MODEL_NOT_ALLOWED_FOR_TIER',
+        details: { model, tier },
+      });
+    default: {
+      const _never: never = validation.reason;
+      throw new AppError('Model validation failed for an unexpected reason.', {
+        status: 500,
+        code: 'UNKNOWN_MODEL_VALIDATION_REASON',
+        details: { reason: String(_never), model },
+      });
+    }
+  }
+}
 
 /**
  * POST /api/v1/plans/:planId/regenerate
@@ -50,6 +89,8 @@ export const POST: PlainHandler = requestBoundary.route(
         cause: serializableCause,
       });
     }
+
+    assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
 
     const result = await requestPlanRegeneration({
       userId: actor.id,

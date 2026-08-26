@@ -10,6 +10,7 @@ import {
   isPersistableModelId,
   isRuntimeOnlyModelId,
   resolveEffectivePreference,
+  resolveOverrideOrSavedModelId,
   resolveSavedPreferenceForSettings,
   savedModelIdForOperation,
 } from '@/features/ai/model-preferences';
@@ -158,6 +159,48 @@ describe('model-preferences', () => {
         saved.preferredRegenerationAiModel,
       );
       expect(savedModelIdForOperation('pro', saved, 'lesson')).toBe(
+        saved.preferredLessonAiModel,
+      );
+    });
+  });
+
+  describe('resolveOverrideOrSavedModelId', () => {
+    const saved = {
+      preferredAiModel: 'openai/gpt-5.2',
+      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+    };
+
+    it('prefers an explicit override over the saved slot', () => {
+      expect(
+        resolveOverrideOrSavedModelId(
+          'google/gemini-3-flash-preview',
+          'pro',
+          saved,
+          'regeneration',
+        ),
+      ).toBe('google/gemini-3-flash-preview');
+    });
+
+    it('uses the Pro regeneration saved slot when override is omitted', () => {
+      expect(
+        resolveOverrideOrSavedModelId(undefined, 'pro', saved, 'regeneration'),
+      ).toBe(saved.preferredRegenerationAiModel);
+    });
+
+    it('uses the Starter outline slot for regeneration when override is omitted', () => {
+      expect(
+        resolveOverrideOrSavedModelId(
+          undefined,
+          'starter',
+          saved,
+          'regeneration',
+        ),
+      ).toBe(saved.preferredAiModel);
+    });
+
+    it('uses the Pro lesson saved slot when override is omitted', () => {
+      expect(resolveOverrideOrSavedModelId(null, 'pro', saved, 'lesson')).toBe(
         saved.preferredLessonAiModel,
       );
     });

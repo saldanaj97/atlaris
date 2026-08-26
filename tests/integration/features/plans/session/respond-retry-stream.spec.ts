@@ -10,6 +10,7 @@ import {
   SUCCESS_RETRY_ATTEMPT_RESULT,
   type MockProcessLifecycleHandle,
 } from './stream-session-test-helpers';
+import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -30,6 +31,30 @@ const workflowProcessFactory = vi.hoisted(() =>
 vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
   createWorkflowBackedProcessGeneration: workflowProcessFactory,
 }));
+
+const STARTER_OUTLINE_MODELS = getPersistableModelsForTier(
+  'starter',
+  'initial_outline',
+);
+const STARTER_OUTLINE_MODEL = STARTER_OUTLINE_MODELS[0]?.id;
+const STARTER_QUERY_OVERRIDE_MODEL =
+  STARTER_OUTLINE_MODELS[1]?.id ?? STARTER_OUTLINE_MODEL;
+const PRO_OUTLINE_MODEL = getPersistableModelsForTier(
+  'pro',
+  'initial_outline',
+).find(
+  ({ id }) => !STARTER_OUTLINE_MODELS.some((model) => model.id === id),
+)?.id;
+
+if (
+  !STARTER_OUTLINE_MODEL ||
+  !STARTER_QUERY_OVERRIDE_MODEL ||
+  !PRO_OUTLINE_MODEL
+) {
+  throw new Error(
+    'Expected persistable outline fixtures for retry model tests',
+  );
+}
 
 describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
   beforeEach(() => {
@@ -254,10 +279,9 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
 
     const response = await boundary.respondRetryStream(
       buildRetryStreamArgs({
-        req: buildRetryStreamRequest(
-          'plan_retry_disconnect',
-          controller.signal,
-        ),
+        req: buildRetryStreamRequest('plan_retry_disconnect', {
+          signal: controller.signal,
+        }),
         authUserId,
         internalUserId,
         planId: 'plan_retry_disconnect',
@@ -339,6 +363,180 @@ describe('PlanGenerationSessionBoundary.respondRetryStream', () => {
       PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
     );
     expect(captured[0]?.generationPurpose).toBe('initial');
+  });
+
+  it('forwards the saved outline preference as modelOverride', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockProcessLifecycle(
+      async (input) => {
+        captured.push(input);
+        return SUCCESS_RETRY_ATTEMPT_RESULT;
+      },
+      { topic: BASE_RETRY_PLAN_SNAPSHOT.topic },
+    );
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupPlanSessionUser(
+      'boundary-retry-saved-outline',
+      'starter',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildRetryStreamArgs({
+        req: buildRetryStreamRequest('plan_retry_saved_outline'),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_saved_outline',
+        savedPreferredAiModel: STARTER_OUTLINE_MODEL,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBe(STARTER_OUTLINE_MODEL);
+    expect(captured[0]?.generationPurpose).toBe('initial');
+  });
+
+  it('prefers a Starter allowlist query override over the saved outline preference', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockProcessLifecycle(
+      async (input) => {
+        captured.push(input);
+        return SUCCESS_RETRY_ATTEMPT_RESULT;
+      },
+      { topic: BASE_RETRY_PLAN_SNAPSHOT.topic },
+    );
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupPlanSessionUser(
+      'boundary-retry-query-starter',
+      'starter',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildRetryStreamArgs({
+        req: buildRetryStreamRequest('plan_retry_query_starter', {
+          model: STARTER_QUERY_OVERRIDE_MODEL,
+        }),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_query_starter',
+        savedPreferredAiModel: STARTER_OUTLINE_MODEL,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured[0]?.modelOverride).toBe(STARTER_QUERY_OVERRIDE_MODEL);
+  });
+
+  it('prefers a Pro allowlist query override over the saved outline preference', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockProcessLifecycle(
+      async (input) => {
+        captured.push(input);
+        return SUCCESS_RETRY_ATTEMPT_RESULT;
+      },
+      { topic: BASE_RETRY_PLAN_SNAPSHOT.topic },
+    );
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupPlanSessionUser(
+      'boundary-retry-query-pro',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildRetryStreamArgs({
+        req: buildRetryStreamRequest('plan_retry_query_pro', {
+          model: PRO_OUTLINE_MODEL,
+        }),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_query_pro',
+        savedPreferredAiModel: STARTER_OUTLINE_MODEL,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured[0]?.modelOverride).toBe(PRO_OUTLINE_MODEL);
+  });
+
+  it('falls back to the saved outline preference when the query override is invalid', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockProcessLifecycle(
+      async (input) => {
+        captured.push(input);
+        return SUCCESS_RETRY_ATTEMPT_RESULT;
+      },
+      { topic: BASE_RETRY_PLAN_SNAPSHOT.topic },
+    );
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupPlanSessionUser(
+      'boundary-retry-invalid-to-saved',
+      'starter',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildRetryStreamArgs({
+        req: buildRetryStreamRequest('plan_retry_invalid_to_saved', {
+          model: 'invalid/model-id',
+        }),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_invalid_to_saved',
+        savedPreferredAiModel: STARTER_OUTLINE_MODEL,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured[0]?.modelOverride).toBe(STARTER_OUTLINE_MODEL);
+  });
+
+  it('omits modelOverride when the query override is invalid and no saved preference remains', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockProcessLifecycle(
+      async (input) => {
+        captured.push(input);
+        return SUCCESS_RETRY_ATTEMPT_RESULT;
+      },
+      { topic: BASE_RETRY_PLAN_SNAPSHOT.topic },
+    );
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const { authUserId, internalUserId } = await setupPlanSessionUser(
+      'boundary-retry-invalid-to-default',
+      'starter',
+    );
+
+    const response = await boundary.respondRetryStream(
+      buildRetryStreamArgs({
+        req: buildRetryStreamRequest('plan_retry_invalid_to_default', {
+          model: 'invalid/model-id',
+        }),
+        authUserId,
+        internalUserId,
+        planId: 'plan_retry_invalid_to_default',
+        savedPreferredAiModel: null,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured[0]?.modelOverride).toBeUndefined();
   });
 
   it('builds a fresh lifecycle service per request via the injected factory', async () => {

@@ -6,6 +6,7 @@ import {
   type PlanRegenerationWorkflowInput,
   type PlanRegenerationWorkflowTerminalResult,
 } from './plan-regeneration.types';
+import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   claimRegenerationJob,
@@ -23,6 +24,7 @@ import {
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
+import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { FatalError, getWorkflowMetadata } from 'workflow';
 
@@ -145,6 +147,13 @@ export async function processPlanRegenerationStep(
   }
 
   const tier = await resolveUserTier(plan.userId, serviceRoleDb);
+  const saved = await getUserPreferences(plan.userId, serviceRoleDb);
+  const modelOverride = resolveOverrideOrSavedModelId(
+    validation.payload.overrides?.model,
+    tier,
+    saved,
+    'regeneration',
+  );
   const generationInput = buildRegenerationGenerationInput(
     validation.payload,
     plan,
@@ -157,6 +166,7 @@ export async function processPlanRegenerationStep(
     tier,
     generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
     input: generationInput,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
   });
 }
 

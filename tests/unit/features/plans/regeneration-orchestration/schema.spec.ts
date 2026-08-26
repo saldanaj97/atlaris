@@ -30,4 +30,16 @@ describe('planRegenerationJobPayloadSchema', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('round-trips an optional regeneration model override', () => {
+    expect(
+      planRegenerationJobPayloadSchema.parse({
+        planId,
+        overrides: { model: 'google/gemini-3-pro-preview' },
+      }),
+    ).toMatchObject({
+      planId,
+      overrides: { model: 'google/gemini-3-pro-preview' },
+    });
+  });
 });

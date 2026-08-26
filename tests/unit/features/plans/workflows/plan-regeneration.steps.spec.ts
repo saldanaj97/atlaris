@@ -1,7 +1,12 @@
 import type { Job } from '@/features/jobs/types';
+import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
 
-import { claimPlanRegenerationJobStep } from '@/features/plans/workflows/plan-regeneration.steps';
+import {
+  claimPlanRegenerationJobStep,
+  processPlanRegenerationStep,
+} from '@/features/plans/workflows/plan-regeneration.steps';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +15,10 @@ const mocks = vi.hoisted(() => ({
   updateJobPayload: vi.fn(),
   updateJobPayloadIfRunIdMissing: vi.fn(),
   getWorkflowMetadata: vi.fn(),
+  createPlanLifecycleService: vi.fn(),
+  resolveUserTier: vi.fn(),
+  getUserPreferences: vi.fn(),
+  loadAuthorizedRegenerationPlan: vi.fn(),
 }));
 
 vi.mock('@/features/jobs/queue', () => ({
@@ -18,6 +27,44 @@ vi.mock('@/features/jobs/queue', () => ({
   updateJobPayload: mocks.updateJobPayload,
   updateJobPayloadIfRunIdMissing: mocks.updateJobPayloadIfRunIdMissing,
 }));
+
+vi.mock('@/features/plans/lifecycle/factory', () => ({
+  createPlanLifecycleService: mocks.createPlanLifecycleService,
+}));
+
+vi.mock('@/features/billing/tier', () => ({
+  resolveUserTier: mocks.resolveUserTier,
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', () => ({
+  getUserPreferences: mocks.getUserPreferences,
+}));
+
+vi.mock('@/features/plans/regeneration-orchestration/deps', () => ({
+  createDefaultRegenerationOrchestrationDeps: vi.fn(() => ({})),
+}));
+
+vi.mock('@/features/billing/tier', () => ({
+  resolveUserTier: mocks.resolveUserTier,
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', () => ({
+  getUserPreferences: mocks.getUserPreferences,
+}));
+
+vi.mock(
+  '@/features/plans/regeneration-orchestration/process-workflow-support',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@/features/plans/regeneration-orchestration/process-workflow-support')
+      >();
+    return {
+      ...actual,
+      loadAuthorizedRegenerationPlan: mocks.loadAuthorizedRegenerationPlan,
+    };
+  },
+);
 
 vi.mock('workflow', async (importOriginal) => {
   const actual = await importOriginal<typeof import('workflow')>();
@@ -147,5 +194,90 @@ describe('claimPlanRegenerationJobStep', () => {
       kind: 'claimed',
       runId: 'wrun_same',
     });
+  });
+});
+
+describe('processPlanRegenerationStep model resolution', () => {
+  const processGenerationAttempt = vi.fn();
+  const savedSlots = {
+    preferredAiModel: 'openai/gpt-5.2',
+    preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+    preferredLessonAiModel: 'google/gemini-3-flash-preview',
+    analyticsTimezone: 'UTC',
+  };
+  const plan = {
+    id: input.planId,
+    userId: input.userId,
+    topic: 'rust',
+    skillLevel: 'beginner',
+    weeklyHours: 5,
+    learningStyle: 'mixed',
+    startDate: null,
+    deadlineDate: null,
+  } as unknown as RegenerationPlanRow;
+
+  beforeEach(() => {
+    processGenerationAttempt.mockReset();
+    processGenerationAttempt.mockResolvedValue({
+      status: 'generation_success',
+      data: { modules: [], metadata: {}, durationMs: 1 },
+    });
+    mocks.loadJob.mockReset();
+    mocks.resolveUserTier.mockReset();
+    mocks.getUserPreferences.mockReset();
+    mocks.loadAuthorizedRegenerationPlan.mockReset();
+    mocks.createPlanLifecycleService.mockReset();
+    mocks.createPlanLifecycleService.mockReturnValue({
+      processGenerationAttempt,
+    } as unknown as PlanLifecycleService);
+    mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
+    mocks.getUserPreferences.mockResolvedValue(savedSlots);
+  });
+
+  it('passes the payload model override to processGenerationAttempt', async () => {
+    const queued = job('processing', 'wrun_same');
+    queued.data = {
+      ...queued.data,
+      overrides: { model: 'google/gemini-3-flash-preview' },
+    };
+    mocks.loadJob.mockResolvedValue(queued);
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    await processPlanRegenerationStep(input);
+
+    expect(processGenerationAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationPurpose: 'regeneration',
+        modelOverride: 'google/gemini-3-flash-preview',
+      }),
+    );
+  });
+
+  it('uses the Pro regeneration saved slot when the payload has no model', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    await processPlanRegenerationStep(input);
+
+    expect(processGenerationAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationPurpose: 'regeneration',
+        modelOverride: savedSlots.preferredRegenerationAiModel,
+      }),
+    );
+  });
+
+  it('uses the Starter outline slot when the payload has no model', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('starter');
+
+    await processPlanRegenerationStep(input);
+
+    expect(processGenerationAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationPurpose: 'regeneration',
+        modelOverride: savedSlots.preferredAiModel,
+      }),
+    );
   });
 });

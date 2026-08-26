@@ -5,6 +5,7 @@ import type {
 } from '@/features/lesson-content/generate-module-lessons.types';
 import type { ModuleLessonGenerationMetadata } from '@/shared/types/lesson-content.types';
 
+import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { generateModuleLessonBatchWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
 import {
@@ -17,6 +18,7 @@ import {
   type LessonGenerationQuotaWorkResult,
   runLessonGenerationQuotaReserved,
 } from '@/features/billing/lesson-generation-quota-boundary';
+import { resolveUserTier } from '@/features/billing/tier';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import {
   buildModuleLessonBatchSystemPrompt,
@@ -30,6 +32,7 @@ import {
   markModuleLessonProviderStarted,
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
+import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
@@ -128,13 +131,27 @@ export async function runModuleLessonGenerationWork(
         let providerStarted = false;
 
         try {
+          const currentTier = await resolveUserTier(
+            params.userId,
+            serverDbClient,
+          );
+          let requestedModel = params.modelOverride ?? undefined;
+          if (requestedModel == null || requestedModel === '') {
+            const saved = await getUserPreferences(
+              params.userId,
+              serverDbClient,
+            );
+            requestedModel = resolveOverrideOrSavedModelId(
+              undefined,
+              currentTier,
+              saved,
+              'lesson',
+            );
+          }
+
           const provider =
             deps.provider ??
-            resolveModelForTier(
-              params.userTier,
-              params.modelOverride ?? undefined,
-              'lesson',
-            ).provider;
+            resolveModelForTier(currentTier, requestedModel, 'lesson').provider;
 
           lifecycle = setupAbortAndTimeout(timeoutConfig, params.signal);
           const { controller } = lifecycle;

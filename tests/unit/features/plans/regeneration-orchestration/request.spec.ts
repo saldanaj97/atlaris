@@ -362,6 +362,30 @@ describe('requestPlanRegeneration', () => {
       );
     });
 
+    it('persists an optional model override on the queued job payload', async () => {
+      const deps = buildDeps();
+
+      await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        },
+        deps,
+      );
+
+      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+        'plan_regeneration',
+        ownedPlan.id,
+        'user-1',
+        {
+          planId: ownedPlan.id,
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        },
+        7,
+      );
+    });
+
     it('marks workflow start failure retryable without compensating quota', async () => {
       startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
       const failJob = vi.fn(async () => null);

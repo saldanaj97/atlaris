@@ -57,6 +57,7 @@ export const planRegenerationOverridesSchema = z.strictObject({
   learningStyle: LEARNING_STYLE_ENUM.optional(),
   startDate: planStartDateOverrideSchema.optional().nullable(),
   deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
+  model: z.string().trim().min(1).optional(),
 });
 
 export const onboardingFormObject = z.object({

@@ -1,11 +1,9 @@
 import type { PlansDbClient } from '@/features/plans/api/route-context';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-import type {
-  CreatePlanResult,
-  ProcessGenerationInput,
-} from '@/features/plans/lifecycle/types';
+import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { throwCreatePlanResultError } from './create-plan-result-error';
@@ -62,6 +60,7 @@ export interface RespondRetryStreamArgs {
   internalUserId: string;
   planId: string;
   plan: RetryPlanGenerationPlanSnapshot;
+  savedPreferredAiModel: string | null;
   tierDb: PlansDbClient;
   responseHeaders?: HeadersInit;
   requestId?: string;
@@ -73,11 +72,6 @@ export type SessionCommand =
 
 type CreateSessionCommand = Extract<SessionCommand, { kind: 'create' }>;
 type RetrySessionCommand = Extract<SessionCommand, { kind: 'retry' }>;
-
-type SuccessfulCreatePlanResult = Extract<
-  CreatePlanResult,
-  { status: 'success' }
->;
 
 export interface PreparedSessionPlan {
   planId: string;
@@ -124,7 +118,8 @@ async function prepareCreate(
     req,
     authUserId,
     internalUserId,
-    createResult,
+    planId: createResult.planId,
+    tier: createResult.tier,
     savedPreferredAiModel,
   });
 
@@ -162,7 +157,15 @@ async function prepareCreate(
 async function prepareRetry(
   command: RetrySessionCommand,
 ): Promise<PreparedSessionPlan> {
-  const { internalUserId, planId, plan, tierDb } = command;
+  const {
+    req,
+    authUserId,
+    internalUserId,
+    planId,
+    plan,
+    savedPreferredAiModel,
+    tierDb,
+  } = command;
 
   const tier = await resolveUserTier(internalUserId, tierDb);
   const retryInput = buildRetryGenerationInput(plan, ({ field, value }) => {
@@ -170,6 +173,14 @@ async function prepareRetry(
       { field, value },
       'Ignoring persisted plan session date with invalid ISO calendar format',
     );
+  });
+  const modelOverride = resolveCreateStreamModel({
+    req,
+    authUserId,
+    internalUserId,
+    planId,
+    tier,
+    savedPreferredAiModel,
   });
 
   return {
@@ -187,6 +198,7 @@ async function prepareRetry(
       generationPurpose: 'initial',
       allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
       input: retryInput,
+      modelOverride,
     },
     fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
@@ -207,19 +219,21 @@ function resolveCreateStreamModel({
   req,
   authUserId,
   internalUserId,
-  createResult,
+  planId,
+  tier,
   savedPreferredAiModel,
 }: {
   req: Request;
   authUserId: string;
   internalUserId: string;
-  createResult: SuccessfulCreatePlanResult;
+  planId: string;
+  tier: SubscriptionTier;
   savedPreferredAiModel: string | null;
 }): string | undefined {
   const { modelOverride, resolutionSource, suppliedModel } =
     resolveStreamModelResolution({
       searchParams: new URL(req.url).searchParams,
-      tier: createResult.tier,
+      tier,
       savedPreferredAiModel,
     });
 
@@ -234,8 +248,8 @@ function resolveCreateStreamModel({
   const meta = {
     authUserId,
     userId: internalUserId,
-    planId: createResult.planId,
-    tier: createResult.tier,
+    planId,
+    tier,
     modelResolutionSource: resolutionSource,
     suppliedModel,
     ...(modelOverride !== undefined ? { modelOverride } : {}),

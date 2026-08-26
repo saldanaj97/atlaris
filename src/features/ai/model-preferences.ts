@@ -88,6 +88,23 @@ export function savedModelIdForOperation(
 }
 
 /**
+ * Prefer an explicit override when present; otherwise the saved slot for this
+ * tier × operation. Does not validate catalog membership — callers pass the
+ * result to `resolveModelForTier` / `processGenerationAttempt`.
+ */
+export function resolveOverrideOrSavedModelId(
+  override: string | null | undefined,
+  tier: SubscriptionTier,
+  saved: SavedModelPreferenceSlots,
+  operation: ModelOperation,
+): string | undefined {
+  if (override != null && override !== '') {
+    return override;
+  }
+  return savedModelIdForOperation(tier, saved, operation) ?? undefined;
+}
+
+/**
  * Runtime model for the current tier × operation. Never writes. Out-of-tier or
  * empty saved values fall back to the operation default.
  */

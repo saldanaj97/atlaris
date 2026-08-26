@@ -312,5 +312,75 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       const body = await res.json();
       expect(body.error).toBe('Invalid overrides.');
     });
+
+    it('forwards a valid regeneration model override on the job request', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+      mockRequestPlanRegeneration.mockResolvedValue({
+        kind: 'enqueued',
+        jobId: 'job-model',
+        planId,
+        status: 'pending',
+        planGenerationRateLimit: {
+          remaining: 9,
+          limit: 10,
+          reset: 1_700_000_000,
+        },
+      });
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'google/gemini-3-pro-preview' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(202);
+      expect(mockRequestPlanRegeneration).toHaveBeenCalledWith(
+        expect.objectContaining({
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        }),
+      );
+    });
+
+    it('rejects an unknown regeneration model with MODEL_INVALID', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'invalid/model-id' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.code).toBe('MODEL_INVALID');
+      expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
+    });
+
+    it('rejects a tier-denied regeneration model with MODEL_NOT_ALLOWED_FOR_TIER', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'starter',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'google/gemini-3-pro-preview' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+      expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
+    });
   });
 });

@@ -116,11 +116,15 @@ export function buildCreateStreamRequest(
 
 export function buildRetryStreamRequest(
   planId: string,
-  signal?: AbortSignal,
+  options: { signal?: AbortSignal; model?: string } = {},
 ): Request {
-  return new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
+  const search =
+    options.model === undefined
+      ? ''
+      : `?model=${encodeURIComponent(options.model)}`;
+  return new Request(`http://localhost/api/v1/plans/${planId}/retry${search}`, {
     method: 'POST',
-    ...(signal ? { signal } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
   });
 }
 
@@ -144,6 +148,7 @@ export interface BuildRetryStreamArgsInput {
   internalUserId: string;
   planId?: string;
   plan?: RetryPlanGenerationPlanSnapshot;
+  savedPreferredAiModel?: string | null;
   responseHeaders?: HeadersInit;
   requestId?: string;
 }
@@ -157,6 +162,7 @@ export function buildRetryStreamArgs(
     internalUserId: input.internalUserId,
     planId: input.planId ?? 'plan_boundary_retry',
     plan: input.plan ?? { ...BASE_RETRY_PLAN_SNAPSHOT },
+    savedPreferredAiModel: input.savedPreferredAiModel ?? null,
     tierDb: db,
     ...(input.responseHeaders
       ? { responseHeaders: input.responseHeaders }
@@ -165,7 +171,10 @@ export function buildRetryStreamArgs(
   };
 }
 
-export async function setupPlanSessionUser(scenario: string): Promise<{
+export async function setupPlanSessionUser(
+  scenario: string,
+  subscriptionTier: 'free' | 'starter' | 'pro' = 'pro',
+): Promise<{
   authUserId: string;
   internalUserId: string;
 }> {
@@ -173,7 +182,7 @@ export async function setupPlanSessionUser(scenario: string): Promise<{
   const internalUserId = await ensureUser({
     authUserId,
     email: buildTestEmail(authUserId),
-    subscriptionTier: 'pro',
+    subscriptionTier,
   });
   return { authUserId, internalUserId };
 }

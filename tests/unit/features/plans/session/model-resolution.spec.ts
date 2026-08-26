@@ -113,6 +113,20 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
+  it('uses a Starter/Pro allowlist query override over the saved outline preference', () => {
+    const resolution = resolveStreamModelResolution({
+      searchParams: new URLSearchParams({ model: STARTER_PERSISTABLE_MODEL }),
+      tier: 'starter',
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODELS[1]?.id ?? null,
+    });
+
+    expect(resolution).toEqual({
+      modelOverride: STARTER_PERSISTABLE_MODEL,
+      resolutionSource: 'query_override',
+      suppliedModel: STARTER_PERSISTABLE_MODEL,
+    });
+  });
+
   it('uses saved preference when no query override is supplied', () => {
     const resolution = resolveStreamModelResolution({
       searchParams: new URLSearchParams(),

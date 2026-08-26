@@ -2,8 +2,10 @@ import type { MeteredReservationToken } from '@/features/billing/metered-reserva
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
 
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { runLessonGenerationQuotaReserved } from '@/features/billing/lesson-generation-quota-boundary';
 import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
+import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +21,8 @@ const mocks = vi.hoisted(() => ({
   setupAbortAndTimeout: vi.fn(),
   reserve: vi.fn(),
   compensate: vi.fn(),
+  resolveUserTier: vi.fn(),
+  getUserPreferences: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
@@ -38,6 +42,14 @@ vi.mock('@/features/lesson-content/parse-module-lesson-batch', () => ({
 
 vi.mock('@/features/ai/model-resolver', () => ({
   resolveModelForTier: mocks.resolveModelForTier,
+}));
+
+vi.mock('@/features/billing/tier', () => ({
+  resolveUserTier: mocks.resolveUserTier,
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', () => ({
+  getUserPreferences: mocks.getUserPreferences,
 }));
 
 vi.mock(
@@ -127,6 +139,15 @@ describe('runModuleLessonGenerationWork', () => {
     mocks.reserve.mockResolvedValue({ ok: true, token: baseToken });
     mocks.compensate.mockReset();
     mocks.compensate.mockResolvedValue(undefined);
+    mocks.resolveUserTier.mockReset();
+    mocks.resolveUserTier.mockResolvedValue('free');
+    mocks.getUserPreferences.mockReset();
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: null,
+      analyticsTimezone: 'UTC',
+    });
   });
 
   it('releases an already-claimed module when generation is disabled', async () => {
@@ -445,5 +466,185 @@ describe('runModuleLessonGenerationWork', () => {
 
     expect(mocks.reserve).toHaveBeenCalledTimes(2);
     expect(mocks.compensate).not.toHaveBeenCalled();
+  });
+
+  it('uses the Pro saved lesson slot when modelOverride is omitted', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: 'openai/gpt-5.2',
+      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
+      provider: { generateModuleLessonBatch: vi.fn() },
+      modelId: 'google/gemini-3-flash-preview',
+    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+    const userId = createId('user');
+    await runModuleLessonGenerationWork(
+      {
+        load: {
+          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
+          module: { title: 'm', description: null, order: 1 },
+          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
+          isUnlocked: true,
+        } as never,
+        userId,
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'pro',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        runLessonQuotaReserved,
+      },
+    );
+
+    expect(mocks.resolveUserTier).toHaveBeenCalledWith(userId, fakeDb);
+    expect(mocks.getUserPreferences).toHaveBeenCalledWith(userId, fakeDb);
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'google/gemini-3-flash-preview',
+      'lesson',
+    );
+  });
+
+  it.each(['free', 'starter'] as const)(
+    '%s lesson work without modelOverride resolves openrouter/free',
+    async (tier) => {
+      mocks.resolveUserTier.mockResolvedValue(tier);
+      mocks.resolveModelForTier.mockReturnValue({
+        provider: { generateModuleLessonBatch: vi.fn() },
+        modelId: AI_DEFAULT_MODEL,
+      });
+      mocks.invokeProvider.mockResolvedValue(providerOk());
+      mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+      await runModuleLessonGenerationWork(
+        {
+          load: {
+            plan: {
+              topic: 't',
+              skillLevel: 'beginner',
+              learningStyle: 'mixed',
+            },
+            module: { title: 'm', description: null, order: 1 },
+            tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
+            isUnlocked: true,
+          } as never,
+          userId: createId('user'),
+          planId: createId('plan'),
+          moduleId: createId('module'),
+          userTier: tier,
+        },
+        {
+          serverDbClient: fakeDb,
+          resolveGenerationEnabled: async () => true,
+          runLessonQuotaReserved,
+        },
+      );
+
+      expect(getDefaultModelForTier(tier, 'lesson')).toBe(AI_DEFAULT_MODEL);
+      expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+        tier,
+        undefined,
+        'lesson',
+      );
+    },
+  );
+
+  it('replaces a stale workflow userTier with the current DB tier', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
+      provider: { generateModuleLessonBatch: vi.fn() },
+      modelId: 'google/gemini-3-flash-preview',
+    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: {
+          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
+          module: { title: 'm', description: null, order: 1 },
+          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
+          isUnlocked: true,
+        } as never,
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'free',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        runLessonQuotaReserved,
+      },
+    );
+
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'google/gemini-3-flash-preview',
+      'lesson',
+    );
+    expect(mocks.resolveModelForTier).not.toHaveBeenCalledWith(
+      'free',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('keeps an explicit modelOverride instead of the saved lesson slot', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
+      provider: { generateModuleLessonBatch: vi.fn() },
+      modelId: 'openai/gpt-5.2',
+    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: {
+          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
+          module: { title: 'm', description: null, order: 1 },
+          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
+          isUnlocked: true,
+        } as never,
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'pro',
+        modelOverride: 'openai/gpt-5.2',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        runLessonQuotaReserved,
+      },
+    );
+
+    expect(mocks.getUserPreferences).not.toHaveBeenCalled();
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'openai/gpt-5.2',
+      'lesson',
+    );
   });
 });

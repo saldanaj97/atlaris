@@ -26,6 +26,7 @@ export interface PlanRegenerationJobData {
     learningStyle: LearningStyle;
     startDate: string | null;
     deadlineDate: string | null;
+    model: string;
   }>;
 }
 
