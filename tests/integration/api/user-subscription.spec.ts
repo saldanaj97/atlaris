@@ -64,10 +64,6 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body.usage).toEqual({
       activePlans: { current: 0, limit: TIER_LIMITS.free.maxActivePlans },
       regenerations: { used: 0, limit: TIER_LIMITS.free.monthlyRegenerations },
-      lessonGenerations: {
-        used: 0,
-        limit: TIER_LIMITS.free.monthlyLessonGenerations,
-      },
     });
     expect(body.usage).not.toHaveProperty('exports');
 
@@ -163,7 +159,7 @@ describe('GET /api/v1/user/subscription', () => {
       used: 0,
       limit: TIER_LIMITS.pro.monthlyRegenerations,
     });
-    expect(body.usage.lessonGenerations).toEqual({ used: 0, limit: null });
+    expect(body.usage).not.toHaveProperty('lessonGenerations');
   });
 
   it('should handle starter tier subscriptions', async () => {

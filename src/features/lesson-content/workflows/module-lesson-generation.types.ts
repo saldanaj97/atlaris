@@ -33,9 +33,4 @@ export type ModuleLessonWorkflowResult =
       readonly kind: 'success';
       readonly durationMs: number;
     })
-  | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'failed' })
-  | (ModuleLessonWorkflowRunResultBase & {
-      readonly kind: 'quota_denied';
-      readonly currentCount: number;
-      readonly limit: number;
-    });
+  | (ModuleLessonWorkflowRunResultBase & { readonly kind: 'failed' });

@@ -87,7 +87,6 @@ const subscriptionUsageSchema = z.object({
     limit: z.number().int().nonnegative().nullable(),
   }),
   regenerations: usageMeterSchema,
-  lessonGenerations: usageMeterSchema,
 });
 
 const subscriptionResponseSchema = z

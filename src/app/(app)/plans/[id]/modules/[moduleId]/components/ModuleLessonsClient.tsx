@@ -35,12 +35,11 @@ export function ModuleLessonsClient({
   statuses,
   onStatusChange,
 }: ModuleLessonsClientProps) {
-  const { generateLessons, generationTakingLong, isPending, quotaMessage } =
+  const { generateLessons, generationTakingLong, isPending } =
     useModuleLessonGeneration({
       planId,
       moduleId,
       status: lessonGeneration.status,
-      previousModulesComplete,
     });
 
   const totalLessons = lessons.length;
@@ -67,10 +66,8 @@ export function ModuleLessonsClient({
 
         <GenerationStatePanel
           lessonGeneration={lessonGeneration}
-          previousModulesComplete={previousModulesComplete}
-          quotaMessage={quotaMessage}
           generationTakingLong={generationTakingLong}
-          onGenerate={generateLessons}
+          onRetry={generateLessons}
           isPending={isPending}
         />
 

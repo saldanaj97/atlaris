@@ -9,7 +9,12 @@ import {
   createFailureResult,
   createSyntheticFailureAttempt,
 } from '@/features/ai/orchestrator/attempt-failures';
+import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
+import {
+  API_ERROR_CODES,
+  API_ERROR_HTTP_STATUS,
+} from '@/shared/constants/api-error-codes';
 
 const RESERVATION_REJECTION_DETAILS: Record<
   AttemptRejection['reason'],
@@ -57,6 +62,37 @@ const RESERVATION_REJECTION_DETAILS: Record<
   },
 };
 
+function errorForReservationRejection(
+  reservation: AttemptRejection,
+  message: string,
+): Error {
+  switch (reservation.reason) {
+    case 'free_allowance_used':
+      return new AppError(message, {
+        status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
+        code: API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
+        details: { upgradeUrl: '/pricing' },
+      });
+    case 'free_initial_in_progress':
+      return new AppError(message, {
+        status: API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
+        code: API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
+        classification: 'conflict',
+      });
+    case 'capped':
+    case 'plan_limit':
+    case 'rate_limited':
+    case 'in_progress':
+    case 'active_child_generation':
+    case 'invalid_status':
+      return new Error(message);
+    default: {
+      const _never: never = reservation.reason;
+      return new Error(String(_never));
+    }
+  }
+}
+
 export function createReservationRejectionResult(
   context: GenerationAttemptContext,
   reservation: AttemptRejection,
@@ -94,7 +130,7 @@ export function createReservationRejectionResult(
 
   return createFailureResult({
     classification,
-    error: new Error(errorMessage),
+    error: errorForReservationRejection(reservation, errorMessage),
     durationMs,
     extendedTimeout: false,
     timedOut: false,

@@ -2,8 +2,9 @@ import { planRegenerationOverridesSchema } from '@/features/plans/validation/lea
 import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
 /**
  * Zod schema for `job_queue` payloads of type `plan_regeneration`.
- * Consumed by orchestration (`process.ts`) when a worker dequeues a job; `overrides`
- * merge with the stored plan (topic, dates, skill, etc.) for that run.
+ * Consumed by orchestration (`process.ts`) when a worker dequeues a job; allowed
+ * `overrides` merge with the stored plan (dates, skill, hours, style, model).
+ * Topic/notes are never taken from the payload — they are rebuilt from the plan.
  */
 import { z } from 'zod';
 
@@ -17,6 +18,11 @@ export const planRegenerationJobPayloadSchema = z.strictObject({
   planId: z.uuid(),
   workflow: WorkflowSdkMetadataSchema.optional(),
   overrides: planRegenerationOverridesSchema.optional(),
+  quota: z
+    .strictObject({
+      providerStartedAt: z.iso.datetime(),
+    })
+    .optional(),
   errorHistory: z.array(jobErrorHistoryEntrySchema).optional(),
 });
 

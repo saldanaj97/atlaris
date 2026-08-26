@@ -91,6 +91,13 @@ export type QuotaRejection = {
   readonly upgradeUrl?: string;
 };
 
+/** Requested plan duration exceeds the actor's tier cap. */
+export type DurationExceeded = {
+  readonly status: 'duration_exceeded';
+  readonly reason: string;
+  readonly upgradeUrl?: string;
+};
+
 export type FreeAllowanceUsed = {
   readonly status: 'free_allowance_used';
   readonly reason: string;
@@ -124,6 +131,7 @@ export type CreatePlanResult =
   | RetryableFailure
   | PermanentFailure
   | QuotaRejection
+  | DurationExceeded
   | FreeAllowanceUsed
   | FreeGenerationInProgress
   | AttemptCapExceeded

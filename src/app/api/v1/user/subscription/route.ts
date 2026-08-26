@@ -35,10 +35,6 @@ export const GET = requestBoundary.route(
             used: snapshot.usage.regenerations.used,
             limit: toJsonUsageLimit(snapshot.usage.regenerations.limit),
           },
-          lessonGenerations: {
-            used: snapshot.usage.lessonGenerations.used,
-            limit: toJsonUsageLimit(snapshot.usage.lessonGenerations.limit),
-          },
         },
       });
     } catch (error) {

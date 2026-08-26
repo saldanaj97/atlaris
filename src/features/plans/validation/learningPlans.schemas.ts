@@ -1,8 +1,4 @@
 import {
-  NOTES_MAX_LENGTH,
-  TOPIC_MAX_LENGTH,
-} from '@/shared/constants/learning-plans';
-import {
   createLearningPlanNotesSchema,
   topicSchema,
 } from '@/shared/schemas/learning-plans.schemas';
@@ -12,24 +8,6 @@ import {
   weeklyHoursSchema,
 } from '@/shared/schemas/plan-validation.schemas';
 import { z } from 'zod';
-
-const planNotesOverrideSchema = z
-  .string()
-  .trim()
-  .max(
-    NOTES_MAX_LENGTH,
-    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`,
-  )
-  .transform((value) => (value.length > 0 ? value : null));
-
-const planTopicOverrideSchema = z
-  .string()
-  .trim()
-  .min(3, 'topic must be at least 3 characters long.')
-  .max(
-    TOPIC_MAX_LENGTH,
-    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`,
-  );
 
 const planStartDateOverrideSchema = z
   .string()
@@ -50,8 +28,6 @@ const planDeadlineDateOverrideSchema = z
   .transform((value) => (value ? value : null));
 
 export const planRegenerationOverridesSchema = z.strictObject({
-  topic: planTopicOverrideSchema.optional(),
-  notes: planNotesOverrideSchema.optional().nullable(),
   skillLevel: SKILL_LEVEL_ENUM.optional(),
   weeklyHours: weeklyHoursSchema.optional(),
   learningStyle: LEARNING_STYLE_ENUM.optional(),

@@ -187,21 +187,22 @@ describe('usage_metrics lesson_modules_generated', () => {
     );
   });
 
-  it('increments via incrementUsage lesson_generation', async () => {
+  it('does not increment leftover lesson meter via incrementUsage', async () => {
     const authUserId = buildTestAuthUserId('usage-metrics-lesson-inc');
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
     });
 
-    await incrementUsage(userId, 'lesson_generation', db);
+    await incrementUsage(userId, 'regeneration', db);
 
     const [row] = await db
       .select()
       .from(usageMetrics)
       .where(eq(usageMetrics.userId, userId));
 
-    expect(row?.lessonModulesGenerated).toBe(1);
+    expect(row?.regenerationsUsed).toBe(1);
+    expect(row?.lessonModulesGenerated).toBe(0);
   });
 });
 
@@ -211,6 +212,7 @@ describe('metered usage reservations', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'starter',
     });
     const month = getCurrentMonth();
 
@@ -266,6 +268,7 @@ describe('metered usage reservations', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
+      subscriptionTier: 'starter',
     });
     const month = getCurrentMonth();
 

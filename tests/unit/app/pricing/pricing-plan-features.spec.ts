@@ -15,7 +15,7 @@ describe('PRICING_FEATURES_BY_CLERK_SLUG', () => {
   it('describes Pro limits without overstating the product horizon', () => {
     const proFeatures =
       PRICING_FEATURES_BY_CLERK_SLUG[CLERK_BILLING_PLAN_SLUGS.pro];
-    expect(proFeatures).toContain('24-week scheduling horizon');
+    expect(proFeatures).toContain('Unlimited scheduling horizon');
     expect(proFeatures).toContain('Unlimited active learning plans');
     expect(proFeatures).not.toContain('Unlimited exports per month');
   });

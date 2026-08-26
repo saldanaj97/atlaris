@@ -65,7 +65,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     const otherPlan = await createPlan(otherUserId);
 
     const { request, context } = await createRequest(otherPlan.id, {
-      overrides: { topic: 'wrong owner attempt' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const response = await POST(request, context);
@@ -90,7 +90,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     });
 
     const { request, context } = await createRequest(plan.id, {
-      overrides: { topic: 'blocked by durable limit' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const response = await POST(request, context);
@@ -102,13 +102,35 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(await countJobsForPlan(plan.id)).toBe(0);
   });
 
+  it('returns 403 PLAN_REGENERATION_NOT_INCLUDED for Free and does not enqueue', async () => {
+    const authUserId = buildTestAuthUserId('regen-boundary-free');
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createPlan(userId);
+
+    const { request, context } = await createRequest(plan.id, {
+      overrides: { skillLevel: 'advanced' },
+    });
+
+    const response = await POST(request, context);
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.code).toBe('PLAN_REGENERATION_NOT_INCLUDED');
+    expect(await countJobsForPlan(plan.id)).toBe(0);
+  });
+
   it('returns 429 and does not enqueue when monthly regeneration quota is exhausted', async () => {
     const authUserId = buildTestAuthUserId('regen-boundary-quota');
     setTestUser(authUserId);
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createPlan(userId);
     await db
@@ -117,24 +139,25 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
         userId,
         month: getCurrentMonth(),
         plansGenerated: 0,
-        regenerationsUsed: TIER_LIMITS.free.monthlyRegenerations,
+        regenerationsUsed: TIER_LIMITS.starter.monthlyRegenerations,
         exportsUsed: 0,
       })
       .onConflictDoUpdate({
         target: [usageMetrics.userId, usageMetrics.month],
         set: {
-          regenerationsUsed: TIER_LIMITS.free.monthlyRegenerations,
+          regenerationsUsed: TIER_LIMITS.starter.monthlyRegenerations,
         },
       });
 
     const { request, context } = await createRequest(plan.id, {
-      overrides: { topic: 'blocked by monthly quota' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const response = await POST(request, context);
 
     expect(response.status).toBe(429);
     const body = await response.json();
+    expect(body.code).toBe('REGENERATION_QUOTA_EXCEEDED');
     expect(body.error).toBe(
       'Regeneration quota exceeded for your subscription tier.',
     );
@@ -152,7 +175,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     const plan = await createPlan(userId);
 
     const firstRequest = await createRequest(plan.id, {
-      overrides: { topic: 'first queued topic' },
+      overrides: { skillLevel: 'advanced' },
     });
     const first = await POST(firstRequest.request, firstRequest.context);
 
@@ -160,7 +183,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(await countJobsForPlan(plan.id)).toBe(1);
 
     const secondRequest = await createRequest(plan.id, {
-      overrides: { topic: 'second queued topic' },
+      overrides: { skillLevel: 'beginner' },
     });
     const second = await POST(secondRequest.request, secondRequest.context);
     expect(second.status).toBe(409);

@@ -14,7 +14,6 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
@@ -63,30 +62,6 @@ function moduleOwnedByUser(userId: string) {
   )`;
 }
 
-function isModuleUnlockedForLessonGeneration(
-  metrics: readonly {
-    readonly moduleId: string;
-    readonly totalTasks: number;
-    readonly completedTasks: number;
-  }[],
-  moduleId: string,
-): boolean {
-  for (const metric of metrics) {
-    if (metric.moduleId === moduleId) {
-      return true;
-    }
-
-    if (
-      Number(metric.totalTasks) > 0 &&
-      Number(metric.completedTasks) < Number(metric.totalTasks)
-    ) {
-      return false;
-    }
-  }
-
-  return false;
-}
-
 /**
  * Loads plan (prompt fields), module, and tasks in module order. Null if module/plan not found for user.
  */
@@ -119,27 +94,20 @@ export async function loadModuleLessonGenerationContext(
     return null;
   }
 
-  const [moduleMetricsRows, taskRows] = await Promise.all([
-    fetchModuleTaskMetricsRows({
-      planIds: [planId],
-      userId,
-      dbClient,
-    }),
-    dbClient
-      .select({
-        id: tasks.id,
-        moduleId: tasks.moduleId,
-        order: tasks.order,
-        title: tasks.title,
-        description: tasks.description,
-        estimatedMinutes: tasks.estimatedMinutes,
-        hasMicroExplanation: tasks.hasMicroExplanation,
-        lessonContent: tasks.lessonContent,
-      })
-      .from(tasks)
-      .where(eq(tasks.moduleId, moduleId))
-      .orderBy(asc(tasks.order)),
-  ]);
+  const taskRows = await dbClient
+    .select({
+      id: tasks.id,
+      moduleId: tasks.moduleId,
+      order: tasks.order,
+      title: tasks.title,
+      description: tasks.description,
+      estimatedMinutes: tasks.estimatedMinutes,
+      hasMicroExplanation: tasks.hasMicroExplanation,
+      lessonContent: tasks.lessonContent,
+    })
+    .from(tasks)
+    .where(eq(tasks.moduleId, moduleId))
+    .orderBy(asc(tasks.order));
 
   return {
     plan: {
@@ -150,10 +118,7 @@ export async function loadModuleLessonGenerationContext(
     },
     module: scoped.module,
     tasks: taskRows,
-    isUnlocked: isModuleUnlockedForLessonGeneration(
-      moduleMetricsRows,
-      moduleId,
-    ),
+    isUnlocked: true,
   };
 }
 

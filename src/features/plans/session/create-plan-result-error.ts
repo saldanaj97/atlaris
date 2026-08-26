@@ -35,6 +35,14 @@ export function throwCreatePlanResultError(
     });
   }
 
+  if (createResult.status === 'duration_exceeded') {
+    throw new AppError(createResult.reason, {
+      status: API_ERROR_HTTP_STATUS.PLAN_DURATION_LIMIT_EXCEEDED,
+      code: API_ERROR_CODES.PLAN_DURATION_LIMIT_EXCEEDED,
+      details: { upgradeUrl: createResult.upgradeUrl ?? '/pricing' },
+    });
+  }
+
   if (createResult.status === 'free_allowance_used') {
     throw new AppError(createResult.reason, {
       status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,

@@ -108,7 +108,7 @@ export function InlineDropdown<TValue extends string>({
             (option) => option.value === nextValue,
           );
 
-          if (nextOption) {
+          if (nextOption && !nextOption.disabled) {
             onChange(nextOption.value);
           }
         }}
@@ -152,8 +152,10 @@ export function InlineDropdown<TValue extends string>({
                   key={option.value}
                   value={option.value}
                   textValue={option.label}
+                  disabled={option.disabled}
                   className={cn(
                     'relative w-full cursor-default rounded-sm py-2.5 pr-9 pl-3 text-left transition-colors outline-none select-none',
+                    'data-disabled:cursor-not-allowed data-disabled:opacity-50',
                     styles.item,
                   )}
                 >

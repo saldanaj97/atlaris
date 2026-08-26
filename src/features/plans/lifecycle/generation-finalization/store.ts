@@ -12,15 +12,18 @@ import {
   canonicalUsageToRecordParams,
   recordUsageInTx,
 } from '../../../../../supabase/usage';
+import { resolveUserTier } from '@/features/billing/tier';
 import {
   getCurrentMonth,
   incrementUsageInTx,
 } from '@/features/billing/usage-metrics';
+import { enqueueFirstProgressiveModuleLessons } from '@/features/lesson-content/progressive-enqueue';
 import {
   markPlanGenerationFailureInTx,
   markPlanGenerationSuccessInTx,
 } from '@/features/plans/lifecycle/plan-persistence-store';
 import { isFreeAdmittedTier } from '@/features/plans/policy/entitlement';
+import { getCorrelationId } from '@/lib/api/context';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
 import { readAdmittedTierFromAttemptMetadata } from '@/lib/db/queries/helpers/attempt-admitted-tier';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
@@ -34,6 +37,7 @@ import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
+import { logger } from '@/lib/logging/logger';
 import { describeGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts, users } from '@supabase/schema';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -143,6 +147,27 @@ export async function commitPlanGenerationSuccess(
     modulesCount,
     tasksCount,
   });
+
+  try {
+    const currentTier = await resolveUserTier(input.userId, dbClient);
+    await enqueueFirstProgressiveModuleLessons({
+      dbClient,
+      userId: input.userId,
+      planId: input.planId,
+      userTier: currentTier,
+      correlationId: getCorrelationId() ?? attempt.id,
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        planId: input.planId,
+        attemptId: attempt.id,
+        userId: input.userId,
+      },
+      'Failed to enqueue progressive lessons after plan finalization',
+    );
+  }
 
   return attempt;
 }

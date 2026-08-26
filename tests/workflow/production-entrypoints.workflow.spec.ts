@@ -98,7 +98,7 @@ describe('production Workflow SDK entrypoints', () => {
       JOB_TYPES.PLAN_REGENERATION,
       plan.id,
       userId,
-      { planId: plan.id, overrides: { topic: 'Regenerated workflow topic' } },
+      { planId: plan.id },
     );
 
     const run = await start(planRegenerationWorkflow, [

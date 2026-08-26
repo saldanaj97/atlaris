@@ -14,11 +14,13 @@ const mocks = vi.hoisted(() => ({
   loadJob: vi.fn(),
   updateJobPayload: vi.fn(),
   updateJobPayloadIfRunIdMissing: vi.fn(),
+  failJob: vi.fn(),
   getWorkflowMetadata: vi.fn(),
   createPlanLifecycleService: vi.fn(),
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
   loadAuthorizedRegenerationPlan: vi.fn(),
+  runRegenerationQuotaReserved: vi.fn(),
 }));
 
 vi.mock('@/features/jobs/queue', () => ({
@@ -26,6 +28,11 @@ vi.mock('@/features/jobs/queue', () => ({
   loadJobById: mocks.loadJob,
   updateJobPayload: mocks.updateJobPayload,
   updateJobPayloadIfRunIdMissing: mocks.updateJobPayloadIfRunIdMissing,
+  failJob: mocks.failJob,
+}));
+
+vi.mock('@/features/billing/regeneration-quota-boundary', () => ({
+  runRegenerationQuotaReserved: mocks.runRegenerationQuotaReserved,
 }));
 
 vi.mock('@/features/plans/lifecycle/factory', () => ({
@@ -232,6 +239,25 @@ describe('processPlanRegenerationStep model resolution', () => {
     } as unknown as PlanLifecycleService);
     mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
     mocks.getUserPreferences.mockResolvedValue(savedSlots);
+    mocks.failJob.mockReset();
+    mocks.failJob.mockResolvedValue(null);
+    mocks.runRegenerationQuotaReserved.mockReset();
+    mocks.runRegenerationQuotaReserved.mockImplementation(
+      async (args: {
+        work: () => Promise<{
+          disposition: 'consumed' | 'revert';
+          value: unknown;
+        }>;
+      }) => {
+        const workResult = await args.work();
+        return {
+          ok: true as const,
+          consumed: workResult.disposition === 'consumed',
+          value: workResult.value,
+          reconciliationRequired: false as const,
+        };
+      },
+    );
   });
 
   it('passes the payload model override to processGenerationAttempt', async () => {
@@ -277,6 +303,82 @@ describe('processPlanRegenerationStep model resolution', () => {
       expect.objectContaining({
         generationPurpose: 'regeneration',
         modelOverride: savedSlots.preferredAiModel,
+      }),
+    );
+  });
+
+  it('fails closed for Free without invoking the provider', async () => {
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('free');
+
+    await expect(processPlanRegenerationStep(input)).rejects.toThrow(
+      'Plan regeneration is not included on the Free plan.',
+    );
+    expect(processGenerationAttempt).not.toHaveBeenCalled();
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Plan regeneration is not included on the Free plan.',
+      { retryable: false },
+    );
+    expect(mocks.runRegenerationQuotaReserved).not.toHaveBeenCalled();
+  });
+
+  it('fails closed for Starter duration over 8 weeks without invoking the provider', async () => {
+    mocks.loadAuthorizedRegenerationPlan.mockResolvedValue({
+      ...plan,
+      startDate: '2026-01-01',
+      deadlineDate: '2026-04-01',
+    });
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('starter');
+
+    await expect(processPlanRegenerationStep(input)).rejects.toThrow(
+      /starter tier limited to 8-week plans/i,
+    );
+    expect(processGenerationAttempt).not.toHaveBeenCalled();
+    expect(mocks.runRegenerationQuotaReserved).not.toHaveBeenCalled();
+  });
+
+  it('consumes quota once onAttemptReserved fires', async () => {
+    let disposition: 'consumed' | 'revert' | undefined;
+    processGenerationAttempt.mockImplementation(
+      async (args: { onAttemptReserved?: () => void }) => {
+        args.onAttemptReserved?.();
+        return {
+          status: 'generation_success',
+          data: { modules: [], metadata: {}, durationMs: 1 },
+        };
+      },
+    );
+    mocks.runRegenerationQuotaReserved.mockImplementation(
+      async (args: {
+        work: () => Promise<{
+          disposition: 'consumed' | 'revert';
+          value: unknown;
+        }>;
+      }) => {
+        const workResult = await args.work();
+        disposition = workResult.disposition;
+        return {
+          ok: true as const,
+          consumed: workResult.disposition === 'consumed',
+          value: workResult.value,
+          reconciliationRequired: false as const,
+        };
+      },
+    );
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    await processPlanRegenerationStep(input);
+
+    expect(disposition).toBe('consumed');
+    expect(mocks.updateJobPayload).toHaveBeenCalledWith(
+      input.jobId,
+      expect.objectContaining({
+        quota: expect.objectContaining({
+          providerStartedAt: expect.any(String),
+        }),
       }),
     );
   });

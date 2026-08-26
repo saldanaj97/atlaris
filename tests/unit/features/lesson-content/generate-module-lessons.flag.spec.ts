@@ -41,9 +41,8 @@ describe('module lesson generation flag boundary', () => {
     expect(claim).not.toHaveBeenCalled();
   });
 
-  it('runModuleLessonGenerationWork returns disabled without provider or quota work when flag is off', async () => {
+  it('runModuleLessonGenerationWork returns disabled without provider work when flag is off', async () => {
     const resolveGenerationEnabled = vi.fn(async () => false);
-    const runLessonQuotaReserved = vi.fn();
     const provider = {
       generateModuleLessonBatch: vi.fn(),
     };
@@ -71,14 +70,12 @@ describe('module lesson generation flag boundary', () => {
       },
       {
         resolveGenerationEnabled,
-        runLessonQuotaReserved,
         provider,
       },
     );
 
     expect(result).toEqual({ kind: 'disabled' });
     expect(resolveGenerationEnabled).toHaveBeenCalledOnce();
-    expect(runLessonQuotaReserved).not.toHaveBeenCalled();
     expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
   });
 

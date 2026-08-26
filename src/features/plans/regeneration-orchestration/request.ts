@@ -2,8 +2,11 @@ import type {
   RequestPlanRegenerationArgs,
   RequestPlanRegenerationResult,
 } from './types';
-import type { RegenerationQuotaWorkResult } from '@/features/billing/regeneration-quota-boundary';
 
+import {
+  buildPersistedRegenerationInput,
+  resolveRegenerationPolicyDenial,
+} from './admission';
 import { attachPlanRegenerationWorkflow } from './attach-workflow';
 import {
   createDefaultRegenerationOrchestrationDeps,
@@ -13,12 +16,10 @@ import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
 import { getDb } from '@supabase/runtime';
 
-type ReservedRegenerationWorkValue =
+type EnqueuedRegenerationWork =
   | { kind: 'enqueued'; jobId: string }
   | { kind: 'workflow-start-failed'; jobId: string; retryable: boolean }
-  | { kind: 'workflow-attach-error'; error: unknown };
-
-type RevertedRegenerationWorkValue =
+  | { kind: 'workflow-attach-error'; error: unknown }
   | { kind: 'queue-dedupe-conflict'; existingJobId: string }
   | { kind: 'workflow-attach-canceled'; jobId: string };
 
@@ -42,28 +43,6 @@ type AdmittedRegeneration = {
 type RegenerationAdmission =
   | { readonly kind: 'admitted'; readonly value: AdmittedRegeneration }
   | { readonly kind: 'rejected'; readonly result: RegenerationRejectedResult };
-
-type ReservationBoundaryResult =
-  | {
-      readonly ok: false;
-      readonly currentCount: number;
-      readonly limit: number;
-    }
-  | {
-      readonly ok: true;
-      readonly consumed: true;
-      readonly value: ReservedRegenerationWorkValue;
-    }
-  | {
-      readonly ok: true;
-      readonly consumed: false;
-      readonly value: RevertedRegenerationWorkValue;
-      readonly reconciliationRequired: boolean;
-    };
-
-type SettledRegenerationAdmission =
-  | { readonly kind: 'accepted'; readonly jobId: string }
-  | { readonly kind: 'result'; readonly result: RegenerationRejectedResult };
 
 async function admitPlanRegeneration(
   args: RequestPlanRegenerationArgs,
@@ -100,6 +79,47 @@ async function admitPlanRegeneration(
     d.tier.resolveUserTier(userId, d.dbClient),
   ]);
 
+  const merged = buildPersistedRegenerationInput(plan, overrides);
+  const policyDenial = resolveRegenerationPolicyDenial({
+    tier,
+    weeklyHours: merged.weeklyHours,
+    startDate: merged.startDate,
+    deadlineDate: merged.deadlineDate,
+  });
+  if (policyDenial?.kind === 'not-included') {
+    return { kind: 'rejected', result: { kind: 'not-included' } };
+  }
+  if (policyDenial?.kind === 'duration-exceeded') {
+    return {
+      kind: 'rejected',
+      result: {
+        kind: 'duration-exceeded',
+        reason: policyDenial.reason,
+        ...(policyDenial.upgradeUrl !== undefined
+          ? { upgradeUrl: policyDenial.upgradeUrl }
+          : {}),
+      },
+    };
+  }
+
+  const access = await d.plans.readContentAccess(planId, userId, d.dbClient);
+  if (access !== 'full') {
+    return { kind: 'rejected', result: { kind: 'content-locked' } };
+  }
+
+  const usage = await d.quota.peekUsage(userId, tier, d.dbClient);
+  if (usage.regenerations.used >= usage.regenerations.limit) {
+    return {
+      kind: 'rejected',
+      result: {
+        kind: 'quota-denied',
+        currentCount: usage.regenerations.used,
+        limit: usage.regenerations.limit,
+        reason: 'Regeneration quota exceeded for your subscription tier.',
+      },
+    };
+  }
+
   return {
     kind: 'admitted',
     value: {
@@ -108,24 +128,17 @@ async function admitPlanRegeneration(
       payload: { planId, overrides },
       priority: d.priority.computeJobPriority({
         tier,
-        isPriorityTopic: d.priority.isPriorityTopic(
-          overrides?.topic ?? plan.topic,
-        ),
+        isPriorityTopic: d.priority.isPriorityTopic(plan.topic),
       }),
       planGenerationRateLimit,
     },
   };
 }
 
-async function runReservedRegenerationAdmission(
+async function enqueueAdmittedRegeneration(
   admission: AdmittedRegeneration,
   d: RegenerationOrchestrationDeps,
-): Promise<
-  RegenerationQuotaWorkResult<
-    ReservedRegenerationWorkValue,
-    RevertedRegenerationWorkValue
-  >
-> {
+): Promise<EnqueuedRegenerationWork> {
   const { userId, planId, payload, priority } = admission;
   const enqueueResult = await d.queue.enqueueWithResult(
     JOB_TYPES.PLAN_REGENERATION,
@@ -137,14 +150,8 @@ async function runReservedRegenerationAdmission(
 
   if (enqueueResult.deduplicated) {
     return {
-      disposition: 'revert',
-      value: {
-        kind: 'queue-dedupe-conflict',
-        existingJobId: enqueueResult.id,
-      },
-      reason: 'queue-dedupe',
-      // Same id as existingJobId; boundary passes to compensation / reconciliation telemetry.
-      jobId: enqueueResult.id,
+      kind: 'queue-dedupe-conflict',
+      existingJobId: enqueueResult.id,
     };
   }
 
@@ -177,12 +184,9 @@ async function runReservedRegenerationAdmission(
         { retryable: true },
       );
       return {
-        disposition: 'consumed',
-        value: {
-          kind: 'workflow-start-failed',
-          jobId: acceptedJobId,
-          retryable: true,
-        },
+        kind: 'workflow-start-failed',
+        jobId: acceptedJobId,
+        retryable: true,
       };
     }
 
@@ -236,32 +240,20 @@ async function runReservedRegenerationAdmission(
 
       if (attachResult.cancellation.succeeded && terminalized) {
         return {
-          disposition: 'revert',
-          value: {
-            kind: 'workflow-attach-canceled',
-            jobId: acceptedJobId,
-          },
-          reason: 'workflow-attach-canceled',
+          kind: 'workflow-attach-canceled',
           jobId: acceptedJobId,
         };
       }
 
       return {
-        disposition: 'consumed',
-        value: {
-          kind: 'workflow-start-failed',
-          jobId: acceptedJobId,
-          retryable: false,
-        },
+        kind: 'workflow-start-failed',
+        jobId: acceptedJobId,
+        retryable: false,
       };
     }
 
-    return {
-      disposition: 'consumed',
-      value: { kind: 'enqueued', jobId: acceptedJobId },
-    };
+    return { kind: 'enqueued', jobId: acceptedJobId };
   } catch (error: unknown) {
-    // A workflow may have started, so preserve the reservation for reconciliation.
     d.logger.error(
       {
         acceptedJobId,
@@ -294,81 +286,56 @@ async function runReservedRegenerationAdmission(
       );
     }
     return {
-      disposition: 'consumed',
-      value: { kind: 'workflow-attach-error', error },
+      kind: 'workflow-attach-error',
+      error,
     };
   }
 }
 
-function mapReservedRegenerationAdmission(
+function mapEnqueuedRegeneration(
   planId: string,
-  boundaryResult: ReservationBoundaryResult,
-  d: RegenerationOrchestrationDeps,
-): SettledRegenerationAdmission {
-  if (!boundaryResult.ok) {
-    return {
-      kind: 'result',
-      result: {
-        kind: 'quota-denied',
-        currentCount: boundaryResult.currentCount,
-        limit: boundaryResult.limit,
-        reason: 'Regeneration quota exceeded for your subscription tier.',
-      },
-    };
-  }
-
-  if (!boundaryResult.consumed) {
-    if (boundaryResult.value.kind === 'workflow-attach-canceled') {
-      if (boundaryResult.reconciliationRequired) {
-        d.logger.error(
-          {
-            jobId: boundaryResult.value.jobId,
-            planId,
-            reconciliationRequired: true,
-          },
-          'Regeneration quota revert requires reconciliation after workflow attach cancellation',
-        );
-      }
+  work: EnqueuedRegenerationWork,
+):
+  | { kind: 'accepted'; jobId: string }
+  | { kind: 'result'; result: RegenerationRejectedResult } {
+  switch (work.kind) {
+    case 'enqueued':
+      return { kind: 'accepted', jobId: work.jobId };
+    case 'queue-dedupe-conflict':
+      return {
+        kind: 'result',
+        result: {
+          kind: 'queue-dedupe-conflict',
+          existingJobId: work.existingJobId,
+        },
+      };
+    case 'workflow-attach-canceled':
       return {
         kind: 'result',
         result: {
           kind: 'workflow-start-failed',
-          jobId: boundaryResult.value.jobId,
+          jobId: work.jobId,
           planId,
           retryable: false,
         },
       };
+    case 'workflow-start-failed':
+      return {
+        kind: 'result',
+        result: {
+          kind: 'workflow-start-failed',
+          jobId: work.jobId,
+          planId,
+          retryable: work.retryable,
+        },
+      };
+    case 'workflow-attach-error':
+      throw work.error;
+    default: {
+      const _never: never = work;
+      return _never;
     }
-
-    return {
-      kind: 'result',
-      result: {
-        kind: 'queue-dedupe-conflict',
-        existingJobId: boundaryResult.value.existingJobId,
-        ...(boundaryResult.reconciliationRequired && {
-          reconciliationRequired: true,
-        }),
-      },
-    };
   }
-
-  if (boundaryResult.value.kind === 'workflow-attach-error') {
-    throw boundaryResult.value.error;
-  }
-
-  if (boundaryResult.value.kind === 'workflow-start-failed') {
-    return {
-      kind: 'result',
-      result: {
-        kind: 'workflow-start-failed',
-        jobId: boundaryResult.value.jobId,
-        planId,
-        retryable: boundaryResult.value.retryable,
-      },
-    };
-  }
-
-  return { kind: 'accepted', jobId: boundaryResult.value.jobId };
 }
 
 export async function requestPlanRegeneration(
@@ -382,21 +349,8 @@ export async function requestPlanRegeneration(
     return admission.result;
   }
 
-  const boundaryResult = await d.quota.runReserved<
-    ReservedRegenerationWorkValue,
-    RevertedRegenerationWorkValue
-  >({
-    userId: admission.value.userId,
-    planId: admission.value.planId,
-    dbClient: d.dbClient,
-    work: () => runReservedRegenerationAdmission(admission.value, d),
-  });
-
-  const settled = mapReservedRegenerationAdmission(
-    admission.value.planId,
-    boundaryResult,
-    d,
-  );
+  const work = await enqueueAdmittedRegeneration(admission.value, d);
+  const settled = mapEnqueuedRegeneration(admission.value.planId, work);
   if (settled.kind === 'result') return settled.result;
 
   return {

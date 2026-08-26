@@ -7,10 +7,7 @@ export type ModuleLessonEligibleContext = {
 };
 
 export type ModuleLessonPreflightResult =
-  | Exclude<
-      GenerateModuleLessonsResult,
-      'success' | 'failed' | 'quota_denied' | 'disabled'
-    >
+  | Exclude<GenerateModuleLessonsResult, 'success' | 'failed' | 'disabled'>
   | ModuleLessonEligibleContext;
 
 export function classifyModuleLessonGenerationPreflight(

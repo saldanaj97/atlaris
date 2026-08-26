@@ -3,14 +3,14 @@ import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 function getGenerationStatusLabel(
   lessonGeneration: ModuleLessonGenerationSummary,
 ): string {
   switch (lessonGeneration.status) {
     case 'not_generated':
-      return 'Not generated';
+      return 'Preparing';
     case 'generating':
       return 'Generating';
     case 'ready':
@@ -24,34 +24,12 @@ function getGenerationStatusLabel(
   }
 }
 
-function LockedGenerationPanel() {
-  return (
-    <Surface variant='default' padding='none' className='mb-6 p-5'>
-      <div className='flex items-start gap-3'>
-        <div className='rounded-lg bg-muted p-2 text-muted-foreground'>
-          <Sparkles className='size-5' />
-        </div>
-        <div>
-          <h3 className='font-semibold text-foreground'>
-            Lesson generation unlocks with this module
-          </h3>
-          <p className='mt-1 text-sm text-muted-foreground'>
-            Complete previous modules to unlock lesson generation.
-          </p>
-        </div>
-      </div>
-    </Surface>
-  );
-}
-
 function GenerationDescription({
   lessonGeneration,
   generationTakingLong,
-  quotaMessage,
 }: {
   lessonGeneration: ModuleLessonGenerationSummary;
   generationTakingLong: boolean;
-  quotaMessage: string | null;
 }) {
   return (
     <div>
@@ -63,7 +41,12 @@ function GenerationDescription({
           {getGenerationStatusLabel(lessonGeneration)}
         </Badge>
       </div>
-      {lessonGeneration.status === 'generating' ? (
+      {lessonGeneration.status === 'failed' ? (
+        <p className='text-sm text-muted-foreground'>
+          Generation failed. Retry to create fresh lesson content for this
+          module.
+        </p>
+      ) : (
         <>
           <p className='text-sm text-muted-foreground'>
             Generation is running for the full module. You can keep reviewing
@@ -75,20 +58,7 @@ function GenerationDescription({
             </p>
           ) : null}
         </>
-      ) : lessonGeneration.status === 'failed' ? (
-        <p className='text-sm text-muted-foreground'>
-          Generation failed. Retry to create fresh lesson content for this
-          module.
-        </p>
-      ) : (
-        <p className='text-sm text-muted-foreground'>
-          One click generates and caches detailed content for every lesson in
-          this module.
-        </p>
       )}
-      {quotaMessage ? (
-        <p className='mt-2 text-sm font-medium text-warning'>{quotaMessage}</p>
-      ) : null}
     </div>
   );
 }
@@ -96,58 +66,41 @@ function GenerationDescription({
 function GenerationAction({
   status,
   isPending,
-  onGenerate,
+  onRetry,
 }: {
   status: ModuleLessonGenerationSummary['status'];
   isPending: boolean;
-  onGenerate: () => void;
+  onRetry: () => void;
 }) {
-  if (status === 'generating') {
+  if (status === 'failed') {
     return (
-      <div className='flex items-center gap-2 text-sm font-medium text-primary'>
-        <span className='animate-spin motion-reduce:animate-none'>
-          <Loader2 className='size-4' />
-        </span>
-        Generating lessons…
-      </div>
+      <Button onClick={onRetry} disabled={isPending}>
+        {isPending ? 'Generating…' : 'Retry lesson generation'}
+      </Button>
     );
   }
 
-  const canGenerate = status === 'not_generated' || status === 'failed';
-  if (!canGenerate) {
-    return null;
-  }
-
   return (
-    <Button onClick={onGenerate} disabled={isPending}>
-      {isPending
-        ? 'Generating…'
-        : status === 'failed'
-          ? 'Retry lesson generation'
-          : 'Generate lessons'}
-    </Button>
+    <div className='flex items-center gap-2 text-sm font-medium text-primary'>
+      <span className='animate-spin motion-reduce:animate-none'>
+        <Loader2 className='size-4' />
+      </span>
+      Generating lessons…
+    </div>
   );
 }
 
 export function GenerationStatePanel({
   lessonGeneration,
-  previousModulesComplete,
-  quotaMessage,
   generationTakingLong,
-  onGenerate,
+  onRetry,
   isPending,
 }: {
   lessonGeneration: ModuleLessonGenerationSummary;
-  previousModulesComplete: boolean;
-  quotaMessage: string | null;
   generationTakingLong: boolean;
-  onGenerate: () => void;
+  onRetry: () => void;
   isPending: boolean;
 }) {
-  if (!previousModulesComplete) {
-    return <LockedGenerationPanel />;
-  }
-
   if (lessonGeneration.status === 'ready') {
     return null;
   }
@@ -163,12 +116,11 @@ export function GenerationStatePanel({
         <GenerationDescription
           lessonGeneration={lessonGeneration}
           generationTakingLong={generationTakingLong}
-          quotaMessage={quotaMessage}
         />
         <GenerationAction
           status={lessonGeneration.status}
           isPending={isPending}
-          onGenerate={onGenerate}
+          onRetry={onRetry}
         />
       </div>
     </Surface>

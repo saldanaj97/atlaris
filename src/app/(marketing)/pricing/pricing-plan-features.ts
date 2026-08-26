@@ -2,10 +2,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { isUnlimitedNumber } from '@/app/_shared/usage-formatting';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
-import {
-  MAX_SELECTABLE_PLAN_WEEKS,
-  TIER_LIMITS,
-} from '@/shared/constants/tier-limits';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 
 function formatMarketingLimit(value: number | null | undefined): string {
   return isUnlimitedNumber(value) ? 'Unlimited' : String(value);
@@ -42,7 +39,7 @@ export const PRICING_PLAN_FEATURES: Record<
   pro: [
     `${formatMarketingLimit(TIER_LIMITS.pro.maxActivePlans)} active learning plans`,
     `${formatMarketingLimit(TIER_LIMITS.pro.monthlyRegenerations)} plan regenerations per month`,
-    `${MAX_SELECTABLE_PLAN_WEEKS}-week scheduling horizon`,
+    `${formatMarketingSchedulingHorizon(TIER_LIMITS.pro.maxWeeks)} scheduling horizon`,
     'Priority queue + analytics',
   ],
 };

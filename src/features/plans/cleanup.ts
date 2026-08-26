@@ -215,8 +215,7 @@ type CleanupAbandonedModuleLessonGenerationsDependencies = {
 
 /**
  * Settles stale module work that durably crossed the provider boundary before a
- * worker disappeared. This only changes the module lifecycle state; it never
- * compensates lesson-generation usage. A later retry must reserve a new slot.
+ * worker disappeared. This only changes the module lifecycle state.
  */
 export async function cleanupAbandonedModuleLessonGenerations(
   dbClient: DbClient,

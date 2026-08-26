@@ -7,12 +7,15 @@ import {
 } from '@/lib/date/format-local-ymd';
 import { normalizeThrown } from '@/lib/errors';
 
+export const CUSTOM_DEADLINE_VALUE = 'custom' as const;
+
 export type PlanFormData = {
   topic: string;
   skillLevel: string;
   weeklyHours: string;
   learningStyle: string;
   deadlineWeeks: string;
+  deadlineDate?: string;
 };
 
 const WEEKLY_HOURS: Record<string, number> = {
@@ -51,6 +54,17 @@ function normalizePlanFormPayloadError(error: unknown): PlanFormPayloadError {
   };
 }
 
+function resolveDeadlineDate(data: PlanFormData): string {
+  if (data.deadlineWeeks === CUSTOM_DEADLINE_VALUE) {
+    const custom = data.deadlineDate?.trim();
+    if (!custom) {
+      throw new Error('Please choose a custom deadline date.');
+    }
+    return custom;
+  }
+  return deadlineWeeksToDate(data.deadlineWeeks);
+}
+
 export function buildCreatePlanPayloadFromForm(
   data: PlanFormData,
 ): PlanFormPayloadResult {
@@ -64,7 +78,7 @@ export function buildCreatePlanPayloadFromForm(
         learningStyle: data.learningStyle,
         notes: '',
         startDate: formatDateToYmd(new Date()),
-        deadlineDate: deadlineWeeksToDate(data.deadlineWeeks),
+        deadlineDate: resolveDeadlineDate(data),
         visibility: 'private',
         origin: 'ai',
       }),

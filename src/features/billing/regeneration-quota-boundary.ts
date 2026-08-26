@@ -1,13 +1,10 @@
 /**
  * Regeneration-focused quota reservation boundary.
  *
- * Owns the reserve / run-work / compensate / reconcile lifecycle for the
- * regeneration HTTP path so route handlers do not have to thread together
- * billing primitives, queue dedupe, and Sentry telemetry.
- *
- * Phase-1 scope is intentionally regeneration-only; exports and any other
- * meter continue to flow through their existing wrappers until they are
- * migrated onto the same private metered-reservation core.
+ * Owns the reserve / run-work / compensate / reconcile lifecycle for monthly
+ * regeneration usage. HTTP enqueue peeks current usage without settling; this
+ * boundary is invoked at provider start so pre-provider failures compensate and
+ * post-provider failures remain consumed.
  */
 
 import type { DbClient } from '@/lib/db/types';
@@ -40,7 +37,7 @@ export type RegenerationQuotaWorkResult<TConsumed, TReverted = TConsumed> =
 /**
  * Result returned to the route after the boundary settles.
  *
- * - `ok: false` means quota was denied at reserve time; route should map to 429.
+ * - `ok: false` means quota was denied at reserve time; caller should map to 429 `REGENERATION_QUOTA_EXCEEDED`.
  * - `ok: true, consumed: true` means the reservation stuck and the route should accept the request.
  * - `ok: true, consumed: false` means the reservation was reverted; route should map to 409 (or its caller-defined conflict). `reconciliationRequired` is true when the compensation step itself failed.
  */

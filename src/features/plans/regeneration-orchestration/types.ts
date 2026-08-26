@@ -50,6 +50,13 @@ export type RequestPlanRegenerationResult =
       limit: number;
       reason: string;
     }
+  | { kind: 'not-included' }
+  | {
+      kind: 'duration-exceeded';
+      reason: string;
+      upgradeUrl?: string;
+    }
+  | { kind: 'content-locked' }
   | {
       kind: 'workflow-start-failed';
       jobId: string;

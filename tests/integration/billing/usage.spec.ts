@@ -179,12 +179,6 @@ describe('Usage Tracking', () => {
         initial: 2,
         scenario: 'increment-regen',
       },
-      {
-        type: 'lesson_generation' as const,
-        field: 'lessonModulesGenerated' as const,
-        initial: 1,
-        scenario: 'increment-lesson-gen',
-      },
     ])(
       'increments $type counter for existing row',
       async ({ type, field, initial, scenario }) => {
@@ -367,10 +361,6 @@ describe('Usage Tracking', () => {
           used: 3,
           limit: TIER_LIMITS.free.monthlyRegenerations,
         },
-        lessonGenerations: {
-          used: 0,
-          limit: TIER_LIMITS.free.monthlyLessonGenerations,
-        },
       });
     });
 
@@ -421,10 +411,6 @@ describe('Usage Tracking', () => {
           used: 20,
           limit: TIER_LIMITS.pro.monthlyRegenerations,
         },
-        lessonGenerations: {
-          used: 0,
-          limit: Infinity,
-        },
       });
     });
 
@@ -444,7 +430,7 @@ describe('Usage Tracking', () => {
       const summary = await getUsageSummary(userId);
 
       expect(summary.regenerations.used).toBe(0);
-      expect(summary.lessonGenerations.used).toBe(0);
+      expect(summary).not.toHaveProperty('lessonGenerations');
       expect(summary).not.toHaveProperty('exports');
 
       // Summary reads should not write a row just to display zeros.

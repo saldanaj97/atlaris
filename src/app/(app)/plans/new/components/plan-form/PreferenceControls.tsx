@@ -1,13 +1,17 @@
 import type { PlanInputAction, PlanInputState } from './plan-input-state';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { Dispatch } from 'react';
 
 import {
-  DEADLINE_OPTIONS,
   LEARNING_STYLE_OPTIONS,
   SKILL_LEVEL_OPTIONS,
   WEEKLY_HOURS_OPTIONS,
 } from './constants';
+import { buildDeadlineOptionsForTier } from './deadline-tier';
 import { InlineDropdown } from './InlineDropdown';
+import { Input } from '@/components/ui/input';
+import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
+import { formatDateToYmd } from '@/lib/date/format-local-ymd';
 import { cn } from '@/lib/utils';
 import { Calendar, Clock } from 'lucide-react';
 
@@ -15,11 +19,17 @@ export function PreferenceControls({
   baseId,
   state,
   dispatch,
+  subscriptionTier,
 }: {
   baseId: string;
   state: PlanInputState;
   dispatch: Dispatch<PlanInputAction>;
+  subscriptionTier: SubscriptionTier;
 }) {
+  const deadlineOptions = buildDeadlineOptionsForTier(subscriptionTier);
+  const showCustomDeadline =
+    subscriptionTier === 'pro' && state.deadlineWeeks === CUSTOM_DEADLINE_VALUE;
+
   return (
     <div
       className={cn(
@@ -59,13 +69,31 @@ export function PreferenceControls({
       <InlineDropdown
         id={`${baseId}-deadline`}
         ariaLabel='Deadline'
-        options={DEADLINE_OPTIONS}
+        options={deadlineOptions}
         value={state.deadlineWeeks}
-        onChange={(value) => dispatch({ type: 'set-deadline-weeks', value })}
+        onChange={(value) =>
+          dispatch({
+            type: 'set-deadline-weeks',
+            value,
+          })
+        }
         icon={<Calendar className='size-3.5' />}
         placeholder='Finish by'
         variant='primary'
       />
+      {showCustomDeadline ? (
+        <Input
+          id={`${baseId}-deadline-date`}
+          type='date'
+          aria-label='Custom deadline date'
+          min={formatDateToYmd(new Date())}
+          value={state.deadlineDate ?? ''}
+          onChange={(event) =>
+            dispatch({ type: 'set-deadline-date', value: event.target.value })
+          }
+          className='min-h-10 w-full sm:w-auto'
+        />
+      ) : null}
     </div>
   );
 }

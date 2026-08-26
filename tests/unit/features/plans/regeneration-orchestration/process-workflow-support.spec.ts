@@ -7,6 +7,7 @@ import { JOB_TYPES } from '@/features/jobs/types';
 import {
   applyRegenerationGenerationResult,
   buildRegenerationGenerationInput,
+  validateQueuedRegenerationPayload,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { makeRegenerationOrchestrationDeps } from '@tests/helpers/regeneration-orchestration-deps';
 import { describe, expect, it, vi } from 'vitest';
@@ -44,25 +45,25 @@ function makeJob(overrides: Partial<Job> = {}): Job {
 }
 
 describe('buildRegenerationGenerationInput', () => {
-  it('uses undefined for explicit null date overrides and omitted notes', () => {
+  it('rebuilds topic from the persisted plan and ignores date nulls', () => {
     const payload = {
       planId: plan.id,
       overrides: { startDate: null, deadlineDate: null, topic: 'new topic' },
-    } satisfies PlanRegenerationJobPayload;
+    } as PlanRegenerationJobPayload;
 
     expect(buildRegenerationGenerationInput(payload, plan)).toMatchObject({
-      topic: 'new topic',
+      topic: 'stored topic',
       notes: undefined,
       startDate: undefined,
       deadlineDate: undefined,
     });
   });
 
-  it('drops invalid stored dates and preserves explicit notes', () => {
+  it('drops invalid stored dates and never uses override notes', () => {
     const payload = {
       planId: plan.id,
       overrides: { notes: 'Keep this focus.' },
-    } satisfies PlanRegenerationJobPayload;
+    } as PlanRegenerationJobPayload;
     const planWithInvalidDates = {
       ...plan,
       startDate: '2026-02-30',
@@ -72,10 +73,36 @@ describe('buildRegenerationGenerationInput', () => {
     expect(
       buildRegenerationGenerationInput(payload, planWithInvalidDates),
     ).toMatchObject({
-      notes: 'Keep this focus.',
+      notes: undefined,
       startDate: undefined,
       deadlineDate: undefined,
+      topic: 'stored topic',
     });
+  });
+});
+
+describe('validateQueuedRegenerationPayload', () => {
+  it('fails closed when a legacy payload still carries topic or notes', async () => {
+    const failJob = vi.fn(async () => null);
+    const deps = makeRegenerationOrchestrationDeps({ queue: { failJob } });
+    const job = makeJob({
+      data: {
+        planId: plan.id,
+        overrides: { topic: 'forged topic' },
+      } as unknown as Job['data'],
+    });
+
+    await expect(validateQueuedRegenerationPayload(job, deps)).resolves.toEqual(
+      {
+        ok: false,
+        result: { kind: 'invalid-payload', jobId: job.id },
+      },
+    );
+    expect(failJob).toHaveBeenCalledWith(
+      job.id,
+      'Queued regeneration overrides cannot change topic or notes.',
+      { retryable: false },
+    );
   });
 });
 

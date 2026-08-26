@@ -547,7 +547,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('not_found');
   });
 
-  it('returns locked for an owned module behind incomplete prior modules without provider or quota side effects', async () => {
+  it('generates for an owned later module while earlier modules are incomplete', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-locked');
     const userId = await ensureUser({
       authUserId,
@@ -567,40 +567,33 @@ describe('module lesson generation boundary (integration)', () => {
       order: 1,
       title: 'Incomplete first module',
     });
-    const lockedModule = await createTestModule({
+    const laterModule = await createTestModule({
       planId: plan.id,
       order: 2,
-      title: 'Locked second module',
+      title: 'Later second module',
     });
     await createTestTask({ moduleId: firstModule.id, order: 1 });
-    await createTestTask({ moduleId: lockedModule.id, order: 1 });
+    await createTestTask({ moduleId: laterModule.id, order: 1 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const provider = {
-      generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('provider should not run for locked modules');
-      }),
-    };
-
     const result = await generateModuleLessons(
       {
         dbClient: rlsDb,
         userId,
         planId: plan.id,
-        moduleId: lockedModule.id,
+        moduleId: laterModule.id,
         userTier: 'free',
       },
-      { provider },
+      {
+        provider: new MockGenerationProvider({
+          delayMs: 0,
+          deterministicSeed: 19,
+        }),
+      },
     );
 
-    expect(result.kind).toBe('locked');
-    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
-
-    const [modRow] = await db
-      .select()
-      .from(modules)
-      .where(eq(modules.id, lockedModule.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(result.kind).not.toBe('locked');
+    expect(result.kind).toBe('success');
 
     const [metrics] = await db
       .select({ n: usageMetrics.lessonModulesGenerated })
@@ -643,7 +636,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('disabled');
   });
 
-  it('quota_denied before provider; row not left generating', async () => {
+  it('does not deny generation when the leftover lesson meter is exhausted', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota');
     const userId = await ensureUser({
       authUserId,
@@ -678,20 +671,17 @@ describe('module lesson generation boundary (integration)', () => {
       },
     );
 
-    expect(result).toEqual({
-      kind: 'quota_denied',
-      currentCount: 3,
-      limit: 3,
-    });
+    expect(result.kind).toBe('success');
+    expect(result).not.toMatchObject({ kind: 'quota_denied' });
 
     const [modRow] = await db
       .select()
       .from(modules)
       .where(eq(modules.id, mod.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(modRow?.lessonGenerationStatus).toBe('ready');
   });
 
-  it('quota reservation error does not leave module generating', async () => {
+  it('provider failure after claim persists failed without a lesson meter', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota-error');
     const userId = await ensureUser({
       authUserId,
@@ -705,7 +695,7 @@ describe('module lesson generation boundary (integration)', () => {
     const rlsDb = await createRlsDbForUser(authUserId);
     const provider = {
       generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('provider should not run');
+        throw new Error('provider failed');
       }),
     };
     const result = await generateModuleLessons(
@@ -716,25 +706,20 @@ describe('module lesson generation boundary (integration)', () => {
         moduleId: mod.id,
         userTier: 'free',
       },
-      {
-        provider,
-        runLessonQuotaReserved: vi.fn(async () => {
-          throw new Error('quota store unavailable');
-        }),
-      },
+      { provider },
     );
 
     expect(result).toEqual({ kind: 'failed' });
-    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalled();
 
     const [modRow] = await db
       .select()
       .from(modules)
       .where(eq(modules.id, mod.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(modRow?.lessonGenerationStatus).toBe('failed');
   });
 
-  it('success increments lesson_modules_generated for current month', async () => {
+  it('success does not increment leftover lesson_modules_generated', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-ok');
     const userId = await ensureUser({
       authUserId,
@@ -777,10 +762,10 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
       );
-    expect(metrics?.n).toBe(1);
+    expect(metrics?.n).toBe(0);
   });
 
-  it('cold-start success creates usage_metrics row with lesson_modules_generated = 1', async () => {
+  it('cold-start success does not create a lesson usage row', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-cold-start');
     const userId = await ensureUser({
       authUserId,
@@ -826,10 +811,10 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
-    expect(metrics?.n).toBe(1);
+    expect(metrics?.n).toBeUndefined();
   });
 
-  it('parser failure after provider start keeps the lesson_modules_generated reservation', async () => {
+  it('parser failure after provider start does not increment leftover lesson meter', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-fail');
     const userId = await ensureUser({
       authUserId,
@@ -871,7 +856,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
       );
-    expect(metrics?.n).toBe(3);
+    expect(metrics?.n).toBe(2);
   });
 
   it('already_ready does not change lesson_modules_generated', async () => {

@@ -30,7 +30,7 @@ describe('getBillingAccountSnapshot', () => {
     expect(snapshot.cancelAtPeriodEnd).toBe(false);
     expect(snapshot.usage.activePlans.current).toBe(0);
     expect(snapshot.usage.regenerations.used).toBe(0);
-    expect(snapshot.usage.lessonGenerations.used).toBe(0);
+    expect(snapshot.usage).not.toHaveProperty('lessonGenerations');
     expect(snapshot.usage).not.toHaveProperty('exports');
     expect(snapshot.tier).toBe(snapshot.usage.tier);
     expect(snapshot.usage.activePlans.limit).toBe(

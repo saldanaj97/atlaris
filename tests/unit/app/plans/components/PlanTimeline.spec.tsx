@@ -112,7 +112,7 @@ describe('PlanTimeline', () => {
     );
   });
 
-  it('disables locked module toggles', () => {
+  it('keeps later modules clickable so on-open lesson generation can run', () => {
     const modules = [
       createModule(1, 'Foundations', [createTask(1, 'Intro')]),
       createModule(2, 'Advanced', [createTask(1, 'Deep dive')]),
@@ -126,10 +126,10 @@ describe('PlanTimeline', () => {
       />,
     );
 
-    const lockedToggle = screen.getByRole('button', {
+    const laterToggle = screen.getByRole('button', {
       name: /week 2/i,
     });
-    expect(lockedToggle).toBeDisabled();
+    expect(laterToggle).toBeEnabled();
   });
 
   it('calls onStatusChange when completing the last incomplete task in a module', async () => {

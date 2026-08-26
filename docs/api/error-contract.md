@@ -71,9 +71,9 @@ for regeneration overage (`REGENERATION_QUOTA_EXCEEDED`).
 | `FREE_PLAN_GENERATION_IN_PROGRESS` | 409 | Another Free initial attempt is in progress |
 | `FREE_PLAN_SELECTION_REQUIRED` | 409 | Downgrade with 2+ unselected plans |
 | `PLAN_ENTITLEMENT_REQUIRED` | 403 | Direct access to a locked owned plan |
-| `PLAN_REGENERATION_NOT_INCLUDED` | 403 | Reserved; not thrown until regeneration mapping |
-| `REGENERATION_QUOTA_EXCEEDED` | 429 | Existing metered reservation overage |
-| `PLAN_DURATION_LIMIT_EXCEEDED` | 403 | Reserved for duration-cap API mapping |
+| `PLAN_REGENERATION_NOT_INCLUDED` | 403 | Free regeneration request (before monthly meter) |
+| `REGENERATION_QUOTA_EXCEEDED` | 429 | Paid regeneration monthly overage |
+| `PLAN_DURATION_LIMIT_EXCEEDED` | 403 | Create or regenerate duration exceeds the actor tier cap |
 | `MODEL_NOT_AVAILABLE_FOR_OPERATION` | 403 | Reserved for model-policy API mapping |
 
 Do not add `MODULE_ENTITLEMENT_REQUIRED`. Constants live in

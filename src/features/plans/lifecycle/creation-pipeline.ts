@@ -84,12 +84,12 @@ export async function checkCreationGate(
   if (!requestedCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (requested duration cap)`,
+      `${logBase}: duration exceeded (requested duration cap)`,
     );
     return {
       blocked: true,
       result: {
-        status: 'quota_rejected',
+        status: 'duration_exceeded',
         reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
         upgradeUrl: requestedCap.upgradeUrl,
       },
@@ -112,12 +112,12 @@ export async function checkCreationGate(
   if (!durationCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (normalized duration cap)`,
+      `${logBase}: duration exceeded (normalized duration cap)`,
     );
     return {
       blocked: true,
       result: {
-        status: 'quota_rejected',
+        status: 'duration_exceeded',
         reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
         upgradeUrl: durationCap.upgradeUrl,
       },

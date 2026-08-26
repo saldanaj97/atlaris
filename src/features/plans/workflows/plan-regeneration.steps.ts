@@ -1,3 +1,4 @@
+import type { RegenerationQuotaWorkResult } from '@/features/billing/regeneration-quota-boundary';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 
 import {
@@ -7,14 +8,18 @@ import {
   type PlanRegenerationWorkflowTerminalResult,
 } from './plan-regeneration.types';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
+import { validateModelForTier } from '@/features/ai/model-resolver';
+import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   claimRegenerationJob,
+  failJob,
   loadJobById,
   updateJobPayload,
   updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { resolveRegenerationPolicyDenial } from '@/features/plans/regeneration-orchestration/admission';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import {
   applyRegenerationGenerationResult,
@@ -147,6 +152,39 @@ export async function processPlanRegenerationStep(
   }
 
   const tier = await resolveUserTier(plan.userId, serviceRoleDb);
+  const generationInput = buildRegenerationGenerationInput(
+    validation.payload,
+    plan,
+  );
+  const policyDenial = resolveRegenerationPolicyDenial({
+    tier,
+    weeklyHours: generationInput.weeklyHours,
+    startDate: generationInput.startDate,
+    deadlineDate: generationInput.deadlineDate,
+  });
+  if (policyDenial) {
+    const message =
+      policyDenial.kind === 'not-included'
+        ? 'Plan regeneration is not included on the Free plan.'
+        : policyDenial.reason;
+    await failJob(job.id, message, { retryable: false });
+    throw new FatalError(message);
+  }
+
+  const explicitModel = validation.payload.overrides?.model;
+  if (explicitModel !== undefined) {
+    const modelValidation = validateModelForTier(
+      tier,
+      explicitModel,
+      'regeneration',
+    );
+    if (!modelValidation.valid) {
+      const message = 'Model is not allowed for regeneration on this tier.';
+      await failJob(job.id, message, { retryable: false });
+      throw new FatalError(message);
+    }
+  }
+
   const saved = await getUserPreferences(plan.userId, serviceRoleDb);
   const modelOverride = resolveOverrideOrSavedModelId(
     validation.payload.overrides?.model,
@@ -154,20 +192,75 @@ export async function processPlanRegenerationStep(
     saved,
     'regeneration',
   );
-  const generationInput = buildRegenerationGenerationInput(
-    validation.payload,
-    plan,
-  );
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
 
-  return lifecycle.processGenerationAttempt({
-    planId: plan.id,
+  let providerStarted = false;
+  const quotaResult = await runRegenerationQuotaReserved<
+    GenerationAttemptResult,
+    GenerationAttemptResult
+  >({
     userId: plan.userId,
-    tier,
-    generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
-    input: generationInput,
-    ...(modelOverride !== undefined ? { modelOverride } : {}),
+    planId: plan.id,
+    dbClient: serviceRoleDb,
+    work: async (): Promise<
+      RegenerationQuotaWorkResult<
+        GenerationAttemptResult,
+        GenerationAttemptResult
+      >
+    > => {
+      try {
+        const generationResult = await lifecycle.processGenerationAttempt({
+          planId: plan.id,
+          userId: plan.userId,
+          tier,
+          generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
+          input: generationInput,
+          ...(modelOverride !== undefined ? { modelOverride } : {}),
+          onAttemptReserved: () => {
+            providerStarted = true;
+            const marked = planRegenerationJobPayloadSchema.safeParse({
+              ...validation.payload,
+              quota: { providerStartedAt: new Date().toISOString() },
+            });
+            if (marked.success) {
+              void updateJobPayload(job.id, marked.data);
+            }
+          },
+        });
+
+        if (!providerStarted) {
+          return {
+            disposition: 'revert',
+            value: generationResult,
+            reason: 'pre-provider',
+            jobId: job.id,
+          };
+        }
+
+        return { disposition: 'consumed', value: generationResult };
+      } catch (error) {
+        if (providerStarted) {
+          return {
+            disposition: 'consumed',
+            value: {
+              status: 'retryable_failure',
+              classification: 'provider_error',
+              error: error instanceof Error ? error : new Error(String(error)),
+            },
+          };
+        }
+        throw error;
+      }
+    },
   });
+
+  if (!quotaResult.ok) {
+    const message = 'Regeneration quota exceeded for your subscription tier.';
+    await failJob(job.id, message, { retryable: false });
+    throw new FatalError(message);
+  }
+
+  return quotaResult.value;
 }
 
 export async function finalizePlanRegenerationJobStep(

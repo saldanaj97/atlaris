@@ -50,4 +50,33 @@ describe('throwCreatePlanResultError', () => {
       },
     );
   });
+
+  it('maps duration denials to PLAN_DURATION_LIMIT_EXCEEDED', () => {
+    expectThrownAppError(
+      () =>
+        throwCreatePlanResultError({
+          status: 'duration_exceeded',
+          reason: 'Starter tier limited to 8-week plans.',
+          upgradeUrl: '/pricing',
+        }),
+      {
+        status: API_ERROR_HTTP_STATUS.PLAN_DURATION_LIMIT_EXCEEDED,
+        code: API_ERROR_CODES.PLAN_DURATION_LIMIT_EXCEEDED,
+      },
+    );
+  });
+
+  it('keeps plan-limit quota_rejected on QUOTA_EXCEEDED', () => {
+    expectThrownAppError(
+      () =>
+        throwCreatePlanResultError({
+          status: 'quota_rejected',
+          reason: 'Plan limit reached for current subscription tier',
+        }),
+      {
+        status: 403,
+        code: 'QUOTA_EXCEEDED',
+      },
+    );
+  });
 });

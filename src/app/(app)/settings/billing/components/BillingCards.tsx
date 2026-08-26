@@ -112,12 +112,6 @@ export async function UsageRows() {
         used={snapshot.usage.regenerations.used}
         limit={snapshot.usage.regenerations.limit}
       />
-      <UsageMeterRow
-        label='Lesson generations (monthly)'
-        ariaLabel='Monthly lesson generations'
-        used={snapshot.usage.lessonGenerations.used}
-        limit={snapshot.usage.lessonGenerations.limit}
-      />
     </>
   );
 }

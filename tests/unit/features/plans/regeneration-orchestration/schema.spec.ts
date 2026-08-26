@@ -42,4 +42,19 @@ describe('planRegenerationJobPayloadSchema', () => {
       overrides: { model: 'google/gemini-3-pro-preview' },
     });
   });
+
+  it('rejects queued topic and notes overrides', () => {
+    expect(
+      planRegenerationJobPayloadSchema.safeParse({
+        planId,
+        overrides: { topic: 'forged topic' },
+      }).success,
+    ).toBe(false);
+    expect(
+      planRegenerationJobPayloadSchema.safeParse({
+        planId,
+        overrides: { notes: 'forged notes' },
+      }).success,
+    ).toBe(false);
+  });
 });

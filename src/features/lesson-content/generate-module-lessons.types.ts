@@ -1,6 +1,5 @@
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
-import type { runLessonGenerationQuotaReserved } from '@/features/billing/lesson-generation-quota-boundary';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -24,7 +23,6 @@ export type GenerateModuleLessonsDeps = {
     AiPlanGenerationProvider,
     'generateModuleLessonBatch'
   >;
-  readonly runLessonQuotaReserved?: typeof runLessonGenerationQuotaReserved;
   readonly serverDbClient?: DbClient;
   readonly resolveGenerationEnabled?: () => Promise<boolean>;
 };
@@ -35,11 +33,6 @@ export type GenerateModuleLessonsResult =
   | { readonly kind: 'already_ready' }
   | { readonly kind: 'in_flight' }
   | { readonly kind: 'disabled' }
-  | {
-      readonly kind: 'quota_denied';
-      readonly currentCount: number;
-      readonly limit: number;
-    }
   | { readonly kind: 'success'; readonly durationMs: number }
   | { readonly kind: 'failed' };
 

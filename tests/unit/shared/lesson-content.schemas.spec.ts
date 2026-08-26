@@ -228,16 +228,6 @@ describe('lesson content Zod contracts', () => {
 
     expect(
       ModuleLessonGenerationApiResponseSchema.parse({
-        state: 'quota_denied',
-        planId,
-        moduleId,
-        currentCount: 0,
-        limit: 0,
-      }),
-    ).toMatchObject({ state: 'quota_denied' });
-
-    expect(
-      ModuleLessonGenerationApiResponseSchema.parse({
         state: 'not_found',
         planId,
         moduleId,
@@ -253,7 +243,7 @@ describe('lesson content Zod contracts', () => {
     ).toMatchObject({ state: 'locked' });
   });
 
-  it('rejects quota_denied when limit is not an integer', () => {
+  it('rejects unknown quota_denied state', () => {
     const planId = randomUUID();
     const moduleId = randomUUID();
     expect(() =>
@@ -262,7 +252,7 @@ describe('lesson content Zod contracts', () => {
         planId,
         moduleId,
         currentCount: 1,
-        limit: 1.5,
+        limit: 3,
       }),
     ).toThrow(z.ZodError);
   });

@@ -73,8 +73,8 @@ describe('PlanLifecycleService', () => {
 
       const result = await service.createPlan(validInput);
 
-      expect(result.status).toBe('quota_rejected');
-      if (result.status === 'quota_rejected') {
+      expect(result.status).toBe('duration_exceeded');
+      if (result.status === 'duration_exceeded') {
         expect(result.reason).toContain('4 weeks');
         expect(result.upgradeUrl).toBe('/upgrade');
       }

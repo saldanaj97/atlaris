@@ -6,15 +6,19 @@ import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { PlanRegenerationWorkflowTerminalResult } from '@/features/plans/workflows/plan-regeneration.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
+import {
+  buildPersistedRegenerationInput,
+  rawRegenerationOverridesHaveImmutableFields,
+} from './admission';
 import { planRegenerationJobPayloadSchema } from './schema';
-import { toPlanCalendarDate } from '@/features/plans/calendar-date';
-import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { learningPlans } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 
 const INVALID_JOB_PAYLOAD_MESSAGE = 'Invalid plan regeneration job payload.';
 const PLAN_NOT_FOUND_MESSAGE = 'Plan not found for queued regeneration.';
+const IMMUTABLE_OVERRIDE_MESSAGE =
+  'Queued regeneration overrides cannot change topic or notes.';
 
 export type RegenerationPlanRow = typeof learningPlans.$inferSelect;
 
@@ -26,45 +30,17 @@ type ValidatedJobPayloadWithoutFail =
   | { ok: true; payload: PlanRegenerationJobPayload }
   | { ok: false };
 
-const resolveRegenerationNotes = (
-  overrides: PlanRegenerationJobPayload['overrides'],
-) => {
-  if (!overrides || overrides.notes === undefined) {
-    return undefined;
-  }
-
-  return overrides.notes;
-};
-
-const resolveDateOverride = (
-  override: string | null | undefined,
-  fallback: string | null,
-) => toPlanCalendarDate(override === undefined ? fallback : override);
+export function buildRegenerationGenerationInput(
+  payload: PlanRegenerationJobPayload,
+  plan: RegenerationPlanRow,
+): GenerationInput {
+  return buildPersistedRegenerationInput(plan, payload.overrides);
+}
 
 function buildSanitizedGenerationFailureMessage(
   classification: string,
 ): string {
   return `Plan regeneration failed (${classification}).`;
-}
-
-export function buildRegenerationGenerationInput(
-  payload: PlanRegenerationJobPayload,
-  plan: RegenerationPlanRow,
-): GenerationInput {
-  const overrides = payload.overrides;
-
-  return {
-    topic: overrides?.topic ?? plan.topic,
-    notes: resolveRegenerationNotes(overrides),
-    skillLevel: overrides?.skillLevel ?? plan.skillLevel,
-    weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
-    learningStyle: overrides?.learningStyle ?? plan.learningStyle,
-    startDate: resolveDateOverride(overrides?.startDate, plan.startDate),
-    deadlineDate: resolveDateOverride(
-      overrides?.deadlineDate,
-      plan.deadlineDate,
-    ),
-  };
 }
 
 function summarizeSuccessfulGeneration(
@@ -89,6 +65,10 @@ function summarizeSuccessfulGeneration(
 export async function validateQueuedRegenerationPayloadForJob(
   job: Job,
 ): Promise<ValidatedJobPayloadWithoutFail> {
+  if (rawRegenerationOverridesHaveImmutableFields(job.data)) {
+    return { ok: false };
+  }
+
   const parsed = planRegenerationJobPayloadSchema.safeParse(job.data);
   if (!parsed.success) {
     return { ok: false };
@@ -105,6 +85,13 @@ export async function validateQueuedRegenerationPayload(
   job: Job,
   deps: RegenerationOrchestrationDeps,
 ): Promise<ValidatedJobPayload> {
+  if (rawRegenerationOverridesHaveImmutableFields(job.data)) {
+    await deps.queue.failJob(job.id, IMMUTABLE_OVERRIDE_MESSAGE, {
+      retryable: false,
+    });
+    return { ok: false, result: { kind: 'invalid-payload', jobId: job.id } };
+  }
+
   const parsed = planRegenerationJobPayloadSchema.safeParse(job.data);
   if (!parsed.success) {
     await deps.queue.failJob(job.id, INVALID_JOB_PAYLOAD_MESSAGE, {
@@ -146,11 +133,11 @@ export async function loadAuthorizedRegenerationPlan(
     return null;
   }
 
-  const access = await readPlanContentAccess({
-    userId: job.userId,
-    planId: plan.id,
-    dbClient: deps.dbClient,
-  });
+  const access = await deps.plans.readContentAccess(
+    plan.id,
+    job.userId,
+    deps.dbClient,
+  );
   if (access !== 'full') {
     return null;
   }

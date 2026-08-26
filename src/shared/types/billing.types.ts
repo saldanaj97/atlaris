@@ -3,7 +3,6 @@ export type SubscriptionTier = 'free' | 'starter' | 'pro';
 type TierLimitConfig = {
   maxActivePlans: number;
   monthlyRegenerations: number;
-  monthlyLessonGenerations: number;
   maxWeeks: number | null;
 };
 

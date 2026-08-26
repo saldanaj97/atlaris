@@ -117,17 +117,6 @@ function mapModuleLessonGenerationResult(
         }),
         { status: 502 },
       );
-    case 'quota_denied':
-      return json(
-        ModuleLessonGenerationApiResponseSchema.parse({
-          state: 'quota_denied',
-          planId,
-          moduleId,
-          currentCount: result.currentCount,
-          limit: result.limit,
-        }),
-        { status: 429 },
-      );
     case 'disabled':
       return json(
         ModuleLessonGenerationApiResponseSchema.parse({

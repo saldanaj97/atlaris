@@ -39,11 +39,17 @@ export function makeRegenerationOrchestrationDeps(
       updateRegenerationJobPayload: vi.fn(async () => null),
     },
     quota: {
+      peekUsage: vi.fn(async () => ({
+        tier: 'pro' as const,
+        activePlans: { current: 0, limit: Number.POSITIVE_INFINITY },
+        regenerations: { used: 0, limit: 25 },
+      })),
       runReserved: vi.fn(),
     },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),
       findOwnedPlan: vi.fn(async () => null),
+      readContentAccess: vi.fn(async () => 'full' as const),
     },
     tier: {
       resolveUserTier: vi.fn(async () => 'pro' as const),
