@@ -386,7 +386,13 @@ jobs:
                 circleci-agent step halt
                 exit 0
               fi
-              echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
+              # ponytail: name-split, not classname timings. Hosted 4-way timings
+              # isolated tests/unit/app/plans/new/page.spec.tsx (16 tests) on one
+              # shard because JUnit sums sequential test times while the unit
+              # pool is concurrent. Ceiling: a new huge spec can still skew one
+              # alphabetical bucket; upgrade to file-count-aware weights if
+              # wall-clock regresses.
+              echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=name
               if [ ! -s files.txt ]; then
                 echo "No tests assigned to this node; skipping."
                 circleci-agent step halt
