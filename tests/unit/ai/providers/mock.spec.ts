@@ -255,6 +255,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       const provider = new MockGenerationProvider({
         delayMs: 0,
         failureRate: 0,
+        deterministicSeed: 145,
       });
       const result = await provider.generate(SAMPLE_INPUT);
 

@@ -1,0 +1,22 @@
+version: 2.1
+
+parameters:
+  always-continue:
+    type: boolean
+    default: false
+  base_ref:
+    type: string
+    default: develop
+  code-changed:
+    type: boolean
+    default: false
+  docs-changed:
+    type: boolean
+    default: false
+  integration_workers:
+    type: enum
+    enum: ['2', '4']
+    default: '4'
+  test_db_debug:
+    type: boolean
+    default: false
