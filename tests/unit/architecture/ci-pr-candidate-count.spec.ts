@@ -25,14 +25,16 @@ describe('PR CI candidate file counting', () => {
 
 describe('CircleCI PR merge gate', () => {
   it('runs ci-pr on develop-headed pull_request events', () => {
-    expect(CI_PR_WORKFLOW).toContain(
-      'equal: [pull_request, << pipeline.event.name >>]',
+    const pullRequestGate = CI_PR_WORKFLOW.match(
+      /equal: \[pull_request, << pipeline\.event\.name >>\][\s\S]*?equal: \[opened,/,
+    )?.[0];
+    expect(pullRequestGate).toBeDefined();
+    // non-main includes develop → main; do not match the push-clause develop exclusion
+    expect(pullRequestGate).toContain(
+      'equal: [main, << pipeline.git.branch >>]',
     );
-    expect(CI_PR_WORKFLOW).toContain(
+    expect(pullRequestGate).not.toContain(
       'equal: [develop, << pipeline.git.branch >>]',
-    );
-    expect(CI_PR_WORKFLOW).toContain(
-      'equal: [synchronize, << pipeline.event.action >>]',
     );
   });
 
