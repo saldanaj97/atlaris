@@ -414,6 +414,13 @@
       "when": 1787671819000,
       "tag": "20260825153019_add_generation_attempt_purpose",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1787769683000,
+      "tag": "20260826184123_expand_user_preferences_model_text_slots",
+      "breakpoints": true
     }
   ]
 }

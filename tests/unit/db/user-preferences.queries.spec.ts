@@ -179,6 +179,8 @@ describe('user preference queries', () => {
     expect(query.sql).toContain('"preferred_ai_model"');
     expect(query.sql).toContain('ON CONFLICT');
     expect(query.sql).not.toContain('"created_at"');
+    expect(query.sql).not.toContain('preferred_regeneration_ai_model');
+    expect(query.sql).not.toContain('preferred_lesson_ai_model');
   });
 
   it('upserts analytics timezone on the user preference row', async () => {
@@ -206,5 +208,7 @@ describe('user preference queries', () => {
     expect(query.sql).toContain('"analytics_timezone"');
     expect(query.sql).toContain('ON CONFLICT');
     expect(query.sql).not.toContain('"created_at"');
+    expect(query.sql).not.toContain('preferred_regeneration_ai_model');
+    expect(query.sql).not.toContain('preferred_lesson_ai_model');
   });
 });

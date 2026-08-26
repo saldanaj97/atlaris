@@ -1,12 +1,16 @@
 export const USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS = [
   'user_id',
   'preferred_ai_model',
+  'preferred_regeneration_ai_model',
+  'preferred_lesson_ai_model',
   'analytics_timezone',
   'updated_at',
 ] as const;
 
 export const USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS = [
   'preferred_ai_model',
+  'preferred_regeneration_ai_model',
+  'preferred_lesson_ai_model',
   'analytics_timezone',
   'updated_at',
 ] as const;

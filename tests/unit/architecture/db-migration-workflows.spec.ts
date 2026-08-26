@@ -124,6 +124,9 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '20260825153019_add_generation_attempt_purpose.sql',
     );
+    expect(script).toContain(
+      '20260826184123_expand_user_preferences_model_text_slots.sql',
+    );
     expect(script).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
@@ -363,14 +366,17 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 58,
-      tag: '20260825153019_add_generation_attempt_purpose',
+      idx: 59,
+      tag: '20260826184123_expand_user_preferences_model_text_slots',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',
     );
     expect(migrationFiles).toContain(
       '20260825153019_add_generation_attempt_purpose.sql',
+    );
+    expect(migrationFiles).toContain(
+      '20260826184123_expand_user_preferences_model_text_slots.sql',
     );
 
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
@@ -383,6 +389,9 @@ describe('Supabase migration workflows', () => {
     );
     expect(expandMigrations).toContain(
       '20260825153019_add_generation_attempt_purpose.sql',
+    );
+    expect(expandMigrations).toContain(
+      '20260826184123_expand_user_preferences_model_text_slots.sql',
     );
     expect(expandMigrations).not.toContain(
       '20260811100400_revoke_users_authenticated_insert.sql',
