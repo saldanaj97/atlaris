@@ -69,6 +69,10 @@ describe('CircleCI PR merge gate', () => {
     expect(CI_PR_WORKFLOW).not.toContain('ignore: [main, develop]');
   });
 
+  it('diffs pull_request runs against the PR base branch', () => {
+    expect(CIRCLE_CI).toContain('pipeline.event.github.pull_request.base.ref');
+  });
+
   it('keeps ci-trunk off pull_request events', () => {
     expect(CIRCLE_CI).toContain(
       'equal: [pull_request, << pipeline.event.name >>]',
