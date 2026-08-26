@@ -724,14 +724,16 @@ jobs:
 
 workflows:
   # PR merge gate. Feature-branch pushes keep running ci-pr. Pushes to
-  # develop/main do not (ci-trunk owns those). develop→main PRs need a
-  # GitHub App pull_request trigger or this workflow never starts on develop.
+  # develop/main do not (ci-trunk owns those). pull_request events on
+  # non-main heads also run ci-pr: auto-cancel of the in-flight push
+  # pipeline on PR open/sync would otherwise leave an empty run.
   ci-pr:
     when:
       or:
         - and:
             - equal: [pull_request, << pipeline.event.name >>]
-            - equal: [develop, << pipeline.git.branch >>]
+            - not:
+                equal: [main, << pipeline.git.branch >>]
             - or:
                 - equal: [opened, << pipeline.event.action >>]
                 - equal: [synchronize, << pipeline.event.action >>]
