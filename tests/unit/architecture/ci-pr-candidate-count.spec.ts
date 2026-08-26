@@ -3,8 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
-const CIRCLE_CI = readFileSync(
+const SETUP_CONFIG = readFileSync(
   join(REPO_ROOT, '.circleci', 'config.yml'),
+  'utf8',
+);
+const CODE_CONFIG = readFileSync(
+  join(REPO_ROOT, '.circleci', 'code-config.yml'),
   'utf8',
 );
 const TEST_SUITES = readFileSync(
@@ -13,23 +17,23 @@ const TEST_SUITES = readFileSync(
 );
 const CANDIDATE_COUNT =
   "COUNT=$(printf '%s\\n' \"${FILES}\" | awk 'NF { count += 1 } END { print count + 0 }')";
-const [CI_PR_WORKFLOW] = CIRCLE_CI.split(/\n  ci-trunk:\n/);
+const [CI_PR_WORKFLOW] = CODE_CONFIG.split(/\n  ci-trunk:\n/);
 
 describe('PR CI candidate file counting', () => {
   it('treats an empty filtered integration file list as zero candidates', () => {
-    expect(CIRCLE_CI.split(CANDIDATE_COUNT)).toHaveLength(2);
-    expect(CIRCLE_CI).not.toContain('echo "${FILES}" | wc -l');
+    expect(CODE_CONFIG.split(CANDIDATE_COUNT)).toHaveLength(2);
+    expect(CODE_CONFIG).not.toContain('echo "${FILES}" | wc -l');
   });
 
   it('routes unit selection, splitting, and impact refresh through Smarter Testing', () => {
-    expect(CIRCLE_CI).toContain('circleci testsuite run "unit tests"');
-    expect(CIRCLE_CI).toContain('--analyze-tests=impacted --run-tests=none');
+    expect(CODE_CONFIG).toContain('circleci testsuite run "unit tests"');
+    expect(CODE_CONFIG).toContain('--analyze-tests=impacted --run-tests=none');
     expect(TEST_SUITES).toContain('test-impact-analysis: true');
     expect(TEST_SUITES).toContain('dynamic-test-splitting: true');
   });
 
   it('allows related mode to pass when no integration tests match', () => {
-    const relatedMode = CIRCLE_CI.match(/related\)([\s\S]*?)\n\s*;;/)?.[1];
+    const relatedMode = CODE_CONFIG.match(/related\)([\s\S]*?)\n\s*;;/)?.[1];
 
     expect(relatedMode).toContain('--passWithNoTests');
   });
@@ -37,7 +41,7 @@ describe('PR CI candidate file counting', () => {
 
 describe('CircleCI test result collection', () => {
   it('stores every runnable suite under a dedicated result directory', () => {
-    expect(CIRCLE_CI).toContain(
+    expect(CODE_CONFIG).toContain(
       '- store_test_results:\n          path: test-results',
     );
     expect(TEST_SUITES).toContain('junit: test-results/unit/junit.xml');
@@ -49,7 +53,7 @@ describe('CircleCI test result collection', () => {
       'test-results/workflow/node.xml',
       'test-results/workflow/vitest.xml',
     ]) {
-      expect(CIRCLE_CI).toContain(path);
+      expect(CODE_CONFIG).toContain(path);
     }
   });
 });
@@ -87,14 +91,16 @@ describe('CircleCI PR merge gate', () => {
   });
 
   it('diffs pull_request runs against the PR base branch', () => {
-    expect(CIRCLE_CI).toContain('pipeline.event.github.pull_request.base.ref');
+    expect(SETUP_CONFIG).toContain(
+      'pipeline.event.github.pull_request.base.ref',
+    );
   });
 
   it('keeps ci-trunk off pull_request events', () => {
-    expect(CIRCLE_CI).toContain(
+    expect(CODE_CONFIG).toContain(
       'equal: [pull_request, << pipeline.event.name >>]',
     );
-    expect(CIRCLE_CI).toMatch(
+    expect(CODE_CONFIG).toMatch(
       /ci-trunk:\n    when:\n      not:\n        equal: \[pull_request, << pipeline\.event\.name >>\]/,
     );
   });
