@@ -5,7 +5,7 @@ import {
   type StartModuleLessonGenerationResult,
 } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import {
-  requireOwnedPlanById,
+  requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -29,7 +29,7 @@ export function createModuleLessonContentGenerateHandler(
       const planId = requireUuidRouteParam(params, 'planId');
       const moduleId = requireUuidRouteParam(params, 'moduleId');
 
-      await requireOwnedPlanById({
+      await requirePlanContentAccess({
         planId,
         ownerUserId: actor.id,
         dbClient: db,

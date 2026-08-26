@@ -7,15 +7,17 @@ import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
-import { selectUserSubscriptionTierForUpdate } from '@/features/billing/metered-reservation';
 import { PlanCreationError } from '@/features/plans/errors';
 import {
+  countInProgressInitialAttemptsForUser,
   countPlansContributingToCap,
   lockUserPlanAdmission,
   PLAN_GENERATING_INSERT_DEFAULTS,
+  selectUserEntitlementForAdmission,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { and, count, eq, gte, inArray, notExists, or, sql } from 'drizzle-orm';
 
@@ -138,7 +140,22 @@ export async function atomicCheckAndInsertPlan(
 ): Promise<AtomicInsertResult> {
   return dbClient.transaction(async (tx) => {
     await lockUserPlanAdmission(tx, userId);
-    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
+    const user = await selectUserEntitlementForAdmission(tx, userId);
+
+    const freeAdmission = evaluateFreeInitialAdmission({
+      tier: user.subscriptionTier,
+      generationPurpose: 'initial',
+      initialPlanGeneratedAt: user.initialPlanGeneratedAt,
+      inProgressInitialCount: await countInProgressInitialAttemptsForUser(tx, {
+        userId,
+      }),
+    });
+    if (freeAdmission === 'free_allowance_used') {
+      return { status: 'free_allowance_used' };
+    }
+    if (freeAdmission === 'free_initial_in_progress') {
+      return { status: 'free_generation_in_progress' };
+    }
 
     const windowStart = new Date(
       Date.now() - DUPLICATE_DETECTION_WINDOW_SECONDS * 1000,

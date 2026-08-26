@@ -26,6 +26,16 @@ const RESERVATION_REJECTION_DETAILS: Record<
     classification: 'capped',
     message: () => 'Active plan limit reached for this subscription tier',
   },
+  free_allowance_used: {
+    classification: 'capped',
+    message: () =>
+      'Your free plan allowance has already been used. Upgrade to create another plan.',
+  },
+  free_initial_in_progress: {
+    classification: 'conflict',
+    message: () =>
+      'A free plan is already being generated. Wait for it to finish or fail before starting another.',
+  },
   rate_limited: {
     classification: 'rate_limit',
     message: () => 'Generation rate limit exceeded for this user',

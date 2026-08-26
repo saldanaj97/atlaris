@@ -9,6 +9,7 @@ import type {
 import type { DbTransaction } from '@/lib/db/types';
 
 import { getAttemptCap } from '@/lib/config/env';
+import { attemptMetadataWithAdmittedTier } from '@/lib/db/queries/helpers/attempt-admitted-tier';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
@@ -26,9 +27,11 @@ import {
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import {
+  countInProgressInitialAttemptsForUser,
   countPlansContributingToCap,
   lockUserPlanAdmission,
   planOwnsActiveCapSlot,
+  selectUserEntitlementForAdmission,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import {
@@ -46,11 +49,12 @@ import {
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
 import {
   describeGenerationPurpose,
   parseGenerationPurpose,
 } from '@/shared/types/generation-purpose';
-import { generationAttempts, users } from '@supabase/schema';
+import { generationAttempts } from '@supabase/schema';
 import { count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
@@ -145,15 +149,24 @@ export async function reserveAttemptSlot(
       return { reserved: false, reason: 'active_child_generation' } as const;
     }
 
+    const user = await selectUserEntitlementForAdmission(tx, userId);
+    const freeAdmission = evaluateFreeInitialAdmission({
+      tier: user.subscriptionTier,
+      generationPurpose,
+      initialPlanGeneratedAt: user.initialPlanGeneratedAt,
+      inProgressInitialCount: await countInProgressInitialAttemptsForUser(tx, {
+        userId,
+        excludePlanId: planId,
+      }),
+    });
+    if (freeAdmission === 'free_allowance_used') {
+      return { reserved: false, reason: 'free_allowance_used' } as const;
+    }
+    if (freeAdmission === 'free_initial_in_progress') {
+      return { reserved: false, reason: 'free_initial_in_progress' } as const;
+    }
+
     if (!planOwnsActiveCapSlot(plan)) {
-      const [user] = await tx
-        .select({ subscriptionTier: users.subscriptionTier })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      if (!user) {
-        throw new Error('Learning plan not found or inaccessible for user');
-      }
       const tierConfig = TIER_LIMITS[user.subscriptionTier];
       if (!tierConfig) {
         throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
@@ -225,7 +238,7 @@ export async function reserveAttemptSlot(
         truncatedNotes: sanitized.notes.truncated ?? false,
         normalizedEffort: false,
         promptHash,
-        metadata: null,
+        metadata: attemptMetadataWithAdmittedTier(user.subscriptionTier),
       })
       .returning();
 

@@ -8,6 +8,7 @@ import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 import { planRegenerationJobPayloadSchema } from './schema';
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
+import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { learningPlans } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
@@ -142,6 +143,15 @@ export async function loadAuthorizedRegenerationPlan(
   });
 
   if (!plan || plan.userId !== job.userId) {
+    return null;
+  }
+
+  const access = await readPlanContentAccess({
+    userId: job.userId,
+    planId: plan.id,
+    dbClient: deps.dbClient,
+  });
+  if (access !== 'full') {
     return null;
   }
 

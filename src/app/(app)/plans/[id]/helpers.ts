@@ -12,6 +12,7 @@ import type {
   PlanDetailsCardStats,
   PlanOverviewStats,
 } from './types';
+import type { AccessError } from '@/app/(app)/plans/access-result';
 import type {
   ClientModule,
   ClientPlanDetail,
@@ -70,8 +71,9 @@ export function planSuccess(data: ClientPlanDetail): PlanAccessResult {
 export function planError(
   code: PlanAccessErrorCode,
   message: string,
+  candidates?: AccessError['candidates'],
 ): PlanAccessResult {
-  return accessError(code, message);
+  return accessError(code, message, candidates);
 }
 
 export function isPlanSuccess(

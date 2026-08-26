@@ -168,6 +168,31 @@ export async function insertCreatedPlan(params: {
     };
   }
 
+  if (insertResult.status === 'free_allowance_used') {
+    logger.info(
+      { userId },
+      `${getCreateLogBase(lifecycleLabel)}: free plan allowance used`,
+    );
+    return {
+      status: 'free_allowance_used',
+      reason:
+        'Your free plan allowance has already been used. Upgrade to create another plan.',
+      upgradeUrl: '/pricing',
+    };
+  }
+
+  if (insertResult.status === 'free_generation_in_progress') {
+    logger.info(
+      { userId },
+      `${getCreateLogBase(lifecycleLabel)}: free initial generation in progress`,
+    );
+    return {
+      status: 'free_generation_in_progress',
+      reason:
+        'A free plan is already being generated. Wait for it to finish or fail before starting another.',
+    };
+  }
+
   logger.info(
     { userId, planId: insertResult.id, tier, origin: planData.origin },
     `${getCreateLogBase(lifecycleLabel)}: plan created`,

@@ -5,6 +5,7 @@ import type {
   GenerationInput,
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { InferSelectModel } from 'drizzle-orm';
@@ -52,7 +53,9 @@ export interface AttemptRejection {
     | 'invalid_status'
     | 'rate_limited'
     | 'plan_limit'
-    | 'active_child_generation';
+    | 'active_child_generation'
+    | 'free_allowance_used'
+    | 'free_initial_in_progress';
   currentStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
@@ -113,6 +116,7 @@ export interface AttemptWorkflowMetadata {
 
 export interface AttemptMetadata {
   workflow?: AttemptWorkflowMetadata;
+  admitted_tier?: SubscriptionTier;
   input: {
     topic: {
       truncated: boolean;
@@ -147,6 +151,7 @@ export interface MetadataParams {
   finishedAt: Date;
   extendedTimeout: boolean;
   failure?: AttemptMetadataFailure;
+  admittedTier?: SubscriptionTier;
 }
 
 // ----- Params for exported functions -----

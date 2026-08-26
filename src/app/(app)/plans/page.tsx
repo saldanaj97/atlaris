@@ -8,15 +8,13 @@ import type { Metadata } from 'next';
 import {
   PlanHeaderSummaryContent,
   PlansContent,
+  PlansHeaderCreateAction,
 } from '@/app/(app)/plans/components/PlansContent';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
 import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
-import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -99,12 +97,9 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
             >
               <PlanHeaderSummaryContent dataPromise={plansPageData} />
             </Suspense>
-            <Button asChild>
-              <Link href='/plans/new'>
-                <Plus />
-                New Plan
-              </Link>
-            </Button>
+            <Suspense fallback={<Skeleton className='h-9 w-28' />}>
+              <PlansHeaderCreateAction dataPromise={plansPageData} />
+            </Suspense>
           </>
         }
       />

@@ -4,12 +4,16 @@ import Link from 'next/link';
 
 interface PlanDetailPageErrorProps {
   message?: string;
+  upgradeHref?: string;
 }
 
 /**
  * Renders a centered error UI for the plan detail page.
  */
-export function PlanDetailPageError({ message }: PlanDetailPageErrorProps) {
+export function PlanDetailPageError({
+  message,
+  upgradeHref,
+}: PlanDetailPageErrorProps) {
   return (
     <div className='mx-auto max-w-2xl py-10'>
       <RouteErrorState
@@ -19,9 +23,16 @@ export function PlanDetailPageError({ message }: PlanDetailPageErrorProps) {
           'There was an error loading the learning plan. Please try again later.'
         }
         actions={
-          <Button asChild>
-            <Link href='/plans'>Back to plans</Link>
-          </Button>
+          <div className='flex flex-wrap justify-center gap-3'>
+            {upgradeHref ? (
+              <Button asChild>
+                <Link href={upgradeHref}>Upgrade</Link>
+              </Button>
+            ) : null}
+            <Button asChild variant={upgradeHref ? 'outline' : 'default'}>
+              <Link href='/plans'>Back to plans</Link>
+            </Button>
+          </div>
         }
       />
     </div>

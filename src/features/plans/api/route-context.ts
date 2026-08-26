@@ -2,6 +2,7 @@ import type { RouteParams } from '@/lib/api/types/auth.types';
 import type { OwnedPlanRecord } from '@/lib/db/queries/helpers/plans-helpers';
 import type { DbClient } from '@/lib/db/types';
 
+import { assertPlanContentAccess } from '@/features/plans/entitlement/access';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import { getDb } from '@supabase/runtime';
@@ -46,5 +47,19 @@ export async function requireOwnedPlanById(params: {
     throw new NotFoundError('Learning plan not found.');
   }
 
+  return plan;
+}
+
+export async function requirePlanContentAccess(params: {
+  planId: string;
+  ownerUserId: string;
+  dbClient?: PlansDbClient;
+}): Promise<LearningPlanRecord> {
+  const plan = await requireOwnedPlanById(params);
+  await assertPlanContentAccess({
+    userId: params.ownerUserId,
+    planId: params.planId,
+    dbClient: params.dbClient ?? getDb(),
+  });
   return plan;
 }

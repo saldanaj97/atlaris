@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -73,38 +74,58 @@ export function PlanRow({
       </TableCell>
 
       <TableCell className='max-w-md min-w-72 py-4'>
-        <Link
-          href={`/plans/${plan.id}`}
-          className='block rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
-        >
-          <span className='block truncate font-medium text-foreground'>
-            {plan.topic}
-          </span>
-        </Link>
+        {plan.access === 'locked' ? (
+          <div className='min-w-0'>
+            <span className='block truncate font-medium text-foreground'>
+              {plan.topic}
+            </span>
+            <Link
+              href={ROUTES.PRICING}
+              className='mt-1 inline-block text-xs font-medium text-primary'
+            >
+              Upgrade to unlock
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href={`/plans/${plan.id}`}
+            className='block rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50'
+          >
+            <span className='block truncate font-medium text-foreground'>
+              {plan.topic}
+            </span>
+          </Link>
+        )}
       </TableCell>
 
       <TableCell className='min-w-44'>
-        <div className='flex items-center gap-2.5'>
-          <progress
-            className='sr-only'
-            value={progressPercent}
-            max={100}
-            aria-label={`${progressPercent}% complete`}
-          />
-          <div className='h-px w-20 bg-border' aria-hidden='true'>
-            <div
-              className='h-[3px] -translate-y-px bg-primary transition-[width] duration-500 motion-reduce:transition-none'
-              style={{ width: `${progressPercent}%` }}
+        {plan.access === 'locked' ? (
+          <span className='text-xs text-muted-foreground'>Locked</span>
+        ) : (
+          <div className='flex items-center gap-2.5'>
+            <progress
+              className='sr-only'
+              value={progressPercent}
+              max={100}
+              aria-label={`${progressPercent}% complete`}
             />
+            <div className='h-px w-20 bg-border' aria-hidden='true'>
+              <div
+                className='h-[3px] -translate-y-px bg-primary transition-[width] duration-500 motion-reduce:transition-none'
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className='w-9 text-right text-xs text-foreground tabular-nums'>
+              {progressPercent}%
+            </span>
           </div>
-          <span className='w-9 text-right text-xs text-foreground tabular-nums'>
-            {progressPercent}%
-          </span>
-        </div>
+        )}
       </TableCell>
 
       <TableCell className='text-xs text-muted-foreground tabular-nums'>
-        {plan.completedTasks} / {plan.totalTasks}
+        {plan.access === 'locked'
+          ? '—'
+          : `${plan.completedTasks} / ${plan.totalTasks}`}
       </TableCell>
 
       <TableCell>

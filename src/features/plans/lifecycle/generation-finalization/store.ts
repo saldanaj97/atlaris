@@ -20,7 +20,9 @@ import {
   markPlanGenerationFailureInTx,
   markPlanGenerationSuccessInTx,
 } from '@/features/plans/lifecycle/plan-persistence-store';
+import { isFreeAdmittedTier } from '@/features/plans/policy/entitlement';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
+import { readAdmittedTierFromAttemptMetadata } from '@/lib/db/queries/helpers/attempt-admitted-tier';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import { buildMetadata } from '@/lib/db/queries/helpers/attempts-input';
 import { normalizeParsedModules } from '@/lib/db/queries/helpers/attempts-persistence-normalization';
@@ -33,6 +35,8 @@ import {
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { describeGenerationPurpose } from '@/shared/types/generation-purpose';
+import { generationAttempts, users } from '@supabase/schema';
+import { and, eq, isNull } from 'drizzle-orm';
 
 export async function commitPlanGenerationSuccess(
   dbClient: AttemptsDbClient,
@@ -66,10 +70,19 @@ export async function commitPlanGenerationSuccess(
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
   const usageMonth = getCurrentMonth(finishedAt);
-  const incrementKind = input.usageKind === 'plan' ? 'plan' : 'regeneration';
+  const isInitialSuccess = input.generationPurpose === 'initial';
 
   const attempt = await dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
+
+    const [inProgressAttempt] = await tx
+      .select({ metadata: generationAttempts.metadata })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.id, input.attemptId))
+      .limit(1);
+    const admittedTier = readAdmittedTierFromAttemptMetadata(
+      inProgressAttempt?.metadata,
+    );
 
     const persisted = await persistSuccessfulAttemptInTx(tx, {
       attemptId: input.attemptId,
@@ -80,7 +93,10 @@ export async function commitPlanGenerationSuccess(
       modulesCount,
       tasksCount,
       durationMs: input.durationMs,
-      metadata,
+      metadata: {
+        ...metadata,
+        ...(admittedTier ? { admitted_tier: admittedTier } : {}),
+      },
       finishedAt,
     });
 
@@ -92,7 +108,29 @@ export async function commitPlanGenerationSuccess(
       tx,
       canonicalUsageToRecordParams(input.usage, input.userId),
     );
-    await incrementUsageInTx(tx, input.userId, usageMonth, incrementKind);
+    if (isInitialSuccess) {
+      await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
+      await tx
+        .update(users)
+        .set({ initialPlanGeneratedAt: finishedAt })
+        .where(
+          and(eq(users.id, input.userId), isNull(users.initialPlanGeneratedAt)),
+        );
+      if (isFreeAdmittedTier(admittedTier)) {
+        await tx
+          .update(users)
+          .set({
+            freeAccessPlanId: input.planId,
+            freeAccessPlanSelectedAt: finishedAt,
+          })
+          .where(
+            and(
+              eq(users.id, input.userId),
+              isNull(users.freeAccessPlanSelectedAt),
+            ),
+          );
+      }
+    }
 
     return persisted;
   });
@@ -122,7 +160,11 @@ export async function commitPlanGenerationFailure(
     await dbClient.transaction(async (tx) => {
       await reapplyJwtClaimsInTransaction(tx, rlsCtx);
       await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
-      if (!input.retryable && input.usage) {
+      if (
+        !input.retryable &&
+        input.usage &&
+        input.generationPurpose === 'initial'
+      ) {
         await recordUsageInTx(
           tx,
           canonicalUsageToRecordParams(input.usage, input.userId),
@@ -160,7 +202,11 @@ export async function commitPlanGenerationFailure(
 
     await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
 
-    if (!input.retryable && input.usage) {
+    if (
+      !input.retryable &&
+      input.usage &&
+      input.generationPurpose === 'initial'
+    ) {
       await recordUsageInTx(
         tx,
         canonicalUsageToRecordParams(input.usage, input.userId),

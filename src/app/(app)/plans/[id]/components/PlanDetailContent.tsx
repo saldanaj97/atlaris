@@ -2,6 +2,7 @@ import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
+import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
@@ -43,10 +44,33 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
         return (
           <PlanDetailPageError message='You do not have permission to view this plan.' />
         );
-      default:
+
+      case 'PLAN_ENTITLEMENT_REQUIRED':
+        return (
+          <PlanDetailPageError
+            message='Upgrade to access this plan.'
+            upgradeHref={ROUTES.PRICING}
+          />
+        );
+
+      case 'FREE_PLAN_SELECTION_REQUIRED':
+        return (
+          <div className='mx-auto max-w-2xl py-10'>
+            <FreeAccessPlanSelector candidates={error.candidates ?? []} />
+          </div>
+        );
+
+      case 'INTERNAL_ERROR':
         return (
           <PlanDetailPageError message='Something went wrong. Please try again later.' />
         );
+
+      default: {
+        const _exhaustive: never = code;
+        return (
+          <PlanDetailPageError message='Something went wrong. Please try again later.' />
+        );
+      }
     }
   }
 

@@ -16,6 +16,7 @@ import {
   modules,
   tasks,
   usageMetrics,
+  users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
@@ -165,6 +166,23 @@ describe('plan generation finalization (single transaction)', () => {
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
     expect(afterMetrics[0]?.plansGenerated).toBe(beforePlansGenerated + 1);
+    expect(attemptMetadata?.admitted_tier).toBe('free');
+
+    const [entitlement] = await db
+      .select({
+        initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+        freeAccessPlanId: users.freeAccessPlanId,
+        freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+    expect(entitlement?.initialPlanGeneratedAt).toEqual(
+      new Date('2026-03-01T10:00:05.000Z'),
+    );
+    expect(entitlement?.freeAccessPlanId).toBe(planId);
+    expect(entitlement?.freeAccessPlanSelectedAt).toEqual(
+      new Date('2026-03-01T10:00:05.000Z'),
+    );
   });
 
   it('retryable failure updates attempt and plan failed without usage', async () => {
@@ -227,6 +245,18 @@ describe('plan generation finalization (single transaction)', () => {
       .from(aiUsageEvents)
       .where(eq(aiUsageEvents.userId, userId));
     expect(usageRows.length).toBe(0);
+
+    const [entitlement] = await db
+      .select({
+        initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+        freeAccessPlanId: users.freeAccessPlanId,
+        freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+    expect(entitlement?.initialPlanGeneratedAt).toBeNull();
+    expect(entitlement?.freeAccessPlanId).toBeNull();
+    expect(entitlement?.freeAccessPlanSelectedAt).toBeNull();
   });
 
   it('permanent failure with usage records usage and increments plansGenerated', async () => {
@@ -353,5 +383,135 @@ describe('plan generation finalization (single transaction)', () => {
       .from(aiUsageEvents)
       .where(eq(aiUsageEvents.userId, userId));
     expect(usageRows.length).toBe(0);
+  });
+
+  it('paid initial success sets the lifetime marker without Free selection', async () => {
+    const paidAuthUserId = `auth-${randomUUID()}`;
+    const paidUserId = await ensureUser({
+      authUserId: paidAuthUserId,
+      email: `${paidAuthUserId}@example.com`,
+      subscriptionTier: 'starter',
+    });
+    const paidPlan = await createPlan(paidUserId, {
+      topic: 'Paid Finalization Plan',
+      skillLevel: 'beginner',
+      weeklyHours: 5,
+      learningStyle: 'mixed',
+      visibility: 'private',
+      origin: 'ai',
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+    });
+    const reservation = await reserveAttemptSlot({
+      planId: paidPlan.id,
+      userId: paidUserId,
+      input: TEST_INPUT,
+      generationPurpose: 'initial',
+      dbClient: db,
+      now: () => new Date('2026-03-05T10:00:00.000Z'),
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+
+    await commitPlanGenerationSuccess(db, {
+      planId: paidPlan.id,
+      userId: paidUserId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      modules: [
+        {
+          title: 'Paid Module',
+          description: undefined,
+          estimatedMinutes: 30,
+          tasks: [],
+        },
+      ],
+      providerMetadata: { provider: 'mock', model: 'mock-model' },
+      usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
+      durationMs: 200,
+      extendedTimeout: false,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
+      now: () => new Date('2026-03-05T10:00:02.000Z'),
+    });
+
+    const [entitlement] = await db
+      .select({
+        initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+        freeAccessPlanId: users.freeAccessPlanId,
+        freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+      })
+      .from(users)
+      .where(eq(users.id, paidUserId));
+    expect(entitlement?.initialPlanGeneratedAt).toEqual(
+      new Date('2026-03-05T10:00:02.000Z'),
+    );
+    expect(entitlement?.freeAccessPlanId).toBeNull();
+    expect(entitlement?.freeAccessPlanSelectedAt).toBeNull();
+  });
+
+  it('regeneration success leaves lifetime fields unchanged', async () => {
+    const marker = new Date('2026-01-15T00:00:00.000Z');
+    await db
+      .update(users)
+      .set({
+        initialPlanGeneratedAt: marker,
+        subscriptionTier: 'starter',
+      })
+      .where(eq(users.id, userId));
+    await db
+      .update(learningPlans)
+      .set({
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+      })
+      .where(eq(learningPlans.id, planId));
+
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      generationPurpose: 'regeneration',
+      dbClient: db,
+      now: () => new Date('2026-03-06T10:00:00.000Z'),
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+
+    await commitPlanGenerationSuccess(db, {
+      planId,
+      userId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      modules: [
+        {
+          title: 'Regen Module',
+          description: undefined,
+          estimatedMinutes: 20,
+          tasks: [],
+        },
+      ],
+      providerMetadata: { provider: 'mock', model: 'mock-model' },
+      usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
+      durationMs: 150,
+      extendedTimeout: false,
+      usageKind: 'plan',
+      generationPurpose: 'regeneration',
+      now: () => new Date('2026-03-06T10:00:02.000Z'),
+    });
+
+    const [entitlement] = await db
+      .select({
+        initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+        freeAccessPlanId: users.freeAccessPlanId,
+        freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId));
+    expect(entitlement?.initialPlanGeneratedAt).toEqual(marker);
+    expect(entitlement?.freeAccessPlanId).toBeNull();
+    expect(entitlement?.freeAccessPlanSelectedAt).toBeNull();
   });
 });

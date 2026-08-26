@@ -5,7 +5,7 @@ import {
   markPlanGenerationFailure,
   markPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/plan-persistence-store';
-import { generationAttempts, learningPlans } from '@supabase/schema';
+import { generationAttempts, learningPlans, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
@@ -56,10 +56,10 @@ describe('plan persistence store', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 10; i++) {
       const r = await atomicCheckAndInsertPlan(
         userId,
         {
@@ -81,6 +81,94 @@ describe('plan persistence store', () => {
     );
 
     expect(rejected.status).toBe('limit_reached');
+  });
+
+  it('rejects a second Free initial after the lifetime marker is set', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-allowance');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    await db
+      .update(users)
+      .set({ initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z') })
+      .where(eq(users.id, userId));
+
+    const rejected = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} second free`,
+      },
+      db,
+    );
+
+    expect(rejected.status).toBe('free_allowance_used');
+  });
+
+  it('allows paid initial create after the lifetime marker is set', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-paid-marker');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'starter',
+    });
+    await db
+      .update(users)
+      .set({ initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z') })
+      .where(eq(users.id, userId));
+
+    const created = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} paid later`,
+      },
+      db,
+    );
+
+    expect(created.status).toBe('created');
+  });
+
+  it('rejects a second Free initial while another initial attempt is in progress', async () => {
+    const authUserId = buildTestAuthUserId('persist-adapter-in-progress');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const inserted = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} in-flight`,
+      },
+      db,
+    );
+    expect(inserted.status).toBe('created');
+    if (inserted.status !== 'created') return;
+
+    await db.insert(generationAttempts).values({
+      planId: inserted.id,
+      status: 'in_progress',
+      generationPurpose: 'initial',
+      classification: null,
+      durationMs: 0,
+      modulesCount: 0,
+      tasksCount: 0,
+    });
+
+    const rejected = await atomicCheckAndInsertPlan(
+      userId,
+      {
+        ...planPayload,
+        topic: `${planPayload.topic} while in-flight`,
+      },
+      db,
+    );
+
+    expect(rejected.status).toBe('free_generation_in_progress');
   });
 
   it('atomicInsertPlan returns the recent plan id for the same topic', async () => {
@@ -122,7 +210,7 @@ describe('plan persistence store', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'pro',
     });
     const topic = `${planPayload.topic} concurrent duplicate`;
 

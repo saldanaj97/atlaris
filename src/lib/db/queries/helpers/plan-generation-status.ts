@@ -1,7 +1,8 @@
 import type { DbClient, DbTransaction } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { learningPlans } from '@supabase/schema';
-import { eq, sql } from 'drizzle-orm';
+import { generationAttempts, learningPlans, users } from '@supabase/schema';
+import { and, eq, ne, sql } from 'drizzle-orm';
 
 type LearningPlanInsert = typeof learningPlans.$inferInsert;
 
@@ -37,6 +38,54 @@ export async function lockUserPlanAdmission(
   userId: string,
 ): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(1, hashtext(${userId}))`);
+}
+
+export async function selectUserEntitlementForAdmission(
+  tx: Pick<DbClient, 'select'>,
+  userId: string,
+): Promise<{
+  subscriptionTier: SubscriptionTier;
+  initialPlanGeneratedAt: Date | null;
+}> {
+  const [user] = await tx
+    .select({
+      subscriptionTier: users.subscriptionTier,
+      initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .for('update');
+
+  if (!user) {
+    throw new Error(`User not found for plan admission: ${userId}`);
+  }
+
+  return user;
+}
+
+export async function countInProgressInitialAttemptsForUser(
+  tx: Pick<DbClient, 'select'>,
+  params: { userId: string; excludePlanId?: string },
+): Promise<number> {
+  const conditions = [
+    eq(learningPlans.userId, params.userId),
+    eq(generationAttempts.status, 'in_progress'),
+    eq(generationAttempts.generationPurpose, 'initial'),
+  ];
+  if (params.excludePlanId) {
+    conditions.push(ne(learningPlans.id, params.excludePlanId));
+  }
+
+  const [row] = await tx
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(generationAttempts)
+    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
+    .where(and(...conditions));
+
+  const parsed = Number(row?.count ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**

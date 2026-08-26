@@ -5,6 +5,7 @@ import {
   incrementUsage,
 } from '@/features/billing/usage-metrics';
 import { checkPlanLimit } from '@/features/plans/quota/check-plan-limit';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { learningPlans, usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -14,51 +15,26 @@ import { describe, expect, it } from 'vitest';
 
 describe('Usage Tracking', () => {
   describe('checkPlanLimit', () => {
-    it('allows free tier user with 0 plans to create up to 3 plans', async () => {
+    it('allows free tier user with 0 plans to create up to the Free cap', async () => {
       const userId = await ensureUser({
         authUserId: 'user_free_plan_limit',
         email: 'free@example.com',
       });
 
-      // No plans yet
       expect(await checkPlanLimit(userId, db)).toBe(true);
 
-      // Create 3 plans
       const finalizedAt = new Date();
-      await db.insert(learningPlans).values([
-        {
-          userId,
-          topic: 'Topic 1',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-          finalizedAt,
-        },
-        {
-          userId,
-          topic: 'Topic 2',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-          finalizedAt,
-        },
-        {
-          userId,
-          topic: 'Topic 3',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-          finalizedAt,
-        },
-      ]);
+      await db.insert(learningPlans).values({
+        userId,
+        topic: 'Topic 1',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        generationStatus: 'ready',
+        isQuotaEligible: true,
+        finalizedAt,
+      });
 
-      // At limit
       expect(await checkPlanLimit(userId, db)).toBe(false);
     });
 
@@ -139,51 +115,28 @@ describe('Usage Tracking', () => {
         email: 'non.eligible@example.com',
       });
 
-      const finalizedAt = new Date();
-      await db.insert(learningPlans).values([
-        {
-          userId,
-          topic: 'Eligible 1',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-          finalizedAt,
-        },
-        {
-          userId,
-          topic: 'Eligible 2',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'ready',
-          isQuotaEligible: true,
-          finalizedAt,
-        },
-        {
-          userId,
-          topic: 'Failed Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          generationStatus: 'failed',
-          isQuotaEligible: false,
-          finalizedAt: null,
-        },
-      ]);
+      await db.insert(learningPlans).values({
+        userId,
+        topic: 'Failed Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+        generationStatus: 'failed',
+        isQuotaEligible: false,
+        finalizedAt: null,
+      });
 
       expect(await checkPlanLimit(userId, db)).toBe(true);
 
       await db.insert(learningPlans).values({
         userId,
-        topic: 'Eligible 3',
+        topic: 'Eligible 1',
         skillLevel: 'beginner',
         weeklyHours: 5,
         learningStyle: 'mixed',
         generationStatus: 'ready',
         isQuotaEligible: true,
-        finalizedAt,
+        finalizedAt: new Date(),
       });
 
       expect(await checkPlanLimit(userId, db)).toBe(false);
@@ -408,15 +361,15 @@ describe('Usage Tracking', () => {
         tier: 'free',
         activePlans: {
           current: 2,
-          limit: 3,
+          limit: TIER_LIMITS.free.maxActivePlans,
         },
         regenerations: {
           used: 3,
-          limit: 5,
+          limit: TIER_LIMITS.free.monthlyRegenerations,
         },
         lessonGenerations: {
           used: 0,
-          limit: 3,
+          limit: TIER_LIMITS.free.monthlyLessonGenerations,
         },
       });
     });
@@ -466,7 +419,7 @@ describe('Usage Tracking', () => {
         },
         regenerations: {
           used: 20,
-          limit: 50,
+          limit: TIER_LIMITS.pro.monthlyRegenerations,
         },
         lessonGenerations: {
           used: 0,

@@ -5,7 +5,6 @@ type TierLimitConfig = {
   monthlyRegenerations: number;
   monthlyLessonGenerations: number;
   maxWeeks: number | null;
-  maxHours: number | null;
 };
 
 export type TierLimits = Record<SubscriptionTier, TierLimitConfig>;

@@ -10,6 +10,7 @@ import type {
   ModuleAccessErrorCode,
   ModuleAccessResult,
 } from './types';
+import type { AccessError } from '@/app/(app)/plans/access-result';
 import type { ModuleDetailReadModel } from '@/features/plans/read-projection/types';
 
 import {
@@ -26,8 +27,9 @@ export function moduleSuccess(data: ModuleDetailReadModel): ModuleAccessResult {
 export function moduleError(
   code: ModuleAccessErrorCode,
   message: string,
+  candidates?: AccessError['candidates'],
 ): ModuleAccessResult {
-  return accessError(code, message);
+  return accessError(code, message, candidates);
 }
 
 export function isModuleSuccess(

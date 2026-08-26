@@ -14,6 +14,14 @@ import type {
   PlanSummary,
 } from '@/shared/types/db.types';
 
+import { assertPlanContentAccess } from '@/features/plans/entitlement/access';
+import { ensureFreeAccessSelection } from '@/features/plans/entitlement/store';
+import {
+  canCreatePlanOnCurrentTier,
+  projectPlanListItemForAccess,
+  resolvePlanContentAccess,
+  type PlanEntitlementSnapshot,
+} from '@/features/plans/policy/entitlement';
 import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
   toClientGenerationAttempts,
@@ -29,6 +37,7 @@ import {
   buildPlanSummaries,
 } from '@/features/plans/read-projection/summary-projection';
 import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   getModuleDetailRows,
   getModuleLessonGenerationStatus,
@@ -44,6 +53,72 @@ import {
 } from '@/lib/db/queries/plans';
 import { logger } from '@/lib/logging/logger';
 
+async function requireOwnedPlanReadable(params: {
+  planId: string;
+  userId: string;
+  dbClient?: DbClient;
+}): Promise<boolean> {
+  const owned = await selectOwnedPlanById({
+    planId: params.planId,
+    ownerUserId: params.userId,
+    dbClient: params.dbClient,
+  });
+  if (!owned) {
+    return false;
+  }
+  await assertPlanContentAccess({
+    userId: params.userId,
+    planId: params.planId,
+    dbClient: params.dbClient,
+  });
+  return true;
+}
+
+function redactLockedPlanSummary(summary: PlanSummary): PlanSummary {
+  return {
+    ...summary,
+    modules: [],
+    completedTasks: 0,
+    totalTasks: 0,
+    completion: 0,
+    totalMinutes: 0,
+    completedMinutes: 0,
+    completedModules: 0,
+  };
+}
+
+function redactLockedLightweightSummary(
+  summary: LightweightPlanSummary,
+): LightweightPlanSummary {
+  return {
+    ...summary,
+    completion: 0,
+    completedTasks: 0,
+    totalTasks: 0,
+    totalMinutes: 0,
+    completedMinutes: 0,
+    moduleCount: 0,
+    completedModules: 0,
+  };
+}
+
+function projectSummariesForAccess<T extends { plan: { id: string } }>(
+  summaries: T[],
+  snapshot: PlanEntitlementSnapshot,
+  redact: (summary: T) => T,
+): T[] {
+  return summaries.map((summary) => {
+    const access = resolvePlanContentAccess({
+      tier: snapshot.subscriptionTier,
+      planId: summary.plan.id,
+      initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+      freeAccessPlanId: snapshot.freeAccessPlanId,
+      freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+    });
+    return access === 'full' ? summary : redact(summary);
+  });
+}
+
 async function listPlanSummaries(params: {
   userId: string;
   dbClient?: DbClient;
@@ -52,13 +127,19 @@ async function listPlanSummaries(params: {
     planIds?: string[];
   };
 }): Promise<PlanSummary[]> {
-  const rows = await getPlanSummaryRowsForUser(
-    params.userId,
-    params.dbClient,
-    params.options,
-  );
+  const [{ snapshot }, rows] = await Promise.all([
+    ensureFreeAccessSelection({
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }),
+    getPlanSummaryRowsForUser(params.userId, params.dbClient, params.options),
+  ]);
 
-  return buildPlanSummaries(rows);
+  return projectSummariesForAccess(
+    buildPlanSummaries(rows),
+    snapshot,
+    redactLockedPlanSummary,
+  );
 }
 
 // Keep page-specific entrypoints explicit even while both consumers share the
@@ -112,15 +193,30 @@ export async function getDashboardPlanData(params: {
   const listedCandidate = summaries.find(
     (summary) => summary.plan.id === candidate.id,
   );
-  if (listedCandidate) {
-    return { summaries, resumePlan: listedCandidate };
-  }
+  const resumePlan = listedCandidate
+    ? listedCandidate
+    : (
+        await listPlanSummaries({
+          userId: params.userId,
+          dbClient: params.dbClient,
+          options: { planIds: [candidate.id] },
+        })
+      )[0];
 
-  const [resumePlan] = await listPlanSummaries({
+  const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
     dbClient: params.dbClient,
-    options: { planIds: [candidate.id] },
   });
+  const access = resolvePlanContentAccess({
+    tier: snapshot.subscriptionTier,
+    planId: candidate.id,
+    initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+    freeAccessPlanId: snapshot.freeAccessPlanId,
+    freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+  });
+  if (access !== 'full') {
+    return { summaries, resumePlan: undefined };
+  }
 
   return { summaries, resumePlan };
 }
@@ -131,19 +227,45 @@ export async function getPlansPageForRead(params: {
   query: PlanListQuery;
   referenceTimestamp?: string;
 }): Promise<PlanListPage> {
-  const rows = await getPlanListPageRowsForUser({
-    ...params,
-    referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
-    pageSize: PLAN_LIST_PAGE_SIZE,
-  });
+  const [{ snapshot, decision, candidates }, rows] = await Promise.all([
+    ensureFreeAccessSelection({
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }),
+    getPlanListPageRowsForUser({
+      ...params,
+      referenceTimestamp: params.referenceTimestamp ?? new Date().toISOString(),
+      pageSize: PLAN_LIST_PAGE_SIZE,
+    }),
+  ]);
+
+  const selectionRequired = decision === 'selection_required';
 
   return {
     ...rows,
     pageSize: PLAN_LIST_PAGE_SIZE,
-    items: rows.items.map((item) => ({
-      ...item,
-      completion: item.totalTasks ? item.completedTasks / item.totalTasks : 0,
-    })),
+    canCreatePlan: canCreatePlanOnCurrentTier(snapshot),
+    selectionRequired,
+    selectionCandidates: selectionRequired ? [...candidates] : [],
+    items: selectionRequired
+      ? []
+      : rows.items.map((item) =>
+          projectPlanListItemForAccess(
+            {
+              ...item,
+              completion: item.totalTasks
+                ? item.completedTasks / item.totalTasks
+                : 0,
+            },
+            resolvePlanContentAccess({
+              tier: snapshot.subscriptionTier,
+              planId: item.id,
+              initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+              freeAccessPlanId: snapshot.freeAccessPlanId,
+              freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+            }),
+          ),
+        ),
   };
 }
 
@@ -152,13 +274,30 @@ export async function listLightweightPlansForApi(params: {
   dbClient?: DbClient;
   options?: PaginationOptions;
 }): Promise<LightweightPlanSummary[]> {
-  const rows = await getLightweightPlanSummaryRowsForUser(
-    params.userId,
-    params.dbClient,
-    params.options,
-  );
+  const [{ snapshot }, rows] = await Promise.all([
+    ensureFreeAccessSelection({
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }),
+    getLightweightPlanSummaryRowsForUser(
+      params.userId,
+      params.dbClient,
+      params.options,
+    ),
+  ]);
 
-  return buildLightweightPlanSummaries(rows);
+  return buildLightweightPlanSummaries(rows).map((summary) => {
+    const access = resolvePlanContentAccess({
+      tier: snapshot.subscriptionTier,
+      planId: summary.id,
+      initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+      freeAccessPlanId: snapshot.freeAccessPlanId,
+      freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+    });
+    return access === 'full'
+      ? summary
+      : redactLockedLightweightSummary(summary);
+  });
 }
 
 export async function listUsageAnalyticsPlanSummaries(params: {
@@ -180,6 +319,16 @@ export async function getPlanDetailForRead(params: {
   userId: string;
   dbClient?: DbClient;
 }): Promise<ClientPlanDetail | null> {
+  if (
+    !(await requireOwnedPlanReadable({
+      planId: params.planId,
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }))
+  ) {
+    return null;
+  }
+
   const rows = await getLearningPlanDetailRows(
     params.planId,
     params.userId,
@@ -213,6 +362,16 @@ export async function getPlanGenerationStatusSnapshot(params: {
   userId: string;
   dbClient?: DbClient;
 }): Promise<PlanDetailStatusSnapshot | null> {
+  if (
+    !(await requireOwnedPlanReadable({
+      planId: params.planId,
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }))
+  ) {
+    return null;
+  }
+
   const rows = await getPlanStatusRowsForUser(
     params.planId,
     params.userId,
@@ -237,6 +396,16 @@ export async function getModuleLessonGenerationStatusForRead(params: {
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
   workflowRunId?: string;
 } | null> {
+  if (
+    !(await requireOwnedPlanReadable({
+      planId: params.planId,
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }))
+  ) {
+    return null;
+  }
+
   const snapshot = await getModuleLessonGenerationStatus(
     params.planId,
     params.moduleId,
@@ -260,6 +429,16 @@ export async function getPlanGenerationAttemptsForRead(params: {
   userId: string;
   dbClient?: DbClient;
 }): Promise<ClientGenerationAttempt[] | null> {
+  if (
+    !(await requireOwnedPlanReadable({
+      planId: params.planId,
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }))
+  ) {
+    return null;
+  }
+
   const attempts = await getPlanAttemptsForUser(
     params.planId,
     params.userId,
@@ -279,6 +458,16 @@ export async function getModuleDetailForRead(params: {
   userId: string;
   dbClient?: DbClient;
 }): Promise<ModuleDetailReadModel | null> {
+  if (
+    !(await requireOwnedPlanReadable({
+      planId: params.planId,
+      userId: params.userId,
+      dbClient: params.dbClient,
+    }))
+  ) {
+    return null;
+  }
+
   const rows = await getModuleDetailRows(
     params.planId,
     params.moduleId,

@@ -26,6 +26,7 @@ import {
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
 import { parseModuleLessonBatchFromStream } from '@/features/lesson-content/parse-module-lesson-batch';
+import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import {
   commitModuleLessonBatchSuccess,
   commitModuleLessonGenerationFailure,
@@ -62,6 +63,21 @@ export async function runModuleLessonGenerationWork(
       workflowRunId,
     });
     return { kind: 'disabled' };
+  }
+
+  const contentAccess = await readPlanContentAccess({
+    userId: params.userId,
+    planId: params.planId,
+    dbClient: serverDbClient,
+  });
+  if (contentAccess !== 'full') {
+    await revertModuleLessonGeneratingToNotGenerated(serverDbClient, {
+      userId: params.userId,
+      planId: params.planId,
+      moduleId: params.moduleId,
+      workflowRunId,
+    });
+    return { kind: 'failed' };
   }
 
   const clock = () => Date.now();

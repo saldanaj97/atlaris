@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   compensate: vi.fn(),
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
+  readPlanContentAccess: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
@@ -50,6 +51,10 @@ vi.mock('@/features/billing/tier', () => ({
 
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: mocks.getUserPreferences,
+}));
+
+vi.mock('@/features/plans/entitlement/access', () => ({
+  readPlanContentAccess: mocks.readPlanContentAccess,
 }));
 
 vi.mock(
@@ -148,6 +153,8 @@ describe('runModuleLessonGenerationWork', () => {
       preferredLessonAiModel: null,
       analyticsTimezone: 'UTC',
     });
+    mocks.readPlanContentAccess.mockReset();
+    mocks.readPlanContentAccess.mockResolvedValue('full');
   });
 
   it('releases an already-claimed module when generation is disabled', async () => {
@@ -188,6 +195,48 @@ describe('runModuleLessonGenerationWork', () => {
       workflowRunId,
     });
     expect(mocks.reserve).not.toHaveBeenCalled();
+  });
+
+  it('reverts a claimed module when the plan is no longer fully accessible', async () => {
+    const userId = createId('user');
+    const planId = createId('plan');
+    const moduleId = createId('module');
+    const serverDbClient = {} as DbClient;
+    const workflowRunId = 'wrun_locked';
+    mocks.readPlanContentAccess.mockResolvedValue('locked');
+
+    await expect(
+      runModuleLessonGenerationWork(
+        {
+          load: {} as ModuleLessonGenerationContext,
+          userId,
+          planId,
+          moduleId,
+          userTier: 'free',
+          generationMetadata: {
+            version: 1,
+            workflow: {
+              provider: 'workflow-sdk',
+              runId: workflowRunId,
+            },
+          },
+        },
+        {
+          serverDbClient,
+          resolveGenerationEnabled: async () => true,
+        },
+      ),
+    ).resolves.toEqual({ kind: 'failed' });
+
+    expect(mocks.revertClaim).toHaveBeenCalledOnce();
+    expect(mocks.revertClaim).toHaveBeenCalledWith(serverDbClient, {
+      userId,
+      planId,
+      moduleId,
+      workflowRunId,
+    });
+    expect(mocks.reserve).not.toHaveBeenCalled();
+    expect(mocks.invokeProvider).not.toHaveBeenCalled();
   });
 
   it('persists the provider-start marker before invoking the fake provider', async () => {

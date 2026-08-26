@@ -41,7 +41,9 @@ export type AtomicInsertResult =
       readonly status: 'limit_reached';
       readonly currentCount: number;
       readonly limit: number;
-    };
+    }
+  | { readonly status: 'free_allowance_used' }
+  | { readonly status: 'free_generation_in_progress' };
 
 /** Result of a duration cap check. */
 export type DurationCapResult = {
@@ -89,6 +91,17 @@ export type QuotaRejection = {
   readonly upgradeUrl?: string;
 };
 
+export type FreeAllowanceUsed = {
+  readonly status: 'free_allowance_used';
+  readonly reason: string;
+  readonly upgradeUrl: string;
+};
+
+export type FreeGenerationInProgress = {
+  readonly status: 'free_generation_in_progress';
+  readonly reason: string;
+};
+
 /** User has an existing plan that exhausted generation attempts (attempt cap). */
 export type AttemptCapExceeded = {
   readonly status: 'attempt_cap_exceeded';
@@ -111,6 +124,8 @@ export type CreatePlanResult =
   | RetryableFailure
   | PermanentFailure
   | QuotaRejection
+  | FreeAllowanceUsed
+  | FreeGenerationInProgress
   | AttemptCapExceeded
   | DuplicateDetected;
 

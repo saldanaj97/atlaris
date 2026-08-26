@@ -16,5 +16,11 @@ export async function atomicInsertPlanOrThrow(
   if (result.status === 'duplicate') {
     throw new Error(`Duplicate plan: ${result.existingPlanId}`);
   }
+  if (result.status === 'free_allowance_used') {
+    throw new Error('FREE_PLAN_ALLOWANCE_USED');
+  }
+  if (result.status === 'free_generation_in_progress') {
+    throw new Error('FREE_PLAN_GENERATION_IN_PROGRESS');
+  }
   throw new Error('Plan limit reached for current subscription tier');
 }

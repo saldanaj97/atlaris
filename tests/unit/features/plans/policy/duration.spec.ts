@@ -152,4 +152,14 @@ describe('checkPlanDurationCap', () => {
     expect(res.allowed).toBe(false);
     expect(res.reason).toMatch(/starter/);
   });
+
+  it('does not reject high weeklyHours after maxHours was removed', () => {
+    const res = checkPlanDurationCap({
+      tier: 'free',
+      weeklyHours: 40,
+      totalWeeks: 2,
+    });
+    expect(res.allowed).toBe(true);
+    expect(res.reason).toBeUndefined();
+  });
 });

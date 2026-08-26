@@ -59,6 +59,26 @@ Client fetch consumers must parse errors with:
 
 Do not hand-roll `await response.json()` parsing for `error/message/code` in each hook/component.
 
+## Plan entitlement codes
+
+Stable machine-readable codes for Free lifetime admission, selection, and
+content access. HTTP statuses are fixed; reuse existing quota `429` mapping
+for regeneration overage (`REGENERATION_QUOTA_EXCEEDED`).
+
+| Code | HTTP | Thrown in this contract |
+| --- | --- | --- |
+| `FREE_PLAN_ALLOWANCE_USED` | 403 | Free second initial create |
+| `FREE_PLAN_GENERATION_IN_PROGRESS` | 409 | Another Free initial attempt is in progress |
+| `FREE_PLAN_SELECTION_REQUIRED` | 409 | Downgrade with 2+ unselected plans |
+| `PLAN_ENTITLEMENT_REQUIRED` | 403 | Direct access to a locked owned plan |
+| `PLAN_REGENERATION_NOT_INCLUDED` | 403 | Reserved; not thrown until regeneration mapping |
+| `REGENERATION_QUOTA_EXCEEDED` | 429 | Existing metered reservation overage |
+| `PLAN_DURATION_LIMIT_EXCEEDED` | 403 | Reserved for duration-cap API mapping |
+| `MODEL_NOT_AVAILABLE_FOR_OPERATION` | 403 | Reserved for model-policy API mapping |
+
+Do not add `MODULE_ENTITLEMENT_REQUIRED`. Constants live in
+`src/shared/constants/api-error-codes.ts`.
+
 ## Default status-to-code mapping
 
 If code is not explicitly provided, defaults are:

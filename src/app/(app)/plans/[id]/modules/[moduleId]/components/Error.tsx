@@ -6,6 +6,7 @@ import Link from 'next/link';
 interface ModuleDetailPageErrorProps {
   message?: string;
   planId?: string;
+  upgradeHref?: string;
 }
 
 /**
@@ -14,6 +15,7 @@ interface ModuleDetailPageErrorProps {
 export function ModuleDetailPageError({
   message,
   planId,
+  upgradeHref,
 }: ModuleDetailPageErrorProps) {
   return (
     <div className='flex min-h-[60vh] flex-col items-center justify-center p-4'>
@@ -25,6 +27,11 @@ export function ModuleDetailPageError({
         }
         actions={
           <div className='flex flex-col gap-3 sm:flex-row sm:justify-center'>
+            {upgradeHref ? (
+              <Button asChild>
+                <Link href={upgradeHref}>Upgrade</Link>
+              </Button>
+            ) : null}
             {planId ? (
               <Button asChild>
                 <Link href={`/plans/${planId}`}>
