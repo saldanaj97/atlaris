@@ -1,0 +1,718 @@
+version: 2.1
+
+parameters:
+  base_ref:
+    type: string
+    default: develop
+  integration_workers:
+    type: enum
+    enum: ['2', '4']
+    default: '4'
+  test_db_debug:
+    type: boolean
+    default: false
+
+orbs:
+  node: circleci/node@7
+
+executors:
+  node:
+    docker:
+      - image: cimg/node:24.19
+    resource_class: large
+  ubuntu:
+    machine:
+      image: ubuntu-2404:current
+    resource_class: large
+
+commands:
+  init-env:
+    steps:
+      - run:
+          name: Set pipeline env
+          command: |
+            EVENT_NAME="<< pipeline.event.name >>"
+            BRANCH="<< pipeline.git.branch >>"
+            BASE_REF="<< pipeline.parameters.base_ref >>"
+            PR_BASE="<< pipeline.event.github.pull_request.base.ref >>"
+            if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_BASE}" ]; then
+              BASE_REF="${PR_BASE}"
+            elif [ "${EVENT_NAME}" = "pull_request" ] && [ "${BRANCH}" = "develop" ]; then
+              BASE_REF="main"
+            fi
+            echo "export BASE_REF=\"${BASE_REF}\"" >> "$BASH_ENV"
+            echo 'export INTEGRATION_MAX_WORKERS="<< pipeline.parameters.integration_workers >>"' >> "$BASH_ENV"
+            echo 'export TEST_DB_DEBUG="<< pipeline.parameters.test_db_debug >>"' >> "$BASH_ENV"
+
+  fetch-base:
+    steps:
+      - run:
+          name: Fetch base ref for diffs
+          command: |
+            git fetch --unshallow || true
+            git fetch --no-tags origin "${BASE_REF}" || true
+
+  # Halt integration-only jobs before checkout when their paths did not change.
+  # Dynamic setup keeps docs-only pipelines from provisioning these executors.
+  skip-unless-integration:
+    steps:
+      - attach_workspace:
+          at: /tmp/.ci-flags
+      - run:
+          name: Skip if no integration-path changes
+          command: |
+            if [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
+              echo "No integration-path changes; skipping."
+              circleci-agent step halt
+            fi
+
+  install-pnpm-deps:
+    steps:
+      - node/install-pnpm:
+          version: '11.9.0'
+      - node/install-packages:
+          pkg-manager: pnpm
+
+  install-node-and-deps:
+    steps:
+      - node/install:
+          node-version: '24.19.0'
+          install-pnpm: true
+          pnpm-version: '11.9.0'
+      - node/install-packages:
+          pkg-manager: pnpm
+
+  summarize-vitest:
+    parameters:
+      results-file:
+        type: string
+    steps:
+      - run:
+          name: Test summary
+          when: always
+          command: |
+            file="<< parameters.results-file >>"
+            if [ ! -f "${file}" ]; then
+              echo "No ${file}"
+              exit 0
+            fi
+            TOTAL=$(jq -r '.numTotalTests // 0' "${file}" 2>/dev/null || echo 0)
+            PASSED=$(jq -r '.numPassedTests // 0' "${file}" 2>/dev/null || echo 0)
+            FAILED=$(jq -r '.numFailedTests // 0' "${file}" 2>/dev/null || echo 0)
+            SKIPPED=$(jq -r '.numPendingTests // 0' "${file}" 2>/dev/null || echo 0)
+            echo "passed=${PASSED} failed=${FAILED} skipped=${SKIPPED} total=${TOTAL}"
+
+  store-test-outputs:
+    parameters:
+      results-file:
+        type: string
+      coverage-destination:
+        type: string
+        default: ''
+    steps:
+      - summarize-vitest:
+          results-file: << parameters.results-file >>
+      - run:
+          name: Ensure test artifact dirs
+          when: always
+          command: mkdir -p test-results coverage
+      - store_test_results:
+          path: test-results
+      - when:
+          condition: << parameters.coverage-destination >>
+          steps:
+            - store_artifacts:
+                path: coverage
+                destination: << parameters.coverage-destination >>
+
+jobs:
+  detect-changes:
+    executor: node
+    resource_class: small
+    steps:
+      - checkout
+      - init-env
+      - fetch-base
+      - run:
+          name: Detect source vs integration changes
+          command: |
+            mkdir -p .ci-flags
+            echo true > .ci-flags/source
+            echo true > .ci-flags/integration
+
+            event_name="<< pipeline.event.name >>"
+            base_rev="<< pipeline.git.base_revision >>"
+            if [ "${event_name}" = "pull_request" ]; then
+              if ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+                echo "origin/${BASE_REF} missing; assuming source and integration changed."
+                echo "source=true integration=true"
+                exit 0
+              fi
+              diff_range="origin/${BASE_REF}...HEAD"
+            elif [ "${CIRCLE_BRANCH}" = "main" ] || [ "${CIRCLE_BRANCH}" = "develop" ]; then
+              if [ -z "${base_rev}" ]; then
+                echo "No pipeline.git.base_revision; assuming source and integration changed."
+                echo "source=true integration=true"
+                exit 0
+              fi
+              diff_range="${base_rev}...HEAD"
+            elif ! git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+              echo "origin/${BASE_REF} missing; assuming source and integration changed."
+              echo "source=true integration=true"
+              exit 0
+            else
+              diff_range="origin/${BASE_REF}...HEAD"
+            fi
+
+            echo "Diff range: ${diff_range}"
+            source=false
+            integration=false
+            changed_files="$(mktemp)"
+            if ! git diff --name-only "${diff_range}" > "${changed_files}"; then
+              echo "git diff failed; assuming source and integration changed."
+              source=true
+              integration=true
+            else
+              while IFS= read -r f; do
+                [ -z "${f}" ] && continue
+                case "${f}" in
+                  src/*|supabase/*|public/*)
+                    source=true
+                    integration=true
+                    ;;
+                  tests/integration/*|tests/security/*|tests/helpers/*|tests/setup/*)
+                    source=true
+                    integration=true
+                    ;;
+                  tests/*|scripts/*)
+                    source=true
+                    ;;
+                  *.config.ts|*.config.js|*.config.mjs|*.config.cjs|tsconfig.json|package.json|pnpm-workspace.yaml|pnpm-lock.yaml|next-env.d.ts|middleware.ts)
+                    integration=true
+                    ;;
+                esac
+              done < "${changed_files}"
+            fi
+            rm -f "${changed_files}"
+
+            echo "${source}" > .ci-flags/source
+            echo "${integration}" > .ci-flags/integration
+            echo "source=${source} integration=${integration}"
+      - persist_to_workspace:
+          root: .ci-flags
+          paths:
+            - source
+            - integration
+
+  lint-and-type-check:
+    executor: node
+    steps:
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Lint and type check
+          no_output_timeout: 5m
+          command: |
+            lint_command="pnpm check:lint"
+            if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
+              lint_command="pnpm check:lint:ci"
+            fi
+            pnpm exec concurrently \
+              --kill-others-on-fail \
+              --names lint,type \
+              --prefix-colors blue,magenta \
+              "$lint_command" \
+              "pnpm check:type"
+
+  vulnerability-scan:
+    executor: node
+    resource_class: small
+    steps:
+      - checkout
+      - init-env
+      - node/install-pnpm:
+          version: '11.9.0'
+      - run:
+          name: pnpm audit (prod, high+)
+          no_output_timeout: 8m
+          command: |
+            MAX_ATTEMPTS=3
+            RETRY_DELAY_SECONDS=5
+            AUDIT_TIMEOUT_SECONDS=30
+
+            is_registry_outage_error() {
+              local output="$1"
+              if echo "${output}" | grep -Eiq '(^|[^0-9])429([^0-9]|$)|Too Many Requests'; then
+                return 1
+              fi
+              echo "${output}" | grep -Eiq 'ERR_PNPM_AUDIT_BAD_RESPONSE|ERR_PNPM_FETCH_[45][0-9]{2}|ERR_PNPM_META_FETCH_FAIL|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH|socket hang up|fetch failed|status code 5[0-9][0-9]|Internal Server Error|npm/v1/security/audits|registry\.npmjs\.org'
+            }
+
+            has_vulnerability_findings() {
+              local output="$1"
+              echo "${output}" | grep -Eiq 'vulnerabilities found|Severity:[[:space:]]*(high|critical)|GHSA-|CVE-'
+            }
+
+            for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
+              echo "Audit attempt ${attempt}/${MAX_ATTEMPTS} (timeout: ${AUDIT_TIMEOUT_SECONDS}s)..."
+              set +e
+              AUDIT_OUTPUT=$(timeout "${AUDIT_TIMEOUT_SECONDS}"s pnpm audit --prod --audit-level=high 2>&1)
+              EXIT_CODE=$?
+              set -e
+
+              if [ "${EXIT_CODE}" -eq 0 ]; then
+                echo "Audit passed."
+                exit 0
+              fi
+
+              echo "${AUDIT_OUTPUT}"
+
+              if has_vulnerability_findings "${AUDIT_OUTPUT}"; then
+                echo "Real vulnerabilities detected; failing immediately."
+                exit 1
+              fi
+
+              if [ "${EXIT_CODE}" -eq 124 ] || is_registry_outage_error "${AUDIT_OUTPUT}"; then
+                if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+                  echo "Transient registry issue; retrying in ${RETRY_DELAY_SECONDS}s..."
+                  sleep "${RETRY_DELAY_SECONDS}"
+                fi
+              else
+                echo "Audit failed for a non-transient reason; failing immediately."
+                exit 1
+              fi
+            done
+
+            echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors; failing closed."
+            exit 1
+
+  build:
+    executor: node
+    steps:
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - restore_cache:
+          keys:
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-
+            - next-v1-{{ checksum "pnpm-lock.yaml" }}-
+      - run:
+          name: Build
+          command: pnpm build
+          no_output_timeout: 10m
+      - save_cache:
+          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
+          paths:
+            - .next/cache
+
+  unit-tests:
+    executor: node
+    parallelism: 4
+    environment:
+      NODE_ENV: test
+      SKIP_DB_TEST_SETUP: 'true'
+    steps:
+      - checkout
+      - init-env
+      - fetch-base
+      - install-pnpm-deps
+      - run:
+          name: Unit tests
+          no_output_timeout: 20m
+          command: |
+            mkdir -p test-results/unit
+            if [ "${BASE_REF}" = "main" ]; then
+              circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
+            else
+              circleci testsuite run "unit tests" --analyze-tests=none --run-tests=impacted
+            fi
+      - store-test-outputs:
+          results-file: test-results/unit/results.json
+
+  unit-impact-analysis:
+    executor: node
+    environment:
+      NODE_ENV: test
+      SKIP_DB_TEST_SETUP: 'true'
+    steps:
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Refresh unit test impact data
+          no_output_timeout: 20m
+          command: circleci testsuite run "unit tests" --analyze-tests=impacted --run-tests=none
+
+  integration-light:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    environment:
+      NODE_ENV: test
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - checkout
+      - init-env
+      - fetch-base
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
+      - run:
+          name: Integration tests (related/full/light)
+          no_output_timeout: 20m
+          command: |
+            set -e
+            echo "Base ref: ${BASE_REF}"
+
+            CHANGED_FILES=""
+            DIFF_OK=0
+            if git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
+              if CHANGED_LISTING=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
+                CHANGED_FILES=$(printf '%s\n' "${CHANGED_LISTING}" | tr '\n' ' ')
+                DIFF_OK=1
+              else
+                echo "git diff failed; running full integration suite."
+              fi
+            else
+              echo "origin/${BASE_REF} missing; running full integration suite."
+            fi
+
+            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
+            COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
+            echo "Changed candidate files: ${COUNT}"
+            mkdir -p test-results/integration-light
+
+            GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock\.yaml|drizzle(.*)\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?)$' || true)
+
+            MODE="light"
+            if [ "${DIFF_OK}" -eq 0 ]; then
+              MODE="full"
+              echo "Integration mode: full (missing base or failed diff)"
+            elif [ -n "${GLOBAL_TRIGGER}" ]; then
+              MODE="full"
+              echo "Integration mode: full (global trigger detected)"
+            elif [ "${COUNT}" -gt 50 ]; then
+              MODE="full"
+              echo "Integration mode: full (${COUNT} candidate TypeScript files)"
+            elif [ "${COUNT}" -gt 0 ]; then
+              MODE="related"
+              echo "Integration mode: related (${COUNT} candidate TypeScript files)"
+            else
+              echo "Integration mode: light (no suitable source candidates)"
+            fi
+
+            case "${MODE}" in
+              related)
+                pnpm vitest related --project integration --run --coverage \
+                  --passWithNoTests \
+                  --reporter=default \
+                  --reporter=json \
+                  --reporter=junit \
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml \
+                  ${FILES}
+                ;;
+              full)
+                pnpm vitest run --project integration tests/integration \
+                  --coverage \
+                  --coverage.thresholds.lines=0 \
+                  --coverage.thresholds.functions=0 \
+                  --coverage.thresholds.branches=0 \
+                  --coverage.thresholds.statements=0 \
+                  --reporter=default \
+                  --reporter=json \
+                  --reporter=junit \
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml
+                ;;
+              light)
+                mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name '*.test.ts' -o -name '*.spec.ts' -o -name '*.test.tsx' -o -name '*.spec.tsx' \))
+                if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
+                  echo "No light integration tests found; skipping."
+                  exit 0
+                fi
+                pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
+                  --coverage \
+                  --reporter=default \
+                  --reporter=json \
+                  --reporter=junit \
+                  --outputFile.json=test-results/integration-light/results.json \
+                  --outputFile.junit=test-results/integration-light/junit.xml
+                ;;
+            esac
+      - store-test-outputs:
+          results-file: test-results/integration-light/results.json
+
+  security-tests:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: medium
+    parameters:
+      skip_unless:
+        type: enum
+        enum: ['always', 'integration']
+        default: always
+    environment:
+      NODE_ENV: test
+      ALLOW_DB_TRUNCATE: 'true'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - when:
+          condition:
+            equal: [integration, << parameters.skip_unless >>]
+          steps:
+            - skip-unless-integration
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
+      - run:
+          name: RLS security tests
+          no_output_timeout: 15m
+          command: |
+            mkdir -p test-results/security
+            pnpm vitest run --project security tests/security/ \
+              --reporter=default \
+              --reporter=json \
+              --reporter=junit \
+              --outputFile.json=test-results/security/results.json \
+              --outputFile.junit=test-results/security/junit.xml
+      - store-test-outputs:
+          results-file: test-results/security/results.json
+
+  integration-tests:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    parallelism: 2
+    environment:
+      NODE_ENV: test
+      ENABLE_CURATION: 'false'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - skip-unless-integration
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
+      - run:
+          name: Integration tests
+          no_output_timeout: 25m
+          command: |
+            mkdir -p test-results/integration
+            TESTFILES=$(circleci tests glob "tests/integration/**/*.{test,spec}.{ts,tsx}")
+            if [ -z "${TESTFILES}" ]; then
+              echo "No integration test files found; skipping."
+              circleci-agent step halt
+              exit 0
+            fi
+            echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
+            if [ ! -s files.txt ]; then
+              echo "No tests assigned to this node; skipping."
+              circleci-agent step halt
+              exit 0
+            fi
+            # ponytail: word-split files.txt; circleci tests run already selected this node's files
+            pnpm vitest run --project integration \
+              --coverage \
+              --coverage.thresholds.lines=0 \
+              --coverage.thresholds.functions=0 \
+              --coverage.thresholds.branches=0 \
+              --coverage.thresholds.statements=0 \
+              --reporter=default \
+              --reporter=json \
+              --reporter=junit \
+              --outputFile.json=test-results/integration/results.json \
+              --outputFile.junit=test-results/integration/junit.xml \
+              $(cat files.txt)
+      - store-test-outputs:
+          results-file: test-results/integration/results.json
+
+  workflow-tests:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: medium
+    environment:
+      NODE_ENV: test
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Dependency remediation tests
+          command: |
+            mkdir -p test-results/workflow
+            node --test \
+              --test-reporter=spec \
+              --test-reporter-destination=stdout \
+              --test-reporter=junit \
+              --test-reporter-destination=test-results/workflow/node.xml \
+              .github/scripts/dependency-remediation.test.mjs
+      - run:
+          name: Wait for PostgreSQL
+          command: |
+            pnpm exec tsx --eval "
+              import {
+                resolveExternalPostgresUrl,
+                waitForPostgres,
+              } from './tests/setup/testcontainers.ts'
+              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
+                console.error(error)
+                process.exit(1)
+              })
+            "
+      - run:
+          name: Production workflow tests
+          command: |
+            pnpm vitest run --config vitest.workflow.config.ts tests/workflow \
+              --reporter=default \
+              --reporter=json \
+              --reporter=junit \
+              --outputFile.json=test-results/workflow/results.json \
+              --outputFile.junit=test-results/workflow/vitest.xml
+          no_output_timeout: 15m
+      - store-test-outputs:
+          results-file: test-results/workflow/results.json
+
+workflows:
+  # PR merge gate. Feature-branch pushes keep running ci-pr. Pushes to
+  # develop/main do not (ci-trunk owns those). pull_request events on
+  # non-main heads also run ci-pr: auto-cancel of the in-flight push
+  # pipeline on PR open/sync would otherwise leave an empty run.
+  ci-pr:
+    when:
+      or:
+        - and:
+            - equal: [pull_request, << pipeline.event.name >>]
+            - not:
+                equal: [main, << pipeline.git.branch >>]
+            - or:
+                - equal: [opened, << pipeline.event.action >>]
+                - equal: [synchronize, << pipeline.event.action >>]
+                - equal: [reopened, << pipeline.event.action >>]
+                - equal: [ready_for_review, << pipeline.event.action >>]
+        - and:
+            - not:
+                equal: [pull_request, << pipeline.event.name >>]
+            - not:
+                equal: [main, << pipeline.git.branch >>]
+            - not:
+                equal: [develop, << pipeline.git.branch >>]
+    jobs:
+      - detect-changes
+      - lint-and-type-check:
+          requires:
+            - detect-changes
+      - vulnerability-scan:
+          requires:
+            - detect-changes
+      - build:
+          requires:
+            - detect-changes
+      - unit-tests:
+          requires:
+            - detect-changes
+      - integration-light:
+          requires:
+            - detect-changes
+      - security-tests:
+          requires:
+            - detect-changes
+      - workflow-tests:
+          requires:
+            - detect-changes
+
+  # No merge_group trigger. Codecov and all-checks-trunk omitted: workflow status is the gate.
+  ci-trunk:
+    when:
+      not:
+        equal: [pull_request, << pipeline.event.name >>]
+    jobs:
+      - detect-changes:
+          filters:
+            branches:
+              only: [main, develop]
+      - unit-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
+      - integration-tests:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: [main, develop]
+      - security-tests:
+          skip_unless: integration
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: [main, develop]

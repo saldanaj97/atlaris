@@ -1,0 +1,36 @@
+version: 2.1
+
+parameters:
+  base_ref:
+    type: string
+    default: develop
+  integration_workers:
+    type: enum
+    enum: ['2', '4']
+    default: '4'
+  test_db_debug:
+    type: boolean
+    default: false
+
+jobs:
+  no-updates:
+    type: no-op
+
+workflows:
+  no-updates:
+    jobs:
+      # Keep required checks present when the setup diff is empty.
+      - no-updates:
+          name: build
+      - no-updates:
+          name: lint-and-type-check
+      - no-updates:
+          name: integration-light
+      - no-updates:
+          name: unit-tests
+      - no-updates:
+          name: vulnerability-scan
+      - no-updates:
+          name: workflow-tests
+      - no-updates:
+          name: security-tests

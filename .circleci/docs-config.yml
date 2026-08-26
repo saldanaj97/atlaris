@@ -1,0 +1,28 @@
+version: 2.1
+
+jobs:
+  docs-only:
+    type: no-op
+
+workflows:
+  docs-only:
+    when:
+      and:
+        - equal: [true, << pipeline.parameters.docs-changed >>]
+        - equal: [false, << pipeline.parameters.code-changed >>]
+    jobs:
+      # These zero-credit aliases satisfy the repository's required checks.
+      - docs-only:
+          name: build
+      - docs-only:
+          name: lint-and-type-check
+      - docs-only:
+          name: integration-light
+      - docs-only:
+          name: unit-tests
+      - docs-only:
+          name: vulnerability-scan
+      - docs-only:
+          name: workflow-tests
+      - docs-only:
+          name: security-tests
