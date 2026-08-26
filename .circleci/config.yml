@@ -34,7 +34,10 @@ commands:
             EVENT_NAME="<< pipeline.event.name >>"
             BRANCH="<< pipeline.git.branch >>"
             BASE_REF="<< pipeline.parameters.base_ref >>"
-            if [ "${EVENT_NAME}" = "pull_request" ] && [ "${BRANCH}" = "develop" ]; then
+            PR_BASE="<< pipeline.event.github.pull_request.base.ref >>"
+            if [ "${EVENT_NAME}" = "pull_request" ] && [ -n "${PR_BASE}" ]; then
+              BASE_REF="${PR_BASE}"
+            elif [ "${EVENT_NAME}" = "pull_request" ] && [ "${BRANCH}" = "develop" ]; then
               BASE_REF="main"
             fi
             echo "export BASE_REF=\"${BASE_REF}\"" >> "$BASH_ENV"
@@ -770,8 +773,7 @@ workflows:
           requires:
             - detect-changes
 
-  # GitHub ci-trunk.yml also runs on merge_group; CircleCI has no equivalent.
-  # Codecov and all-checks-trunk are omitted: workflow status is the gate.
+  # No merge_group trigger. Codecov and all-checks-trunk omitted: workflow status is the gate.
   ci-trunk:
     when:
       not:

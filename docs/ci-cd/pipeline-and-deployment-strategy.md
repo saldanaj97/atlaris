@@ -45,13 +45,16 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Path filtering skips expensive jobs when no code changed. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
-### 2) `.github/workflows/ci-trunk.yml`
+### 2) CircleCI `ci-trunk` (`.circleci/config.yml`)
 
-- Trigger: push to `develop` or `main` (plus merge queue)
-- Runs: full integration and RLS security checks on trunk branches
-- Workflow-level `paths-ignore` skips the entire workflow for documentation-only pushes (`docs/**`, `**/*.md`, and related text paths), so `All Checks Passed (trunk)` is not emitted for every trunk SHA
+- Trigger: **All pushes** that are not `pull_request` events, with jobs filtered to `develop` and `main`. Keep the CircleCI GitHub App **All pushes** trigger so this workflow still starts on trunk.
+- Runs: full integration tests (`integration-tests`) and RLS security tests (`security-tests`) after merge
+- There is no CircleCI `merge_group` trigger. Do not treat merge-queue SHAs as gated here.
+- Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
+- Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
+- `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
-- Because trunk checks are not always emitted, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
+- Because there is no uniquely named post-merge check wired into Vercel, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
 
 ### 3) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -107,13 +110,13 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ### Merge to `develop`
 
-- Runs `ci-trunk.yml`
+- Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
 - Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
 - Vercel deploys staging
 
 ### Merge to `main`
 
-- Runs `ci-trunk.yml` when the push is not documentation-only
+- Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`; those jobs skip when `detect-changes` finds no integration-path files)
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Production app release uses the staged Production lane:
   1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
@@ -211,6 +214,5 @@ Prefer the staged Production CLI path (`--skip-domain` then explicit promote) ov
 - `docs/ci/branching-strategy.md`
 - `docs/development/deploy.md`
 - `.circleci/config.yml`
-- `.github/workflows/ci-trunk.yml`
 - `.github/workflows/staging-db-migrations.yaml`
 - `.github/workflows/production-db-migrations.yaml`

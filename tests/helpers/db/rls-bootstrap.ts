@@ -15,7 +15,7 @@ import { sql } from 'drizzle-orm';
 
 /**
  * Ensure RLS roles exist and have the necessary permissions to query tables.
- * This mirrors the setup in CI (CircleCI `ci-pr` / GitHub Actions `ci-trunk.yml`).
+ * This mirrors the setup in CI (CircleCI `ci-pr` / `ci-trunk`).
  *
  * Without these permissions, RLS-enforced database clients cannot access tables
  * even when RLS policies allow it, because the role itself lacks table permissions.
