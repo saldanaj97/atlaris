@@ -1,4 +1,3 @@
-import type { RegenerationQuotaWorkResult } from '@/features/billing/regeneration-quota-boundary';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 
 import {
@@ -9,7 +8,7 @@ import {
 } from './plan-regeneration.types';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
-import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
+import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   claimRegenerationJob,
@@ -194,87 +193,37 @@ export async function processPlanRegenerationStep(
   );
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
 
-  let providerStarted = false;
-  const quotaResult = await runRegenerationQuotaReserved<
-    GenerationAttemptResult,
-    GenerationAttemptResult
-  >({
-    userId: plan.userId,
+  let quotaDenied = false;
+  const generationResult = await lifecycle.processGenerationAttempt({
     planId: plan.id,
-    dbClient: serviceRoleDb,
-    work: async (): Promise<
-      RegenerationQuotaWorkResult<
-        GenerationAttemptResult,
-        GenerationAttemptResult
-      >
-    > => {
-      try {
-        const generationResult = await lifecycle.processGenerationAttempt({
-          planId: plan.id,
-          userId: plan.userId,
-          tier,
-          generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
-          input: generationInput,
-          ...(modelOverride !== undefined ? { modelOverride } : {}),
-          onAttemptReserved: async () => {
-            providerStarted = true;
-            const providerStartedAt = new Date().toISOString();
-            const marked = planRegenerationJobPayloadSchema.safeParse({
-              ...validation.payload,
-              quota: { providerStartedAt },
-            });
-
-            if (!marked.success) {
-              throw new Error(
-                'Failed to persist regeneration provider-start marker: invalid job payload.',
-              );
-            }
-
-            const persisted = await updateJobPayload(job.id, marked.data);
-            if (
-              persisted?.status !== 'processing' ||
-              persisted.data.quota?.providerStartedAt !== providerStartedAt
-            ) {
-              throw new Error(
-                'Failed to persist regeneration provider-start marker: job state did not match.',
-              );
-            }
-          },
-        });
-
-        if (!providerStarted) {
-          return {
-            disposition: 'revert',
-            value: generationResult,
-            reason: 'pre-provider',
-            jobId: job.id,
-          };
-        }
-
-        return { disposition: 'consumed', value: generationResult };
-      } catch (error) {
-        if (providerStarted) {
-          return {
-            disposition: 'consumed',
-            value: {
-              status: 'retryable_failure',
-              classification: 'provider_error',
-              error: error instanceof Error ? error : new Error(String(error)),
-            },
-          };
-        }
-        throw error;
+    userId: plan.userId,
+    tier,
+    generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
+    input: generationInput,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
+    onAttemptReserved: async () => {
+      const quotaResult = await reserveRegenerationQuotaAtProviderStart({
+        userId: plan.userId,
+        planId: plan.id,
+        jobId: job.id,
+        dbClient: serviceRoleDb,
+      });
+      if (!quotaResult.ok) {
+        quotaDenied = true;
+        throw new Error(
+          'Regeneration quota exceeded for your subscription tier.',
+        );
       }
     },
   });
 
-  if (!quotaResult.ok) {
+  if (quotaDenied) {
     const message = 'Regeneration quota exceeded for your subscription tier.';
     await failJob(job.id, message, { retryable: false });
     throw new FatalError(message);
   }
 
-  return quotaResult.value;
+  return generationResult;
 }
 
 export async function finalizePlanRegenerationJobStep(

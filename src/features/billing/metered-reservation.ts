@@ -24,7 +24,7 @@ import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { usageMetrics, users } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
-type MeterKind = 'regeneration';
+export type MeterKind = 'regeneration';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -32,7 +32,7 @@ type MeterKind = 'regeneration';
  * `selectUserSubscriptionTierForUpdate` and `lockUsageMetricsForMonth` can
  * accept it without leaking Drizzle internals into every signature.
  */
-type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
+export type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
 type MeterColumn = 'regenerationsUsed';
 
@@ -147,52 +147,60 @@ type ReserveLogEvent =
       limit: number;
     };
 
-export async function reserveMeteredUsage(
+export async function reserveMeteredUsageInTx(
+  tx: BillingTx,
   params: { userId: string; meter: MeterKind },
-  dbClient: DbClient,
   options: ReserveMeteredUsageOptions = {},
 ): Promise<ReserveMeteredResult> {
   const { userId, meter } = params;
   const config = METER_CONFIG[meter];
 
-  return dbClient.transaction(async (tx) => {
-    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
-    const limit = config.resolveLimit(user.subscriptionTier);
-    const month = getCurrentMonth(options.now?.());
+  const user = await selectUserSubscriptionTierForUpdate(tx, userId);
+  const limit = config.resolveLimit(user.subscriptionTier);
+  const month = getCurrentMonth(options.now?.());
 
-    const metrics = await lockUsageMetricsForMonth(tx, userId, month);
-    const currentCount = config.readColumn(metrics);
+  const metrics = await lockUsageMetricsForMonth(tx, userId, month);
+  const currentCount = config.readColumn(metrics);
 
-    if (limit !== Infinity && currentCount >= limit) {
-      options.onResult?.({
-        kind: 'denied',
-        userId,
-        month,
-        meter,
-        currentCount,
-        limit,
-      });
-      return { ok: false, currentCount, limit };
-    }
-
-    await config.incrementInTx(tx, userId, month);
-    const newCount = currentCount + 1;
-
+  if (limit !== Infinity && currentCount >= limit) {
     options.onResult?.({
-      kind: 'allowed',
+      kind: 'denied',
       userId,
       month,
       meter,
-      newCount,
+      currentCount,
       limit,
-      unlimited: limit === Infinity,
     });
+    return { ok: false, currentCount, limit };
+  }
 
-    return {
-      ok: true,
-      token: { userId, month, meter, limit, newCount },
-    };
+  await config.incrementInTx(tx, userId, month);
+  const newCount = currentCount + 1;
+
+  options.onResult?.({
+    kind: 'allowed',
+    userId,
+    month,
+    meter,
+    newCount,
+    limit,
+    unlimited: limit === Infinity,
   });
+
+  return {
+    ok: true,
+    token: { userId, month, meter, limit, newCount },
+  };
+}
+
+export async function reserveMeteredUsage(
+  params: { userId: string; meter: MeterKind },
+  dbClient: DbClient,
+  options: ReserveMeteredUsageOptions = {},
+): Promise<ReserveMeteredResult> {
+  return dbClient.transaction((tx) =>
+    reserveMeteredUsageInTx(tx, params, options),
+  );
 }
 
 /**

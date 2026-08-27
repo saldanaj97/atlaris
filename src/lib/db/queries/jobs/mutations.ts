@@ -318,6 +318,11 @@ export async function failJobRecord(
     });
     const payloadForRetry = { ...payloadWithHistory };
     delete payloadForRetry.workflow;
+    if (current.jobType === JOB_TYPES.PLAN_REGENERATION) {
+      // The provider-start marker settles the current attempt. A retry gets a
+      // fresh attempt and must be allowed to settle exactly once for itself.
+      delete payloadForRetry.quota;
+    }
 
     const updatePayload = decision.shouldRetry
       ? {
