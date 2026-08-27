@@ -7,7 +7,12 @@ import { Loader2 } from 'lucide-react';
 
 function getGenerationStatusLabel(
   lessonGeneration: ModuleLessonGenerationSummary,
+  isFailed: boolean,
 ): string {
+  if (isFailed) {
+    return 'Failed';
+  }
+
   switch (lessonGeneration.status) {
     case 'not_generated':
       return 'Preparing';
@@ -27,9 +32,11 @@ function getGenerationStatusLabel(
 function GenerationDescription({
   lessonGeneration,
   generationTakingLong,
+  isFailed,
 }: {
   lessonGeneration: ModuleLessonGenerationSummary;
   generationTakingLong: boolean;
+  isFailed: boolean;
 }) {
   return (
     <div>
@@ -38,10 +45,10 @@ function GenerationDescription({
           Detailed lesson content
         </h3>
         <Badge variant='secondary'>
-          {getGenerationStatusLabel(lessonGeneration)}
+          {getGenerationStatusLabel(lessonGeneration, isFailed)}
         </Badge>
       </div>
-      {lessonGeneration.status === 'failed' ? (
+      {isFailed ? (
         <p className='text-sm text-muted-foreground'>
           Generation failed. Retry to create fresh lesson content for this
           module.
@@ -64,15 +71,15 @@ function GenerationDescription({
 }
 
 function GenerationAction({
-  status,
   isPending,
+  isFailed,
   onRetry,
 }: {
-  status: ModuleLessonGenerationSummary['status'];
   isPending: boolean;
+  isFailed: boolean;
   onRetry: () => void;
 }) {
-  if (status === 'failed') {
+  if (isFailed) {
     return (
       <Button onClick={onRetry} disabled={isPending}>
         {isPending ? 'Generating…' : 'Retry lesson generation'}
@@ -105,6 +112,10 @@ export function GenerationStatePanel({
     return null;
   }
 
+  const isFailed =
+    lessonGeneration.status === 'failed' ||
+    (lessonGeneration.status === 'not_generated' && !isPending);
+
   return (
     <Surface
       variant='default'
@@ -116,10 +127,11 @@ export function GenerationStatePanel({
         <GenerationDescription
           lessonGeneration={lessonGeneration}
           generationTakingLong={generationTakingLong}
+          isFailed={isFailed}
         />
         <GenerationAction
-          status={lessonGeneration.status}
           isPending={isPending}
+          isFailed={isFailed}
           onRetry={onRetry}
         />
       </div>

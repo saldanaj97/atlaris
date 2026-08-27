@@ -127,6 +127,46 @@ describe('ModuleLessonsClient', () => {
     });
   });
 
+  it('recovers from an automatic start failure without auto-posting again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse({
+          state: 'ready',
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient();
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        'Unable to start lesson generation.',
+      );
+      expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Retry lesson generation' }),
+      ).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry lesson generation' }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenNthCalledWith(2, GENERATE_URL, {
+        method: 'POST',
+      });
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('does not auto-loop failed modules and keeps Retry', () => {
     renderClient({
       lessonGeneration: {

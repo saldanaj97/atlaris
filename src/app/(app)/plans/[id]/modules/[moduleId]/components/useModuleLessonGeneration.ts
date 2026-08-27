@@ -23,23 +23,28 @@ type LongGenerationKey = {
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
+    markFailed: () => void;
     markGenerating: (workflowRunId?: string) => void;
     refresh: () => void;
   },
 ): void {
-  const { markGenerating, refresh } = params;
+  const { markFailed, markGenerating, refresh } = params;
 
   switch (body.state) {
     case 'provider_failure':
+      markFailed();
       toast.error('Lesson generation failed. Please try again.');
       return;
     case 'locked':
+      markFailed();
       toast.error('Lesson generation is not available for this module.');
       return;
     case 'disabled':
+      markFailed();
       toast.error('Lesson generation is temporarily unavailable.');
       return;
     case 'not_found':
+      markFailed();
       toast.error('Plan or module was not found.');
       return;
     case 'generating':
@@ -67,6 +72,8 @@ export function useModuleLessonGeneration({
 }) {
   const { refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
+  const generationKey = `${planId}:${moduleId}`;
+  const [localFailureKey, setLocalFailureKey] = useState<string | null>(null);
   const [requestedGenerationKey, setRequestedGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const [longGenerationKey, setLongGenerationKey] =
@@ -293,6 +300,7 @@ export function useModuleLessonGeneration({
             },
           );
           toast.error('Lesson generation returned an invalid response.');
+          setLocalFailureKey(generationKey);
           return;
         }
 
@@ -314,10 +322,12 @@ export function useModuleLessonGeneration({
               ? 'Lesson generation returned unexpected data.'
               : 'Lesson generation request failed.',
           );
+          setLocalFailureKey(generationKey);
           return;
         }
 
         applyModuleLessonGenerationResponse(parsed.data, {
+          markFailed: () => setLocalFailureKey(generationKey),
           markGenerating: (workflowRunId) =>
             setRequestedGenerationKey({ planId, moduleId, workflowRunId }),
           refresh,
@@ -329,9 +339,10 @@ export function useModuleLessonGeneration({
           planId,
         });
         toast.error('Unable to start lesson generation.');
+        setLocalFailureKey(generationKey);
       }
     });
-  }, [moduleId, planId, refresh]);
+  }, [generationKey, moduleId, planId, refresh]);
 
   useEffect(() => {
     if (status !== 'not_generated') {
@@ -348,6 +359,9 @@ export function useModuleLessonGeneration({
   return {
     generateLessons,
     generationTakingLong,
-    isPending: isPending || generationRequested || status === 'not_generated',
+    isPending:
+      isPending ||
+      generationRequested ||
+      (status === 'not_generated' && localFailureKey !== generationKey),
   };
 }
