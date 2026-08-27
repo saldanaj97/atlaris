@@ -58,7 +58,7 @@ export function calculateTotalWeeks({
 }
 
 export function normalizePlanDurationForTier({
-  tier,
+  tier: _tier,
   weeklyHours: _weeklyHours,
   startDate,
   deadlineDate,
@@ -76,7 +76,6 @@ export function normalizePlanDurationForTier({
 } {
   const { normalizedToday, start } = utcPlanDayAnchors(today, startDate);
 
-  const limits = TIER_LIMITS[tier];
   let deadline =
     deadlineDate !== null && deadlineDate !== undefined
       ? new Date(deadlineDate)
@@ -84,15 +83,6 @@ export function normalizePlanDurationForTier({
 
   if (deadline) {
     deadline.setUTCHours(0, 0, 0, 0);
-
-    if (limits.maxWeeks !== null) {
-      const maxDeadline = new Date(
-        start.getTime() + limits.maxWeeks * MILLISECONDS_PER_WEEK,
-      );
-      if (deadline > maxDeadline) {
-        deadline = maxDeadline;
-      }
-    }
   }
 
   const normalizedStartString = start.toISOString().slice(0, 10);

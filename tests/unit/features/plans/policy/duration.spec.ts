@@ -39,7 +39,7 @@ describe('calculateTotalWeeks', () => {
 });
 
 describe('normalizePlanDurationForTier', () => {
-  it('clamps deadline by maxWeeks for free tier', () => {
+  it('does not clamp over-cap deadline for free tier', () => {
     const res = normalizePlanDurationForTier({
       tier: 'free',
       weeklyHours: 5,
@@ -48,8 +48,8 @@ describe('normalizePlanDurationForTier', () => {
       today: new Date('2025-01-01T12:00:00Z'),
     });
     expect(res.startDate).toBe('2025-01-01');
-    expect(res.deadlineDate).toBe('2025-01-15');
-    expect(res.totalWeeks).toBe(2);
+    expect(res.deadlineDate).toBe('2025-06-01');
+    expect(res.totalWeeks).toBe(22);
   });
 
   it('returns null start when no startDate passed', () => {
