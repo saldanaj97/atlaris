@@ -1,4 +1,4 @@
-import { enqueueJob } from '@/features/jobs/queue';
+import { enqueueJob, getNextJob } from '@/features/jobs/queue';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
 import { emailNotificationDeliveryWorkflow } from '@/features/notifications/email/workflows/email-notification-delivery.workflow';
@@ -224,6 +224,93 @@ describe('production Workflow SDK entrypoints', () => {
         message: 'Model is not allowed for regeneration on this tier.',
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('compensates a replayed Free reservation without leaving generation in progress', async () => {
+    const authUserId = buildTestAuthUserId('workflow-regeneration-free-replay');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({
+      userId,
+      topic: GENERATION_INPUT.topic,
+      skillLevel: GENERATION_INPUT.skillLevel,
+      weeklyHours: GENERATION_INPUT.weeklyHours,
+      learningStyle: GENERATION_INPUT.learningStyle,
+      generationStatus: 'ready',
+    });
+    const jobId = await enqueueJob(
+      JOB_TYPES.PLAN_REGENERATION,
+      plan.id,
+      userId,
+      { planId: plan.id },
+    );
+    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(jobId);
+
+    const reservation = await reserveAttemptSlot({
+      planId: plan.id,
+      userId,
+      input: GENERATION_INPUT,
+      generationPurpose: 'regeneration',
+      workflowMetadata: {
+        provider: 'workflow-sdk',
+        runId: 'wrun_preseeded',
+        idempotencyKey: `plan-regeneration:${jobId}:0`,
+      },
+      dbClient: db,
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+
+    const run = await start(planRegenerationWorkflow, [
+      {
+        jobId,
+        planId: plan.id,
+        userId,
+        correlationId: `workflow-regeneration-${jobId}`,
+      },
+    ]);
+
+    await expect(run.returnValue).rejects.toThrow(
+      'Plan regeneration is not included on the Free plan.',
+    );
+    expect(await run.status).toBe('failed');
+
+    const [persistedJob] = await db
+      .select({ status: jobQueue.status, error: jobQueue.error })
+      .from(jobQueue)
+      .where(eq(jobQueue.id, jobId));
+    expect(persistedJob).toEqual({
+      status: 'failed',
+      error: 'Plan regeneration is not included on the Free plan.',
+    });
+
+    const [persistedPlan] = await db
+      .select({
+        generationStatus: learningPlans.generationStatus,
+        isQuotaEligible: learningPlans.isQuotaEligible,
+      })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, plan.id));
+    expect(persistedPlan).toEqual({
+      generationStatus: 'ready',
+      isQuotaEligible: true,
+    });
+
+    const [attempt] = await db
+      .select({
+        status: generationAttempts.status,
+        classification: generationAttempts.classification,
+      })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.id, reservation.attemptId));
+    expect(attempt).toEqual({
+      status: 'failure',
+      classification: 'validation',
+    });
   });
 
   it('fails closed for module lesson generation and releases the claim', async () => {

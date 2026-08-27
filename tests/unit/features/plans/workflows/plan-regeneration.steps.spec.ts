@@ -342,7 +342,9 @@ describe('processPlanRegenerationStep model resolution', () => {
     });
     mocks.reserveAttemptSlot.mockResolvedValue(reservation);
     mocks.findAttemptWithWorkflowIdempotencyKey.mockResolvedValue({
+      ...reservation,
       admittedTier: 'pro',
+      status: 'in_progress',
     });
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('free');
@@ -352,6 +354,42 @@ describe('processPlanRegenerationStep model resolution', () => {
     expect(replay.tier).toBe('pro');
     expect(mocks.resolveUserTier).not.toHaveBeenCalled();
     expect(mocks.failJob).not.toHaveBeenCalled();
+  });
+
+  it('compensates a replayed reservation when its model is denied', async () => {
+    const reservation = makeAttemptReservation({
+      generationPurpose: 'regeneration',
+      admittedTier: 'pro',
+    });
+    const queued = job('processing', 'wrun_same');
+    queued.data = {
+      ...queued.data,
+      overrides: { model: 'invalid/model-id' },
+    };
+    mocks.findAttemptWithWorkflowIdempotencyKey.mockResolvedValue({
+      ...reservation,
+      status: 'in_progress',
+    });
+    mocks.loadJob.mockResolvedValue(queued);
+
+    await expect(reservePlanRegenerationAttemptStep(input)).rejects.toThrow(
+      'Model is not allowed for regeneration on this tier.',
+    );
+
+    expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
+    expect(mocks.commitPlanGenerationFailure).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        attemptId: reservation.attemptId,
+        classification: 'validation',
+        retryable: false,
+      }),
+    );
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Model is not allowed for regeneration on this tier.',
+      { retryable: false },
+    );
   });
 
   it('compensates a reservation when the admitted tier changes to Free', async () => {

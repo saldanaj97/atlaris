@@ -2,6 +2,7 @@ import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
+import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -154,6 +155,10 @@ type LoadedRegeneration = Pick<
   readonly payload: PlanRegenerationJobPayload;
 };
 
+type ReservationForCompensation = AttemptReservation & {
+  readonly status?: 'in_progress' | 'success' | 'failure';
+};
+
 class RegenerationAdmissionDeniedError extends Error {
   constructor(message: string) {
     super(message);
@@ -261,7 +266,7 @@ async function failPreReservationAdmission(
 
 async function compensatePostReservationAdmission(
   input: PlanRegenerationWorkflowInput,
-  reservation: ReturnType<typeof fromSerializableReservation>,
+  reservation: ReservationForCompensation,
   workflowMetadata: {
     readonly provider: 'workflow-sdk';
     readonly runId: string;
@@ -270,25 +275,30 @@ async function compensatePostReservationAdmission(
   error: RegenerationAdmissionDeniedError,
 ): Promise<never> {
   const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
-  await commitPlanGenerationFailure(serviceRoleDb, {
-    variant: 'reserved_attempt',
-    planId: input.planId,
-    userId: input.userId,
-    attemptId: reservation.attemptId,
-    preparation: reservation,
-    classification: 'validation',
-    error,
-    durationMs: 0,
-    timedOut: false,
-    extendedTimeout: false,
-    workflowMetadata: {
-      ...workflowMetadata,
-      startedAt: reservation.startedAt.toISOString(),
-    },
-    generationPurpose,
-    usageKind: 'plan',
-    retryable: false,
-  });
+  if (
+    reservation.status === undefined ||
+    reservation.status === 'in_progress'
+  ) {
+    await commitPlanGenerationFailure(serviceRoleDb, {
+      variant: 'reserved_attempt',
+      planId: input.planId,
+      userId: input.userId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      classification: 'validation',
+      error,
+      durationMs: 0,
+      timedOut: false,
+      extendedTimeout: false,
+      workflowMetadata: {
+        ...workflowMetadata,
+        startedAt: reservation.startedAt.toISOString(),
+      },
+      generationPurpose,
+      usageKind: 'plan',
+      retryable: false,
+    });
+  }
 
   await failJob(input.jobId, error.message, { retryable: false });
   throw new FatalError(error.message);
@@ -313,6 +323,9 @@ export async function reservePlanRegenerationAttemptStep(
   };
   const existingReservation = await findAttemptWithWorkflowIdempotencyKey({
     planId: loaded.plan.id,
+    userId: loaded.plan.userId,
+    input: loaded.generationInput,
+    generationPurpose,
     workflowIdempotencyKey: idempotencyKey,
     dbClient: serviceRoleDb,
   });
@@ -326,6 +339,14 @@ export async function reservePlanRegenerationAttemptStep(
     );
   } catch (error: unknown) {
     if (error instanceof RegenerationAdmissionDeniedError) {
+      if (existingReservation) {
+        return compensatePostReservationAdmission(
+          input,
+          existingReservation,
+          workflowMetadata,
+          error,
+        );
+      }
       return failPreReservationAdmission(loaded.job.id, error);
     }
     throw error;
@@ -362,10 +383,7 @@ export async function reservePlanRegenerationAttemptStep(
       if (error instanceof RegenerationAdmissionDeniedError) {
         return compensatePostReservationAdmission(
           input,
-          fromSerializableReservation(
-            toSerializableReservation(reservation),
-            generationPurpose,
-          ),
+          reservation,
           workflowMetadata,
           error,
         );

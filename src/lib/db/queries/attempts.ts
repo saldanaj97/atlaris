@@ -9,6 +9,8 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { getAttemptCap } from '@/lib/config/env';
 import {
@@ -77,34 +79,88 @@ function readWorkflowIdempotencyKey(metadata: unknown): string | null {
   return typeof key === 'string' && key.length > 0 ? key : null;
 }
 
+function buildAttemptPreparation(
+  planId: string,
+  userId: string,
+  input: GenerationInput,
+): Pick<AttemptReservation, 'sanitized' | 'promptHash'> {
+  const sanitized = sanitizeInput(input);
+  const promptHash = createHash('sha256')
+    .update(
+      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
+    )
+    .digest('hex');
+
+  return { sanitized, promptHash };
+}
+
+type RecoveredAttemptReservation = AttemptReservation &
+  Pick<GenerationAttemptRecord, 'status'>;
+
 /**
  * Reads the durable tier admitted for a workflow reservation, when a reserve
  * step is replayed before it can persist its step result.
  */
 export async function findAttemptWithWorkflowIdempotencyKey(params: {
   planId: string;
+  userId: string;
+  input: GenerationInput;
+  generationPurpose: GenerationPurpose;
   workflowIdempotencyKey: string;
   dbClient: AttemptsDbClient;
-}): Promise<Pick<AttemptReservation, 'admittedTier'> | null> {
+}): Promise<RecoveredAttemptReservation | null> {
+  const { sanitized, promptHash } = buildAttemptPreparation(
+    params.planId,
+    params.userId,
+    params.input,
+  );
   const attempts = await params.dbClient
-    .select({ metadata: generationAttempts.metadata })
+    .select({
+      id: generationAttempts.id,
+      status: generationAttempts.status,
+      generationPurpose: generationAttempts.generationPurpose,
+      promptHash: generationAttempts.promptHash,
+      metadata: generationAttempts.metadata,
+      createdAt: generationAttempts.createdAt,
+    })
     .from(generationAttempts)
     .where(eq(generationAttempts.planId, params.planId))
     .orderBy(asc(generationAttempts.createdAt));
 
-  const matchingAttempt = attempts.find(
+  const matchingAttemptIndex = attempts.findIndex(
     (attempt) =>
       readWorkflowIdempotencyKey(attempt.metadata) ===
       params.workflowIdempotencyKey,
   );
+  const matchingAttempt =
+    matchingAttemptIndex >= 0 ? attempts[matchingAttemptIndex] : undefined;
   if (!matchingAttempt) {
     return null;
+  }
+
+  if (
+    matchingAttempt.generationPurpose !== params.generationPurpose ||
+    matchingAttempt.promptHash !== promptHash
+  ) {
+    throw new Error(
+      `Generation reservation idempotency key ${params.workflowIdempotencyKey} was already used with different generation input.`,
+    );
   }
 
   const admittedTier = readAdmittedTierFromAttemptMetadata(
     matchingAttempt.metadata,
   );
-  return admittedTier ? { admittedTier } : {};
+  return {
+    reserved: true,
+    attemptId: matchingAttempt.id,
+    attemptNumber: matchingAttemptIndex + 1,
+    startedAt: matchingAttempt.createdAt,
+    ...(admittedTier ? { admittedTier } : {}),
+    generationPurpose: matchingAttempt.generationPurpose,
+    sanitized,
+    promptHash: matchingAttempt.promptHash,
+    status: matchingAttempt.status,
+  };
 }
 
 /**
@@ -146,12 +202,11 @@ export async function reserveAttemptSlot(
   const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const nowFn = params.now ?? (() => new Date());
 
-  const sanitized = sanitizeInput(input);
-  const promptHash = createHash('sha256')
-    .update(
-      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
-    )
-    .digest('hex');
+  const { sanitized, promptHash } = buildAttemptPreparation(
+    planId,
+    userId,
+    input,
+  );
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
