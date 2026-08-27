@@ -347,16 +347,21 @@ export function projectClerkBillingSource(
       return null;
     }
 
+    const currentTierPastDueItems = pastDuePaidItems.filter(
+      (item) => item.tier === current.subscriptionTier,
+    );
+
     return {
       subscriptionTier: current.subscriptionTier,
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd:
-        latestPeriodEnd(
-          pastDuePaidItems.filter(
-            (item) => item.tier === current.subscriptionTier,
-          ),
-        ) ?? current.subscriptionPeriodEnd,
-      cancelAtPeriodEnd: current.cancelAtPeriodEnd,
+        latestPeriodEnd(currentTierPastDueItems) ??
+        current.subscriptionPeriodEnd,
+      cancelAtPeriodEnd:
+        current.cancelAtPeriodEnd ||
+        currentTierPastDueItems.some((item) =>
+          isCanceledAtPeriodEnd(item, now),
+        ),
     };
   }
 
@@ -368,7 +373,11 @@ export function projectClerkBillingSource(
     return {
       subscriptionTier: retainedPaidItem.tier,
       subscriptionStatus:
-        source.subscriptionStatus === 'active' ? 'active' : 'canceled',
+        source.subscriptionStatus === 'active'
+          ? retainedPaidItem.isFreeTrial
+            ? 'trialing'
+            : 'active'
+          : 'canceled',
       subscriptionPeriodEnd: retainedPaidItem.periodEnd,
       cancelAtPeriodEnd: true,
     };

@@ -115,6 +115,29 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  it('keeps trialing status after a free-trial item is canceled during its period', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              status: 'canceled',
+              canceledAt: now,
+              isFreeTrial: true,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'trialing',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
+    });
+  });
+
   it('retains paid entitlement for a canceled paid item until period end', () => {
     expect(
       projectClerkBillingSource(
@@ -431,6 +454,29 @@ describe('projectClerkBillingSource', () => {
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd: futurePeriodEnd,
       cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('records cancellation from the matching past-due item', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          items: [
+            item({
+              status: 'past_due',
+              canceledAt: now,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
     });
   });
 
