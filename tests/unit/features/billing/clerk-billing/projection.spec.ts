@@ -76,33 +76,36 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
-  it('keeps an active entitlement flagged when Clerk schedules cancellation at period end', () => {
-    const source = clerkBillingSourceFromBackendSubscription({
-      payerId: 'user_fixture',
-      status: 'active',
-      subscriptionItems: [
-        {
-          id: 'item_free_upcoming',
-          status: 'upcoming',
-          planId: 'cplan_free',
-          plan: { id: 'cplan_free', slug: 'free_user' },
-          amount: { amount: 0 },
-          periodEnd: null,
-          canceledAt: null,
-          isFreeTrial: false,
-        },
-        {
-          id: 'item_pro_canceling',
-          status: 'active',
-          planId: 'cplan_pro',
-          plan: { id: 'cplan_pro', slug: 'pro_plan' },
-          amount: { amount: 10_000 },
-          periodEnd: futurePeriodEnd.getTime(),
-          canceledAt: now.getTime(),
-          isFreeTrial: false,
-        },
-      ],
-    });
+  it('keeps an active entitlement after a canceled item in a subscription.updated refresh', () => {
+    const source = {
+      ...clerkBillingSourceFromBackendSubscription({
+        payerId: 'user_fixture',
+        status: 'active',
+        subscriptionItems: [
+          {
+            id: 'item_free_upcoming',
+            status: 'upcoming',
+            planId: 'cplan_free',
+            plan: { id: 'cplan_free', slug: 'free_user' },
+            amount: { amount: 0 },
+            periodEnd: null,
+            canceledAt: null,
+            isFreeTrial: false,
+          },
+          {
+            id: 'item_pro_canceling',
+            status: 'canceled',
+            planId: 'cplan_pro',
+            plan: { id: 'cplan_pro', slug: 'pro_plan' },
+            amount: { amount: 10_000 },
+            periodEnd: futurePeriodEnd.getTime(),
+            canceledAt: now.getTime(),
+            isFreeTrial: false,
+          },
+        ],
+      }),
+      type: 'subscription.updated',
+    };
 
     expect(projectClerkBillingSource(source, currentPaidState, now)).toEqual({
       subscriptionTier: 'pro',

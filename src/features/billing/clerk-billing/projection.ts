@@ -367,7 +367,8 @@ export function projectClerkBillingSource(
   if (retainedPaidItem?.tier) {
     return {
       subscriptionTier: retainedPaidItem.tier,
-      subscriptionStatus: 'canceled',
+      subscriptionStatus:
+        source.subscriptionStatus === 'active' ? 'active' : 'canceled',
       subscriptionPeriodEnd: retainedPaidItem.periodEnd,
       cancelAtPeriodEnd: true,
     };
