@@ -161,6 +161,80 @@ describe('projectClerkBillingSource', () => {
     ).toBeNull();
   });
 
+  it('preserves the prior tier when an unresolved item is mixed with active Free', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              id: 'item_unknown_active',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+            }),
+            item({
+              id: 'item_free_active',
+              tier: 'free',
+              planId: 'cplan_free',
+              planSlug: 'free_user',
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('preserves the prior tier when an unresolved item is mixed with terminal billing', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: 'ended',
+          items: [
+            item({
+              id: 'item_unknown_active',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+            }),
+            item({
+              id: 'item_pro_ended',
+              status: 'ended',
+              tier: 'pro',
+              periodEnd: pastPeriodEnd,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('projects recognized active Free when no unresolved items are present', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              tier: 'free',
+              planId: 'cplan_free',
+              planSlug: 'free_user',
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
   it('marks failed payment attempts past due without changing paid tier', () => {
     expect(
       projectClerkBillingSource(

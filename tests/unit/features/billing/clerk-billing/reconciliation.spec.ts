@@ -580,6 +580,39 @@ describe('applyVerifiedClerkBillingEvent', () => {
       'Clerk Billing plan could not be mapped; preserving stored tier',
     );
   });
+
+  it('preserves stored tier when an unknown item is mixed with active Free', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const baseItem = makeSubscription().subscriptionItems[0]!;
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        subscriptionItems: [
+          {
+            ...baseItem,
+            id: 'item_unknown_active',
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+          {
+            ...baseItem,
+            id: 'item_free_active',
+            planId: 'cplan_free',
+            plan: { id: 'cplan_free', slug: 'free_user' },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeBillingEvent(),
+        'evt_unknown_free_plan',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    expect(db.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('reconcileClerkBillingEntitlements', () => {

@@ -193,6 +193,46 @@ describe('Clerk billing webhook claims', () => {
     ).resolves.toEqual([]);
   });
 
+  it('preserves the local tier for an unknown item mixed with terminal billing', async () => {
+    await seedBillingUser();
+    const baseItem = subscription().subscriptionItems[0]!;
+    const getSubscription = vi.fn().mockResolvedValue(
+      subscription({
+        status: 'ended',
+        subscriptionItems: [
+          {
+            ...baseItem,
+            id: 'item_unknown_active',
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+          {
+            ...baseItem,
+            id: 'item_pro_ended',
+            status: 'ended',
+            periodEnd: new Date('2026-06-01T00:00:00.000Z').getTime(),
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        billingEvent(),
+        'evt_unknown_terminal_plan',
+        {
+          clerkClient: {
+            billing: { getUserBillingSubscription: getSubscription },
+          },
+          db,
+          logger: logger(),
+        },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    await expect(currentTier('billing_claim_user')).resolves.toBe('starter');
+  });
+
   it('projects a signed user event once without refreshing Clerk Billing', async () => {
     const authUserId = buildTestAuthUserId('clerk-identity-webhook');
     const initialEmail = buildTestEmail(authUserId);
