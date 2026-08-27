@@ -27,6 +27,7 @@ function renderDesktopHeader(
           pathname='/dashboard'
           navItems={authenticatedNavItems}
           tier='starter'
+          canCreatePlan
           isAuthenticated
           showClerkUserButton
           {...props}
@@ -50,6 +51,18 @@ describe('DesktopHeader layout', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
+  });
+
+  it('routes authenticated create action to pricing after lifetime access is used', () => {
+    renderDesktopHeader({ tier: 'free', canCreatePlan: false });
+
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'New Plan' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders unauthenticated nav links without clipping at md width', () => {

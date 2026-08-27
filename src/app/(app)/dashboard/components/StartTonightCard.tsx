@@ -6,9 +6,13 @@ import Link from 'next/link';
  * Empty-state hero when there is no active plan — same panel plate as the
  * resume hero, quiet ruled note instead of a nested box.
  */
-export function StartTonightCard() {
+export function StartTonightCard({
+  canCreatePlan,
+}: {
+  canCreatePlan?: boolean;
+}) {
   return (
-    <article className='animate-dashboard-unfold rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground shadow-sm [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'>
+    <article className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'>
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
         Tonight&apos;s table
       </p>
@@ -22,9 +26,13 @@ export function StartTonightCard() {
       </p>
 
       <div className='mt-6 flex flex-wrap items-center gap-2'>
-        <Button asChild>
-          <Link href={ROUTES.PLANS.NEW}>Begin tonight</Link>
-        </Button>
+        {canCreatePlan !== undefined ? (
+          <Button asChild>
+            <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
+              {canCreatePlan ? 'Begin tonight' : 'Upgrade'}
+            </Link>
+          </Button>
+        ) : null}
         <Button asChild variant='ghost'>
           <Link href={ROUTES.PLANS.ROOT}>Browse plans</Link>
         </Button>

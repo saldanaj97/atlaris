@@ -1,11 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect } from 'react';
 
 interface ErrorProps {
@@ -31,16 +28,6 @@ export default function PlansError({ error, reset }: ErrorProps) {
       <PageHeader
         title='Your Plans'
         subtitle='Search, filter, and track your learning plan library.'
-        actions={
-          <div className='flex items-center gap-2'>
-            <Button asChild>
-              <Link href='/plans/new'>
-                <Plus />
-                New Plan
-              </Link>
-            </Button>
-          </div>
-        }
       />
 
       <RouteErrorState

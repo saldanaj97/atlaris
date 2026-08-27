@@ -18,6 +18,7 @@ interface DesktopHeaderProps {
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
+  canCreatePlan?: boolean;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
   userName?: string;
@@ -35,6 +36,7 @@ export default function DesktopHeader({
   pathname,
   navItems,
   tier,
+  canCreatePlan,
   isAuthenticated,
   showClerkUserButton,
   userName,
@@ -44,6 +46,15 @@ export default function DesktopHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
+  const appCtaHref = !isAuthenticated
+    ? ROUTES.AUTH.SIGN_IN
+    : canCreatePlan === true
+      ? ROUTES.PLANS.NEW
+      : canCreatePlan === false
+        ? ROUTES.PRICING
+        : undefined;
+  const appCtaLabel =
+    isAuthenticated && canCreatePlan === false ? 'Upgrade' : 'New Plan';
 
   return (
     <div className='relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid'>
@@ -85,20 +96,19 @@ export default function DesktopHeader({
           </>
         ) : (
           <>
-            <Button
-              variant='ghost'
-              size='sm'
-              className='gap-1.5 text-muted-foreground hover:text-foreground'
-              asChild
-            >
-              <Link
-                href={isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN}
-                aria-label='New Plan'
+            {appCtaHref ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='gap-1.5 text-muted-foreground hover:text-foreground'
+                asChild
               >
-                <Plus className='size-3.5' aria-hidden='true' />
-                <span className='hidden lg:inline'>New Plan</span>
-              </Link>
-            </Button>
+                <Link href={appCtaHref} aria-label={appCtaLabel}>
+                  <Plus className='size-3.5' aria-hidden='true' />
+                  <span className='hidden lg:inline'>{appCtaLabel}</span>
+                </Link>
+              </Button>
+            ) : null}
 
             <ThemeToggle withTooltip />
 

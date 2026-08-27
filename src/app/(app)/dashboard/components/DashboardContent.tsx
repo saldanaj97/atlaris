@@ -8,6 +8,7 @@ import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightC
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
+import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { getDashboardPlanData } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
@@ -64,7 +65,11 @@ export async function DashboardContent() {
       userId: actor.id,
       dbClient: db,
     });
-    return { name: actor.name, ...dashboardPlans };
+    return {
+      name: actor.name,
+      ...dashboardPlans,
+      canCreatePlan: canCreatePlanOnCurrentTier(actor),
+    };
   });
 
   if (!result) {
@@ -73,7 +78,7 @@ export async function DashboardContent() {
     );
   }
 
-  const { name, summaries, resumePlan: activePlan } = result;
+  const { name, summaries, resumePlan: activePlan, canCreatePlan } = result;
   const activities = generateActivities(summaries).slice(0, 8);
 
   return (
@@ -91,7 +96,7 @@ export async function DashboardContent() {
             </section>
           ) : (
             <section aria-label='Start learning'>
-              <StartTonightCard />
+              <StartTonightCard canCreatePlan={canCreatePlan} />
             </section>
           )}
 

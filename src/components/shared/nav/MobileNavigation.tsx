@@ -27,6 +27,7 @@ interface MobileNavigationProps {
   isMarketing: boolean;
   pathname: string;
   navItems: NavItem[];
+  canCreatePlan?: boolean;
   isAuthenticated?: boolean;
 }
 
@@ -37,6 +38,7 @@ export default function MobileNavigation({
   isMarketing,
   pathname,
   navItems,
+  canCreatePlan,
   isAuthenticated = false,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
@@ -44,6 +46,13 @@ export default function MobileNavigation({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
+  const appCtaHref = isAuthenticated
+    ? canCreatePlan === undefined
+      ? null
+      : canCreatePlan
+        ? ROUTES.PLANS.NEW
+        : ROUTES.PRICING
+    : ROUTES.PLANS.NEW;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -78,28 +87,41 @@ export default function MobileNavigation({
           aria-label='Mobile navigation'
         >
           {/* Primary action — marketing peach CTA or app create-plan */}
-          <Button
-            asChild
-            variant='default'
-            className={
-              isMarketing
-                ? cn(
-                    marketingHeaderPrimaryCtaClassName,
-                    'mb-2 h-auto w-full justify-center py-3',
-                  )
-                : 'mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
-            }
-          >
-            <Link
-              href={isMarketing ? primaryCtaHref : ROUTES.PLANS.NEW}
-              onClick={() => {
-                setOpen(false);
-              }}
+          {isMarketing ? (
+            <Button
+              asChild
+              variant='default'
+              className={cn(
+                marketingHeaderPrimaryCtaClassName,
+                'mb-2 h-auto w-full justify-center py-3',
+              )}
             >
-              {isMarketing ? null : <Plus className='size-4' />}
-              {isMarketing ? primaryCtaLabel : 'Create New Plan'}
-            </Link>
-          </Button>
+              <Link
+                href={primaryCtaHref}
+                onClick={() => {
+                  setOpen(false);
+                }}
+              >
+                {primaryCtaLabel}
+              </Link>
+            </Button>
+          ) : appCtaHref ? (
+            <Button
+              asChild
+              variant='default'
+              className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+            >
+              <Link
+                href={appCtaHref}
+                onClick={() => {
+                  setOpen(false);
+                }}
+              >
+                {canCreatePlan === false ? null : <Plus className='size-4' />}
+                {canCreatePlan === false ? 'Upgrade' : 'Create New Plan'}
+              </Link>
+            </Button>
+          ) : null}
 
           {navItems.map((item) => {
             const isActive = isNavItemActive(pathname, item);

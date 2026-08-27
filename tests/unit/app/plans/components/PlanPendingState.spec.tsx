@@ -177,7 +177,7 @@ describe('PlanPendingState', () => {
     expect(revalidateMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a create-plan link instead of retry when retries are exhausted', () => {
+  it('omits the create-plan link when retries are exhausted', () => {
     mockPlanStatus({
       status: 'failed',
       attempts: 2,
@@ -198,8 +198,8 @@ describe('PlanPendingState', () => {
       screen.queryByRole('button', { name: /retry generation/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('link', { name: /create a new plan/i }),
-    ).toHaveAttribute('href', '/plans/new');
+      screen.queryByRole('link', { name: /create a new plan/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('retries generation when the retry action is clicked', async () => {

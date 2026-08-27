@@ -55,4 +55,34 @@ describe('DashboardContent', () => {
       screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
     ).not.toBeInTheDocument();
   });
+
+  it('routes the empty dashboard CTA to pricing after Free lifetime access is used', async () => {
+    mocks.requestBoundaryComponentMock.mockImplementation(async (resolver) =>
+      resolver({
+        actor: {
+          id: 'user-dashboard',
+          name: 'Juan Saldana',
+          subscriptionTier: 'free',
+          initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z'),
+          freeAccessPlanId: 'plan-1',
+          freeAccessPlanSelectedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+        db: {} as never,
+      }),
+    );
+    mocks.getDashboardPlanDataMock.mockResolvedValue({
+      summaries: [],
+      resumePlan: undefined,
+    });
+
+    render(await DashboardContent());
+
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Begin tonight' }),
+    ).not.toBeInTheDocument();
+  });
 });

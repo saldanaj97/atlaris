@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 interface SiteHeaderChromeProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
+  canCreatePlan?: boolean;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
   userName?: string;
@@ -35,6 +36,7 @@ interface SiteHeaderChromeProps {
 export default function SiteHeaderChrome({
   navItems,
   tier,
+  canCreatePlan,
   isAuthenticated,
   showClerkUserButton,
   userName,
@@ -57,6 +59,7 @@ export default function SiteHeaderChrome({
             pathname={pathname}
             navItems={resolvedNavItems}
             tier={tier}
+            canCreatePlan={canCreatePlan}
             isAuthenticated={isAuthenticated}
             showClerkUserButton={showClerkUserButton}
             userName={userName}
@@ -67,6 +70,7 @@ export default function SiteHeaderChrome({
             pathname={pathname}
             navItems={resolvedNavItems}
             tier={tier}
+            canCreatePlan={canCreatePlan}
             isAuthenticated={isAuthenticated}
             showClerkUserButton={showClerkUserButton}
             userName={userName}

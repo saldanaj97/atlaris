@@ -118,7 +118,12 @@ export async function PlansContent({
   ) {
     return (
       <section aria-label='No plans found'>
-        <EmptyPlansList filterStatus='all' isFirstRun searchQuery='' />
+        <EmptyPlansList
+          canCreatePlan={plansPage.canCreatePlan}
+          filterStatus='all'
+          isFirstRun
+          searchQuery=''
+        />
       </section>
     );
   }
