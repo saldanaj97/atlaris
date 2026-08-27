@@ -291,8 +291,11 @@ export function projectClerkBillingSource(
     return null;
   }
 
+  if (source.items.some((item) => item.tier === null)) {
+    return null;
+  }
+
   const paidItems = source.items.filter((item) => isPaidTier(item.tier));
-  const hasUnmappedItems = source.items.some((item) => item.tier === null);
 
   if (source.paymentAttemptStatus === 'failed') {
     // Failed attempts can include active-looking items; never use them to promote a tier.
@@ -372,10 +375,6 @@ export function projectClerkBillingSource(
     (item) => item.tier === 'free' && item.status === 'active',
   );
   if (activeFreeItem) {
-    if (hasUnmappedItems) {
-      return null;
-    }
-
     return {
       subscriptionTier: 'free',
       subscriptionStatus: 'active',
@@ -395,10 +394,6 @@ export function projectClerkBillingSource(
     hasTerminalSubscription(source) ||
     paidItems.some((item) => TERMINAL_STATUSES.has(item.status))
   ) {
-    if (hasUnmappedItems) {
-      return null;
-    }
-
     return {
       subscriptionTier: 'free',
       subscriptionStatus: 'canceled',

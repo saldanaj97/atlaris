@@ -161,6 +161,37 @@ describe('projectClerkBillingSource', () => {
     ).toBeNull();
   });
 
+  it.each([
+    { label: 'Starter', tier: 'starter' as const, planSlug: 'starter_plan' },
+    { label: 'Pro', tier: 'pro' as const, planSlug: 'pro_plan' },
+  ])(
+    'preserves the prior tier when an unresolved item is mixed with active $label',
+    ({ tier, planSlug }) => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({
+                id: 'item_unknown_active',
+                tier: null,
+                planId: 'cplan_unknown',
+                planSlug: 'enterprise_plan',
+              }),
+              item({
+                id: `item_${tier}_active`,
+                tier,
+                planId: `cplan_${tier}`,
+                planSlug,
+              }),
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toBeNull();
+    },
+  );
+
   it('preserves the prior tier when an unresolved item is mixed with active Free', () => {
     expect(
       projectClerkBillingSource(
