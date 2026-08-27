@@ -12,6 +12,209 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 describe('module lesson workflow metadata (integration)', () => {
+  it('adopts a matching provisional batch claim for the workflow run', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-adopt-batch');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Adopt batch claim' });
+    const mod = await createTestModule({ planId: plan.id });
+    const batchRequestId = `batch_${authUserId}`;
+    const startedAt = new Date().toISOString();
+
+    const provisional = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { batchRequestId },
+    );
+    expect(provisional).toEqual({
+      kind: 'claimed',
+      workflowStartedAt: null,
+    });
+
+    const adopted = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      {
+        batchRequestId,
+        workflow: {
+          runId: `wrun_${authUserId}`,
+          startedAt,
+        },
+      },
+    );
+    expect(adopted).toEqual({
+      kind: 'claimed',
+      workflowStartedAt: startedAt,
+    });
+
+    const [row] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+
+    expect(row).toMatchObject({
+      status: 'generating',
+      metadata: {
+        version: 1,
+        batchRequestId,
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: `wrun_${authUserId}`,
+          startedAt,
+        },
+      },
+    });
+  });
+
+  it('leaves a provisional claim untouched when a rival token adopts it', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-rival-batch');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Rival batch claim' });
+    const mod = await createTestModule({ planId: plan.id });
+    const batchRequestId = `batch_${authUserId}`;
+    const rivalBatchRequestId = `${batchRequestId}_rival`;
+
+    const provisional = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { batchRequestId },
+    );
+    expect(provisional.kind).toBe('claimed');
+
+    const rival = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      {
+        batchRequestId: rivalBatchRequestId,
+        workflow: {
+          runId: `wrun_${authUserId}_rival`,
+          startedAt: new Date().toISOString(),
+        },
+      },
+    );
+    expect(rival).toEqual({ kind: 'in_flight' });
+
+    const [row] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+
+    expect(row).toMatchObject({
+      status: 'generating',
+      metadata: { batchRequestId },
+    });
+    expect(row?.metadata?.workflow).toBeUndefined();
+  });
+
+  it('reverts only an unadopted matching provisional claim', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-revert-batch');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Revert batch claim' });
+    const mod = await createTestModule({ planId: plan.id });
+    const batchRequestId = `batch_${authUserId}`;
+
+    const provisional = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { batchRequestId },
+    );
+    expect(provisional.kind).toBe('claimed');
+
+    await revertModuleLessonGeneratingToNotGenerated(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      batchRequestId,
+    });
+
+    const [reverted] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(reverted).toMatchObject({
+      status: 'not_generated',
+      metadata: { batchRequestId },
+    });
+
+    const secondBatchRequestId = `${batchRequestId}_adopted`;
+    const secondClaim = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      { batchRequestId: secondBatchRequestId },
+    );
+    expect(secondClaim.kind).toBe('claimed');
+
+    const startedAt = new Date().toISOString();
+    const adopted = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      {
+        batchRequestId: secondBatchRequestId,
+        workflow: {
+          runId: `wrun_${authUserId}_adopted`,
+          startedAt,
+        },
+      },
+    );
+    expect(adopted.kind).toBe('claimed');
+
+    await revertModuleLessonGeneratingToNotGenerated(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      batchRequestId: secondBatchRequestId,
+    });
+
+    const [preserved] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        metadata: modules.lessonGenerationMetadata,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(preserved).toMatchObject({
+      status: 'generating',
+      metadata: {
+        batchRequestId: secondBatchRequestId,
+        workflow: { runId: `wrun_${authUserId}_adopted` },
+      },
+    });
+  });
+
   it('persists workflow run metadata on a generating module row', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-workflow-meta');
     const userId = await ensureUser({

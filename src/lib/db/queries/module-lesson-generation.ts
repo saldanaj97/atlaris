@@ -170,11 +170,16 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     readonly planId: string;
     readonly moduleId: string;
     readonly workflowRunId?: string;
+    readonly batchRequestId?: string;
   },
 ): Promise<void> {
-  const matchingWorkflowRun = args.workflowRunId
-    ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
-    : undefined;
+  const matchingClaim =
+    args.batchRequestId !== undefined
+      ? sql`${modules.lessonGenerationMetadata}->>'batchRequestId' = ${args.batchRequestId}
+        AND ${modules.lessonGenerationMetadata}->'workflow' IS NULL`
+      : args.workflowRunId
+        ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
+        : undefined;
 
   await dbClient
     .update(modules)
@@ -192,7 +197,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
         eq(modules.planId, args.planId),
         eq(modules.lessonGenerationStatus, 'generating'),
         moduleOwnedByUser(args.userId),
-        matchingWorkflowRun,
+        matchingClaim,
       ),
     );
 }
@@ -267,6 +272,7 @@ async function readScopedModuleState(
 function classifyModuleLessonGenerationClaimState(
   state: Awaited<ReturnType<typeof readScopedModuleState>>,
   workflow: ModuleLessonWorkflowClaimMetadata | undefined,
+  batchRequestId: string | undefined,
 ): LessonGenerationClaimResult | null {
   if (state == null) {
     return { kind: 'not_found' };
@@ -277,7 +283,12 @@ function classifyModuleLessonGenerationClaimState(
   if (state.status !== 'generating') {
     return null;
   }
-  if (workflow && state.metadata?.workflow?.runId === workflow.runId) {
+  if (
+    workflow &&
+    state.metadata?.workflow?.runId === workflow.runId &&
+    (batchRequestId === undefined ||
+      state.metadata.batchRequestId === batchRequestId)
+  ) {
     return {
       kind: 'claimed',
       workflowStartedAt: state.metadata.workflow.startedAt ?? null,
@@ -298,20 +309,29 @@ export async function claimModuleLessonGenerationOrDescribe(
   userId: string,
   options?: {
     readonly now?: () => Date;
+    readonly batchRequestId?: string;
     readonly workflow?: ModuleLessonWorkflowClaimMetadata;
   },
 ): Promise<LessonGenerationClaimResult> {
   const now = options?.now ?? (() => new Date());
-  const workflowMetadata = options?.workflow
-    ? ModuleLessonGenerationMetadataSchema.parse({
-        version: 1,
-        workflow: {
-          provider: 'workflow-sdk',
-          runId: options.workflow.runId,
-          startedAt: options.workflow.startedAt,
-        },
-      })
-    : undefined;
+  const claimMetadata =
+    options?.batchRequestId !== undefined || options?.workflow
+      ? ModuleLessonGenerationMetadataSchema.parse({
+          version: 1,
+          ...(options.batchRequestId !== undefined
+            ? { batchRequestId: options.batchRequestId }
+            : {}),
+          ...(options.workflow
+            ? {
+                workflow: {
+                  provider: 'workflow-sdk',
+                  runId: options.workflow.runId,
+                  startedAt: options.workflow.startedAt,
+                },
+              }
+            : {}),
+        })
+      : undefined;
   const claimStartedAt = options?.workflow
     ? new Date(options.workflow.startedAt)
     : now();
@@ -346,9 +366,7 @@ export async function claimModuleLessonGenerationOrDescribe(
           lessonGenerationCompletedAt: null,
           lessonGenerationFailedAt: null,
           lessonGenerationError: null,
-          ...(workflowMetadata
-            ? { lessonGenerationMetadata: workflowMetadata }
-            : {}),
+          ...(claimMetadata ? { lessonGenerationMetadata: claimMetadata } : {}),
         })
         .where(
           and(
@@ -363,8 +381,40 @@ export async function claimModuleLessonGenerationOrDescribe(
       return touched.length === 1;
     };
 
+    const adoptClaim = async (): Promise<boolean> => {
+      if (!options?.workflow || options.batchRequestId === undefined) {
+        return false;
+      }
+
+      const adopted = await tx
+        .update(modules)
+        .set({
+          lessonGenerationMetadata: claimMetadata,
+        })
+        .where(
+          and(
+            eq(modules.id, moduleId),
+            eq(modules.planId, planId),
+            eq(modules.lessonGenerationStatus, 'generating'),
+            moduleOwnedByUser(userId),
+            sql`${modules.lessonGenerationMetadata}->>'batchRequestId' = ${options.batchRequestId}`,
+            sql`${modules.lessonGenerationMetadata}->'workflow' IS NULL`,
+          ),
+        )
+        .returning({ id: modules.id });
+
+      return adopted.length === 1;
+    };
+
     for (let attempt = 0; attempt < 2; attempt++) {
       if (await attemptClaim()) {
+        return {
+          kind: 'claimed',
+          workflowStartedAt: options?.workflow?.startedAt ?? null,
+        };
+      }
+
+      if (await adoptClaim()) {
         return {
           kind: 'claimed',
           workflowStartedAt: options?.workflow?.startedAt ?? null,
@@ -375,6 +425,7 @@ export async function claimModuleLessonGenerationOrDescribe(
       const result = classifyModuleLessonGenerationClaimState(
         state,
         options?.workflow,
+        options?.batchRequestId,
       );
       if (result) {
         return result;
@@ -385,6 +436,7 @@ export async function claimModuleLessonGenerationOrDescribe(
     const result = classifyModuleLessonGenerationClaimState(
       state,
       options?.workflow,
+      options?.batchRequestId,
     );
     if (result) {
       return result;

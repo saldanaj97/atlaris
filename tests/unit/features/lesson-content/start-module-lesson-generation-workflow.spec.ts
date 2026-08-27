@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = {
   isGenerationEnabled: vi.fn(() => true),
   loadContext: vi.fn(),
+  claim: vi.fn(),
+  revert: vi.fn(),
   workflowStart: vi.fn(),
 };
 
@@ -21,8 +23,11 @@ const params = {
 };
 
 const deps = {
+  dbClient: params.dbClient,
   isGenerationEnabled: mocks.isGenerationEnabled,
   loadContext: mocks.loadContext,
+  claim: mocks.claim,
+  revert: mocks.revert,
   workflowStart: mocks.workflowStart,
 };
 
@@ -31,6 +36,8 @@ describe('startModuleLessonGeneration', () => {
     mocks.isGenerationEnabled.mockReset();
     mocks.isGenerationEnabled.mockReturnValue(true);
     mocks.loadContext.mockReset();
+    mocks.claim.mockReset();
+    mocks.revert.mockReset();
     mocks.workflowStart.mockReset();
   });
 
@@ -48,11 +55,22 @@ describe('startModuleLessonGeneration', () => {
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,
     });
+    mocks.claim.mockResolvedValue({
+      kind: 'claimed',
+      workflowStartedAt: null,
+    });
     mocks.workflowStart.mockResolvedValue({ runId: 'wrun_lesson' });
 
     const result = await startModuleLessonGeneration(params, deps);
 
     expect(result).toEqual({ kind: 'workflow_started', runId: 'wrun_lesson' });
+    expect(mocks.claim).toHaveBeenCalledWith(
+      params.dbClient,
+      params.planId,
+      params.moduleId,
+      params.userId,
+      { batchRequestId: params.correlationId },
+    );
     expect(mocks.workflowStart).toHaveBeenCalledWith(
       moduleLessonGenerationWorkflow,
       [
@@ -72,6 +90,10 @@ describe('startModuleLessonGeneration', () => {
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,
     });
+    mocks.claim.mockResolvedValue({
+      kind: 'claimed',
+      workflowStartedAt: null,
+    });
     mocks.workflowStart.mockRejectedValue(new Error('start-fail'));
 
     const result = await startModuleLessonGeneration(params, deps);
@@ -79,6 +101,12 @@ describe('startModuleLessonGeneration', () => {
     expect(result).toEqual({
       kind: 'workflow_start_failed',
       message: 'Module lesson generation could not be started.',
+    });
+    expect(mocks.revert).toHaveBeenCalledWith(params.dbClient, {
+      userId: params.userId,
+      planId: params.planId,
+      moduleId: params.moduleId,
+      batchRequestId: params.correlationId,
     });
     expect(mocks.workflowStart).toHaveBeenCalledWith(
       moduleLessonGenerationWorkflow,
@@ -92,5 +120,43 @@ describe('startModuleLessonGeneration', () => {
         }),
       ],
     );
+  });
+
+  it('claims before start and does not start a rival overlapping workflow', async () => {
+    mocks.loadContext.mockResolvedValue({
+      module: { lessonGenerationStatus: 'not_generated' },
+      isUnlocked: true,
+    });
+    mocks.claim
+      .mockResolvedValueOnce({ kind: 'claimed', workflowStartedAt: null })
+      .mockResolvedValueOnce({ kind: 'in_flight' });
+
+    let releaseWorkflowStart!: () => void;
+    const workflowStartBlocked = new Promise<void>((resolve) => {
+      releaseWorkflowStart = resolve;
+    });
+    mocks.workflowStart.mockImplementation(async () => {
+      await workflowStartBlocked;
+      return { runId: 'wrun_lesson' };
+    });
+
+    const resultsPromise = Promise.all([
+      startModuleLessonGeneration(params, deps),
+      startModuleLessonGeneration(
+        { ...params, correlationId: 'corr-rival' },
+        deps,
+      ),
+    ]);
+
+    await vi.waitFor(() => {
+      expect(mocks.workflowStart).toHaveBeenCalledOnce();
+    });
+    releaseWorkflowStart();
+
+    await expect(resultsPromise).resolves.toEqual([
+      { kind: 'workflow_started', runId: 'wrun_lesson' },
+      { kind: 'in_flight' },
+    ]);
+    expect(mocks.workflowStart).toHaveBeenCalledOnce();
   });
 });
