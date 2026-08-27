@@ -270,9 +270,12 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
-    await fillEligibleReadyPlans(userId, TIER_LIMITS.free.maxActivePlans - 1);
+    await fillEligibleReadyPlans(
+      userId,
+      TIER_LIMITS.starter.maxActivePlans - 1,
+    );
     const failedA = await createFailedIneligiblePlan(userId, 'Race A');
     const failedB = await createFailedIneligiblePlan(userId, 'Race B');
     const generateSpy = vi.spyOn(MockGenerationProvider.prototype, 'generate');
@@ -282,7 +285,7 @@ describe('last-good plan vs active-plan cap', () => {
       lifecycle.processGenerationAttempt({
         planId: failedA.id,
         userId,
-        tier: 'free',
+        tier: 'starter',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
         generationPurpose: 'initial',
@@ -290,7 +293,7 @@ describe('last-good plan vs active-plan cap', () => {
       lifecycle.processGenerationAttempt({
         planId: failedB.id,
         userId,
-        tier: 'free',
+        tier: 'starter',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
         generationPurpose: 'initial',
@@ -305,7 +308,7 @@ describe('last-good plan vs active-plan cap', () => {
     ).toHaveLength(1);
     expect(generateSpy).toHaveBeenCalledTimes(1);
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
   });
 
@@ -361,7 +364,7 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const [eligible] = await fillEligibleReadyPlans(userId, 2);
     await createTestModule({ planId: eligible.id, title: 'Keep last-good' });
