@@ -12,6 +12,7 @@ describe('plan-input-state', () => {
       weeklyHours: null,
       learningStyle: null,
       deadlineWeeks: null,
+      deadlineDate: null,
     });
   });
 
@@ -80,6 +81,7 @@ describe('plan-input-state', () => {
       weeklyHours: '11-15',
       learningStyle: null,
       deadlineWeeks: null,
+      deadlineDate: null,
     });
   });
 
