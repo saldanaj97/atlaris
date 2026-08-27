@@ -59,7 +59,7 @@ export async function requirePlanContentAccess(params: {
   await assertPlanContentAccess({
     userId: params.ownerUserId,
     planId: params.planId,
-    dbClient: params.dbClient ?? getDb(),
+    dbClient: params.dbClient,
   });
   return plan;
 }
