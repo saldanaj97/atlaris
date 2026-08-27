@@ -23,7 +23,7 @@ const resolveDateOverride = (
 ) => toPlanCalendarDate(override === undefined ? fallback : override);
 
 /**
- * Effective regen input: topic/notes always come from the persisted plan.
+ * Effective regen input: topic comes from the persisted plan; notes are intentionally undefined because plans do not persist them.
  * Allowed overrides: skillLevel, weeklyHours, learningStyle, startDate, deadlineDate.
  */
 export function buildPersistedRegenerationInput(
