@@ -124,6 +124,34 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(await countJobsForPlan(plan.id)).toBe(0);
   });
 
+  it('returns 403 for merged dates where start is after deadline', async () => {
+    const authUserId = buildTestAuthUserId('regen-boundary-reversed-dates');
+    setTestUser(authUserId);
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'pro',
+    });
+    const plan = await createPlan(userId, {
+      startDate: '2026-01-01',
+      deadlineDate: '2026-02-01',
+    });
+
+    const { request, context } = await createRequest(plan.id, {
+      overrides: { startDate: '2026-02-02' },
+    });
+
+    const response = await POST(request, context);
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.code).toBe('PLAN_DURATION_LIMIT_EXCEEDED');
+    expect(body.error).toBe(
+      'Start date must be on or before the deadline date.',
+    );
+    expect(await countJobsForPlan(plan.id)).toBe(0);
+  });
+
   it('returns 429 and does not enqueue when monthly regeneration quota is exhausted', async () => {
     const authUserId = buildTestAuthUserId('regen-boundary-quota');
     setTestUser(authUserId);
@@ -201,4 +229,30 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(job?.jobType).toBe('plan_regeneration');
     expect(['pending', 'processing']).toContain(job?.status);
   });
+
+  it.each(['2026-2-01', '2026-02-30', '2026-02-01T00:00:00.000Z'])(
+    'returns 400 for invalid date override %s',
+    async (date) => {
+      const authUserId = buildTestAuthUserId(`regen-boundary-invalid-${date}`);
+      setTestUser(authUserId);
+      const userId = await ensureUser({
+        authUserId,
+        email: buildTestEmail(authUserId),
+        subscriptionTier: 'pro',
+      });
+      const plan = await createPlan(userId);
+
+      const { request, context } = await createRequest(plan.id, {
+        overrides: { deadlineDate: date },
+      });
+
+      const response = await POST(request, context);
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.code).toBe('VALIDATION_ERROR');
+      expect(body.error).toBe('Invalid overrides.');
+      expect(await countJobsForPlan(plan.id)).toBe(0);
+    },
+  );
 });

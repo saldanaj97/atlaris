@@ -59,6 +59,20 @@ describe('resolveRegenerationPolicyDenial', () => {
       }),
     ).toBeNull();
   });
+
+  it('denies merged dates when the start is after the deadline', () => {
+    expect(
+      resolveRegenerationPolicyDenial({
+        tier: 'pro',
+        weeklyHours: 5,
+        startDate: '2026-02-02',
+        deadlineDate: '2026-02-01',
+      }),
+    ).toEqual({
+      kind: 'duration-exceeded',
+      reason: 'Start date must be on or before the deadline date.',
+    });
+  });
 });
 
 describe('buildPersistedRegenerationInput', () => {
@@ -85,6 +99,14 @@ describe('buildPersistedRegenerationInput', () => {
       startDate: '2026-01-01',
       deadlineDate: '2026-02-12',
     });
+  });
+
+  it('rejects an invalid date override instead of dropping it', () => {
+    expect(() =>
+      buildPersistedRegenerationInput(plan, {
+        deadlineDate: '2026-02-30',
+      }),
+    ).toThrow('Deadline date must be a valid YYYY-MM-DD calendar date.');
   });
 });
 

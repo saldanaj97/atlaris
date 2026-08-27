@@ -17,10 +17,28 @@ export type RegenerationPolicyDenial =
       readonly upgradeUrl?: string;
     };
 
-const resolveDateOverride = (
+function resolveDateOverride(
+  field: 'Start' | 'Deadline',
   override: string | null | undefined,
   fallback: string | null,
-) => toPlanCalendarDate(override === undefined ? fallback : override);
+): string | undefined {
+  const value = override === undefined ? fallback : override;
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (toPlanCalendarDate(value) !== value) {
+    throw new Error(`${field} date must be a valid YYYY-MM-DD calendar date.`);
+  }
+
+  return value;
+}
+
+function hasValidPlanCalendarDate(value: string | null | undefined): boolean {
+  return (
+    value === null || value === undefined || toPlanCalendarDate(value) === value
+  );
+}
 
 /**
  * Effective regen input: topic comes from the persisted plan; notes are intentionally undefined because plans do not persist them.
@@ -51,8 +69,13 @@ export function buildPersistedRegenerationInput(
     skillLevel: overrides?.skillLevel ?? plan.skillLevel,
     weeklyHours: overrides?.weeklyHours ?? plan.weeklyHours,
     learningStyle: overrides?.learningStyle ?? plan.learningStyle,
-    startDate: resolveDateOverride(overrides?.startDate, plan.startDate),
+    startDate: resolveDateOverride(
+      'Start',
+      overrides?.startDate,
+      plan.startDate,
+    ),
     deadlineDate: resolveDateOverride(
+      'Deadline',
       overrides?.deadlineDate,
       plan.deadlineDate,
     ),
@@ -70,6 +93,29 @@ export function resolveRegenerationPolicyDenial(params: {
 }): RegenerationPolicyDenial | null {
   if (params.tier === 'free') {
     return { kind: 'not-included' };
+  }
+
+  if (
+    !hasValidPlanCalendarDate(params.startDate) ||
+    !hasValidPlanCalendarDate(params.deadlineDate)
+  ) {
+    return {
+      kind: 'duration-exceeded',
+      reason: 'Plan dates must be valid YYYY-MM-DD calendar dates.',
+    };
+  }
+
+  if (
+    params.startDate !== null &&
+    params.startDate !== undefined &&
+    params.deadlineDate !== null &&
+    params.deadlineDate !== undefined &&
+    params.startDate > params.deadlineDate
+  ) {
+    return {
+      kind: 'duration-exceeded',
+      reason: 'Start date must be on or before the deadline date.',
+    };
   }
 
   const totalWeeks = calculateTotalWeeks({
