@@ -39,7 +39,7 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 | Category           | Limit        | Window   | Use Case                                                      |
 | ------------------ | ------------ | -------- | ------------------------------------------------------------- |
 | `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                              |
-| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate meter)               |
+| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate request limiter)     |
 | `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints                     |
 | `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences, Server Actions |
 | `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences                     |
@@ -253,7 +253,7 @@ Separate from `aiGeneration` so plan-create flows are not starved by module less
 
 - `POST /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate`
 
-Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-limit.ts` (5 requests / rolling hour per user, in-memory). Monthly billing meter `lessonGeneration` is separate — see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline).
+Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-limit.ts` (5 requests / rolling hour per user, in-memory). Lesson generation has no product quota; see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline).
 
 ### Mutation (`mutation`)
 

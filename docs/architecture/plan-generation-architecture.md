@@ -203,8 +203,8 @@ Production uses a **durable workflow**: the POST handler starts the run and retu
 ### Preconditions and guards
 
 - **Ownership:** generate and status routes call `requireOwnedPlanById` before work.
-- **Unlock rule:** `loadModuleLessonGenerationContext` sets `isUnlocked: true` when the module exists. Sequential earlier-module completion is not a generate gate. Timeline may still paint locked styling, but modules are clickable. Preflight still returns `locked` if `isUnlocked` is false.
-- **Preflight on POST (no DB claim yet):** `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` / `already_ready` / `in_flight` / `eligible` using the request RLS client. Eligible requests start the workflow without claiming.
+- **Unlock rule:** `loadModuleLessonGenerationContext` sets `isUnlocked: true` when the module exists. Sequential earlier-module completion is not a generate gate, so modules are clickable.
+- **Preflight on POST (no DB claim yet):** `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` (only when a loaded context reports `isUnlocked: false`) / `already_ready` / `in_flight` / `eligible` using the request RLS client. The `locked` branch is not based on earlier-module completion. Eligible requests start the workflow without claiming.
 - **Claimable states (inside workflow):** `claimModuleLessonGenerationOrDescribe` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `modules.lessonGenerationMetadata.workflow.runId`. Concurrent `generating` → `in_flight`; `ready` → `already_ready`.
 - **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
 - **Rate limit:** generate uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user). Status uses the `read` limiter.
@@ -231,7 +231,7 @@ Generate JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/sch
 | `workflow_start_failed` / provider failure mapping | **502** | `provider_failure`                    |
 | `disabled`                                         | **503** | flag off / evaluation failed          |
 | `not_found`                                        | **404** |                                       |
-| `locked`                                           | **409** | earlier modules incomplete            |
+| `locked`                                           | **409** | `isUnlocked` false; not order-gated   |
 
 Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId? }` with `Cache-Control: no-store`.
 
