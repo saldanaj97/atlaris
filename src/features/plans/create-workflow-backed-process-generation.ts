@@ -88,9 +88,9 @@ export function createWorkflowBackedProcessGeneration(
       return lifecycleService.processGenerationAttempt(input);
     }
 
-    input.onAttemptReserved?.(reservation);
-
     try {
+      await input.onAttemptReserved?.(reservation);
+
       const run = await workflowStart(workflowFn, [
         {
           planId: input.planId,

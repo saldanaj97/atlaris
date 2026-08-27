@@ -6,6 +6,7 @@ import { createWorkflowBackedProcessGeneration } from '@/features/plans/create-w
 import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { createId } from '@tests/fixtures/ids';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = {
@@ -71,7 +72,12 @@ describe('createWorkflowBackedProcessGeneration', () => {
 
   it('starts workflow after reservation and returns run.returnValue', async () => {
     const reservation = makeAttemptReservation({ attemptId: 'att-99' });
-    const onAttemptReserved = vi.fn();
+    const callbackStarted = createDeferredPromise<void>();
+    const callbackGate = createDeferredPromise<void>();
+    const onAttemptReserved = vi.fn(async () => {
+      callbackStarted.resolve(undefined);
+      await callbackGate.promise;
+    });
     const workflowResult = {
       status: 'generation_success',
       data: { modules: [], durationMs: 1, metadata: {} },
@@ -93,7 +99,12 @@ describe('createWorkflowBackedProcessGeneration', () => {
         workflowFn: planGenerationWorkflow,
       },
     );
-    const result = await run({ ...input, onAttemptReserved });
+    const resultPromise = run({ ...input, onAttemptReserved });
+
+    await callbackStarted.promise;
+    expect(mocks.workflowStart).not.toHaveBeenCalled();
+    callbackGate.resolve(undefined);
+    const result = await resultPromise;
 
     expect(onAttemptReserved).toHaveBeenCalledWith(reservation);
     expect(mocks.reserveAttemptSlot).toHaveBeenCalledWith(

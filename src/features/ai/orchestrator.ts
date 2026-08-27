@@ -113,7 +113,7 @@ export async function runGenerationExecution(
 
   try {
     const provider = options.provider ?? getGenerationProvider();
-    options.onAttemptReserved?.(reservation);
+    await options.onAttemptReserved?.(reservation);
 
     const { controller, ...lifecycle } = setupAbortAndTimeout(
       timeoutConfig,

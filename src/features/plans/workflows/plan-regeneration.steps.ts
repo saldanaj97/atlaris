@@ -216,14 +216,28 @@ export async function processPlanRegenerationStep(
           generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
           input: generationInput,
           ...(modelOverride !== undefined ? { modelOverride } : {}),
-          onAttemptReserved: () => {
+          onAttemptReserved: async () => {
             providerStarted = true;
+            const providerStartedAt = new Date().toISOString();
             const marked = planRegenerationJobPayloadSchema.safeParse({
               ...validation.payload,
-              quota: { providerStartedAt: new Date().toISOString() },
+              quota: { providerStartedAt },
             });
-            if (marked.success) {
-              void updateJobPayload(job.id, marked.data);
+
+            if (!marked.success) {
+              throw new Error(
+                'Failed to persist regeneration provider-start marker: invalid job payload.',
+              );
+            }
+
+            const persisted = await updateJobPayload(job.id, marked.data);
+            if (
+              persisted?.status !== 'processing' ||
+              persisted.data.quota?.providerStartedAt !== providerStartedAt
+            ) {
+              throw new Error(
+                'Failed to persist regeneration provider-start marker: job state did not match.',
+              );
             }
           },
         });

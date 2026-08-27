@@ -56,7 +56,7 @@ export type RunGenerationOptions = {
   reservation?: AttemptReservation;
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
-  onAttemptReserved?: (reservation: AttemptReservation) => void;
+  onAttemptReserved?: (reservation: AttemptReservation) => void | Promise<void>;
 };
 
 type GenerationSuccessResult = {

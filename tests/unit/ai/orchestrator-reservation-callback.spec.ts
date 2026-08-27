@@ -13,6 +13,7 @@ import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
+import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOperationsOverrides = {
@@ -90,8 +91,13 @@ describe('runGenerationAttempt reservation seam', () => {
     const planId = createId('plan');
     const userId = createId('user');
     const order: string[] = [];
-    const onAttemptReserved = vi.fn(() => {
+    const callbackStarted = createDeferredPromise<void>();
+    const callbackGate = createDeferredPromise<void>();
+    const onAttemptReserved = vi.fn(async () => {
       order.push('reserved_callback');
+      callbackStarted.resolve(undefined);
+      await callbackGate.promise;
+      order.push('callback_resolved');
     });
     const provider = createProvider(() => {
       order.push('provider');
@@ -132,7 +138,7 @@ describe('runGenerationAttempt reservation seam', () => {
       }) as typeof finalizeAttemptFailure,
     };
 
-    await runGenerationAttempt(
+    const generation = runGenerationAttempt(
       {
         planId,
         userId,
@@ -153,8 +159,18 @@ describe('runGenerationAttempt reservation seam', () => {
       },
     );
 
-    expect(order).toEqual(['reserve', 'reserved_callback', 'provider']);
+    await callbackStarted.promise;
+    expect(order).toEqual(['reserve', 'reserved_callback']);
     expect(onAttemptReserved).toHaveBeenCalledWith(reserved);
+    callbackGate.resolve(undefined);
+    await generation;
+
+    expect(order).toEqual([
+      'reserve',
+      'reserved_callback',
+      'callback_resolved',
+      'provider',
+    ]);
     expect(reserveSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         planId,

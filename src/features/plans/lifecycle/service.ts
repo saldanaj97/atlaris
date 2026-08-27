@@ -94,7 +94,7 @@ export type GenerationRunParams = {
   signal?: AbortSignal;
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
-  onAttemptReserved?: (reservation: AttemptReservation) => void;
+  onAttemptReserved?: (reservation: AttemptReservation) => void | Promise<void>;
   /**
    * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
    * worker recovery) does not double-reserve. Implementations must validate the

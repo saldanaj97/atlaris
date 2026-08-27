@@ -169,7 +169,9 @@ export type ProcessGenerationInput = {
   readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   readonly requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   /** Invoked once after DB reservation succeeds, before provider generation. */
-  readonly onAttemptReserved?: (reservation: AttemptReservation) => void;
+  readonly onAttemptReserved?: (
+    reservation: AttemptReservation,
+  ) => void | Promise<void>;
   readonly workflowMetadata?: AttemptWorkflowMetadata;
 };
 

@@ -3,11 +3,13 @@ import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
 
+import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
 import {
   claimPlanRegenerationJobStep,
   processPlanRegenerationStep,
 } from '@/features/plans/workflows/plan-regeneration.steps';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 const mocks = vi.hoisted(() => ({
   claimJob: vi.fn(),
@@ -241,6 +243,13 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.getUserPreferences.mockResolvedValue(savedSlots);
     mocks.failJob.mockReset();
     mocks.failJob.mockResolvedValue(null);
+    mocks.updateJobPayload.mockReset();
+    mocks.updateJobPayload.mockImplementation(
+      async (_jobId: string, payload: Job['data']) => ({
+        ...job('processing', 'wrun_same'),
+        data: payload,
+      }),
+    );
     mocks.runRegenerationQuotaReserved.mockReset();
     mocks.runRegenerationQuotaReserved.mockImplementation(
       async (args: {
@@ -342,8 +351,8 @@ describe('processPlanRegenerationStep model resolution', () => {
   it('consumes quota once onAttemptReserved fires', async () => {
     let disposition: 'consumed' | 'revert' | undefined;
     processGenerationAttempt.mockImplementation(
-      async (args: { onAttemptReserved?: () => void }) => {
-        args.onAttemptReserved?.();
+      async (args: { onAttemptReserved?: () => void | Promise<void> }) => {
+        await args.onAttemptReserved?.();
         return {
           status: 'generation_success',
           data: { modules: [], metadata: {}, durationMs: 1 },
@@ -381,5 +390,120 @@ describe('processPlanRegenerationStep model resolution', () => {
         }),
       }),
     );
+  });
+
+  it('fails closed when the provider-start payload cannot be parsed', async () => {
+    let continued = false;
+    processGenerationAttempt.mockImplementation(
+      async (args: { onAttemptReserved?: () => void | Promise<void> }) => {
+        await args.onAttemptReserved?.();
+        continued = true;
+        return {
+          status: 'generation_success',
+          data: { modules: [], metadata: {}, durationMs: 1 },
+        };
+      },
+    );
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    const parsePayload = planRegenerationJobPayloadSchema.safeParse.bind(
+      planRegenerationJobPayloadSchema,
+    );
+    const safeParse = vi.spyOn(planRegenerationJobPayloadSchema, 'safeParse');
+    safeParse.mockImplementation((payload) => {
+      if (
+        typeof payload === 'object' &&
+        payload !== null &&
+        'quota' in payload
+      ) {
+        return {
+          success: false,
+          error: new z.ZodError([]),
+        } as ReturnType<typeof planRegenerationJobPayloadSchema.safeParse>;
+      }
+
+      return parsePayload(payload);
+    });
+
+    try {
+      const result = await processPlanRegenerationStep(input);
+
+      expect(continued).toBe(false);
+      expect(result).toMatchObject({ status: 'retryable_failure' });
+      expect(mocks.updateJobPayload).not.toHaveBeenCalled();
+    } finally {
+      safeParse.mockRestore();
+    }
+  });
+
+  it.each([
+    {
+      name: 'rejects the update',
+      configure: () => {
+        mocks.updateJobPayload.mockRejectedValue(
+          new Error('job update failed'),
+        );
+      },
+    },
+    {
+      name: 'returns no job',
+      configure: () => {
+        mocks.updateJobPayload.mockResolvedValue(null);
+      },
+    },
+    {
+      name: 'returns a terminal job',
+      configure: () => {
+        mocks.updateJobPayload.mockImplementation(
+          async (_jobId: string, payload: Job['data']) => ({
+            ...job('completed', 'wrun_same'),
+            data: payload,
+          }),
+        );
+      },
+    },
+    {
+      name: 'returns processing without the marker',
+      configure: () => {
+        mocks.updateJobPayload.mockImplementation(async () =>
+          job('processing'),
+        );
+      },
+    },
+    {
+      name: 'returns processing with a mismatched marker',
+      configure: () => {
+        mocks.updateJobPayload.mockImplementation(
+          async (_jobId: string, payload: Job['data']) => ({
+            ...job('processing', 'wrun_same'),
+            data: {
+              ...payload,
+              quota: { providerStartedAt: '2026-06-22T18:00:00.000Z' },
+            },
+          }),
+        );
+      },
+    },
+  ])('$name before continuing generation', async ({ configure }) => {
+    let continued = false;
+    processGenerationAttempt.mockImplementation(
+      async (args: { onAttemptReserved?: () => void | Promise<void> }) => {
+        await args.onAttemptReserved?.();
+        continued = true;
+        return {
+          status: 'generation_success',
+          data: { modules: [], metadata: {}, durationMs: 1 },
+        };
+      },
+    );
+    configure();
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    const result = await processPlanRegenerationStep(input);
+
+    expect(continued).toBe(false);
+    expect(result).toMatchObject({ status: 'retryable_failure' });
   });
 });
