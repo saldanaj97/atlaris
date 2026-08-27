@@ -28,6 +28,7 @@ import {
   updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { commitPlanGenerationFailure } from '@/features/plans/lifecycle/generation-finalization/store';
 import { resolveRegenerationPolicyDenial } from '@/features/plans/regeneration-orchestration/admission';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import {
@@ -38,7 +39,10 @@ import {
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
-import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import {
+  findAttemptWithWorkflowIdempotencyKey,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { FatalError, getWorkflowMetadata } from 'workflow';
@@ -150,6 +154,13 @@ type LoadedRegeneration = Pick<
   readonly payload: PlanRegenerationJobPayload;
 };
 
+class RegenerationAdmissionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RegenerationAdmissionDeniedError';
+  }
+}
+
 function regenerationReservationIdempotencyKey(
   jobId: string,
   queueAttempt: number,
@@ -195,7 +206,7 @@ async function prepareRegeneration(
   admittedTier?: SubscriptionTier,
 ): Promise<PreparedRegeneration> {
   const context = loaded ?? (await loadRegenerationContext(input));
-  const { job, plan, generationInput, payload } = context;
+  const { plan, generationInput, payload } = context;
   const tier =
     admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
   const policyDenial = resolveRegenerationPolicyDenial({
@@ -209,8 +220,7 @@ async function prepareRegeneration(
       policyDenial.kind === 'not-included'
         ? 'Plan regeneration is not included on the Free plan.'
         : policyDenial.reason;
-    await failJob(job.id, message, { retryable: false });
-    throw new FatalError(message);
+    throw new RegenerationAdmissionDeniedError(message);
   }
 
   const explicitModel = payload.overrides?.model;
@@ -222,8 +232,7 @@ async function prepareRegeneration(
     );
     if (!modelValidation.valid) {
       const message = 'Model is not allowed for regeneration on this tier.';
-      await failJob(job.id, message, { retryable: false });
-      throw new FatalError(message);
+      throw new RegenerationAdmissionDeniedError(message);
     }
   }
 
@@ -242,6 +251,49 @@ async function prepareRegeneration(
   };
 }
 
+async function failPreReservationAdmission(
+  jobId: string,
+  error: RegenerationAdmissionDeniedError,
+): Promise<never> {
+  await failJob(jobId, error.message, { retryable: false });
+  throw new FatalError(error.message);
+}
+
+async function compensatePostReservationAdmission(
+  input: PlanRegenerationWorkflowInput,
+  reservation: ReturnType<typeof fromSerializableReservation>,
+  workflowMetadata: {
+    readonly provider: 'workflow-sdk';
+    readonly runId: string;
+    readonly idempotencyKey: string;
+  },
+  error: RegenerationAdmissionDeniedError,
+): Promise<never> {
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  await commitPlanGenerationFailure(serviceRoleDb, {
+    variant: 'reserved_attempt',
+    planId: input.planId,
+    userId: input.userId,
+    attemptId: reservation.attemptId,
+    preparation: reservation,
+    classification: 'validation',
+    error,
+    durationMs: 0,
+    timedOut: false,
+    extendedTimeout: false,
+    workflowMetadata: {
+      ...workflowMetadata,
+      startedAt: reservation.startedAt.toISOString(),
+    },
+    generationPurpose,
+    usageKind: 'plan',
+    retryable: false,
+  });
+
+  await failJob(input.jobId, error.message, { retryable: false });
+  throw new FatalError(error.message);
+}
+
 export async function reservePlanRegenerationAttemptStep(
   input: PlanRegenerationWorkflowInput,
 ): Promise<PlanRegenerationAttemptPreparation> {
@@ -254,17 +306,38 @@ export async function reservePlanRegenerationAttemptStep(
     loaded.job.attempts,
   );
   const { workflowRunId: runId } = getWorkflowMetadata();
+  const workflowMetadata = {
+    provider: 'workflow-sdk' as const,
+    runId,
+    idempotencyKey,
+  };
+  const existingReservation = await findAttemptWithWorkflowIdempotencyKey({
+    planId: loaded.plan.id,
+    workflowIdempotencyKey: idempotencyKey,
+    dbClient: serviceRoleDb,
+  });
+
+  let preflight: PreparedRegeneration;
+  try {
+    preflight = await prepareRegeneration(
+      input,
+      loaded,
+      existingReservation?.admittedTier,
+    );
+  } catch (error: unknown) {
+    if (error instanceof RegenerationAdmissionDeniedError) {
+      return failPreReservationAdmission(loaded.job.id, error);
+    }
+    throw error;
+  }
+
   const reservation = await reserveAttemptSlot({
     planId: loaded.plan.id,
     userId: loaded.plan.userId,
     input: loaded.generationInput,
     generationPurpose,
     dbClient: serviceRoleDb,
-    workflowMetadata: {
-      provider: 'workflow-sdk',
-      runId,
-      idempotencyKey,
-    },
+    workflowMetadata,
   });
 
   if (!reservation.reserved) {
@@ -273,11 +346,33 @@ export async function reservePlanRegenerationAttemptStep(
     );
   }
 
-  const prepared = await prepareRegeneration(
-    input,
-    loaded,
-    reservation.admittedTier,
-  );
+  let prepared = preflight;
+  if (
+    existingReservation === null &&
+    reservation.admittedTier !== undefined &&
+    reservation.admittedTier !== preflight.tier
+  ) {
+    try {
+      prepared = await prepareRegeneration(
+        input,
+        loaded,
+        reservation.admittedTier,
+      );
+    } catch (error: unknown) {
+      if (error instanceof RegenerationAdmissionDeniedError) {
+        return compensatePostReservationAdmission(
+          input,
+          fromSerializableReservation(
+            toSerializableReservation(reservation),
+            generationPurpose,
+          ),
+          workflowMetadata,
+          error,
+        );
+      }
+      throw error;
+    }
+  }
 
   return {
     reservation: toSerializableReservation(reservation),

@@ -1,5 +1,5 @@
 import { enqueueJob } from '@/features/jobs/queue';
-import { JOB_TYPES } from '@/features/jobs/types';
+import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { moduleLessonGenerationWorkflow } from '@/features/lesson-content/workflows/module-lesson-generation.workflow';
 import { emailNotificationDeliveryWorkflow } from '@/features/notifications/email/workflows/email-notification-delivery.workflow';
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
@@ -39,6 +39,74 @@ async function createWorkflowUser(scenario: string): Promise<string> {
     email: buildTestEmail(authUserId),
     subscriptionTier: 'pro',
   });
+}
+
+async function assertRegenerationAdmissionDenialLeavesNoOrphans(params: {
+  scenario: string;
+  tier: 'free' | 'starter' | 'pro';
+  plan?: {
+    startDate?: string | null;
+    deadlineDate?: string | null;
+  };
+  overrides?: PlanRegenerationJobData['overrides'];
+  message: string;
+}): Promise<void> {
+  const authUserId = buildTestAuthUserId(
+    `workflow-regeneration-${params.scenario}`,
+  );
+  const userId = await ensureUser({
+    authUserId,
+    email: buildTestEmail(authUserId),
+    subscriptionTier: params.tier,
+  });
+  const plan = await createTestPlan({
+    userId,
+    generationStatus: 'ready',
+    ...params.plan,
+  });
+  const jobId = await enqueueJob(JOB_TYPES.PLAN_REGENERATION, plan.id, userId, {
+    planId: plan.id,
+    ...(params.overrides ? { overrides: params.overrides } : {}),
+  });
+
+  const run = await start(planRegenerationWorkflow, [
+    {
+      jobId,
+      planId: plan.id,
+      userId,
+      correlationId: `workflow-regeneration-${jobId}`,
+    },
+  ]);
+
+  await expect(run.returnValue).rejects.toThrow(params.message);
+  expect(await run.status).toBe('failed');
+
+  const [persistedJob] = await db
+    .select({ status: jobQueue.status, error: jobQueue.error })
+    .from(jobQueue)
+    .where(eq(jobQueue.id, jobId));
+  expect(persistedJob).toEqual({
+    status: 'failed',
+    error: params.message,
+  });
+
+  const [persistedPlan] = await db
+    .select({
+      generationStatus: learningPlans.generationStatus,
+      isQuotaEligible: learningPlans.isQuotaEligible,
+    })
+    .from(learningPlans)
+    .where(eq(learningPlans.id, plan.id));
+  expect(persistedPlan).toEqual({
+    generationStatus: 'ready',
+    isQuotaEligible: true,
+  });
+
+  const attempts = await db
+    .select({ id: generationAttempts.id })
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, plan.id));
+  expect(attempts).toEqual([]);
 }
 
 describe('production Workflow SDK entrypoints', () => {
@@ -123,6 +191,39 @@ describe('production Workflow SDK entrypoints', () => {
       .from(jobQueue)
       .where(eq(jobQueue.id, jobId));
     expect(job?.status).toBe('completed');
+  });
+
+  it('rejects Free regeneration before reserving an attempt', async () => {
+    await expect(
+      assertRegenerationAdmissionDenialLeavesNoOrphans({
+        scenario: 'free-denial',
+        tier: 'free',
+        message: 'Plan regeneration is not included on the Free plan.',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects an over-duration Starter regeneration before reserving an attempt', async () => {
+    await expect(
+      assertRegenerationAdmissionDenialLeavesNoOrphans({
+        scenario: 'duration-denial',
+        tier: 'starter',
+        plan: { startDate: '2026-01-01', deadlineDate: '2026-04-01' },
+        message:
+          'starter tier limited to 8-week plans. Upgrade to pro for longer plans.',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects a tier-denied model before reserving an attempt', async () => {
+    await expect(
+      assertRegenerationAdmissionDenialLeavesNoOrphans({
+        scenario: 'model-denial',
+        tier: 'starter',
+        overrides: { model: 'google/gemini-3-pro-preview' },
+        message: 'Model is not allowed for regeneration on this tier.',
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('fails closed for module lesson generation and releases the claim', async () => {

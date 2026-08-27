@@ -24,10 +24,12 @@ const mocks = vi.hoisted(() => ({
   failJob: vi.fn(),
   getWorkflowMetadata: vi.fn(),
   createPlanLifecycleService: vi.fn(),
+  commitPlanGenerationFailure: vi.fn(),
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
   loadAuthorizedRegenerationPlan: vi.fn(),
   reserveRegenerationQuotaAtProviderStart: vi.fn(),
+  findAttemptWithWorkflowIdempotencyKey: vi.fn(),
   reserveAttemptSlot: vi.fn(),
 }));
 
@@ -48,7 +50,13 @@ vi.mock('@/features/plans/lifecycle/factory', () => ({
   createPlanLifecycleService: mocks.createPlanLifecycleService,
 }));
 
+vi.mock('@/features/plans/lifecycle/generation-finalization/store', () => ({
+  commitPlanGenerationFailure: mocks.commitPlanGenerationFailure,
+}));
+
 vi.mock('@/lib/db/queries/attempts', () => ({
+  findAttemptWithWorkflowIdempotencyKey:
+    mocks.findAttemptWithWorkflowIdempotencyKey,
   reserveAttemptSlot: mocks.reserveAttemptSlot,
 }));
 
@@ -264,6 +272,8 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.createPlanLifecycleService.mockReturnValue({
       processGenerationAttemptWithReservation,
     } as unknown as PlanLifecycleService);
+    mocks.commitPlanGenerationFailure.mockReset();
+    mocks.commitPlanGenerationFailure.mockResolvedValue(undefined);
     mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
     mocks.getUserPreferences.mockResolvedValue(savedSlots);
     mocks.failJob.mockReset();
@@ -281,6 +291,8 @@ describe('processPlanRegenerationStep model resolution', () => {
       providerStartedAt: '2026-06-22T18:00:00.000Z',
       alreadySettled: false,
     });
+    mocks.findAttemptWithWorkflowIdempotencyKey.mockReset();
+    mocks.findAttemptWithWorkflowIdempotencyKey.mockResolvedValue(null);
     mocks.reserveAttemptSlot.mockReset();
     mocks.reserveAttemptSlot.mockResolvedValue(
       makeAttemptReservation({ generationPurpose: 'regeneration' }),
@@ -329,6 +341,9 @@ describe('processPlanRegenerationStep model resolution', () => {
       admittedTier: 'pro',
     });
     mocks.reserveAttemptSlot.mockResolvedValue(reservation);
+    mocks.findAttemptWithWorkflowIdempotencyKey.mockResolvedValue({
+      admittedTier: 'pro',
+    });
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('free');
 
@@ -337,6 +352,34 @@ describe('processPlanRegenerationStep model resolution', () => {
     expect(replay.tier).toBe('pro');
     expect(mocks.resolveUserTier).not.toHaveBeenCalled();
     expect(mocks.failJob).not.toHaveBeenCalled();
+  });
+
+  it('compensates a reservation when the admitted tier changes to Free', async () => {
+    const reservation = makeAttemptReservation({
+      generationPurpose: 'regeneration',
+      admittedTier: 'free',
+    });
+    mocks.reserveAttemptSlot.mockResolvedValue(reservation);
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    await expect(reservePlanRegenerationAttemptStep(input)).rejects.toThrow(
+      'Plan regeneration is not included on the Free plan.',
+    );
+
+    expect(mocks.commitPlanGenerationFailure).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        attemptId: reservation.attemptId,
+        classification: 'validation',
+        retryable: false,
+      }),
+    );
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Plan regeneration is not included on the Free plan.',
+      { retryable: false },
+    );
   });
 
   it('passes the payload model override to processGenerationAttempt', async () => {

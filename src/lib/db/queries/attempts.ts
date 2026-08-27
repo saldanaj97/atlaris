@@ -1,5 +1,7 @@
 import type {
+  AttemptReservation,
   AttemptMetadata,
+  AttemptsDbClient,
   FinalizeFailureParams,
   FinalizeSuccessParams,
   GenerationAttemptRecord,
@@ -58,7 +60,7 @@ import {
   parseGenerationPurpose,
 } from '@/shared/types/generation-purpose';
 import { generationAttempts } from '@supabase/schema';
-import { count, eq, sql } from 'drizzle-orm';
+import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
 function readWorkflowIdempotencyKey(metadata: unknown): string | null {
@@ -73,6 +75,36 @@ function readWorkflowIdempotencyKey(metadata: unknown): string | null {
 
   const key = (workflow as Record<string, unknown>).idempotencyKey;
   return typeof key === 'string' && key.length > 0 ? key : null;
+}
+
+/**
+ * Reads the durable tier admitted for a workflow reservation, when a reserve
+ * step is replayed before it can persist its step result.
+ */
+export async function findAttemptWithWorkflowIdempotencyKey(params: {
+  planId: string;
+  workflowIdempotencyKey: string;
+  dbClient: AttemptsDbClient;
+}): Promise<Pick<AttemptReservation, 'admittedTier'> | null> {
+  const attempts = await params.dbClient
+    .select({ metadata: generationAttempts.metadata })
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, params.planId))
+    .orderBy(asc(generationAttempts.createdAt));
+
+  const matchingAttempt = attempts.find(
+    (attempt) =>
+      readWorkflowIdempotencyKey(attempt.metadata) ===
+      params.workflowIdempotencyKey,
+  );
+  if (!matchingAttempt) {
+    return null;
+  }
+
+  const admittedTier = readAdmittedTierFromAttemptMetadata(
+    matchingAttempt.metadata,
+  );
+  return admittedTier ? { admittedTier } : {};
 }
 
 /**
