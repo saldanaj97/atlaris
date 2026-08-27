@@ -1,4 +1,5 @@
 import {
+  clerkBillingSourceFromBackendSubscription,
   clerkBillingSourceFromWebhook,
   projectClerkBillingSource,
   type ClerkBillingProjectionItem,
@@ -44,6 +45,7 @@ function item(
     planSlug: 'pro_plan',
     amountInCents: 2_000,
     periodEnd: futurePeriodEnd,
+    canceledAt: null,
     isFreeTrial: false,
     ...overrides,
   };
@@ -71,6 +73,68 @@ describe('projectClerkBillingSource', () => {
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: futurePeriodEnd,
       cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('keeps an active entitlement after a canceled item in a subscription.updated refresh', () => {
+    const source = {
+      ...clerkBillingSourceFromBackendSubscription({
+        payerId: 'user_fixture',
+        status: 'active',
+        subscriptionItems: [
+          {
+            id: 'item_free_upcoming',
+            status: 'upcoming',
+            planId: 'cplan_free',
+            plan: { id: 'cplan_free', slug: 'free_user' },
+            amount: { amount: 0 },
+            periodEnd: null,
+            canceledAt: null,
+            isFreeTrial: false,
+          },
+          {
+            id: 'item_pro_canceling',
+            status: 'canceled',
+            planId: 'cplan_pro',
+            plan: { id: 'cplan_pro', slug: 'pro_plan' },
+            amount: { amount: 10_000 },
+            periodEnd: futurePeriodEnd.getTime(),
+            canceledAt: now.getTime(),
+            isFreeTrial: false,
+          },
+        ],
+      }),
+      type: 'subscription.updated',
+    };
+
+    expect(projectClerkBillingSource(source, currentPaidState, now)).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
+    });
+  });
+
+  it('keeps trialing status after a free-trial item is canceled during its period', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              status: 'canceled',
+              canceledAt: now,
+              isFreeTrial: true,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'trialing',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
     });
   });
 
@@ -393,6 +457,29 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  it('records cancellation from the matching past-due item', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          items: [
+            item({
+              status: 'past_due',
+              canceledAt: now,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
+    });
+  });
+
   it('projects an active paid item while ignoring a separate past-due upgrade', () => {
     expect(
       projectClerkBillingSource(
@@ -517,7 +604,7 @@ describe('projectClerkBillingSource', () => {
     ).toBeNull();
   });
 
-  it('maps Clerk webhook item timestamps and trial state from the payload', () => {
+  it('maps Clerk webhook item timestamps, cancellation, and trial state', () => {
     const sourceFromWebhook = clerkBillingSourceFromWebhook({
       type: 'subscriptionItem.active',
       data: {
@@ -533,6 +620,7 @@ describe('projectClerkBillingSource', () => {
           currency_symbol: '$',
         },
         period_end: futurePeriodEnd.getTime(),
+        canceled_at: now.getTime(),
         is_free_trial: true,
       },
     } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
@@ -541,6 +629,7 @@ describe('projectClerkBillingSource', () => {
       expect.objectContaining({
         amountInCents: 2_000,
         isFreeTrial: true,
+        canceledAt: now,
         periodEnd: futurePeriodEnd,
         planSlug: 'pro_plan',
         tier: 'pro',

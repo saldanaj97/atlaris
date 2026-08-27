@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   revalidatePathMock,
@@ -6,6 +6,7 @@ const {
   applyTaskProgressUpdatesMock,
   getPlanDetailForReadMock,
   loggerMock,
+  requirePlanContentAccessMock,
 } = vi.hoisted(() => ({
   revalidatePathMock: vi.fn(),
   requestBoundaryActionMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
     error: vi.fn(),
     warn: vi.fn(),
   },
+  requirePlanContentAccessMock: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
@@ -44,6 +46,10 @@ vi.mock('@/features/plans/read-projection/service', () => ({
 
 vi.mock('@/lib/logging/logger', () => ({
   logger: loggerMock,
+}));
+
+vi.mock('@/features/plans/api/route-context', () => ({
+  requirePlanContentAccess: requirePlanContentAccessMock,
 }));
 
 import type { RequestScope } from '@/lib/api/request-boundary';
@@ -76,6 +82,10 @@ function invokeMockedAction<T>(
 }
 
 describe('batchUpdateTaskProgressAction', () => {
+  beforeEach(() => {
+    requirePlanContentAccessMock.mockResolvedValue(undefined);
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
   });

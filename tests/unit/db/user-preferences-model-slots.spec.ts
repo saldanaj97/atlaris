@@ -123,17 +123,15 @@ describe('canonical user preference model-slot schema', () => {
     );
   });
 
-  it('does not read or write the new operation slots in preference queries', () => {
-    expect(USER_PREFERENCES_QUERY_SOURCE).not.toContain(
+  it('reads and writes the operation model slots in preference queries', () => {
+    expect(USER_PREFERENCES_QUERY_SOURCE).toContain(
       'preferredRegenerationAiModel',
     );
-    expect(USER_PREFERENCES_QUERY_SOURCE).not.toContain(
-      'preferredLessonAiModel',
-    );
-    expect(USER_PREFERENCES_QUERY_SOURCE).not.toContain(
+    expect(USER_PREFERENCES_QUERY_SOURCE).toContain('preferredLessonAiModel');
+    expect(USER_PREFERENCES_QUERY_SOURCE).toContain(
       'preferred_regeneration_ai_model',
     );
-    expect(USER_PREFERENCES_QUERY_SOURCE).not.toContain(
+    expect(USER_PREFERENCES_QUERY_SOURCE).toContain(
       'preferred_lesson_ai_model',
     );
   });

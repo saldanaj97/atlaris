@@ -59,7 +59,7 @@ describe('buildRegenerationGenerationInput', () => {
     });
   });
 
-  it('drops invalid stored dates and never uses override notes', () => {
+  it('rejects invalid stored dates instead of dropping them', () => {
     const payload = {
       planId: plan.id,
       overrides: { notes: 'Keep this focus.' },
@@ -70,14 +70,9 @@ describe('buildRegenerationGenerationInput', () => {
       deadlineDate: 'not-a-date',
     } as RegenerationPlanRow;
 
-    expect(
+    expect(() =>
       buildRegenerationGenerationInput(payload, planWithInvalidDates),
-    ).toMatchObject({
-      notes: undefined,
-      startDate: undefined,
-      deadlineDate: undefined,
-      topic: 'stored topic',
-    });
+    ).toThrow('Start date must be a valid YYYY-MM-DD calendar date.');
   });
 });
 
