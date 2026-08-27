@@ -257,7 +257,7 @@ The main persistence path touches:
 - `tasks`
 - `generation_attempts`
 - supporting usage and billing tables where applicable
-- module lesson batches additionally update `modules.lesson_generation_*` and `tasks.lesson_content`; `usage_metrics.lesson_modules_generated` remains an observational compatibility column and is not incremented
+- module lesson batches additionally update `modules.lesson_generation_*` and `tasks.lesson_content`; provider-started attempts increment `usage_metrics.lesson_modules_generated` as an observational counter without enforcing a lesson-generation quota
 
 See `docs/database/schema-overview.md` for the current schema view.
 
