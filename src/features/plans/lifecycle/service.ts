@@ -129,6 +129,9 @@ type GenerationRunFailure = {
 type GenerationRunAlreadyFinalized = {
   status: 'already_finalized';
   planId: string;
+  outcome?: 'success' | 'failure';
+  classification?: FailureClassification | 'unknown';
+  error?: Error;
 };
 
 export type GenerationRunResult =
@@ -301,6 +304,30 @@ export class PlanLifecycleService {
     });
 
     if (generationResult.status === 'already_finalized') {
+      if (generationResult.outcome === 'failure') {
+        const classification = generationResult.classification ?? 'unknown';
+        const error =
+          generationResult.error ??
+          new Error(
+            `Generation attempt for plan ${generationResult.planId} was already finalized as a failure (${classification}).`,
+          );
+        const retryable = isRetryableClassification(classification);
+
+        logger.info(
+          {
+            planId,
+            userId,
+            classification,
+            retryable,
+          },
+          'plan.lifecycle.generation: recovered finalized failure — skipping provider work',
+        );
+
+        return retryable
+          ? { status: 'retryable_failure', classification, error }
+          : { status: 'permanent_failure', classification, error };
+      }
+
       logger.info(
         { planId, userId },
         'plan.lifecycle.generation: already finalized — skipping provider work',

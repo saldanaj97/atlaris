@@ -29,6 +29,8 @@ export interface AttemptReservation {
   attemptId: string;
   attemptNumber: number;
   startedAt: Date;
+  /** Tier admitted when a durable workflow reservation was created. */
+  admittedTier?: SubscriptionTier;
   generationPurpose: GenerationPurpose;
   sanitized: {
     topic: {
@@ -110,6 +112,8 @@ interface AttemptMetadataFailure {
 export interface AttemptWorkflowMetadata {
   provider: 'workflow-sdk';
   runId: string;
+  /** Stable logical operation key used to recover a workflow reservation replay. */
+  idempotencyKey?: string;
   startedAt?: string;
   completedAt?: string;
 }
@@ -170,6 +174,8 @@ export interface ReserveAttemptSlotParams {
   requiredGenerationStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
+  /** Durable workflow identity for idempotently recovering a committed reservation. */
+  workflowMetadata?: AttemptWorkflowMetadata;
   now?: () => Date;
 }
 

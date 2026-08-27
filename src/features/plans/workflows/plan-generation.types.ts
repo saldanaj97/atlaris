@@ -16,6 +16,7 @@ export type SerializableAttemptReservation = {
   readonly attemptId: string;
   readonly attemptNumber: number;
   readonly startedAt: string;
+  readonly admittedTier?: SubscriptionTier;
   readonly promptHash: string;
   readonly sanitized: AttemptReservation['sanitized'];
   readonly generationPurpose?: GenerationPurpose;
@@ -65,6 +66,9 @@ export function toSerializableReservation(
     attemptId: reservation.attemptId,
     attemptNumber: reservation.attemptNumber,
     startedAt: reservation.startedAt.toISOString(),
+    ...(reservation.admittedTier
+      ? { admittedTier: reservation.admittedTier }
+      : {}),
     promptHash: reservation.promptHash,
     sanitized: reservation.sanitized,
     generationPurpose: reservation.generationPurpose,
@@ -88,6 +92,9 @@ export function fromSerializableReservation(
     attemptId: reservation.attemptId,
     attemptNumber: reservation.attemptNumber,
     startedAt: parseReservationStartedAt(reservation.startedAt),
+    ...(reservation.admittedTier
+      ? { admittedTier: reservation.admittedTier }
+      : {}),
     promptHash: reservation.promptHash,
     sanitized: reservation.sanitized,
     generationPurpose: resolveLegacyWorkflowGenerationPurpose(

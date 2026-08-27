@@ -1,3 +1,7 @@
+import type { SerializableAttemptReservation } from './plan-generation.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import {
   parseGenerationPurpose,
   type GenerationPurpose,
@@ -9,6 +13,14 @@ export type PlanRegenerationWorkflowInput = {
   readonly userId: string;
   readonly correlationId: string;
   readonly generationPurpose?: GenerationPurpose;
+};
+
+/** Validated admission context carried with a reservation across workflow steps. */
+export type PlanRegenerationAttemptPreparation = {
+  readonly reservation: SerializableAttemptReservation;
+  readonly tier: SubscriptionTier;
+  readonly generationInput: GenerationInput;
+  readonly modelOverride?: string;
 };
 
 export function resolvePlanRegenerationWorkflowPurpose(

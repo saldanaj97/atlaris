@@ -3,7 +3,10 @@
  * `plan-regeneration.workflow.ts`. Step modules are mocked here.
  */
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
-import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
+import type {
+  PlanRegenerationAttemptPreparation,
+  PlanRegenerationWorkflowInput,
+} from '@/features/plans/workflows/plan-regeneration.types';
 
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
@@ -66,10 +69,19 @@ describe('planRegenerationWorkflow', () => {
       kind: 'claimed',
       runId: 'wrun_regen',
     });
-    const serializedReservation = toSerializableReservation(
-      makeAttemptReservation({ generationPurpose: 'regeneration' }),
-    );
-    workflowMocks.reserve.mockResolvedValue(serializedReservation);
+    const preparation = {
+      reservation: toSerializableReservation(
+        makeAttemptReservation({ generationPurpose: 'regeneration' }),
+      ),
+      tier: 'pro',
+      generationInput: {
+        topic: 'Workflow regeneration',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'mixed',
+      },
+    } satisfies PlanRegenerationAttemptPreparation;
+    workflowMocks.reserve.mockResolvedValue(preparation);
     workflowMocks.process.mockResolvedValue(generationResult);
     workflowMocks.finalize.mockResolvedValue({
       kind: 'completed',
@@ -80,10 +92,7 @@ describe('planRegenerationWorkflow', () => {
     const result = await planRegenerationWorkflow(input);
 
     expect(workflowMocks.reserve).toHaveBeenCalledWith(input);
-    expect(workflowMocks.process).toHaveBeenCalledWith(
-      input,
-      serializedReservation,
-    );
+    expect(workflowMocks.process).toHaveBeenCalledWith(input, preparation);
     expect(workflowMocks.finalize).toHaveBeenCalledWith(
       input,
       generationResult,

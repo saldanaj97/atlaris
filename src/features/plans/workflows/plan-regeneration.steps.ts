@@ -1,7 +1,7 @@
-import type { SerializableAttemptReservation } from './plan-generation.types';
 import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
+import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -11,6 +11,7 @@ import {
 } from './plan-generation.types';
 import {
   resolvePlanRegenerationWorkflowPurpose,
+  type PlanRegenerationAttemptPreparation,
   type PlanRegenerationWorkflowClaimResult,
   type PlanRegenerationWorkflowInput,
   type PlanRegenerationWorkflowTerminalResult,
@@ -142,9 +143,23 @@ type PreparedRegeneration = {
   readonly modelOverride?: string;
 };
 
-async function prepareRegeneration(
+type LoadedRegeneration = Pick<
+  PreparedRegeneration,
+  'job' | 'plan' | 'generationInput'
+> & {
+  readonly payload: PlanRegenerationJobPayload;
+};
+
+function regenerationReservationIdempotencyKey(
+  jobId: string,
+  queueAttempt: number,
+): string {
+  return `plan-regeneration:${jobId}:${queueAttempt}`;
+}
+
+async function loadRegenerationContext(
   input: PlanRegenerationWorkflowInput,
-): Promise<PreparedRegeneration> {
+): Promise<LoadedRegeneration> {
   const job = await loadJobById(input.jobId);
   if (!job) {
     throw new FatalError('Regeneration job not found during processing');
@@ -166,11 +181,23 @@ async function prepareRegeneration(
     throw new FatalError('Plan not found for regeneration workflow');
   }
 
-  const tier = await resolveUserTier(plan.userId, serviceRoleDb);
   const generationInput = buildRegenerationGenerationInput(
     validation.payload,
     plan,
   );
+
+  return { job, plan, generationInput, payload: validation.payload };
+}
+
+async function prepareRegeneration(
+  input: PlanRegenerationWorkflowInput,
+  loaded?: LoadedRegeneration,
+  admittedTier?: SubscriptionTier,
+): Promise<PreparedRegeneration> {
+  const context = loaded ?? (await loadRegenerationContext(input));
+  const { job, plan, generationInput, payload } = context;
+  const tier =
+    admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
     weeklyHours: generationInput.weeklyHours,
@@ -186,7 +213,7 @@ async function prepareRegeneration(
     throw new FatalError(message);
   }
 
-  const explicitModel = validation.payload.overrides?.model;
+  const explicitModel = payload.overrides?.model;
   if (explicitModel !== undefined) {
     const modelValidation = validateModelForTier(
       tier,
@@ -202,34 +229,42 @@ async function prepareRegeneration(
 
   const saved = await getUserPreferences(plan.userId, serviceRoleDb);
   const modelOverride = resolveOverrideOrSavedModelId(
-    validation.payload.overrides?.model,
+    payload.overrides?.model,
     tier,
     saved,
     'regeneration',
   );
 
   return {
-    job,
-    plan,
+    ...context,
     tier,
-    generationInput,
     ...(modelOverride !== undefined ? { modelOverride } : {}),
   };
 }
 
 export async function reservePlanRegenerationAttemptStep(
   input: PlanRegenerationWorkflowInput,
-): Promise<SerializableAttemptReservation> {
+): Promise<PlanRegenerationAttemptPreparation> {
   'use step';
 
-  const prepared = await prepareRegeneration(input);
+  const loaded = await loadRegenerationContext(input);
   const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  const idempotencyKey = regenerationReservationIdempotencyKey(
+    loaded.job.id,
+    loaded.job.attempts,
+  );
+  const { workflowRunId: runId } = getWorkflowMetadata();
   const reservation = await reserveAttemptSlot({
-    planId: prepared.plan.id,
-    userId: prepared.plan.userId,
-    input: prepared.generationInput,
+    planId: loaded.plan.id,
+    userId: loaded.plan.userId,
+    input: loaded.generationInput,
     generationPurpose,
     dbClient: serviceRoleDb,
+    workflowMetadata: {
+      provider: 'workflow-sdk',
+      runId,
+      idempotencyKey,
+    },
   });
 
   if (!reservation.reserved) {
@@ -238,34 +273,61 @@ export async function reservePlanRegenerationAttemptStep(
     );
   }
 
-  return toSerializableReservation(reservation);
+  const prepared = await prepareRegeneration(
+    input,
+    loaded,
+    reservation.admittedTier,
+  );
+
+  return {
+    reservation: toSerializableReservation(reservation),
+    tier: prepared.tier,
+    generationInput: prepared.generationInput,
+    ...(prepared.modelOverride !== undefined
+      ? { modelOverride: prepared.modelOverride }
+      : {}),
+  };
 }
 
 export async function processPlanRegenerationStep(
   input: PlanRegenerationWorkflowInput,
-  serializedReservation: SerializableAttemptReservation,
+  preparation: PlanRegenerationAttemptPreparation,
 ): Promise<GenerationAttemptResult> {
   'use step';
 
-  const prepared = await prepareRegeneration(input);
-  const { job, plan, tier, generationInput, modelOverride } = prepared;
+  const job = await loadJobById(input.jobId);
+  if (!job) {
+    throw new FatalError('Regeneration job not found during processing');
+  }
+
+  const { reservation, tier, generationInput, modelOverride } = preparation;
   const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  const { workflowRunId: runId } = getWorkflowMetadata();
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
 
   let quotaDenied = false;
   const generationResult =
     await lifecycle.processGenerationAttemptWithReservation(
       {
-        planId: plan.id,
-        userId: plan.userId,
+        planId: input.planId,
+        userId: input.userId,
         tier,
         generationPurpose,
         input: generationInput,
         ...(modelOverride !== undefined ? { modelOverride } : {}),
+        workflowMetadata: {
+          provider: 'workflow-sdk',
+          runId,
+          startedAt: reservation.startedAt,
+          idempotencyKey: regenerationReservationIdempotencyKey(
+            job.id,
+            job.attempts,
+          ),
+        },
         onAttemptReserved: async () => {
           const quotaResult = await reserveRegenerationQuotaAtProviderStart({
-            userId: plan.userId,
-            planId: plan.id,
+            userId: input.userId,
+            planId: input.planId,
             jobId: job.id,
             dbClient: serviceRoleDb,
           });
@@ -277,7 +339,7 @@ export async function processPlanRegenerationStep(
           }
         },
       },
-      fromSerializableReservation(serializedReservation, generationPurpose),
+      fromSerializableReservation(reservation, generationPurpose),
     );
 
   if (quotaDenied) {

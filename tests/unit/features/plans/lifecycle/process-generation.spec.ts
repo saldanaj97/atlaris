@@ -642,6 +642,62 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('recovers a finalized retryable failure without finalizing or invoking the provider', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+          outcome: 'failure',
+          classification: 'timeout',
+          error: new Error('stored timeout'),
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toMatchObject({
+      status: 'retryable_failure',
+      classification: 'timeout',
+      error: new Error('stored timeout'),
+    });
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('recovers a finalized permanent failure as a terminal result', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+          outcome: 'failure',
+          classification: 'validation',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toMatchObject({
+      status: 'permanent_failure',
+      classification: 'validation',
+    });
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
   it('falls back to "unknown" provider/model when metadata is sparse', async () => {
     ports = createMockPorts({
       generation: {
