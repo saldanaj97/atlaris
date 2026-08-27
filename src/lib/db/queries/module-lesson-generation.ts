@@ -9,6 +9,10 @@ import {
   canonicalUsageToRecordParams,
   recordUsageInTx,
 } from '../../../../supabase/usage';
+import {
+  getCurrentMonth,
+  incrementLessonModulesGeneratedInTx,
+} from '@/features/billing/usage-metrics';
 import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import {
   prepareRlsTransactionContext,
@@ -215,30 +219,38 @@ export async function markModuleLessonProviderStarted(
     readonly providerStartedAt: string;
   },
 ): Promise<void> {
-  const updated = await dbClient
-    .update(modules)
-    .set({
-      lessonGenerationMetadata: sql`jsonb_set(
-        coalesce(${modules.lessonGenerationMetadata}, '{"version":1}'::jsonb),
-        '{providerStartedAt}',
-        to_jsonb(${args.providerStartedAt}::text)
-      )`,
-    })
-    .where(
-      and(
-        eq(modules.id, args.moduleId),
-        eq(modules.planId, args.planId),
-        eq(modules.lessonGenerationStatus, 'generating'),
-        moduleOwnedByUser(args.userId),
-      ),
-    )
-    .returning({ id: modules.id });
+  await dbClient.transaction(async (tx) => {
+    const updated = await tx
+      .update(modules)
+      .set({
+        lessonGenerationMetadata: sql`jsonb_set(
+          coalesce(${modules.lessonGenerationMetadata}, '{"version":1}'::jsonb),
+          '{providerStartedAt}',
+          to_jsonb(${args.providerStartedAt}::text)
+        )`,
+      })
+      .where(
+        and(
+          eq(modules.id, args.moduleId),
+          eq(modules.planId, args.planId),
+          eq(modules.lessonGenerationStatus, 'generating'),
+          moduleOwnedByUser(args.userId),
+        ),
+      )
+      .returning({ id: modules.id });
 
-  if (updated.length !== 1) {
-    throw new Error(
-      'Module lesson generation provider-start marker did not match exactly one row',
+    if (updated.length !== 1) {
+      throw new Error(
+        'Module lesson generation provider-start marker did not match exactly one row',
+      );
+    }
+
+    await incrementLessonModulesGeneratedInTx(
+      tx,
+      args.userId,
+      getCurrentMonth(new Date(args.providerStartedAt)),
     );
-  }
+  });
 }
 
 async function readScopedModuleState(

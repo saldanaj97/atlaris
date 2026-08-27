@@ -601,7 +601,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
-    expect(metrics?.n).toBe(0);
+    expect(metrics?.n).toBe(1);
   });
 
   it('returns disabled when module-lesson-generation flag is false', async () => {
@@ -636,7 +636,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('disabled');
   });
 
-  it('does not deny generation when the leftover lesson meter is exhausted', async () => {
+  it('records attempts without enforcing a lesson product quota', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota');
     const userId = await ensureUser({
       authUserId,
@@ -679,9 +679,17 @@ describe('module lesson generation boundary (integration)', () => {
       .from(modules)
       .where(eq(modules.id, mod.id));
     expect(modRow?.lessonGenerationStatus).toBe('ready');
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(4);
   });
 
-  it('provider failure after claim persists failed without a lesson meter', async () => {
+  it('provider failure after claim persists failed and records the attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota-error');
     const userId = await ensureUser({
       authUserId,
@@ -691,6 +699,7 @@ describe('module lesson generation boundary (integration)', () => {
     const plan = await createTestPlan({ userId });
     const mod = await createTestModule({ planId: plan.id });
     await createTestTask({ moduleId: mod.id });
+    const month = getCurrentMonth();
 
     const rlsDb = await createRlsDbForUser(authUserId);
     const provider = {
@@ -717,9 +726,17 @@ describe('module lesson generation boundary (integration)', () => {
       .from(modules)
       .where(eq(modules.id, mod.id));
     expect(modRow?.lessonGenerationStatus).toBe('failed');
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(1);
   });
 
-  it('success does not increment leftover lesson_modules_generated', async () => {
+  it('success records the provider-started lesson attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-ok');
     const userId = await ensureUser({
       authUserId,
@@ -762,10 +779,10 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
       );
-    expect(metrics?.n).toBe(0);
+    expect(metrics?.n).toBe(1);
   });
 
-  it('cold-start success does not create a lesson usage row', async () => {
+  it('cold-start success creates an observational lesson usage row', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-cold-start');
     const userId = await ensureUser({
       authUserId,
@@ -811,10 +828,10 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
-    expect(metrics?.n).toBeUndefined();
+    expect(metrics?.n).toBe(1);
   });
 
-  it('parser failure after provider start does not increment leftover lesson meter', async () => {
+  it('parser failure after provider start records the attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-fail');
     const userId = await ensureUser({
       authUserId,
@@ -856,7 +873,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
       );
-    expect(metrics?.n).toBe(2);
+    expect(metrics?.n).toBe(3);
   });
 
   it('already_ready does not change lesson_modules_generated', async () => {

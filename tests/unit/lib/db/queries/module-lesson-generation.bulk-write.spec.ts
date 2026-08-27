@@ -89,8 +89,24 @@ describe('markModuleLessonProviderStarted', () => {
       capturedSet = values;
       return { where };
     });
-    const update = vi.fn().mockReturnValue({ set });
-    const dbClient = { update } as unknown as DbClient;
+    const usageReturning = vi.fn().mockResolvedValue([{ id: 'usage-1' }]);
+    const usageWhere = vi.fn().mockReturnValue({ returning: usageReturning });
+    const usageSet = vi.fn().mockReturnValue({ where: usageWhere });
+    const update = vi
+      .fn()
+      .mockReturnValueOnce({ set })
+      .mockReturnValue({ set: usageSet });
+    const insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      }),
+    });
+    const tx = { insert, update };
+    const dbClient = {
+      transaction: vi.fn(async (callback: (innerTx: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as DbClient;
     return { dbClient, captured: () => ({ capturedSet, capturedWhere }) };
   }
 

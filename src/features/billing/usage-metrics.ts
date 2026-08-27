@@ -239,3 +239,28 @@ export async function incrementExistingUsageInTx(
     throw new UsageMetricsLoadError(userId, month);
   }
 }
+
+/**
+ * Records a provider-started module lesson attempt for operational telemetry.
+ * This counter is observational only and is not a product entitlement.
+ */
+export async function incrementLessonModulesGeneratedInTx(
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
+): Promise<void> {
+  await ensureUsageMetricsExist(tx, userId, month);
+
+  const updated = await tx
+    .update(usageMetrics)
+    .set({
+      lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ id: usageMetrics.id });
+
+  if (updated.length === 0) {
+    throw new UsageMetricsLoadError(userId, month);
+  }
+}
