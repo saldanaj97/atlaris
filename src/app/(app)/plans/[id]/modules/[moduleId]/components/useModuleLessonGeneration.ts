@@ -184,6 +184,9 @@ export function useModuleLessonGeneration({
             requestedWorkflowRunId !== undefined &&
             requestedWorkflowRunId === parsed.data.workflowRunId
           ) {
+            if (parsed.data.status === 'not_generated') {
+              setLocalFailureKey(`${planId}:${moduleId}`);
+            }
             return 'terminal';
           }
 

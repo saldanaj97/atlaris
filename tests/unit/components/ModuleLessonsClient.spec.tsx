@@ -393,9 +393,13 @@ describe('ModuleLessonsClient', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refreshMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Generate lessons' }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, GENERATE_URL, {
+      method: 'POST',
+    });
 
     const callsAfterTerminal = fetchMock.mock.calls.length;
     await act(async () => {
