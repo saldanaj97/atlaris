@@ -247,25 +247,35 @@ export async function getPlansPageForRead(params: {
     canCreatePlan: canCreatePlanOnCurrentTier(snapshot),
     selectionRequired,
     selectionCandidates: selectionRequired ? [...candidates] : [],
-    items: selectionRequired
-      ? []
-      : rows.items.map((item) =>
-          projectPlanListItemForAccess(
-            {
-              ...item,
-              completion: item.totalTasks
-                ? item.completedTasks / item.totalTasks
-                : 0,
-            },
-            resolvePlanContentAccess({
-              tier: snapshot.subscriptionTier,
-              planId: item.id,
-              initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
-              freeAccessPlanId: snapshot.freeAccessPlanId,
-              freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
-            }),
+    ...(selectionRequired
+      ? {
+          items: [],
+          totalItems: 0,
+          totalPages: 0,
+          totalSearchResults: 0,
+          statusCounts: Object.fromEntries(
+            Object.keys(rows.statusCounts).map((status) => [status, 0]),
+          ) as typeof rows.statusCounts,
+        }
+      : {
+          items: rows.items.map((item) =>
+            projectPlanListItemForAccess(
+              {
+                ...item,
+                completion: item.totalTasks
+                  ? item.completedTasks / item.totalTasks
+                  : 0,
+              },
+              resolvePlanContentAccess({
+                tier: snapshot.subscriptionTier,
+                planId: item.id,
+                initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+                freeAccessPlanId: snapshot.freeAccessPlanId,
+                freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+              }),
+            ),
           ),
-        ),
+        }),
   };
 }
 
