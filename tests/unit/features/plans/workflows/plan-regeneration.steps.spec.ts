@@ -4,10 +4,13 @@ import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestr
 import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
+import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import {
   claimPlanRegenerationJobStep,
   processPlanRegenerationStep,
+  reservePlanRegenerationAttemptStep,
 } from '@/features/plans/workflows/plan-regeneration.steps';
+import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   getUserPreferences: vi.fn(),
   loadAuthorizedRegenerationPlan: vi.fn(),
   reserveRegenerationQuotaAtProviderStart: vi.fn(),
+  reserveAttemptSlot: vi.fn(),
 }));
 
 vi.mock('@/features/jobs/queue', () => ({
@@ -39,6 +43,10 @@ vi.mock('@/features/billing/regeneration-quota-boundary', () => ({
 
 vi.mock('@/features/plans/lifecycle/factory', () => ({
   createPlanLifecycleService: mocks.createPlanLifecycleService,
+}));
+
+vi.mock('@/lib/db/queries/attempts', () => ({
+  reserveAttemptSlot: mocks.reserveAttemptSlot,
 }));
 
 vi.mock('@/features/billing/tier', () => ({
@@ -207,7 +215,10 @@ describe('claimPlanRegenerationJobStep', () => {
 });
 
 describe('processPlanRegenerationStep model resolution', () => {
-  const processGenerationAttempt = vi.fn();
+  const processGenerationAttemptWithReservation = vi.fn();
+  const serializedReservation = toSerializableReservation(
+    makeAttemptReservation({ generationPurpose: 'regeneration' }),
+  );
   const savedSlots = {
     preferredAiModel: 'openai/gpt-5.2',
     preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
@@ -226,8 +237,8 @@ describe('processPlanRegenerationStep model resolution', () => {
   } as unknown as RegenerationPlanRow;
 
   beforeEach(() => {
-    processGenerationAttempt.mockReset();
-    processGenerationAttempt.mockResolvedValue({
+    processGenerationAttemptWithReservation.mockReset();
+    processGenerationAttemptWithReservation.mockResolvedValue({
       status: 'generation_success',
       data: { modules: [], metadata: {}, durationMs: 1 },
     });
@@ -237,7 +248,7 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadAuthorizedRegenerationPlan.mockReset();
     mocks.createPlanLifecycleService.mockReset();
     mocks.createPlanLifecycleService.mockReturnValue({
-      processGenerationAttempt,
+      processGenerationAttemptWithReservation,
     } as unknown as PlanLifecycleService);
     mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
     mocks.getUserPreferences.mockResolvedValue(savedSlots);
@@ -256,6 +267,31 @@ describe('processPlanRegenerationStep model resolution', () => {
       providerStartedAt: '2026-06-22T18:00:00.000Z',
       alreadySettled: false,
     });
+    mocks.reserveAttemptSlot.mockReset();
+    mocks.reserveAttemptSlot.mockResolvedValue(
+      makeAttemptReservation({ generationPurpose: 'regeneration' }),
+    );
+  });
+
+  it('returns a serialized reservation for durable workflow replay', async () => {
+    const reservation = makeAttemptReservation({
+      attemptId: 'regen-reservation',
+      generationPurpose: 'regeneration',
+    });
+    mocks.reserveAttemptSlot.mockResolvedValue(reservation);
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+
+    await expect(reservePlanRegenerationAttemptStep(input)).resolves.toEqual(
+      toSerializableReservation(reservation),
+    );
+    expect(mocks.reserveAttemptSlot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planId: input.planId,
+        userId: input.userId,
+        generationPurpose: 'regeneration',
+      }),
+    );
   });
 
   it('passes the payload model override to processGenerationAttempt', async () => {
@@ -267,12 +303,15 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(queued);
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    await processPlanRegenerationStep(input);
+    await processPlanRegenerationStep(input, serializedReservation);
 
-    expect(processGenerationAttempt).toHaveBeenCalledWith(
+    expect(processGenerationAttemptWithReservation).toHaveBeenCalledWith(
       expect.objectContaining({
         generationPurpose: 'regeneration',
         modelOverride: 'google/gemini-3-flash-preview',
+      }),
+      expect.objectContaining({
+        attemptId: serializedReservation.attemptId,
       }),
     );
   });
@@ -281,12 +320,15 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    await processPlanRegenerationStep(input);
+    await processPlanRegenerationStep(input, serializedReservation);
 
-    expect(processGenerationAttempt).toHaveBeenCalledWith(
+    expect(processGenerationAttemptWithReservation).toHaveBeenCalledWith(
       expect.objectContaining({
         generationPurpose: 'regeneration',
         modelOverride: savedSlots.preferredRegenerationAiModel,
+      }),
+      expect.objectContaining({
+        attemptId: serializedReservation.attemptId,
       }),
     );
   });
@@ -295,12 +337,15 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('starter');
 
-    await processPlanRegenerationStep(input);
+    await processPlanRegenerationStep(input, serializedReservation);
 
-    expect(processGenerationAttempt).toHaveBeenCalledWith(
+    expect(processGenerationAttemptWithReservation).toHaveBeenCalledWith(
       expect.objectContaining({
         generationPurpose: 'regeneration',
         modelOverride: savedSlots.preferredAiModel,
+      }),
+      expect.objectContaining({
+        attemptId: serializedReservation.attemptId,
       }),
     );
   });
@@ -309,10 +354,10 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('free');
 
-    await expect(processPlanRegenerationStep(input)).rejects.toThrow(
-      'Plan regeneration is not included on the Free plan.',
-    );
-    expect(processGenerationAttempt).not.toHaveBeenCalled();
+    await expect(
+      processPlanRegenerationStep(input, serializedReservation),
+    ).rejects.toThrow('Plan regeneration is not included on the Free plan.');
+    expect(processGenerationAttemptWithReservation).not.toHaveBeenCalled();
     expect(mocks.failJob).toHaveBeenCalledWith(
       input.jobId,
       'Plan regeneration is not included on the Free plan.',
@@ -332,17 +377,17 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('starter');
 
-    await expect(processPlanRegenerationStep(input)).rejects.toThrow(
-      /starter tier limited to 8-week plans/i,
-    );
-    expect(processGenerationAttempt).not.toHaveBeenCalled();
+    await expect(
+      processPlanRegenerationStep(input, serializedReservation),
+    ).rejects.toThrow(/starter tier limited to 8-week plans/i);
+    expect(processGenerationAttemptWithReservation).not.toHaveBeenCalled();
     expect(
       mocks.reserveRegenerationQuotaAtProviderStart,
     ).not.toHaveBeenCalled();
   });
 
   it('settles quota once onAttemptReserved fires', async () => {
-    processGenerationAttempt.mockImplementation(
+    processGenerationAttemptWithReservation.mockImplementation(
       async (args: {
         onAttemptReserved?: (
           reservation: AttemptReservation,
@@ -358,7 +403,7 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    await processPlanRegenerationStep(input);
+    await processPlanRegenerationStep(input, serializedReservation);
 
     expect(mocks.reserveRegenerationQuotaAtProviderStart).toHaveBeenCalledWith({
       userId: input.userId,
@@ -371,7 +416,7 @@ describe('processPlanRegenerationStep model resolution', () => {
   it('does not invoke the provider when marker settlement fails', async () => {
     let providerInvoked = false;
     const markerError = new Error('marker persistence failed');
-    processGenerationAttempt.mockImplementation(
+    processGenerationAttemptWithReservation.mockImplementation(
       async (args: {
         onAttemptReserved?: (
           reservation: AttemptReservation,
@@ -399,14 +444,17 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    const result = await processPlanRegenerationStep(input);
+    const result = await processPlanRegenerationStep(
+      input,
+      serializedReservation,
+    );
 
     expect(providerInvoked).toBe(false);
     expect(result).toMatchObject({ status: 'retryable_failure' });
   });
 
   it('allows a replay with an already-settled marker to reach the provider', async () => {
-    processGenerationAttempt.mockImplementation(
+    processGenerationAttemptWithReservation.mockImplementation(
       async (args: {
         onAttemptReserved?: (
           reservation: AttemptReservation,
@@ -427,7 +475,9 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    await expect(processPlanRegenerationStep(input)).resolves.toMatchObject({
+    await expect(
+      processPlanRegenerationStep(input, serializedReservation),
+    ).resolves.toMatchObject({
       status: 'generation_success',
     });
     expect(mocks.reserveRegenerationQuotaAtProviderStart).toHaveBeenCalledTimes(

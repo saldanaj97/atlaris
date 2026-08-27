@@ -5,18 +5,22 @@
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { PlanRegenerationWorkflowInput } from '@/features/plans/workflows/plan-regeneration.types';
 
+import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import { planRegenerationWorkflow } from '@/features/plans/workflows/plan-regeneration.workflow';
+import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const workflowMocks = vi.hoisted(() => ({
   claim: vi.fn(),
+  reserve: vi.fn(),
   process: vi.fn(),
   finalize: vi.fn(),
 }));
 
 vi.mock('@/features/plans/workflows/plan-regeneration.steps', () => ({
   claimPlanRegenerationJobStep: workflowMocks.claim,
+  reservePlanRegenerationAttemptStep: workflowMocks.reserve,
   processPlanRegenerationStep: workflowMocks.process,
   finalizePlanRegenerationJobStep: workflowMocks.finalize,
 }));
@@ -31,6 +35,7 @@ const input: PlanRegenerationWorkflowInput = {
 describe('planRegenerationWorkflow', () => {
   beforeEach(() => {
     workflowMocks.claim.mockReset();
+    workflowMocks.reserve.mockReset();
     workflowMocks.process.mockReset();
     workflowMocks.finalize.mockReset();
   });
@@ -61,6 +66,10 @@ describe('planRegenerationWorkflow', () => {
       kind: 'claimed',
       runId: 'wrun_regen',
     });
+    const serializedReservation = toSerializableReservation(
+      makeAttemptReservation({ generationPurpose: 'regeneration' }),
+    );
+    workflowMocks.reserve.mockResolvedValue(serializedReservation);
     workflowMocks.process.mockResolvedValue(generationResult);
     workflowMocks.finalize.mockResolvedValue({
       kind: 'completed',
@@ -70,7 +79,11 @@ describe('planRegenerationWorkflow', () => {
 
     const result = await planRegenerationWorkflow(input);
 
-    expect(workflowMocks.process).toHaveBeenCalledWith(input);
+    expect(workflowMocks.reserve).toHaveBeenCalledWith(input);
+    expect(workflowMocks.process).toHaveBeenCalledWith(
+      input,
+      serializedReservation,
+    );
     expect(workflowMocks.finalize).toHaveBeenCalledWith(
       input,
       generationResult,

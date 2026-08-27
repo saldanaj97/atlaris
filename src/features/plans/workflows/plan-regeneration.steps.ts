@@ -1,5 +1,14 @@
+import type { SerializableAttemptReservation } from './plan-generation.types';
+import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import {
+  fromSerializableReservation,
+  toSerializableReservation,
+} from './plan-generation.types';
 import {
   resolvePlanRegenerationWorkflowPurpose,
   type PlanRegenerationWorkflowClaimResult,
@@ -28,6 +37,7 @@ import {
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { FatalError, getWorkflowMetadata } from 'workflow';
@@ -124,11 +134,17 @@ export async function claimPlanRegenerationJobStep(
   return { kind: 'claimed', runId };
 }
 
-export async function processPlanRegenerationStep(
-  input: PlanRegenerationWorkflowInput,
-): Promise<GenerationAttemptResult> {
-  'use step';
+type PreparedRegeneration = {
+  readonly job: Job;
+  readonly plan: RegenerationPlanRow;
+  readonly tier: SubscriptionTier;
+  readonly generationInput: GenerationInput;
+  readonly modelOverride?: string;
+};
 
+async function prepareRegeneration(
+  input: PlanRegenerationWorkflowInput,
+): Promise<PreparedRegeneration> {
   const job = await loadJobById(input.jobId);
   if (!job) {
     throw new FatalError('Regeneration job not found during processing');
@@ -191,31 +207,78 @@ export async function processPlanRegenerationStep(
     saved,
     'regeneration',
   );
+
+  return {
+    job,
+    plan,
+    tier,
+    generationInput,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
+  };
+}
+
+export async function reservePlanRegenerationAttemptStep(
+  input: PlanRegenerationWorkflowInput,
+): Promise<SerializableAttemptReservation> {
+  'use step';
+
+  const prepared = await prepareRegeneration(input);
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  const reservation = await reserveAttemptSlot({
+    planId: prepared.plan.id,
+    userId: prepared.plan.userId,
+    input: prepared.generationInput,
+    generationPurpose,
+    dbClient: serviceRoleDb,
+  });
+
+  if (!reservation.reserved) {
+    throw new FatalError(
+      `Unable to reserve regeneration attempt: ${reservation.reason}.`,
+    );
+  }
+
+  return toSerializableReservation(reservation);
+}
+
+export async function processPlanRegenerationStep(
+  input: PlanRegenerationWorkflowInput,
+  serializedReservation: SerializableAttemptReservation,
+): Promise<GenerationAttemptResult> {
+  'use step';
+
+  const prepared = await prepareRegeneration(input);
+  const { job, plan, tier, generationInput, modelOverride } = prepared;
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
 
   let quotaDenied = false;
-  const generationResult = await lifecycle.processGenerationAttempt({
-    planId: plan.id,
-    userId: plan.userId,
-    tier,
-    generationPurpose: resolvePlanRegenerationWorkflowPurpose(input),
-    input: generationInput,
-    ...(modelOverride !== undefined ? { modelOverride } : {}),
-    onAttemptReserved: async () => {
-      const quotaResult = await reserveRegenerationQuotaAtProviderStart({
-        userId: plan.userId,
+  const generationResult =
+    await lifecycle.processGenerationAttemptWithReservation(
+      {
         planId: plan.id,
-        jobId: job.id,
-        dbClient: serviceRoleDb,
-      });
-      if (!quotaResult.ok) {
-        quotaDenied = true;
-        throw new Error(
-          'Regeneration quota exceeded for your subscription tier.',
-        );
-      }
-    },
-  });
+        userId: plan.userId,
+        tier,
+        generationPurpose,
+        input: generationInput,
+        ...(modelOverride !== undefined ? { modelOverride } : {}),
+        onAttemptReserved: async () => {
+          const quotaResult = await reserveRegenerationQuotaAtProviderStart({
+            userId: plan.userId,
+            planId: plan.id,
+            jobId: job.id,
+            dbClient: serviceRoleDb,
+          });
+          if (!quotaResult.ok) {
+            quotaDenied = true;
+            throw new Error(
+              'Regeneration quota exceeded for your subscription tier.',
+            );
+          }
+        },
+      },
+      fromSerializableReservation(serializedReservation, generationPurpose),
+    );
 
   if (quotaDenied) {
     const message = 'Regeneration quota exceeded for your subscription tier.';

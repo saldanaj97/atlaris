@@ -11,6 +11,7 @@ import {
   claimPlanRegenerationJobStep,
   finalizePlanRegenerationJobStep,
   processPlanRegenerationStep,
+  reservePlanRegenerationAttemptStep,
 } from './plan-regeneration.steps';
 
 export async function planRegenerationWorkflow(
@@ -23,6 +24,10 @@ export async function planRegenerationWorkflow(
     return claim;
   }
 
-  const generationResult = await processPlanRegenerationStep(input);
+  const reservation = await reservePlanRegenerationAttemptStep(input);
+  const generationResult = await processPlanRegenerationStep(
+    input,
+    reservation,
+  );
   return finalizePlanRegenerationJobStep(input, generationResult);
 }
