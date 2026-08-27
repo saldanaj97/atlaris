@@ -146,9 +146,10 @@ export async function atomicCheckAndInsertPlan(
       tier: user.subscriptionTier,
       generationPurpose: 'initial',
       initialPlanGeneratedAt: user.initialPlanGeneratedAt,
-      inProgressInitialCount: await countInProgressInitialAttemptsForUser(tx, {
-        userId,
-      }),
+      inProgressInitialCount:
+        user.subscriptionTier === 'free'
+          ? await countInProgressInitialAttemptsForUser(tx, { userId })
+          : 0,
     });
     if (freeAdmission === 'free_allowance_used') {
       return { status: 'free_allowance_used' };

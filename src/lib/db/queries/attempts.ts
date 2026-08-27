@@ -154,10 +154,13 @@ export async function reserveAttemptSlot(
       tier: user.subscriptionTier,
       generationPurpose,
       initialPlanGeneratedAt: user.initialPlanGeneratedAt,
-      inProgressInitialCount: await countInProgressInitialAttemptsForUser(tx, {
-        userId,
-        excludePlanId: planId,
-      }),
+      inProgressInitialCount:
+        user.subscriptionTier === 'free' && generationPurpose === 'initial'
+          ? await countInProgressInitialAttemptsForUser(tx, {
+              userId,
+              excludePlanId: planId,
+            })
+          : 0,
     });
     if (freeAdmission === 'free_allowance_used') {
       return { reserved: false, reason: 'free_allowance_used' } as const;
