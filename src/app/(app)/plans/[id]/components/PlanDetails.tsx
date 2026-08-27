@@ -7,14 +7,14 @@ import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
-import {
-  computeOverviewStats,
-  getStatusesFromModules,
-} from '@/app/(app)/plans/[id]/helpers';
 import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
 import { logTaskStatusError } from '@/app/(app)/plans/[id]/log-task-status-error';
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { Button } from '@/components/ui/button';
+import {
+  buildTaskStatusMap as getStatusesFromModules,
+  derivePlanOverviewStats as computeOverviewStats,
+} from '@/features/plans/task-progress/client';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
