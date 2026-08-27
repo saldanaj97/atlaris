@@ -1,4 +1,5 @@
 import {
+  clerkBillingSourceFromBackendSubscription,
   clerkBillingSourceFromWebhook,
   projectClerkBillingSource,
   type ClerkBillingProjectionItem,
@@ -44,6 +45,7 @@ function item(
     planSlug: 'pro_plan',
     amountInCents: 2_000,
     periodEnd: futurePeriodEnd,
+    canceledAt: null,
     isFreeTrial: false,
     ...overrides,
   };
@@ -71,6 +73,42 @@ describe('projectClerkBillingSource', () => {
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: futurePeriodEnd,
       cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('keeps an active entitlement flagged when Clerk schedules cancellation at period end', () => {
+    const source = clerkBillingSourceFromBackendSubscription({
+      payerId: 'user_fixture',
+      status: 'active',
+      subscriptionItems: [
+        {
+          id: 'item_free_upcoming',
+          status: 'upcoming',
+          planId: 'cplan_free',
+          plan: { id: 'cplan_free', slug: 'free_user' },
+          amount: { amount: 0 },
+          periodEnd: null,
+          canceledAt: null,
+          isFreeTrial: false,
+        },
+        {
+          id: 'item_pro_canceling',
+          status: 'active',
+          planId: 'cplan_pro',
+          plan: { id: 'cplan_pro', slug: 'pro_plan' },
+          amount: { amount: 10_000 },
+          periodEnd: futurePeriodEnd.getTime(),
+          canceledAt: now.getTime(),
+          isFreeTrial: false,
+        },
+      ],
+    });
+
+    expect(projectClerkBillingSource(source, currentPaidState, now)).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
     });
   });
 
@@ -517,7 +555,7 @@ describe('projectClerkBillingSource', () => {
     ).toBeNull();
   });
 
-  it('maps Clerk webhook item timestamps and trial state from the payload', () => {
+  it('maps Clerk webhook item timestamps, cancellation, and trial state', () => {
     const sourceFromWebhook = clerkBillingSourceFromWebhook({
       type: 'subscriptionItem.active',
       data: {
@@ -533,6 +571,7 @@ describe('projectClerkBillingSource', () => {
           currency_symbol: '$',
         },
         period_end: futurePeriodEnd.getTime(),
+        canceled_at: now.getTime(),
         is_free_trial: true,
       },
     } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
@@ -541,6 +580,7 @@ describe('projectClerkBillingSource', () => {
       expect.objectContaining({
         amountInCents: 2_000,
         isFreeTrial: true,
+        canceledAt: now,
         periodEnd: futurePeriodEnd,
         planSlug: 'pro_plan',
         tier: 'pro',

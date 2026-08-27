@@ -44,6 +44,7 @@ export type ClerkBillingProjectionItem = {
   planSlug: string | null;
   amountInCents: number | null;
   periodEnd: Date | null;
+  canceledAt: Date | null;
   isFreeTrial: boolean;
 };
 
@@ -62,6 +63,7 @@ type BackendBillingSubscriptionItem = {
   plan: { id: string; slug: string } | null;
   amount?: { amount: number } | null;
   periodEnd: number | null;
+  canceledAt?: number | null;
   isFreeTrial?: boolean;
 };
 
@@ -132,6 +134,7 @@ function toProjectionItemFromWebhook(
     planSlug,
     amountInCents,
     periodEnd: millisecondsToDate(item.period_end),
+    canceledAt: millisecondsToDate(item.canceled_at),
     isFreeTrial: isFreeTrialFromWebhookItem(item),
   };
 }
@@ -152,6 +155,7 @@ function toProjectionItemFromBackend(
     planSlug: item.plan?.slug ?? null,
     amountInCents,
     periodEnd: millisecondsToDate(item.periodEnd),
+    canceledAt: millisecondsToDate(item.canceledAt),
     isFreeTrial: item.isFreeTrial === true,
   };
 }
@@ -245,6 +249,17 @@ function isRetainedCanceledItem(
   );
 }
 
+function isCanceledAtPeriodEnd(
+  item: ClerkBillingProjectionItem,
+  now: Date,
+): boolean {
+  return (
+    item.canceledAt !== null &&
+    item.periodEnd !== null &&
+    item.periodEnd.getTime() > now.getTime()
+  );
+}
+
 function chooseHighestTierItem(
   items: ClerkBillingProjectionItem[],
 ): ClerkBillingProjectionItem | null {
@@ -320,7 +335,7 @@ export function projectClerkBillingSource(
       subscriptionTier: activePaidItem.tier,
       subscriptionStatus: activePaidItem.isFreeTrial ? 'trialing' : 'active',
       subscriptionPeriodEnd: activePaidItem.periodEnd,
-      cancelAtPeriodEnd: false,
+      cancelAtPeriodEnd: isCanceledAtPeriodEnd(activePaidItem, now),
     };
   }
 

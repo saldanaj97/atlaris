@@ -144,6 +144,7 @@ async function main(): Promise<void> {
     planSlug,
     amountInCents: tier === 'free' ? 0 : 2_000,
     periodEnd,
+    canceledAt: null,
     isFreeTrial: false,
   };
   const source: ClerkBillingProjectionSource = {
