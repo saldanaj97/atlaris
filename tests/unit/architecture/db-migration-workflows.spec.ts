@@ -112,8 +112,12 @@ describe('Supabase migration workflows', () => {
       'git merge-base --is-ancestor "${expand_sha}" "${EXPECTED_SHA}"',
     );
     expect(production).toContain(
-      'git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}"',
+      'candidate_changes="$(git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}")"',
     );
+    expect(production).toContain(
+      'grep -q \'^supabase/migrations/\' <<<"${candidate_changes}"',
+    );
+    expect(production).not.toMatch(/git diff[^\n]*\|\s*\n\s*grep -q/u);
     expect(production).toContain(
       'No successful Production expand run covers ${EXPECTED_SHA}.',
     );

@@ -624,8 +624,8 @@ jobs:
             [[ "${expand_sha}" =~ ^[0-9a-f]{40}$ ]] || continue
             git cat-file -e "${expand_sha}^{commit}" >/dev/null 2>&1 || continue
             git merge-base --is-ancestor "${expand_sha}" "${EXPECTED_SHA}" || continue
-            if ! git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}" |
-              grep -q '^supabase/migrations/'; then
+            candidate_changes="$(git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}")"
+            if ! grep -q '^supabase/migrations/' <<<"${candidate_changes}"; then
               covering_expand_sha="${expand_sha}"
               break
             fi
