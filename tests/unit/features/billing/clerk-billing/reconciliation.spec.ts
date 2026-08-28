@@ -483,6 +483,111 @@ describe('applyVerifiedClerkBillingEvent', () => {
     );
   });
 
+  it('keeps a newer webhook snapshot when the Clerk refresh lags', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const webhookUpdatedAt = new Date('2026-08-01T00:01:00.000Z');
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
+        subscriptionItems: [
+          {
+            ...makeSubscription().subscriptionItems[0]!,
+            id: 'item_stale_starter',
+            planId: 'cplan_starter_fixture',
+            plan: {
+              id: 'cplan_starter_fixture',
+              slug: 'starter_plan',
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        {
+          ...makeBillingEvent(),
+          data: {
+            ...makeBillingEvent().data,
+            updated_at: webhookUpdatedAt.getTime(),
+            items: [
+              {
+                id: 'item_webhook_pro',
+                status: 'active',
+                plan_id: 'cplan_pro_fixture',
+                plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
+                amount: { amount: 2_000 },
+                period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
+              },
+            ],
+          },
+        } as unknown as WebhookEvent,
+        'evt_newer_webhook',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
+      }),
+    );
+  });
+
+  it('overlays a newer item webhook onto the refreshed multi-item snapshot', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const webhookUpdatedAt = new Date('2026-08-01T00:01:00.000Z');
+    const proItem = makeSubscription().subscriptionItems[0]!;
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
+        subscriptionItems: [
+          proItem,
+          {
+            ...proItem,
+            id: 'item_stale_starter',
+            status: 'active',
+            planId: 'cplan_starter_fixture',
+            plan: {
+              id: 'cplan_starter_fixture',
+              slug: 'starter_plan',
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        {
+          type: 'subscriptionItem.canceled',
+          data: {
+            id: proItem.id,
+            status: 'canceled',
+            updated_at: webhookUpdatedAt.getTime(),
+            payer: { user_id: 'user_missing' },
+            plan_id: 'cplan_pro_fixture',
+            plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
+            amount: { amount: 2_000 },
+            period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
+            canceled_at: webhookUpdatedAt.getTime(),
+          },
+        } as unknown as WebhookEvent,
+        'evt_newer_item_webhook',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clerkBillingUpdatedAt: webhookUpdatedAt,
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+      }),
+    );
+  });
+
   it('retains a failed attempt until Clerk explicitly reports recovery', async () => {
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
     const clerkClient = makeClerkClient();

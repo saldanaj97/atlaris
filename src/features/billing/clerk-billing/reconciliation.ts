@@ -417,18 +417,32 @@ async function refreshClerkBillingSource(
     clerkBillingSourceFromBackendSubscription(subscription);
   const sourceUpdatedAt = source.clerkBillingUpdatedAt;
   const refreshedUpdatedAt = refreshedSource.clerkBillingUpdatedAt;
+  const sourceIsNewer =
+    sourceUpdatedAt !== null &&
+    (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt);
+  const sourceItem = source.items[0];
+  const effectiveSource = sourceIsNewer
+    ? source.type.startsWith('subscriptionItem.')
+      ? {
+          ...refreshedSource,
+          clerkBillingUpdatedAt: sourceUpdatedAt,
+          items: sourceItem
+            ? refreshedSource.items.some((item) => item.id === sourceItem.id)
+              ? refreshedSource.items.map((item) =>
+                  item.id === sourceItem.id ? sourceItem : item,
+                )
+              : [...refreshedSource.items, sourceItem]
+            : refreshedSource.items,
+        }
+      : source
+    : refreshedSource;
 
   return {
-    ...refreshedSource,
+    ...effectiveSource,
     type: source.type,
     payerUserId: source.payerUserId,
-    clerkBillingUpdatedAt:
-      sourceUpdatedAt !== null &&
-      (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt)
-        ? sourceUpdatedAt
-        : refreshedUpdatedAt,
     paymentAttemptStatus:
-      source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
+      source.paymentAttemptStatus ?? effectiveSource.paymentAttemptStatus,
   };
 }
 
