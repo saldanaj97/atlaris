@@ -2,12 +2,14 @@
 
 ## Staged Production release lane
 
-For releasing the Production **application** binary without immediately moving public domains, use the guarded custom-CI lane:
+Before cutover, prove the Production **application** binary without moving public domains:
 
 1. Preflight an exact clean `main` SHA.
-2. `.github/workflows/vercel-deploy.yml` builds and deploys that SHA with `--prod --skip-domain`.
-3. JCS-52 requires approval and narrow exact-candidate smoke on the protected generated URL.
-4. A passing Deployment Check lets Vercel alias the same artifact automatically.
+2. Build and deploy that SHA manually with `--prod --skip-domain` without pushing `main`.
+3. Run narrow exact-candidate smoke on the protected generated URL.
+4. Do not promote the proof candidate.
+
+After JCS-52 checks are proven, `.github/workflows/vercel-deploy.yml` uses ordinary `--prod`; required checks withhold domains until approval and exact-candidate smoke pass, then Vercel aliases the same artifact automatically.
 
 Full safety model, proof/cutover boundary, abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 
@@ -15,7 +17,7 @@ Full safety model, proof/cutover boundary, abandon/rollback, and observation req
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
 
-On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Native Git deployment creation remains enabled until the custom lanes and JCS-52 are proven and Juan explicitly approves cutover. The workflow's Production job remains skipped until repository variable `VERCEL_NATIVE_GIT_DISABLED` is set to `true` after that cutover.
+On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Native Git deployment creation remains enabled until the custom lanes and JCS-52 are proven and Juan explicitly approves cutover. The workflow's Production job remains skipped until both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are `true` after that cutover.
 
 ## PDF Removal Cutover
 

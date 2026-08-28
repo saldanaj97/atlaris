@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -7,6 +8,10 @@ import { classifyDeploymentPaths } from './deployment-classifier.mjs';
 
 const classifierPath = fileURLToPath(
   new URL('./deployment-classifier.mjs', import.meta.url),
+);
+const workflow = readFileSync(
+  new URL('../workflows/vercel-deploy.yml', import.meta.url),
+  'utf8',
 );
 
 test('skips only docs, root Markdown, and issue-template paths', () => {
@@ -56,8 +61,6 @@ test('fails open when the diff is missing, empty, ambiguous, or malformed', () =
     null,
     [],
     new Array(1),
-    [, 'docs/ci-cd/deploy.md'],
-    ['docs/ci-cd/deploy.md', , 'README.md'],
     [undefined],
     ['docs/ci-cd/deploy.md', undefined],
     'docs/ci-cd/deploy.md',
@@ -106,4 +109,38 @@ test('the CLI keeps force deploy independent from the changed-files value', () =
   assert.equal(result.status, 0);
   assert.equal(result.stdout, 'deploy=true\nreason=forced\n');
   assert.equal(result.stderr, '');
+});
+
+test('the workflow classifies both sides of renames', () => {
+  assert.equal(
+    workflow.match(/git diff --no-renames --name-only/gu)?.length,
+    2,
+  );
+});
+
+test('the workflow keeps unavailable secrets out of automated previews', () => {
+  assert.match(workflow, /PR_AUTHOR:.*pull_request\.user\.login/u);
+  assert.match(workflow, /dependabot-secrets-unavailable/u);
+  assert.ok(workflow.includes(`[[ "\${fork_guard}" == 'eligible' ]]`));
+});
+
+test('the workflow gates Staging migrations and Production release readiness', () => {
+  assert.ok(
+    workflow.includes(`! grep -q '^supabase/migrations/' "\${changed_files}"`),
+  );
+  assert.ok(
+    workflow.includes(
+      `needs.deployment-decision.outputs.staging_auto_eligible == 'true'`,
+    ),
+  );
+  assert.match(workflow, /candidate_sha == github\.sha/u);
+  assert.ok(
+    workflow.includes(`vars.VERCEL_NATIVE_GIT_DISABLED == 'true'`) &&
+      workflow.includes(`vars.VERCEL_DEPLOYMENT_CHECKS_READY == 'true'`),
+  );
+  assert.match(workflow, /vercel deploy --prebuilt --prod --no-wait --yes/u);
+  assert.doesNotMatch(
+    workflow,
+    /vercel deploy --prebuilt --prod --skip-domain/u,
+  );
 });

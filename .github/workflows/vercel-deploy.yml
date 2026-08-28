@@ -16,7 +16,7 @@ on:
           - preview
           - staging
       ref:
-        description: Commit SHA or ref to evaluate
+        description: Commit SHA or ref (Staging must resolve to current develop)
         required: true
         type: string
       force_deploy:
@@ -45,6 +45,7 @@ jobs:
       same_repository_pr: ${{ steps.decision.outputs.same_repository_pr }}
       fork_guard: ${{ steps.decision.outputs.fork_guard }}
       secret_deploy_eligible: ${{ steps.decision.outputs.secret_deploy_eligible }}
+      staging_auto_eligible: ${{ steps.decision.outputs.staging_auto_eligible }}
     steps:
       - name: Check out candidate source
         id: checkout
@@ -65,6 +66,7 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_AFTER: ${{ github.event.after }}
@@ -83,6 +85,7 @@ jobs:
           manual_ref_trusted='not-applicable'
           fork_guard='not-applicable'
           secret_deploy_eligible=false
+          staging_auto_eligible=false
           changed_files=''
           zero_sha='0000000000000000000000000000000000000000'
 
@@ -95,7 +98,11 @@ jobs:
             fork_guard='ineligible'
             if [[ -n "${HEAD_REPOSITORY:-}" && "${HEAD_REPOSITORY}" == "${GITHUB_REPOSITORY}" ]]; then
               same_repository_pr='true'
-              fork_guard='eligible'
+              if [[ "${PR_AUTHOR:-}" == 'dependabot[bot]' ]]; then
+                fork_guard='dependabot-secrets-unavailable'
+              else
+                fork_guard='eligible'
+              fi
             fi
           fi
 
@@ -149,7 +156,7 @@ jobs:
                   git cat-file -e "${BASE_SHA}^{commit}" >/dev/null 2>&1 &&
                   merge_base="$(git merge-base "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null)" &&
                   is_sha "${merge_base}" &&
-                  git diff --name-only "${merge_base}...${HEAD_SHA}" >"${changed_files}"; then
+                  git diff --no-renames --name-only "${merge_base}...${HEAD_SHA}" >"${changed_files}"; then
                   source_sha="${HEAD_SHA}"
                   candidate_sha="${HEAD_SHA}"
                   classify || true
@@ -163,7 +170,7 @@ jobs:
                   [[ "${checkout_sha}" == "${PUSH_AFTER}" ]] &&
                   git cat-file -e "${PUSH_BEFORE}^{commit}" >/dev/null 2>&1 &&
                   git cat-file -e "${PUSH_AFTER}^{commit}" >/dev/null 2>&1 &&
-                  git diff --name-only "${PUSH_BEFORE}..${PUSH_AFTER}" >"${changed_files}"; then
+                  git diff --no-renames --name-only "${PUSH_BEFORE}..${PUSH_AFTER}" >"${changed_files}"; then
                   source_sha="${PUSH_AFTER}"
                   candidate_sha="${PUSH_AFTER}"
                   classify || true
@@ -189,9 +196,15 @@ jobs:
             esac
           fi
 
+          if [[ "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/develop' &&
+            "${reason}" != 'unknown diff' && -n "${changed_files}" && -f "${changed_files}" ]] &&
+            ! grep -q '^supabase/migrations/' "${changed_files}"; then
+            staging_auto_eligible=true
+          fi
+
           case "${EVENT_NAME:-}" in
             pull_request)
-              if [[ "${same_repository_pr}" == 'true' ]] &&
+              if [[ "${fork_guard}" == 'eligible' ]] &&
                 is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
                 secret_deploy_eligible=true
               fi
@@ -202,12 +215,20 @@ jobs:
               fi
               ;;
             workflow_dispatch)
-              if [[ "${MANUAL_LANE:-}" == 'preview' || "${MANUAL_LANE:-}" == 'staging' ]] &&
+              manual_lane_eligible=false
+              if [[ "${MANUAL_LANE:-}" == 'preview' ]]; then
+                manual_lane_eligible=true
+              elif [[ "${MANUAL_LANE:-}" == 'staging' &&
+                "${GITHUB_REF:-}" == 'refs/heads/develop' &&
+                "${candidate_sha}" == "${GITHUB_SHA:-}" ]]; then
+                manual_lane_eligible=true
+              fi
+              if [[ "${manual_lane_eligible}" == 'true' ]] &&
                 [[ "${manual_ref_trusted}" == 'true' ]] &&
                 is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
                 secret_deploy_eligible=true
               else
-                fork_guard='manual-ref-ineligible'
+                fork_guard='manual-lane-or-ref-ineligible'
               fi
               ;;
           esac
@@ -234,6 +255,7 @@ jobs:
             printf 'same_repository_pr=%s\n' "${same_repository_pr}"
             printf 'fork_guard=%s\n' "${fork_guard}"
             printf 'secret_deploy_eligible=%s\n' "${secret_deploy_eligible}"
+            printf 'staging_auto_eligible=%s\n' "${staging_auto_eligible}"
           } >>"${GITHUB_OUTPUT}"
 
           {
@@ -254,6 +276,7 @@ jobs:
             echo "| Trusted manual ref | ${manual_ref_trusted} |"
             echo "| Fork guard | ${fork_guard} |"
             echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
+            echo "| Automatic Staging eligible | ${staging_auto_eligible} |"
           } >>"${GITHUB_STEP_SUMMARY}"
 
   preview:
@@ -386,9 +409,13 @@ jobs:
       needs.deployment-decision.outputs.deploy == 'true' &&
       needs.deployment-decision.outputs.secret_deploy_eligible == 'true' &&
       (
-        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+        (github.event_name == 'push' &&
+          github.ref == 'refs/heads/develop' &&
+          needs.deployment-decision.outputs.staging_auto_eligible == 'true') ||
         (github.event_name == 'workflow_dispatch' &&
-          github.ref == 'refs/heads/develop' && inputs.ref == 'develop' && inputs.lane == 'staging')
+          github.ref == 'refs/heads/develop' &&
+          needs.deployment-decision.outputs.candidate_sha == github.sha &&
+          inputs.lane == 'staging')
       )
     runs-on: ubuntu-latest
     environment: staging
@@ -506,6 +533,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
       vars.VERCEL_NATIVE_GIT_DISABLED == 'true' &&
+      vars.VERCEL_DEPLOYMENT_CHECKS_READY == 'true' &&
       needs.deployment-decision.outputs.deploy == 'true' &&
       needs.deployment-decision.outputs.secret_deploy_eligible == 'true'
     runs-on: ubuntu-latest
@@ -567,14 +595,14 @@ jobs:
           set -euo pipefail
           vercel build --prod --yes >/dev/null
 
-      - name: Deploy unaliased Production candidate
+      - name: Deploy gated Production candidate
         id: deploy
         env:
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: main
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --no-wait --yes)"
+          deployment_url="$(vercel deploy --prebuilt --prod --no-wait --yes)"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -611,9 +639,8 @@ jobs:
             echo "| Exact SHA | ${source_sha} |"
             echo "| Exact ref | ${source_ref} |"
             echo "| Candidate aliases | ${aliases} |"
-            echo '| Domain movement | not performed by this job; verify separately during hosted proof |'
+            echo '| Domain movement | blocked until required Vercel Deployment Checks pass |'
             echo
-            echo 'This job never calls promote, alias, or rollback. Native Git remains enabled until hosted proof and explicit cutover approval.'
-            echo 'Production – atlaris is reserved for JCS-52 release approval; candidate creation itself does not consume that approval.'
-            echo 'JCS-52 separately owns the Deployment Check, exact-candidate smoke, supersession, and automatic final alias movement.'
+            echo 'This job runs only after native Git is disabled and JCS-52 Deployment Checks are ready.'
+            echo 'It never calls promote, alias, or rollback; Vercel assigns Production domains only after every required check passes.'
           } >>"${GITHUB_STEP_SUMMARY}"

@@ -19,7 +19,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - `.github/workflows/vercel-deploy.yml` classifies every in-scope change before calling Vercel; docs-only changes create no deployment.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
-- Merging deploy-impacting changes to `main` creates an unaliased Production candidate. JCS-52 will gate automatic domain assignment on approval and exact-candidate smoke; routine `vercel promote` is not the release path.
+- After cutover, merging deploy-impacting changes to `main` creates a Production deployment whose domains remain blocked until JCS-52 approval and exact-candidate smoke pass; routine `vercel promote` is not the release path.
 - Dependency automation is defined on `main`, evaluates `develop`, and opens dependency PRs only against `develop`.
 
 ---
@@ -31,7 +31,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 | Local / Local Preview | Your feature branch | You | Fast local iteration (`pnpm dev`, local product testing; 1Password Local Preview lane in JCS-50) |
 | Preview | PR branch | GitHub Actions + Vercel | Same-repository, deploy-impacting PRs only; forks never receive deployment secrets |
 | Staging | `develop` | GitHub Actions + Vercel Preview | Hobby-plan fallback: Preview variables scoped to `develop`; Supabase migrations target staging |
-| Staged Production | Exact `main` SHA | GitHub Actions + Vercel | Production-targeted build **without** assigning public domains (`--skip-domain`). Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
+| Staged Production proof | Exact `main` SHA | Operator + Vercel | Pre-cutover `--skip-domain` proof without assigning public domains. Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
 | Live Production | Approved staged deployment | Vercel + JCS-52 release gate | The exact candidate is aliased automatically only after approval and exact-candidate smoke |
 
 ---
@@ -69,10 +69,10 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Runs broadly for PRs and pushes to `develop`/`main`, plus manual Preview/Staging proof dispatches. It has no workflow-level path filter.
 - `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
-- Same-repository deploy-impacting PRs create Preview deployments; forks never receive Vercel secrets.
-- Deploy-impacting `develop` pushes use the Hobby-plan Staging fallback: Vercel Preview configuration scoped to the `develop` branch.
-- After cutover, deploy-impacting `main` pushes create a Production-targeted candidate with `--skip-domain`. This job never promotes, aliases, or rolls back.
-- The Production job fails closed unless repository variable `VERCEL_NATIVE_GIT_DISABLED` is exactly `true`. Set it only after native Git deployment creation has been disabled and explicitly approved.
+- Same-repository deploy-impacting PRs create Preview deployments; forks and Dependabot PRs never receive Vercel secrets.
+- Known deploy-impacting `develop` pushes without migration files use the Hobby-plan Staging fallback: Vercel Preview configuration scoped to `develop`. Migration or unknown diffs require a manual Staging dispatch after `expand`; the selected ref must resolve to current `develop`.
+- After cutover, deploy-impacting `main` pushes create a Production deployment. Required JCS-52 Deployment Checks block domain assignment until approval and exact-candidate smoke pass; the job never promotes, aliases, or rolls back.
+- The Production job fails closed unless both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are exactly `true`.
 
 ### 5) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -129,8 +129,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ### Merge to `develop`
 
 - Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
-- Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
-- Deploy-impacting changes create the `develop` Preview fallback using branch-scoped non-Production configuration
+- Known deploy-impacting changes without migration files create the `develop` Preview fallback using branch-scoped non-Production configuration
+- Migration or unknown diffs wait for an operator to run `staging-db-migrations.yaml` phase `expand`, then manually dispatch the Staging lane for current `develop`; phase `contract` follows health verification
 
 ### Merge to `main`
 
@@ -138,9 +138,9 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Production app release uses the staged Production lane:
   1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
-  2. The deployment workflow builds the exact committed `main` SHA and creates an unaliased candidate with `--prod --skip-domain`
-  3. JCS-52 requires human approval and narrow exact-candidate smoke on the protected generated URL
-  4. A passing JCS-52 Deployment Check lets Vercel alias that same artifact automatically
+  2. The deployment workflow builds and deploys the exact committed `main` SHA only after native Git is disabled and JCS-52 Deployment Checks are ready
+  3. Required checks hold back Production domains while JCS-52 obtains human approval and runs narrow exact-candidate smoke on the generated URL
+  4. Passing checks let Vercel alias that same artifact automatically
   5. Alias verification, observation, drain, then `contract` migrations if needed
 
 ### Urgent production hotfix
@@ -183,10 +183,11 @@ These credentials link custom CI to the Vercel project; Production application v
 ### GitHub repository variables
 
 - `VERCEL_NATIVE_GIT_DISABLED`: leave unset during proof. Set to `true` only after the custom lanes are proven, native Git deployment creation is disabled in Vercel, and Juan approves cutover. The Production-candidate job remains skipped otherwise.
+- `VERCEL_DEPLOYMENT_CHECKS_READY`: leave unset until JCS-52's required Deployment Checks are configured and proven. The Production-candidate job remains skipped otherwise.
 
 ### Vercel settings
 
-Keep the GitHub project connection and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. Prove the unaliased Production candidate from an exact trusted `main` checkout without pushing `main`, then explicitly approve `git.deploymentEnabled: false` and set `VERCEL_NATIVE_GIT_DISABLED=true`; do not disconnect the repository because Deployment Checks require the integration.
+Keep the GitHub project connection, automatic Production-domain assignment, and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. Prove an unaliased candidate from an exact trusted `main` checkout with `--skip-domain` without pushing `main`. After JCS-52 checks are proven, explicitly approve `git.deploymentEnabled: false`, set both readiness variables, and let the custom-CI Production deployment rely on those checks for automatic aliasing. Do not disconnect the repository because Deployment Checks require the integration.
 
 ---
 

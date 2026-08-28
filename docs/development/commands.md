@@ -34,16 +34,16 @@ pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
 
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
-### Staged Production (operator release lane)
+### Staged Production proof (before cutover)
 
-Do not use `pnpm deploy:preview` for Production. For a Production-targeted release candidate without moving public domains, follow [staged-production-deployment.md](../ci-cd/staged-production-deployment.md):
+Do not use `pnpm deploy:preview` for Production. To prove a Production-targeted candidate without moving public domains, follow [staged-production-deployment.md](../ci-cd/staged-production-deployment.md):
 
 ```bash
 # After documented preflight on an exact clean main SHA:
 vercel --prod --skip-domain
-# After verification + explicit human approval:
-vercel promote <deployment-id-or-url>
 ```
+
+Do not promote the proof candidate. After cutover, the custom-CI workflow uses ordinary `--prod`, and required JCS-52 Deployment Checks control automatic Production-domain assignment.
 
 ## Build & Production
 

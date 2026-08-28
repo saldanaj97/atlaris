@@ -43,7 +43,7 @@ We use two protected branches that serve as anchors for all development:
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
     │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
-    │        ──> unaliased Production candidate                   │
+    │        ──> gated Production deployment                     │
     │        ──> approval + exact-candidate smoke ──> auto-alias  │
     │        ──> DB migrations (contract)                          │
     │                                                             │
@@ -70,15 +70,15 @@ We use two protected branches that serve as anchors for all development:
 | **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
 | **Preview** | PR branch | Vercel preview | PR-level testing |
 | **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
-| **Staged Production** | Exact `main` SHA | Protected generated Vercel URL | Production build + Production config **without** moving public domains |
+| **Staged Production proof** | Exact `main` SHA | Protected generated Vercel URL | Pre-cutover Production build + configuration **without** moving public domains |
 | **Live Production** | Approved exact candidate | Production URL | Live users after JCS-52 passes and Vercel aliases automatically |
 
 ### Deployment Mechanism
 
 - **Preview**: same-repository deploy-impacting PRs use the custom-CI Preview lane; docs-only PRs create no deployment and forks receive no secrets.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases; the Hobby-plan app lane uses Vercel Preview configuration scoped to `develop`.
-- **Staged Production**: after native Git cutover, a deploy-impacting `main` push creates an unaliased Production-targeted candidate. The job remains skipped until `VERCEL_NATIVE_GIT_DISABLED=true`. JCS-52 gates automatic aliasing on approval and exact-candidate smoke; routine `vercel promote` is not used. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Staging**: known diffs without migration files deploy automatically with Vercel Preview configuration scoped to `develop`. Migration or unknown diffs require `expand`, then a manual Staging dispatch for current `develop`.
+- **Staged Production**: before cutover, operators prove an exact `main` candidate with `--skip-domain` and do not promote it. After cutover, the automated job requires both readiness variables and uses ordinary `--prod`; JCS-52 checks gate automatic aliasing. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 - **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
 ---
@@ -179,15 +179,16 @@ git commit -m "feat: ..."
 ### Step 5: Merge to `develop`
 
 1. Full CI runs (CircleCI `ci-trunk`)
-2. An operator dispatches `staging-db-migrations.yaml` phase `expand`
-3. A deploy-impacting change creates the `develop` Preview fallback; after health verification, the operator dispatches phase `contract`
+2. A known deploy-impacting diff without migration files creates the `develop` Preview fallback automatically
+3. For migration or unknown diffs, an operator dispatches `staging-db-migrations.yaml` phase `expand`, then manually dispatches Staging for current `develop`
+4. After health verification, the operator dispatches phase `contract` when needed
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
 2. Full CI runs (CircleCI `ci-trunk`; `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path files)
 3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
-4. The **Staged Production** lane creates an unaliased candidate; JCS-52 approval and exact-candidate smoke gate Vercel's automatic alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+4. After both readiness variables are enabled, the **Staged Production** lane creates a Production deployment; JCS-52 approval and exact-candidate smoke gate Vercel's automatic alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 5. After alias assignment + health/archive checks, the operator dispatches phase `contract`
 
 ---
@@ -197,8 +198,8 @@ git commit -m "feat: ..."
 | Stage          | What happens                                                           |
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | Operator dispatches `expand`, deploys, verifies health, then dispatches confirmed `contract` on `develop` |
-| **Production** | Operator dispatches `expand`, verifies the unaliased candidate, waits for JCS-52-gated automatic aliasing, then dispatches confirmed `contract` on `main` |
+| **Staging**    | Migration changes: operator dispatches `expand`, manually deploys current `develop`, verifies health, then dispatches confirmed `contract` |
+| **Production** | Operator dispatches `expand`, waits for JCS-52-gated automatic aliasing, verifies health, then dispatches confirmed `contract` on `main` |
 
 Migration-related changes include:
 
