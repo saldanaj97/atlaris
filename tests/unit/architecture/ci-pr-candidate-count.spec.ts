@@ -83,7 +83,7 @@ describe('CircleCI PR merge gate', () => {
       /equal: \[pull_request, << pipeline\.event\.name >>\][\s\S]*?equal: \[opened,/,
     )?.[0];
     expect(pullRequestGate).toBeDefined();
-    // non-main includes develop → main; do not match the push-clause develop exclusion
+    // non-main includes develop → main
     expect(pullRequestGate).toContain(
       'equal: [main, << pipeline.git.branch >>]',
     );
@@ -92,7 +92,7 @@ describe('CircleCI PR merge gate', () => {
     );
   });
 
-  it('runs ci-pr on feature-branch pull_request events so auto-cancel cannot leave an empty pipeline', () => {
+  it('runs ci-pr on feature-branch pull_request events', () => {
     const pullRequestGate = CI_PR_WORKFLOW.match(
       /equal: \[pull_request, << pipeline\.event\.name >>\][\s\S]*?equal: \[opened,/,
     )?.[0];
@@ -103,6 +103,7 @@ describe('CircleCI PR merge gate', () => {
     expect(pullRequestGate).not.toContain(
       'equal: [develop, << pipeline.git.branch >>]',
     );
+    expect(SETUP_CONFIG).not.toContain('\n  setup-default:\n');
   });
 
   it('does not skip develop on ci-pr jobs', () => {

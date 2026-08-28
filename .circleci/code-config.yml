@@ -647,29 +647,19 @@ jobs:
           results-file: test-results/workflow/results.json
 
 workflows:
-  # PR merge gate. Feature-branch pushes keep running ci-pr. Pushes to
-  # develop/main do not (ci-trunk owns those). pull_request events on
-  # non-main heads also run ci-pr: auto-cancel of the in-flight push
-  # pipeline on PR open/sync would otherwise leave an empty run.
+  # PR merge gate. pull_request events on non-main heads run ci-pr;
+  # develop/main push events remain owned by ci-trunk.
   ci-pr:
     when:
-      or:
-        - and:
-            - equal: [pull_request, << pipeline.event.name >>]
-            - not:
-                equal: [main, << pipeline.git.branch >>]
-            - or:
-                - equal: [opened, << pipeline.event.action >>]
-                - equal: [synchronize, << pipeline.event.action >>]
-                - equal: [reopened, << pipeline.event.action >>]
-                - equal: [ready_for_review, << pipeline.event.action >>]
-        - and:
-            - not:
-                equal: [pull_request, << pipeline.event.name >>]
-            - not:
-                equal: [main, << pipeline.git.branch >>]
-            - not:
-                equal: [develop, << pipeline.git.branch >>]
+      and:
+        - equal: [pull_request, << pipeline.event.name >>]
+        - not:
+            equal: [main, << pipeline.git.branch >>]
+        - or:
+            - equal: [opened, << pipeline.event.action >>]
+            - equal: [synchronize, << pipeline.event.action >>]
+            - equal: [reopened, << pipeline.event.action >>]
+            - equal: [ready_for_review, << pipeline.event.action >>]
     jobs:
       - detect-changes
       - lint-and-type-check:

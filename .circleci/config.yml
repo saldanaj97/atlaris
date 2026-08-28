@@ -62,20 +62,3 @@ workflows:
           base-revision: << pipeline.git.base_revision >>
           config-path: .circleci/no-updates.yml
           mapping: *config-mapping
-
-  setup-default:
-    when:
-      and:
-        - not:
-            equal: [pull_request, << pipeline.event.name >>]
-        - not:
-            equal: [main, << pipeline.git.branch >>]
-        - not:
-            equal: [develop, << pipeline.git.branch >>]
-    jobs:
-      - path-filtering/filter:
-          name: select-config
-          tag: "3.12"
-          base-revision: << pipeline.parameters.base_ref >>
-          config-path: .circleci/no-updates.yml
-          mapping: *config-mapping
