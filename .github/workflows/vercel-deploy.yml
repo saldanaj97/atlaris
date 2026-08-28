@@ -195,6 +195,7 @@ jobs:
           fi
 
           if [[ "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/develop' &&
+            "${deploy}" == 'true' &&
             "${reason}" != 'unknown diff' && -n "${changed_files}" && -f "${changed_files}" ]] &&
             git fetch --no-tags origin \
               '+refs/heads/main:refs/remotes/origin/main' >/dev/null 2>&1 &&
@@ -392,7 +393,7 @@ jobs:
     concurrency:
       group: vercel-staging-develop
       cancel-in-progress: false
-    timeout-minutes: 50
+    timeout-minutes: 75
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
       deployment_url: ${{ steps.inspect.outputs.url }}
@@ -581,7 +582,7 @@ jobs:
     concurrency:
       group: vercel-production-main
       cancel-in-progress: false
-    timeout-minutes: 50
+    timeout-minutes: 75
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
       deployment_url: ${{ steps.inspect.outputs.url }}

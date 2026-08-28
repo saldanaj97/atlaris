@@ -158,6 +158,11 @@ test('the workflow preserves the Staging migration gate across develop pushes', 
   assert.match(workflow, /refs\/remotes\/origin\/main/u);
   assert.match(workflow, /staging_base="\$\(git merge-base/u);
   assert.ok(
+    workflow.includes(
+      `"\${deploy}" == 'true' &&\n            "\${reason}" != 'unknown diff'`,
+    ),
+  );
+  assert.ok(
     workflow.includes(`! grep -q '^supabase/migrations/' "\${changed_files}"`),
   );
   assert.ok(
@@ -179,6 +184,7 @@ test('the workflow waits for same-SHA CircleCI trunk success before Staging', ()
   assert.match(staging, /circleci-checks/u);
   assert.match(staging, /startswith\("ci-trunk - "\)/u);
   assert.match(staging, /conclusion.*success/u);
+  assert.match(staging, /timeout-minutes: 75/u);
 });
 
 test('Production waits for same-SHA CircleCI trunk success before deploy', () => {
@@ -190,6 +196,7 @@ test('Production waits for same-SHA CircleCI trunk success before deploy', () =>
     production.indexOf('Wait for same-SHA CircleCI trunk success') <
       production.indexOf('Deploy gated Production candidate'),
   );
+  assert.match(production, /timeout-minutes: 75/u);
 });
 
 test('deployment jobs serialize without coalescing decision runs', () => {
