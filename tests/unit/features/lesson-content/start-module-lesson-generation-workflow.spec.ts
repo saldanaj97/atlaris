@@ -59,7 +59,10 @@ describe('startModuleLessonGeneration', () => {
       kind: 'claimed',
       workflowStartedAt: null,
     });
-    mocks.workflowStart.mockResolvedValue({ runId: 'wrun_lesson' });
+    mocks.workflowStart.mockResolvedValue({
+      runId: 'wrun_lesson',
+      returnValue: new Promise(() => {}),
+    });
 
     const result = await startModuleLessonGeneration(params, deps);
 
@@ -83,6 +86,38 @@ describe('startModuleLessonGeneration', () => {
         }),
       ],
     );
+  });
+
+  it('reverts an unadopted claim when the workflow later rejects', async () => {
+    mocks.loadContext.mockResolvedValue({
+      module: { lessonGenerationStatus: 'not_generated' },
+      isUnlocked: true,
+    });
+    mocks.claim.mockResolvedValue({
+      kind: 'claimed',
+      workflowStartedAt: null,
+    });
+    let rejectWorkflow!: (error: Error) => void;
+    const returnValue = new Promise((_, reject) => {
+      rejectWorkflow = reject;
+    });
+    mocks.workflowStart.mockResolvedValue({
+      runId: 'wrun_lesson',
+      returnValue,
+    });
+
+    const result = await startModuleLessonGeneration(params, deps);
+
+    expect(result).toEqual({ kind: 'workflow_started', runId: 'wrun_lesson' });
+    rejectWorkflow(new Error('workflow-fail'));
+    await vi.waitFor(() => {
+      expect(mocks.revert).toHaveBeenCalledWith(params.dbClient, {
+        userId: params.userId,
+        planId: params.planId,
+        moduleId: params.moduleId,
+        batchRequestId: params.correlationId,
+      });
+    });
   });
 
   it('returns workflow_start_failed when workflow startup throws', async () => {
@@ -137,7 +172,7 @@ describe('startModuleLessonGeneration', () => {
     });
     mocks.workflowStart.mockImplementation(async () => {
       await workflowStartBlocked;
-      return { runId: 'wrun_lesson' };
+      return { runId: 'wrun_lesson', returnValue: new Promise(() => {}) };
     });
 
     const resultsPromise = Promise.all([

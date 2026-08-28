@@ -2,6 +2,7 @@ import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
+import { markModuleLessonProviderStarted } from '@/lib/db/queries/module-lesson-generation';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
@@ -778,6 +779,59 @@ describe('module lesson generation boundary (integration)', () => {
       .from(usageMetrics)
       .where(
         sql`${usageMetrics.userId} = ${userId} AND ${usageMetrics.month} = ${month}`,
+      );
+    expect(metrics?.n).toBe(1);
+  });
+
+  it('replaying provider start preserves the marker and meters once', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-provider-replay');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const providerStartedAt = '2026-08-20T18:00:00.000Z';
+    const month = getCurrentMonth(new Date(providerStartedAt));
+    await db.insert(usageMetrics).values({
+      userId,
+      month,
+      lessonModulesGenerated: 0,
+    });
+
+    const plan = await createTestPlan({ userId, topic: 'Provider replay' });
+    const mod = await createTestModule({ planId: plan.id });
+    await db
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'generating',
+        lessonGenerationMetadata: { version: 1 },
+      })
+      .where(eq(modules.id, mod.id));
+
+    await markModuleLessonProviderStarted(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      providerStartedAt,
+    });
+    await markModuleLessonProviderStarted(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      providerStartedAt: '2026-08-20T18:01:00.000Z',
+    });
+
+    const [modRow] = await db
+      .select({ metadata: modules.lessonGenerationMetadata })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(modRow?.metadata?.providerStartedAt).toBe(providerStartedAt);
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
     expect(metrics?.n).toBe(1);
   });

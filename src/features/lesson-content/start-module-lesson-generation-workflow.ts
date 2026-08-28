@@ -103,6 +103,38 @@ export async function startModuleLessonGeneration(
       },
     ]);
 
+    void run.returnValue.catch(async (error: unknown) => {
+      try {
+        await revert(dbClient, {
+          userId: params.userId,
+          planId: params.planId,
+          moduleId: params.moduleId,
+          batchRequestId: params.correlationId,
+        });
+      } catch (revertError) {
+        logger.error(
+          {
+            err: revertError,
+            planId: params.planId,
+            moduleId: params.moduleId,
+            correlationId: params.correlationId,
+            workflowRunId: run.runId,
+          },
+          'Failed to revert rejected module lesson generation workflow claim',
+        );
+      }
+      logger.error(
+        {
+          err: error,
+          planId: params.planId,
+          moduleId: params.moduleId,
+          correlationId: params.correlationId,
+          workflowRunId: run.runId,
+        },
+        'Module lesson generation workflow failed',
+      );
+    });
+
     return { kind: 'workflow_started', runId: run.runId };
   } catch (error) {
     try {

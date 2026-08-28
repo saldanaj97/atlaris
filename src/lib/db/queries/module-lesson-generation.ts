@@ -235,9 +235,22 @@ export async function markModuleLessonProviderStarted(
           eq(modules.planId, args.planId),
           eq(modules.lessonGenerationStatus, 'generating'),
           moduleOwnedByUser(args.userId),
+          sql`${modules.lessonGenerationMetadata}->>'providerStartedAt' IS NULL`,
         ),
       )
       .returning({ id: modules.id });
+
+    if (updated.length === 0) {
+      const state = await readScopedModuleState(
+        tx,
+        args.planId,
+        args.moduleId,
+        args.userId,
+      );
+      if (state?.status === 'generating' && state.metadata?.providerStartedAt) {
+        return;
+      }
+    }
 
     if (updated.length !== 1) {
       throw new Error(
@@ -326,24 +339,21 @@ export async function claimModuleLessonGenerationOrDescribe(
   },
 ): Promise<LessonGenerationClaimResult> {
   const now = options?.now ?? (() => new Date());
-  const claimMetadata =
-    options?.batchRequestId !== undefined || options?.workflow
-      ? ModuleLessonGenerationMetadataSchema.parse({
-          version: 1,
-          ...(options.batchRequestId !== undefined
-            ? { batchRequestId: options.batchRequestId }
-            : {}),
-          ...(options.workflow
-            ? {
-                workflow: {
-                  provider: 'workflow-sdk',
-                  runId: options.workflow.runId,
-                  startedAt: options.workflow.startedAt,
-                },
-              }
-            : {}),
-        })
-      : undefined;
+  const claimMetadata = ModuleLessonGenerationMetadataSchema.parse({
+    version: 1,
+    ...(options?.batchRequestId !== undefined
+      ? { batchRequestId: options.batchRequestId }
+      : {}),
+    ...(options?.workflow
+      ? {
+          workflow: {
+            provider: 'workflow-sdk',
+            runId: options.workflow.runId,
+            startedAt: options.workflow.startedAt,
+          },
+        }
+      : {}),
+  });
   const claimStartedAt = options?.workflow
     ? new Date(options.workflow.startedAt)
     : now();
@@ -378,7 +388,7 @@ export async function claimModuleLessonGenerationOrDescribe(
           lessonGenerationCompletedAt: null,
           lessonGenerationFailedAt: null,
           lessonGenerationError: null,
-          ...(claimMetadata ? { lessonGenerationMetadata: claimMetadata } : {}),
+          lessonGenerationMetadata: claimMetadata,
         })
         .where(
           and(

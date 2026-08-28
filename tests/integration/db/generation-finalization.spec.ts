@@ -317,6 +317,67 @@ describe('plan generation finalization (single transaction)', () => {
     expect(afterMetrics[0]?.plansGenerated).toBe(beforePlansGenerated + 1);
   });
 
+  it('permanent regeneration failure records usage without incrementing plansGenerated', async () => {
+    await db
+      .update(learningPlans)
+      .set({ generationStatus: 'ready', isQuotaEligible: true })
+      .where(eq(learningPlans.id, planId));
+
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      generationPurpose: 'regeneration',
+      dbClient: db,
+      now: () => new Date('2026-03-03T13:00:00.000Z'),
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+
+    const month = getCurrentMonth(new Date('2026-03-03T13:00:03.000Z'));
+    const beforeMetrics = await db
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    const beforePlansGenerated = beforeMetrics[0]?.plansGenerated ?? 0;
+
+    await commitPlanGenerationFailure(db, {
+      variant: 'reserved_attempt',
+      planId,
+      userId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      classification: 'validation',
+      error: new Error('bad regeneration'),
+      durationMs: 200,
+      timedOut: false,
+      extendedTimeout: false,
+      providerMetadata: { provider: 'mock', model: 'm2' },
+      usage: makeCanonicalUsage({ provider: 'mock', model: 'm2' }),
+      usageKind: 'plan',
+      generationPurpose: 'regeneration',
+      retryable: false,
+      now: () => new Date('2026-03-03T13:00:03.000Z'),
+    });
+
+    const usageRows = await db
+      .select()
+      .from(aiUsageEvents)
+      .where(eq(aiUsageEvents.userId, userId));
+    expect(usageRows).toHaveLength(1);
+
+    const afterMetrics = await db
+      .select()
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(afterMetrics[0]?.plansGenerated ?? 0).toBe(beforePlansGenerated);
+  });
+
   it('rolls back entire transaction when hook throws after attempt persist', async () => {
     const reservation = await reserveAttemptSlot({
       planId,

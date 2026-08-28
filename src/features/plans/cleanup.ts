@@ -6,7 +6,13 @@ import type { DbClient } from '@/lib/db/types';
 import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/plan-persistence-store';
 import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import { logger } from '@/lib/logging/logger';
-import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { JOB_TYPES } from '@/shared/types/jobs.types';
+import {
+  generationAttempts,
+  jobQueue,
+  learningPlans,
+  modules,
+} from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { sql } from 'drizzle-orm';
 
@@ -68,6 +74,14 @@ export async function cleanupStuckPlans(
         and(
           eq(learningPlans.generationStatus, 'generating'),
           lt(learningPlans.updatedAt, cutoff),
+          sql`NOT EXISTS (
+            SELECT 1
+            FROM ${jobQueue}
+            WHERE ${jobQueue.planId} = ${learningPlans.id}
+              AND ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION}
+              AND ${jobQueue.status} = 'processing'
+              AND (${jobQueue.payload}->'workflow'->>'runId') IS NOT NULL
+          )`,
         ),
       )
       .limit(batchSize)
@@ -145,6 +159,15 @@ export async function cleanupOrphanedAttempts(
           isNull(generationAttempts.classification),
           eq(generationAttempts.status, 'in_progress'),
           lt(generationAttempts.createdAt, cutoff),
+          sql`NOT EXISTS (
+            SELECT 1
+            FROM ${jobQueue}
+            WHERE ${jobQueue.planId} = ${generationAttempts.planId}
+              AND ${jobQueue.jobType} = ${JOB_TYPES.PLAN_REGENERATION}
+              AND ${jobQueue.status} = 'processing'
+              AND (${jobQueue.payload}->'workflow'->>'runId') =
+                  (${generationAttempts.metadata}->'workflow'->>'runId')
+          )`,
         ),
       )
       .limit(batchSize)

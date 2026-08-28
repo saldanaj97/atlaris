@@ -185,16 +185,14 @@ export async function commitPlanGenerationFailure(
     await dbClient.transaction(async (tx) => {
       await reapplyJwtClaimsInTransaction(tx, rlsCtx);
       await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
-      if (
-        !input.retryable &&
-        input.usage &&
-        input.generationPurpose === 'initial'
-      ) {
+      if (!input.retryable && input.usage) {
         await recordUsageInTx(
           tx,
           canonicalUsageToRecordParams(input.usage, input.userId),
         );
-        await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
+        if (input.generationPurpose === 'initial') {
+          await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
+        }
       }
     });
     return;
@@ -227,16 +225,14 @@ export async function commitPlanGenerationFailure(
 
     await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
 
-    if (
-      !input.retryable &&
-      input.usage &&
-      input.generationPurpose === 'initial'
-    ) {
+    if (!input.retryable && input.usage) {
       await recordUsageInTx(
         tx,
         canonicalUsageToRecordParams(input.usage, input.userId),
       );
-      await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
+      if (input.generationPurpose === 'initial') {
+        await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
+      }
     }
 
     return updated;
