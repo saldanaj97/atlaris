@@ -46,7 +46,7 @@ describe('CircleCI test result collection', () => {
     );
     expect(TEST_SUITES).toContain('junit: test-results/unit/junit.xml');
     expect(CODE_CONFIG).toContain(
-      '<testsuites><testsuite name="dependency-remediation">',
+      '<testsuites><testsuite name="github-workflow-scripts">',
     );
     expect(CODE_CONFIG).toContain('</testsuite></testsuites>');
 
