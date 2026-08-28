@@ -108,8 +108,10 @@ test('the CLI keeps force deploy independent from the changed-files value', () =
 });
 
 test('the workflow classifies both sides of renames', () => {
+  const decision = workflow.split('\n  preview:\n')[0];
+
   assert.equal(
-    workflow.match(/git diff --no-renames --name-only/gu)?.length,
+    decision.match(/git diff --no-renames --name-only/gu)?.length,
     3,
   );
 });

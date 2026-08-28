@@ -88,34 +88,36 @@ describe('Supabase migration workflows', () => {
     );
   });
 
-  it('requires exact-SHA Production expand proof for migration-bearing candidates', () => {
+  it('retains Production expand proof across later candidates', () => {
     const workflow = readWorkflow('production-db-migrations.yaml');
+    const production = VERCEL_DEPLOY_WORKFLOW.split(
+      '\n  production-candidate:\n',
+    )[1];
 
     expect(workflow).toContain(
       'run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
     );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      'production_expand_required: ${{ steps.decision.outputs.production_expand_required }}',
+    expect(production).toBeDefined();
+    expect(production).toContain(
+      '- name: Verify a successful Production expand covers the candidate',
     );
-    expect(VERCEL_DEPLOY_WORKFLOW).toMatch(
-      /EVENT_NAME:-}" == 'push'[\s\S]*?refs\/heads\/main'[\s\S]*?production_expand_required=true/,
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      'grep -q \'^supabase/migrations/\' "${changed_files}"',
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      '- name: Verify successful same-SHA Production expand',
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      'EXPAND_REQUIRED: ${{ needs.deployment-decision.outputs.production_expand_required }}',
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain('case "${EXPAND_REQUIRED}" in');
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      'Production migrations (expand) @ ${EXPECTED_SHA}',
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+    expect(production).toContain('gh api --paginate --slurp');
+    expect(production).toContain(
       'actions/workflows/production-db-migrations.yaml/runs',
     );
+    expect(production).toContain(
+      '.display_title == ("Production migrations (expand) @ " + .head_sha)',
+    );
+    expect(production).toContain(
+      'git merge-base --is-ancestor "${expand_sha}" "${EXPECTED_SHA}"',
+    );
+    expect(production).toContain(
+      'git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}"',
+    );
+    expect(production).toContain(
+      'No successful Production expand run covers ${EXPECTED_SHA}.',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).not.toContain('production_expand_required');
   });
 
   it.each(migrationWorkflows)(
