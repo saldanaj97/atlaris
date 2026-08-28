@@ -2,18 +2,20 @@
 
 ## Staged Production release lane
 
-For releasing the Production **application** binary without immediately moving public domains, use the guarded staged Production lane:
+For releasing the Production **application** binary without immediately moving public domains, use the guarded custom-CI lane:
 
 1. Preflight an exact clean `main` SHA.
-2. `vercel --prod --skip-domain`
-3. Narrow smoke on the protected generated URL.
-4. Explicit human `vercel promote <deployment-id-or-url>` after verification.
+2. `.github/workflows/vercel-deploy.yml` builds and deploys that SHA with `--prod --skip-domain`.
+3. JCS-52 requires approval and narrow exact-candidate smoke on the protected generated URL.
+4. A passing Deployment Check lets Vercel alias the same artifact automatically.
 
-Full safety model, Deployment Checks decision (manual-only v1), abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+Full safety model, proof/cutover boundary, abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 
-**Unpromoted does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
+**Unreleased does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
+
+On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Native Git deployment creation remains enabled until the custom lanes and JCS-52 are proven and Juan explicitly approves cutover.
 
 ## PDF Removal Cutover
 

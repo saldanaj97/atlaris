@@ -5,11 +5,11 @@
 
 ## Why this exists
 
-Local Preview and hosted Preview/Staging cannot fully prove Production target selection, the exact Production build artifact, Production Deployment Protection, Production Vercel Queue/runtime behavior, or final alias promotion.
+Local Preview and hosted Preview/Staging cannot fully prove Production target selection, the exact Production build artifact, Production Deployment Protection, Production Vercel Queue/runtime behavior, or final alias assignment.
 
-This lane creates one Production-targeted Vercel deployment **without** assigning public Production domains, verifies that exact artifact on its protected generated URL, then requires an explicit human promote of the same deployment.
+This lane creates one Production-targeted Vercel deployment **without** assigning public Production domains. JCS-52 will require human approval and exact-candidate smoke before Vercel automatically aliases that same artifact.
 
-**Unpromoted does not mean isolated.** A staged Production deployment uses Production-scoped configuration and may reach real Production Supabase, Clerk, Workflow, email, billing, AI, flags, and other services. Treat every request against the generated URL as a real Production operation.
+**Unreleased does not mean isolated.** A staged Production deployment uses Production-scoped configuration and may reach real Production Supabase, Clerk, Workflow, email, billing, AI, flags, and other services. Treat every request against the generated URL as a real Production operation.
 
 ## Validation layers
 
@@ -18,7 +18,7 @@ This lane creates one Production-targeted Vercel deployment **without** assignin
 | Local Preview | Fast local iteration with non-Production services (1Password-backed lane in JCS-50; local product testing / `pnpm dev` until that lands) | Untouched |
 | Hosted Preview / Staging | Hosted platform behavior with isolated non-Production services | Untouched |
 | **Staged Production** | Exact Vercel Production build + Production-scoped config, generated URL only | **Must stay on the prior live deployment** |
-| Live Production | Explicit promote of the verified staged artifact | Move to the verified deployment |
+| Live Production | JCS-52-approved exact candidate | Move automatically only after the required Deployment Check passes |
 
 This lane complements Local Preview and Staging. It does not replace them.
 
@@ -34,33 +34,28 @@ This lane complements Local Preview and Staging. It does not replace them.
 - Do not touch `MAINTENANCE_MODE`.
 - Do not call the rollout complete merely because a staged deployment built successfully.
 
-## Deployment Checks decision (v1)
+## Deployment gate and transition
 
-**Decision: manual-only staged promotion.** Do not configure Vercel Deployment Checks for the first version of this lane.
+JCS-52 owns one stable, deployment-specific Vercel check. It must operate on the generated URL and exact candidate SHA, require approval through `Production – atlaris`, reject stale candidates, and let Vercel alias only a passing candidate.
 
-Reasons:
+Do not use CircleCI PR/trunk jobs as the Deployment Check: they validate code, not the generated deployment URL. Do not run `vercel promote` as the normal release path.
 
-- CircleCI `ci-trunk` is the post-merge gate. There is no `All Checks Passed (trunk)` aggregator, and `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path changes, so those job names are not a reliable per-SHA Vercel check.
-- CircleCI `ci-pr` job statuses validate the pre-merge PR commit, not necessarily the post-merge Production candidate.
-- A required check that never starts must not leave Production deployments permanently waiting.
+Until JCS-52 and the custom lanes are proven:
 
-When a later change adds a check:
-
-- Prefer one stable, uniquely named post-deployment check such as `Vercel - atlaris: production-smoke`.
-- Run it against the generated deployment URL after `vercel.deployment.ready` for the exact candidate SHA.
-- Do not mirror every GitHub CI job into Vercel.
-- Do not add `vercel/repository-dispatch/actions/status` unless the design actually uses `repository_dispatch`.
-- Keep the local `--skip-domain` path on **explicit human** `vercel promote` even after checks pass.
+- native Vercel Git deployments remain enabled;
+- Production candidates must remain unaliased;
+- this repository change is not proof of cutover; and
+- no public domain movement is authorized.
 
 ## Prerequisites
 
-- Vercel CLI installed and authenticated to the Atlaris project (`vercel link` if needed).
+- `.github/workflows/vercel-deploy.yml` is present on the exact committed `main` SHA and uses pinned Vercel CLI `53.2.0`.
 - Operator access to inspect deployments, aliases, and Deployment Protection in the Vercel dashboard.
 - Hosted Staging acceptance already complete for the same release candidate SHA.
 - CircleCI `ci-trunk` for that SHA has finished (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes).
 - If the release needs new schema, Production migration workflow `expand` already applied and verified before exercising the staged binary. See [deploy.md](../development/deploy.md) and `.github/workflows/production-db-migrations.yaml`.
 
-## 1. Preflight
+## 1. Preflight and migration ordering
 
 From a clean checkout of `main`:
 
@@ -96,12 +91,14 @@ vercel ls --prod
 
 Stop if any preflight item fails. Do not deploy.
 
-## 2. Create the staged Production deployment
+## 2. Create the staged Production candidate
 
-Use the smallest supported Vercel flow. Do not wrap this in a custom deployment framework.
+For a deploy-impacting `main` push, `.github/workflows/vercel-deploy.yml` checks out the exact candidate and runs the custom-CI equivalent of:
 
 ```bash
-vercel --prod --skip-domain
+vercel pull --yes --environment=production
+vercel build --prod --yes
+vercel deploy --prebuilt --prod --skip-domain --no-wait --yes
 ```
 
 Record:
@@ -117,7 +114,7 @@ Record:
 
 Creating the staged deployment must **not** move any Production domain. If domains moved, treat the run as failed, leave evidence, and do not continue smoke as if this were a sandbox.
 
-Correlate the deployment record to the exact source SHA in Vercel (deployment commit metadata).
+The workflow records the generated URL, deployment ID, `READY` state, Production target, exact SHA/ref metadata, and aliases. Correlate those fields before smoke.
 
 ## 3. Verify the staged artifact
 
@@ -147,17 +144,13 @@ Do **not** exercise destructive or scheduled operational paths. Any write-capabl
 
 On failure: leave Production domains on the prior deployment, do not force-promote, preserve deployment/log evidence, and fix forward through a new committed SHA with a new staged candidate.
 
-## 4. Promote or abandon
+## 4. Release or abandon
 
-### Promote (human-approved only)
+### Release after JCS-52 passes
 
-```bash
-vercel promote <deployment-id-or-url>
-```
+The approved exact-candidate smoke reports the stable Deployment Check. Vercel then aliases the already-built candidate automatically; no CLI promote or rebuild occurs.
 
-Promotion must target the exact verified deployment and must not rebuild.
-
-After promotion:
+After automatic alias assignment:
 
 1. Verify Production aliases moved to the expected deployment.
 2. Observe Vercel and Sentry for the defined window below.
@@ -167,32 +160,32 @@ After promotion:
 
 ### Abandon
 
-If verification fails or promotion is declined:
+If verification fails or release approval is declined:
 
 1. Leave Production domains on the prior deployment.
 2. Do not Force Promote.
 3. Preserve deployment ID, URL, SHA, logs, and smoke notes.
 4. Fix forward on a new committed `main` SHA and create a new staged candidate.
 
-### Rollback after a mistaken promote (no destructive DB reversal)
+### Rollback after a mistaken release (no destructive DB reversal)
 
-Prefer promoting a previous known-good Production deployment rather than reversing database migrations:
+Use the Vercel rollback control to restore a known-good Production deployment rather than reversing database migrations:
 
 ```bash
-vercel promote <previous-good-deployment-id-or-url>
+vercel rollback <previous-good-deployment-id-or-url>
 ```
 
 Do not run destructive database reversal as part of abandon/rollback. After a `contract` migration that removes schema older binaries need, roll forward with a compatible binary instead of restoring dropped grants/columns ad hoc. Feature-specific ordering constraints live in [deploy.md](../development/deploy.md).
 
 ## Observation window and stop conditions
 
-After promotion (or while diagnosing a staged candidate):
+After alias assignment (or while diagnosing a staged candidate):
 
 - Watch Vercel deployment status, function/runtime errors, and alias assignment for the release.
 - Watch Sentry for new issues correlated to the staged/live deployment SHA.
 - Stop and escalate if: Production aliases point at the wrong deployment, error rate or critical Sentry issues rise beyond the release’s accepted baseline, unexpected writes to Production data appear during staged smoke, or Deployment Protection is not enforcing on the generated URL.
 
-Default observation window: keep the operator present through promote, alias verification, instance drain, and any approved `contract` migration. Extend if the release includes high-risk paths (auth, billing, migrations).
+Default observation window: keep the operator present through approval, alias verification, instance drain, and any approved `contract` migration. Extend if the release includes high-risk paths (auth, billing, migrations).
 
 ## Related docs
 

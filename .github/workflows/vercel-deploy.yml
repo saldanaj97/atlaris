@@ -1,4 +1,4 @@
-name: Vercel deployment decision (report-only)
+name: Vercel deployment lanes (proof phase)
 
 on:
   pull_request:
@@ -8,18 +8,29 @@ on:
     branches: [develop, main]
   workflow_dispatch:
     inputs:
+      lane:
+        description: Manual lane (Production is never available here)
+        required: true
+        type: choice
+        options:
+          - preview
+          - staging
       ref:
         description: Commit SHA or ref to evaluate
         required: true
         type: string
       force_deploy:
-        description: Force the report-only classification reason
+        description: Force deployment when the diff cannot be classified
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: read
+
+concurrency:
+  group: vercel-deploy-${{ github.event.pull_request.number || github.ref || inputs.ref || github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   deployment-decision:
@@ -58,6 +69,7 @@ jobs:
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_AFTER: ${{ github.event.after }}
           MANUAL_REF: ${{ inputs.ref }}
+          MANUAL_LANE: ${{ inputs.lane }}
           FORCE_DEPLOY: ${{ inputs.force_deploy }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
         run: |
@@ -176,9 +188,17 @@ jobs:
                 secret_deploy_eligible=true
               fi
               ;;
-            push|workflow_dispatch)
+            push)
               if is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
                 secret_deploy_eligible=true
+              fi
+              ;;
+            workflow_dispatch)
+              if [[ "${MANUAL_LANE:-}" == 'preview' || "${MANUAL_LANE:-}" == 'staging' ]] &&
+                is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                secret_deploy_eligible=true
+              else
+                fork_guard='manual-lane-ineligible'
               fi
               ;;
           esac
@@ -192,6 +212,10 @@ jobs:
           summary_ref="${summary_ref//$'\r'/ }"
           summary_ref="${summary_ref//$'\n'/ }"
           summary_ref="${summary_ref//|/\\|}"
+          manual_lane="${MANUAL_LANE:-not-applicable}"
+          manual_lane="${manual_lane//$'\r'/ }"
+          manual_lane="${manual_lane//$'\n'/ }"
+          manual_lane="${manual_lane//|/\\|}"
 
           {
             printf 'deploy=%s\n' "${deploy}"
@@ -204,14 +228,15 @@ jobs:
           } >>"${GITHUB_OUTPUT}"
 
           {
-            echo '## Vercel deployment decision (report-only)'
+            echo '## Vercel deployment decision'
             echo
-            echo 'This phase only classifies deployment impact. It makes no Vercel calls or deployment mutations.'
+            echo 'The decision job always reports. Deployment lanes run only for eligible, deploy-impacting candidates.'
             echo
             echo '| Field | Value |'
             echo '| --- | --- |'
             echo "| Event | ${EVENT_NAME:-unknown} |"
             echo "| Ref | ${summary_ref} |"
+            echo "| Manual lane | ${manual_lane} |"
             echo "| Source SHA | ${source_sha:-unknown} |"
             echo "| Candidate SHA | ${candidate_sha:-unknown} |"
             echo "| Deploy | ${deploy} |"
@@ -219,4 +244,354 @@ jobs:
             echo "| Same-repository PR | ${same_repository_pr} |"
             echo "| Fork guard | ${fork_guard} |"
             echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  preview:
+    name: Preview deployment
+    needs: deployment-decision
+    if: >-
+      needs.deployment-decision.outputs.deploy == 'true' &&
+      needs.deployment-decision.outputs.secret_deploy_eligible == 'true' &&
+      (
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'workflow_dispatch' && inputs.lane == 'preview')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      deployment_id: ${{ steps.inspect.outputs.id }}
+      deployment_url: ${{ steps.inspect.outputs.url }}
+      deployment_status: ${{ steps.inspect.outputs.status }}
+      deployment_target: ${{ steps.inspect.outputs.target }}
+      candidate_sha: ${{ steps.inspect.outputs.sha }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_GIT_PROVIDER: github
+      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
+        with:
+          node-version: '24'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@53.2.0 >/dev/null
+
+      - name: Link Vercel project
+        run: |
+          set -euo pipefail
+          vercel link --yes \
+            --team "${VERCEL_ORG_ID}" \
+            --project "${VERCEL_PROJECT_ID}" \
+            >/dev/null
+
+      - name: Pull Preview environment
+        env:
+          SOURCE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+        run: |
+          set -euo pipefail
+          pull_args=(--yes --environment=preview)
+          if git check-ref-format --branch "${SOURCE_REF}" >/dev/null 2>&1 &&
+            git show-ref --verify --quiet "refs/remotes/origin/${SOURCE_REF}"; then
+            pull_args+=(--git-branch="${SOURCE_REF}")
+          fi
+          vercel pull "${pull_args[@]}" >/dev/null
+
+      - name: Build Preview artifact
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+        run: |
+          set -euo pipefail
+          vercel build --target=preview --yes >/dev/null
+
+      - name: Deploy Preview artifact
+        id: deploy
+        env:
+          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          SOURCE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --no-wait --yes \
+            --meta "githubCommitSha=${SOURCE_SHA}" \
+            --meta "githubCommitRef=${SOURCE_REF}")"
+          test -n "${deployment_url}"
+          printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
+
+      - name: Inspect Preview deployment
+        id: inspect
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          EXPECTED_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+        run: |
+          set -euo pipefail
+          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
+          deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
+          ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
+          target="$(jq -er '.target | select(. == "preview")' inspection.json)"
+          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
+          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${source_sha}" = "${EXPECTED_SHA}"
+          test "${source_ref}" = "${EXPECTED_REF}"
+          printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
+            "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
+          {
+            echo '## Vercel Preview deployment'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| URL | ${deployment_url} |"
+            echo "| Deployment ID | ${deployment_id} |"
+            echo "| Status | ${ready_state} |"
+            echo "| Target | ${target} |"
+            echo "| Exact SHA | ${source_sha} |"
+            echo "| Exact ref | ${source_ref} |"
+            echo "| Aliases | ${aliases} |"
+            echo
+            echo 'This is a custom-CI proof deployment. Native Git remains enabled during the transition and may create a duplicate Preview deployment.'
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  staging:
+    name: Develop Staging Preview deployment
+    needs: deployment-decision
+    if: >-
+      needs.deployment-decision.outputs.deploy == 'true' &&
+      needs.deployment-decision.outputs.secret_deploy_eligible == 'true' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/develop') ||
+        (github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/develop' && inputs.ref == 'develop' && inputs.lane == 'staging')
+      )
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    outputs:
+      deployment_id: ${{ steps.inspect.outputs.id }}
+      deployment_url: ${{ steps.inspect.outputs.url }}
+      deployment_status: ${{ steps.inspect.outputs.status }}
+      deployment_target: ${{ steps.inspect.outputs.target }}
+      candidate_sha: ${{ steps.inspect.outputs.sha }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_GIT_PROVIDER: github
+      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
+        with:
+          node-version: '24'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@53.2.0 >/dev/null
+
+      - name: Link Vercel project
+        run: |
+          set -euo pipefail
+          vercel link --yes \
+            --team "${VERCEL_ORG_ID}" \
+            --project "${VERCEL_PROJECT_ID}" \
+            >/dev/null
+
+      - name: Pull develop Preview environment
+        run: |
+          set -euo pipefail
+          vercel pull --yes \
+            --environment=preview \
+            --git-branch=develop \
+            >/dev/null
+
+      - name: Build develop Preview artifact
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: develop
+        run: |
+          set -euo pipefail
+          vercel build --target=preview --yes >/dev/null
+
+      - name: Deploy develop Preview artifact
+        id: deploy
+        env:
+          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: develop
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --no-wait --yes \
+            --meta "githubCommitSha=${SOURCE_SHA}" \
+            --meta 'githubCommitRef=develop')"
+          test -n "${deployment_url}"
+          printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
+
+      - name: Inspect develop Preview deployment
+        id: inspect
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
+          deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
+          ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
+          target="$(jq -er '.target | select(. == "preview")' inspection.json)"
+          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
+          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${source_sha}" = "${EXPECTED_SHA}"
+          test "${source_ref}" = develop
+          printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
+            "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
+          {
+            echo '## Vercel develop Staging Preview deployment'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| URL | ${deployment_url} |"
+            echo "| Deployment ID | ${deployment_id} |"
+            echo "| Status | ${ready_state} |"
+            echo "| Target | ${target} |"
+            echo "| Exact SHA | ${source_sha} |"
+            echo "| Exact ref | ${source_ref} |"
+            echo "| Aliases | ${aliases} |"
+            echo
+            echo 'Hobby fallback: this lane uses the default Vercel Preview environment scoped to develop, never Production or a Production domain.'
+            echo 'Native Git remains enabled during the transition and may create a duplicate Preview deployment.'
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  production-candidate:
+    name: Production candidate
+    needs: deployment-decision
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.deployment-decision.outputs.deploy == 'true' &&
+      needs.deployment-decision.outputs.secret_deploy_eligible == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      deployment_id: ${{ steps.inspect.outputs.id }}
+      deployment_url: ${{ steps.inspect.outputs.url }}
+      deployment_status: ${{ steps.inspect.outputs.status }}
+      deployment_target: ${{ steps.inspect.outputs.target }}
+      candidate_sha: ${{ steps.inspect.outputs.sha }}
+      aliases: ${{ steps.inspect.outputs.aliases }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_GIT_PROVIDER: github
+      VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
+      VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
+    steps:
+      - name: Check out exact main candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
+        with:
+          node-version: '24'
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@53.2.0 >/dev/null
+
+      - name: Link Vercel project
+        run: |
+          set -euo pipefail
+          vercel link --yes \
+            --team "${VERCEL_ORG_ID}" \
+            --project "${VERCEL_PROJECT_ID}" \
+            >/dev/null
+
+      - name: Pull Production environment
+        run: |
+          set -euo pipefail
+          vercel pull --yes \
+            --environment=production \
+            >/dev/null
+
+      - name: Build Production candidate artifact
+        env:
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: main
+        run: |
+          set -euo pipefail
+          vercel build --prod --yes >/dev/null
+
+      - name: Deploy unaliased Production candidate
+        id: deploy
+        env:
+          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          VERCEL_GIT_COMMIT_REF: main
+        run: |
+          set -euo pipefail
+          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --no-wait --yes \
+            --meta "githubCommitSha=${SOURCE_SHA}" \
+            --meta 'githubCommitRef=main')"
+          test -n "${deployment_url}"
+          printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
+
+      - name: Inspect Production candidate
+        id: inspect
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
+          deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
+          ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
+          target="$(jq -er '.target | select(. == "production")' inspection.json)"
+          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
+          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${source_sha}" = "${EXPECTED_SHA}"
+          test "${source_ref}" = main
+          printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\naliases=%s\n' \
+            "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" "${aliases}" >>"${GITHUB_OUTPUT}"
+          {
+            echo '## Vercel Production candidate'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| Generated URL | ${deployment_url} |"
+            echo "| Deployment ID | ${deployment_id} |"
+            echo "| Status | ${ready_state} |"
+            echo "| Target | ${target} |"
+            echo "| Exact SHA | ${source_sha} |"
+            echo "| Exact ref | ${source_ref} |"
+            echo "| Candidate aliases | ${aliases} |"
+            echo '| Domain movement | not performed by this job; verify separately during hosted proof |'
+            echo
+            echo 'This job never calls promote, alias, or rollback. Native Git remains enabled until hosted proof and explicit cutover approval.'
+            echo 'Production – atlaris is reserved for JCS-52 release approval; candidate creation itself does not consume that approval.'
+            echo 'JCS-52 separately owns the Deployment Check, exact-candidate smoke, supersession, and automatic final alias movement.'
           } >>"${GITHUB_STEP_SUMMARY}"

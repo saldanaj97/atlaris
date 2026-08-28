@@ -7,7 +7,7 @@
 
 This document explains how code moves from a feature branch to preview, staging, staged Production, and live Production.
 
-The pipeline intentionally favors safety on production DB changes: expand migrations run before the Production app binary is exercised; contract migrations wait until after promote and health verification.
+The pipeline intentionally favors safety on production DB changes: expand migrations run before the Production app binary is exercised; contract migrations wait until after alias assignment and health verification.
 
 ---
 
@@ -16,10 +16,10 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Start work from `develop`.
 - Open PRs into `develop` (or `main` only for true hotfixes).
 - PRs run CircleCI `ci-pr` checks.
-- Vercel handles preview deployments natively for non-`main` branches.
+- `.github/workflows/vercel-deploy.yml` classifies every in-scope change before calling Vercel; docs-only changes create no deployment.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
-- Merging to `main` enables Production migration workflows; the Production **app** release uses a guarded staged Production lane (`vercel --prod --skip-domain`), then explicit `vercel promote` after verification.
+- Merging deploy-impacting changes to `main` creates an unaliased Production candidate. JCS-52 will gate automatic domain assignment on approval and exact-candidate smoke; routine `vercel promote` is not the release path.
 - Dependency automation is defined on `main`, evaluates `develop`, and opens dependency PRs only against `develop`.
 
 ---
@@ -29,10 +29,10 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 | Environment | Source | Owner | Notes |
 | ----------- | ------ | ----- | ----- |
 | Local / Local Preview | Your feature branch | You | Fast local iteration (`pnpm dev`, local product testing; 1Password Local Preview lane in JCS-50) |
-| Preview | PR branch | Vercel (+ hosted Postgres) | Auto preview deploy via Vercel git integration |
-| Staging | `develop` | GitHub Actions + Vercel | Hosted non-Production services; Supabase migrations target the staging project |
-| Staged Production | Exact `main` SHA | Operator + Vercel CLI | Production-targeted build **without** assigning public domains (`--skip-domain`). Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
-| Live Production | Promoted staged deployment | Operator + Vercel | Same verified artifact after `vercel promote`; public Production domains move |
+| Preview | PR branch | GitHub Actions + Vercel | Same-repository, deploy-impacting PRs only; forks never receive deployment secrets |
+| Staging | `develop` | GitHub Actions + Vercel Preview | Hobby-plan fallback: Preview variables scoped to `develop`; Supabase migrations target staging |
+| Staged Production | Exact `main` SHA | GitHub Actions + Vercel | Production-targeted build **without** assigning public domains (`--skip-domain`). Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
+| Live Production | Approved staged deployment | Vercel + JCS-52 release gate | The exact candidate is aliased automatically only after approval and exact-candidate smoke |
 
 ---
 
@@ -63,16 +63,25 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
 - On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
-- Because there is no uniquely named post-merge check wired into Vercel, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
+- CircleCI remains the code-quality gate. It is not the Production Deployment Check because it does not validate the generated deployment URL.
 
-### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
+### 4) `.github/workflows/vercel-deploy.yml`
+
+- Runs broadly for PRs and pushes to `develop`/`main`, plus manual Preview/Staging proof dispatches. It has no workflow-level path filter.
+- `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
+- Same-repository deploy-impacting PRs create Preview deployments; forks never receive Vercel secrets.
+- Deploy-impacting `develop` pushes use the Hobby-plan Staging fallback: Vercel Preview configuration scoped to the `develop` branch.
+- Deploy-impacting `main` pushes create a Production-targeted candidate with `--skip-domain`. This job never promotes, aliases, or rolls back.
+- Native Vercel Git deployment creation remains enabled during the proof phase. Disable it only after the custom lanes and JCS-52 gate are proven and explicitly approved.
+
+### 5) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
 - The configuration is read from the default branch, so it must be present on `main` before Dependabot or its weekly cadence is expected to run.
 - Native version updates use the npm root, target `develop`, run weekly, and apply a seven-day cooldown. Patch and minor updates are grouped separately; major updates are not opened automatically.
 - Native Dependabot security-update PRs are intentionally disabled. GitHub sends those PRs to default `main` regardless of `target-branch`; security remediation instead uses the custom workflow below so every automated dependency PR follows the `develop` integration path.
 - Patch auto-merge only queues a squash merge for an exact Dependabot patch update to `develop` whose file list is `pnpm-lock.yaml` alone or exactly `package.json` plus `pnpm-lock.yaml`, with no policy changes. GitHub cannot complete the queued merge until all required checks are green; the workflow does not approve or bypass CI. Minor, major, security-remediation, and policy PRs require human review.
 
-### 5) `.github/workflows/dependency-security-remediation.yml`
+### 6) `.github/workflows/dependency-security-remediation.yml`
 
 - The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
 - `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
@@ -80,7 +89,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot PR's `opened` or `synchronize` event (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
 - The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
 
-### 6) `.github/workflows/staging-db-migrations.yaml`
+### 7) `.github/workflows/staging-db-migrations.yaml`
 
 - Trigger: manual dispatch from `develop`
 - Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
@@ -92,7 +101,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
   - After each successful phase, `scripts/db/run-phased-migrations.sh` runs read-only privilege attestation for that phase (`bash scripts/db/attest-effective-privileges.sh <expand|contract>`). Failures block the workflow. Details: [client-usage.md](../database/client-usage.md#privilege-model-and-attestation) and [deploy.md](../development/deploy.md).
 
-### 7) `.github/workflows/production-db-migrations.yaml`
+### 8) `.github/workflows/production-db-migrations.yaml`
 
 - Trigger: manual dispatch from `main`
 - Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
@@ -110,7 +119,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 1. You push to a feature branch and open a PR to `develop`.
 2. CircleCI `ci-pr` validates code quality and tests.
-3. Vercel creates/updates a preview deployment automatically.
+3. The deployment workflow reports its decision; a same-repository deploy-impacting PR creates a custom-CI Preview deployment.
 4. Configure preview Supabase settings in Vercel if preview deployments need a database.
 
 ---
@@ -121,7 +130,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
 - Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
-- Vercel deploys staging
+- Deploy-impacting changes create the `develop` Preview fallback using branch-scoped non-Production configuration
 
 ### Merge to `main`
 
@@ -129,14 +138,14 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Production app release uses the staged Production lane:
   1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
-  2. `vercel --prod --skip-domain` (does not move public Production domains)
-  3. Narrow smoke on the protected generated URL
-  4. Explicit human `vercel promote <deployment-id-or-url>` of that same artifact
+  2. The deployment workflow builds the exact committed `main` SHA and creates an unaliased candidate with `--prod --skip-domain`
+  3. JCS-52 requires human approval and narrow exact-candidate smoke on the protected generated URL
+  4. A passing JCS-52 Deployment Check lets Vercel alias that same artifact automatically
   5. Alias verification, observation, drain, then `contract` migrations if needed
 
 ### Urgent production hotfix
 
-For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and staged Production promotion gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
+For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and staged Production release gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
 
 ---
 
@@ -148,7 +157,7 @@ Create protected GitHub environments named `staging` and `Production – atlaris
 
 | Environment            | Deployment branch rule | Required reviewers |
 | ---------------------- | ---------------------- | ------------------ |
-| `staging`              | `develop`              | Yes                |
+| `staging`              | `develop`              | No                 |
 | `Production – atlaris` | `main`                 | Yes                |
 
 Store the Supabase migration secrets below as environment secrets on the matching environment, not as broad repository secrets.
@@ -163,19 +172,17 @@ Store the Supabase migration secrets below as environment secrets on the matchin
 
 ### GitHub repository secrets
 
-Optional Vercel CLI / automation credentials when an operator or future workflow authenticates non-interactively:
+Vercel custom-CI credentials used by the deployment workflow:
 
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
 
-There is no GitHub Actions workflow in this repository that automatically deploys or promotes Production. Production app release is the operator-driven staged Production lane in [staged-production-deployment.md](./staged-production-deployment.md).
+These credentials link custom CI to the Vercel project; Production application variables stay in Vercel and are never copied into GitHub.
 
 ### Vercel settings
 
-Set preview deployment behavior so non-`main` branches get preview deployments.
-
-Prefer the staged Production CLI path (`--skip-domain` then explicit promote) over unattended auto-production domain assignment on every `main` push. If Git integration would race with a staged promote, disable automatic Production domain assignment for git pushes and keep promotion operator-owned.
+Keep the GitHub project connection and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. After all custom lanes and JCS-52 are proven, explicitly approve `git.deploymentEnabled: false`; do not disconnect the repository because Deployment Checks require the integration.
 
 ---
 
