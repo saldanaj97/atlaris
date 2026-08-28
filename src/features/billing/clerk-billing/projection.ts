@@ -51,6 +51,7 @@ export type ClerkBillingProjectionItem = {
 export type ClerkBillingProjectionSource = {
   type: string;
   payerUserId: string | null;
+  clerkBillingUpdatedAt: Date | null;
   subscriptionStatus: ClerkSubscriptionStatus | null;
   paymentAttemptStatus: 'pending' | 'paid' | 'failed' | null;
   items: ClerkBillingProjectionItem[];
@@ -70,6 +71,7 @@ type BackendBillingSubscriptionItem = {
 export type BackendBillingSubscription = {
   status: ClerkSubscriptionStatus;
   payerId: string;
+  updatedAt: number;
   subscriptionItems: BackendBillingSubscriptionItem[];
 };
 
@@ -88,6 +90,12 @@ const TERMINAL_STATUSES = new Set<ClerkSubscriptionStatus>([
 
 function millisecondsToDate(value: number | null | undefined): Date | null {
   return typeof value === 'number' ? new Date(value) : null;
+}
+
+function clerkResourceUpdatedAt(data: object): Date | null {
+  return 'updated_at' in data && typeof data.updated_at === 'number'
+    ? new Date(data.updated_at)
+    : null;
 }
 
 function userIdFromPayer(
@@ -188,6 +196,7 @@ export function clerkBillingSourceFromWebhook(
         event.data.payer,
         payerIdFromEventData(event.data),
       ),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: null,
       paymentAttemptStatus: null,
       items: [toProjectionItemFromWebhook(event.data)],
@@ -198,6 +207,7 @@ export function clerkBillingSourceFromWebhook(
     return {
       type: event.type,
       payerUserId: userIdFromPayer(event.data.payer, event.data.payer_id),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: event.data.status,
       paymentAttemptStatus: null,
       items: event.data.items.map(toProjectionItemFromWebhook),
@@ -211,6 +221,7 @@ export function clerkBillingSourceFromWebhook(
         event.data.payer,
         payerIdFromEventData(event.data),
       ),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: null,
       paymentAttemptStatus: event.data.status,
       items: event.data.subscription_items.map(toProjectionItemFromWebhook),
@@ -226,6 +237,7 @@ export function clerkBillingSourceFromBackendSubscription(
   return {
     type: 'reconciliation.subscription',
     payerUserId: userIdFromPayer(undefined, subscription.payerId),
+    clerkBillingUpdatedAt: millisecondsToDate(subscription.updatedAt),
     subscriptionStatus: subscription.status,
     paymentAttemptStatus: null,
     items: subscription.subscriptionItems.map(toProjectionItemFromBackend),

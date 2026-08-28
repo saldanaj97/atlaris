@@ -22,7 +22,7 @@ import {
   users,
 } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 type ServiceRoleDb = typeof serviceRoleDb;
@@ -415,11 +415,18 @@ async function refreshClerkBillingSource(
   }
   const refreshedSource =
     clerkBillingSourceFromBackendSubscription(subscription);
+  const sourceUpdatedAt = source.clerkBillingUpdatedAt;
+  const refreshedUpdatedAt = refreshedSource.clerkBillingUpdatedAt;
 
   return {
     ...refreshedSource,
     type: source.type,
     payerUserId: source.payerUserId,
+    clerkBillingUpdatedAt:
+      sourceUpdatedAt !== null &&
+      (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt)
+        ? sourceUpdatedAt
+        : refreshedUpdatedAt,
     paymentAttemptStatus:
       source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
   };
@@ -447,6 +454,7 @@ export async function applyClerkBillingSource(
     .select({
       id: users.id,
       authUserId: users.authUserId,
+      clerkBillingUpdatedAt: users.clerkBillingUpdatedAt,
       subscriptionTier: users.subscriptionTier,
       subscriptionStatus: users.subscriptionStatus,
       subscriptionPeriodEnd: users.subscriptionPeriodEnd,
@@ -462,6 +470,14 @@ export async function applyClerkBillingSource(
       'No local user found for Clerk Billing payer; skipping projection',
     );
     return 'skipped_no_user';
+  }
+
+  if (
+    source.clerkBillingUpdatedAt !== null &&
+    user.clerkBillingUpdatedAt !== null &&
+    source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt
+  ) {
+    return 'ignored';
   }
 
   const projection = projectClerkBillingSource(source, user);
@@ -485,16 +501,36 @@ export async function applyClerkBillingSource(
         'Clerk Billing event did not require a local projection update',
       );
     }
-    return 'ignored';
+    if (source.clerkBillingUpdatedAt === null) {
+      return 'ignored';
+    }
   }
 
-  await db
+  const [updated] = await db
     .update(users)
     .set({
-      ...projection,
-      updatedAt: new Date(),
+      ...(projection ?? {}),
+      ...(source.clerkBillingUpdatedAt !== null
+        ? { clerkBillingUpdatedAt: source.clerkBillingUpdatedAt }
+        : {}),
+      ...(projection !== null ? { updatedAt: new Date() } : {}),
     })
-    .where(eq(users.id, user.id));
+    .where(
+      source.clerkBillingUpdatedAt === null
+        ? eq(users.id, user.id)
+        : and(
+            eq(users.id, user.id),
+            or(
+              isNull(users.clerkBillingUpdatedAt),
+              lt(users.clerkBillingUpdatedAt, source.clerkBillingUpdatedAt),
+            ),
+          ),
+    )
+    .returning({ id: users.id });
+
+  if (!updated || projection === null) {
+    return 'ignored';
+  }
 
   deps.logger.info(
     {
@@ -634,6 +670,7 @@ export async function reconcileClerkBillingEntitlements({
         {
           type: 'reconciliation',
           payerUserId: localUser.authUserId,
+          clerkBillingUpdatedAt: null,
           subscriptionStatus: null,
           paymentAttemptStatus: null,
           items: [],

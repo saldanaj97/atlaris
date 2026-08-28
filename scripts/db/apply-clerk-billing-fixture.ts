@@ -150,6 +150,7 @@ async function main(): Promise<void> {
   const source: ClerkBillingProjectionSource = {
     type: 'local-fixture.subscription',
     payerUserId,
+    clerkBillingUpdatedAt: null,
     subscriptionStatus: status === 'ended' ? 'ended' : status,
     paymentAttemptStatus: null,
     items: [item],

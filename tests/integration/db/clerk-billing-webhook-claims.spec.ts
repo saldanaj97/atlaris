@@ -79,6 +79,7 @@ function subscription(
   return {
     payerId: 'billing_claim_user',
     status: 'active',
+    updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
     subscriptionItems: [
       {
         id: 'item_claim_pro',
@@ -717,7 +718,7 @@ describe('Clerk billing webhook claims', () => {
     ).toEqual([]);
   });
 
-  it('applies a later Clerk snapshot after an earlier same-payer event commits', async () => {
+  it('rejects a stale same-payer snapshot that finishes after a newer one', async () => {
     const payerUserId = buildTestAuthUserId('clerk-payer-serialize');
     await ensureUser({
       authUserId: payerUserId,
@@ -726,6 +727,7 @@ describe('Clerk billing webhook claims', () => {
     });
     const staleSubscription = subscription({
       payerId: payerUserId,
+      updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
       status: 'past_due',
       subscriptionItems: [
         {
@@ -735,16 +737,40 @@ describe('Clerk billing webhook claims', () => {
       ],
     });
 
+    const staleRefreshStarted = createDeferredPromise<void>();
+    const releaseStaleRefresh =
+      createDeferredPromise<BackendBillingSubscription>();
+    const stale = applyVerifiedClerkBillingEvent(
+      billingEvent(payerUserId),
+      `evt_stale_${payerUserId}`,
+      {
+        clerkClient: {
+          billing: {
+            getUserBillingSubscription: vi.fn(async () => {
+              staleRefreshStarted.resolve();
+              return releaseStaleRefresh.promise;
+            }),
+          },
+        },
+        db,
+        logger: logger(),
+      },
+    );
+    await staleRefreshStarted.promise;
+
     await expect(
       applyVerifiedClerkBillingEvent(
         billingEvent(payerUserId),
-        `evt_stale_${payerUserId}`,
+        `evt_latest_${payerUserId}`,
         {
           clerkClient: {
             billing: {
-              getUserBillingSubscription: vi
-                .fn()
-                .mockResolvedValue(staleSubscription),
+              getUserBillingSubscription: vi.fn().mockResolvedValue(
+                subscription({
+                  payerId: payerUserId,
+                  updatedAt: new Date('2026-08-01T00:01:00.000Z').getTime(),
+                }),
+              ),
             },
           },
           db,
@@ -755,27 +781,12 @@ describe('Clerk billing webhook claims', () => {
       status: 'inserted',
       result: 'updated',
     });
-    await expect(currentTier(payerUserId)).resolves.toBe('starter');
+    await expect(currentTier(payerUserId)).resolves.toBe('pro');
 
-    await expect(
-      applyVerifiedClerkBillingEvent(
-        billingEvent(payerUserId),
-        `evt_latest_${payerUserId}`,
-        {
-          clerkClient: {
-            billing: {
-              getUserBillingSubscription: vi
-                .fn()
-                .mockResolvedValue(subscription({ payerId: payerUserId })),
-            },
-          },
-          db,
-          logger: logger(),
-        },
-      ),
-    ).resolves.toEqual({
+    releaseStaleRefresh.resolve(staleSubscription);
+    await expect(stale).resolves.toEqual({
       status: 'inserted',
-      result: 'updated',
+      result: 'ignored',
     });
     await expect(currentTier(payerUserId)).resolves.toBe('pro');
   });
@@ -879,9 +890,12 @@ describe('Clerk billing webhook claims', () => {
       reconcileClerkBillingEntitlements({
         clerkClient: {
           billing: {
-            getUserBillingSubscription: vi
-              .fn()
-              .mockResolvedValue(subscription({ payerId: payerUserId })),
+            getUserBillingSubscription: vi.fn().mockResolvedValue(
+              subscription({
+                payerId: payerUserId,
+                updatedAt: new Date('2026-08-01T00:01:00.000Z').getTime(),
+              }),
+            ),
           },
         },
         db,

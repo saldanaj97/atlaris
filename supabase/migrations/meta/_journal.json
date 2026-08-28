@@ -421,6 +421,13 @@
       "when": 1787769683000,
       "tag": "20260826184123_expand_user_preferences_model_text_slots",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1787876935000,
+      "tag": "20260828002855_add_clerk_billing_projection_watermark",
+      "breakpoints": true
     }
   ]
 }

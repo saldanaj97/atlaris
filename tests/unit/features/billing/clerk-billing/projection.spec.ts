@@ -57,6 +57,7 @@ function source(
   return {
     type: 'subscription.updated',
     payerUserId: 'user_fixture',
+    clerkBillingUpdatedAt: null,
     subscriptionStatus: 'active',
     paymentAttemptStatus: null,
     items: [item({})],
@@ -81,6 +82,7 @@ describe('projectClerkBillingSource', () => {
       ...clerkBillingSourceFromBackendSubscription({
         payerId: 'user_fixture',
         status: 'active',
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
         subscriptionItems: [
           {
             id: 'item_free_upcoming',

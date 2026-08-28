@@ -100,6 +100,7 @@ export function buildUserFixture(
     authUserId: `auth_test_${randomSuffix()}`,
     email: `test-${randomSuffix()}@example.test`,
     clerkUserUpdatedAt: null,
+    clerkBillingUpdatedAt: null,
     clerkDeletedAt: null,
     name: null,
     subscriptionTier: 'free',

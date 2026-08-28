@@ -23,6 +23,9 @@ export const users = pgTable(
     clerkUserUpdatedAt: timestamp('clerk_user_updated_at', {
       withTimezone: true,
     }),
+    clerkBillingUpdatedAt: timestamp('clerk_billing_updated_at', {
+      withTimezone: true,
+    }),
     clerkDeletedAt: timestamp('clerk_deleted_at', { withTimezone: true }),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')

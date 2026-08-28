@@ -125,7 +125,10 @@ function makeDb(opts: {
   ];
   const deleteReturning = opts.deleteReturning ?? [{ eventId: 'evt_fixture' }];
   const selectResults = [...(opts.selectResults ?? [])];
-  const updateWhere = vi.fn().mockResolvedValue(undefined);
+  const updateReturning = vi
+    .fn()
+    .mockResolvedValue([{ id: 'user_row_fixture' }]);
+  const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
   const execute = vi.fn().mockResolvedValue(undefined);
   const deleteWhere = vi.fn().mockReturnValue({
@@ -138,6 +141,7 @@ function makeDb(opts: {
     execute: typeof execute;
     isTransactionOpen: () => boolean;
     updateSet: typeof updateSet;
+    updateReturning: typeof updateReturning;
     updateWhere: typeof updateWhere;
   };
 
@@ -195,6 +199,7 @@ function makeDb(opts: {
       execute,
       isTransactionOpen: () => transactionOpen,
       updateSet,
+      updateReturning,
       updateWhere,
     },
   );
@@ -206,6 +211,7 @@ function makeLocalUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user_row_fixture',
     authUserId: 'user_missing',
+    clerkBillingUpdatedAt: null,
     subscriptionTier: 'starter',
     subscriptionStatus: 'active',
     subscriptionPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
@@ -220,6 +226,7 @@ function makeSubscription(
   return {
     payerId: 'user_missing',
     status: 'active',
+    updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
     subscriptionItems: [
       {
         id: 'item_pro',
@@ -429,7 +436,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
   it('keeps the completed ledger insert atomic with the projection', async () => {
     const projectionError = new Error('projection failed');
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
-    db.updateWhere.mockRejectedValueOnce(projectionError);
+    db.updateReturning.mockRejectedValueOnce(projectionError);
 
     await expect(
       applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_projection', {
@@ -572,7 +579,9 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
 
-    expect(db.update).not.toHaveBeenCalled();
+    expect(db.updateSet).toHaveBeenCalledWith({
+      clerkBillingUpdatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    });
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
         planSlugs: ['enterprise_plan'],
@@ -612,7 +621,9 @@ describe('applyVerifiedClerkBillingEvent', () => {
       ),
     ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
 
-    expect(db.update).not.toHaveBeenCalled();
+    expect(db.updateSet).toHaveBeenCalledWith({
+      clerkBillingUpdatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    });
   });
 });
 
