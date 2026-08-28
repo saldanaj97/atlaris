@@ -48,6 +48,8 @@ export function decideJobRetry(params: {
   attemptNumber: number;
   maxAttempts: number;
   retryable: boolean | undefined;
+  /** Minimum seconds before a scheduled retry, when a dependency provides one. */
+  retryAfterSeconds?: number;
 }): JobRetryDecision {
   const attemptNumber = normalizeAttemptNumber(params.attemptNumber);
 
@@ -60,7 +62,10 @@ export function decideJobRetry(params: {
       reason: `job_retry:attempt_cap:${attemptNumber}/${params.maxAttempts}`,
     };
   }
-  const delayMs = getJobRetryDelayMs(attemptNumber);
+  const delayMs = Math.max(
+    getJobRetryDelayMs(attemptNumber),
+    Math.max(0, params.retryAfterSeconds ?? 0) * 1000,
+  );
   return {
     shouldRetry: true,
     delayMs,

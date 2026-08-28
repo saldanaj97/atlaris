@@ -335,7 +335,12 @@ async function terminalizeReservationRejection(
 ): Promise<PlanRegenerationWorkflowTerminalResult> {
   const message = `Unable to reserve regeneration attempt: ${reservation.reason}.`;
   const retryable = isRetryableReservationRejection(reservation.reason);
-  const failedJob = await failJob(input.jobId, message, { retryable });
+  const failedJob = await failJob(input.jobId, message, {
+    retryable,
+    ...(reservation.retryAfter !== undefined
+      ? { retryAfter: reservation.retryAfter }
+      : {}),
+  });
 
   return retryable
     ? {

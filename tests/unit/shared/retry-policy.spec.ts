@@ -93,6 +93,22 @@ describe('shared retry-policy', () => {
       expect(result.delayMs).toBe(getJobRetryDelayMs(2, () => 0.5));
     });
 
+    it('honors a dependency-provided retry-after minimum', () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const result = decideJobRetry({
+        attemptNumber: 1,
+        maxAttempts: 3,
+        retryable: true,
+        retryAfterSeconds: 3_600,
+      });
+
+      expect(result.shouldRetry).toBe(true);
+      if (!result.shouldRetry) {
+        throw new Error('Expected retry decision');
+      }
+      expect(result.delayMs).toBe(3_600_000);
+    });
+
     it('normalizes invalid low attempt numbers before deciding and logging', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5);
       const result = decideJobRetry({

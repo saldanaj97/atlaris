@@ -393,6 +393,35 @@ describe('Job queue service', () => {
     expect(terminal?.completedAt).toBeInstanceOf(Date);
   });
 
+  it('honors retry-after when scheduling a rate-limited retry', async () => {
+    const { plan, userId } = await createPlanFixture('retry-after');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan),
+    );
+
+    await getNextJob([JOB_TYPE]);
+    const retryAfterSeconds = 3_600;
+    const retried = await failJob(jobId, 'rate limited', {
+      retryable: true,
+      retryAfter: retryAfterSeconds,
+    });
+
+    expect(retried?.status).toBe('pending');
+    const retryRow = await db.query.jobQueue.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, jobId),
+    });
+    expect(retryRow).toBeDefined();
+    if (!retryRow) {
+      throw new Error('Expected rate-limited retry row');
+    }
+    expect(
+      retryRow.scheduledFor.getTime() - retryRow.updatedAt.getTime(),
+    ).toBeGreaterThanOrEqual(retryAfterSeconds * 1000);
+  });
+
   it('preserves error history and clears workflow metadata for a scheduled retry', async () => {
     const { plan, userId } = await createPlanFixture('retry-workflow');
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, {

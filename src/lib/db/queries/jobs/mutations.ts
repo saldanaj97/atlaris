@@ -299,6 +299,7 @@ export async function failJobRecord(
   error: string,
   retryable?: boolean,
   dbClient?: JobsDbClient,
+  retryAfterSeconds?: number,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -309,6 +310,7 @@ export async function failJobRecord(
       attemptNumber: nextAttempts,
       maxAttempts: current.maxAttempts,
       retryable,
+      retryAfterSeconds,
     });
 
     const payloadWithHistory = appendErrorHistoryEntry(current.payload, {

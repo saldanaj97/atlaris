@@ -369,6 +369,29 @@ describe('processPlanRegenerationStep model resolution', () => {
     );
   });
 
+  it('preserves the durable retry-after when rate limited', async () => {
+    mocks.reserveAttemptSlot.mockResolvedValue({
+      reserved: false,
+      reason: 'rate_limited',
+      retryAfter: 3_599,
+    });
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.failJob.mockResolvedValue(job('pending'));
+
+    await expect(reservePlanRegenerationAttemptStep(input)).resolves.toEqual({
+      kind: 'retryable-failure',
+      jobId: input.jobId,
+      planId: input.planId,
+      willRetry: true,
+    });
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Unable to reserve regeneration attempt: rate_limited.',
+      { retryable: true, retryAfter: 3_599 },
+    );
+  });
+
   it('fails a claimed job when reservation is permanently rejected', async () => {
     mocks.reserveAttemptSlot.mockResolvedValue({
       reserved: false,
